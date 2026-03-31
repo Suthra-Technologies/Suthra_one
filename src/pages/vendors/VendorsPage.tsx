@@ -300,8 +300,8 @@ const VendorsPage: React.FC = () => {
             {/* Header */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <VendorIcon sx={{ fontSize: 32, color: 'primary.main' }} />
-                    <Typography variant="h4" fontWeight="bold">
+               <VendorIcon sx={{ fontSize: { xs: 24, sm: 32 }, color: 'primary.main' }} />
+                    <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.4rem', sm: '2.125rem' } }}>
                         Vendors
                     </Typography>
                 </Box>
@@ -309,7 +309,7 @@ const VendorsPage: React.FC = () => {
                     variant="contained"
                     startIcon={<AddIcon />}
                     onClick={() => handleOpenDialog()}
-                    sx={{ borderRadius: 2 }}
+                    sx={{ borderRadius: 2, whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1.5, sm: 2 } }}
                 >
                     Add Vendor
                 </Button>

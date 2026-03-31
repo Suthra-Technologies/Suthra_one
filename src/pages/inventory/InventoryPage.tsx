@@ -120,6 +120,7 @@ const InventoryPage: React.FC = () => {
     const { formatCurrency } = useSettings();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isTabletOrMobile = useMediaQuery(theme.breakpoints.down('lg'));
     const [tabValue, setTabValue] = useState(0);
     const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>([]);
     const [dailyReport, setDailyReport] = useState<DailyReport | null>(null);
@@ -329,7 +330,7 @@ const InventoryPage: React.FC = () => {
                                 No raw materials found. Click "Add Material" to get started.
                             </Typography>
                         </Box>
-                    ) : isMobile ? (
+                    ) : isTabletOrMobile ? (
                         // Mobile Card View for Raw Materials
                         <Stack spacing={2}>
                             {rawMaterials.map((material) => {
@@ -593,7 +594,7 @@ const InventoryPage: React.FC = () => {
                                         No usage recorded for this date range.
                                     </Typography>
                                 </Box>
-                            ) : isMobile ? (
+                            ) : isTabletOrMobile ? (
                                 // Mobile Card View for Usage Reports
                                 <Stack spacing={2}>
                                     {dailyReport.records.map((record) => (

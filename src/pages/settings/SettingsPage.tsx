@@ -1730,12 +1730,14 @@ const SettingsPage: React.FC = () => {
                                         key={dayConfig.day}
                                         variant="outlined"
                                         sx={{
-                                            px: 2.5, py: 1.5,
+                                           px: { xs: 1.5, sm: 2.5 }, py: { xs: 1, sm: 1.5 },
                                             borderRadius: 3,
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: 2,
-                                            flexWrap: 'wrap',
+                                            gap:{xs:1,sm:2},
+                                            flexWrap: {xs:"nowrap",sm:"wrap"},
+                                            flexDirection:{xs:"column",sm:"row"},
+                                            alignitems:{xs:"flex-start",sm:"center"},
                                             borderColor: dayConfig.isOpen ? 'success.light' : 'divider',
                                             bgcolor: dayConfig.isOpen ? alpha('#22c55e', 0.03) : 'transparent',
                                             transition: 'all 0.2s ease',
@@ -1743,7 +1745,7 @@ const SettingsPage: React.FC = () => {
                                     >
                                         {/* Day toggle */}
                                         <FormControlLabel
-                                            sx={{ minWidth: 130, m: 0 }}
+                                            sx={{ minWidth: { xs:100 ,sm:130}, m: 0 }}
                                             control={
                                                 <Switch
                                                     size="small"
@@ -1775,7 +1777,7 @@ const SettingsPage: React.FC = () => {
 
                                             return (
                                                 <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',width:"100%" }}>
                                                         <Box
                                                             sx={{
                                                                 px: 1.5, py: 0.4,
@@ -1803,7 +1805,7 @@ const SettingsPage: React.FC = () => {
                                                     <Collapse in={isExpanded}>
                                                         <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                                                             {slots.map((slot, sIdx) => (
-                                                                <Box key={sIdx} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                                                <Box key={sIdx} sx={{ display: 'flex', alignItems: 'center', gap: 1,flexWrap:"wrap"}}>
                                                                     <TextField
                                                                         type="time"
                                                                         label="Opens"

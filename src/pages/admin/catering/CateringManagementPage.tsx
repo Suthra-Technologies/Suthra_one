@@ -2278,29 +2278,36 @@ const CateringManagementPage = () => {
                         return (
                             <Box>
                                 {/* Horizontal Stepper Header */}
-                                <Stepper
+                              <Stepper
                                     activeStep={activeStep}
                                     alternativeLabel
                                     sx={{
                                         mb: 2,
                                         pt: 1,
                                         pb: 2,
-                                        px: 1,
+                                        px: 0.5,
                                         borderRadius: 2,
                                         bgcolor: alpha(theme.palette.primary.main, 0.04),
                                         border: `1px solid ${alpha(theme.palette.primary.main, 0.12)}`,
-                                        '& .MuiStepLabel-label': { fontSize: '0.78rem', fontWeight: 600, mt: 0.5 },
+                                        '& .MuiStepLabel-label': {
+                                            fontSize: { xs: '0.6rem', sm: '0.78rem' },
+                                            fontWeight: 600,
+                                            mt: 0.5,
+                                            whiteSpace: 'nowrap',
+                                        },
                                         '& .MuiStepLabel-label.Mui-active': { color: 'primary.main', fontWeight: 700 },
                                         '& .MuiStepLabel-label.Mui-completed': { color: 'success.main', fontWeight: 600 },
+                                        '& .MuiStepIcon-root': { fontSize: { xs: '1.1rem', sm: '1.5rem' } },
                                         '& .MuiStepIcon-root.Mui-active': { color: 'primary.main', transform: 'scale(1.15)' },
                                         '& .MuiStepIcon-root.Mui-completed': { color: 'success.main' },
                                         '& .MuiStepConnector-line': { borderTopWidth: 2 },
+                                        '& .MuiStep-root': { px: { xs: 0.5, sm: 1 } },
                                     }}
                                 >
-                                    <Step><StepLabel>Customer Details</StepLabel></Step>
-                                    <Step><StepLabel>Catering Details</StepLabel></Step>
-                                    <Step><StepLabel>Food Selection</StepLabel></Step>
-                                    <Step><StepLabel>Confirm Order</StepLabel></Step>
+                                    <Step><StepLabel>Customer</StepLabel></Step>
+                                    <Step><StepLabel>Details</StepLabel></Step>
+                                    <Step><StepLabel>Food</StepLabel></Step>
+                                    <Step><StepLabel>Confirm</StepLabel></Step>
                                 </Stepper>
 
                                 {/* Step Content Panel */}

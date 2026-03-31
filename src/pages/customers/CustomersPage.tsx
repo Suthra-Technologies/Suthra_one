@@ -15,7 +15,11 @@ import {
     TablePagination,
     alpha,
     useTheme,
-    Tooltip
+    useMediaQuery,
+    Tooltip,
+    Card,
+    CardContent,
+    Stack
 } from '@mui/material';
 import {
     Search as SearchIcon,
@@ -61,6 +65,10 @@ const CustomersPage: React.FC = () => {
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [totalCustomers, setTotalCustomers] = useState(0);
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isTabletOrBelow = useMediaQuery(theme.breakpoints.down('lg'));
+    const isTablet = isTabletOrBelow && !isMobile;
+
 
     useEffect(() => {
         fetchCustomers();
@@ -149,107 +157,158 @@ const CustomersPage: React.FC = () => {
             </Paper>
 
             {/* Customers Table */}
-            <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
-                <Table>
-                    <TableHead>
-                        <TableRow sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1) }}>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Customer</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Contact</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Stats</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Last Visit</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Order Types</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {loading ? (
-                            <TableRow>
-                                <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
-                                    Loading...
-                                </TableCell>
+
+         
+            {isTablet ? (
+                <Stack spacing={2}>
+                    <Paper sx={{ borderRadius: 2, overflow: 'hidden' }}>
+                        <TableContainer>
+                            <Table>
+                                <TableHead>
+                                    <TableRow sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1) }}>
+                                        <TableCell sx={{ fontWeight: 'bold' }}>Customer</TableCell>
+                                        <TableCell sx={{ fontWeight: 'bold' }}>Contact</TableCell>
+                                        <TableCell sx={{ fontWeight: 'bold' }}>Stats</TableCell>
+                                        <TableCell sx={{ fontWeight: 'bold' }}>Last Visit</TableCell>
+                                        <TableCell sx={{ fontWeight: 'bold' }}>Order Types</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                            </Table>
+                        </TableContainer>
+                    </Paper>
+                    {loading ? (
+                        <Box sx={{ py: 4, textAlign: 'center' }}>Loading...</Box>
+                    ) : customers.length === 0 ? (
+                        <Box sx={{ py: 4, textAlign: 'center' }}>
+                            <Typography color="text.secondary">No customers found</Typography>
+                        </Box>
+                    ) : customers.map((customer) => (
+                        <Card key={customer.phone}>
+                            <CardContent>
+                                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+                                    <Typography fontWeight="bold">{customer.name || 'Guest'}</Typography>
+                                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                                        {customer.orderTypes?.map((type) => (
+                                            <Chip key={type} icon={getOrderTypeIcon(type)} label={getOrderTypeLabel(type)} size="small" variant="outlined" sx={{ textTransform: 'capitalize' }} />
+                                        ))}
+                                    </Box>
+                                </Stack>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                    <PhoneIcon fontSize="inherit" color="action" />
+                                    <Typography variant="body2">{customer.phone}</Typography>
+                                </Box>
+                                <Stack direction="row" spacing={3} mt={1}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                        <ReceiptIcon fontSize="small" color="primary" />
+                                        <Typography variant="body2" fontWeight="medium">{customer.totalOrders}</Typography>
+                                    </Box>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                        <MoneyIcon fontSize="small" color="success" />
+                                        <Typography variant="body2" fontWeight="medium">{formatCurrency(customer.totalSpent)}</Typography>
+                                    </Box>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                        <DateIcon fontSize="inherit" color="action" />
+                                        <Typography variant="body2">{customer.lastVisit ? format(new Date(customer.lastVisit), 'MMM dd, yyyy') : '-'}</Typography>
+                                    </Box>
+                                </Stack>
+                            </CardContent>
+                        </Card>
+                    ))}
+                    <TablePagination
+                        rowsPerPageOptions={[10, 25, 50]}
+                        component="div"
+                        count={totalCustomers}
+                        rowsPerPage={rowsPerPage}
+                        page={page}
+                        onPageChange={handleChangePage}
+                        onRowsPerPageChange={handleChangeRowsPerPage}
+                    />
+                </Stack>
+            ) : (
+                <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
+                    <Table>
+                        <TableHead>
+                            <TableRow sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1) }}>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Customer</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Contact</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Stats</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Last Visit</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Order Types</TableCell>
                             </TableRow>
-                        ) : customers.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
-                                    <Typography color="text.secondary">No customers found</Typography>
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            customers.map((customer) => (
-                                <TableRow key={customer.phone} hover>
-                                    <TableCell>
-                                        <Typography fontWeight="medium">{customer.name || 'Guest'}</Typography>
-                                        {/* <Typography variant="caption" color="text.secondary">
-                                            {customer.address?.city ? `${customer.address.city}, ${customer.address.state || ''}` : ''}
-                                        </Typography> */}
-                                    </TableCell>
-                                    <TableCell>
-                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                <PhoneIcon fontSize="inherit" color="action" />
-                                                <Typography variant="body2">{customer.phone}</Typography>
-                                            </Box>
-                                            {/* {customer.email && (
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                    <EmailIcon fontSize="inherit" color="action" />
-                                                    <Typography variant="caption" color="text.secondary">{customer.email}</Typography>
-                                                </Box>
-                                            )} */}
-                                        </Box>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Box sx={{ display: 'flex', gap: 2 }}>
-                                            <Tooltip title="Total Orders">
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                                    <ReceiptIcon fontSize="small" color="primary" />
-                                                    <Typography variant="body2" fontWeight="medium">{customer.totalOrders}</Typography>
-                                                </Box>
-                                            </Tooltip>
-                                            <Tooltip title="Total Spent">
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                                    <MoneyIcon fontSize="small" color="success" />
-                                                    <Typography variant="body2" fontWeight="medium">{formatCurrency(customer.totalSpent)}</Typography>
-                                                </Box>
-                                            </Tooltip>
-                                        </Box>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <DateIcon fontSize="inherit" color="action" />
-                                            <Typography variant="body2">
-                                                {customer.lastVisit ? format(new Date(customer.lastVisit), 'MMM dd, yyyy') : '-'}
-                                            </Typography>
-                                        </Box>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                                            {customer.orderTypes?.map((type) => (
-                                                <Chip
-                                                    key={type}
-                                                    icon={getOrderTypeIcon(type)}
-                                                    label={getOrderTypeLabel(type)}
-                                                    size="small"
-                                                    variant="outlined"
-                                                    sx={{ textTransform: 'capitalize' }}
-                                                />
-                                            ))}
-                                            {(!customer.orderTypes || customer.orderTypes.length === 0) && '-'}
-                                        </Box>
+                        </TableHead>
+                        <TableBody>
+                            {loading ? (
+                                <TableRow>
+                                    <TableCell colSpan={5} align="center" sx={{ py: 4 }}>Loading...</TableCell>
+                                </TableRow>
+                            ) : customers.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                                        <Typography color="text.secondary">No customers found</Typography>
                                     </TableCell>
                                 </TableRow>
-                            ))
-                        )}
-                    </TableBody>
-                </Table>
-                <TablePagination
-                    rowsPerPageOptions={[10, 25, 50]}
-                    component="div"
-                    count={totalCustomers}
-                    rowsPerPage={rowsPerPage}
-                    page={page}
-                    onPageChange={handleChangePage}
-                    onRowsPerPageChange={handleChangeRowsPerPage}
-                />
-            </TableContainer>
+                            ) : (
+                                customers.map((customer) => (
+                                    <TableRow key={customer.phone} hover>
+                                        <TableCell>
+                                            <Typography fontWeight="medium">{customer.name || 'Guest'}</Typography>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                    <PhoneIcon fontSize="inherit" color="action" />
+                                                    <Typography variant="body2">{customer.phone}</Typography>
+                                                </Box>
+                                            </Box>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Box sx={{ display: 'flex', gap: 2 }}>
+                                                <Tooltip title="Total Orders">
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                        <ReceiptIcon fontSize="small" color="primary" />
+                                                        <Typography variant="body2" fontWeight="medium">{customer.totalOrders}</Typography>
+                                                    </Box>
+                                                </Tooltip>
+                                                <Tooltip title="Total Spent">
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                        <MoneyIcon fontSize="small" color="success" />
+                                                        <Typography variant="body2" fontWeight="medium">{formatCurrency(customer.totalSpent)}</Typography>
+                                                    </Box>
+                                                </Tooltip>
+                                            </Box>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <DateIcon fontSize="inherit" color="action" />
+                                                <Typography variant="body2">
+                                                    {customer.lastVisit ? format(new Date(customer.lastVisit), 'MMM dd, yyyy') : '-'}
+                                                </Typography>
+                                            </Box>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+                                                {customer.orderTypes?.map((type) => (
+                                                    <Chip key={type} icon={getOrderTypeIcon(type)} label={getOrderTypeLabel(type)} size="small" variant="outlined" sx={{ textTransform: 'capitalize' }} />
+                                                ))}
+                                                {(!customer.orderTypes || customer.orderTypes.length === 0) && '-'}
+                                            </Box>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
+                        </TableBody>
+                    </Table>
+                    <TablePagination
+                        rowsPerPageOptions={[10, 25, 50]}
+                        component="div"
+                        count={totalCustomers}
+                        rowsPerPage={rowsPerPage}
+                        page={page}
+                        onPageChange={handleChangePage}
+                        onRowsPerPageChange={handleChangeRowsPerPage}
+                    />
+                </TableContainer>
+            )}
         </Box>
     );
 };

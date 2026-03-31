@@ -834,7 +834,7 @@ const DashboardPage: React.FC = () => {
                         isAnimationActive={false}
                         labelLine={itemCount > 1}
                         label={(props: any) => {
-                          if (itemCount === 1 || isXs) return null;
+                          if (itemCount === 1 ) return null;
 
                           const { cx, cy, midAngle, outerRadius } = props;
                           const value = Number(props.payload?.totalQuantity || 0);

@@ -535,9 +535,11 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
             {getPageTitle()}
           </Typography> */}
           <Box sx={{ flexGrow: 1 }} />
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-            <ShiftManager />
-            <SubscriptionStatus />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
+            <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 0.5 }}>
+              <ShiftManager />
+              <SubscriptionStatus />
+            </Box>
             <RestaurantStatusToggle />
             <Tooltip title="Notifications">
               <IconButton color="inherit" onClick={handleNotificationToggle}>
@@ -737,7 +739,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
         component="main"
         sx={{
           flexGrow: 1,
-          p: { xs: 1, sm: 2, md: 3 },
+          p: { xs: 0.5, sm: 2, md: 3 },
           width: { md: `calc(100% - ${currentDrawerWidth}px)` },
           mt: '64px',
           minHeight: 'calc(100vh - 64px)',
@@ -782,7 +784,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
           <Typography
             variant="h1"
             sx={{
-              fontSize: { xs: '4rem', md: '8rem' },
+              fontSize: { xs: '2.5rem', md: '8rem' },
               fontWeight: 900,
               color: 'text.primary',
               textTransform: 'uppercase',

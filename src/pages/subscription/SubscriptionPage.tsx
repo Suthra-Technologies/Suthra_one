@@ -245,11 +245,12 @@ const SubscriptionPage: React.FC = () => {
                                     }}
                                 />
                                 <CardContent sx={{ flexGrow: 1, textAlign: 'center' }}>
-                                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'baseline', mb: 2 }}>
-                                        <Typography component="h2" variant="h3" color={isCurrentPlan ? 'primary.main' : 'text.primary'}>
+                                   <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'baseline', mb: 2, flexWrap: 'wrap', gap: 0.5 }}>
+                                        <Typography component="h2" variant="h3" color={isCurrentPlan ? 'primary.main' : 'text.primary'}
+                                            sx={{ fontSize: { xs: '1.8rem', sm: '3rem' } }}>
                                             {formatCurrency(plan.price)}
                                         </Typography>
-                                        <Typography variant="h6" color="text.secondary">
+                                        <Typography variant="h6" color="text.secondary" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                                             /{plan.interval}
                                         </Typography>
                                     </Box>
