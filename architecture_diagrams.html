@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SaaS POS - Ultimate Architecture Visuals</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'base',
+            themeVariables: {
+                primaryColor: '#e1f5fe',
+                primaryTextColor: '#01579b',
+                primaryBorderColor: '#0288d1',
+                lineColor: '#546e7a',
+                secondaryColor: '#fff3e0',
+                tertiaryColor: '#f3e5f5'
+            }
+        });
+    </script>
+    <style>
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            padding: 40px;
+            background-color: #f4f7f6;
+            color: #333;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 60px;
+            border-bottom: 4px solid #039be5;
+            padding-bottom: 30px;
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        h1 {
+            color: #0277bd;
+            margin: 0;
+            font-size: 2.8em;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            color: #546e7a;
+            font-size: 1.3em;
+            margin-top: 10px;
+            font-weight: 300;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 40px;
+        }
+
+        .diagram-card {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            border: 1px solid #eceff1;
+            transition: transform 0.2s;
+            page-break-inside: avoid;
+        }
+
+        .diagram-card:hover {
+            transform: translateY(-3px);
+            border-color: #039be5;
+        }
+
+        h2 {
+            color: #263238;
+            border-left: 6px solid #fb8c00;
+            padding-left: 15px;
+            margin-top: 0;
+            font-size: 1.5em;
+        }
+
+        .desc {
+            background: #fafafa;
+            padding: 15px;
+            border-radius: 8px;
+            color: #607d8b;
+            font-style: italic;
+            margin-bottom: 25px;
+            border-left: 3px solid #cfd8dc;
+            line-height: 1.5;
+        }
+
+        .section-title {
+            grid-column: 1 / -1;
+            font-size: 1.8em;
+            color: #37474f;
+            margin-top: 50px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #cfd8dc;
+            padding-bottom: 10px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <h1>SaaS POS - The Complete Visual Architecture</h1>
+        <div class="subtitle">Comprehensive visualization of all 12 Feature Workflows and Systems.</div>
+    </div>
+
+    <div class="grid">
+
+        <!-- ================= SECTION 1: SYSTEM CORE ================= -->
+        <h3 class="section-title">☁️ System Core & Infrastructure</h3>
+
+        <div class="diagram-card">
+            <h2>1. Global System Architecture</h2>
+            <p class="desc">Physical view: Frontend Devices connecting to the NestJS Backend Cloud and Database.</p>
+            <div class="mermaid">
+                graph TD
+                subgraph Clients ["📱 Devices"]
+                Waiter[Waiter Tablet]
+                Admin[Admin Laptop]
+                Cust[Customer Mobile]
+                Kitchen[Kitchen Display]
+                end
+
+                subgraph Cloud ["☁️ Backend Cloud"]
+                LB{API Gateway}
+                Backend[NestJS API Cluster]
+                DB[(MongoDB Cluster)]
+                end
+
+                subgraph Ext ["🌐 Third Party"]
+                Stripe[Stripe Payments]
+                AWS[AWS S3 Storage]
+                Socket[Socket.io Realtime]
+                end
+
+                Waiter & Admin & Cust & Kitchen --> LB
+                LB --> Backend
+                Backend <--> DB
+                    Backend -.-> Socket
+                    Backend --> Stripe
+                    Backend --> AWS
+            </div>
+        </div>
+
+        <div class="diagram-card">
+            <h2>2. The 9-Role Ecosystem</h2>
+            <p class="desc">Logical view: Relationship between all 9 human stakeholders.</p>
+            <div class="mermaid">
+                graph TB
+                Center((SaaS Platform))
+
+                subgraph "👔 Management"
+                Super(Super Admin)
+                Admin(Restaurant Owner)
+                Mgr(Manager)
+                end
+
+                subgraph "⚙️ Operations"
+                Waiter(Waiter)
+                Cashier(Cashier)
+                Runner(Food Runner)
+                end
+
+                subgraph "🚚 Logistics"
+                Kitchen(Kitchen Staff)
+                Driver(Delivery Driver)
+                end
+
+                Cust(Customer)
+
+                Super & Admin & Mgr --- Center
+                Waiter & Cashier & Runner --- Center
+                Kitchen & Driver --- Center
+                Cust -.- Center
+            </div>
+        </div>
+
+        <!-- ================= SECTION 2: SECURITY & SAAS ================= -->
+        <h3 class="section-title">🛡️ Security & SaaS Billing</h3>
+
+        <div class="diagram-card">
+            <h2>3. Role-Based Security Check</h2>
+            <p class="desc">How the system blocks unauthorized access (e.g. Waiter trying to delete inventory).</p>
+            <div class="mermaid">
+                sequenceDiagram
+                actor User as 🤵 Waiter
+                participant Guard as 🛡️ Security Guard
+                participant DB as 💾 Database
+
+                User->>Guard: Request: DELETE /inventory
+                Note right of User: Role: 'waiter'
+
+                Guard->>Guard: Check Route Permission
+                Note right of Guard: Required: ['admin']
+
+                alt Role Matches
+                Guard->>DB: Allow Access
+                else Role Mismatch
+                Guard--xUser: 🚫 403 Access Denied
+                end
+            </div>
+        </div>
+
+        <div class="diagram-card">
+            <h2>4. SaaS Onboarding Flow</h2>
+            <p class="desc">How a new Restaurant (Tenant) signs up and gets provisioned.</p>
+            <div class="mermaid">
+                sequenceDiagram
+                actor Client as New Restaurant
+                participant Stripe
+                participant Webhook as ☁️ System
+                participant DB as Tenant DB
+                participant Email
+
+                Client->>Stripe: Pay Subscription (Gold Plan)
+                Stripe->>Webhook: Payment Success Event
+
+                Webhook->>DB: Create Tenant ("My Resto")
+                Webhook->>DB: Seed Default Menu & Roles
+                Webhook->>Email: Send Login Credentials
+
+                Email-->>Client: "Welcome! Here is your login."
+            </div>
+        </div>
+
+        <!-- ================= SECTION 3: OPERATIONAL WORKFLOWS ================= -->
+        <h3 class="section-title">⚙️ Operational Workflows (Core POS)</h3>
+
+        <div class="diagram-card">
+            <h2>5. Order Lifecycle (End-to-End)</h2>
+            <p class="desc">The golden path of a Dine-In order.</p>
+            <div class="mermaid">
+                graph LR
+                Start(Customer Orders) --> Waiter(Waiter Punches)
+                Waiter --> System{System}
+                System -->|Realtime| Kitchen[Kitchen Screen]
+                Kitchen -->|Mark Ready| Runner[Food Runner]
+                Runner -->|Serve| Table(Table)
+                Table -->|Eat / Done| Cashier
+                Cashier -->|Pay| End(Close Order)
+
+                style Start fill:#e8f5e9,stroke:#2e7d32
+                style End fill:#e8f5e9,stroke:#2e7d32
+            </div>
+        </div>
+
+        <div class="diagram-card">
+            <h2>6. Menu Engineering</h2>
+            <p class="desc">The flow for creating Categories, Items, and associating Recipes.</p>
+            <div class="mermaid">
+                graph TD
+                Admin[Admin] -->|Create| Cat[Category]
+                Cat -->|Add| Item[Menu Item]
+
+                Item -->|Def. Variants| Var[Size/Spice]
+                Item -->|Upload| Cloud[Image to AWS]
+                Item -->|Link| Recipe[Recipe Card]
+
+                Recipe -->|Select| Ing[Raw Material]
+
+                state "Menu Live" as Live
+                Item --> Live
+            </div>
+        </div>
+
+        <!-- ================= SECTION 4: ADVANCED FEATURES ================= -->
+        <h3 class="section-title">📦 Inventory & Logistics</h3>
+
+        <div class="diagram-card">
+            <h2>7. Inventory & Procurement</h2>
+            <p class="desc">How stock is depleted and replenished.</p>
+            <div class="mermaid">
+                graph TD
+                Sale[Order Sold 🍔] -->|Auto Deduct| Stock[Stock Level]
+                Stock --> Check{Low Stock?}
+
+                Check -->|Yes| Alert[Alert Manager ⚠️]
+                Alert --> PO[Create Purchase Order]
+                PO --> Vendor[Email Vendor]
+                Vendor --> Truck[Delivery Arrives]
+                Truck --> Receive[Manager Receives]
+                Receive -->|Increment| Stock
+
+                Check -->|No| Wait[Wait]
+            </div>
+        </div>
+
+        <div class="diagram-card">
+            <h2>8. Delivery Logistics Flow</h2>
+            <p class="desc">The workflow for home delivery orders with driver tracking.</p>
+            <div class="mermaid">
+                stateDiagram-v2
+                [*] --> Placed
+                Placed --> Confirmed: Admin Accepts
+                Confirmed --> Cooking: Kitchen Starts
+                Cooking --> Ready: Food Packed
+
+                state "Order Ready" as Ready
+                Ready --> DriverAssigned: Search Available Driver
+
+                state "Driver App" as Mob {
+                DriverAssigned --> PickedUp: Driver Arrives
+                PickedUp --> OnRoute: GPS Tracking
+                OnRoute --> Delivered: POD / Signature
+                }
+
+                Delivered --> [*]
+            </div>
+        </div>
+
+        <!-- ================= SECTION 5: CUSTOMER & EVENTS ================= -->
+        <h3 class="section-title">🎉 Customer Experience & Events</h3>
+
+        <div class="diagram-card">
+            <h2>9. QR Self-Ordering (Contactless)</h2>
+            <p class="desc">The flow for a customer scanning a table QR code.</p>
+            <div class="mermaid">
+                sequenceDiagram
+                actor Guest
+                participant Phone
+                participant API
+                participant Kitchen
+
+                Guest->>Phone: Scans QR Code matches Table 5
+                Phone->>API: GET /public/menu
+                Guest->>Phone: Selects Items & Pays (Stripe)
+                Phone->>API: POST /public/order (Paid)
+                API-->>Kitchen: 🔔 New Table 5 Order
+                API-->>Phone: "Order Confirmed!"
+            </div>
+        </div>
+
+        <div class="diagram-card">
+            <h2>10. Table Reservation Flow</h2>
+            <p class="desc">How table bookings are managed.</p>
+            <div class="mermaid">
+                sequenceDiagram
+                actor Guest
+                participant Sys as Booking System
+                participant Host as Manager
+
+                Guest->>Sys: Book Table (Date/Time)
+                Sys->>Sys: Check Availability
+                Sys-->>Guest: Confirmed (Booking ID)
+
+                Note over Guest, Host: On Arrival
+                Guest->>Host: Show Booking ID
+                Host->>Sys: Check-In Guest
+                Sys->>Sys: Assign Table 5
+                Sys-->>Host: Table 5 Status: Occupied
+            </div>
+        </div>
+
+        <div class="diagram-card">
+            <h2>11. Catering & Event Management</h2>
+            <p class="desc">Handling large scale bulk orders.</p>
+            <div class="mermaid">
+                graph LR
+                Client[Client Inquiry] -->|Req| Sales[Sales Mgr]
+                Sales -->|Quote| Draft[Draft Proposal]
+                Draft -->|Accept| Contract[Signed Contract]
+
+                Contract -->|50% Pay| Booked[Event Booked]
+                Booked -->|Plan| Kitchen[Kitchen Prep List]
+                Booked -->|Staff| Staff[Staff Roster]
+
+                Kitchen --> Event[Event Execution]
+                Event -->|Final 50%| Invoice[Final Invoice]
+            </div>
+        </div>
+
+        <div class="diagram-card">
+            <h2>12. Analytics & Reporting Data Flow</h2>
+            <p class="desc">How raw data is transformed into insights.</p>
+            <div class="mermaid">
+                flowchart LR
+                Orders[(Sales Data)]
+                Inv[(Stock Logs)]
+                Exp[(Expenses)]
+
+                subgraph "Aggregation Engine"
+                Daily[Daily Sales]
+                Cost[Food Cost %]
+                PL[Profit & Loss]
+                end
+
+                Orders --> Daily
+                Inv --> Cost
+                Orders & Inv & Exp --> PL
+
+                PL --> Dash[Admin Dashboard]
+                Dash -->|Export| XLS[Excel / PDF]
+            </div>
+        </div>
+
+    </div>
+
+</body>
+
+</html>

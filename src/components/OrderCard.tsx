@@ -1,0 +1,930 @@
+import {
+    CheckCircle as CheckIcon,
+    Delete as DeleteIcon,
+    Event as EventIcon,
+    LocalFireDepartment as SpiceIcon,
+    LocationOn as LocationOnIcon,
+    Payment as PaymentIcon,
+    Person as PersonIcon,
+    Receipt as ReceiptIcon,
+    Restaurant as RestaurantIcon,
+    AccessTime as TimeIcon,
+    Visibility as ViewIcon,
+    Cancel as CancelIcon,
+    StickyNote2 as NoteIcon,
+    Refresh as SyncIcon,
+    LocalShipping as DeliveryIcon,
+    Phone as PhoneIcon,
+    Launch as LaunchIcon
+} from '@mui/icons-material';
+import {
+    alpha,
+    Box,
+    Button,
+    Card,
+    CardActions,
+    CardContent,
+    Chip,
+    Dialog,
+    Divider,
+    IconButton,
+    Stack,
+    TextField,
+    Tooltip,
+    Typography,
+    useTheme
+} from '@mui/material';
+import React, { useState } from 'react';
+import { toast } from 'react-hot-toast';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { useSettings } from '../context/SettingsContext';
+import { ordersAPI } from '../services/api';
+import {
+    canAddItems,
+    formatTime,
+    getAvailableStatuses,
+    getOrderTypeLabel,
+    getPaymentMethodLabel,
+    getStatusColor,
+    getStatusLabel,
+    getTimeElapsed,
+    isGlobalDineIn,
+    isOrderActive,
+} from '../utils/orderWorkflows';
+import { formatSpiceLevelLabel } from '../utils/spiceLevel';
+import AddItemsDialog from './AddItemsDialog';
+import DeliveryTracker from './DeliveryTracker';
+import PaymentCollectionDialog from './PaymentCollectionDialog';
+
+interface OrderCardProps {
+    order: any;
+    onView: (order: any) => void;
+    onUpdate: (order: any) => void;
+    onPrint: (order: any) => void;
+    onAddItem: (order: any) => void;
+    canManage?: boolean;
+    onRefresh?: () => void;
+}
+
+const OrderCard: React.FC<OrderCardProps> = ({
+    order,
+    onView,
+    onUpdate,
+    onPrint,
+    onAddItem,
+    canManage = true,
+    onRefresh,
+}) => {
+    const { formatCurrency } = useSettings();
+    const [addItemsDialogOpen, setAddItemsDialogOpen] = useState(false);
+    const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+    const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
+    const [cancelOrderDialogOpen, setCancelOrderDialogOpen] = useState(false);
+    const [cancelNotes, setCancelNotes] = useState('');
+    const [itemToDeleteIndex, setItemToDeleteIndex] = useState<number | null>(null);
+    const [expanded, setExpanded] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const { user } = useAuth();
+    const isDeliveryBoy = user?.role === 'delivery';
+
+    const canAddMoreItems = canAddItems(order.status, order.orderType, order);
+    // Global Dine In orders have already paid - don't show collect payment
+    const canCollectPayment = order.orderType === 'dine_in' && order.status === 'served' && !isGlobalDineIn(order);
+    const handleAddItemsSuccess = () => {
+        setAddItemsDialogOpen(false);
+        if (onRefresh) onRefresh();
+    };
+
+    const handleNextStatus = async (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (isProcessing) return;
+
+        const availableNextStatuses = getAvailableStatuses(order.status, order.orderType);
+        const nextStatus = availableNextStatuses.find((s: string) => s !== 'cancelled');
+
+        if (!nextStatus) return;
+
+        setIsProcessing(true);
+        try {
+            await ordersAPI.updateStatus(order._id, nextStatus);
+            // toast.success(`Order advanced to ${getStatusLabel(nextStatus)}`);
+            if (onRefresh) onRefresh();
+        } catch (error) {
+            console.error('Error updating status:', error);
+            toast.error('Failed to update status');
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const nextAvailableStatuses = getAvailableStatuses(order.status, order.orderType);
+    const nextStatus = nextAvailableStatuses.find((s: string) => s !== 'cancelled');
+    const handlePaymentSuccess = () => {
+        setPaymentDialogOpen(false);
+        if (onRefresh) onRefresh();
+    };
+
+    const handleDeleteItem = (index: number) => {
+        setItemToDeleteIndex(index);
+        setDeleteConfirmationOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (itemToDeleteIndex === null || isProcessing) return;
+
+        setIsProcessing(true);
+        try {
+            await ordersAPI.removeItem(order._id, itemToDeleteIndex);
+            toast.success('Item removed');
+            if (onRefresh) onRefresh();
+        } catch (error) {
+            console.error('Error removing item:', error);
+            toast.error('Failed to remove item');
+        } finally {
+            setDeleteConfirmationOpen(false);
+            setItemToDeleteIndex(null);
+            setIsProcessing(false);
+        }
+    };
+
+    const handleCancelOrder = async () => {
+        if (isProcessing) return;
+        setIsProcessing(true);
+        try {
+            await ordersAPI.updateStatus(order._id, 'cancelled', cancelNotes || 'Cancelled by staff');
+            toast.success('Order cancelled successfully');
+            if (onRefresh) onRefresh();
+            setCancelOrderDialogOpen(false);
+        } catch (error) {
+            console.error('Error cancelling order:', error);
+            toast.error('Failed to cancel order');
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const theme = useTheme();
+    const navigate = useNavigate();
+    const { slug } = useParams();
+    const getPaymentBadgeColor = (method: string | string[]) => {
+        let m = method;
+        if (Array.isArray(method)) {
+            if (method.length > 1) return theme.palette.secondary.main; // purple for split
+            m = method[0];
+        }
+
+        switch (m?.toString()?.toLowerCase()) {
+            case 'card':
+                return theme.palette.info.main;
+            case 'cash':
+                return theme.palette.success.main;
+            case 'upi':
+                return theme.palette.primary.main;
+            default:
+                return theme.palette.grey[600];
+        }
+    };
+
+    return (
+        <Card
+            sx={{
+                width: '100%',
+                height: '100%', // Fill grid item height
+                display: 'flex', // Flex layout
+                flexDirection: 'column', // Column direction
+                transition: 'transform 0.2s, box-shadow 0.2s',
+                '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: theme.shadows[8],
+                },
+                background:
+                    theme.palette.mode === 'dark'
+                        ? 'linear-gradient(145deg, #1e1e1e, #2d2d2d)'
+                        : 'linear-gradient(145deg, #ffffff, #f5f5f5)',
+                border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+            }}
+        >
+            <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                {/* Header Section */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                    <Box>
+                        <Typography
+                            variant="h5"
+                            component="div"
+                            color="primary.main"
+                            sx={{ fontWeight: '800', letterSpacing: 0.5, mb: 0.5 }}
+                        >
+                            {order.dailyTokenNumber ? `Token No #${order.dailyTokenNumber}` : `Order #${order.orderNumber?.split('-').pop() || order._id.slice(-6)}`}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                            {order.dailyTokenNumber ? `Order ID: ${order.orderNumber?.split('-').pop() || order._id.slice(-6)}` : ''}
+                        </Typography>
+                        <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                            Type: {getOrderTypeLabel(order.orderType, order)}
+                        </Typography>
+                        {(order.orderType === 'dine_in' && (order.tableNumber || order.table)) && (
+                            <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                                Table: {order.tableNumber || order.table?.tableNumber || order.table?.number || order.table?.tableName || order.table?.name}
+                            </Typography>
+                        )}
+                        <Typography variant="caption" color="text.secondary">
+                            {getTimeElapsed(order.createdAt)}
+                        </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center' }}>
+                        {order.isPreOrder && (
+                            <Chip
+                                icon={<EventIcon sx={{ fontSize: 14 }} />}
+                                label="PRE-ORDER"
+                                size="small"
+                                sx={{
+                                    fontWeight: 'bold',
+                                    bgcolor: alpha('#7c3aed', 0.12),
+                                    color: '#7c3aed',
+                                    border: '1px solid rgba(124,58,237,0.3)',
+                                }}
+                            />
+                        )}
+                        <Chip
+                            label={getStatusLabel(order.status)}
+                            color={getStatusColor(order.status) as any}
+                            size="small"
+                            sx={{ fontWeight: 'bold' }}
+                        />
+                        {order.paymentStatus === 'refunded' && (
+                            <Chip
+                                label="REFUNDED"
+                                color="error"
+                                variant="outlined"
+                                size="small"
+                                sx={{ fontWeight: 'bold' }}
+                            />
+                        )}
+                    </Box>
+                </Box>
+
+                {/* Order Type & Time */}
+                <Stack direction="row" spacing={2} sx={{ mb: order.isPreOrder && order.scheduledTime ? 1 : 2, flexWrap: 'wrap', gap: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
+                        <RestaurantIcon fontSize="small" sx={{ mr: 0.5 }} />
+                        <Typography variant="body2">{getOrderTypeLabel(order.orderType, order)}</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
+                        <TimeIcon fontSize="small" sx={{ mr: 0.5 }} />
+                        <Typography variant="body2">{formatTime(order.createdAt)}</Typography>
+                    </Box>
+                </Stack>
+                {order.isPreOrder && order.scheduledTime && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, px: 1.5, py: 0.75, borderRadius: 1.5, bgcolor: alpha('#7c3aed', 0.07), border: '1px solid rgba(124,58,237,0.2)' }}>
+                        <EventIcon sx={{ fontSize: 16, mr: 1, color: '#7c3aed' }} />
+                        <Typography variant="body2" sx={{ color: '#7c3aed', fontWeight: 600, fontSize: '0.78rem' }}>
+                            Scheduled: {new Date(order.scheduledTime).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                        </Typography>
+                    </Box>
+                )}
+
+                {/* Customer & Waiter Info */}
+                <Stack spacing={1} sx={{ mb: 2 }}>
+                    {order.customer?.name && (
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <PersonIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
+                            <Typography variant="body2">
+                                <strong>Customer:</strong> {/^[0-9a-fA-F]{8,24}$/.test(order.customer.name) ? 'Guest' : order.customer.name}
+                            </Typography>
+                        </Box>
+                    )}
+                    {order.waiter?.name && (
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <PersonIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
+                            <Typography variant="body2">
+                                <strong>Waiter:</strong> {order.waiter.name}
+                            </Typography>
+                        </Box>
+                    )}
+                    {order.notes && (
+                        <Box sx={{ display: 'flex', alignItems: 'flex-start', mt: 0.5 }}>
+                            <NoteIcon fontSize="small" sx={{ mr: 1, color: 'warning.main', mt: 0.3 }} />
+                            <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
+                                <strong>Notes:</strong> {order.notes}
+                            </Typography>
+                        </Box>
+                    )}
+                    {/* Delivery Address Display */}
+                    {['delivery', 'online'].includes(order.orderType) && (
+                        (() => {
+                            const dLoc = order.delivery?.location || order.deliveryAddress;
+                            const lat = dLoc?.lat || dLoc?.latitude;
+                            const lng = dLoc?.lng || dLoc?.longitude;
+                            const addr = order.delivery?.address || order.deliveryAddress?.formattedAddress || (typeof order.deliveryAddress === 'string' ? order.deliveryAddress : '');
+
+                            if (!addr && !lat) return null;
+
+                            return (
+                                <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
+                                    <LocationOnIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary', mt: 0.3 }} />
+                                    <Box>
+                                        <Typography variant="body2" sx={{ wordBreak: 'break-word' }}>
+                                            <strong>Address:</strong> {addr || 'Location Pin'}
+                                        </Typography>
+                                        {lat && lng && (
+                                            <Button
+                                                size="small"
+                                                startIcon={<LocationOnIcon />}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    const url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+                                                    window.open(url, '_blank');
+                                                }}
+                                                sx={{ mt: 0.5, fontSize: '0.7rem', p: 0.5, minWidth: 'auto' }}
+                                            >
+                                                View on Map
+                                            </Button>
+                                        )}
+                                    </Box>
+                                </Box>
+                            );
+                        })()
+                    )}
+                </Stack>
+
+                {/* Dasher Information Container */}
+                {['delivery', 'online'].includes(order.orderType) && (order.driverName || order.driverPhone || order.dasherPickupPhone || order.dasherDropoffPhone || order.trackingUrl) && (
+                    <Box sx={{ mb: 2, p: 1.5, borderRadius: 1.5, bgcolor: alpha(theme.palette.info.main, 0.08), border: `1px solid ${alpha(theme.palette.info.main, 0.2)}` }}>
+                        <Typography variant="caption" color="info.main" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', mb: 1 }}>
+                            <DeliveryIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                            Dasher Details
+                        </Typography>
+                        <Stack spacing={0.5}>
+                            {order.driverName && (
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <PersonIcon sx={{ fontSize: 14, mr: 1, color: 'text.secondary' }} />
+                                    <Typography variant="body2">{order.driverName}</Typography>
+                                </Box>
+                            )}
+                            {order.driverPhone && (
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <PhoneIcon sx={{ fontSize: 14, mr: 1, color: 'text.secondary' }} />
+                                    <Typography variant="body2">
+                                        <a href={`tel:${order.driverPhone}`} style={{ color: 'inherit', textDecoration: 'none' }}>{order.driverPhone} (Primary)</a>
+                                    </Typography>
+                                </Box>
+                            )}
+                            {order.dasherPickupPhone && order.dasherPickupPhone !== order.driverPhone && (
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <PhoneIcon sx={{ fontSize: 14, mr: 1, color: 'text.secondary' }} />
+                                    <Typography variant="body2">
+                                        <a href={`tel:${order.dasherPickupPhone}`} style={{ color: 'inherit', textDecoration: 'none' }}>{order.dasherPickupPhone} (Pickup)</a>
+                                    </Typography>
+                                </Box>
+                            )}
+                            {order.dasherDropoffPhone && order.dasherDropoffPhone !== order.driverPhone && (
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <PhoneIcon sx={{ fontSize: 14, mr: 1, color: 'text.secondary' }} />
+                                    <Typography variant="body2">
+                                        <a href={`tel:${order.dasherDropoffPhone}`} style={{ color: 'inherit', textDecoration: 'none' }}>{order.dasherDropoffPhone} (Dropoff)</a>
+                                    </Typography>
+                                </Box>
+                            )}
+                            {order.trackingUrl && (
+                                <Box sx={{ display: 'flex', alignItems: 'center', mt: 0.5 }}>
+                                    <LaunchIcon sx={{ fontSize: 14, mr: 1, color: 'info.main' }} />
+                                    <Button
+                                        size="small"
+                                        href={order.trackingUrl}
+                                        target="_blank"
+                                        sx={{ padding: 0, minWidth: 'auto', fontSize: '0.8rem', textTransform: 'none' }}
+                                    >
+                                        Track Delivery
+                                    </Button>
+                                </Box>
+                            )}
+                        </Stack>
+                    </Box>
+                )}
+
+                {/* Delivery Tracker for Delivery Boys */}
+                {isDeliveryBoy && order.status === 'on_the_way' && (
+                    <Box sx={{ mt: 2 }}>
+                        <DeliveryTracker
+                            orderId={order._id}
+                            customerPosition={(() => {
+                                const dLoc = order.delivery?.location || order.deliveryAddress;
+                                const lat = dLoc?.lat || dLoc?.latitude;
+                                const lng = dLoc?.lng || dLoc?.longitude;
+                                return (lat && lng) ? { lat: Number(lat), lng: Number(lng) } : undefined;
+                            })()}
+                        />
+                    </Box>
+                )}
+
+                <Divider sx={{ my: 2 }} />
+
+                {/* Order Items */}
+                <Box sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                        Order Items ({order.items?.length || 0})
+                    </Typography>
+                    <Stack spacing={0.5} sx={{ maxHeight: expanded ? 300 : 120, overflowY: 'auto', mb: 1, transition: 'max-height 0.3s' }}>
+                        {(expanded ? order.items : order.items?.slice(0, 3))?.filter((item: any) => item.preparationStatus !== 'cancelled').map((item: any, index: number) => {
+                            return (
+                                <Box
+                                    key={index}
+                                    sx={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        p: 0,
+                                        mb: 0
+                                    }}
+                                >
+                                    <Box
+                                        sx={{
+                                            flex: 1,
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: 0.5,
+                                            color: 'text.primary',
+                                            minWidth: 0,
+                                        }}
+                                    >
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                                            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                                {item.quantity}x {item.name || item.menuItem?.name || 'Unknown Item'}
+                                            </Typography>
+                                            {item.preparationStatus === 'ready' && (
+                                                <Tooltip title="Ready to Serve" arrow>
+                                                    <CheckIcon
+                                                        sx={{
+                                                            fontSize: 16,
+                                                            color: '#10b981',
+                                                            animation: 'pulse-green 2s infinite',
+                                                            '@keyframes pulse-green': {
+                                                                '0%': { transform: 'scale(0.95)', opacity: 0.8 },
+                                                                '70%': { transform: 'scale(1.2)', opacity: 1 },
+                                                                '100%': { transform: 'scale(0.95)', opacity: 0.8 }
+                                                            }
+                                                        }}
+                                                    />
+                                                </Tooltip>
+                                            )}
+                                        </Box>
+
+                                        {item.spiceLevel ? (
+                                            <Chip
+                                                icon={<SpiceIcon sx={{ fontSize: 14 }} />}
+                                                label={`Spice: ${formatSpiceLevelLabel(item.spiceLevel)}`}
+                                                size="small"
+                                                sx={{
+                                                    alignSelf: 'flex-start',
+                                                    ml: 2,
+                                                    height: 22,
+                                                    fontSize: '0.72rem',
+                                                    fontWeight: 700,
+                                                    bgcolor: alpha(theme.palette.warning.main, 0.12),
+                                                    color: theme.palette.warning.dark,
+                                                    border: `1px solid ${alpha(theme.palette.warning.main, 0.28)}`,
+                                                    '& .MuiChip-icon': {
+                                                        color: theme.palette.warning.main,
+                                                    },
+                                                }}
+                                            />
+                                        ) : null}
+
+                                        {item.modifiers && item.modifiers.length > 0 && (
+                                            <Typography variant="caption" display="block" color="text.secondary" sx={{ ml: 2 }}>
+                                                + {item.modifiers.map((m: any) => m.name).join(', ')}
+                                            </Typography>
+                                        )}
+                                    </Box>
+                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                        <Typography
+                                            variant="body2"
+                                            fontWeight="medium"
+                                            sx={{
+                                                mr: 1,
+                                                color: 'text.primary',
+                                            }}
+                                        >
+                                            {formatCurrency(item.total || item.price * item.quantity)}
+                                        </Typography>
+                                        {['pending', 'confirmed'].includes(order.status) && order.orderType === 'dine_in' && item.preparationStatus !== 'ready' && (
+                                            <IconButton
+                                                size="small"
+                                                color="error"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDeleteItem(index);
+                                                }}
+                                            >
+                                                <DeleteIcon fontSize="small" />
+                                            </IconButton>
+                                        )}
+                                    </Box>
+                                </Box>
+                            );
+                        })}
+                        {!expanded && order.items?.length > 3 && (
+                            <Typography
+                                variant="caption"
+                                color="primary"
+                                sx={{ fontStyle: 'italic', cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setExpanded(true);
+                                }}
+                            >
+                                +{order.items.length - 3} more items
+                            </Typography>
+                        )}
+                        {expanded && order.items?.length > 3 && (
+                            <Typography
+                                variant="caption"
+                                color="primary"
+                                sx={{ fontStyle: 'italic', cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setExpanded(false);
+                                }}
+                            >
+                                Show less
+                            </Typography>
+                        )}
+                    </Stack>
+                </Box>
+
+                <Divider sx={{ my: 2 }} />
+
+                {/* Payment & Total Section */}
+                <Box
+                    sx={{
+                        p: 1.5,
+                        bgcolor: alpha(theme.palette.primary.main, 0.05),
+                        borderRadius: 1,
+                        mt: 'auto' // Push to bottom of content
+                    }}
+                >
+                    <Stack spacing={0.5}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <Typography variant="body2" color="text.secondary">
+                                Subtotal:
+                            </Typography>
+                            <Typography variant="body2" fontWeight="medium">
+                                {formatCurrency(order.subtotal)}
+                            </Typography>
+                        </Box>
+                        {order.tax?.amount > 0 && (
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Typography variant="body2" color="text.secondary">
+                                    Tax ({order.tax.rate}%):
+                                </Typography>
+                                <Typography variant="body2" fontWeight="medium">
+                                    {formatCurrency(order.tax.amount)}
+                                </Typography>
+                            </Box>
+                        )}
+                        {order.serviceCharge?.amount > 0 && (
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Typography variant="body2" color="text.secondary">
+                                    Service Charge ({order.serviceCharge.rate}%):
+                                </Typography>
+                                <Typography variant="body2" fontWeight="medium">
+                                    {formatCurrency(order.serviceCharge.amount)}
+                                </Typography>
+                            </Box>
+                        )}
+                        {order.discount?.amount > 0 && (
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', color: 'success.main' }}>
+                                <Typography variant="body2">
+                                    Discount {order.discount.code ? `(${order.discount.code})` : ''}:
+                                </Typography>
+                                <Typography variant="body2" fontWeight="medium">
+                                    -{formatCurrency(order.discount.amount)}
+                                </Typography>
+                            </Box>
+                        )}
+                        {order.deliveryCharge > 0 && (
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Typography variant="body2" color="text.secondary">
+                                    Delivery Charge:
+                                </Typography>
+                                <Typography variant="body2" fontWeight="medium">
+                                    {formatCurrency(order.deliveryCharge)}
+                                </Typography>
+                            </Box>
+                        )}
+                        <Divider sx={{ my: 0.5 }} />
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Typography variant="body1" fontWeight="bold">
+                                Total:
+                            </Typography>
+                            <Typography variant="h6" fontWeight="bold" color="primary.main">
+                                {formatCurrency(order.totalAmount)}
+                            </Typography>
+                        </Box>
+                    </Stack>
+                </Box>
+
+                {/* Payment Method */}
+                <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <PaymentIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
+                        <Typography variant="body2" color="text.secondary">
+                            Payment:
+                        </Typography>
+                    </Box>
+                    <Chip
+                        label={order.paymentStatus === 'pending' ? 'PENDING' : getPaymentMethodLabel(order.payments && order.payments.length > 0 ? order.payments.map((p: any) => p.method) : order.paymentMethod)}
+                        size="small"
+                        sx={{
+                            bgcolor: alpha(order.paymentStatus === 'pending' ? theme.palette.warning.main : getPaymentBadgeColor(order.payments && order.payments.length > 0 ? order.payments[0].method : order.paymentMethod), 0.1),
+                            color: order.paymentStatus === 'pending' ? theme.palette.warning.main : getPaymentBadgeColor(order.payments && order.payments.length > 0 ? order.payments[0].method : order.paymentMethod),
+                            fontWeight: 'bold',
+                        }}
+                    />
+                </Box>
+            </CardContent>
+
+            <CardActions sx={{ p: 2, pt: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: alpha(theme.palette.background.default, 0.5) }}>
+                <Stack direction="row" spacing={0.5}>
+                    <Tooltip title="View Details">
+                        <IconButton size="small" color="primary" onClick={() => onView(order)} sx={{ padding: '4px' }}>
+                            <ViewIcon />
+                        </IconButton>
+                    </Tooltip>
+
+                    <Tooltip title="Print Bill">
+                        <IconButton size="small" onClick={() => onPrint(order)} sx={{ padding: '4px' }}>
+                            <ReceiptIcon />
+                        </IconButton>
+                    </Tooltip>
+
+                    {canManage && isOrderActive(order.status) && (
+                        <Tooltip title="Cancel Order">
+                            <IconButton
+                                size="small"
+                                color="error"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCancelOrderDialogOpen(true);
+                                }}
+                                sx={{ padding: '4px' }}
+                            >
+                                <CancelIcon />
+                            </IconButton>
+                        </Tooltip>
+                    )}
+
+                    {order.doordashDeliveryId && isOrderActive(order.status) && order.status !== 'delivered' && (
+                        <Tooltip title="Sync DoorDash Status">
+                            <IconButton
+                                size="small"
+                                color="secondary"
+                                onClick={async (e) => {
+                                    e.stopPropagation();
+                                    setIsProcessing(true);
+                                    try {
+                                        await ordersAPI.syncDoordashStatus(order._id);
+                                        toast.success('Sync complete');
+                                        if (onRefresh) onRefresh();
+                                    } catch (error) {
+                                        toast.error('Sync failed');
+                                    } finally {
+                                        setIsProcessing(false);
+                                    }
+                                }}
+                                disabled={isProcessing}
+                                sx={{ padding: '4px' }}
+                            >
+                                <SyncIcon />
+                            </IconButton>
+                        </Tooltip>
+                    )}
+                </Stack>
+
+                <Stack direction="row" spacing={0.5} alignItems="center">
+                    {canManage && nextStatus && (isDeliveryBoy ? ['ready_to_pickup', 'on_the_way', 'ready_to_pick'].includes(order.status) : true) && (
+                        // Hide "Next: Completed" for Dine In as it's typically handled via payment collection
+                        (order.orderType === 'dine_in' && nextStatus === 'completed' && !isGlobalDineIn(order)) ? null : (
+                            <Button
+                                variant="contained"
+                                color="info"
+                                size="small"
+                                onClick={handleNextStatus}
+                                disabled={isProcessing}
+                                sx={{
+                                    fontSize: '0.65rem',
+                                    padding: '4px 8px',
+                                    textTransform: 'none',
+                                    fontWeight: 'bold',
+                                    minWidth: 'auto',
+                                    height: '28px'
+                                }}
+                            >
+                                {isProcessing ? 'Processing...' : `Next: ${getStatusLabel(nextStatus)}`}
+                            </Button>
+                        )
+                    )}
+                    {canAddMoreItems && (
+                        <Button
+                            onClick={() => setAddItemsDialogOpen(true)}
+                            variant="outlined"
+                            color="primary"
+                            size="small"
+                            sx={{ fontSize: '0.65rem', padding: '4px 8px', height: '28px' }}
+                        >
+                            Add Items
+                        </Button>
+                    )}
+                    {canCollectPayment && (
+                        <Button
+                            onClick={() => setPaymentDialogOpen(true)}
+                            variant="contained"
+                            color="success"
+                            size="small"
+                            sx={{ fontSize: '0.65rem', padding: '4px 8px' }}
+                        >
+                            Collect Payment
+                        </Button>
+                    )}
+                </Stack>
+
+                {/* Add Items Dialog */}
+                <AddItemsDialog
+                    open={addItemsDialogOpen}
+                    order={order}
+                    onClose={() => setAddItemsDialogOpen(false)}
+                    onSuccess={handleAddItemsSuccess}
+                />
+                {/* Payment Collection Dialog */}
+                <PaymentCollectionDialog
+                    open={paymentDialogOpen}
+                    order={order}
+                    onClose={() => setPaymentDialogOpen(false)}
+                    onSuccess={handlePaymentSuccess}
+                />
+            </CardActions>
+
+            <Dialog
+                open={deleteConfirmationOpen}
+                onClose={() => setDeleteConfirmationOpen(false)}
+                PaperProps={{
+                    sx: {
+                        borderRadius: 3,
+                        width: '100%',
+                        maxWidth: 360,
+                        p: 1
+                    }
+                }}
+            >
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pt: 3, px: 2, pb: 2 }}>
+                    <Box
+                        sx={{
+                            width: 64,
+                            height: 64,
+                            borderRadius: '50%',
+                            bgcolor: (theme) => alpha(theme.palette.error.main, 0.1),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            mb: 2,
+                            color: 'error.main'
+                        }}
+                    >
+                        <DeleteIcon sx={{ fontSize: 32 }} />
+                    </Box>
+                    <Typography variant="h6" fontWeight="800" align="center" gutterBottom>
+                        Delete Item?
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3, px: 2 }}>
+                        Are you sure you want to remove <strong>{itemToDeleteIndex !== null && order.items[itemToDeleteIndex] ? (order.items[itemToDeleteIndex].name || order.items[itemToDeleteIndex].menuItem?.name || 'this item') : 'this item'}</strong>? This action cannot be undone.
+                    </Typography>
+                    <Stack direction="row" spacing={2} width="100%">
+                        <Button
+                            onClick={() => setDeleteConfirmationOpen(false)}
+                            variant="text"
+                            color="inherit"
+                            fullWidth
+                            sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, color: 'text.secondary' }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={confirmDelete}
+                            variant="contained"
+                            color="error"
+                            fullWidth
+                            disableElevation
+                            disabled={isProcessing}
+                            sx={{
+                                borderRadius: 2,
+                                textTransform: 'none',
+                                fontWeight: 600,
+                                boxShadow: '0 8px 16px -4px rgba(211, 47, 47, 0.3)'
+                            }}
+                        >
+                            {isProcessing ? 'Deleting...' : 'Yes, Delete'}
+                        </Button>
+                    </Stack>
+                </Box>
+            </Dialog>
+
+            {/* Cancel Order Confirmation Dialog */}
+            <Dialog
+                open={cancelOrderDialogOpen}
+                onClose={() => !isProcessing && setCancelOrderDialogOpen(false)}
+                PaperProps={{
+                    sx: {
+                        borderRadius: 3,
+                        width: '100%',
+                        maxWidth: 400,
+                        p: 1
+                    }
+                }}
+            >
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pt: 3, px: 2, pb: 2 }}>
+                    <Box
+                        sx={{
+                            width: 64,
+                            height: 64,
+                            borderRadius: '50%',
+                            bgcolor: (theme) => alpha(theme.palette.error.main, 0.1),
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            mb: 2,
+                            color: 'error.main'
+                        }}
+                    >
+                        <CancelIcon sx={{ fontSize: 32 }} />
+                    </Box>
+                    <Typography variant="h6" fontWeight="800" align="center" gutterBottom>
+                        Cancel Order?
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 2, px: 2 }}>
+                        Are you sure you want to cancel <strong>Order #{order.orderNumber?.split('-').pop() || order._id.slice(-6)}</strong>?
+                    </Typography>
+
+                    {order.paymentStatus === 'paid' && (
+                        <Box sx={{
+                            bgcolor: alpha(theme.palette.warning.main, 0.1),
+                            p: 1.5,
+                            borderRadius: 2,
+                            mb: 2,
+                            width: '100%',
+                            border: `1px dashed ${theme.palette.warning.main}`
+                        }}>
+                            <Typography variant="caption" color="warning.dark" sx={{ fontWeight: 'bold', display: 'block', textAlign: 'center' }}>
+                                ⚠️ This order has been PAID. An automatic refund via Stripe will be initiated.
+                            </Typography>
+                        </Box>
+                    )}
+
+                    <TextField
+                        fullWidth
+                        label="Reason for cancellation"
+                        multiline
+                        rows={2}
+                        value={cancelNotes}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCancelNotes(e.target.value)}
+                        placeholder="e.g., Customer requested, Out of stock..."
+                        size="small"
+                        sx={{ mb: 3 }}
+                    />
+
+                    <Stack direction="row" spacing={2} width="100%">
+                        <Button
+                            onClick={() => setCancelOrderDialogOpen(false)}
+                            variant="text"
+                            color="inherit"
+                            fullWidth
+                            disabled={isProcessing}
+                            sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, color: 'text.secondary' }}
+                        >
+                            Back
+                        </Button>
+                        <Button
+                            onClick={handleCancelOrder}
+                            variant="contained"
+                            color="error"
+                            fullWidth
+                            disableElevation
+                            disabled={isProcessing}
+                            sx={{
+                                borderRadius: 2,
+                                textTransform: 'none',
+                                fontWeight: 600,
+                                boxShadow: '0 8px 16px -4px rgba(211, 47, 47, 0.3)'
+                            }}
+                        >
+                            {isProcessing ? 'Cancelling...' : 'Confirm Cancellation'}
+                        </Button>
+                    </Stack>
+                </Box>
+            </Dialog>
+        </Card>
+
+    );
+};
+
+export default OrderCard;

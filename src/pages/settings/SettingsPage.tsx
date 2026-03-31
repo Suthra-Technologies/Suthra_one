@@ -1,0 +1,3375 @@
+import {
+    Add as AddIcon,
+    CheckCircle as CheckCircleIcon,
+    CreditCard as CreditCardIcon,
+    Delete as DeleteIcon,
+    PlayArrow as PlayArrowIcon,
+    Print as PrintIcon,
+    Save as SaveIcon,
+    Sms as SmsIcon,
+    History as HistoryIcon,
+    Person as PersonIcon,
+    Category as CategoryIcon,
+    Edit as EditIcon,
+    Login as LoginIcon,
+    Logout as LogoutIcon,
+    Search as SearchIcon,
+    FilterList as FilterListIcon,
+    Terminal as TerminalIcon,
+    Refresh as RefreshIcon
+} from '@mui/icons-material';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import {
+    Alert,
+    Avatar,
+    Box,
+    Button,
+    CircularProgress,
+    Divider,
+    FormControlLabel,
+    IconButton,
+    InputAdornment,
+    MenuItem,
+    Paper,
+    Radio,
+    Stack,
+    Switch,
+    Checkbox,
+    Tab,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Tabs,
+    TextField,
+    Typography,
+    alpha,
+    Collapse,
+    Tooltip,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Chip,
+    TablePagination
+} from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import Grid from '@mui/material/Grid2';
+import React, { useEffect, useState } from 'react';
+import { toast } from 'react-hot-toast';
+import AddressAutocomplete from '../../components/AddressAutocomplete';
+import PhoneInput from '../../components/PhoneInput';
+import { useAuth } from '../../context/AuthContext';
+import {
+    IMPERIAL_UNITS,
+    METRIC_UNITS,
+    getDialCodeByCountry,
+    getUnitSystem,
+    useSettings,
+    type BusinessHourDay,
+    type NotificationSettings,
+    type PaymentSettings,
+    type PrinterConfig,
+    type RestaurantGmailMailingSettings,
+    type RestaurantMailingSettings,
+    type RestaurantSettings,
+    type RestaurantSmtpMailingSettings,
+    type SettingsState,
+    type SystemSettings,
+    type TenantPrinterSettings,
+    type UnitConfig
+} from '../../context/SettingsContext';
+
+import { auditLogsAPI, paymentsAPI, printersAPI, settingsAPI, tenantAPI, usersAPI } from '../../services/api';
+
+import { NOTIFICATION_SOUNDS, previewSound } from '../../utils/notificationSounds';
+import type { ValidationResult } from '../../utils/validation';
+import { getHelperText, hasError, validateAddress, validateCompanyName, validateEmail, validatePhone } from '../../utils/validation';
+
+const countries = [
+    {
+        code: 'US',
+        name: 'United States',
+        currency: 'USD',
+        currencySymbol: '$',
+        timezones: [
+            'America/New_York',
+            'America/Chicago',
+            'America/Denver',
+            'America/Los_Angeles',
+            'America/Phoenix',
+            'America/Anchorage',
+            'Pacific/Honolulu'
+        ]
+    },
+    {
+        code: 'IN',
+        name: 'India',
+        currency: 'INR',
+        currencySymbol: '₹',
+        timezones: ['Asia/Kolkata']
+    },
+    {
+        code: 'GB',
+        name: 'United Kingdom',
+        currency: 'GBP',
+        currencySymbol: '£',
+        timezones: ['Europe/London']
+    },
+    {
+        code: 'CA',
+        name: 'Canada',
+        currency: 'CAD',
+        currencySymbol: 'C$',
+        timezones: [
+            'America/Toronto',
+            'America/Vancouver',
+            'America/Montreal',
+            'America/Edmonton',
+            'America/Winnipeg',
+            'America/Halifax',
+            'America/St_Johns'
+        ]
+    },
+    {
+        code: 'AU',
+        name: 'Australia',
+        currency: 'AUD',
+        currencySymbol: 'A$',
+        timezones: [
+            'Australia/Sydney',
+            'Australia/Melbourne',
+            'Australia/Brisbane',
+            'Australia/Perth',
+            'Australia/Adelaide',
+            'Australia/Darwin',
+            'Australia/Hobart'
+        ]
+    },
+    {
+        code: 'SG',
+        name: 'Singapore',
+        currency: 'SGD',
+        currencySymbol: 'S$',
+        timezones: ['Asia/Singapore']
+    },
+    {
+        code: 'AE',
+        name: 'United Arab Emirates',
+        currency: 'AED',
+        currencySymbol: 'د.إ',
+        timezones: ['Asia/Dubai']
+    },
+    {
+        code: 'DE',
+        name: 'Germany',
+        currency: 'EUR',
+        currencySymbol: '€',
+        timezones: ['Europe/Berlin']
+    },
+    {
+        code: 'FR',
+        name: 'France',
+        currency: 'EUR',
+        currencySymbol: '€',
+        timezones: ['Europe/Paris']
+    },
+    {
+        code: 'JP',
+        name: 'Japan',
+        currency: 'JPY',
+        currencySymbol: '¥',
+        timezones: ['Asia/Tokyo']
+    },
+];
+
+const isValidMailHost = (host: string) => {
+    const value = String(host || '').trim();
+    if (!value || /\s/.test(value)) {
+        return false;
+    }
+
+    const hostnameRegex = /^(?=.{1,253}$)(?!-)[a-zA-Z0-9-]{1,63}(?<!-)(\.(?!-)[a-zA-Z0-9-]{1,63}(?<!-))+$/;
+    const localhostRegex = /^localhost$/i;
+    const ipv4Regex = /^(25[0-5]|2[0-4]\d|1?\d?\d)(\.(25[0-5]|2[0-4]\d|1?\d?\d)){3}$/;
+
+    return hostnameRegex.test(value) || localhostRegex.test(value) || ipv4Regex.test(value);
+};
+
+const isLikelyGmailAppPassword = (password: string) =>
+    /^[a-zA-Z0-9]{16}$/.test(String(password || '').replace(/\s+/g, ''));
+
+interface TabPanelProps {
+    children?: React.ReactNode;
+    index: number;
+    value: number;
+}
+
+function TabPanel(props: TabPanelProps) {
+    const { children, value, index, ...other } = props;
+
+    return (
+        <div
+            role="tabpanel"
+            hidden={value !== index}
+            id={`settings-tabpanel-${index}`}
+            aria-labelledby={`settings-tab-${index}`}
+            {...other}
+        >
+            {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
+        </div>
+    );
+}
+
+
+
+const DEFAULT_BUSINESS_HOURS: BusinessHourDay[] = [
+    { day: 'Monday', isOpen: false, slots: [{ openTime: '11:00', closeTime: '22:00' }] },
+    { day: 'Tuesday', isOpen: true, slots: [{ openTime: '11:00', closeTime: '22:00' }] },
+    { day: 'Wednesday', isOpen: true, slots: [{ openTime: '11:00', closeTime: '22:00' }] },
+    { day: 'Thursday', isOpen: true, slots: [{ openTime: '11:00', closeTime: '22:00' }] },
+    { day: 'Friday', isOpen: true, slots: [{ openTime: '11:00', closeTime: '23:00' }] },
+    { day: 'Saturday', isOpen: true, slots: [{ openTime: '11:00', closeTime: '23:00' }] },
+    { day: 'Sunday', isOpen: true, slots: [{ openTime: '12:00', closeTime: '21:00' }] },
+];
+
+/** Pure helper: given businessHours + IANA timezone, compute if currently open */
+const isCurrentlyOpen = (hours: BusinessHourDay[], timezone: string): boolean => {
+    try {
+        const now = new Date();
+        const todayName = now.toLocaleString('en-US', { weekday: 'long', timeZone: timezone });
+
+        const timeOpts = { timeZone: timezone, hour: 'numeric', minute: 'numeric', hourCycle: 'h23' } as any;
+        const timeParts = new Intl.DateTimeFormat('en-US', timeOpts).formatToParts(now);
+
+        const hourStr = timeParts.find(p => p.type === 'hour')?.value || '0';
+        const minuteStr = timeParts.find(p => p.type === 'minute')?.value || '0';
+        const currentMinutes = parseInt(hourStr, 10) * 60 + parseInt(minuteStr, 10);
+
+        const config = hours.find(h => h.day.toLowerCase() === todayName.toLowerCase());
+        if (!config || !config.isOpen) return false;
+
+        const slots = config.slots || (config.openTime && config.closeTime ? [{ openTime: config.openTime, closeTime: config.closeTime }] : []);
+
+        return slots.some(slot => {
+            const [oh, om] = slot.openTime.split(':').map(Number);
+            const [ch, cm] = slot.closeTime.split(':').map(Number);
+            const openMins = oh * 60 + om;
+            const closeMins = ch * 60 + cm;
+            if (closeMins < openMins) return currentMinutes >= openMins || currentMinutes < closeMins;
+            return currentMinutes >= openMins && currentMinutes < closeMins;
+        });
+    } catch { return true; }
+};
+
+// Redundant local definition of RestaurantSettings removed
+
+
+// Redundant local definitions removed
+
+
+const createDefaultMailingSettings = (): RestaurantMailingSettings => ({
+    enabled: false,
+    provider: 'gmail',
+    fromName: '',
+    gmail: {
+        email: '',
+        fromEmail: '',
+        appPassword: '',
+    },
+    smtp: {
+        host: '',
+        port: 587,
+        secure: false,
+        username: '',
+        password: '',
+        fromEmail: '',
+    },
+    status: {
+        hasGmailAppPassword: false,
+        hasSmtpPassword: false,
+    },
+});
+
+const createDefaultSettings = (): SettingsState => ({
+    restaurant: {
+        name: '',
+        address: '',
+        city: '',
+        state: '',
+        zipCode: '',
+        phone: '',
+        email: '',
+        currency: 'USD',
+        currencySymbol: '$',
+        taxRate: 5,
+        taxBreakdown: {
+            enabled: false,
+            country: 5,
+            state: 0,
+            city: 0,
+            county: 0
+        },
+        logo: '',
+        country: 'United States',
+        timezone: 'America/New_York',
+        dialCode: '1',
+        tablePricing: {
+            enabled: true,
+            sharedBaseRate: 100,
+            privateBaseRate: 100
+        },
+        occasions: [
+            "Birthday Party",
+            "Sweet Sixteen Party",
+            "Graduation Party",
+            "Wedding Reception",
+            "Engagement Party",
+            "Baby Shower",
+            "Business Meeting",
+
+        ],
+        deliveryRadius: 15,
+        businessHours: DEFAULT_BUSINESS_HOURS,
+        mailing: createDefaultMailingSettings(),
+    },
+    system: {
+        theme: 'light',
+        notifications: true,
+        autoPrint: false,
+        googleMapsApiKey: '',
+        posPaymentMethods: {
+            cash: true,
+            card: true,
+            zelle: true,
+            venmo: true,
+        }
+    },
+    payment: {
+        stripePublishableKey: '',
+        stripeSecretKey: '',
+        stripeWebhookSecret: '',
+        stripeMode: 'test',
+    },
+    notification: {
+        sms: {
+            enabled: false,
+            provider: 'twilio',
+            twilio: {
+                accountSid: '',
+                authToken: '',
+                fromNumber: '',
+            },
+        },
+        push: {
+            roles: {
+                superadmin: { orders: true, catering: true, inventory: true },
+                admin: { orders: true, catering: true, inventory: true },
+                manager: { orders: true, catering: true, inventory: true },
+                cashier: { orders: true, catering: false, inventory: false },
+                waiter: { orders: true, catering: false, inventory: false },
+                kitchen_staff: { orders: false, catering: false, inventory: true },
+                food_runner: { orders: false, catering: false, inventory: false },
+                delivery: { orders: false, catering: false, inventory: false },
+                customer: { orders: false, catering: false, inventory: false }
+            },
+            users: {}
+        }
+    },
+    printer: {
+        enabled: false,
+        preferredAgentId: '',
+        billing: { name: 'Main Printer', type: 'none', ip: '', port: 80, paperWidth: 80, deviceId: 'local_printer' },
+        kitchen: { name: 'Kitchen Printer', type: 'none', ip: '', port: 80, paperWidth: 80, deviceId: 'local_printer' },
+    },
+});
+
+const mergeSettingsWithDefaults = (defaults: SettingsState, partial: Partial<SettingsState>): SettingsState => {
+    const fetchedPayment = (partial.payment ?? {}) as Partial<PaymentSettings>;
+    const fetchedSystem = (partial.system ?? {}) as Partial<SystemSettings>;
+
+    const mergedSystem: SystemSettings = {
+        theme: fetchedSystem.theme ?? defaults.system.theme,
+        notifications: fetchedSystem.notifications ?? defaults.system.notifications,
+        autoPrint: fetchedSystem.autoPrint ?? defaults.system.autoPrint,
+        googleMapsApiKey: fetchedSystem.googleMapsApiKey ?? defaults.system.googleMapsApiKey,
+        posPaymentMethods: {
+            cash: fetchedSystem.posPaymentMethods?.cash ?? (defaults.system.posPaymentMethods?.cash ?? true),
+            card: fetchedSystem.posPaymentMethods?.card ?? (defaults.system.posPaymentMethods?.card ?? true),
+            zelle: fetchedSystem.posPaymentMethods?.zelle ?? (defaults.system.posPaymentMethods?.zelle ?? true),
+            venmo: fetchedSystem.posPaymentMethods?.venmo ?? (defaults.system.posPaymentMethods?.venmo ?? true),
+        }
+    };
+
+    // Stripe settings come from tenant API; ensure defaults filled
+    const mergedPayment: PaymentSettings = {
+        stripePublishableKey: fetchedPayment.stripePublishableKey ?? defaults.payment.stripePublishableKey,
+        stripeSecretKey: fetchedPayment.stripeSecretKey ?? defaults.payment.stripeSecretKey,
+        stripeWebhookSecret: fetchedPayment.stripeWebhookSecret ?? defaults.payment.stripeWebhookSecret,
+        stripeMode: fetchedPayment.stripeMode ?? defaults.payment.stripeMode,
+    };
+
+    const mergedPrinter: TenantPrinterSettings = {
+        enabled: partial.printer?.enabled ?? false,
+        preferredAgentId: partial.printer?.preferredAgentId ?? '',
+        billing: partial.printer?.billing ?? { name: 'Main Printer', type: 'none', ip: '', port: 80, paperWidth: 80, deviceId: 'local_printer' },
+        kitchen: partial.printer?.kitchen ?? { name: 'Kitchen Printer', type: 'none', ip: '', port: 80, paperWidth: 80, deviceId: 'local_printer' },
+    };
+
+    return {
+
+        restaurant: {
+            ...defaults.restaurant,
+            ...((partial.restaurant as Partial<RestaurantSettings>) || {}),
+            mailing: {
+                ...createDefaultMailingSettings(),
+                ...(((partial.restaurant as Partial<RestaurantSettings>) || {}).mailing || {}),
+                gmail: {
+                    ...createDefaultMailingSettings().gmail,
+                    ...((((partial.restaurant as Partial<RestaurantSettings>) || {}).mailing || {}).gmail || {}),
+                },
+                smtp: {
+                    ...createDefaultMailingSettings().smtp,
+                    ...((((partial.restaurant as Partial<RestaurantSettings>) || {}).mailing || {}).smtp || {}),
+                },
+                status: {
+                    ...createDefaultMailingSettings().status,
+                    ...((((partial.restaurant as Partial<RestaurantSettings>) || {}).mailing || {}).status || {}),
+                },
+            },
+        },
+        system: mergedSystem,
+        payment: mergedPayment,
+        notification: {
+            ...defaults.notification,
+            ...((partial.notification as Partial<NotificationSettings>) || {}),
+            sms: {
+                ...defaults.notification.sms,
+                ...((partial.notification as Partial<NotificationSettings>)?.sms || {}),
+                twilio: {
+                    ...defaults.notification.sms.twilio,
+                    ...((partial.notification as Partial<NotificationSettings>)?.sms?.twilio || {}),
+                },
+            },
+        },
+        printer: mergedPrinter,
+    };
+};
+
+
+const SettingsPage: React.FC = () => {
+    const { user } = useAuth();
+    const { updateSettings: updateGlobalSettings } = useSettings();
+    const [tabValue, setTabValue] = useState(0);
+    const [loading, setLoading] = useState(false);
+    const [settings, setSettings] = useState<SettingsState>(() => createDefaultSettings());
+    const [errors, setErrors] = useState<Record<string, ValidationResult>>({});
+    const [fetchingTax, setFetchingTax] = useState(false);
+    const [webhookUrl, setWebhookUrl] = useState<string>('');
+    const [stripeStatus, setStripeStatus] = useState<{ stripeMode?: string; hasPublishableKey?: boolean; hasSecretKey?: boolean; hasWebhookSecret?: boolean }>({});
+    const [usersList, setUsersList] = useState<any[]>([]);
+    const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
+    const [pairedAgents, setPairedAgents] = useState<any[]>([]);
+    const [agentsLoading, setAgentsLoading] = useState(false);
+    const [newToken, setNewToken] = useState<string | null>(null);
+    const [userAlertsPage, setUserAlertsPage] = useState(0);
+    const [userAlertsRowsPerPage, setUserAlertsRowsPerPage] = useState(10);
+    const [totalUsers, setTotalUsers] = useState(0);
+
+    // Audit Logs state
+    const [auditLogs, setAuditLogs] = useState<any[]>([]);
+    const [auditLogsLoading, setAuditLogsLoading] = useState(false);
+    const [totalAuditLogs, setTotalAuditLogs] = useState(0);
+
+    const fetchUsers = async (page: number, limit: number) => {
+        try {
+            const res = await usersAPI.getUsers({
+                page: page + 1,
+                limit,
+            });
+            const allUsers = res.data?.data || res.data?.users || (Array.isArray(res.data) ? res.data : []);
+            setUsersList(allUsers);
+            setTotalUsers(res.data?.total || 0);
+        } catch (error) {
+            console.error('Error fetching users:', error);
+        }
+    };
+
+    const fetchAgents = async () => {
+        try {
+            setAgentsLoading(true);
+            const res = await printersAPI.listAgents();
+            setPairedAgents(res.data.data || []);
+        } catch (error) {
+            console.error('Failed to fetch print agents', error);
+        } finally {
+            setAgentsLoading(false);
+        }
+    };
+
+    const handleCreateAgent = async () => {
+        const name = prompt('Enter a name for this agent (e.g. Front Desk)');
+        if (!name) return;
+        try {
+            const res = await printersAPI.createAgent({ name });
+            setNewToken(res.data.pairingToken);
+            toast.success('Agent pairing token generated');
+            fetchAgents();
+        } catch (error) {
+            toast.error('Failed to create agent');
+        }
+    };
+
+    const handleRegenerateAgentToken = async (id: string) => {
+        try {
+            const res = await printersAPI.regenerateAgentToken(id);
+            setNewToken(res.data.pairingToken);
+            toast.success('New pairing token generated');
+        } catch (error) {
+            toast.error('Failed to regenerate token');
+        }
+    };
+
+    const handleRevokeAgent = async (id: string) => {
+        if (!confirm('Are you sure you want to revoke this agent? It will stop receiving print jobs.')) return;
+        try {
+            await printersAPI.revokeAgent(id);
+            toast.success('Agent revoked');
+            fetchAgents();
+        } catch (error) {
+            toast.error('Failed to revoke agent');
+        }
+    };
+
+    const handlePrinterRootChange = (field: string, value: any) => {
+        setSettings(prev => ({
+            ...prev,
+            printer: {
+                ...prev.printer,
+                [field]: value
+            }
+        }));
+    };
+
+
+
+    const fetchLogs = async () => {
+        setAuditLogsLoading(true);
+        try {
+            const response = await auditLogsAPI.getAll({ limit: 100 }); // Show recent 100 
+            setAuditLogs(response.data.logs || []);
+            setTotalAuditLogs(response.data.total || 0);
+        } catch (error: any) {
+            console.error('Error fetching audit logs:', error);
+        } finally {
+            setAuditLogsLoading(false);
+        }
+    };
+
+    const fetchSettings = async () => {
+        try {
+            setLoading(true);
+            const [response, webhookResp, stripeStatusResp] = await Promise.all([
+                settingsAPI.getAll(),
+                paymentsAPI.getWebhookUrl(),
+                tenantAPI.getStripeSettings(),
+            ]);
+            const defaults = createDefaultSettings();
+
+            if (Array.isArray(response.data)) {
+                const fetched = response.data.reduce((acc: Partial<SettingsState>, curr: any) => {
+                    if (curr?.category && curr?.settings) {
+                        acc[curr.category as keyof SettingsState] = curr.settings;
+                    }
+                    return acc;
+                }, {});
+                const merged = mergeSettingsWithDefaults(defaults, fetched);
+                if (!merged.restaurant.name) merged.restaurant.name = (user?.tenant as any)?.name || '';
+                if (!merged.restaurant.logo) merged.restaurant.logo = (user?.tenant as any)?.logo || '';
+                if (!merged.restaurant.email) merged.restaurant.email = (user?.tenant as any)?.contactEmail || user?.email || '';
+                if (!merged.restaurant.phone) {
+                    const phoneVal = (user?.tenant as any)?.contactPhone || user?.phone || '';
+                    merged.restaurant.phone = phoneVal.replace(/\D/g, '').slice(-10);
+                }
+                setSettings(merged);
+                setWebhookUrl(webhookResp.data?.url || '');
+                setStripeStatus(stripeStatusResp.data || {});
+            } else if (response.data && typeof response.data === 'object') {
+                const fetched = response.data as Partial<SettingsState>;
+                const merged = mergeSettingsWithDefaults(defaults, fetched);
+                if (!merged.restaurant.name) merged.restaurant.name = (user?.tenant as any)?.name || '';
+                if (!merged.restaurant.logo) merged.restaurant.logo = (user?.tenant as any)?.logo || '';
+                if (!merged.restaurant.email) merged.restaurant.email = (user?.tenant as any)?.contactEmail || user?.email || '';
+                if (!merged.restaurant.phone) {
+                    const phoneVal = (user?.tenant as any)?.contactPhone || user?.phone || '';
+                    merged.restaurant.phone = phoneVal.replace(/\D/g, '').slice(-10);
+                }
+                setSettings(merged);
+                setWebhookUrl(webhookResp.data?.url || '');
+                setStripeStatus(stripeStatusResp.data || {});
+            } else {
+                defaults.restaurant.name = (user?.tenant as any)?.name || '';
+                defaults.restaurant.logo = (user?.tenant as any)?.logo || '';
+                defaults.restaurant.email = (user?.tenant as any)?.contactEmail || user?.email || '';
+                const phoneVal = (user?.tenant as any)?.contactPhone || user?.phone || '';
+                defaults.restaurant.phone = phoneVal.replace(/\D/g, '').slice(-10);
+                setSettings(defaults);
+                setWebhookUrl(webhookResp.data?.url || '');
+                setStripeStatus(stripeStatusResp.data || {});
+            }
+        } catch (error) {
+            console.error('Error fetching settings:', error);
+            // Don't show error toast here as it might be empty initially
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchSettings();
+        fetchUsers(0, 10);
+    }, []);
+
+
+
+    useEffect(() => {
+        fetchUsers(userAlertsPage, userAlertsRowsPerPage);
+    }, [userAlertsPage, userAlertsRowsPerPage]);
+
+    useEffect(() => {
+        if (tabValue === 6) {
+            fetchLogs();
+        }
+        if (tabValue === 5) {
+            fetchAgents();
+        }
+    }, [tabValue]);
+
+    // Auto-fetch tax rate when zipCode changes
+    useEffect(() => {
+        const zipCode = settings.restaurant.zipCode;
+        const state = settings.restaurant.state;
+        if (zipCode && zipCode.length >= 5) {
+            // Debounce the API call
+            const timer = setTimeout(async () => {
+                try {
+                    setFetchingTax(true);
+                    const res = await settingsAPI.getTaxRate(zipCode, state);
+                    if (res.data && typeof res.data.rate === 'number') {
+                        if (res.data.breakdown) {
+                            handleTaxBreakdownChange('enabled', true);
+                            handleTaxBreakdownChange('country', res.data.breakdown.country.rate);
+                            handleTaxBreakdownChange('state', res.data.breakdown.state.rate);
+                            handleTaxBreakdownChange('city', res.data.breakdown.city.rate);
+                            handleTaxBreakdownChange('county', res.data.breakdown.county.rate);
+                        } else {
+                            handleInputChange('restaurant', 'taxRate', res.data.rate);
+                        }
+                        console.log(`Auto-updated tax rate to ${res.data.rate}% for ZIP ${zipCode}, State: ${state || 'N/A'}`);
+                    }
+                } catch (error) {
+                    console.warn('Auto tax rate fetch failed:', error);
+                } finally {
+                    setFetchingTax(false);
+                }
+            }, 500); // 500ms debounce
+
+            return () => clearTimeout(timer);
+        }
+    }, [settings.restaurant.zipCode, settings.restaurant.state]);
+
+    const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
+        setTabValue(newValue);
+    };
+
+    const handleInputChange = (category: 'restaurant' | 'system', field: string, value: any) => {
+        setSettings(prev => {
+            const newSettings = {
+                ...prev,
+                [category]: {
+                    ...(prev[category] as any),
+                    [field]: value,
+                },
+            } as SettingsState;
+
+            // Auto-select first timezone and currency when country changes
+            if (category === 'restaurant' && field === 'country' && typeof value === 'string') {
+                const selectedCountry = countries.find(c => c.name === value) as any;
+                if (selectedCountry) {
+                    if (selectedCountry.timezones?.length > 0) {
+                        newSettings.restaurant.timezone = selectedCountry.timezones[0];
+                    }
+                    if (selectedCountry.currency) {
+                        newSettings.restaurant.currency = selectedCountry.currency;
+                    }
+                    if (selectedCountry.currencySymbol) {
+                        newSettings.restaurant.currencySymbol = selectedCountry.currencySymbol;
+                    }
+                }
+                // Auto-update dial code
+                newSettings.restaurant.dialCode = getDialCodeByCountry(value);
+            }
+
+            // Auto-update symbol when currency changes
+            if (category === 'restaurant' && field === 'currency' && typeof value === 'string') {
+                const currencySymbols: Record<string, string> = {
+                    'USD': '$',
+                    'INR': '₹',
+                    'EUR': '€',
+                    'GBP': '£',
+                    'AUD': 'A$',
+                    'CAD': 'C$',
+                    'SGD': 'S$',
+                    'AED': 'د.إ',
+                    'JPY': '¥'
+                };
+                if (currencySymbols[value]) {
+                    newSettings.restaurant.currencySymbol = currencySymbols[value];
+                }
+            }
+
+            return newSettings;
+        });
+        const errorKey = `${category}_${field}`;
+        if (category === 'restaurant' && errors[errorKey]) {
+            setErrors(prevErrors => ({ ...prevErrors, [errorKey]: { isValid: true } }));
+        }
+    };
+
+    const handleNotificationChange = (field: keyof NotificationSettings['sms']['twilio'], value: string) => {
+        setSettings(prev => ({
+            ...prev,
+            notification: {
+                ...prev.notification,
+                sms: {
+                    ...prev.notification.sms,
+                    twilio: {
+                        ...prev.notification.sms.twilio,
+                        [field]: value,
+                    },
+                },
+            },
+        }));
+    };
+
+    const handleRestaurantMailingChange = (field: keyof RestaurantMailingSettings, value: any) => {
+        setSettings(prev => ({
+            ...prev,
+            restaurant: {
+                ...prev.restaurant,
+                mailing: {
+                    ...createDefaultMailingSettings(),
+                    ...(prev.restaurant.mailing || {}),
+                    [field]: value,
+                },
+            },
+        }));
+    };
+
+    const handleRestaurantMailingNestedChange = (
+        section: 'gmail' | 'smtp',
+        field: keyof RestaurantGmailMailingSettings | keyof RestaurantSmtpMailingSettings,
+        value: any,
+    ) => {
+        setSettings(prev => ({
+            ...prev,
+            restaurant: {
+                ...prev.restaurant,
+                mailing: {
+                    ...createDefaultMailingSettings(),
+                    ...(prev.restaurant.mailing || {}),
+                    [section]: {
+                        ...createDefaultMailingSettings()[section],
+                        ...((prev.restaurant.mailing || {})[section] || {}),
+                        [field]: value,
+                    },
+                },
+            },
+        }));
+    };
+
+    const handlePrinterChange = (role: 'billing' | 'kitchen', field: keyof PrinterConfig, value: any) => {
+        setSettings(prev => ({
+            ...prev,
+            printer: {
+                ...prev.printer,
+                [role]: {
+                    ...prev.printer[role]!,
+                    [field]: value
+                }
+            }
+        }));
+    };
+
+    const handleTestPrint = async (role: 'billing' | 'kitchen') => {
+        const config = settings.printer[role];
+        if (!config || !config.ip) {
+            toast.error(`Please configure the ${role} printer IP first.`);
+            return;
+        }
+
+        try {
+            toast.loading(`Sending test print to ${role}...`, { id: 'test-print' });
+            const response = await printersAPI.testPrint(config);
+            toast.success(response.data.message || 'Test print successful', { id: 'test-print' });
+        } catch (error: any) {
+            console.error(`Test print failed for ${role}:`, error);
+            toast.error(error.response?.data?.message || `Failed to connect to ${role} printer`, { id: 'test-print' });
+        }
+    };
+
+
+    const validateRestaurantMailingSettings = (): string | null => {
+        const mailing = settings.restaurant.mailing || createDefaultMailingSettings();
+        if (!mailing.enabled) {
+            return null;
+        }
+
+        if (mailing.provider === 'gmail') {
+            if (!validateEmail(mailing.gmail.email).isValid) {
+                return 'Enter a valid Gmail address for the custom mailer';
+            }
+
+            if (!mailing.gmail.appPassword && !mailing.status?.hasGmailAppPassword) {
+                return 'Enter a Gmail app password or keep the saved one';
+            }
+
+            if (mailing.gmail.appPassword && !isLikelyGmailAppPassword(mailing.gmail.appPassword)) {
+                return 'Gmail app password must be 16 letters or numbers';
+            }
+
+            if (mailing.gmail.fromEmail && !validateEmail(mailing.gmail.fromEmail).isValid) {
+                return 'Enter a valid Gmail from email address';
+            }
+
+            return null;
+        }
+
+        if (!mailing.smtp.host.trim()) {
+            return 'Enter an SMTP host';
+        }
+
+        if (!isValidMailHost(mailing.smtp.host)) {
+            return 'Enter a valid SMTP host or IP address';
+        }
+
+        if (!mailing.smtp.port || mailing.smtp.port <= 0 || mailing.smtp.port > 65535) {
+            return 'Enter an SMTP port between 1 and 65535';
+        }
+
+        if (!mailing.smtp.username.trim()) {
+            return 'Enter an SMTP username';
+        }
+
+        if (!mailing.smtp.password && !mailing.status?.hasSmtpPassword) {
+            return 'Enter an SMTP password or keep the saved one';
+        }
+
+        const smtpFromEmail = mailing.smtp.fromEmail || mailing.smtp.username;
+        if (!validateEmail(smtpFromEmail).isValid) {
+            return 'Enter a valid SMTP from email address';
+        }
+
+        return null;
+    };
+
+    const buildRestaurantPayload = () => {
+        const mailing = settings.restaurant.mailing || createDefaultMailingSettings();
+
+        return {
+            ...settings.restaurant,
+            mailing: {
+                enabled: mailing.enabled,
+                provider: mailing.provider,
+                fromName: mailing.fromName,
+                gmail: {
+                    email: mailing.gmail.email,
+                    fromEmail: mailing.gmail.fromEmail,
+                    appPassword: mailing.gmail.appPassword,
+                },
+                smtp: {
+                    host: mailing.smtp.host.trim(),
+                    port: Number(mailing.smtp.port) || 587,
+                    secure: mailing.smtp.secure,
+                    username: mailing.smtp.username.trim(),
+                    password: mailing.smtp.password,
+                    fromEmail: mailing.smtp.fromEmail.trim(),
+                },
+            },
+        };
+    };
+
+    const handleTaxBreakdownChange = (field: string, val: number | string | boolean) => {
+        // Prevent negative values for tax fields
+        if (field !== 'enabled') {
+            if (typeof val === 'number' && val < 0) return;
+            if (typeof val === 'string' && val.trim().startsWith('-')) return;
+        }
+
+        setSettings(prev => {
+            const currentBreakdown = prev.restaurant.taxBreakdown || { enabled: false, country: 0, state: 0, city: 0, county: 0 };
+            const newBreakdown = {
+                ...currentBreakdown,
+                [field]: val
+            };
+
+            let newTaxRate = prev.restaurant.taxRate;
+
+            // Only update total rate if the change is to a tax value (not just enabling/disabling)
+            // Or if enabling, sync the rate immediately
+            if (field !== 'enabled' || val === true) {
+                const c = Number(newBreakdown.country) || 0;
+                const s = Number(newBreakdown.state) || 0;
+                const ci = Number(newBreakdown.city) || 0;
+                const co = Number(newBreakdown.county) || 0;
+                newTaxRate = c + s + ci + co;
+            }
+
+            return {
+                ...prev,
+                restaurant: {
+                    ...prev.restaurant,
+                    taxRate: newTaxRate,
+                    taxBreakdown: newBreakdown
+                }
+            };
+        });
+    };
+
+    const timeToMinutes = (time: string): number => {
+        const [h, m] = time.split(':').map(Number);
+        return (h || 0) * 60 + (m || 0);
+    };
+
+    const handleSlotChange = (dayIdx: number, slotIdx: number, field: 'openTime' | 'closeTime', value: string) => {
+        const dayConfig = settings.restaurant.businessHours![dayIdx];
+        const slots = [...(dayConfig.slots || [{ openTime: dayConfig.openTime || '09:00', closeTime: dayConfig.closeTime || '17:00' }])];
+
+        let newSlot = { ...slots[slotIdx], [field]: value };
+        let newStart = timeToMinutes(newSlot.openTime);
+        let newEnd = timeToMinutes(newSlot.closeTime);
+
+        const toTimeStr = (mins: number) => {
+            const h = Math.floor(mins / 60).toString().padStart(2, '0');
+            const m = (mins % 60).toString().padStart(2, '0');
+            return `${h}:${m}`;
+        };
+
+        if (newStart >= newEnd) {
+            if (field === 'openTime') {
+                newEnd = newStart + 60;
+                if (newEnd > 1439) newEnd = 1439;
+                newSlot.closeTime = toTimeStr(newEnd);
+            } else {
+                newStart = newEnd - 60;
+                if (newStart < 0) newStart = 0;
+                newSlot.openTime = toTimeStr(newStart);
+            }
+        }
+
+        for (let i = 0; i < slots.length; i++) {
+            if (i === slotIdx) continue;
+            const eStart = timeToMinutes(slots[i].openTime);
+            const eEnd = timeToMinutes(slots[i].closeTime);
+
+            if (newStart < eEnd && newEnd > eStart) {
+                toast.error('Time slots cannot overlap.');
+                return;
+            }
+        }
+
+        slots[slotIdx] = newSlot;
+        slots.sort((a, b) => timeToMinutes(a.openTime) - timeToMinutes(b.openTime));
+
+        const updated = [...(settings.restaurant.businessHours || DEFAULT_BUSINESS_HOURS)];
+        updated[dayIdx] = { ...updated[dayIdx], slots, openTime: slots[0].openTime, closeTime: slots[0].closeTime };
+        handleInputChange('restaurant', 'businessHours', updated);
+    };
+
+    const handleAddSlot = (dayIdx: number) => {
+        const dayConfig = settings.restaurant.businessHours![dayIdx];
+        const slots = [...(dayConfig.slots || [{ openTime: dayConfig.openTime || '09:00', closeTime: dayConfig.closeTime || '17:00' }])];
+
+        let proposedStart = 12 * 60;
+        let proposedEnd = 13 * 60;
+        let found = false;
+
+        for (let attempt = 0; attempt < 24; attempt++) {
+            let overlap = false;
+            for (const s of slots) {
+                if (proposedStart < timeToMinutes(s.closeTime) && proposedEnd > timeToMinutes(s.openTime)) {
+                    overlap = true;
+                    break;
+                }
+            }
+            if (!overlap) {
+                found = true;
+                break;
+            }
+            proposedStart = (proposedStart + 60) % (24 * 60);
+            proposedEnd = proposedStart + 60;
+            if (proposedEnd > 24 * 60) proposedEnd = 24 * 60;
+        }
+
+        if (!found) {
+            toast.error('No free time slots available.');
+            return;
+        }
+
+        const toTimeStr = (mins: number) => {
+            const h = Math.floor(mins / 60).toString().padStart(2, '0');
+            const m = (mins % 60).toString().padStart(2, '0');
+            return `${h}:${m}`;
+        };
+
+        slots.push({ openTime: toTimeStr(proposedStart), closeTime: toTimeStr(proposedEnd) });
+        slots.sort((a, b) => timeToMinutes(a.openTime) - timeToMinutes(b.openTime));
+
+        const updated = [...(settings.restaurant.businessHours || DEFAULT_BUSINESS_HOURS)];
+        updated[dayIdx] = { ...updated[dayIdx], slots, openTime: slots[0].openTime, closeTime: slots[0].closeTime };
+        handleInputChange('restaurant', 'businessHours', updated);
+    };
+
+    const fetchTaxRate = async () => {
+        if (!settings.restaurant.zipCode) {
+            toast.error('Please enter a Zip Code first');
+            return;
+        }
+        try {
+            setFetchingTax(true);
+            const res = await settingsAPI.getTaxRate(settings.restaurant.zipCode, settings.restaurant.state);
+            if (res.data && typeof res.data.rate === 'number') {
+                if (res.data.breakdown) {
+                    handleTaxBreakdownChange('enabled', true);
+                    handleTaxBreakdownChange('country', res.data.breakdown.country.rate);
+                    handleTaxBreakdownChange('state', res.data.breakdown.state.rate);
+                    handleTaxBreakdownChange('city', res.data.breakdown.city.rate);
+                    handleTaxBreakdownChange('county', res.data.breakdown.county.rate);
+                } else {
+                    handleInputChange('restaurant', 'taxRate', res.data.rate);
+                }
+                toast.success(`Tax rate updated to ${res.data.rate}% based on ${settings.restaurant.zipCode}`);
+            } else {
+                toast.error('Could not fetch tax rate');
+            }
+        } catch (error) {
+            toast.error('Failed to fetch tax rate');
+        } finally {
+            setFetchingTax(false);
+        }
+    };
+
+    const handleBlur = (field: keyof RestaurantSettings) => {
+        let validation: ValidationResult = { isValid: true };
+
+        switch (field) {
+            case 'name':
+                validation = validateCompanyName(String(settings.restaurant.name ?? ''));
+                break;
+            case 'email':
+                validation = validateEmail(String(settings.restaurant.email ?? ''));
+                break;
+            case 'phone':
+                validation = validatePhone(String(settings.restaurant.phone ?? ''));
+                break;
+            case 'address':
+                validation = validateAddress(String(settings.restaurant.address ?? ''));
+                break;
+            default:
+                return;
+        }
+
+        setErrors(prev => ({ ...prev, [`restaurant_${field}`]: validation }));
+    };
+
+    const validateRestaurantForm = (): boolean => {
+        const newErrors: Record<string, ValidationResult> = {
+            restaurant_name: validateCompanyName(settings.restaurant.name),
+            restaurant_email: validateEmail(settings.restaurant.email),
+            restaurant_phone: validatePhone(settings.restaurant.phone),
+            restaurant_address: validateAddress(settings.restaurant.address),
+        };
+
+        setErrors(newErrors);
+        return Object.values(newErrors).every(v => v.isValid);
+    };
+
+    const handleSoundChange = async (soundId: string) => {
+        setLoading(true);
+        localStorage.setItem('notificationSoundId', soundId);
+
+        // Optimistic local update
+        const updatedSettings = {
+            ...settings,
+            notification: {
+                ...settings.notification,
+                sound: soundId
+            }
+        };
+        setSettings(updatedSettings);
+
+        try {
+            const payload = {
+                sms: {
+                    enabled: settings.notification.sms.enabled,
+                    provider: 'twilio',
+                    twilio: {
+                        accountSid: settings.notification.sms.twilio.accountSid,
+                        authToken: settings.notification.sms.twilio.authToken,
+                        fromNumber: settings.notification.sms.twilio.fromNumber,
+                    },
+                },
+                // @ts-ignore
+                push: settings.notification.push,
+                sound: soundId
+            };
+            await settingsAPI.update('notification', payload);
+            updateGlobalSettings(updatedSettings);
+            toast.success('Notification sound saved globally');
+        } catch (error) {
+            console.error('Error saving sound:', error);
+            toast.error('Failed to save sound preference');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSave = async (category: keyof SettingsState) => {
+        if (category === 'restaurant' && !validateRestaurantForm()) {
+            toast.error('Please fix the errors in the form');
+            return;
+        }
+
+        if (category === 'restaurant') {
+            const mailingValidationError = validateRestaurantMailingSettings();
+            if (mailingValidationError) {
+                toast.error(mailingValidationError);
+                return;
+            }
+        }
+
+        try {
+            setLoading(true);
+            let successMessage = 'Settings saved successfully';
+
+            if (category === 'restaurant') {
+                const restaurantPayload = buildRestaurantPayload();
+                await settingsAPI.update('restaurant', restaurantPayload);
+                updateGlobalSettings(settings); // Update global context
+                await fetchSettings();
+                successMessage = 'Restaurant settings saved successfully';
+            } else if (category === 'system') {
+                await settingsAPI.update('system', settings.system);
+                updateGlobalSettings(settings); // Update global context
+                await fetchSettings();
+                successMessage = 'System preferences saved successfully';
+            } else if (category === 'notification') {
+                await settingsAPI.update('notification', {
+                    sms: {
+                        enabled: settings.notification.sms.enabled,
+                        provider: 'twilio',
+                        twilio: {
+                            accountSid: settings.notification.sms.twilio.accountSid,
+                            authToken: settings.notification.sms.twilio.authToken,
+                            fromNumber: settings.notification.sms.twilio.fromNumber,
+                        },
+                    },
+                    // @ts-ignore
+                    push: settings.notification.push,
+                    // @ts-ignore
+                    sound: settings.notification.sound || 'notification'
+                });
+                await fetchSettings();
+                successMessage = 'Notification settings saved successfully';
+            } else if (category === 'printer') {
+                await settingsAPI.update('printer', settings.printer);
+                updateGlobalSettings(settings);
+                successMessage = 'Printer settings saved successfully';
+            }
+
+
+            toast.success(successMessage);
+        } catch (error) {
+            console.error('Error saving settings:', error);
+            toast.error((error as any)?.response?.data?.message || 'Failed to save settings');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const getActionColor = (action: string) => {
+        switch (action) {
+            case 'CREATED':
+            case 'CLOCK_IN':
+                return 'success';
+            case 'UPDATED':
+            case 'STATUS_UPDATE':
+                return 'info';
+            case 'DELETED':
+            case 'CLOCK_OUT':
+                return 'error';
+            default:
+                return 'default';
+        }
+    };
+
+    const getActionIcon = (action: string) => {
+        switch (action) {
+            case 'CREATED':
+                return <AddIcon fontSize="small" />;
+            case 'CLOCK_IN':
+                return <LoginIcon fontSize="small" />;
+            case 'UPDATED':
+            case 'STATUS_UPDATE':
+                return <EditIcon fontSize="small" />;
+            case 'DELETED':
+                return <DeleteIcon fontSize="small" />;
+            case 'CLOCK_OUT':
+                return <LogoutIcon fontSize="small" />;
+            default:
+                return <HistoryIcon fontSize="small" />;
+        }
+    };
+
+    const formatDate = (dateString: string) => {
+        return new Date(dateString).toLocaleString();
+    };
+
+    const availableTimezones = countries.find(c => c.name === settings.restaurant.country)?.timezones || [];
+    const restaurantMailing = settings.restaurant.mailing || createDefaultMailingSettings();
+
+    if (loading && !settings.restaurant.name) {
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
+                <CircularProgress />
+            </Box>
+        );
+    }
+
+    return (
+        <Box>
+            <Typography variant="h4" gutterBottom sx={{ mb: 3, textAlign: { xs: 'center', sm: 'left' } }}>
+                Settings
+            </Typography>
+
+            <Paper sx={{ width: '100%' }}>
+                <Tabs
+                    value={tabValue}
+                    onChange={handleTabChange}
+                    indicatorColor="primary"
+                    textColor="primary"
+                    variant="scrollable"
+                    scrollButtons="auto"
+                >
+                    <Tab label="Restaurant Profile" />
+                    <Tab label="System Preferences" />
+                    <Tab label="Inventory Settings" />
+                    <Tab label="Notifications" icon={<SmsIcon />} iconPosition="start" />
+                    <Tab label="Payment" icon={<CreditCardIcon />} iconPosition="start" />
+                    <Tab label="Printers" icon={<PrintIcon />} iconPosition="start" />
+                    <Tab label="Audit Logs" icon={<CheckCircleIcon />} iconPosition="start" />
+                </Tabs>
+                <Divider />
+
+                <TabPanel value={tabValue} index={0}>
+                    <Grid container spacing={4}>
+                        <Grid size={{ xs: 12, md: 8 }}>
+                            <Grid container spacing={3}>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        label="Restaurant Name"
+                                        value={settings.restaurant.name}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('restaurant', 'name', e.target.value)}
+                                        onBlur={() => handleBlur('name')}
+                                        error={hasError(errors.restaurant_name)}
+                                        helperText={getHelperText(errors.restaurant_name)}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        label="Email Address"
+                                        value={settings.restaurant.email}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('restaurant', 'email', e.target.value)}
+                                        onBlur={() => handleBlur('email')}
+                                        error={hasError(errors.restaurant_email)}
+                                        helperText={getHelperText(errors.restaurant_email)}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <PhoneInput
+                                        fullWidth
+                                        label="Phone Number"
+                                        value={settings.restaurant.phone}
+                                        onChange={(val) => {
+                                            const clean = val.replace(/\D/g, '').slice(0, 10);
+                                            handleInputChange('restaurant', 'phone', clean);
+                                        }}
+                                        dialCode={settings.restaurant.dialCode}
+                                        onDialCodeChange={(code) => handleInputChange('restaurant', 'dialCode', code)}
+                                        error={hasError(errors.restaurant_phone)}
+                                        helperText={getHelperText(errors.restaurant_phone) || "10-digit mobile number"}
+                                        required
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        select
+                                        fullWidth
+                                        label="Currency"
+                                        value={settings.restaurant.currency}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('restaurant', 'currency', e.target.value)}
+                                    >
+                                        <MenuItem value="USD">USD ($)</MenuItem>
+                                        <MenuItem value="INR">INR (₹)</MenuItem>
+                                        <MenuItem value="EUR">EUR (€)</MenuItem>
+                                        <MenuItem value="GBP">GBP (£)</MenuItem>
+                                        <MenuItem value="AUD">AUD (A$)</MenuItem>
+                                        <MenuItem value="CAD">CAD (C$)</MenuItem>
+                                        <MenuItem value="SGD">SGD (S$)</MenuItem>
+                                        <MenuItem value="AED">AED (د.إ)</MenuItem>
+                                        <MenuItem value="JPY">JPY (¥)</MenuItem>
+                                    </TextField>
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        select
+                                        fullWidth
+                                        label="Country"
+                                        value={settings.restaurant.country || 'United States'}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('restaurant', 'country', e.target.value)}
+                                    >
+                                        {countries.map((option) => (
+                                            <MenuItem key={option.code} value={option.name}>
+                                                {option.name}
+                                            </MenuItem>
+                                        ))}
+                                    </TextField>
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        select
+                                        fullWidth
+                                        label="Timezone"
+                                        value={settings.restaurant.timezone || 'America/New_York'}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('restaurant', 'timezone', e.target.value)}
+                                    >
+                                        {availableTimezones.map((option) => (
+                                            <MenuItem key={option} value={option}>
+                                                {option}
+                                            </MenuItem>
+                                        ))}
+                                    </TextField>
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        label="Default Phone Prefix (Dial Code)"
+                                        value={settings.restaurant.dialCode || ''}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                            const val = e.target.value.replace(/\D/g, '');
+                                            handleInputChange('restaurant', 'dialCode', val);
+                                        }}
+                                        InputProps={{
+                                            startAdornment: <InputAdornment position="start">+</InputAdornment>,
+                                        }}
+                                        helperText="Default prefix for phone number fields across the app"
+                                    />
+                                </Grid>
+                            </Grid>
+                        </Grid>
+
+                        <Grid size={{ xs: 12, md: 4 }}>
+                            <Paper variant="outlined" sx={{ p: 3, textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', bgcolor: alpha('#4F46E5', 0.02), borderStyle: 'dashed', borderRadius: 4 }}>
+                                <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ textTransform: 'uppercase', letterSpacing: 1 }}>
+                                    Storefront Preview
+                                </Typography>
+                                <Box sx={{ mt: 2, mb: 3 }}>
+                                    {(settings.restaurant.logo || (user?.tenant as any)?.logo) ? (
+                                        <Avatar
+                                            src={settings.restaurant.logo || (user?.tenant as any)?.logo}
+                                            alt="Logo"
+                                            sx={{ width: 100, height: 100, mx: 'auto', boxShadow: '0 8px 16px rgba(0,0,0,0.1)', border: '4px solid #fff' }}
+                                        />
+                                    ) : (
+                                        <Avatar sx={{ width: 100, height: 100, mx: 'auto', bgcolor: 'primary.main', fontSize: '2rem' }}>
+                                            {settings.restaurant.name?.charAt(0) || 'R'}
+                                        </Avatar>
+                                    )}
+                                </Box>
+                                <Typography variant="h5" fontWeight="bold">
+                                    {settings.restaurant.name || 'Your Restaurant Name'}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                                    {settings.restaurant.email}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                    {settings.restaurant.phone}
+                                </Typography>
+                                {/* <Box sx={{ mt: 3 }}>
+                                    <Typography variant="caption" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
+                                        * Changes appear in Sidebar & Header
+                                    </Typography>
+                                </Box> */}
+                            </Paper>
+                        </Grid>
+                        <Grid size={{ xs: 12 }}>
+                            <Divider sx={{ my: 2 }} />
+                            <Typography variant="subtitle2" gutterBottom>
+                                Restaurant Logo
+                            </Typography>
+                            <Stack direction="row" spacing={2} alignItems="center">
+                                <Button
+                                    variant="outlined"
+                                    component="label"
+                                    startIcon={<SaveIcon />}
+                                >
+                                    Upload Logo
+                                    <input
+                                        type="file"
+                                        hidden
+                                        accept="image/*"
+                                        onChange={async (e: React.ChangeEvent<HTMLInputElement>) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) {
+                                                try {
+                                                    toast.loading('Uploading logo...');
+                                                    const { uploadAPI } = await import('../../services/api');
+                                                    const response = await uploadAPI.uploadImage(file);
+                                                    toast.dismiss();
+                                                    toast.success('Logo uploaded successfully!');
+                                                    handleInputChange('restaurant', 'logo', response.data.url);
+                                                } catch (error) {
+                                                    toast.dismiss();
+                                                    toast.error('Failed to upload logo');
+                                                    console.error(error);
+                                                }
+                                            }
+                                        }}
+                                    />
+                                </Button>
+                                <TextField
+                                    fullWidth
+                                    label="Or paste Logo URL"
+                                    value={settings.restaurant.logo || ''}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('restaurant', 'logo', e.target.value)}
+                                    placeholder="https://example.com/logo.png"
+                                    size="small"
+                                />
+                            </Stack>
+                        </Grid>
+                        <Grid size={{ xs: 12 }}>
+                            <AddressAutocomplete
+                                label="Address"
+                                value={settings.restaurant.address}
+                                onChange={(val) => handleInputChange('restaurant', 'address', val)}
+                                onSelect={(addr) => {
+                                    handleInputChange('restaurant', 'address', addr.fullAddress);
+                                    handleInputChange('restaurant', 'city', addr.city || '');
+                                    handleInputChange('restaurant', 'state', addr.state || '');
+                                    handleInputChange('restaurant', 'zipCode', addr.zipCode || '');
+                                }}
+                                apiKey={settings.system.googleMapsApiKey || import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 4 }}>
+                            <TextField
+                                fullWidth
+                                label="City"
+                                value={settings.restaurant.city || ''}
+                                onChange={(e) => handleInputChange('restaurant', 'city', e.target.value)}
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 4 }}>
+                            <TextField
+                                fullWidth
+                                label="State"
+                                value={settings.restaurant.state || ''}
+                                onChange={(e) => handleInputChange('restaurant', 'state', e.target.value)}
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 4 }}>
+                            <TextField
+                                fullWidth
+                                label="Zip / Pincode"
+                                value={settings.restaurant.zipCode || ''}
+                                onChange={(e) => handleInputChange('restaurant', 'zipCode', e.target.value)}
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <TextField
+                                fullWidth
+                                type="number"
+                                label="Default Tax Rate (%)"
+                                value={settings.restaurant.taxRate ?? 5}
+                                onChange={(e) => handleInputChange('restaurant', 'taxRate', parseFloat(e.target.value))}
+                                helperText="Fallback tax rate if automatic lookup fails."
+                                InputProps={{
+                                    endAdornment: (
+                                        <InputAdornment position="end">
+                                            <Button
+                                                size="small"
+                                                onClick={fetchTaxRate}
+                                                disabled={!settings.restaurant.zipCode || fetchingTax}
+                                            >
+                                                {fetchingTax ? <CircularProgress size={20} /> : 'Auto Detect'}
+                                            </Button>
+                                        </InputAdornment>
+                                    )
+                                }}
+                            />
+                        </Grid>
+
+                        <Grid size={{ xs: 12 }}>
+                            <Divider sx={{ my: 2 }} />
+                            <Typography variant="h6" gutterBottom>
+                                Tax Breakdown Configuration
+                            </Typography>
+                            <FormControlLabel
+                                control={
+                                    <Switch
+                                        checked={settings.restaurant.taxBreakdown?.enabled ?? false}
+                                        onChange={(e) => handleTaxBreakdownChange('enabled', e.target.checked)}
+                                    />
+                                }
+                                label="Enable Detailed Tax Breakdown (Overrides Default Rate)"
+                            />
+                        </Grid>
+                        {settings.restaurant.taxBreakdown?.enabled && (
+                            <Grid container spacing={2} sx={{ pl: 4, width: '100%' }}>
+                                <Grid size={{ xs: 6, md: 3 }}>
+                                    <TextField
+                                        label="Country Tax (%)"
+                                        type="number"
+                                        fullWidth
+                                        value={settings.restaurant.taxBreakdown?.country ?? 0}
+                                        onChange={(e) => handleTaxBreakdownChange('country', e.target.value)}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 6, md: 3 }}>
+                                    <TextField
+                                        label="State Tax (%)"
+                                        type="number"
+                                        fullWidth
+                                        value={settings.restaurant.taxBreakdown?.state ?? 0}
+                                        onChange={(e) => handleTaxBreakdownChange('state', e.target.value)}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 6, md: 3 }}>
+                                    <TextField
+                                        label="City Tax (%)"
+                                        type="number"
+                                        fullWidth
+                                        value={settings.restaurant.taxBreakdown?.city ?? 0}
+                                        onChange={(e) => handleTaxBreakdownChange('city', e.target.value)}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 6, md: 3 }}>
+                                    <TextField
+                                        label="County/Other (%)"
+                                        type="number"
+                                        fullWidth
+                                        value={settings.restaurant.taxBreakdown?.county ?? 0}
+                                        onChange={(e) => handleTaxBreakdownChange('county', e.target.value)}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12 }}>
+                                    <Typography variant="body2" color="text.secondary">
+                                        Total Effective Tax Rate: {
+                                            ((Number(settings.restaurant.taxBreakdown?.country) || 0) +
+                                                (Number(settings.restaurant.taxBreakdown?.state) || 0) +
+                                                (Number(settings.restaurant.taxBreakdown?.city) || 0) +
+                                                (Number(settings.restaurant.taxBreakdown?.county) || 0)).toFixed(2)
+                                        }%
+                                    </Typography>
+                                </Grid>
+                            </Grid>
+                        )}
+
+                        {/* <Grid size={{ xs: 12 }}>
+                            <Divider sx={{ my: 2 }} />
+                            <Typography variant="h6" gutterBottom>
+                                Table Charge Settings
+                            </Typography>
+                            <FormControlLabel
+                                control={
+                                    <Switch
+                                        checked={settings.restaurant.tablePricing?.enabled ?? true}
+                                        onChange={(e) => setSettings(prev => {
+                                            const currentPricing = prev.restaurant.tablePricing || { enabled: true, sharedBaseRate: 100, privateBaseRate: 100 };
+                                            return {
+                                                ...prev,
+                                                restaurant: {
+                                                    ...prev.restaurant,
+                                                    tablePricing: {
+                                                        ...currentPricing,
+                                                        enabled: e.target.checked
+                                                    }
+                                                }
+                                            };
+                                        })}
+                                    />
+                                }
+                                label="Enable Automatic Table Charges"
+                            />
+                        </Grid>
+                        {settings.restaurant.tablePricing?.enabled && (
+                            <>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        type="number"
+                                        label="Shared Table Rate (Per Person)"
+                                        value={settings.restaurant.tablePricing?.sharedBaseRate ?? 100}
+                                        onChange={(e) => setSettings(prev => {
+                                            const currentPricing = prev.restaurant.tablePricing || { enabled: true, sharedBaseRate: 100, privateBaseRate: 100 };
+                                            return {
+                                                ...prev,
+                                                restaurant: {
+                                                    ...prev.restaurant,
+                                                    tablePricing: {
+                                                        ...currentPricing,
+                                                        sharedBaseRate: Number(e.target.value)
+                                                    }
+                                                }
+                                            };
+                                        })}
+                                        InputProps={{
+                                            startAdornment: <Typography sx={{ mr: 1 }}>{settings.restaurant.currencySymbol}</Typography>
+                                        }}
+                                        helperText="Charge per guest for shared/partial occupancy"
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        type="number"
+                                        label="Private Table Rate (Per Seat)"
+                                        value={settings.restaurant.tablePricing?.privateBaseRate ?? 100}
+                                        onChange={(e) => setSettings(prev => {
+                                            const currentPricing = prev.restaurant.tablePricing || { enabled: true, sharedBaseRate: 100, privateBaseRate: 100 };
+                                            return {
+                                                ...prev,
+                                                restaurant: {
+                                                    ...prev.restaurant,
+                                                    tablePricing: {
+                                                        ...currentPricing,
+                                                        privateBaseRate: Number(e.target.value)
+                                                    }
+                                                }
+                                            };
+                                        })}
+                                        InputProps={{
+                                            startAdornment: <Typography sx={{ mr: 1 }}>{settings.restaurant.currencySymbol}</Typography>
+                                        }}
+                                        helperText="Charge per table capacity unit (e.g. 4-seater x Rate)"
+                                    />
+                                </Grid>
+                            </>
+                        )} */}
+                        <Grid size={{ xs: 12 }}>
+                            <Divider sx={{ my: 2 }} />
+                            <Typography variant="h6" gutterBottom>
+                                Delivery Settings
+                            </Typography>
+                            <Grid container spacing={3}>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        type="number"
+                                        label="Delivery Radius (Miles)"
+                                        value={settings.restaurant.deliveryRadius ?? 15}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('restaurant', 'deliveryRadius', parseFloat(e.target.value))}
+                                        helperText="Maximum distance from restaurant for delivery orders (default 15 miles)"
+                                        InputProps={{
+                                            endAdornment: <InputAdornment position="end">Miles</InputAdornment>,
+                                        }}
+                                    />
+                                </Grid>
+                            </Grid>
+                        </Grid>
+                        <Grid size={{ xs: 12 }}>
+                            <Divider sx={{ my: 2 }} />
+                            <Typography variant="h6" gutterBottom sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                🕐 Business Hours
+                                <Box
+                                    component="span"
+                                    sx={{
+                                        ml: 1,
+                                        px: 1.5, py: 0.3,
+                                        borderRadius: 20,
+                                        fontSize: '0.72rem',
+                                        fontWeight: 700,
+                                        letterSpacing: '0.06em',
+                                        bgcolor: isCurrentlyOpen(
+                                            settings.restaurant.businessHours || DEFAULT_BUSINESS_HOURS,
+                                            settings.restaurant.timezone || 'America/New_York'
+                                        ) ? 'success.light' : 'error.light',
+                                        color: isCurrentlyOpen(
+                                            settings.restaurant.businessHours || DEFAULT_BUSINESS_HOURS,
+                                            settings.restaurant.timezone || 'America/New_York'
+                                        ) ? 'success.dark' : 'error.dark',
+                                    }}
+                                >
+                                    {isCurrentlyOpen(
+                                        settings.restaurant.businessHours || DEFAULT_BUSINESS_HOURS,
+                                        settings.restaurant.timezone || 'America/New_York'
+                                    ) ? '● Currently Open' : '● Currently Closed'}
+                                </Box>
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                                Set your weekly schedule. The restaurant will automatically appear as open or closed to customers based on these hours and your configured timezone ({settings.restaurant.timezone || 'America/New_York'}).
+                            </Typography>
+
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                                {(settings.restaurant.businessHours || DEFAULT_BUSINESS_HOURS).map((dayConfig, idx) => (
+                                    <Paper
+                                        key={dayConfig.day}
+                                        variant="outlined"
+                                        sx={{
+                                            px: 2.5, py: 1.5,
+                                            borderRadius: 3,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 2,
+                                            flexWrap: 'wrap',
+                                            borderColor: dayConfig.isOpen ? 'success.light' : 'divider',
+                                            bgcolor: dayConfig.isOpen ? alpha('#22c55e', 0.03) : 'transparent',
+                                            transition: 'all 0.2s ease',
+                                        }}
+                                    >
+                                        {/* Day toggle */}
+                                        <FormControlLabel
+                                            sx={{ minWidth: 130, m: 0 }}
+                                            control={
+                                                <Switch
+                                                    size="small"
+                                                    checked={dayConfig.isOpen}
+                                                    color="success"
+                                                    onChange={(e) => {
+                                                        const updated = [...(settings.restaurant.businessHours || DEFAULT_BUSINESS_HOURS)];
+                                                        updated[idx] = { ...updated[idx], isOpen: e.target.checked };
+                                                        handleInputChange('restaurant', 'businessHours', updated);
+                                                    }}
+                                                />
+                                            }
+                                            label={
+                                                <Typography
+                                                    variant="body2"
+                                                    fontWeight={600}
+                                                    sx={{ color: dayConfig.isOpen ? 'text.primary' : 'text.disabled', minWidth: 90 }}
+                                                >
+                                                    {dayConfig.day}
+                                                </Typography>
+                                            }
+                                        />
+
+                                        {dayConfig.isOpen ? (() => {
+                                            const slots = dayConfig.slots && dayConfig.slots.length > 0
+                                                ? dayConfig.slots
+                                                : [{ openTime: dayConfig.openTime || '09:00', closeTime: dayConfig.closeTime || '17:00' }];
+                                            const isExpanded = expandedDays[dayConfig.day] || false;
+
+                                            return (
+                                                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                        <Box
+                                                            sx={{
+                                                                px: 1.5, py: 0.4,
+                                                                borderRadius: 10,
+                                                                bgcolor: alpha('#22c55e', 0.1),
+                                                                color: 'success.dark',
+                                                                fontSize: '0.8rem',
+                                                                fontWeight: 600,
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                            }}
+                                                        >
+                                                            {slots.map(s => `${s.openTime} – ${s.closeTime}`).join(', ')}
+                                                        </Box>
+                                                        <Tooltip title={isExpanded ? "Collapse" : "Edit Slots"}>
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={() => setExpandedDays(prev => ({ ...prev, [dayConfig.day]: !isExpanded }))}
+                                                                sx={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: '0.3s' }}
+                                                            >
+                                                                <ExpandMoreIcon />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    </Box>
+                                                    <Collapse in={isExpanded}>
+                                                        <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                                                            {slots.map((slot, sIdx) => (
+                                                                <Box key={sIdx} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                                                    <TextField
+                                                                        type="time"
+                                                                        label="Opens"
+                                                                        size="small"
+                                                                        value={slot.openTime}
+                                                                        onChange={(e) => handleSlotChange(idx, sIdx, 'openTime', e.target.value)}
+                                                                        inputProps={{ step: 300 }}
+                                                                        sx={{ width: 140 }}
+                                                                    />
+                                                                    <Typography variant="body2" color="text.secondary">to</Typography>
+                                                                    <TextField
+                                                                        type="time"
+                                                                        label="Closes"
+                                                                        size="small"
+                                                                        value={slot.closeTime}
+                                                                        onChange={(e) => handleSlotChange(idx, sIdx, 'closeTime', e.target.value)}
+                                                                        inputProps={{ step: 300 }}
+                                                                        sx={{ width: 140 }}
+                                                                    />
+                                                                    {slots.length > 1 && (
+                                                                        <IconButton
+                                                                            size="small"
+                                                                            color="error"
+                                                                            onClick={() => {
+                                                                                const updated = [...(settings.restaurant.businessHours || DEFAULT_BUSINESS_HOURS)];
+                                                                                const newSlots = slots.filter((_, i) => i !== sIdx);
+                                                                                updated[idx] = { ...updated[idx], slots: newSlots, openTime: newSlots[0].openTime, closeTime: newSlots[0].closeTime };
+                                                                                handleInputChange('restaurant', 'businessHours', updated);
+                                                                            }}
+                                                                        >
+                                                                            <DeleteIcon fontSize="small" />
+                                                                        </IconButton>
+                                                                    )}
+                                                                </Box>
+                                                            ))}
+                                                            <Button
+                                                                size="small"
+                                                                startIcon={<AddIcon />}
+                                                                onClick={() => handleAddSlot(idx)}
+                                                                sx={{ alignSelf: 'flex-start', mt: 0.5 }}
+                                                            >
+                                                                Add Slot
+                                                            </Button>
+                                                        </Box>
+                                                    </Collapse>
+                                                </Box>
+                                            );
+                                        })() : (
+                                            <Typography variant="body2" color="text.disabled" sx={{ fontStyle: 'italic', ml: 2 }}>
+                                                Closed all day
+                                            </Typography>
+                                        )}
+                                    </Paper>
+                                ))}
+                            </Box>
+                        </Grid>
+
+                        <Grid size={{ xs: 12 }}>
+                            <Divider sx={{ my: 2 }} />
+                            <Typography variant="h6" gutterBottom>
+                                Mailing Settings
+                            </Typography>
+                            <Alert severity={restaurantMailing.enabled ? 'info' : 'success'} sx={{ mb: 2 }}>
+                                {restaurantMailing.enabled
+                                    ? 'Custom restaurant mail is enabled. Customer-facing emails will use the provider configured below for this restaurant.'
+                                    : 'Default environment mail is active. Turn on custom mail only if this restaurant should send mail from its own Gmail or SMTP account.'}
+                            </Alert>
+                            <FormControlLabel
+                                control={
+                                    <Switch
+                                        checked={restaurantMailing.enabled}
+                                        onChange={(e) => handleRestaurantMailingChange('enabled', e.target.checked)}
+                                    />
+                                }
+                                label={restaurantMailing.enabled ? 'Use Custom Restaurant Mailer' : 'Use Default Environment Mailer'}
+                            />
+                            <Grid container spacing={3} sx={{ mt: 0.5 }}>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        select
+                                        fullWidth
+                                        label="Mail Provider"
+                                        value={restaurantMailing.provider}
+                                        onChange={(e) => handleRestaurantMailingChange('provider', e.target.value)}
+                                        disabled={!restaurantMailing.enabled}
+                                        helperText="Choose Gmail for a simple setup or SMTP for any custom mail server"
+                                    >
+                                        <MenuItem value="gmail">Gmail</MenuItem>
+                                        <MenuItem value="smtp">Custom SMTP</MenuItem>
+                                    </TextField>
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        label="From Name"
+                                        value={restaurantMailing.fromName}
+                                        onChange={(e) => handleRestaurantMailingChange('fromName', e.target.value)}
+                                        disabled={!restaurantMailing.enabled}
+                                        helperText="Shown to recipients. Leave blank to use the restaurant name."
+                                    />
+                                </Grid>
+
+                                {restaurantMailing.enabled && restaurantMailing.provider === 'gmail' && (
+                                    <>
+                                        <Grid size={{ xs: 12 }}>
+                                            <Alert severity="warning">
+                                                Use a Gmail app password here, not the normal Gmail account password.
+                                            </Alert>
+                                        </Grid>
+                                        <Grid size={{ xs: 12, md: 6 }}>
+                                            <TextField
+                                                fullWidth
+                                                label="Gmail Address"
+                                                value={restaurantMailing.gmail.email}
+                                                onChange={(e) => handleRestaurantMailingNestedChange('gmail', 'email', e.target.value)}
+                                                helperText="This Gmail account will be used to send mail"
+                                            />
+                                        </Grid>
+                                        <Grid size={{ xs: 12, md: 6 }}>
+                                            <TextField
+                                                fullWidth
+                                                type="password"
+                                                label="Gmail App Password"
+                                                value={restaurantMailing.gmail.appPassword}
+                                                onChange={(e) => handleRestaurantMailingNestedChange('gmail', 'appPassword', e.target.value)}
+                                                helperText={
+                                                    restaurantMailing.status?.hasGmailAppPassword
+                                                        ? 'Leave blank to keep the saved app password.'
+                                                        : 'Paste the Gmail app password for this mailbox.'
+                                                }
+                                            />
+                                        </Grid>
+                                        <Grid size={{ xs: 12, md: 6 }}>
+                                            <TextField
+                                                fullWidth
+                                                label="From Email (Optional)"
+                                                value={restaurantMailing.gmail.fromEmail}
+                                                onChange={(e) => handleRestaurantMailingNestedChange('gmail', 'fromEmail', e.target.value)}
+                                                helperText="Defaults to the Gmail address if left blank"
+                                            />
+                                        </Grid>
+                                    </>
+                                )}
+
+                                {restaurantMailing.enabled && restaurantMailing.provider === 'smtp' && (
+                                    <>
+                                        <Grid size={{ xs: 12, md: 6 }}>
+                                            <TextField
+                                                fullWidth
+                                                label="SMTP Host"
+                                                value={restaurantMailing.smtp.host}
+                                                onChange={(e) => handleRestaurantMailingNestedChange('smtp', 'host', e.target.value)}
+                                                placeholder="smtp.example.com"
+                                            />
+                                        </Grid>
+                                        <Grid size={{ xs: 12, md: 3 }}>
+                                            <TextField
+                                                fullWidth
+                                                type="number"
+                                                label="SMTP Port"
+                                                value={restaurantMailing.smtp.port}
+                                                onChange={(e) => handleRestaurantMailingNestedChange('smtp', 'port', Number(e.target.value))}
+                                            />
+                                        </Grid>
+                                        <Grid size={{ xs: 12, md: 3 }}>
+                                            <FormControlLabel
+                                                sx={{ height: '100%', alignItems: 'center' }}
+                                                control={
+                                                    <Switch
+                                                        checked={restaurantMailing.smtp.secure}
+                                                        onChange={(e) => handleRestaurantMailingNestedChange('smtp', 'secure', e.target.checked)}
+                                                    />
+                                                }
+                                                label="Use SSL / Secure SMTP"
+                                            />
+                                        </Grid>
+                                        <Grid size={{ xs: 12, md: 6 }}>
+                                            <TextField
+                                                fullWidth
+                                                label="SMTP Username"
+                                                value={restaurantMailing.smtp.username}
+                                                onChange={(e) => handleRestaurantMailingNestedChange('smtp', 'username', e.target.value)}
+                                            />
+                                        </Grid>
+                                        <Grid size={{ xs: 12, md: 6 }}>
+                                            <TextField
+                                                fullWidth
+                                                type="password"
+                                                label="SMTP Password"
+                                                value={restaurantMailing.smtp.password}
+                                                onChange={(e) => handleRestaurantMailingNestedChange('smtp', 'password', e.target.value)}
+                                                helperText={
+                                                    restaurantMailing.status?.hasSmtpPassword
+                                                        ? 'Leave blank to keep the saved SMTP password.'
+                                                        : 'Enter the password for the SMTP account.'
+                                                }
+                                            />
+                                        </Grid>
+                                        <Grid size={{ xs: 12, md: 6 }}>
+                                            <TextField
+                                                fullWidth
+                                                label="From Email"
+                                                value={restaurantMailing.smtp.fromEmail}
+                                                onChange={(e) => handleRestaurantMailingNestedChange('smtp', 'fromEmail', e.target.value)}
+                                                helperText="If left blank, the SMTP username will be used"
+                                            />
+                                        </Grid>
+                                    </>
+                                )}
+                            </Grid>
+                        </Grid>
+
+                        <Grid size={{ xs: 12 }}>
+                            <Button
+                                variant="contained"
+                                startIcon={<SaveIcon />}
+                                onClick={() => handleSave('restaurant')}
+                                disabled={loading}
+                            >
+                                Save Changes
+                            </Button>
+                        </Grid>
+                    </Grid>
+                </TabPanel>
+
+                <TabPanel value={tabValue} index={1}>
+                    <Grid container spacing={3}>
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <TextField
+                                select
+                                fullWidth
+                                label="Application Theme"
+                                value={settings.system.theme || 'light'}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('system', 'theme', e.target.value)}
+                                helperText="Choose your preferred visual theme"
+                            >
+                                <MenuItem value="light">Light Mode</MenuItem>
+                                <MenuItem value="dark">Dark Mode</MenuItem>
+                                <MenuItem value="system">Follow System</MenuItem>
+                            </TextField>
+                        </Grid>
+                        <Grid size={{ xs: 12 }}>
+                            <FormControlLabel
+                                control={
+                                    <Switch
+                                        checked={settings.system.notifications}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('system', 'notifications', e.target.checked)}
+                                    />
+                                }
+                                label="Enable Desktop Notifications"
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12 }}>
+                            <FormControlLabel
+                                control={
+                                    <Switch
+                                        checked={settings.system.autoPrint}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('system', 'autoPrint', e.target.checked)}
+                                    />
+                                }
+                                label="Auto-print receipts after payment"
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12 }}>
+                            <Button
+                                variant="contained"
+                                startIcon={<SaveIcon />}
+                                onClick={() => handleSave('system')}
+                                disabled={loading}
+                            >
+                                Save Preferences
+                            </Button>
+                        </Grid>
+                        <Grid size={{ xs: 12 }}>
+                            <Divider sx={{ my: 2 }} />
+                            <Typography variant="h6" gutterBottom>
+                                External Integrations
+                            </Typography>
+                            <TextField
+                                fullWidth
+                                label="Google Maps API Key"
+                                value={settings.system.googleMapsApiKey || ''}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('system', 'googleMapsApiKey', e.target.value)}
+                                placeholder="Enter your Google Maps API Key for address autocomplete"
+                                helperText="This key is used for address autocomplete in user creation and settings."
+                                type="password"
+                                autoComplete="new-password"
+                            />
+                        </Grid>
+                    </Grid>
+                </TabPanel>
+
+                {/* Inventory Settings Tab */}
+                <TabPanel value={tabValue} index={2}>
+                    <Typography variant="h6" gutterBottom>
+                        Measurement Units
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                        Customize the units available for inventory management. These units will be available across the entire application.
+                    </Typography>
+
+                    {/* Current Units Display */}
+                    <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
+                        <Typography variant="subtitle2" gutterBottom>
+                            Active Units ({(settings.restaurant.units || getUnitSystem(settings.restaurant.country) === 'imperial' ? IMPERIAL_UNITS : METRIC_UNITS).length})
+                        </Typography>
+                        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 2 }}>
+                            {(settings.restaurant.units && settings.restaurant.units.length > 0
+                                ? settings.restaurant.units
+                                : (getUnitSystem(settings.restaurant.country) === 'imperial' ? IMPERIAL_UNITS : METRIC_UNITS)
+                            ).map((unit, index) => (
+                                <Paper
+                                    key={unit.value}
+                                    sx={{
+                                        px: 2,
+                                        py: 1,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 1,
+                                        bgcolor: alpha('#4F46E5', 0.05),
+                                        border: '1px solid',
+                                        borderColor: alpha('#4F46E5', 0.2),
+                                    }}
+                                >
+                                    <Typography variant="body2" fontWeight="medium">
+                                        {unit.label}
+                                    </Typography>
+                                    {settings.restaurant.units && settings.restaurant.units.length > 0 && (
+                                        <Button
+                                            size="small"
+                                            color="error"
+                                            sx={{ minWidth: 'auto', p: 0.5 }}
+                                            onClick={() => {
+                                                const newUnits = settings.restaurant.units?.filter((_, i) => i !== index) || [];
+                                                setSettings(prev => ({
+                                                    ...prev,
+                                                    restaurant: {
+                                                        ...prev.restaurant,
+                                                        units: newUnits
+                                                    }
+                                                }));
+                                            }}
+                                        >
+                                            <DeleteIcon fontSize="small" />
+                                        </Button>
+                                    )}
+                                </Paper>
+                            ))}
+                        </Stack>
+                    </Paper>
+
+                    {/* Add New Unit */}
+                    <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
+                        <Typography variant="subtitle2" gutterBottom>
+                            Add Custom Unit
+                        </Typography>
+                        <Grid container spacing={2} sx={{ mt: 1 }}>
+                            <Grid size={{ xs: 12, md: 3 }}>
+                                <TextField
+                                    fullWidth
+                                    label="Unit Code"
+                                    placeholder="e.g., cup, tbsp"
+                                    size="small"
+                                    id="new-unit-value"
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 12, md: 4 }}>
+                                <TextField
+                                    fullWidth
+                                    label="Display Label"
+                                    placeholder="e.g., Cups, Tablespoons"
+                                    size="small"
+                                    id="new-unit-label"
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 12, md: 3 }}>
+                                <TextField
+                                    select
+                                    fullWidth
+                                    label="Type"
+                                    defaultValue="count"
+                                    size="small"
+                                    id="new-unit-type"
+                                >
+                                    <MenuItem value="weight">Weight</MenuItem>
+                                    <MenuItem value="volume">Volume</MenuItem>
+                                    <MenuItem value="count">Count</MenuItem>
+                                </TextField>
+                            </Grid>
+                            <Grid size={{ xs: 12, md: 2 }}>
+                                <Button
+                                    fullWidth
+                                    variant="contained"
+                                    startIcon={<AddIcon />}
+                                    onClick={() => {
+                                        const valueInput = document.getElementById('new-unit-value') as HTMLInputElement;
+                                        const labelInput = document.getElementById('new-unit-label') as HTMLInputElement;
+                                        const typeInput = document.getElementById('new-unit-type')?.querySelector('input') as HTMLInputElement;
+
+                                        const value = valueInput?.value?.trim().toLowerCase().replace(/\s+/g, '_');
+                                        const label = labelInput?.value?.trim();
+                                        const type = (typeInput?.value || 'count') as 'weight' | 'volume' | 'count';
+
+                                        if (!value || !label) {
+                                            toast.error('Please enter both unit code and label');
+                                            return;
+                                        }
+
+                                        const currentUnits: UnitConfig[] = settings.restaurant.units ||
+                                            (getUnitSystem(settings.restaurant.country) === 'imperial' ? IMPERIAL_UNITS : METRIC_UNITS);
+
+                                        if (currentUnits.some(u => u.value === value)) {
+                                            toast.error('A unit with this code already exists');
+                                            return;
+                                        }
+
+                                        const newUnits: UnitConfig[] = [...currentUnits, { value, label, type }];
+                                        setSettings(prev => ({
+                                            ...prev,
+                                            restaurant: {
+                                                ...prev.restaurant,
+                                                units: newUnits
+                                            }
+                                        }));
+
+                                        // Clear inputs
+                                        if (valueInput) valueInput.value = '';
+                                        if (labelInput) labelInput.value = '';
+
+                                        toast.success(`Unit "${label}" added`);
+                                    }}
+                                    sx={{ height: '100%' }}
+                                >
+                                    Add
+                                </Button>
+                            </Grid>
+                        </Grid>
+                    </Paper>
+
+                    {/* Reset to Defaults */}
+                    <Stack direction="row" spacing={2}>
+                        <Button
+                            variant="outlined"
+                            onClick={() => {
+                                const defaultUnits = getUnitSystem(settings.restaurant.country) === 'imperial'
+                                    ? IMPERIAL_UNITS.map(u => ({ ...u, type: 'weight' as const }))
+                                    : METRIC_UNITS.map(u => ({ ...u, type: 'weight' as const }));
+                                setSettings(prev => ({
+                                    ...prev,
+                                    restaurant: {
+                                        ...prev.restaurant,
+                                        units: defaultUnits
+                                    }
+                                }));
+                                toast.success('Units reset to country defaults');
+                            }}
+                        >
+                            Reset to Defaults
+                        </Button>
+                        <Button
+                            variant="contained"
+                            startIcon={<SaveIcon />}
+                            onClick={() => handleSave('restaurant')}
+                            disabled={loading}
+                        >
+                            Save Units
+                        </Button>
+                    </Stack>
+                </TabPanel>
+
+                <TabPanel value={tabValue} index={3}>
+                    <Grid container spacing={3}>
+                        <Grid size={{ xs: 12 }}>
+                            <Paper
+                                variant="outlined"
+                                sx={{
+                                    p: 2.5,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    borderRadius: 3,
+                                    bgcolor: settings.notification.sms.status?.isConnected ? alpha('#22c55e', 0.08) : alpha('#f59e0b', 0.08),
+                                    borderColor: settings.notification.sms.status?.isConnected ? alpha('#22c55e', 0.3) : alpha('#f59e0b', 0.3),
+                                }}
+                            >
+                                <Stack direction="row" spacing={2} alignItems="center">
+                                    <Avatar sx={{ bgcolor: '#fff', color: '#0f172a' }}>
+                                        <SmsIcon />
+                                    </Avatar>
+                                    <Box>
+                                        <Typography variant="subtitle1" fontWeight={700}>
+                                            Twilio SMS
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary">
+                                            {settings.notification.sms.status?.isConnected ? 'Configured and connected' : 'Not connected'}
+                                        </Typography>
+                                    </Box>
+                                </Stack>
+                                {settings.notification.sms.status?.isConnected ? <CheckCircleIcon sx={{ color: '#16a34a' }} /> : null}
+                            </Paper>
+                        </Grid>
+                        <Grid size={{ xs: 12 }}>
+                            <Typography variant="h6" gutterBottom>
+                                SMS Settings
+                            </Typography>
+                            <Typography color="text.secondary">
+                                Customer-facing SMS for this restaurant will use these Twilio credentials. Stored credentials are never shown back in the UI.
+                            </Typography>
+                        </Grid>
+                        <Grid size={{ xs: 12 }}>
+                            <FormControlLabel
+                                control={
+                                    <Switch
+                                        checked={settings.notification.sms.enabled}
+                                        onChange={(e) => setSettings(prev => ({
+                                            ...prev,
+                                            notification: {
+                                                ...prev.notification,
+                                                sms: {
+                                                    ...prev.notification.sms,
+                                                    enabled: e.target.checked,
+                                                },
+                                            },
+                                        }))}
+                                    />
+                                }
+                                label="Enable restaurant SMS"
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 4 }}>
+                            <TextField
+                                fullWidth
+                                label="Twilio Account SID"
+                                value={settings.notification.sms.twilio.accountSid}
+                                onChange={(e) => handleNotificationChange('accountSid', e.target.value.trim())}
+                                placeholder="AC..."
+                                disabled={!settings.notification.sms.enabled}
+                                helperText={settings.notification.sms.status?.hasAccountSid ? 'A Twilio SID is already saved.' : ''}
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 4 }}>
+                            <TextField
+                                fullWidth
+                                type="password"
+                                label="Twilio Auth Token"
+                                value={settings.notification.sms.twilio.authToken}
+                                onChange={(e) => handleNotificationChange('authToken', e.target.value.trim())}
+                                disabled={!settings.notification.sms.enabled}
+                                autoComplete="new-password"
+                                helperText={settings.notification.sms.status?.hasAuthToken ? 'A Twilio auth token is already saved.' : ''}
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 4 }}>
+                            <TextField
+                                fullWidth
+                                label="Twilio From Number"
+                                value={settings.notification.sms.twilio.fromNumber}
+                                onChange={(e) => handleNotificationChange('fromNumber', e.target.value.trim())}
+                                placeholder="+17325551234"
+                                disabled={!settings.notification.sms.enabled}
+                                helperText={settings.notification.sms.status?.hasFromNumber ? 'A Twilio from number is already saved.' : 'Use the Twilio number assigned to this restaurant.'}
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12 }}>
+                            <Alert severity="info">
+                                These credentials are tenant-specific. Customer portal OTP, booking SMS, order updates, catering verification, and coupon SMS will use this restaurant’s settings.
+                            </Alert>
+                        </Grid>
+                        <Grid size={{ xs: 12 }}>
+                            <Divider sx={{ my: 1 }} />
+                        </Grid>
+
+                        {/* ── Notification Sound Picker ── */}
+                        <Grid size={{ xs: 12 }}>
+                            <Typography variant="h6" gutterBottom>
+                                🔔 Notification Sound
+                            </Typography>
+                            <Typography color="text.secondary" sx={{ mb: 2 }}>
+                                Select the alert sound that plays for new orders and status updates.
+                                Click <strong>▶ Preview</strong> to hear a sound before selecting it.
+                            </Typography>
+
+                            <Stack direction="row" flexWrap="nowrap" gap={2}>
+                                {NOTIFICATION_SOUNDS.map((sound) => {
+                                    // @ts-ignore
+                                    const isSelected =
+                                        (settings.notification?.sound || 'notification') === sound.id;
+                                    return (
+                                        <Paper
+                                            key={sound.id}
+                                            variant="outlined"
+                                            sx={{
+                                                p: 2.5,
+                                                borderRadius: 3,
+                                                cursor: 'pointer',
+                                                minWidth: 0,
+                                                flex: '1 1 0px',
+                                                transition: 'all 0.2s ease',
+                                                bgcolor: isSelected ? alpha('#4F46E5', 0.08) : '#fff',
+                                                borderColor: isSelected ? 'transparent' : alpha('#E2E8F0', 0.8),
+                                                boxShadow: 'none',
+                                                '&:hover': {
+                                                    boxShadow: 'none',
+                                                    borderColor: isSelected ? 'transparent' : alpha('#4F46E5', 0.4),
+                                                },
+                                            }}
+                                            onClick={() => handleSoundChange(sound.id)}
+                                        >
+                                            <Box display="flex" alignItems="center" gap={1.5}>
+                                                <Radio
+                                                    checked={isSelected}
+                                                    size="small"
+                                                    sx={{
+                                                        p: 0,
+                                                        color: isSelected ? '#4F46E5' : 'text.secondary',
+                                                        '&.Mui-checked': {
+                                                            color: '#4F46E5',
+                                                        }
+                                                    }}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    onChange={() => handleSoundChange(sound.id)}
+                                                />
+                                                <Typography variant="body2" fontWeight={600} color="text.primary">
+                                                    {sound.label}
+                                                </Typography>
+                                            </Box>
+
+                                            <Box mt={2} display="flex">
+                                                <Button
+                                                    size="small"
+                                                    variant="outlined"
+                                                    startIcon={<PlayArrowIcon sx={{ fontSize: '1rem !important' }} />}
+                                                    sx={{
+                                                        fontSize: '0.75rem',
+                                                        px: 2,
+                                                        py: 0.5,
+                                                        borderRadius: 2,
+                                                        borderColor: '#4F46E5',
+                                                        color: '#4F46E5',
+                                                        textTransform: 'none',
+                                                        '&:hover': {
+                                                            borderColor: '#4338CA',
+                                                            bgcolor: alpha('#4F46E5', 0.04),
+                                                        },
+                                                        '& .MuiButton-startIcon': {
+                                                            marginRight: '4px'
+                                                        }
+                                                    }}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        previewSound(sound.id);
+                                                    }}
+                                                >
+                                                    Preview
+                                                </Button>
+                                            </Box>
+                                        </Paper>
+                                    );
+                                })}
+                            </Stack>
+
+                        </Grid>
+
+
+                        <Grid size={{ xs: 12 }}>
+                            <Divider sx={{ my: 1 }} />
+                        </Grid>
+
+                        {/* 
+                        <Grid size={{ xs: 12 }}>
+                            <Typography variant="h6" gutterBottom>
+                                Role Notification Alerts (Default)
+                            </Typography>
+                            <Typography color="text.secondary" sx={{ mb: 2 }}>
+                                Set global fallback alerts across discrete modules per user role title.
+                            </Typography>
+                            
+                            <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3, mb: 3 }}>
+                                <Table size="small">
+                                    <TableHead sx={{ bgcolor: alpha('#94a3b8', 0.05) }}>
+                                        <TableRow>
+                                            <TableCell sx={{ fontWeight: 700 }}>Role Title</TableCell>
+                                            <TableCell align="center" sx={{ fontWeight: 700 }}>Orders</TableCell>
+                                            <TableCell align="center" sx={{ fontWeight: 700 }}>Catering</TableCell>
+                                            <TableCell align="center" sx={{ fontWeight: 700 }}>Inventory</TableCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {Object.entries(settings.notification.push?.roles || {}).map(([role, config]: any) => (
+                                            <TableRow key={role} hover>
+                                                <TableCell sx={{ textTransform: 'capitalize', fontWeight: 500 }}>
+                                                    {role.replace('_', ' ')}
+                                                </TableCell>
+                                                <TableCell align="center">
+                                                    <Switch
+                                                        size="small"
+                                                        checked={Boolean(config.orders)}
+                                                        onChange={(e) => setSettings((prev: any) => ({
+                                                            ...prev,
+                                                            notification: {
+                                                                ...prev.notification,
+                                                                push: {
+                                                                    ...prev.notification.push,
+                                                                    roles: {
+                                                                        ...prev.notification.push?.roles,
+                                                                        [role]: {
+                                                                            ...prev.notification.push?.roles?.[role],
+                                                                            orders: e.target.checked
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }))}
+                                                    />
+                                                </TableCell>
+                                                <TableCell align="center">
+                                                    <Switch
+                                                        size="small"
+                                                        checked={Boolean(config.catering)}
+                                                        onChange={(e) => setSettings((prev: any) => ({
+                                                            ...prev,
+                                                            notification: {
+                                                                ...prev.notification,
+                                                                push: {
+                                                                    ...prev.notification.push,
+                                                                    roles: {
+                                                                        ...prev.notification.push?.roles,
+                                                                        [role]: {
+                                                                            ...prev.notification.push?.roles?.[role],
+                                                                            catering: e.target.checked
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }))}
+                                                    />
+                                                </TableCell>
+                                                <TableCell align="center">
+                                                    <Switch
+                                                        size="small"
+                                                        checked={Boolean(config.inventory)}
+                                                        onChange={(e) => setSettings((prev: any) => ({
+                                                            ...prev,
+                                                            notification: {
+                                                                ...prev.notification,
+                                                                push: {
+                                                                    ...prev.notification.push,
+                                                                    roles: {
+                                                                        ...prev.notification.push?.roles,
+                                                                        [role]: {
+                                                                            ...prev.notification.push?.roles?.[role],
+                                                                            inventory: e.target.checked
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }))}
+                                                    />
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                        </Grid>
+                        */}
+
+                        <Grid size={{ xs: 12 }}>
+                            <Divider sx={{ my: 1 }} />
+                        </Grid>
+
+                        <Grid size={{ xs: 12 }}>
+                            <Typography variant="h6" gutterBottom>
+                                User Specific Notification Alerts
+                            </Typography>
+                            <Typography color="text.secondary" sx={{ mb: 3 }}>
+                                Customize overrides for individual users that override role defaults above.
+                            </Typography>
+
+                            <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                                &nbsp;
+                            </Typography>
+
+                            <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3 }}>
+                                <Table size="small">
+                                    <TableHead sx={{ bgcolor: alpha('#94a3b8', 0.05) }}>
+                                        <TableRow>
+                                            <TableCell sx={{ fontWeight: 700 }}>Staff Name</TableCell>
+                                            <TableCell sx={{ fontWeight: 700 }}>System Role</TableCell>
+                                            <TableCell align="center" sx={{ fontWeight: 700 }}>Orders</TableCell>
+                                            <TableCell align="center" sx={{ fontWeight: 700 }}>Catering</TableCell>
+                                            <TableCell align="center" sx={{ fontWeight: 700 }}>Inventory</TableCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {usersList.map((u: any) => {
+                                            const userRole = Array.isArray(u.roles) ? u.roles[0] : 'cashier';
+                                            const config = settings.notification.push?.users?.[u._id] ||
+                                                settings.notification.push?.roles?.[userRole] ||
+                                                { orders: true, catering: true, inventory: true };
+                                            return (
+                                                <TableRow key={u._id} hover>
+                                                    <TableCell sx={{ fontWeight: 500 }}>
+                                                        {u.firstName && u.lastName ? `${u.firstName} ${u.lastName}` : u.firstName || u.email || 'Staff Member'}
+                                                    </TableCell>
+                                                    <TableCell sx={{ textTransform: 'capitalize', color: 'text.secondary', fontSize: '0.8rem' }}>
+                                                        {Array.isArray(u.roles) ? u.roles.map((r: string) => r.replace('_', ' ')).join(', ') : 'Staff'}
+                                                    </TableCell>
+                                                    <TableCell align="center">
+                                                        <Switch
+                                                            size="small"
+                                                            checked={Boolean(config.orders)}
+                                                            onChange={(e) => setSettings((prev: any) => ({
+                                                                ...prev,
+                                                                notification: {
+                                                                    ...prev.notification,
+                                                                    push: {
+                                                                        ...prev.notification.push,
+                                                                        users: {
+                                                                            ...prev.notification.push?.users,
+                                                                            [u._id]: {
+                                                                                ...prev.notification.push?.users?.[u._id] || config,
+                                                                                orders: e.target.checked
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }))}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell align="center">
+                                                        <Switch
+                                                            size="small"
+                                                            checked={Boolean(config.catering)}
+                                                            onChange={(e) => setSettings((prev: any) => ({
+                                                                ...prev,
+                                                                notification: {
+                                                                    ...prev.notification,
+                                                                    push: {
+                                                                        ...prev.notification.push,
+                                                                        users: {
+                                                                            ...prev.notification.push?.users,
+                                                                            [u._id]: {
+                                                                                ...prev.notification.push?.users?.[u._id] || config,
+                                                                                catering: e.target.checked
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }))}
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell align="center">
+                                                        <Switch
+                                                            size="small"
+                                                            checked={Boolean(config.inventory)}
+                                                            onChange={(e) => setSettings((prev: any) => ({
+                                                                ...prev,
+                                                                notification: {
+                                                                    ...prev.notification,
+                                                                    push: {
+                                                                        ...prev.notification.push,
+                                                                        users: {
+                                                                            ...prev.notification.push?.users,
+                                                                            [u._id]: {
+                                                                                ...prev.notification.push?.users?.[u._id] || config,
+                                                                                inventory: e.target.checked
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }))}
+                                                        />
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                            <TablePagination
+                                rowsPerPageOptions={[5, 10, 25, 50]}
+                                component="div"
+                                count={totalUsers}
+                                rowsPerPage={userAlertsRowsPerPage}
+                                page={userAlertsPage}
+                                onPageChange={(_: any, newPage: number) => setUserAlertsPage(newPage)}
+                                onRowsPerPageChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                    setUserAlertsRowsPerPage(parseInt(e.target.value, 10));
+                                    setUserAlertsPage(0);
+                                }}
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12 }}>
+                            <Divider sx={{ my: 1 }} />
+                        </Grid>
+                        <Grid size={{ xs: 12 }}>
+                            <Button
+                                variant="contained"
+                                startIcon={<SaveIcon />}
+                                onClick={() => handleSave('notification')}
+                                disabled={loading}
+                            >
+                                Save Notification Settings
+                            </Button>
+                        </Grid>
+                    </Grid>
+                </TabPanel>
+
+                <TabPanel value={tabValue} index={4}>
+                    <Box sx={{ mb: 4 }}>
+                        <Typography variant="h6" sx={{ mb: 1 }}>
+                            Point of Sale Payment Methods
+                        </Typography>
+                        <Typography color="text.secondary" sx={{ mb: 3 }}>
+                            Enable or disable payment methods that will be available at the Point of Sale interface.
+                        </Typography>
+
+                        <Paper variant="outlined" sx={{ p: 3, borderRadius: 3, mb: 2 }}>
+                            <Grid container spacing={2}>
+                                {['cash', 'card', 'zelle', 'venmo'].map((method) => (
+                                    <Grid size={{ xs: 6, sm: 3 }} key={method}>
+                                        <FormControlLabel
+                                            control={
+                                                <Checkbox
+                                                    checked={settings.system.posPaymentMethods?.[method as keyof typeof settings.system.posPaymentMethods] ?? true}
+                                                    onChange={(e) => {
+                                                        const isChecked = e.target.checked;
+                                                        setSettings(prev => ({
+                                                            ...prev,
+                                                            system: {
+                                                                ...prev.system,
+                                                                posPaymentMethods: {
+                                                                    ...prev.system.posPaymentMethods,
+                                                                    [method]: isChecked
+                                                                }
+                                                            }
+                                                        }));
+                                                    }}
+                                                />
+                                            }
+                                            label={<Typography sx={{ textTransform: 'capitalize' }}>{method}</Typography>}
+                                        />
+                                    </Grid>
+                                ))}
+                            </Grid>
+                        </Paper>
+
+                        <Button
+                            variant="contained"
+                            startIcon={<SaveIcon />}
+                            onClick={() => handleSave('system')}
+                            disabled={loading}
+                        >
+                            Save POS Methods
+                        </Button>
+                    </Box>
+
+                    <Divider sx={{ my: 4 }} />
+
+                    <Paper
+                        variant="outlined"
+                        sx={{
+                            p: 2.5,
+                            mb: 3,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            borderRadius: 3,
+                            bgcolor: (stripeStatus?.hasPublishableKey && stripeStatus?.hasSecretKey) ? alpha('#22c55e', 0.08) : alpha('#f59e0b', 0.08),
+                            borderColor: (stripeStatus?.hasPublishableKey && stripeStatus?.hasSecretKey) ? alpha('#22c55e', 0.3) : alpha('#f59e0b', 0.3),
+                        }}
+                    >
+                        <Stack direction="row" spacing={2} alignItems="center">
+                            <Avatar sx={{ bgcolor: '#635bff', color: '#fff' }}>
+                                <CreditCardIcon />
+                            </Avatar>
+                            <Box>
+                                <Typography variant="subtitle1" fontWeight={700}>
+                                    Stripe Payments
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                    {(stripeStatus?.hasPublishableKey && stripeStatus?.hasSecretKey) ? 'Configured and connected' : 'Not connected'}
+                                </Typography>
+                            </Box>
+                        </Stack>
+                        {(stripeStatus?.hasPublishableKey && stripeStatus?.hasSecretKey) ? <CheckCircleIcon sx={{ color: '#16a34a' }} /> : null}
+                    </Paper>
+                    <Typography variant="h6" sx={{ mb: 1 }}>
+                        Stripe Payments
+                    </Typography>
+                    <Typography color="text.secondary" sx={{ mb: 3 }}>
+                        Configure your restaurant’s Stripe keys. These are tenant-specific and used for in-restaurant transactions.
+                    </Typography>
+                    <Grid container spacing={3}>
+                        {(stripeStatus?.hasPublishableKey || stripeStatus?.hasSecretKey || stripeStatus?.hasWebhookSecret) && (
+                            <Grid size={{ xs: 12 }}>
+                                <Alert severity="info" sx={{ mb: 2 }}>
+                                    Stripe credentials are stored securely. Existing values are never shown back in the client. Enter new values only when you want to replace them.
+                                </Alert>
+                            </Grid>
+                        )}
+                        <Grid size={{ xs: 12 }}>
+                            <TextField
+                                fullWidth
+                                label="Webhook URL (paste into Stripe)"
+                                value={webhookUrl || 'Loading...'}
+                                InputProps={{
+                                    readOnly: true,
+                                    endAdornment: (
+                                        <InputAdornment position="end">
+                                            <IconButton
+                                                aria-label="Copy webhook URL"
+                                                onClick={() => {
+                                                    if (webhookUrl) {
+                                                        navigator.clipboard.writeText(webhookUrl);
+                                                        toast.success('Webhook URL copied to clipboard');
+                                                    }
+                                                }}
+                                                edge="end"
+                                                disabled={!webhookUrl}
+                                            >
+                                                <ContentCopyIcon fontSize="small" />
+                                            </IconButton>
+                                        </InputAdornment>
+                                    ),
+                                }}
+                                helperText="Stripe Dashboard → Developers → Webhooks → Add endpoint"
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <TextField
+                                fullWidth
+                                label="Publishable Key"
+                                value={settings.payment.stripePublishableKey || ''}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({
+                                    ...prev,
+                                    payment: { ...prev.payment, stripePublishableKey: e.target.value.trim() }
+                                }))}
+                                placeholder="pk_test_..."
+                                autoComplete="off"
+                                helperText={stripeStatus.hasPublishableKey ? 'Already set. Leave blank to keep current key.' : ''}
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <TextField
+                                fullWidth
+                                label="Secret Key"
+                                type="password"
+                                value={settings.payment.stripeSecretKey || ''}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({
+                                    ...prev,
+                                    payment: { ...prev.payment, stripeSecretKey: e.target.value.trim() }
+                                }))}
+                                placeholder="sk_test_..."
+                                autoComplete="new-password"
+                                helperText={stripeStatus.hasSecretKey ? 'Already set. Leave blank to keep current key.' : ''}
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <TextField
+                                fullWidth
+                                label="Webhook Signing Secret"
+                                type="password"
+                                value={settings.payment.stripeWebhookSecret || ''}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({
+                                    ...prev,
+                                    payment: { ...prev.payment, stripeWebhookSecret: e.target.value.trim() }
+                                }))}
+                                placeholder="whsec_..."
+                                autoComplete="new-password"
+                                helperText={stripeStatus.hasWebhookSecret
+                                    ? 'Already set. Leave blank to keep current key.'
+                                    : 'Found in Stripe Dashboard → Developers → Webhooks'}
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <TextField
+                                select
+                                fullWidth
+                                label="Mode"
+                                value={settings.payment.stripeMode || 'test'}
+                                onChange={(e) => setSettings(prev => ({
+                                    ...prev,
+                                    payment: { ...prev.payment, stripeMode: e.target.value as 'test' | 'live' }
+                                }))}
+                            >
+                                <MenuItem value="test">Test</MenuItem>
+                                <MenuItem value="live">Live</MenuItem>
+                            </TextField>
+                        </Grid>
+                        <Grid size={{ xs: 12 }}>
+                            <Alert severity="warning" sx={{ mb: 2 }}>
+                                Keep your Secret and Webhook keys safe. Only admins should update these.
+                            </Alert>
+                            <Button
+                                variant="contained"
+                                startIcon={<SaveIcon />}
+                                onClick={async () => {
+                                    try {
+                                        setLoading(true);
+                                        const payload: any = {};
+                                        const pk = settings.payment.stripePublishableKey?.trim();
+                                        const sk = settings.payment.stripeSecretKey?.trim();
+                                        const wh = settings.payment.stripeWebhookSecret?.trim();
+                                        if (pk) payload.stripePublishableKey = pk;
+                                        if (sk) payload.stripeSecretKey = sk;
+                                        if (wh) payload.stripeWebhookSecret = wh;
+                                        if (settings.payment.stripeMode && settings.payment.stripeMode !== stripeStatus.stripeMode) {
+                                            payload.stripeMode = settings.payment.stripeMode;
+                                        }
+
+                                        if (Object.keys(payload).length === 0) {
+                                            toast.error('No changes to save');
+                                            return;
+                                        }
+
+                                        await tenantAPI.updateStripeSettings(payload);
+                                        toast.success('Stripe settings saved');
+                                        // Refresh status flags
+                                        const statusResp = await tenantAPI.getStripeSettings();
+                                        setStripeStatus(statusResp.data || {});
+                                        // Clear sensitive fields after save so they are never re-displayed
+                                        setSettings(prev => ({
+                                            ...prev,
+                                            payment: {
+                                                ...prev.payment,
+                                                stripePublishableKey: '',
+                                                stripeSecretKey: '',
+                                                stripeWebhookSecret: '',
+                                            },
+                                        }));
+                                    } catch (error) {
+                                        console.error('Failed to save Stripe settings', error);
+                                        toast.error((error as any)?.response?.data?.message || 'Failed to save Stripe settings');
+                                    } finally {
+                                        setLoading(false);
+                                    }
+                                }}
+                                disabled={loading}
+                            >
+                                Save Stripe Settings
+                            </Button>
+                        </Grid>
+                    </Grid>
+                </TabPanel>
+
+                {/* Printers Tab */}
+                <TabPanel value={tabValue} index={5}>
+                    <Typography variant="h6" gutterBottom>
+                        Printers Settings
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                        Configure automated billing and kitchen printing for this restaurant.
+                        Enable the "Print Automation" switch to start auto-printing when an order is created.
+                    </Typography>
+
+                    <Grid container spacing={4}>
+                        <Grid size={{ xs: 12 }}>
+                            <Paper
+                                variant="outlined"
+                                sx={{
+                                    p: 2.5,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    borderRadius: 3,
+                                    bgcolor: settings.printer.enabled ? alpha('#4f46e5', 0.08) : 'transparent',
+                                    borderColor: settings.printer.enabled ? alpha('#4f46e5', 0.3) : 'divider',
+                                }}
+                            >
+                                <Stack direction="row" spacing={2} alignItems="center">
+                                    <Avatar sx={{ bgcolor: settings.printer.enabled ? '#4f46e5' : '#94a3b8', color: '#fff' }}>
+                                        <PrintIcon />
+                                    </Avatar>
+                                    <Box>
+                                        <Typography variant="subtitle1" fontWeight={700}>
+                                            Print Automation
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary">
+                                            Auto-print KOT and billing receipts upon order creation.
+                                        </Typography>
+                                    </Box>
+                                </Stack>
+                                <Switch
+                                    checked={settings.printer.enabled}
+                                    onChange={(e) => setSettings(prev => ({
+                                        ...prev,
+                                        printer: { ...prev.printer, enabled: e.target.checked }
+                                    }))}
+                                />
+                            </Paper>
+                        </Grid>
+
+                        {/* Billing Printer Section */}
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <Box sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
+                                <Typography variant="subtitle1" fontWeight={700} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <PrintIcon fontSize="small" color="primary" /> Billing Receiver
+                                </Typography>
+                                <Divider sx={{ mb: 2 }} />
+
+                                <Grid container spacing={2}>
+                                    <Grid size={{ xs: 12 }}>
+                                        <TextField
+                                            select
+                                            fullWidth
+                                            label="Printer Type"
+                                            value={settings.printer.billing?.type || 'none'}
+                                            onChange={(e) => handlePrinterChange('billing', 'type', e.target.value)}
+                                        >
+                                            <MenuItem value="none">None (Disabled)</MenuItem>
+                                            <MenuItem value="print-agent">Print Agent (Electron)</MenuItem>
+                                        </TextField>
+                                    </Grid>
+
+                                    {settings.printer.billing?.type !== 'none' && (
+                                        <>
+                                            <Grid size={{ xs: 12, md: 6 }}>
+                                                <TextField
+                                                    select
+                                                    fullWidth
+                                                    label="Preferred Paired Agent"
+                                                    value={settings.printer.preferredAgentId || ''}
+                                                    onChange={(e) => handlePrinterRootChange('preferredAgentId', e.target.value || undefined)}
+                                                    helperText="Optional. Leave blank to allow any online paired agent for this restaurant."
+                                                >
+                                                    <MenuItem value="">Any online paired agent</MenuItem>
+                                                    {pairedAgents
+                                                        .filter(agent => agent.status === 'active')
+                                                        .map((agent) => (
+                                                            <MenuItem key={agent._id} value={agent._id}>
+                                                                {agent.name}
+                                                            </MenuItem>
+                                                        ))}
+                                                </TextField>
+                                            </Grid>
+                                            <Grid size={{ xs: 12, md: 6 }}>
+                                                <Alert severity="info" sx={{ height: '100%', display: 'flex', alignItems: 'center' }}>
+                                                    The paired agent decides which local receipt printer to use. This setting only enables receipt events for the selected agent.
+                                                </Alert>
+                                            </Grid>
+                                            <Grid size={{ xs: 12 }}>
+                                                <Button
+                                                    variant="outlined"
+                                                    fullWidth
+                                                    onClick={() => handleTestPrint('billing')}
+                                                    startIcon={<PrintIcon />}
+                                                >
+                                                    Send Test Print
+                                                </Button>
+                                            </Grid>
+                                        </>
+                                    )}
+                                </Grid>
+                            </Box>
+                        </Grid>
+
+                        {/* Kitchen Printer Section */}
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <Box sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
+                                <Typography variant="subtitle1" fontWeight={700} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <PrintIcon fontSize="small" color="secondary" /> Kitchen Receiver (KOT)
+                                </Typography>
+                                <Divider sx={{ mb: 2 }} />
+
+                                <Grid container spacing={2}>
+                                    <Grid size={{ xs: 12 }}>
+                                        <TextField
+                                            select
+                                            fullWidth
+                                            label="Printer Type"
+                                            value={settings.printer.kitchen?.type || 'none'}
+                                            onChange={(e) => handlePrinterChange('kitchen', 'type', e.target.value)}
+                                        >
+                                            <MenuItem value="none">None (Disabled)</MenuItem>
+                                            <MenuItem value="print-agent">Print Agent (Electron)</MenuItem>
+                                        </TextField>
+                                    </Grid>
+
+                                    {settings.printer.kitchen?.type !== 'none' && (
+                                        <>
+                                            <Grid size={{ xs: 12, md: 6 }}>
+                                                <TextField
+                                                    select
+                                                    fullWidth
+                                                    label="Preferred Paired Agent"
+                                                    value={settings.printer.preferredAgentId || ''}
+                                                    onChange={(e) => handlePrinterRootChange('preferredAgentId', e.target.value || undefined)}
+                                                    helperText="Optional. Leave blank to allow any online paired agent for this restaurant."
+                                                >
+                                                    <MenuItem value="">Any online paired agent</MenuItem>
+                                                    {pairedAgents
+                                                        .filter(agent => agent.status === 'active')
+                                                        .map((agent) => (
+                                                            <MenuItem key={agent._id} value={agent._id}>
+                                                                {agent.name}
+                                                            </MenuItem>
+                                                        ))}
+                                                </TextField>
+                                            </Grid>
+                                            <Grid size={{ xs: 12, md: 6 }}>
+                                                <Alert severity="info" sx={{ height: '100%', display: 'flex', alignItems: 'center' }}>
+                                                    Kitchen jobs are sent to the agent only. The agent uses its own default kitchen printer configured on that machine.
+                                                </Alert>
+                                            </Grid>
+                                            <Grid size={{ xs: 12 }}>
+                                                <Button
+                                                    variant="outlined"
+                                                    fullWidth
+                                                    onClick={() => handleTestPrint('kitchen')}
+                                                    startIcon={<PrintIcon />}
+                                                >
+                                                    Send Test Print
+                                                </Button>
+                                            </Grid>
+                                        </>
+                                    )}
+                                </Grid>
+                            </Box>
+                        </Grid>
+
+                        <Grid size={{ xs: 12 }}>
+                            <Divider sx={{ my: 1 }} />
+                        </Grid>
+
+                        {/* Decentralized Print Agents (Electron) Section */}
+                        <Grid size={{ xs: 12 }}>
+                            <Box sx={{ p: 4, borderRadius: 4, border: '1px solid', borderColor: 'divider', bgcolor: alpha('#4f46e5', 0.02) }}>
+                                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
+                                    <Box>
+                                        <Typography variant="h6" fontWeight={800} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                            <TerminalIcon color="primary" /> Decentralized Print Agents
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary">
+                                            Connect local hardware (USB/Spooler) using the Electron Print Agent app.
+                                        </Typography>
+                                    </Box>
+                                    <Button
+                                        variant="contained"
+                                        startIcon={<AddIcon />}
+                                        onClick={handleCreateAgent}
+                                        sx={{ borderRadius: 2, px: 3 }}
+                                    >
+                                        Pair New Agent
+                                    </Button>
+                                </Stack>
+
+                                {agentsLoading ? (
+                                    <Box sx={{ py: 4, textAlign: 'center' }}>
+                                        <CircularProgress size={24} />
+                                    </Box>
+                                ) : pairedAgents.length === 0 ? (
+                                    <Alert severity="info" sx={{ borderRadius: 2 }}>
+                                        No print agents paired yet. Download the Electron app and use a pairing token to get started.
+                                    </Alert>
+                                ) : (
+                                    <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden' }}>
+                                        <Table size="small">
+                                            <TableHead sx={{ bgcolor: 'action.hover' }}>
+                                                <TableRow>
+                                                    <TableCell sx={{ fontWeight: 700 }}>Agent Name</TableCell>
+                                                    <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
+                                                    <TableCell sx={{ fontWeight: 700 }}>Last Seen</TableCell>
+                                                    <TableCell align="right" sx={{ fontWeight: 700 }}>Actions</TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {pairedAgents.map((agent: any) => (
+                                                    <TableRow key={agent._id} hover>
+                                                        <TableCell sx={{ py: 2 }}>
+                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                                                <Avatar sx={{ width: 32, height: 32, bgcolor: alpha('#4f46e5', 0.1), color: '#4f46e5' }}>
+                                                                    <TerminalIcon sx={{ fontSize: 18 }} />
+                                                                </Avatar>
+                                                                <Typography variant="subtitle2" fontWeight={600}>
+                                                                    {agent.name}
+                                                                </Typography>
+                                                            </Box>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Chip
+                                                                size="small"
+                                                                label={agent.status}
+                                                                color={agent.status === 'active' ? 'success' : 'default'}
+                                                                variant="filled"
+                                                                sx={{ fontWeight: 600, textTransform: 'uppercase', fontSize: '0.65rem' }}
+                                                            />
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Typography variant="caption" color="text.secondary">
+                                                                {agent.lastSeenAt ? new Date(agent.lastSeenAt).toLocaleString() : 'Never'}
+                                                            </Typography>
+                                                        </TableCell>
+                                                        <TableCell align="right">
+                                                            <Tooltip title="Copy Token">
+                                                                <IconButton 
+                                                                    size="small" 
+                                                                    onClick={() => {
+                                                                        const token = agent.token || agent.pairingToken;
+                                                                        if (token) {
+                                                                            navigator.clipboard.writeText(token);
+                                                                            toast.success('Token copied to clipboard');
+                                                                        }
+                                                                    }} 
+                                                                    disabled={!agent.token && !agent.pairingToken}
+                                                                    sx={{ color: 'primary.main' }}
+                                                                >
+                                                                    <ContentCopyIcon fontSize="small" />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                            <Tooltip title="Regenerate Token">
+                                                                <IconButton size="small" onClick={() => handleRegenerateAgentToken(agent._id)} sx={{ color: 'primary.main' }}>
+                                                                    <RefreshIcon fontSize="small" />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                            <Tooltip title="Revoke Agent">
+                                                                <IconButton size="small" onClick={() => handleRevokeAgent(agent._id)} sx={{ color: 'error.main' }}>
+                                                                    <DeleteIcon fontSize="small" />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                )}
+                            </Box>
+                        </Grid>
+
+                        <Grid size={{ xs: 12 }}>
+                            <Button
+                                variant="contained"
+                                startIcon={<SaveIcon />}
+                                onClick={() => handleSave('printer')}
+                                disabled={loading}
+                            >
+                                Save Printer Settings
+                            </Button>
+                        </Grid>
+                    </Grid>
+                </TabPanel>
+
+                <TabPanel value={tabValue} index={6}>
+                    <Box sx={{ mb: 4 }}>
+                        <Typography variant="h6" gutterBottom>
+                            Audit Logs
+                        </Typography>
+                        <Divider sx={{ mb: 2 }} />
+
+                        {auditLogsLoading ? (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                                <CircularProgress size={32} />
+                            </Box>
+                        ) : (
+                            <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3 }}>
+                                <Table size="small">
+                                    <TableHead sx={{ bgcolor: alpha('#94a3b8', 0.05) }}>
+                                        <TableRow>
+                                            <TableCell sx={{ fontWeight: 700 }}>Timestamp</TableCell>
+                                            <TableCell sx={{ fontWeight: 700 }}>Module</TableCell>
+                                            <TableCell sx={{ fontWeight: 700 }}>Action</TableCell>
+                                            <TableCell sx={{ fontWeight: 700 }}>Performed By</TableCell>
+                                            <TableCell sx={{ fontWeight: 700 }}>Details</TableCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {auditLogs.map((log: any) => (
+                                            <TableRow key={log._id} hover>
+                                                <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                                                    {new Date(log.createdAt).toLocaleString()}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Chip label={log.module} size="small" variant="outlined" />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Typography variant="body2" fontWeight={600}>
+                                                        {log.action}
+                                                    </Typography>
+                                                </TableCell>
+                                                <TableCell>
+                                                    {log.performedByName || 'System'}
+                                                </TableCell>
+                                                <TableCell sx={{ maxWidth: 300 }}>
+                                                    <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block' }}>
+                                                        {typeof log.details === 'object' ? JSON.stringify(log.details) : log.details}
+                                                    </Typography>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                        {auditLogs.length === 0 && (
+                                            <TableRow>
+                                                <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                                                    <Typography color="text.secondary">No logs found</Typography>
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                        )}
+                    </Box>
+                </TabPanel>
+            </Paper >
+
+            {/* Print Agent Pairing Token Modal */}
+            <Dialog 
+                open={!!newToken} 
+                onClose={() => setNewToken(null)}
+                PaperProps={{
+                    sx: { borderRadius: 3, width: '100%', maxWidth: 450 }
+                }}
+            >
+                <DialogTitle sx={{ fontWeight: 800, pb: 1 }}>
+                    Agent Pairing Token
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                        Copy this code and paste it into the <strong>NexzenPOS Print Agent</strong> app on your computer. 
+                        This code is your secure link between the restaurant and that computer.
+                    </Typography>
+                    
+                    <TextField
+                        fullWidth
+                        label="Connection Code"
+                        value={newToken || ''}
+                        InputProps={{
+                            readOnly: true,
+                            sx: { fontFamily: 'monospace', bgcolor: alpha('#4f46e5', 0.03) },
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    <IconButton
+                                        onClick={() => {
+                                            if (newToken) {
+                                                navigator.clipboard.writeText(newToken);
+                                                toast.success('Token copied to clipboard');
+                                            }
+                                        }}
+                                        edge="end"
+                                        color="primary"
+                                    >
+                                        <ContentCopyIcon />
+                                    </IconButton>
+                                </InputAdornment>
+                            ),
+                        }}
+                    />
+                    
+                    <Alert severity="warning" sx={{ mt: 3, borderRadius: 2 }}>
+                        Keep this code private. Do not share it with anyone outside your trusted team.
+                    </Alert>
+                </DialogContent>
+                <DialogActions sx={{ p: 2, pt: 0 }}>
+                    <Button 
+                        fullWidth 
+                        variant="contained" 
+                        onClick={() => setNewToken(null)}
+                        sx={{ borderRadius: 2, height: 48, fontWeight: 700 }}
+                    >
+                        I've Copied the Code
+                    </Button>
+                </DialogActions>
+            </Dialog>
+        </Box >
+    );
+};
+
+export default SettingsPage;

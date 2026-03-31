@@ -1,0 +1,423 @@
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import { socketService } from '../services/socket.service';
+import { useAuth } from './AuthContext';
+import { toast, Toaster } from 'react-hot-toast';
+import { Box, Typography, IconButton } from '@mui/material';
+import { Close as CloseIcon, Restaurant as RestaurantIcon } from '@mui/icons-material';
+import { Capacitor } from '@capacitor/core';
+import { LocalNotifications } from '@capacitor/local-notifications';
+
+import { getSoundSrc } from '../utils/notificationSounds';
+import { useSettings } from './SettingsContext';
+
+interface Notification {
+    id: number | string;
+    timestamp: Date | string;
+    read: boolean;
+    type: string;
+    title: string;
+    message: string;
+    priority: string;
+    data?: any;
+    targetRoles?: string[];
+}
+
+interface NotificationContextType {
+    notifications: Notification[];
+    clearNotifications: () => void;
+    markAsRead: (id: string | number) => void;
+    markAllAsRead: () => void;
+    testNotification: () => void;
+    deliveryLocations: Record<string, { lat: number, lng: number, timestamp: Date }>;
+    trackOrder: (orderId: string, lat: number, lng: number) => void;
+}
+
+const NotificationContext = createContext<NotificationContextType>({
+    notifications: [],
+    clearNotifications: () => { },
+    markAsRead: () => { },
+    markAllAsRead: () => { },
+    testNotification: () => { },
+    deliveryLocations: {},
+    trackOrder: () => { },
+});
+
+export const useNotifications = () => useContext(NotificationContext);
+
+export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const { user } = useAuth();
+    const { settings } = useSettings();
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+
+    const soundTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const audioRef        = useRef<HTMLAudioElement | null>(null);
+
+    const playNotificationSound = useCallback(() => {
+        // Stop and discard any currently playing audio
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+        }
+        if (soundTimeoutRef.current) {
+            clearTimeout(soundTimeoutRef.current);
+        }
+
+        // Read admin-selected sound from global settings, fallback to localStorage/default
+        const selectedId  = settings?.notification?.sound || localStorage.getItem('notificationSoundId') || 'notification';
+        const selectedSrc = getSoundSrc(selectedId);
+
+        const audio       = new Audio(selectedSrc);
+        audio.volume      = 0.6;
+        audio.loop        = true;            // loop so it fills the full 6 s
+        audioRef.current  = audio;
+
+        audio.play().catch(err => {
+            console.error('🔔 [NotificationProvider] Error playing sound:', err);
+        });
+
+        // Auto-stop after 6 seconds
+        soundTimeoutRef.current = setTimeout(() => {
+            audio.pause();
+            audio.currentTime = 0;
+            audio.loop        = false;
+        }, 6000);
+    }, [settings?.notification?.sound]);
+
+    const showNotification = useCallback(async (title: string, body: string) => {
+        console.log('🔔 [NotificationProvider] Requesting to show notification:', title);
+
+        // NATIVE MOBILE NOTIFICATION
+        if (Capacitor.isNativePlatform()) {
+            try {
+                await LocalNotifications.schedule({
+                    notifications: [
+                        {
+                            title: title,
+                            body: body,
+                            id: new Date().getTime(),
+                            schedule: { at: new Date(Date.now() + 100) }, // Schedule slightly in future
+                            sound: 'notification.mp3',
+                            channelId: 'orders', // Critical for Android 8+
+                            smallIcon: 'ic_stat_icon_config_sample', // Ensure this or a default exists
+                            actionTypeId: '',
+                            extra: null
+                        }
+                    ]
+                });
+                console.log('🔔 [NotificationProvider] Native notification scheduled');
+            } catch (e) {
+                console.error('🔔 [NotificationProvider] Failed to schedule native notification:', e);
+            }
+            return;
+        }
+
+        // WEB BROWSER NOTIFICATION
+        if (!('Notification' in window)) {
+            console.log('🔔 [NotificationProvider] This browser does not support desktop notifications');
+            return;
+        }
+
+        if (Notification.permission === 'granted') {
+            try {
+                new Notification(title, { body, icon: '/logo.png' });
+            } catch (e) {
+                console.error('🔔 [NotificationProvider] Failed to show OS notification:', e);
+            }
+        }
+    }, []);
+
+    const handleNewOrder = useCallback((data: any) => {
+        console.log('🔔 [NotificationProvider] RAW newOrder event:', data);
+
+        if (!user) {
+            console.log('🔕 [NotificationProvider] No active user, skipping notification');
+            return;
+        }
+
+        const userRole = user.role?.toLowerCase() || '';
+        console.log(`🔔 [NotificationProvider] Processing for user role: ${userRole}`);
+
+        // Staff roles that should be notified of ALL new orders
+        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
+
+        const orderType = (data.order?.orderType || data.orderType || 'unknown').toLowerCase();
+        const isDeliveryOrder = orderType === 'delivery';
+        const shouldNotifyDelivery = userRole === 'delivery' && isDeliveryOrder;
+
+        // Customer check
+        const isCustomer = userRole === 'customer';
+        const orderCustomerId = data.order?.customerUser || data.order?.customer?.userId;
+        const currentUserId = user.sub || user._id || user.id;
+        const isOwnOrder = isCustomer && (orderCustomerId === currentUserId);
+
+        const isStaff = staffRoles.includes(userRole);
+
+        console.log(`🔔 [NotificationProvider] Checks: IsStaff=${isStaff}, IsDelivery=${shouldNotifyDelivery}, IsOwnOrder=${isOwnOrder}`);
+
+        // If not any of the target groups, logic might return, BUT for debugging we will show toasts anyway if meaningful
+        // or strictly follow logic. strict logic:
+        if (!isStaff && !shouldNotifyDelivery && !isOwnOrder) {
+            console.log('🔕 [NotificationProvider] User not eligible.');
+            return;
+        }
+
+        // Play sound
+        playNotificationSound();
+
+        // Format Order Type
+        const formatOrderType = (type: string) => {
+            switch (type) {
+                case 'dine_in': return 'Dine-in';
+                case 'takeaway': return 'Takeaway';
+                case 'delivery': return 'Delivery';
+                case 'online_takeaway': return 'Online Takeaway';
+                default: return 'Order';
+            }
+        };
+        const typeLabel = formatOrderType(orderType);
+        const orderNumber = data.order?.orderNumber || data.orderId || 'N/A';
+
+        let title = `New ${typeLabel} Order!`;
+        let body = `Order #${orderNumber}`;
+
+        if (isOwnOrder) {
+            title = 'Order Placed!';
+            body = `Your order #${orderNumber} is placed.`;
+        }
+
+        console.log(`✅ [NotificationProvider] Showing notification: ${title}`);
+
+        // Show OS / Native Notification
+        showNotification(title, body);
+
+        // Show Toast
+        toast.custom((t) => (
+            <Box
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2,
+                    bgcolor: 'primary.main',
+                    color: 'white',
+                    p: 2,
+                    borderRadius: 2,
+                    boxShadow: 3,
+                    minWidth: 300,
+                    cursor: 'pointer'
+                }}
+                onClick={() => toast.dismiss(t.id)}
+            >
+                <RestaurantIcon />
+                <Box sx={{ flexGrow: 1 }}>
+                    <Typography variant="subtitle1" fontWeight="bold">{title}</Typography>
+                    <Typography variant="body2">{body}</Typography>
+                </Box>
+                <IconButton size="small" sx={{ color: 'white' }}>
+                    <CloseIcon />
+                </IconButton>
+            </Box>
+        ), { duration: 5000, position: 'top-right' });
+
+        // Add to local state list
+        const newNotif: Notification = {
+            id: data.order?._id || Date.now(),
+            timestamp: new Date(),
+            read: false,
+            type: 'order',
+            title,
+            message: body,
+            priority: 'high',
+            data: data,
+        };
+        setNotifications(prev => [newNotif, ...prev].slice(0, 50));
+
+    }, [user, playNotificationSound, showNotification]);
+
+    const handleOrderStatusUpdate = useCallback((data: any) => {
+        console.log('🔔 [NotificationProvider] RAW orderStatusUpdate event:', data);
+        if (!user) return;
+
+        const userRole = user.role?.toLowerCase() || '';
+        const orderType = (data.order?.orderType || data.orderType || '').toLowerCase();
+        const currentUserId = user.sub || user._id || user.id;
+
+        // Simple permissions check
+        const isStaff = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'].includes(userRole);
+        const isCustomer = userRole === 'customer';
+        const isOwnOrder = isCustomer && (data.order?.customerUser === currentUserId || data.order?.customer?.userId === currentUserId);
+        const isDelivery = userRole === 'delivery' && orderType === 'delivery';
+
+        if (!isStaff && !isOwnOrder && !isDelivery) {
+            console.log('🔕 [NotificationProvider] User not eligible for status update.');
+            return;
+        }
+
+        playNotificationSound();
+
+        const orderNumber = data.order?.orderNumber || data.orderNumber || 'N/A';
+        const status = data.status || 'Updated';
+        const title = 'Order Update';
+        let message = `Order #${orderNumber} is now ${status}`;
+
+        if (isOwnOrder) {
+            message = `Your order #${orderNumber} is ${status}`;
+        }
+
+        showNotification(title, message);
+
+        toast.custom((t) => (
+            <Box
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2,
+                    bgcolor: 'info.main', // Different color for update
+                    color: 'white',
+                    p: 2,
+                    borderRadius: 2,
+                    boxShadow: 3,
+                    minWidth: 300,
+                }}
+                onClick={() => toast.dismiss(t.id)}
+            >
+                <RestaurantIcon />
+                <Box sx={{ flexGrow: 1 }}>
+                    <Typography variant="subtitle1" fontWeight="bold">{title}</Typography>
+                    <Typography variant="body2">{message}</Typography>
+                </Box>
+                <IconButton size="small" sx={{ color: 'white' }}><CloseIcon /></IconButton>
+            </Box>
+        ), { duration: 5000 });
+
+        const newNotif: Notification = {
+            id: 'status-' + Date.now(),
+            timestamp: new Date(),
+            read: false,
+            type: 'status',
+            title,
+            message,
+            priority: 'medium',
+            data: data,
+        };
+        setNotifications(prev => [newNotif, ...prev].slice(0, 50));
+
+    }, [user, playNotificationSound, showNotification]);
+
+    const [deliveryLocations, setDeliveryLocations] = useState<Record<string, { lat: number, lng: number, timestamp: Date }>>({});
+
+    const handleLocationUpdate = useCallback((data: { orderId: string, location: { lat: number, lng: number }, timestamp: string | Date }) => {
+        setDeliveryLocations(prev => ({
+            ...prev,
+            [data.orderId]: {
+                ...data.location,
+                timestamp: new Date(data.timestamp)
+            }
+        }));
+    }, []);
+
+    const trackOrder = useCallback((orderId: string, lat: number, lng: number) => {
+        socketService.emit('updateLocation', { orderId, lat, lng });
+    }, []);
+
+    // Effect to manage socket connection
+    useEffect(() => {
+        // Request permissions and create channel
+        const setupNotifications = async () => {
+            if (Capacitor.isNativePlatform()) {
+                // Request Permission
+                const permResult = await LocalNotifications.requestPermissions();
+                if (permResult.display !== 'granted') {
+                    console.log('🔔 [NotificationProvider] Native notification permission denied');
+                }
+
+                // Create Channel (Required for Android O+)
+                await LocalNotifications.createChannel({
+                    id: 'orders',
+                    name: 'Order Notifications',
+                    description: 'Notifications for new orders and updates',
+                    importance: 5, // High importance for heads-up notification
+                    visibility: 1, // Public on lock screen
+                    sound: 'notification.mp3', // Make sure this matches file in res/raw if custom
+                    vibration: true,
+                });
+                console.log('🔔 [NotificationProvider] Notification channel created');
+            } else if ('Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+        };
+        setupNotifications();
+
+        const token = localStorage.getItem('jwt');
+        if (!token || !user) {
+            console.log('🔔 [NotificationProvider] No token or user, skipping socket connect');
+            return;
+        }
+
+        console.log('🔌 [NotificationProvider] Initiating socket connection...');
+
+        // Always ensure we are fresh
+        if (socketService.isConnected()) {
+            socketService.disconnect();
+        }
+
+        socketService.connect(token);
+
+        // Debug connection
+        setTimeout(() => {
+            console.log('🔌 [NotificationProvider] Socket connected state:', socketService.isConnected());
+        }, 1000);
+
+        socketService.on('newOrder', handleNewOrder);
+        socketService.on('orderStatusUpdate', handleOrderStatusUpdate);
+        socketService.on('locationUpdate', handleLocationUpdate);
+
+        return () => {
+            console.log('🔌 [NotificationProvider] Cleanup: removing listeners');
+            socketService.off('newOrder', handleNewOrder);
+            socketService.off('orderStatusUpdate', handleOrderStatusUpdate);
+            socketService.off('locationUpdate', handleLocationUpdate);
+            // Optional: disconnect on unmount? Better to keep it alive? 
+            // Usually disconnecting is safer to prevent duplicate handlers if remounted.
+            socketService.disconnect();
+        };
+    }, [user?.sub, user?.role, handleNewOrder, handleOrderStatusUpdate]); // Re-connect only if identity changes
+
+    const clearNotifications = useCallback(() => setNotifications([]), []);
+    const markAsRead = useCallback((id: string | number) => {
+        setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    }, []);
+    const markAllAsRead = useCallback(() => {
+        setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    }, []);
+
+    const testNotification = useCallback(() => {
+        console.log('🔔 Testing notification system...');
+        playNotificationSound();
+        showNotification('Test System', 'Notifications are working!');
+        toast.success('Test Notification Works!');
+        setNotifications(prev => [{
+            id: 'test-' + Date.now(),
+            timestamp: new Date(),
+            read: false,
+            type: 'system',
+            title: 'Test',
+            message: 'System test',
+            priority: 'low'
+        }, ...prev]);
+    }, [playNotificationSound, showNotification]);
+
+    return (
+        <NotificationContext.Provider value={{
+            notifications,
+            clearNotifications,
+            markAsRead,
+            markAllAsRead,
+            testNotification,
+            deliveryLocations,
+            trackOrder
+        }}>
+            {children}
+            <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
+        </NotificationContext.Provider>
+    );
+};

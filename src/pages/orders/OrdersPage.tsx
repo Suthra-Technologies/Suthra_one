@@ -1,0 +1,602 @@
+import {
+  Event as EventIcon,
+  Info as InfoIcon,
+  RestaurantMenu as MenuIcon,
+  People as PeopleIcon,
+  Refresh as RefreshIcon,
+  Search as SearchIcon,
+  TableRestaurant as TableIcon,
+  AccessTime as TimeIcon,
+} from '@mui/icons-material';
+import {
+  alpha,
+  Box,
+  Button,
+  Chip,
+  CircularProgress,
+  FormControl,
+  IconButton,
+  InputAdornment,
+  InputLabel,
+  MenuItem,
+  Pagination,
+  Paper,
+  Select,
+  Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Tabs,
+  TextField,
+  Tooltip,
+  Typography,
+  useTheme
+} from '@mui/material';
+import Grid from '@mui/material/Grid2';
+import React, { useEffect, useState } from 'react';
+import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
+import OrderCard from '../../components/OrderCard';
+import OrderDetailsDialog from '../../components/OrderDetailsDialog';
+import OrderTrackingDialog from '../../components/OrderTrackingDialog';
+import OrderUpdateDialog from '../../components/OrderUpdateDialog';
+import PrintBillDialog from '../../components/PrintBillDialog';
+import { useAuth } from '../../context/AuthContext';
+import { bookingsAPI, ordersAPI } from '../../services/api';
+
+interface Booking {
+  _id: string;
+  bookingId: string;
+  table: {
+    name: string;
+    number: number;
+  };
+  date: string;
+  timeSlot: {
+    requested: string;
+    start: string;
+    end: string;
+  };
+  guests: number;
+  status: string;
+  specialRequests: string;
+  createdAt: string;
+}
+
+const OrdersPage = () => {
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  // Use local date for default
+  const [dateFilter, setDateFilter] = useState(() => {
+    const now = new Date();
+    return new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+  });
+
+  // Customer tabs - 0: Orders, 1: Bookings
+  const [activeTab, setActiveTab] = useState(0);
+  // POS tabs - 0: Current Orders, 1: Pre Orders
+  const [posActiveTab, setPosActiveTab] = useState(0);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [bookingsLoading, setBookingsLoading] = useState(false);
+
+  // Dialog states
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
+  const [trackingDialogOpen, setTrackingDialogOpen] = useState(false);
+  const [printDialogOpen, setPrintDialogOpen] = useState(false);
+
+  const theme = useTheme();
+  const navigate = useNavigate();
+  const { user, tenantSlug } = useAuth();
+  const isCustomer = user?.role === 'customer';
+  const canManageOrders = user?.role === 'admin' || user?.role === 'manager' || user?.role === 'cashier' || user?.role === 'food_runner' || user?.role === 'waiter' || user?.role === 'delivery';
+
+  const fetchOrders = async () => {
+    setLoading(true);
+    try {
+      // For delivery role, always filter to delivery orders only
+      const effectiveTypeFilter = user?.role === 'delivery' ? 'delivery' : typeFilter;
+
+      // Calculate start and end for the selected day in LOCAL time
+      const start = new Date(`${dateFilter}T00:00:00`);
+      const end = new Date(`${dateFilter}T23:59:59.999`);
+
+      const response = await ordersAPI.filter({
+        status: statusFilter,
+        orderType: effectiveTypeFilter,
+        search: searchQuery,
+        startDate: start.toISOString(),
+        endDate: end.toISOString(),
+        isPreOrder: (!isCustomer && posActiveTab === 1) ? true : (!isCustomer && posActiveTab === 0 ? false : undefined),
+        page,
+        limit: 10
+      });
+      setOrders(response.data.orders);
+      setTotalPages(response.data.totalPages);
+    } catch (error) {
+      console.error('Error fetching orders:', error);
+      toast.error('Failed to load orders');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchBookings = async () => {
+    if (!isCustomer) return;
+
+    try {
+      setBookingsLoading(true);
+      const response = await bookingsAPI.getAll();
+      setBookings(response.data);
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+      toast.error('Failed to load bookings');
+    } finally {
+      setBookingsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders();
+    if (isCustomer) {
+      fetchBookings();
+    }
+  }, [page, statusFilter, typeFilter, dateFilter, posActiveTab]);
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchOrders();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const handleView = (order: any) => {
+    setSelectedOrder(order);
+    if (isCustomer) {
+      setTrackingDialogOpen(true);
+    } else {
+      setDetailsDialogOpen(true);
+    }
+  };
+
+  const handleUpdate = (order: any) => {
+    setSelectedOrder(order);
+    setUpdateDialogOpen(true);
+  };
+
+  const handlePrint = (order: any) => {
+    setSelectedOrder(order);
+    setPrintDialogOpen(true);
+  };
+
+  const handleOrderUpdate = () => {
+    fetchOrders();
+    handleDialogClose();
+  };
+
+  const handleDialogClose = () => {
+    setDetailsDialogOpen(false);
+    setUpdateDialogOpen(false);
+    setPrintDialogOpen(false);
+    setTrackingDialogOpen(false);
+    setSelectedOrder(null);
+  };
+  const handleAddItem = (order: any) => {
+    console.log("Adding items to:", order);
+  };
+
+  const handleAcceptPreOrder = async (orderId: string) => {
+    try {
+      await ordersAPI.updateStatus(orderId, 'confirmed');
+      toast.success('Pre-order accepted');
+      fetchOrders();
+    } catch {
+      toast.error('Failed to accept pre-order');
+    }
+  };
+
+  const handleRejectPreOrder = async (orderId: string) => {
+    try {
+      await ordersAPI.updateStatus(orderId, 'cancelled');
+      toast.success('Pre-order rejected');
+      fetchOrders();
+    } catch {
+      toast.error('Failed to reject pre-order');
+    }
+  };
+
+
+  const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
+    setActiveTab(newValue);
+  };
+
+  const handleBookTable = () => {
+    const path = tenantSlug ? `/${tenantSlug}/customer/book-table` : '/customer/book-table';
+    navigate(path);
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'confirmed': return 'success';
+      case 'pending': return 'warning';
+      case 'cancelled': return 'error';
+      case 'completed': return 'info';
+      default: return 'default';
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString(undefined, {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const renderOrdersContent = () => (
+    <>
+      {/* Filters */}
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid size={{ xs: 12, md: 3 }}>
+            <TextField
+              fullWidth
+              placeholder="Search by Order #, Name or Phone"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon color="action" />
+                  </InputAdornment>
+                ),
+              }}
+              size="small"
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <TextField
+              fullWidth
+              label="Date"
+              type="date"
+              size="small"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              InputLabelProps={{ shrink: true }}
+            />
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <FormControl fullWidth size="small">
+              <InputLabel>Status</InputLabel>
+              <Select
+                value={statusFilter}
+                label="Status"
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <MenuItem value="all">All Statuses</MenuItem>
+                <MenuItem value="pending">Pending</MenuItem>
+                <MenuItem value="confirmed">Confirmed</MenuItem>
+                <MenuItem value="preparing">Preparing</MenuItem>
+                <MenuItem value="ready">Ready</MenuItem>
+                <MenuItem value="served">Served</MenuItem>
+                <MenuItem value="completed">Completed</MenuItem>
+                <MenuItem value="cancelled">Cancelled</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+          {user?.role !== 'delivery' && (
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Order Type</InputLabel>
+                <Select
+                  value={typeFilter}
+                  label="Order Type"
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                >
+                  <MenuItem value="all">All Types</MenuItem>
+                  <MenuItem value="dine_in">Global Dine In</MenuItem>
+                  <MenuItem value="takeaway">Global Takeaway</MenuItem>
+                  <MenuItem value="delivery">Delivery</MenuItem>
+                  <MenuItem value="online">Online</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          )}
+        </Grid>
+      </Paper>
+
+      {/* Orders Grid */}
+      {loading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
+          <CircularProgress />
+        </Box>
+      ) : orders.length === 0 ? (
+        <Paper sx={{ p: 5, textAlign: 'center' }}>
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            No orders found matching your criteria.
+          </Typography>
+          {isCustomer && (
+            <Button
+              variant="contained"
+              startIcon={<MenuIcon />}
+              onClick={() => {
+                const path = tenantSlug ? `/${tenantSlug}/customer/order` : '/customer/order';
+                navigate(path);
+              }}
+              sx={{ mt: 2 }}
+            >
+              Browse Menu & Order
+            </Button>
+          )}
+        </Paper>
+      ) : (
+        <Grid container spacing={3}>
+          {orders.map((order) => (
+            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }} key={order._id}>
+              {/* Pre-order accept/reject row for POS Pre Orders tab */}
+              {!isCustomer && posActiveTab === 1 && order.status === 'pending' && (
+                <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+                  <Button
+                    variant="contained"
+                    color="success"
+                    size="small"
+                    fullWidth
+                    onClick={() => handleAcceptPreOrder(order._id)}
+                    sx={{ fontWeight: 'bold', borderRadius: 2 }}
+                  >
+                    ✓ Accept
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    size="small"
+                    fullWidth
+                    onClick={() => handleRejectPreOrder(order._id)}
+                    sx={{ fontWeight: 'bold', borderRadius: 2 }}
+                  >
+                    ✕ Reject
+                  </Button>
+                </Box>
+              )}
+              <OrderCard
+                order={order}
+                onView={() => handleView(order)}
+                onUpdate={() => handleUpdate(order)}
+                onPrint={() => handlePrint(order)}
+                onAddItem={() => handleAddItem(order)}
+                canManage={canManageOrders}
+                onRefresh={fetchOrders}
+              />
+            </Grid>
+          ))}
+        </Grid>
+
+      )}
+
+      {/* Pagination */}
+      {totalPages > 0 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+          <Pagination
+            count={totalPages}
+            page={page}
+            onChange={(_, p) => setPage(p)}
+            color="primary"
+            size="large"
+          />
+        </Box>
+      )}
+    </>
+  );
+
+  const renderBookingsContent = () => (
+    <>
+      {bookingsLoading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
+          <CircularProgress />
+        </Box>
+      ) : bookings.length === 0 ? (
+        <Paper sx={{ p: 5, textAlign: 'center' }}>
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            You haven't made any table bookings yet.
+          </Typography>
+          <Button
+            variant="contained"
+            startIcon={<TableIcon />}
+            onClick={handleBookTable}
+            sx={{ mt: 2 }}
+          >
+            Book a Table
+          </Button>
+        </Paper>
+      ) : (
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Booking ID</TableCell>
+                <TableCell>Date & Time</TableCell>
+                <TableCell>Table</TableCell>
+                <TableCell>Guests</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Requests</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {bookings.map((booking) => (
+                <TableRow key={booking._id} hover>
+                  <TableCell>
+                    <Typography variant="body2" fontWeight="bold">
+                      {booking.bookingId}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      Booked on {formatDate(booking.createdAt)}
+                    </Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <EventIcon fontSize="small" color="action" />
+                      {formatDate(booking.date)}
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                      <TimeIcon fontSize="small" color="action" />
+                      {booking.timeSlot.requested}
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    {booking.table ? (
+                      <Chip label={booking.table.name} size="small" variant="outlined" />
+                    ) : (
+                      <Typography variant="body2" color="error">Table Removed</Typography>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <PeopleIcon fontSize="small" color="action" />
+                      {booking.guests}
+                    </Box>
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={booking.status.toUpperCase()}
+                      color={getStatusColor(booking.status) as any}
+                      size="small"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    {booking.specialRequests ? (
+                      <Tooltip title={booking.specialRequests}>
+                        <InfoIcon color="action" fontSize="small" />
+                      </Tooltip>
+                    ) : (
+                      '-'
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+    </>
+  );
+
+  return (
+    <Box sx={{ p: 3 }}>
+      <Box sx={{
+        display: 'flex',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        mb: 3,
+        gap: 2
+      }}>
+        <Typography variant="h4" sx={{ fontWeight: 'bold', color: theme.palette.primary.main, fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
+          {isCustomer ? 'My Orders & Bookings' : 'Orders Management'}
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+          {isCustomer && (
+            <>
+              <Button
+                variant="contained"
+                startIcon={<MenuIcon />}
+                onClick={() => {
+                  const path = tenantSlug ? `/${tenantSlug}/customer/order` : '/customer/order';
+                  navigate(path);
+                }}
+                size={isCustomer ? "small" : "medium"}
+              >
+                Order Now
+              </Button>
+              <Button
+                variant="outlined"
+                startIcon={<TableIcon />}
+                onClick={handleBookTable}
+              >
+                Book a Table
+              </Button>
+            </>
+          )}
+          <Tooltip title={isCustomer && activeTab === 1 ? "Refresh Bookings" : "Refresh Orders"}>
+            <IconButton
+              onClick={() => {
+                if (isCustomer && activeTab === 1) {
+                  fetchBookings();
+                } else {
+                  fetchOrders();
+                }
+              }}
+              sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1) }}
+            >
+              <RefreshIcon color="primary" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      </Box>
+
+      {/* Customer Tabs */}
+      {isCustomer && (
+        <Paper sx={{ mb: 3 }}>
+          <Tabs value={activeTab} onChange={handleTabChange} variant="fullWidth">
+            <Tab label="My Orders" icon={<MenuIcon />} iconPosition="start" />
+            <Tab label="My Bookings" icon={<TableIcon />} iconPosition="start" />
+          </Tabs>
+        </Paper>
+      )}
+
+      {/* POS Tabs */}
+      {!isCustomer && (
+        <Paper sx={{ mb: 3 }}>
+          <Tabs value={posActiveTab} onChange={(_, newVal) => setPosActiveTab(newVal)} variant="fullWidth">
+            <Tab label="Current Orders" icon={<TimeIcon />} iconPosition="start" />
+            <Tab label="Pre Orders" icon={<EventIcon />} iconPosition="start" />
+          </Tabs>
+        </Paper>
+      )}
+
+      {/* Content */}
+      {isCustomer ? (
+        activeTab === 0 ? renderOrdersContent() : renderBookingsContent()
+      ) : (
+        renderOrdersContent()
+      )}
+
+      {/* Dialogs */}
+      <OrderDetailsDialog
+        open={detailsDialogOpen}
+        order={selectedOrder}
+        onClose={handleDialogClose}
+        onUpdate={handleOrderUpdate}
+      />
+      <OrderTrackingDialog
+        open={trackingDialogOpen}
+        order={selectedOrder}
+        onClose={handleDialogClose}
+      />
+      <OrderUpdateDialog
+        open={updateDialogOpen}
+        order={selectedOrder}
+        onClose={handleDialogClose}
+        onUpdate={handleOrderUpdate}
+      />
+      <PrintBillDialog
+        open={printDialogOpen}
+        order={selectedOrder}
+        onClose={handleDialogClose}
+      />
+    </Box>
+  );
+};
+
+export default OrdersPage;
