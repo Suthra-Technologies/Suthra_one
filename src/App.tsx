@@ -12,6 +12,7 @@ import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import CustomerOrderPage from './pages/customer/CustomerOrderPage';
 import MyBookingsPage from './pages/customer/MyBookingsPage';
 import TableBookingPage from './pages/customer/TableBookingPage';
+import CheckoutPage from './pages/CheckoutPage';
 import DashboardPage from './pages/DashboardPage';
 import GuestPOSPage from './pages/guest/GuestPOSPage';
 import InventoryPage from './pages/inventory/InventoryPage';
@@ -73,6 +74,7 @@ import VendorsPage from './pages/vendors/VendorsPage';
 import { SettingsProvider, useSettings } from './context/SettingsContext';
 
 import CustomerRegisterPage from './pages/auth/CustomerRegisterPage';
+import { GuestCartProvider } from './context/GuestCartContext';
 
 const ThemedAppContent: React.FC = () => {
   const { settings } = useSettings();
@@ -125,6 +127,7 @@ const ThemedAppContent: React.FC = () => {
               {/* ─── Customer Routes (No Sidebar, Single Page Layout) ─── */}
               <Route element={<CustomerLayout />}>
                 <Route path="customer/order" element={<CustomerOrderPage />} />
+                <Route path="customer/checkout" element={<CheckoutPage />} />
                 <Route path="customer/book-table" element={<TableBookingPage />} />
                 <Route path="customer/bookings" element={<MyBookingsPage />} />
                 {/* Guest-accessible customer catering routes */}
@@ -210,7 +213,9 @@ const App: React.FC = () => {
     <Router>
       <AuthProvider>
         <SettingsProvider>
-          <ThemedAppContent />
+          <GuestCartProvider>
+            <ThemedAppContent />
+          </GuestCartProvider>
         </SettingsProvider>
       </AuthProvider>
     </Router>

@@ -288,6 +288,36 @@ const OrderTrackingDialog: React.FC<OrderTrackingDialogProps> = ({ open, order: 
                     </Box>
                 )}
 
+                {/* Items List */}
+                <Box sx={{ p: 2, bgcolor: 'background.paper' }}>
+                    <Typography variant="subtitle2" gutterBottom fontWeight="bold">Ordered Items</Typography>
+                    <Stack spacing={1.5}>
+                        {order.items?.map((item: any, index: number) => (
+                            <Box key={index} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <Box>
+                                    <Typography variant="body2" fontWeight="500">{item.name} x {item.quantity}</Typography>
+                                    {item.spiceLevel && (
+                                        <Chip
+                                            label={`Spice: ${item.spiceLevel}`}
+                                            size="small"
+                                            color="warning"
+                                            variant="outlined"
+                                            sx={{ mt: 0.5, height: 20, fontSize: '0.65rem', fontWeight: 'bold' }}
+                                        />
+                                    )}
+                                    {item.customizations?.length > 0 && (
+                                        <Typography variant="caption" color="text.secondary" display="block">
+                                            {item.customizations.map((c: any) => c.name).join(', ')}
+                                        </Typography>
+                                    )}
+                                </Box>
+                                <Typography variant="body2" fontWeight="600">{formatCurrency(item.itemTotal || (item.price * item.quantity))}</Typography>
+                            </Box>
+                        ))}
+                    </Stack>
+                </Box>
+                <Divider />
+
                 {/* Order Summary */}
                 <Box sx={{ p: 2, bgcolor: 'grey.50' }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
@@ -319,7 +349,7 @@ const OrderTrackingDialog: React.FC<OrderTrackingDialogProps> = ({ open, order: 
                         </Typography>
                     </Box>
                     <Typography variant="caption" color="text.secondary">
-                        {order.items?.length} items • {order.paymentMethod?.toUpperCase()} • {order.paymentStatus}
+                        {order.paymentMethod?.toUpperCase()} • {order.paymentStatus}
                     </Typography>
                 </Box>
             </DialogContent>

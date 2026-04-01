@@ -41,7 +41,7 @@ import {
   Home as HomeIcon,
   Work as WorkIcon,
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { useGuestCart } from '../context/GuestCartContext';
@@ -64,6 +64,7 @@ interface DeliveryInfo {
 }
 
 const CheckoutPage: React.FC = () => {
+  const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { settings } = useSettings();
@@ -90,10 +91,14 @@ const CheckoutPage: React.FC = () => {
 
   // Redirect if cart empty
   useEffect(() => {
-    if (cart.items.length === 0) {
-      navigate('/menu');
+    if (cart.items.length === 0 && activeStep === 0) {
+      if (slug) {
+        navigate(`/${slug}/customer/order`);
+      } else {
+        navigate('/login');
+      }
     }
-  }, [cart.items.length, navigate]);
+  }, [cart.items.length, navigate, slug, activeStep]);
 
   // Auto‑skip account step for logged‑in users
   useEffect(() => {
@@ -186,24 +191,53 @@ const CheckoutPage: React.FC = () => {
 
   const handlePlaceOrder = async () => {
     try {
+      const isPaidMethod = paymentMethod === 'card' || paymentMethod === 'qr';
       const orderData = {
-        items: cart.items,
+        items: cart.items.map(item => ({
+            menuItem: item.id,
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+            itemTotal: item.itemTotal,
+            customizations: item.customizations || [],
+            spiceLevel: item.spiceLevel || 'medium'
+        })),
         orderType: orderType === 'delivery' ? 'delivery' : 'takeaway',
         paymentMethod,
+        paymentStatus: isPaidMethod ? 'paid' : 'pending',
+        status: isPaidMethod ? 'confirmed' : 'pending',
         deliveryAddress: orderType === 'delivery' ? deliveryInfo.address : null,
-        customerInfo: user || {
-          phone: deliveryInfo.phone,
-          notes: deliveryInfo.notes,
+        customer: user ? {
+            _id: user._id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            name: `${user.firstName} ${user.lastName}`.trim(),
+            email: user.email,
+            phone: deliveryInfo.phone || user.phone
+        } : {
           firstName: 'Guest',
           lastName: 'User',
+          name: 'Guest User',
+          phone: deliveryInfo.phone,
+          email: '', // guest email if available
+          notes: deliveryInfo.notes,
         },
         total: cart.totalAmount,
         tip: orderType === 'delivery' ? Number(deliveryInfo.tip) || 0 : 0,
       };
       await ordersAPI.create(orderData);
       clearCart();
-      toast.success('Order placed successfully!');
-      navigate('/order-confirmation');
+      toast.success('Order placed successfully!', {
+          duration: 5000,
+          position: 'top-center',
+          style: { background: '#2ecc71', color: '#fff', fontWeight: 'bold' }
+      });
+      // Redirect back to menu or track order page
+      if (slug) {
+        navigate(`/${slug}/customer/order`);
+      } else {
+        navigate('/');
+      }
     } catch (err: any) {
       // Prioritize 'error' field which contains subscription limit messages
       const errorMessage = err.response?.data?.error || err.response?.data?.message || 'Failed to place order. Please try again.';
@@ -225,8 +259,17 @@ const CheckoutPage: React.FC = () => {
               <Typography variant="body2" color="text.secondary">
                 Quantity: {item.quantity} × ${item.price.toFixed(2)}
               </Typography>
+              {item.spiceLevel && (
+                <Chip 
+                  size="small" 
+                  label={`Spice: ${item.spiceLevel}`} 
+                  color="warning" 
+                  variant="outlined" 
+                  sx={{ mt: 0.5, fontWeight: 'bold', textTransform: 'capitalize' }} 
+                />
+              )}
               {item.customizations.length > 0 && (
-                <Typography variant="caption" color="text.secondary">
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
                   {item.customizations.map((c: any) => c.name).join(', ')}
                 </Typography>
               )}

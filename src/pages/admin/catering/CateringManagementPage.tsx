@@ -2278,7 +2278,7 @@ const CateringManagementPage = () => {
                         return (
                             <Box>
                                 {/* Horizontal Stepper Header */}
-                              <Stepper
+                                <Stepper
                                     activeStep={activeStep}
                                     alternativeLabel
                                     sx={{

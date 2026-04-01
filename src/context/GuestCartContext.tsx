@@ -9,6 +9,7 @@ export interface CartItem {
   category?: string;
   quantity: number;
   customizations?: any[];
+  spiceLevel?: string;
   itemTotal: number;
 }
 
@@ -31,7 +32,7 @@ export interface CartState {
 
 export interface GuestCartContextType {
   cart: CartState;
-  addItem: (item: any, quantity?: number, customizations?: any[]) => void;
+  addItem: (item: any, quantity?: number, customizations?: any[], spiceLevel?: string) => void;
   removeItem: (index: number) => void;
   updateQuantity: (index: number, quantity: number) => void;
   clearCart: () => void;
@@ -76,11 +77,12 @@ const initialState: CartState = {
 function cartReducer(state: CartState, action: any): CartState {
   switch (action.type) {
     case CART_ACTIONS.ADD_ITEM: {
-      const { item, quantity = 1, customizations = [] } = action.payload;
+      const { item, quantity = 1, customizations = [], spiceLevel } = action.payload;
       const existingItemIndex = state.items.findIndex(
         cartItem =>
           cartItem.id === item._id &&
-          JSON.stringify(cartItem.customizations) === JSON.stringify(customizations)
+          JSON.stringify(cartItem.customizations) === JSON.stringify(customizations) &&
+          cartItem.spiceLevel === spiceLevel
       );
       let updatedItems;
       if (existingItemIndex >= 0) {
@@ -98,6 +100,7 @@ function cartReducer(state: CartState, action: any): CartState {
           category: item.category,
           quantity,
           customizations,
+          spiceLevel: spiceLevel || state.customerPreferences.spiceLevel,
           itemTotal: (item.price + customizations.reduce((sum: number, c: any) => sum + (c.price || 0), 0)) * quantity,
         };
         updatedItems = [...state.items, newItem];
@@ -167,6 +170,7 @@ export const GuestCartProvider = ({ children }: { children: ReactNode }) => {
               },
               quantity: item.quantity,
               customizations: item.customizations,
+              spiceLevel: item.spiceLevel,
             },
           });
         });
@@ -176,8 +180,8 @@ export const GuestCartProvider = ({ children }: { children: ReactNode }) => {
     }
   }, []);
 
-  const addItem = (item: any, quantity = 1, customizations: any[] = []) => {
-    dispatch({ type: CART_ACTIONS.ADD_ITEM, payload: { item, quantity, customizations } });
+  const addItem = (item: any, quantity = 1, customizations: any[] = [], spiceLevel?: string) => {
+    dispatch({ type: CART_ACTIONS.ADD_ITEM, payload: { item, quantity, customizations, spiceLevel } });
   };
 
   const removeItem = (index: number) => {
