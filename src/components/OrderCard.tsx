@@ -8,6 +8,7 @@ import {
     Person as PersonIcon,
     Receipt as ReceiptIcon,
     Restaurant as RestaurantIcon,
+    Star as StarIcon,
     AccessTime as TimeIcon,
     Visibility as ViewIcon,
     Cancel as CancelIcon,
@@ -34,10 +35,11 @@ import {
     Typography,
     useTheme
 } from '@mui/material';
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-hot-toast';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { feedbackAPI } from '../services/api';
 import { useSettings } from '../context/SettingsContext';
 import { ordersAPI } from '../services/api';
 import {
@@ -65,6 +67,7 @@ interface OrderCardProps {
     onAddItem: (order: any) => void;
     canManage?: boolean;
     onRefresh?: () => void;
+    onFeedback?: (orderId: string) => void;
 }
 
 const OrderCard: React.FC<OrderCardProps> = ({
@@ -75,6 +78,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
     onAddItem,
     canManage = true,
     onRefresh,
+    onFeedback,
 }) => {
     const { formatCurrency } = useSettings();
     const [addItemsDialogOpen, setAddItemsDialogOpen] = useState(false);
@@ -85,7 +89,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
     const [itemToDeleteIndex, setItemToDeleteIndex] = useState<number | null>(null);
     const [expanded, setExpanded] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
-    const { user } = useAuth();
+    const { user , tenantSlug } = useAuth();
     const isDeliveryBoy = user?.role === 'delivery';
 
     const canAddMoreItems = canAddItems(order.status, order.orderType, order);
@@ -167,6 +171,30 @@ const OrderCard: React.FC<OrderCardProps> = ({
     const theme = useTheme();
     const navigate = useNavigate();
     const { slug } = useParams();
+     const [hasFeedback, setHasFeedback] = useState(false);
+    const mountedRef = useRef(true);
+
+    useEffect(() => {
+        mountedRef.current = true;
+        return () => { mountedRef.current = false; };
+    }, []);
+
+    useEffect(() => {
+        let mounted = true;
+        const checkFeedback = async () => {
+            if (!(order.orderType === 'dine_in' && order.status === 'completed')) return;
+            try {
+                const targetSlug = order?.restaurant?.slug || tenantSlug || slug || '';
+                if (!targetSlug) return;
+                const res = await feedbackAPI.getOrderForFeedback(targetSlug, order._id);
+                if (mounted && res?.data?.hasFeedback) setHasFeedback(true);
+            } catch (err) {
+                // ignore
+            }
+        };
+        checkFeedback();
+        return () => { mounted = false; };
+    }, [order._id, order.orderType, order.status, order?.restaurant?.slug, tenantSlug, slug]);
     const getPaymentBadgeColor = (method: string | string[]) => {
         let m = method;
         if (Array.isArray(method)) {
@@ -613,6 +641,16 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                 </Typography>
                             </Box>
                         )}
+                        {order.tip > 0 && (
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Typography variant="body2" color="text.secondary">
+                                    Tip:
+                                </Typography>
+                                <Typography variant="body2" fontWeight="medium">
+                                    {formatCurrency(order.tip)}
+                                </Typography>
+                            </Box>
+                        )}
                         <Divider sx={{ my: 0.5 }} />
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <Typography variant="body1" fontWeight="bold">
@@ -674,7 +712,55 @@ const OrderCard: React.FC<OrderCardProps> = ({
                             </IconButton>
                         </Tooltip>
                     )}
+{(order.orderType === 'dine_in' && order.status === 'completed') && (
+                        <Tooltip title={hasFeedback ? 'Feedback submitted' : 'Give feedback'}>
+                            <span>
+                                <Button
+                                    size="small"
+                                    variant="outlined"
+                                    color="primary"
+                                    aria-label="Give rating"
+                                    disabled={hasFeedback}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        const targetSlug = order?.restaurant?.slug || slug || '';
+                                        const url = `${window.location.origin}/${targetSlug}/feedback/${order._id}`;
+                                        try {
+                                            window.open(url, '_blank', 'noopener');
+                                        } catch (err) {
+                                            console.error('Failed to open feedback url', err);
+                                            if (onFeedback) {
+                                                onFeedback(order._id);
+                                            } else {
+                                                window.location.href = url;
+                                            }
+                                        }
 
+                                        // Poll for feedback submission for a short period
+                                        (async () => {
+                                            const attempts = 10;
+                                            const delayMs = 2000;
+                                            for (let i = 0; i < attempts; i++) {
+                                                await new Promise(res => setTimeout(res, delayMs));
+                                                try {
+                                                    const res = await feedbackAPI.getOrderForFeedback(targetSlug, order._id);
+                                                    if (res?.data?.hasFeedback) {
+                                                        if (mountedRef.current) setHasFeedback(true);
+                                                        break;
+                                                    }
+                                                } catch (pollErr) {
+                                                    // ignore and retry
+                                                }
+                                            }
+                                        })();
+                                    }}
+                                    sx={{ textTransform: 'none', fontSize: '0.75rem', padding: '4px 8px', minWidth: '48px' }}
+                                >
+                                    {hasFeedback ? 'Rated' : 'Rating'}
+                                </Button>
+                            </span>
+                        </Tooltip>
+                    )}
                     {order.doordashDeliveryId && isOrderActive(order.status) && order.status !== 'delivered' && (
                         <Tooltip title="Sync DoorDash Status">
                             <IconButton

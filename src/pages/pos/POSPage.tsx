@@ -36,14 +36,16 @@ import {
     Radio,
     RadioGroup,
     Select,
+    Slider,
     Tab,
     Tabs,
     TextField,
     Typography,
+    alpha,
 } from '@mui/material';
 import type { AxiosError } from 'axios';
 import { format } from 'date-fns';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { toast } from 'react-hot-toast';
 import { useSearchParams } from "react-router-dom";
 import theme from 'src/theme/theme';
@@ -130,8 +132,7 @@ const POSPage: React.FC = () => {
     const [deliveryAddress, setDeliveryAddress] = useState<any>({});
     const [gstPercent, setGstPercent] = useState(settings?.restaurant?.taxRate || 5);
     const [discountPercent, setDiscountPercent] = useState(0);
-    const [tip, setTip] = useState<string | number>('');
-    const [specialInstructions, setSpecialInstructions] = useState('');
+    const [tip, setTip] = useState(0);
     const [paymentMethod, setPaymentMethod] = useState<'cash' | 'online' | 'card' | 'zelle' | 'venmo'>('cash');
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
     const [manualPaymentDialogOpen, setManualPaymentDialogOpen] = useState(false);
@@ -362,8 +363,6 @@ const POSPage: React.FC = () => {
         setTableNumber("");
         setGuestCount(1);
         setWaiterName("");
-        setTip('');
-        setSpecialInstructions("");
 
         setSelectedTable(null);   // ✅ important
         setCardPrintReceipt(false);
@@ -423,7 +422,15 @@ const POSPage: React.FC = () => {
             if (cName) setCustomerName(cName);
 
             const cPhone = searchParams.get("customerPhone");
-            if (cPhone) setCustomerPhone(cPhone);
+            if (cPhone) {
+                const digits = cPhone.replace(/\D/g, '');
+                if (cPhone.startsWith('+')) {
+                    setCustomerDialCode(digits.slice(0, -10));
+                    setCustomerPhone(digits.slice(-10));
+                } else {
+                    setCustomerPhone(digits.slice(-10));
+                }
+            }
 
             const cEmail = searchParams.get("customerEmail");
             if (cEmail) setCustomerEmail(cEmail);
@@ -445,7 +452,14 @@ const POSPage: React.FC = () => {
             const urlEmail = searchParams.get("customerEmail");
 
             setCustomerName(urlName || ord.customer?.name || '');
-            setCustomerPhone(urlPhone || ord.customer?.phone || '');
+            const rawPhone = urlPhone || ord.customer?.phone || '';
+            const digits = rawPhone.replace(/\D/g, '');
+            if (rawPhone.startsWith('+')) {
+                setCustomerDialCode(digits.slice(0, -10));
+                setCustomerPhone(digits.slice(-10));
+            } else {
+                setCustomerPhone(digits.slice(-10));
+            }
             setCustomerEmail(urlEmail || ord.customer?.email || '');
             setGstPercent(ord.gstPercent || 5);
             setDiscountPercent(ord.discountPercent || 0);
@@ -514,19 +528,39 @@ const POSPage: React.FC = () => {
     }, [orderType, cart, couponCode, couponDiscount, handleValidateCoupon]);
 
     // Filtering menu items
-    const filteredItems = menuItems.filter((item) => {
-        const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesCategory =
-            selectedCategory === 'all' ||
-            (item.category && (item.category._id === selectedCategory || item.category === selectedCategory));
-        const matchesFoodType =
-            foodTypeFilter === 'all' || item.foodType === foodTypeFilter;
+    const filteredItems = useMemo(() => {
+        const now = new Date();
+        const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
 
-        // In standard modes, show items that are specifically available for regular ordering
-        const matchesCatering = !!item.isAvailable;
+        return menuItems.filter((item) => {
+            const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesCategory =
+                selectedCategory === 'all' ||
+                (item.category && (item.category._id === selectedCategory || item.category === selectedCategory));
+            const matchesFoodType =
+                foodTypeFilter === 'all' || item.foodType === foodTypeFilter;
 
-        return matchesSearch && matchesCategory && matchesFoodType && matchesCatering;
-    });
+            // In standard modes, show items that are specifically available for regular ordering
+            let isAvailableByMode = !!item.isAvailable && !!item.isActive;
+
+            // Apply scheduling filters for regular items (if not using special catering interface)
+            if (item.isWeeklyScheduleEnabled) {
+                // Check if today is one of the available days
+                const isDayAvailable = (item.availableDays || []).some((d: string) => d.toLowerCase() === currentDay);
+                
+                // If it's "available_only" and today is NOT the day, hide it
+                if (item.availabilityType === 'available_only' && !isDayAvailable) {
+                    isAvailableByMode = false;
+                }
+
+                // Check date ranges
+                if (item.validFrom && new Date(item.validFrom) > now) isAvailableByMode = false;
+                if (item.validTo && new Date(item.validTo) < now) isAvailableByMode = false;
+            }
+
+            return matchesSearch && matchesCategory && matchesFoodType && isAvailableByMode;
+        });
+    }, [menuItems, searchQuery, selectedCategory, foodTypeFilter]);
 
     const addToCart = (item: any) => {
         setCart((prev: any[]) => {
@@ -598,7 +632,7 @@ const POSPage: React.FC = () => {
     }, 0);
     const discountAmount = cartTotal * (discountPercent / 100);
     const serviceChargeAmount = (orderType === 'dine_in' && guestCount > 3) ? Math.round(cartTotal * 0.18) : 0;
-    const finalTotal = cartTotal + taxAmount - discountAmount - couponDiscount + serviceChargeAmount;
+    const finalTotal = cartTotal + taxAmount - discountAmount - couponDiscount + serviceChargeAmount + (Number(tip) || 0);
 
     const handlePlaceOrder = async () => {
         if (cart.length === 0) return;
@@ -768,22 +802,20 @@ const POSPage: React.FC = () => {
                     total: i.price * i.quantity,
                     modifiers: i.modifiers,
                     variant: i.variant,
-                    spiceLevel: i.spiceLevel,
                     tray: i.tray,
                     trayMultiplier: i.trayMultiplier,
                 })),
                 totalAmount: cartTotal,
-                tip: Number(tipValue) || 0,
-                specialInstructions: specialInstructions || undefined,
+                tip: tipValue,
                 gstPercent,
                 discountPercent,
                 couponCode: couponCode || undefined,
                 orderType,
                 table: selectedTable?._id || undefined,
-                paymentMethod,
-                paymentStatus: isManualCollectedPayment || isVerifiedStripePayment ? "paid" : "pending",
-                paymentIntentId,
-                ...(paymentMethod === 'card' && {
+                paymentMethod: finalPaymentMethod,
+                paymentStatus: finalPaymentStatus,
+                paymentIntentId: finalPaymentIntentId,
+                ...(finalPaymentMethod === 'card' && {
                     cardOptions: {
                         printReceipt: cardPrintReceipt,
                         signInForApiCall: cardSignInForApiCall,
@@ -796,11 +828,7 @@ const POSPage: React.FC = () => {
                     guestCount,
                 }),
 
-                ...(orderType === "delivery" && {
-                    deliveryAddress,
-                    tip: Number(tip) || 0,
-                    notes: specialInstructions
-                }),
+                ...(orderType === "delivery" && { deliveryAddress }),
 
                 customer: {
                     name: customerName || undefined,
@@ -901,6 +929,9 @@ const POSPage: React.FC = () => {
 
         if ((item.variants && item.variants.length > 0) || (item.modifierGroups && item.modifierGroups.length > 0) || hasTrays || hasSpiceLevels) {
             setSelectedItem(item);
+            if (hasSpiceLevels) {
+                setTempSelectedSpiceLevel((item as any).spiceLevels[0]);
+            }
             setVariantModalOpen(true);
         } else {
             // no variants/modifiers/applicable trays/spice levels -> add by original id
@@ -978,8 +1009,7 @@ const POSPage: React.FC = () => {
             displayName += ` [${trayData?.name || 'Tray'}]`;
         }
         if (tempSelectedVariant) displayName += ` (${tempSelectedVariant.name})`;
-        // Removed 🌶️ suffix to prevent double spice printing
-
+        if (tempSelectedSpiceLevel) displayName += ` 🌶️ ${tempSelectedSpiceLevel}`;
 
         const trayData = tempSelectedTray ? trays.find(t => t._id === tempSelectedTray.tray) : null;
 
@@ -1181,7 +1211,7 @@ const POSPage: React.FC = () => {
                         )}
                     </Box>
 
-                    {paymentMethod === 'card' && (
+                    {/* {paymentMethod === 'card' && (
                         <FormGroup sx={{ mb: 2 }}>
                             <FormControlLabel
                                 control={
@@ -1202,7 +1232,7 @@ const POSPage: React.FC = () => {
                                 label="Sign"
                             />
                         </FormGroup>
-                    )}
+                    )} */}
 
                     {/* Dine‑in specific */}
                     {orderType === 'dine_in' && (
@@ -1332,37 +1362,6 @@ const POSPage: React.FC = () => {
                                         fullWidth
                                         value={deliveryAddress.landmark || ''}
                                         onChange={(e) => setDeliveryAddress({ ...deliveryAddress, landmark: e.target.value })}
-                                    />
-                                </Grid>
-                                <Grid item xs={12} sm={4}>
-                                    <TextField
-                                        label="Driver Tip ($)"
-                                        size="small"
-                                        type="number"
-                                        fullWidth
-                                        value={tip}
-                                        onChange={(e) => setTip(e.target.value)}
-                                        inputProps={{ step: "0.50", min: "0" }}
-                                    />
-                                </Grid>
-                                <Grid item xs={12} sm={4}>
-                                    <TextField
-                                        label="Dropoff / Special Instructions"
-                                        size="small"
-                                        fullWidth
-                                        value={specialInstructions}
-                                        onChange={(e) => setSpecialInstructions(e.target.value)}
-                                        placeholder="e.g. Leave at door, don't ring bell"
-                                    />
-                                </Grid>
-                                <Grid item xs={12} sm={4}>
-                                    <TextField
-                                        label="Business Name"
-                                        size="small"
-                                        fullWidth
-                                        value={deliveryAddress.businessName || ''}
-                                        onChange={(e) => setDeliveryAddress({ ...deliveryAddress, businessName: e.target.value })}
-                                        placeholder="e.g. ABC Accounting"
                                     />
                                 </Grid>
                             </Grid>
@@ -1514,89 +1513,131 @@ const POSPage: React.FC = () => {
                     </Box>
                 </Box>
                 {/* Food Type Toggle — above tabs, right-aligned */}
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
-                    <Box
-                        sx={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            p: 0.4,
-                            bgcolor: 'action.hover',
-                            borderRadius: '50px',
-                        }}
-                    >
-                        {(['all', 'veg', 'non-veg'] as const).map((type) => {
-                            const isActive = foodTypeFilter === type;
-                            const vegColor = '#00a852';
-                            const nonVegColor = '#e43b3b';
-                            const activeBg = type === 'veg' ? vegColor : type === 'non-veg' ? nonVegColor : undefined;
-                            return (
-                                <Box
-                                    key={type}
-                                    onClick={() => setFoodTypeFilter(type)}
-                                    sx={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 0.6,
-                                        px: 1.5,
-                                        py: 0.6,
-                                        borderRadius: '50px',
-                                        cursor: 'pointer',
-                                        fontWeight: isActive ? 700 : 400,
-                                        fontSize: '0.75rem',
-                                        transition: 'all 0.2s ease',
-                                        bgcolor: isActive ? (activeBg ?? 'primary.main') : 'transparent',
-                                        color: isActive ? 'white' : 'text.secondary',
-                                        boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.2)' : 'none',
-                                        userSelect: 'none',
-                                        '&:hover': {
-                                            bgcolor: isActive ? (activeBg ?? 'primary.main') : 'action.selected',
-                                        },
-                                    }}
-                                >
-                                    {type === 'veg' && (
-                                        <Box sx={{
-                                            width: 11, height: 11,
-                                            border: `2px solid ${isActive ? 'white' : vegColor}`,
-                                            borderRadius: '2px',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            bgcolor: isActive ? 'transparent' : 'white',
-                                            flexShrink: 0,
-                                        }}>
-                                            <Box sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: isActive ? 'white' : vegColor }} />
-                                        </Box>
-                                    )}
-                                    {type === 'non-veg' && (
-                                        <Box sx={{
-                                            width: 11, height: 11,
-                                            border: `2px solid ${isActive ? 'white' : nonVegColor}`,
-                                            borderRadius: '2px',
-                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            bgcolor: isActive ? 'transparent' : 'white',
-                                            flexShrink: 0,
-                                        }}>
-                                            <Box sx={{ width: 0, height: 0, borderLeft: '3px solid transparent', borderRight: '3px solid transparent', borderBottom: `5px solid ${isActive ? 'white' : nonVegColor}` }} />
-                                        </Box>
-                                    )}
-                                    {type === 'all' ? 'All' : type === 'veg' ? 'Veg' : 'Non‑Veg'}
-                                </Box>
-                            );
-                        })}
-                    </Box>
+               <Box
+    sx={{
+        display: 'flex',
+        justifyContent: { xs: 'center', sm: 'flex-end' },
+        mb: 1,
+    }}
+>
+    <Box
+        sx={{
+            display: 'flex',
+            alignItems: 'center',
+            p: 0.4,
+            bgcolor: 'action.hover',
+            borderRadius: '50px',
+            width: { xs: '100%', sm: 'auto' },
+            justifyContent: { xs: 'center', sm: 'flex-start' },
+        }}
+    >
+        {(['all', 'veg', 'non-veg'] as const).map((type) => {
+            const isActive = foodTypeFilter === type;
+            const vegColor = '#00a852';
+            const nonVegColor = '#e43b3b';
+            const activeBg = type === 'veg' ? vegColor : type === 'non-veg' ? nonVegColor : undefined;
+            return (
+                <Box
+                    key={type}
+                    onClick={() => setFoodTypeFilter(type)}
+                    sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 0.6,
+                        px: { xs: 1.2, sm: 1.5 },
+                        py: { xs: 0.8, sm: 0.6 },
+                        borderRadius: '50px',
+                        cursor: 'pointer',
+                        fontWeight: isActive ? 700 : 400,
+                        fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                        flex: { xs: 1, sm: 'none' },
+                        transition: 'all 0.2s ease',
+                        bgcolor: isActive ? (activeBg ?? 'primary.main') : 'transparent',
+                        color: isActive ? 'white' : 'text.secondary',
+                        boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.2)' : 'none',
+                        userSelect: 'none',
+                        '&:hover': {
+                            bgcolor: isActive ? (activeBg ?? 'primary.main') : 'action.selected',
+                        },
+                    }}
+                >
+                    {type === 'veg' && (
+                        <Box sx={{
+                            width: 11, height: 11,
+                            border: `2px solid ${isActive ? 'white' : vegColor}`,
+                            borderRadius: '2px',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            bgcolor: isActive ? 'transparent' : 'white',
+                            flexShrink: 0,
+                        }}>
+                            <Box sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: isActive ? 'white' : vegColor }} />
+                        </Box>
+                    )}
+                    {type === 'non-veg' && (
+                        <Box sx={{
+                            width: 11, height: 11,
+                            border: `2px solid ${isActive ? 'white' : nonVegColor}`,
+                            borderRadius: '2px',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            bgcolor: isActive ? 'transparent' : 'white',
+                            flexShrink: 0,
+                        }}>
+                            <Box sx={{ width: 0, height: 0, borderLeft: '3px solid transparent', borderRight: '3px solid transparent', borderBottom: `5px solid ${isActive ? 'white' : nonVegColor}` }} />
+                        </Box>
+                    )}
+                    {type === 'all' ? 'All' : type === 'veg' ? 'Veg' : 'Non‑Veg'}
                 </Box>
+            );
+        })}
+    </Box>
+</Box>
 
                 {/* Category Tabs */}
-                <Tabs
-                    value={selectedCategory}
-                    onChange={(_, v) => setSelectedCategory(v)}
-                    variant="scrollable"
-                    scrollButtons="auto"
-                    sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}
-                >
-                    <Tab label="All Items" value="all" />
-                    {categories.map((cat) => (
-                        <Tab key={cat._id} label={cat.name} value={cat._id} />
-                    ))}
-                </Tabs>
+               <Tabs
+    value={selectedCategory}
+    onChange={(_, v) => setSelectedCategory(v)}
+    variant="scrollable"
+    scrollButtons="auto"
+    allowScrollButtonsMobile
+    sx={{
+        mb: 2,
+        borderBottom: 1,
+        borderColor: 'divider',
+        minHeight: { xs: 40, sm: 48 },
+        '& .MuiTabs-root': {
+            minHeight: { xs: 40, sm: 48 },
+        },
+        '& .MuiTabs-flexContainer': {
+            gap: 0, // ← removed gap causing trailing space
+        },
+        '& .MuiTab-root': {
+            fontSize: { xs: '0.72rem', sm: '0.8rem', md: '0.875rem' },
+            minWidth: { xs: 'auto', sm: 80, md: 90 }, // ← auto on mobile to shrink-fit
+            maxWidth: { xs: 120, sm: 160, md: 200 },
+            minHeight: { xs: 40, sm: 48 },
+            px: { xs: 1.5, sm: 1.5, md: 2 },
+            py: { xs: 0.8, sm: 1.2, md: 1.5 },
+            textTransform: 'none',
+            whiteSpace: 'nowrap',
+        },
+        '& .MuiTabScrollButton-root': {
+            width: { xs: 20, sm: 28, md: 40 },
+            opacity: 1,
+            '&.Mui-disabled': {
+                opacity: 0.3,
+            },
+        },
+        '& .MuiTabs-indicator': {
+            height: { xs: 2, sm: 3 },
+        },
+    }}
+>
+    <Tab label="All Items" value="all" />
+    {categories.map((cat) => (
+        <Tab key={cat._id} label={cat.name} value={cat._id} />
+    ))}
+</Tabs>
 
                 {/* Items grid */}
                 {loading ? (
@@ -1628,9 +1669,12 @@ const POSPage: React.FC = () => {
                                             height: 230,
                                             flexDirection: 'column',
                                             transition: 'all 0.3s ease',
+                                            border: '1px solid',
+                                            borderColor: 'divider',
                                             '&:hover': {
                                                 transform: 'translateY(-4px)',
-                                                boxShadow: '0 12px 20px rgba(0,0,0,0.1)',
+                                                boxShadow: '0 12px 20px rgba(79, 70, 229, 0.15)',
+                                                borderColor: 'primary.light'
                                             }
                                         }}>
                                             <CardActionArea sx={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
@@ -1659,14 +1703,14 @@ const POSPage: React.FC = () => {
                                                                         sx={{
                                                                             position: 'absolute',
                                                                             top: 0,
-                                                                            left: 0,
+                                                                            left: 45, // Adjusted to not overlap with special badge
                                                                             bgcolor: 'error.main',
                                                                             color: 'white',
                                                                             px: 1,
                                                                             py: 0.5,
                                                                             borderBottomRightRadius: 8,
                                                                             boxShadow: 1,
-                                                                            zIndex: 1,
+                                                                            zIndex: 2,
                                                                             display: 'flex',
                                                                             flexDirection: 'column',
                                                                             alignItems: 'center',
@@ -1675,16 +1719,33 @@ const POSPage: React.FC = () => {
                                                                         <Typography variant="caption" sx={{ fontWeight: 'bold', lineHeight: 1, fontSize: '0.7rem' }}>
                                                                             {discountText}
                                                                         </Typography>
-                                                                        {coupon.validTo && (
-                                                                            <Typography variant="caption" sx={{ fontSize: '0.6rem', opacity: 0.9 }}>
-                                                                                Exp: {format(new Date(coupon.validTo), 'MM/dd')}
-                                                                            </Typography>
-                                                                        )}
                                                                     </Box>
                                                                 );
                                                             }
                                                             return null;
                                                         })()}
+
+                                                        {/* Scheduling Special Badges */}
+                                                        {item.isWeeklyScheduleEnabled && item.displayOption !== 'normal' && (
+                                                            <Box
+                                                                sx={{
+                                                                    position: 'absolute',
+                                                                    top: 0,
+                                                                    left: 0,
+                                                                    bgcolor: item.displayOption === 'todays_special' ? 'warning.main' : 'info.main',
+                                                                    color: 'white',
+                                                                    px: 1,
+                                                                    py: 0.5,
+                                                                    borderBottomRightRadius: 8,
+                                                                    zIndex: 2,
+                                                                    fontWeight: 'bold',
+                                                                    fontSize: '0.65rem',
+                                                                    textTransform: 'uppercase',
+                                                                }}
+                                                            >
+                                                                {item.displayOption === 'todays_special' ? "Today's Special" : 'Weekly Special'}
+                                                            </Box>
+                                                        )}
                                                     </Box>
                                                 ) : (
                                                     <Box sx={{ position: 'relative', height: '70%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'action.hover', overflow: 'hidden' }}>
@@ -1819,6 +1880,29 @@ const POSPage: React.FC = () => {
                                                     }
                                                     return null;
                                                 })()}
+
+                                                {/* Scheduling Special Badge Overlay */}
+                                                {item.isWeeklyScheduleEnabled && item.displayOption !== 'normal' && (
+                                                    <Box
+                                                        sx={{
+                                                            position: 'absolute',
+                                                            top: 10,
+                                                            right: 10,
+                                                            bgcolor: item.displayOption === 'todays_special' ? 'warning.main' : 'info.main',
+                                                            color: 'white',
+                                                            px: 1,
+                                                            py: 0.2,
+                                                            borderRadius: 1,
+                                                            zIndex: 2,
+                                                            fontSize: '0.6rem',
+                                                            fontWeight: 'bold',
+                                                            boxShadow: 2,
+                                                            textTransform: 'uppercase'
+                                                        }}
+                                                    >
+                                                        {item.displayOption === 'todays_special' ? "Today's Special" : 'Weekly Special'}
+                                                    </Box>
+                                                )}
                                             </Box>
                                             <Box sx={{ px: 0.5 }}>
                                                 <Typography variant="subtitle2" sx={{
@@ -1941,126 +2025,272 @@ const POSPage: React.FC = () => {
             </Box>
 
             <Modal open={variantModalOpen} onClose={() => setVariantModalOpen(false)}>
-                <Box sx={{ p: 3, bgcolor: 'background.paper', width: { xs: '95%', sm: 500 }, mx: 'auto', mt: 5, borderRadius: 2, maxHeight: '90vh', overflowY: 'auto', border: `1px solid ${theme.palette.divider}`, boxShadow: 24 }}>
+                <Box sx={{
+                    p: 0,
+                    bgcolor: 'white',
+                    width: { xs: '95%', sm: 550 },
+                    mx: 'auto',
+                    mt: { xs: 2, sm: 8 },
+                    borderRadius: '32px',
+                    maxHeight: '95vh',
+                    overflowY: 'auto',
+                    boxShadow: '0 20px 60px rgba(0,0,0,0.1)',
+                    position: 'relative',
+                    border: 'none',
+                    outline: 'none'
+                }}>
                     {selectedItem && (
                         <>
-                            <Typography variant="h5" gutterBottom>{selectedItem.name}</Typography>
-                            <Divider sx={{ my: 2 }} />
-
-                            {/* Variants */}
-                            {selectedItem.variants && selectedItem.variants.length > 0 && (
-                                <Box sx={{ mb: 3 }}>
-                                    <Typography variant="subtitle1" fontWeight="bold">Size / Variation *</Typography>
-                                    <RadioGroup
-                                        value={tempSelectedVariant?.name || ''}
-                                        onChange={(e) => {
-                                            const v = selectedItem.variants?.find(v => v.name === e.target.value);
-                                            setTempSelectedVariant(v || null);
-                                        }}
-                                    >
-                                        {selectedItem.variants.map((v, idx) => (
-                                            <FormControlLabel
-                                                key={idx}
-                                                value={v.name}
-                                                control={<Radio />}
-                                                label={`${v.name} (${formatCurrency(v.price)})`}
-                                            />
-                                        ))}
-                                    </RadioGroup>
+                            {/* Header Section */}
+                            <Box sx={{ p: 4, pb: 2, display: 'flex', alignItems: 'flex-start', position: 'relative' }}>
+                                <Box sx={{
+                                    width: 48,
+                                    height: 48,
+                                    borderRadius: '50%',
+                                    bgcolor: alpha('#4F46E5', 0.1),
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    mr: 2,
+                                    flexShrink: 0
+                                }}>
+                                    <span style={{ fontSize: '20px' }}>🔥</span>
                                 </Box>
-                            )}
-
-                            {/* Modifier Groups */}
-                            {selectedItem.modifierGroups?.map((group, idx) => (
-                                <Box key={idx} sx={{ mb: 3 }}>
-                                    <Typography variant="subtitle1" fontWeight="bold">
-                                        {group.name} {group.required && <span style={{ color: 'red' }}>*</span>}
+                                <Box sx={{ flexGrow: 1 }}>
+                                    <Typography sx={{
+                                        color: 'primary.main',
+                                        fontWeight: 900,
+                                        fontSize: '0.7rem',
+                                        letterSpacing: '1px',
+                                        textTransform: 'uppercase',
+                                        mb: 0.5
+                                    }}>
+                                        Choose Spice Level
                                     </Typography>
+                                    <Typography variant="h4" sx={{ fontWeight: 900, fontSize: '1.75rem', color: '#1a1a1a', lineHeight: 1.2, mb: 1 }}>
+                                        {selectedItem.name}
+                                    </Typography>
+                                    <Typography variant="body2" sx={{ color: '#757575', fontSize: '0.9rem' }}>
+                                        Pick the heat you want before adding this dish to cart.
+                                    </Typography>
+                                </Box>
+                                <IconButton
+                                    onClick={() => setVariantModalOpen(false)}
+                                    sx={{
+                                        position: 'absolute',
+                                        right: 24,
+                                        top: 24,
+                                        border: '1px solid #eee',
+                                        '&:hover': { bgcolor: '#f5f5f5' }
+                                    }}
+                                >
+                                    <CloseIcon fontSize="small" />
+                                </IconButton>
+                            </Box>
 
-                                    {group.selectionType === 'single' ? (
-                                        <RadioGroup
-                                            value={tempModifiers[group.name]?.[0]?.name || ''}
-                                            onChange={(e) => {
-                                                const opt = group.options.find(o => o.name === e.target.value);
-                                                if (opt) {
-                                                    setTempModifiers({ ...tempModifiers, [group.name]: [opt] });
-                                                }
+                            <Box sx={{ px: 4, pb: 4 }}>
+                                {/* Item Info Card */}
+                                <Box sx={{
+                                    bgcolor: alpha('#4F46E5', 0.05),
+                                    borderRadius: '24px',
+                                    p: 2,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    mb: 4
+                                }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                        <Box
+                                            component="img"
+                                            src={selectedItem.image || '/placeholder-food.png'}
+                                            sx={{
+                                                width: 64,
+                                                height: 64,
+                                                borderRadius: '16px',
+                                                objectFit: 'cover',
+                                                border: '2px solid',
+                                                borderColor: 'primary.light'
+                                            }}
+                                        />
+                                        <Typography sx={{ fontWeight: 900, fontSize: '1.1rem', color: 'primary.main' }}>
+                                            {formatSmartPrice(calculateModalTotal())}
+                                        </Typography>
+                                    </Box>
+                                </Box>
+
+                                {/* Variants & Modifiers (If any) */}
+                                {((selectedItem.variants?.length || 0) > 0 || (selectedItem.modifierGroups?.length || 0) > 0) && (
+                                    <Box sx={{ mb: 4 }}>
+                                        <Divider sx={{ mb: 3, borderStyle: 'dashed' }} />
+                                        {/* Render variants/modifiers logic here if needed, but the UI focuses on spice levels */}
+                                    </Box>
+                                )}
+
+                                {/* Heat Preference Section */}
+                                {(selectedItem as any).isSpiceLevelAvailable && (selectedItem as any).spiceLevels?.length > 0 && (
+                                    <Paper variant="outlined" sx={{
+                                        borderRadius: '24px',
+                                        p: 3,
+                                        borderColor: 'divider',
+                                        bgcolor: 'background.paper',
+                                        mb: 4
+                                    }}>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <span style={{ fontSize: '16px' }}>🔥</span>
+                                                <Typography sx={{ color: 'primary.main', fontWeight: 900, fontSize: '0.75rem', letterSpacing: '0.5px' }}>
+                                                    HEAT PREFERENCE
+                                                </Typography>
+                                            </Box>
+                                            <Chip
+                                                label={tempSelectedSpiceLevel || (selectedItem as any).spiceLevels[0]}
+                                                size="small"
+                                                sx={{
+                                                    bgcolor: alpha('#4F46E5', 0.1),
+                                                    color: 'primary.main',
+                                                    fontWeight: 900,
+                                                    fontSize: '0.65rem',
+                                                    height: 24
+                                                }}
+                                            />
+                                        </Box>
+                                        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 4 }}>
+                                            Slide to the heat you want, and we'll send that choice to the kitchen.
+                                        </Typography>
+
+                                        <Box sx={{ px: 2, mb: 2 }}>
+                                            <Slider
+                                                value={Math.max(0, (selectedItem as any).spiceLevels.indexOf(tempSelectedSpiceLevel || (selectedItem as any).spiceLevels[0]))}
+                                                min={0}
+                                                max={(selectedItem as any).spiceLevels.length - 1}
+                                                step={1}
+                                                marks={true}
+                                                onChange={(_, val) => setTempSelectedSpiceLevel((selectedItem as any).spiceLevels[val as number])}
+                                                sx={{
+                                                    color: 'primary.main',
+                                                    height: 8,
+                                                    '& .MuiSlider-track': { border: 'none', transition: 'none' },
+                                                    '& .MuiSlider-rail': { opacity: 1, bgcolor: alpha('#4F46E5', 0.1) },
+                                                    '& .MuiSlider-thumb': {
+                                                        height: 28,
+                                                        width: 28,
+                                                        bgcolor: 'primary.main',
+                                                        border: '4px solid white',
+                                                        boxShadow: '0 4px 12px rgba(79, 70, 229, 0.2)',
+                                                        transition: 'none',
+                                                        '&:hover, &.Mui-active': {
+                                                            boxShadow: '0 0 0 8px rgba(79, 70, 229, 0.16)',
+                                                        },
+                                                        '&::after': {
+                                                            content: '"🔥"',
+                                                            fontSize: '14px',
+                                                            position: 'absolute'
+                                                        }
+                                                    },
+                                                    '& .MuiSlider-mark': {
+                                                        bgcolor: 'text.disabled',
+                                                        height: 6,
+                                                        width: 6,
+                                                        borderRadius: '50%'
+                                                    },
+                                                    '& .MuiSlider-markActive': {
+                                                        bgcolor: 'primary.main'
+                                                    }
+                                                }}
+                                            />
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
+                                                {(selectedItem as any).spiceLevels.map((level: string, i: number) => {
+                                                    const isSel = (tempSelectedSpiceLevel || (selectedItem as any).spiceLevels[0]) === level;
+                                                    return (
+                                                        <Box
+                                                            key={i}
+                                                            onClick={() => setTempSelectedSpiceLevel(level)}
+                                                            sx={{
+                                                                textAlign: 'center',
+                                                                flex: 1,
+                                                                cursor: 'pointer',
+                                                                userSelect: 'none'
+                                                            }}
+                                                        >
+                                                            <Typography sx={{
+                                                                fontSize: '0.7rem',
+                                                                fontWeight: isSel ? 900 : 700,
+                                                                color: isSel ? 'primary.main' : 'text.disabled',
+                                                                textTransform: 'uppercase',
+                                                                mb: 0.5,
+                                                                transition: 'color 0.2s',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                gap: 0.5
+                                                            }}>
+                                                                {level}
+                                                            </Typography>
+                                                            <Typography variant="caption" sx={{
+                                                                fontSize: '0.6rem',
+                                                                color: isSel ? 'primary.main' : 'text.disabled',
+                                                                opacity: isSel ? 1 : 0.6,
+                                                                display: { xs: 'none', sm: 'block' }
+                                                            }}>
+                                                                {level.toLowerCase().includes('mild') ? 'light' :
+                                                                    level.toLowerCase().includes('medium') ? 'Balanced' :
+                                                                        level.toLowerCase().includes('hot') ? 'spicy' : 'very spicy'}
+                                                            </Typography>
+                                                        </Box>
+                                                    );
+                                                })}
+                                            </Box>
+                                        </Box>
+                                    </Paper>
+                                )}
+
+                                {/* Footer Selection Display & Actions */}
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <Box>
+                                        <Typography sx={{ color: '#bfbfbf', fontSize: '0.75rem', fontWeight: 900, letterSpacing: '0.5px' }}>
+                                            SELECTED
+                                        </Typography>
+                                        <Typography variant="h6" sx={{ fontWeight: 900, color: '#1a1a1a' }}>
+                                            {tempSelectedSpiceLevel || (selectedItem as any).spiceLevels?.[0] || 'None'}
+                                        </Typography>
+                                    </Box>
+                                    <Box sx={{ display: 'flex', gap: 2 }}>
+                                        <Button
+                                            variant="outlined"
+                                            onClick={() => setVariantModalOpen(false)}
+                                            sx={{
+                                                borderRadius: '50px',
+                                                px: 4,
+                                                py: 1.5,
+                                                borderColor: 'primary.light',
+                                                color: 'primary.main',
+                                                fontWeight: 900,
+                                                textTransform: 'none',
+                                                '&:hover': { borderColor: 'primary.main', bgcolor: alpha('#4F46E5', 0.04) }
                                             }}
                                         >
-                                            {group.options.map((opt, oIdx) => (
-                                                <FormControlLabel
-                                                    key={oIdx}
-                                                    value={opt.name}
-                                                    control={<Radio />}
-                                                    label={`${opt.name} ${opt.price > 0 ? `(+${formatCurrency(opt.price)})` : ''}`}
-                                                />
-                                            ))}
-                                        </RadioGroup>
-                                    ) : (
-                                        <FormGroup>
-                                            {group.options.map((opt, oIdx) => {
-                                                const isChecked = tempModifiers[group.name]?.some(m => m.name === opt.name);
-                                                return (
-                                                    <FormControlLabel
-                                                        key={oIdx}
-                                                        control={
-                                                            <Checkbox
-                                                                checked={!!isChecked}
-                                                                onChange={(e) => {
-                                                                    const current = tempModifiers[group.name] || [];
-                                                                    let newSelection;
-                                                                    if (e.target.checked) {
-                                                                        if (group.maxSelection && current.length >= group.maxSelection) {
-                                                                            toast.error(`Maximum ${group.maxSelection} options allowed`);
-                                                                            return;
-                                                                        }
-                                                                        newSelection = [...current, opt];
-                                                                    } else {
-                                                                        newSelection = current.filter(m => m.name !== opt.name);
-                                                                    }
-                                                                    setTempModifiers({ ...tempModifiers, [group.name]: newSelection });
-                                                                }}
-                                                            />
-                                                        }
-                                                        label={`${opt.name} ${opt.price > 0 ? `(+${formatCurrency(opt.price)})` : ''}`}
-                                                    />
-                                                );
-                                            })}
-                                        </FormGroup>
-                                    )}
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            variant="contained"
+                                            size="large"
+                                            onClick={handleAddToCartFromModal}
+                                            sx={{
+                                                borderRadius: '50px',
+                                                px: 4,
+                                                py: 1.5,
+                                                bgcolor: 'primary.main',
+                                                color: 'white',
+                                                fontWeight: 900,
+                                                textTransform: 'none',
+                                                boxShadow: '0 8px 24px rgba(79, 70, 229, 0.25)',
+                                                '&:hover': { bgcolor: 'primary.dark' }
+                                            }}
+                                        >
+                                            Add to Cart
+                                        </Button>
+                                    </Box>
                                 </Box>
-                            ))}
-
-                            {/* Spice Levels */}
-                            {selectedItem && (selectedItem as any).isSpiceLevelAvailable && (selectedItem as any).spiceLevels && (selectedItem as any).spiceLevels.length > 0 && (
-                                <Box sx={{ mb: 3 }}>
-                                    <Typography variant="subtitle1" fontWeight="bold">
-                                        🌶️ Spice Level <span style={{ color: 'red' }}>*</span>
-                                    </Typography>
-                                    <RadioGroup
-                                        value={tempSelectedSpiceLevel}
-                                        onChange={(e) => setTempSelectedSpiceLevel(e.target.value)}
-                                    >
-                                        {(selectedItem as any).spiceLevels.map((level: string, idx: number) => (
-                                            <FormControlLabel
-                                                key={idx}
-                                                value={level}
-                                                control={<Radio />}
-                                                label={level}
-                                            />
-                                        ))}
-                                    </RadioGroup>
-                                </Box>
-                            )}
-
-                            <Divider sx={{ my: 2 }} />
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Typography variant="h6">
-                                    Total: {formatCurrency(calculateModalTotal())}
-                                </Typography>
-                                <Button variant="contained" size="large" onClick={handleAddToCartFromModal}>
-                                    Add to Cart
-                                </Button>
                             </Box>
                         </>
                     )}
@@ -2153,6 +2383,12 @@ const POSPage: React.FC = () => {
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                             <Typography>Service Charge (18%)</Typography>
                             <Typography>{formatSmartPrice(serviceChargeAmount)}</Typography>
+                        </Box>
+                    )}
+                    {Number(tip) > 0 && (
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                            <Typography>Tip</Typography>
+                            <Typography>{formatSmartPrice(Number(tip))}</Typography>
                         </Box>
                     )}
                     <Divider sx={{ mb: 2 }} />
@@ -2282,7 +2518,7 @@ const POSPage: React.FC = () => {
                     100% { transform: translateY(-20px); opacity: 0; }
                 }
             `}</style>
-        </Box >
+        </Box>
     );
 };
 

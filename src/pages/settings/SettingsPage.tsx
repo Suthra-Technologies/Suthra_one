@@ -1462,6 +1462,82 @@ const SettingsPage: React.FC = () => {
                             </Stack>
                         </Grid>
                         <Grid size={{ xs: 12 }}>
+                            <Divider sx={{ my: 2 }} />
+                            <Typography variant="subtitle2" gutterBottom>
+                                Restaurant Stamp (for Invoices)
+                            </Typography>
+                            <Stack direction="row" spacing={2} alignItems="center">
+                                <Button
+                                    variant="outlined"
+                                    component="label"
+                                    startIcon={<SaveIcon />}
+                                >
+                                    Upload Stamp
+                                    <input
+                                        type="file"
+                                        hidden
+                                        accept="image/*"
+                                        onChange={async (e: React.ChangeEvent<HTMLInputElement>) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) {
+                                                try {
+                                                    toast.loading('Uploading stamp...');
+                                                    const { uploadAPI } = await import('../../services/api');
+                                                    const response = await uploadAPI.uploadImage(file);
+                                                    toast.dismiss();
+                                                    toast.success('Stamp uploaded successfully!');
+                                                    handleInputChange('restaurant', 'stamp', response.data.url);
+                                                } catch (error) {
+                                                    toast.dismiss();
+                                                    toast.error('Failed to upload stamp');
+                                                    console.error(error);
+                                                }
+                                            }
+                                        }}
+                                    />
+                                </Button>
+                                <TextField
+                                    fullWidth
+                                    label="Or paste Stamp URL"
+                                    value={settings.restaurant.stamp || ''}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('restaurant', 'stamp', e.target.value)}
+                                    placeholder="https://example.com/stamp.png"
+                                    size="small"
+                                />
+                            </Stack>
+                            {settings.restaurant.stamp && (
+                                <Box sx={{ mt: 2 }}>
+                                    <Typography variant="caption" color="text.secondary" gutterBottom>
+                                        Stamp Preview:
+                                    </Typography>
+                                    <Paper
+                                        variant="outlined"
+                                        sx={{
+                                            p: 2,
+                                            mt: 1,
+                                            display: 'inline-block',
+                                            borderRadius: 2,
+                                            borderStyle: 'dashed'
+                                        }}
+                                    >
+                                        <img
+                                            src={settings.restaurant.stamp}
+                                            alt="Stamp"
+                                            style={{
+                                                maxWidth: '150px',
+                                                maxHeight: '150px',
+                                                objectFit: 'contain'
+                                            }}
+                                            onError={(e) => {
+                                                console.error('Stamp image failed to load');
+                                                toast.error('Failed to load stamp image');
+                                            }}
+                                        />
+                                    </Paper>
+                                </Box>
+                            )}
+                        </Grid>
+                        <Grid size={{ xs: 12 }}>
                             <AddressAutocomplete
                                 label="Address"
                                 value={settings.restaurant.address}
@@ -1730,14 +1806,13 @@ const SettingsPage: React.FC = () => {
                                         key={dayConfig.day}
                                         variant="outlined"
                                         sx={{
-                                           px: { xs: 1.5, sm: 2.5 }, py: { xs: 1, sm: 1.5 },
+                                            px: { xs: 1.5, sm: 2.5 }, py: { xs: 1, sm: 1.5 },
                                             borderRadius: 3,
                                             display: 'flex',
-                                            alignItems: 'center',
-                                            gap:{xs:1,sm:2},
-                                            flexWrap: {xs:"nowrap",sm:"wrap"},
-                                            flexDirection:{xs:"column",sm:"row"},
-                                            alignitems:{xs:"flex-start",sm:"center"},
+                                            gap: { xs: 1, sm: 2 },
+                                            flexWrap: { sm: 'wrap', xs: 'nowrap' },
+                                            flexDirection: { sm: 'row', xs: 'column' },
+                                            alignItems: { xs: 'flex-start', sm: 'center' },
                                             borderColor: dayConfig.isOpen ? 'success.light' : 'divider',
                                             bgcolor: dayConfig.isOpen ? alpha('#22c55e', 0.03) : 'transparent',
                                             transition: 'all 0.2s ease',
@@ -1745,7 +1820,7 @@ const SettingsPage: React.FC = () => {
                                     >
                                         {/* Day toggle */}
                                         <FormControlLabel
-                                            sx={{ minWidth: { xs:100 ,sm:130}, m: 0 }}
+                                            sx={{ minWidth: 130, m: 0 }}
                                             control={
                                                 <Switch
                                                     size="small"
@@ -1777,7 +1852,7 @@ const SettingsPage: React.FC = () => {
 
                                             return (
                                                 <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between',width:"100%" }}>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                                         <Box
                                                             sx={{
                                                                 px: 1.5, py: 0.4,
@@ -1805,7 +1880,7 @@ const SettingsPage: React.FC = () => {
                                                     <Collapse in={isExpanded}>
                                                         <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                                                             {slots.map((slot, sIdx) => (
-                                                                <Box key={sIdx} sx={{ display: 'flex', alignItems: 'center', gap: 1,flexWrap:"wrap"}}>
+                                                                <Box key={sIdx} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                                                                     <TextField
                                                                         type="time"
                                                                         label="Opens"
@@ -2734,16 +2809,19 @@ const SettingsPage: React.FC = () => {
                                                     checked={settings.system.posPaymentMethods?.[method as keyof typeof settings.system.posPaymentMethods] ?? true}
                                                     onChange={(e) => {
                                                         const isChecked = e.target.checked;
-                                                        setSettings(prev => ({
-                                                            ...prev,
-                                                            system: {
-                                                                ...prev.system,
-                                                                posPaymentMethods: {
-                                                                    ...prev.system.posPaymentMethods,
-                                                                    [method]: isChecked
+                                                        setSettings(prev => {
+                                                            const currentMethods = prev.system.posPaymentMethods || { cash: true, card: true, zelle: true, venmo: true };
+                                                            return {
+                                                                ...prev,
+                                                                system: {
+                                                                    ...prev.system,
+                                                                    posPaymentMethods: {
+                                                                        ...currentMethods,
+                                                                        [method]: isChecked
+                                                                    }
                                                                 }
-                                                            }
-                                                        }));
+                                                            };
+                                                        });
                                                     }}
                                                 />
                                             }
@@ -3202,15 +3280,15 @@ const SettingsPage: React.FC = () => {
                                                         </TableCell>
                                                         <TableCell align="right">
                                                             <Tooltip title="Copy Token">
-                                                                <IconButton 
-                                                                    size="small" 
+                                                                <IconButton
+                                                                    size="small"
                                                                     onClick={() => {
                                                                         const token = agent.token || agent.pairingToken;
                                                                         if (token) {
                                                                             navigator.clipboard.writeText(token);
                                                                             toast.success('Token copied to clipboard');
                                                                         }
-                                                                    }} 
+                                                                    }}
                                                                     disabled={!agent.token && !agent.pairingToken}
                                                                     sx={{ color: 'primary.main' }}
                                                                 >
@@ -3313,8 +3391,8 @@ const SettingsPage: React.FC = () => {
             </Paper >
 
             {/* Print Agent Pairing Token Modal */}
-            <Dialog 
-                open={!!newToken} 
+            <Dialog
+                open={!!newToken}
                 onClose={() => setNewToken(null)}
                 PaperProps={{
                     sx: { borderRadius: 3, width: '100%', maxWidth: 450 }
@@ -3325,10 +3403,10 @@ const SettingsPage: React.FC = () => {
                 </DialogTitle>
                 <DialogContent>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                        Copy this code and paste it into the <strong>NexzenPOS Print Agent</strong> app on your computer. 
+                        Copy this code and paste it into the <strong>NexzenPOS Print Agent</strong> app on your computer.
                         This code is your secure link between the restaurant and that computer.
                     </Typography>
-                    
+
                     <TextField
                         fullWidth
                         label="Connection Code"
@@ -3354,15 +3432,15 @@ const SettingsPage: React.FC = () => {
                             ),
                         }}
                     />
-                    
+
                     <Alert severity="warning" sx={{ mt: 3, borderRadius: 2 }}>
                         Keep this code private. Do not share it with anyone outside your trusted team.
                     </Alert>
                 </DialogContent>
                 <DialogActions sx={{ p: 2, pt: 0 }}>
-                    <Button 
-                        fullWidth 
-                        variant="contained" 
+                    <Button
+                        fullWidth
+                        variant="contained"
                         onClick={() => setNewToken(null)}
                         sx={{ borderRadius: 2, height: 48, fontWeight: 700 }}
                     >

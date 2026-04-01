@@ -129,6 +129,12 @@ interface IMenuItem {
     spiceLevels?: string[];      // List of available labels
     spiceLevelData?: any;        // Mapping of labels to values
     availableDays?: string[];    // New field for weekday/weekend scheduling
+    isWeeklyScheduleEnabled?: boolean;
+    availabilityType?: 'highlight' | 'available_only';
+    displayOption?: 'normal' | 'weekly_special' | 'todays_special';
+    validFrom?: Date | null;
+    validTo?: Date | null;
+    priority?: number;
 }
 
 const SPICE_LEVEL_OPTIONS = [
@@ -206,6 +212,12 @@ const MenuPage: React.FC = () => {
         hot: '',
         very_hot: '',
         availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as string[], // New field
+        isWeeklyScheduleEnabled: false,
+        availabilityType: 'highlight' as 'highlight' | 'available_only',
+        displayOption: 'normal' as 'normal' | 'weekly_special' | 'todays_special',
+        validFrom: null as Date | null,
+        validTo: null as Date | null,
+        priority: 0,
     });
     const [menuItemTouched, setMenuItemTouched] = useState({ name: false, price: false, category: false, subcategory: false, image: false, foodType: false, taxRate: false });
     const [categoryTouched, setCategoryTouched] = useState({ name: false, parentCategory: false });
@@ -557,6 +569,12 @@ const MenuPage: React.FC = () => {
                 spiceLevel: item.isSpiceLevelAvailable ? (item.spiceLevel || 'mild') : '',
                 isSpiceLevelAvailable: item.isSpiceLevelAvailable || false,
                 availableDays: item.availableDays || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+                isWeeklyScheduleEnabled: item.isWeeklyScheduleEnabled || false,
+                availabilityType: item.availabilityType || 'highlight',
+                displayOption: item.displayOption || 'normal',
+                validFrom: item.validFrom || null,
+                validTo: item.validTo || null,
+                priority: item.priority || 0,
                 ...spiceLevelFields, // Add dynamic spice level fields
             });
         } else {
@@ -587,6 +605,12 @@ const MenuPage: React.FC = () => {
                 hot: '',
                 very_hot: '',
                 availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as string[], // New field
+                 isWeeklyScheduleEnabled: false,
+                availabilityType: 'highlight' as 'highlight' | 'available_only',
+                displayOption: 'normal' as 'normal' | 'weekly_special' | 'todays_special',
+                validFrom: null,
+                validTo: null,
+                priority: 0,
             });
         }
         setMenuItemDialogOpen(true);
@@ -720,6 +744,12 @@ const MenuPage: React.FC = () => {
                 spiceLevels: filteredSpiceLevels,
                 spiceLevelData: spiceLevelData,
                 availableDays: menuItemForm.availableDays,
+                isWeeklyScheduleEnabled: menuItemForm.isWeeklyScheduleEnabled,
+                availabilityType: menuItemForm.availabilityType,
+                displayOption: menuItemForm.displayOption,
+                validFrom: menuItemForm.validFrom,
+                validTo: menuItemForm.validTo,
+                priority: menuItemForm.priority,
                 // variants are already in the correct shape
             };
 
@@ -1403,6 +1433,29 @@ const MenuPage: React.FC = () => {
                                                         </Box>
                                                     )}
 
+                                                    {/* Weekly schedule badge */}
+                                                    {(item as any).isWeeklyScheduleEnabled && (
+                                                        <Box sx={{
+                                                            px: 1, py: 0.3, borderRadius: '20px',
+                                                            bgcolor: alpha(theme.palette.warning.main, 0.1),
+                                                        }}>
+                                                            <Typography sx={{ fontSize: '0.63rem', fontWeight: 700, color: theme.palette.warning.dark, lineHeight: 1 }}>
+                                                                📅 {(item as any).displayOption === 'todays_special' ? "Today's Special" : (item as any).displayOption === 'weekly_special' ? 'Weekly Special' : 'Scheduled'}
+                                                            </Typography>
+                                                        </Box>
+                                                    )}
+
+ {/* Weekly schedule badge */}
+                                                    {(item as any).isWeeklyScheduleEnabled && (
+                                                        <Box sx={{
+                                                            px: 1, py: 0.3, borderRadius: '20px',
+                                                            bgcolor: alpha(theme.palette.warning.main, 0.1),
+                                                        }}>
+                                                            <Typography sx={{ fontSize: '0.63rem', fontWeight: 700, color: theme.palette.warning.dark, lineHeight: 1 }}>
+                                                                📅 {(item as any).displayOption === 'todays_special' ? "Today's Special" : (item as any).displayOption === 'weekly_special' ? 'Weekly Special' : 'Scheduled'}
+                                                            </Typography>
+                                                        </Box>
+                                                    )}
                                                     {/* Veg / Non-veg dot — pushed to the right */}
                                                     {(item as any).foodType && (
                                                         <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}>
@@ -2216,7 +2269,7 @@ const MenuPage: React.FC = () => {
                                                                             const newLevels = currentLevels.filter((_: string, i: number) => i !== index);
 
                                                                             // Shift field values for remaining levels
-                                                                            const updatedForm = { ...menuItemForm };
+                                                                            const updatedForm: any = { ...menuItemForm };
                                                                             delete updatedForm[fieldKey]; // Delete the removed one
 
                                                                             // Re-index remaining fields to keep spiceLevel_X consistent with index
@@ -2248,94 +2301,157 @@ const MenuPage: React.FC = () => {
                                 </Stack>
                             </Grid>
 
-                            {/* Available Days Section */}
+                                            {/* Weekly Availability Section */}
                             <Grid item xs={12}>
                                 <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-                                    <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <TodayIcon fontSize="small" color="primary" /> Available Days
-                                    </Typography>
-
-                                    {/* Quick Select Buttons */}
-                                    <Box sx={{ mb: 2 }}>
-                                        <Typography variant="caption" color="text.secondary" sx={{ mb: 1 }}>
-                                            Quick Select:
+                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: menuItemForm.isWeeklyScheduleEnabled ? 3 : 0 }}>
+                                        <Typography variant="subtitle2" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <TodayIcon fontSize="small" color="primary" /> Weekly Availability
                                         </Typography>
-                                        <Stack direction="row" spacing={1} flexWrap="wrap">
-                                            <Button
-                                                size="small"
-                                                variant="outlined"
-                                                onClick={() => setMenuItemForm({
-                                                    ...menuItemForm,
-                                                    availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
-                                                })}
-                                            >
-                                                Weekdays (Mon-Fri)
-                                            </Button>
-                                            <Button
-                                                size="small"
-                                                variant="outlined"
-                                                onClick={() => setMenuItemForm({
-                                                    ...menuItemForm,
-                                                    availableDays: ['saturday', 'sunday']
-                                                })}
-                                            >
-                                                Weekend (Sat-Sun)
-                                            </Button>
-                                            <Button
-                                                size="small"
-                                                variant="outlined"
-                                                onClick={() => setMenuItemForm({
-                                                    ...menuItemForm,
-                                                    availableDays: ['friday', 'saturday', 'sunday']
-                                                })}
-                                            >
-                                                Fri-Sun (3 Days)
-                                            </Button>
-                                            <Button
-                                                size="small"
-                                                variant="outlined"
-                                                onClick={() => setMenuItemForm({
-                                                    ...menuItemForm,
-                                                    availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-                                                })}
-                                            >
-                                                All Days
-                                            </Button>
-                                        </Stack>
+                                        <FormControlLabel
+                                            control={
+                                                <Switch 
+                                                    checked={menuItemForm.isWeeklyScheduleEnabled} 
+                                                    onChange={(e) => setMenuItemForm({ ...menuItemForm, isWeeklyScheduleEnabled: e.target.checked })} 
+                                                    color="primary"
+                                                />
+                                            }
+                                            label={<Typography variant="body2" sx={{ fontWeight: 500 }}>Enable Weekly Schedule</Typography>}
+                                            labelPlacement="start"
+                                            sx={{ mr: 0 }}
+                                        />
                                     </Box>
 
-                                    <FormControl fullWidth>
-                                        <InputLabel>Days Available</InputLabel>
-                                        <Select
-                                            multiple
-                                            value={menuItemForm.availableDays}
-                                            label="Days Available"
-                                            onChange={(e) => {
-                                                const val = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
-                                                setMenuItemForm({ ...menuItemForm, availableDays: val as string[] });
-                                            }}
-                                            renderValue={(selected) => (
-                                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                                    {(selected as string[]).map((day) => (
-                                                        <Chip key={day} label={day.charAt(0).toUpperCase() + day.slice(1)} size="small" />
-                                                    ))}
+                                    {menuItemForm.isWeeklyScheduleEnabled && (
+                                        <Grid container spacing={3}>
+                                            <Grid item xs={12} sm={6}>
+                                                <FormControl fullWidth size="small">
+                                                    <InputLabel>Availability Type</InputLabel>
+                                                    <Select
+                                                        value={menuItemForm.availabilityType || 'available_only'}
+                                                        label="Availability Type"
+                                                        onChange={(e) => setMenuItemForm({ ...menuItemForm, availabilityType: e.target.value as any })}
+                                                    >
+                                                        <MenuItem value="highlight">Highlight Only (Available Everyday, Highlighted on specific days)</MenuItem>
+                                                        <MenuItem value="available_only">Available Only on Selected Days</MenuItem>
+                                                    </Select>
+                                                </FormControl>
+                                            </Grid>
+                                            <Grid item xs={12} sm={6}>
+                                                <FormControl fullWidth size="small">
+                                                    <InputLabel>Display Options</InputLabel>
+                                                    <Select
+                                                        value={menuItemForm.displayOption || 'normal'}
+                                                        label="Display Options"
+                                                        onChange={(e) => setMenuItemForm({ ...menuItemForm, displayOption: e.target.value as any })}
+                                                    >
+                                                        <MenuItem value="normal">Normal</MenuItem>
+                                                        <MenuItem value="weekly_special">Weekly Special</MenuItem>
+                                                        <MenuItem value="todays_special">Today's Special</MenuItem>
+                                                    </Select>
+                                                </FormControl>
+                                            </Grid>
+
+                                            <Grid item xs={12}>
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                                                    <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>Quick Select:</Typography>
+                                                    <Stack direction="row" spacing={1}>
+                                                        <Button 
+                                                            size="small" 
+                                                            variant="outlined" 
+                                                            sx={{ borderRadius: 2, textTransform: 'none', px: 2 }}
+                                                            onClick={() => setMenuItemForm({ ...menuItemForm, availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'] })}
+                                                        >
+                                                            Weekdays
+                                                        </Button>
+                                                        <Button 
+                                                            size="small" 
+                                                            variant="outlined" 
+                                                            sx={{ borderRadius: 2, textTransform: 'none', px: 2 }}
+                                                            onClick={() => setMenuItemForm({ ...menuItemForm, availableDays: ['saturday', 'sunday'] })}
+                                                        >
+                                                            Weekend
+                                                        </Button>
+                                                        <Button 
+                                                            size="small" 
+                                                            variant="outlined" 
+                                                            sx={{ borderRadius: 2, textTransform: 'none', px: 2 }}
+                                                            onClick={() => setMenuItemForm({ ...menuItemForm, availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] })}
+                                                        >
+                                                            All Days
+                                                        </Button>
+                                                    </Stack>
                                                 </Box>
-                                            )}
-                                        >
-                                            {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
-                                                <MenuItem key={day} value={day}>
-                                                    {day.charAt(0).toUpperCase() + day.slice(1)}
-                                                </MenuItem>
-                                            ))}
-                                        </Select>
-                                        <Typography variant="caption" color="text.secondary">
-                                            Select which days this menu item should be available. Items will only show on the selected days.
-                                        </Typography>
-                                    </FormControl>
+                                            </Grid>
+
+                                            <Grid item xs={12}>
+                                                <FormControl fullWidth size="small">
+                                                    <InputLabel>Days Available</InputLabel>
+                                                    <Select
+                                                        multiple
+                                                        value={menuItemForm.availableDays || []}
+                                                        label="Days Available"
+                                                        onChange={(e) => setMenuItemForm({ ...menuItemForm, availableDays: typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value as string[] })}
+                                                        input={<OutlinedInput label="Days Available" />}
+                                                        renderValue={(selected) => (
+                                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                                                {(selected as string[]).map((value) => (
+                                                                    <Chip 
+                                                                        key={value} 
+                                                                        label={value.charAt(0).toUpperCase() + value.slice(1)} 
+                                                                        size="small" 
+                                                                        sx={{ borderRadius: 1 }}
+                                                                    />
+                                                                ))}
+                                                            </Box>
+                                                        )}
+                                                    >
+                                                        {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
+                                                            <MenuItem key={day} value={day}>
+                                                                {day.charAt(0).toUpperCase() + day.slice(1)}
+                                                            </MenuItem>
+                                                        ))}
+                                                    </Select>
+                                                </FormControl>
+                                            </Grid>
+
+                                            <Grid item xs={12} sm={4}>
+                                                <TextField
+                                                    label="Valid From (Optional)"
+                                                    type="date"
+                                                    size="small"
+                                                    value={menuItemForm.validFrom ? new Date(menuItemForm.validFrom).toISOString().split('T')[0] : ''}
+                                                    onChange={(e) => setMenuItemForm({ ...menuItemForm, validFrom: e.target.value ? new Date(e.target.value) : null })}
+                                                    fullWidth
+                                                    InputLabelProps={{ shrink: true }}
+                                                />
+                                            </Grid>
+                                            <Grid item xs={12} sm={4}>
+                                                <TextField
+                                                    label="Valid Till (Optional)"
+                                                    type="date"
+                                                    size="small"
+                                                    value={menuItemForm.validTo ? new Date(menuItemForm.validTo).toISOString().split('T')[0] : ''}
+                                                    onChange={(e) => setMenuItemForm({ ...menuItemForm, validTo: e.target.value ? new Date(e.target.value) : null })}
+                                                    fullWidth
+                                                    InputLabelProps={{ shrink: true }}
+                                                />
+                                            </Grid>
+                                            <Grid item xs={12} sm={4}>
+                                                <TextField
+                                                    label="Priority (Higher first)"
+                                                    type="number"
+                                                    size="small"
+                                                    value={menuItemForm.priority || 0}
+                                                    onChange={(e) => setMenuItemForm({ ...menuItemForm, priority: parseInt(e.target.value) || 0 })}
+                                                    fullWidth
+                                                />
+                                            </Grid>
+                                        </Grid>
+                                    )}
                                 </Paper>
                             </Grid>
 
-                            {/* Full Width section for Add-ons */}
                             <Grid item xs={12}>
                                 <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                                     <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>

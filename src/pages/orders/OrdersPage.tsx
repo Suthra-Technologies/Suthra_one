@@ -178,9 +178,27 @@ const OrdersPage = () => {
     setSelectedOrder(order);
     setPrintDialogOpen(true);
   };
+  const handleOrderRefresh = async (orderId?: string) => {
+    if (orderId) {
+      try {
+        const response = await ordersAPI.getOne(orderId);
+        const updatedOrder = response.data;
+        setOrders(prev => prev.map(o => o._id === orderId ? updatedOrder : o));
+      } catch (error) {
+        console.error('Error fetching single order:', error);
+        fetchOrders(); // fallback
+      }
+    } else {
+      fetchOrders();
+    }
+  };
 
   const handleOrderUpdate = () => {
-    fetchOrders();
+   if (selectedOrder) {
+      handleOrderRefresh(selectedOrder._id);
+    } else {
+      fetchOrders();
+    }
     handleDialogClose();
   };
 
@@ -195,11 +213,12 @@ const OrdersPage = () => {
     console.log("Adding items to:", order);
   };
 
-  const handleAcceptPreOrder = async (orderId: string) => {
+  const handleAcceptPreOrder = async (orderId:  string) => {
     try {
       await ordersAPI.updateStatus(orderId, 'confirmed');
       toast.success('Pre-order accepted');
-      fetchOrders();
+      // fetchOrders();
+      handleOrderRefresh(orderId);
     } catch {
       toast.error('Failed to accept pre-order');
     }
@@ -209,10 +228,10 @@ const OrdersPage = () => {
     try {
       await ordersAPI.updateStatus(orderId, 'cancelled');
       toast.success('Pre-order rejected');
-      fetchOrders();
+      handleOrderRefresh(orderId);
     } catch {
       toast.error('Failed to reject pre-order');
-    }
+    }  
   };
 
 
@@ -376,7 +395,12 @@ const OrdersPage = () => {
                 onPrint={() => handlePrint(order)}
                 onAddItem={() => handleAddItem(order)}
                 canManage={canManageOrders}
-                onRefresh={fetchOrders}
+
+                onRefresh={() => handleOrderRefresh(order._id)}
+                onFeedback={(id: string) => {
+                  const targetSlug = order?.restaurant?.slug || tenantSlug || '';
+                  navigate(`/${targetSlug}/feedback/${id}`);
+                }}
               />
             </Grid>
           ))}

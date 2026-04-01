@@ -48,6 +48,12 @@ interface MenuItem {
   isAvailable: boolean;
   category: string;
   availableDays?: string[];
+  isWeeklyScheduleEnabled?: boolean;
+  availabilityType?: 'highlight' | 'available_only';
+  displayOption?: 'normal' | 'weekly_special' | 'todays_special';
+  validFrom?: string | null;
+  validTo?: string | null;
+  priority?: number;
   rating?: number;
   reviewCount?: number;
   dietaryInfo?: string[];
@@ -91,15 +97,47 @@ const PublicMenuPage: React.FC = () => {
       setLoading(false);
     }
   };
+const getDayName = (date: Date): string => {
+    return ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][date.getDay()];
+  };
 
+  const today = getDayName(new Date());
+
+  const isItemAvailableForDay = (item: MenuItem, day: string): boolean => {
+    if (!item.isWeeklyScheduleEnabled) return true;
+    if (item.validFrom && new Date(item.validFrom) > new Date()) return false;
+    if (item.validTo && new Date(item.validTo) < new Date()) return false;
+    if (item.availabilityType === 'available_only') {
+      return (item.availableDays || []).includes(day);
+    }
+    return true; // highlight mode: always available
+  };
+
+  const isSpecialToday = (item: MenuItem): boolean => {
+    if (!item.isWeeklyScheduleEnabled) return false;
+    if (item.validFrom && new Date(item.validFrom) > new Date()) return false;
+    if (item.validTo && new Date(item.validTo) < new Date()) return false;
+    return (item.availableDays || []).includes(today) && item.displayOption !== 'normal';
+  };
+
+  const getSpecialBadge = (item: MenuItem): string | null => {
+    if (!isSpecialToday(item)) return null;
+    if (item.displayOption === 'todays_special') return "🔥 Today's Special";
+    if (item.displayOption === 'weekly_special') return '⭐ Weekly Special';
+    return null;
+  };
   const filteredItems = menuItems.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.description?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
-    const isAvailable = item.isAvailable;
+    const isAvailable = item.isAvailable && isItemAvailableForDay(item, today);
     return matchesSearch && matchesCategory && isAvailable;
   });
+const todaysSpecials = filteredItems
+    .filter(item => isSpecialToday(item))
+    .sort((a, b) => (b.priority || 0) - (a.priority || 0));
 
+  const regularItems = filteredItems;
   const handleAddToCart = (item: MenuItem, quantity = 1) => {
     addItem(item, quantity);
   };
@@ -204,6 +242,80 @@ const PublicMenuPage: React.FC = () => {
             </Grid>
           </Grid>
         </Paper>
+        {/* Specials for Today section */}
+        {todaysSpecials.length > 0 && (
+          <Paper sx={{ p: 3, mb: 3 }}>
+            <Typography variant="h5" fontWeight="bold" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              🔥 Specials for Today
+            </Typography>
+            <Grid container spacing={3}>
+              {todaysSpecials.map((item) => (
+                <Grid item xs={12} sm={6} md={4} key={`special-${item._id}`}>
+                  <Card
+                    sx={{
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      transition: 'transform 0.2s, box-shadow 0.2s',
+                      '&:hover': { transform: 'translateY(-4px)', boxShadow: 3 },
+                      cursor: 'pointer',
+                      border: '2px solid',
+                      borderColor: item.displayOption === 'todays_special' ? '#FF6B35' : '#6366F1',
+                    }}
+                    onClick={() => handleItemClick(item)}
+                  >
+                    <Box sx={{ position: 'relative' }}>
+                      <CardMedia
+                        component="img"
+                        height="180"
+                        image={item.image || '/placeholder-food.jpg'}
+                        alt={item.name}
+                        sx={{ objectFit: 'cover' }}
+                      />
+                      <Chip
+                        label={getSpecialBadge(item)}
+                        size="small"
+                        sx={{
+                          position: 'absolute',
+                          top: 8,
+                          left: 8,
+                          background: item.displayOption === 'todays_special'
+                            ? 'linear-gradient(135deg, #FF6B35, #F7C948)'
+                            : 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+                          color: '#fff',
+                          fontWeight: 700,
+                          fontSize: '0.75rem',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                        }}
+                      />
+                    </Box>
+                    <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+                      <Typography variant="h6" component="h3" gutterBottom>
+                        {item.name}
+                      </Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 'auto' }}>
+                        <Typography variant="h6" color="primary" fontWeight="bold">
+                          ${item.price.toFixed(2)}
+                        </Typography>
+                        <Button
+                          variant="contained"
+                          startIcon={<Add />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAddToCart(item);
+                          }}
+                          size="small"
+                        >
+                          Add to Cart
+                        </Button>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          </Paper>
+        )}
         <Grid container spacing={3}>
           {filteredItems.map((item) => (
             <Grid item xs={12} sm={6} md={4} key={item._id}>
@@ -244,6 +356,24 @@ const PublicMenuPage: React.FC = () => {
                       color="secondary"
                       size="small"
                       sx={{ position: 'absolute', bottom: 8, left: 8 }}
+                    />
+                  )}
+                  {getSpecialBadge(item) && (
+                    <Chip
+                      label={getSpecialBadge(item)}
+                      size="small"
+                      sx={{
+                        position: 'absolute',
+                        bottom: 8,
+                        left: 8,
+                        background: item.displayOption === 'todays_special'
+                          ? 'linear-gradient(135deg, #FF6B35, #F7C948)'
+                          : 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+                        color: '#fff',
+                        fontWeight: 700,
+                        fontSize: '0.7rem',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                      }}
                     />
                   )}
                 </Box>

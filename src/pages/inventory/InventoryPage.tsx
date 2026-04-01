@@ -34,6 +34,7 @@ import {
     MenuItem,
     FormControl,
     InputLabel,
+    Badge,
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -45,12 +46,19 @@ import {
     DeleteForever as DeleteForeverIcon,
     Close as CloseIcon,
     CloudUpload as BulkUploadIcon,
+     Notes as NotesIcon,
+    EventNote as ItemNotesIcon,
+    History as HistoryIcon,
 } from '@mui/icons-material';
+import { Drawer } from '@mui/material';
+// import { NotesTabContainer } from 'src/components/notes/NotesTabContainer';
+// import { useNotesHistory } from 'src/hooks/useNotesHistory';
 import { toast } from 'react-hot-toast';
 import { inventoryAPI } from '../../services/api';
 import RawMaterialDialog from '../../components/RawMaterialDialog';
 import UsageDialog from '../../components/UsageDialog';
 import BulkUploadDialog from '../../components/BulkUploadDialog';
+// import VendorNotesDialog from 'src/components/VendorNotesDialog';
 import { useSettings } from '../../context/SettingsContext';
 
 interface RawMaterial {
@@ -78,6 +86,16 @@ interface RawMaterial {
     };
     createdAt: string;
     updatedAt: string;
+}
+
+// Vendor interface
+interface Vendor {
+    _id: string;
+    name: string;
+    contact?: string;
+    email?: string;
+    address?: string;
+    status: string;
 }
 
 interface UsageRecord {
@@ -125,13 +143,14 @@ const InventoryPage: React.FC = () => {
     const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>([]);
     const [dailyReport, setDailyReport] = useState<DailyReport | null>(null);
     const [loading, setLoading] = useState(false);
-
+// Notes History Feature
+    const { openTab, activeTabs } = useNotesHistory();
+    const [notesDrawerOpen, setNotesDrawerOpen] = useState(false);
     // Date range for usage report - default to today
     const today = new Date().toISOString().split('T')[0];
     const [fromDate, setFromDate] = useState(today);
     const [toDate, setToDate] = useState(today);
 
-    // Pagination State
     const [page, setPage] = useState(0);
     const [limit, setLimit] = useState(10);
     const [totalMaterials, setTotalMaterials] = useState(0);
@@ -141,11 +160,12 @@ const InventoryPage: React.FC = () => {
     const [totalUsageRecords, setTotalUsageRecords] = useState(0);
     const [reportType, setReportType] = useState('usage');
 
-    // Dialog states
     const [materialDialogOpen, setMaterialDialogOpen] = useState(false);
     const [usageDialogOpen, setUsageDialogOpen] = useState(false);
     const [bulkUploadDialogOpen, setBulkUploadDialogOpen] = useState(false);
     const [selectedMaterial, setSelectedMaterial] = useState<RawMaterial | null>(null);
+    const [selectedVendorForNotes, setSelectedVendorForNotes] = useState<Vendor | null>(null);
+    const [vendorNotesOpen, setVendorNotesOpen] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; title: string; message: React.ReactNode; onConfirm: () => void }>({
         open: false,
         title: '',
@@ -167,7 +187,7 @@ const InventoryPage: React.FC = () => {
         if (tabValue === 0) {
             loadRawMaterials();
         }
-    }, [page, limit, tabValue]); // Reload on pagination or tab switch
+    }, [page, limit, tabValue]);
 
     const loadRawMaterials = async () => {
         try {
@@ -186,7 +206,6 @@ const InventoryPage: React.FC = () => {
     const loadDailyReport = async () => {
         try {
             setLoading(true);
-            // Use date range instead of single date
             const response = await inventoryAPI.getUsageReport(fromDate, toDate, { page: usagePage + 1, limit: usageLimit, type: reportType });
             setDailyReport(response.data);
             setTotalUsageRecords(response.data.pagination?.total || 0);
@@ -245,6 +264,29 @@ const InventoryPage: React.FC = () => {
         }
     };
 
+    const handleVendorNotes = (material: RawMaterial) => {
+        if (material.supplier?.name) {
+            // Create vendor object from supplier data
+            const vendor: Vendor = {
+                _id: material._id + '_vendor', // Use material ID + suffix as vendor ID
+                name: material.supplier.name,
+                contact: material.supplier.contact,
+                email: material.supplier.email,
+                address: material.supplier.address,
+                status: 'active'
+            };
+            setSelectedVendorForNotes(vendor);
+            setVendorNotesOpen(true);
+        } else {
+            toast.error('No vendor assigned to this material');
+        }
+    };
+
+    const handleItemNotes = (material: RawMaterial) => {
+        openTab(material._id, material.name);
+        setNotesDrawerOpen(true);
+    };
+
     const getStockStatus = (material: RawMaterial) => {
         if (material.currentStock <= material.reorderLevel) {
             return { label: 'Critical', color: 'error' as const };
@@ -279,13 +321,22 @@ const InventoryPage: React.FC = () => {
                 )}
             </Box>
 
-
-
             <Paper sx={{ mb: 3 }}>
                 <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)}>
                     <Tab label="Raw Materials" />
                     <Tab label="Usage Reports" />
                 </Tabs>
+                  <Box sx={{ display: 'flex', alignItems: 'center', px: 1 }}>
+                    <IconButton
+                        color={activeTabs.length > 0 ? "primary" : "default"}
+                        onClick={() => setNotesDrawerOpen(true)}
+                        title="Item Notes Center"
+                    >
+                        <Badge badgeContent={activeTabs.length} color="primary">
+                            <ItemNotesIcon />
+                        </Badge>
+                    </IconButton>
+                </Box>
             </Paper>
 
             {/* Raw Materials Tab */}
@@ -343,9 +394,6 @@ const InventoryPage: React.FC = () => {
                                                     <Typography variant="subtitle1" fontWeight="bold">
                                                         {material.name}
                                                     </Typography>
-                                                    {/* <Typography variant="caption" color="text.secondary">
-                                                        SKU: {material.sku}
-                                                    </Typography> */}
                                                 </Box>
                                                 <Chip label={status.label} color={status.color} size="small" />
                                             </Stack>
@@ -383,6 +431,31 @@ const InventoryPage: React.FC = () => {
                                                 >
                                                     Usage
                                                 </Button>
+                                                   {material.supplier?.name && (
+                                                    <Button
+                                                        size="small"
+                                                        startIcon={<NotesIcon />}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleVendorNotes(material);
+                                                        }}
+                                                        color="info"
+                                                    >
+                                                        Notes
+                                                    </Button>
+                                                )}
+                                                <Button
+                                                    size="small"
+                                                    startIcon={<ItemNotesIcon />}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleItemNotes(material);
+                                                    }}
+                                                    color="primary"
+                                                >
+                                                    Item Notes
+                                                </Button>
+
                                                 <IconButton
                                                     size="small"
                                                     color="primary"
@@ -410,13 +483,12 @@ const InventoryPage: React.FC = () => {
                             })}
                         </Stack>
                     ) : (
-                        // Desktop Table View for Raw Materials
-                        <TableContainer component={Paper} sx={{ maxWidth: '100%', overflowX: 'auto' }}>
+                        // Desktop Table View
+                        <TableContainer component={Paper}>
                             <Table>
                                 <TableHead>
                                     <TableRow>
                                         <TableCell>Name</TableCell>
-                                        {/* <TableCell>SKU</TableCell> */}
                                         <TableCell align="right">Current Stock</TableCell>
                                         <TableCell align="right">Min Stock</TableCell>
                                         <TableCell align="right">Reorder Level</TableCell>
@@ -433,7 +505,6 @@ const InventoryPage: React.FC = () => {
                                         return (
                                             <TableRow key={material._id}>
                                                 <TableCell>{material.name}</TableCell>
-                                                {/* <TableCell>{material.sku}</TableCell> */}
                                                 <TableCell align="right">
                                                     <strong>{parseFloat((material.currentStock || 0).toFixed(2))}</strong>
                                                 </TableCell>
@@ -465,6 +536,30 @@ const InventoryPage: React.FC = () => {
                                                         title="Record Usage"
                                                     >
                                                         <UsageIcon />
+                                                    </IconButton>
+                                                    {/* {material.supplier?.name && (
+                                                        <IconButton
+                                                            size="small"
+                                                            color="info"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleVendorNotes(material);
+                                                            }}
+                                                            title="Vendor Notes"
+                                                        >
+                                                            <NotesIcon />
+                                                        </IconButton>
+                                                    )} */}
+                                                    <IconButton
+                                                        size="small"
+                                                        color="primary"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleItemNotes(material);
+                                                        }}
+                                                        title="Item Notes"
+                                                    >
+                                                        <ItemNotesIcon />
                                                     </IconButton>
                                                     <IconButton
                                                         size="small"
@@ -549,7 +644,6 @@ const InventoryPage: React.FC = () => {
                                 >
                                     <MenuItem value="usage">Usage</MenuItem>
                                     <MenuItem value="wastage">Wastage</MenuItem>
-                                    {/* <MenuItem value="all">All Transactions</MenuItem> */}
                                 </Select>
                             </FormControl>
                         </Grid>
@@ -635,13 +729,11 @@ const InventoryPage: React.FC = () => {
                                     ))}
                                 </Stack>
                             ) : (
-                                // Desktop Table View for Usage Reports
-                                <TableContainer component={Paper} sx={{ maxWidth: '100%', overflowX: 'auto' }}>
+                                <TableContainer component={Paper}>
                                     <Table>
                                         <TableHead>
                                             <TableRow>
                                                 <TableCell>Material</TableCell>
-                                                {/* <TableCell>SKU</TableCell> */}
                                                 <TableCell align="right">Quantity Used</TableCell>
                                                 <TableCell>Reason</TableCell>
                                                 <TableCell align="right">Cost</TableCell>
@@ -653,7 +745,6 @@ const InventoryPage: React.FC = () => {
                                             {dailyReport.records.map((record) => (
                                                 <TableRow key={record._id}>
                                                     <TableCell>{record.item.name}</TableCell>
-                                                    {/* <TableCell>{record.item.sku}</TableCell> */}
                                                     <TableCell align="right">
                                                         {Math.abs(record.quantity)} {record.item.unit}
                                                     </TableCell>
@@ -688,7 +779,8 @@ const InventoryPage: React.FC = () => {
                 </Box>
             )}
 
-            {/* Dialogs */}
+          
+
             <RawMaterialDialog
                 open={materialDialogOpen}
                 onClose={() => setMaterialDialogOpen(false)}
@@ -778,8 +870,37 @@ const InventoryPage: React.FC = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
+              {/* Vendor Notes Dialog */}
+            <VendorNotesDialog
+                open={vendorNotesOpen}
+                onClose={() => setVendorNotesOpen(false)}
+                vendor={selectedVendorForNotes}
+            />
+
+            {/* Item Notes Recovery Drawer */}
+            <Drawer
+                anchor="right"
+                open={notesDrawerOpen}
+                onClose={() => setNotesDrawerOpen(false)}
+                PaperProps={{
+                    sx: { width: { xs: '100%', sm: 450, md: 500 }, p: 0 }
+                }}
+            >
+                <Box sx={{ h: '100%', display: 'flex', flexDirection: 'column', height: '100%' }}>
+                    <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: 'primary.main', color: 'white' }}>
+                        <Typography variant="h6" fontWeight="bold">Item Notes Center</Typography>
+                        <IconButton onClick={() => setNotesDrawerOpen(false)} size="small" sx={{ color: 'white' }}>
+                            <CloseIcon />
+                        </IconButton>
+                    </Box>
+                    <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
+                        <NotesTabContainer />
+                    </Box>
+                </Box>
+            </Drawer>
         </Container>
     );
 };
 
 export default InventoryPage;
+

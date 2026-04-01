@@ -72,6 +72,7 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
     const [loading, setLoading] = useState(false);
     const [stripeModalOpen, setStripeModalOpen] = useState(false);
     const [tipPercent, setTipPercent] = useState<number>(0);
+    const totalAmount = order?.totalAmount || 0;
     
     const totalPaid = (order?.payments || [])
         .filter((p: any) => p.status === 'success' || !p.status)
@@ -110,7 +111,7 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
             toast.error('Invalid payment amount. Must not exceed remaining balance.');
             return;
         }
-
+ const isFullyPaid = amt >= amountDue - 0.01;
         setLoading(true);
         try {
             const res = await ordersAPI.addPaymentSplit(order._id, {
@@ -120,11 +121,21 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
                 tipAmount: pendingTipAmount > 0 ? pendingTipAmount : 0
             });
             toast.success(`Payment of ${formatCurrency(amt)} added`);
-            setOrder(res.data);
-
-            // If fully paid, optionally auto-close
-            if (res.data.paymentStatus === 'paid') {
-                // If it's dine in, you might optionally want to status complete here as well
+            // If fully paid, auto-forward/complete
+            if (res.data.paymentStatus === 'paid' || isFullyPaid) {
+                try {
+                    await ordersAPI.updateStatus(order._id, 'completed', 'Payment fully collected');
+                    toast.success('Order completed and fully paid!');
+                    onSuccess();
+                    onClose();
+                    setPaymentMethod('cash');
+                } catch (completeErr) {
+                    console.error('Failed to auto-complete order:', completeErr);
+                    // Update state so the user can manually click complete if auto-complete failed
+                    setOrder(res.data);
+                }
+            } else {
+                setOrder(res.data);
             }
         } catch (error: any) {
             console.error('Error adding payment:', error);
