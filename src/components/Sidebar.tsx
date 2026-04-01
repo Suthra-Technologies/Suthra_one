@@ -46,6 +46,8 @@ import {
   AccountBox,
   ExpandLess,
   ExpandMore,
+  HeadsetMic,
+  LibraryBooks,
 } from '@mui/icons-material';
 import { Collapse } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
@@ -125,7 +127,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
         { path: '/inventory/waste', label: 'Wastage Management', icon: <DeleteSweep />, roles: ['admin', 'manager'] },
         { path: '/purchase-orders', label: 'Purchase Orders', icon: <ShoppingBag />, roles: ['admin', 'manager'] },
         { path: '/vendors', label: 'Vendors', icon: <VendorIcon />, roles: ['admin', 'manager'] },
-        { path: '/recipes', label: 'Recipes', icon: <MenuBook />, roles: ['admin', 'manager'] },
+        // { path: '/recipes', label: 'Recipes', icon: <MenuBook />, roles: ['admin', 'manager'] },
         { path: '/promocode', label: 'Promo Code', icon: <LocalOffer />, roles: ['admin', 'manager'] },
         { path: '/coupons', label: 'Coupons', icon: <ConfirmationNumber />, roles: ['admin', 'manager'] },
         { path: '/users', label: 'Users', icon: <People />, roles: ['admin', 'manager'] },
@@ -145,9 +147,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
       items: [
         { path: '/profile', label: 'Profile', icon: <Person />, roles: ['admin', 'manager', 'waiter', 'cashier', 'delivery', 'customer'] },
         { path: '/subscription', label: 'Subscription', icon: <AdminPanelSettings />, roles: ['admin'] },
-        { path: '/support', label: 'Support', icon: <Help />, roles: ['admin', 'manager'] },
+        { path: '/support', label: 'Support', icon: <HeadsetMic />, roles: ['admin', 'manager'] },
         { path: '/settings', label: 'Settings', icon: <Settings />, roles: ['admin', 'manager'] },
-        { path: '', label: 'Help & Guide', icon: <Help />, roles: ['admin', 'manager', 'waiter', 'cashier', 'kitchen_staff', 'delivery', 'food_runner'], isAction: true, action: () => window.open('https://helpguide.restaurant.nexzenpos.com/#login', '_blank') },
+        { path: '', label: 'Help & Guide', icon: <LibraryBooks />, roles: ['admin', 'manager', 'waiter', 'cashier', 'kitchen_staff', 'delivery', 'food_runner'], isAction: true, action: () => window.open('https://helpguide.restaurant.nexzenpos.com/#login', '_blank') },
       ]
     },
   ];
