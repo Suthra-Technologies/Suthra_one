@@ -16,7 +16,6 @@ import {
     Paper,
     Chip,
     IconButton,
-    Alert,
     CircularProgress,
     TextField,
     Card,
@@ -34,7 +33,6 @@ import {
     MenuItem,
     FormControl,
     InputLabel,
-    Badge,
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -46,19 +44,15 @@ import {
     DeleteForever as DeleteForeverIcon,
     Close as CloseIcon,
     CloudUpload as BulkUploadIcon,
-     Notes as NotesIcon,
-    EventNote as ItemNotesIcon,
-    History as HistoryIcon,
 } from '@mui/icons-material';
-import { Drawer } from '@mui/material';
-// import { NotesTabContainer } from 'src/components/notes/NotesTabContainer';
-// import { useNotesHistory } from 'src/hooks/useNotesHistory';
+
+
 import { toast } from 'react-hot-toast';
 import { inventoryAPI } from '../../services/api';
 import RawMaterialDialog from '../../components/RawMaterialDialog';
 import UsageDialog from '../../components/UsageDialog';
 import BulkUploadDialog from '../../components/BulkUploadDialog';
-// import VendorNotesDialog from 'src/components/VendorNotesDialog';
+
 import { useSettings } from '../../context/SettingsContext';
 
 interface RawMaterial {
@@ -143,9 +137,7 @@ const InventoryPage: React.FC = () => {
     const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>([]);
     const [dailyReport, setDailyReport] = useState<DailyReport | null>(null);
     const [loading, setLoading] = useState(false);
-// Notes History Feature
-    const { openTab, activeTabs } = useNotesHistory();
-    const [notesDrawerOpen, setNotesDrawerOpen] = useState(false);
+
     // Date range for usage report - default to today
     const today = new Date().toISOString().split('T')[0];
     const [fromDate, setFromDate] = useState(today);
@@ -164,8 +156,6 @@ const InventoryPage: React.FC = () => {
     const [usageDialogOpen, setUsageDialogOpen] = useState(false);
     const [bulkUploadDialogOpen, setBulkUploadDialogOpen] = useState(false);
     const [selectedMaterial, setSelectedMaterial] = useState<RawMaterial | null>(null);
-    const [selectedVendorForNotes, setSelectedVendorForNotes] = useState<Vendor | null>(null);
-    const [vendorNotesOpen, setVendorNotesOpen] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; title: string; message: React.ReactNode; onConfirm: () => void }>({
         open: false,
         title: '',
@@ -197,6 +187,7 @@ const InventoryPage: React.FC = () => {
             setRawMaterials(materials);
             setTotalMaterials(response.data?.total ?? materials.length);
         } catch (err: any) {
+            console.error('Failed to load raw materials:', err);
             toast.error(err.response?.data?.message || 'Failed to load raw materials');
         } finally {
             setLoading(false);
@@ -207,9 +198,15 @@ const InventoryPage: React.FC = () => {
         try {
             setLoading(true);
             const response = await inventoryAPI.getUsageReport(fromDate, toDate, { page: usagePage + 1, limit: usageLimit, type: reportType });
-            setDailyReport(response.data);
-            setTotalUsageRecords(response.data.pagination?.total || 0);
+            if (response.data) {
+                setDailyReport(response.data);
+                setTotalUsageRecords(response.data.pagination?.total || 0);
+            } else {
+                setDailyReport(null);
+                setTotalUsageRecords(0);
+            }
         } catch (err: any) {
+            console.error('Failed to load usage report:', err);
             toast.error(err.response?.data?.message || 'Failed to load usage report');
         } finally {
             setLoading(false);
@@ -264,28 +261,7 @@ const InventoryPage: React.FC = () => {
         }
     };
 
-    const handleVendorNotes = (material: RawMaterial) => {
-        if (material.supplier?.name) {
-            // Create vendor object from supplier data
-            const vendor: Vendor = {
-                _id: material._id + '_vendor', // Use material ID + suffix as vendor ID
-                name: material.supplier.name,
-                contact: material.supplier.contact,
-                email: material.supplier.email,
-                address: material.supplier.address,
-                status: 'active'
-            };
-            setSelectedVendorForNotes(vendor);
-            setVendorNotesOpen(true);
-        } else {
-            toast.error('No vendor assigned to this material');
-        }
-    };
 
-    const handleItemNotes = (material: RawMaterial) => {
-        openTab(material._id, material.name);
-        setNotesDrawerOpen(true);
-    };
 
     const getStockStatus = (material: RawMaterial) => {
         if (material.currentStock <= material.reorderLevel) {
@@ -326,17 +302,7 @@ const InventoryPage: React.FC = () => {
                     <Tab label="Raw Materials" />
                     <Tab label="Usage Reports" />
                 </Tabs>
-                  <Box sx={{ display: 'flex', alignItems: 'center', px: 1 }}>
-                    <IconButton
-                        color={activeTabs.length > 0 ? "primary" : "default"}
-                        onClick={() => setNotesDrawerOpen(true)}
-                        title="Item Notes Center"
-                    >
-                        <Badge badgeContent={activeTabs.length} color="primary">
-                            <ItemNotesIcon />
-                        </Badge>
-                    </IconButton>
-                </Box>
+
             </Paper>
 
             {/* Raw Materials Tab */}
@@ -431,30 +397,7 @@ const InventoryPage: React.FC = () => {
                                                 >
                                                     Usage
                                                 </Button>
-                                                   {material.supplier?.name && (
-                                                    <Button
-                                                        size="small"
-                                                        startIcon={<NotesIcon />}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleVendorNotes(material);
-                                                        }}
-                                                        color="info"
-                                                    >
-                                                        Notes
-                                                    </Button>
-                                                )}
-                                                <Button
-                                                    size="small"
-                                                    startIcon={<ItemNotesIcon />}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleItemNotes(material);
-                                                    }}
-                                                    color="primary"
-                                                >
-                                                    Item Notes
-                                                </Button>
+
 
                                                 <IconButton
                                                     size="small"
@@ -536,30 +479,6 @@ const InventoryPage: React.FC = () => {
                                                         title="Record Usage"
                                                     >
                                                         <UsageIcon />
-                                                    </IconButton>
-                                                    {/* {material.supplier?.name && (
-                                                        <IconButton
-                                                            size="small"
-                                                            color="info"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleVendorNotes(material);
-                                                            }}
-                                                            title="Vendor Notes"
-                                                        >
-                                                            <NotesIcon />
-                                                        </IconButton>
-                                                    )} */}
-                                                    <IconButton
-                                                        size="small"
-                                                        color="primary"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleItemNotes(material);
-                                                        }}
-                                                        title="Item Notes"
-                                                    >
-                                                        <ItemNotesIcon />
                                                     </IconButton>
                                                     <IconButton
                                                         size="small"
@@ -682,7 +601,7 @@ const InventoryPage: React.FC = () => {
                                 </Grid>
                             </Grid>
 
-                            {dailyReport.records.length === 0 ? (
+                            {(dailyReport.records?.length || 0) === 0 ? (
                                 <Box sx={{ p: 4, textAlign: 'center' }}>
                                     <Typography color="text.secondary">
                                         No usage recorded for this date range.
@@ -691,13 +610,13 @@ const InventoryPage: React.FC = () => {
                             ) : isTabletOrMobile ? (
                                 // Mobile Card View for Usage Reports
                                 <Stack spacing={2}>
-                                    {dailyReport.records.map((record) => (
+                                    {dailyReport.records?.map((record) => (
                                         <Card key={record._id}>
                                             <CardContent>
                                                 <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={2}>
                                                     <Box>
                                                         <Typography variant="subtitle1" fontWeight="bold">
-                                                            {record.item.name}
+                                                            {record.item?.name || 'Deleted Item'}
                                                         </Typography>
                                                         <Typography variant="caption" color="text.secondary">
                                                             {new Date(record.createdAt).toLocaleTimeString()} · {new Date(record.createdAt).toLocaleDateString()}
@@ -716,7 +635,7 @@ const InventoryPage: React.FC = () => {
                                                     <Grid item xs={6}>
                                                         <Typography variant="caption" color="text.secondary">Quantity Used</Typography>
                                                         <Typography variant="body2">
-                                                            {Math.abs(record.quantity)} {record.item.unit}
+                                                            {Math.abs(record.quantity)} {record.item?.unit || ''}
                                                         </Typography>
                                                     </Grid>
                                                     <Grid item xs={6}>
@@ -742,11 +661,11 @@ const InventoryPage: React.FC = () => {
                                             </TableRow>
                                         </TableHead>
                                         <TableBody>
-                                            {dailyReport.records.map((record) => (
+                                            {dailyReport.records?.map((record) => (
                                                 <TableRow key={record._id}>
-                                                    <TableCell>{record.item.name}</TableCell>
+                                                    <TableCell>{record.item?.name || 'Deleted Item'}</TableCell>
                                                     <TableCell align="right">
-                                                        {Math.abs(record.quantity)} {record.item.unit}
+                                                        {Math.abs(record.quantity)} {record.item?.unit || ''}
                                                     </TableCell>
                                                     <TableCell>{record.reason}</TableCell>
                                                     <TableCell align="right">{formatCurrency(record.totalCost)}</TableCell>
@@ -870,34 +789,8 @@ const InventoryPage: React.FC = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
-              {/* Vendor Notes Dialog */}
-            <VendorNotesDialog
-                open={vendorNotesOpen}
-                onClose={() => setVendorNotesOpen(false)}
-                vendor={selectedVendorForNotes}
-            />
 
-            {/* Item Notes Recovery Drawer */}
-            <Drawer
-                anchor="right"
-                open={notesDrawerOpen}
-                onClose={() => setNotesDrawerOpen(false)}
-                PaperProps={{
-                    sx: { width: { xs: '100%', sm: 450, md: 500 }, p: 0 }
-                }}
-            >
-                <Box sx={{ h: '100%', display: 'flex', flexDirection: 'column', height: '100%' }}>
-                    <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: 'primary.main', color: 'white' }}>
-                        <Typography variant="h6" fontWeight="bold">Item Notes Center</Typography>
-                        <IconButton onClick={() => setNotesDrawerOpen(false)} size="small" sx={{ color: 'white' }}>
-                            <CloseIcon />
-                        </IconButton>
-                    </Box>
-                    <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
-                        <NotesTabContainer />
-                    </Box>
-                </Box>
-            </Drawer>
+
         </Container>
     );
 };
