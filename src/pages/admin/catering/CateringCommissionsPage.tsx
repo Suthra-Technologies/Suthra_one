@@ -81,6 +81,10 @@ const CateringCommissionsPage = () => {
     const [customers, setCustomers] = useState<any[]>([]);
     const [actionLoading, setActionLoading] = useState(false);
 
+    // Defensive aliases
+    const safeCustomers = Array.isArray(customers) ? customers : [];
+    const safeUsers = Array.isArray(users) ? users : [];
+
     // Payment State
     const [payDialogOpen, setPayDialogOpen] = useState(false);
     const [payForm, setPayForm] = useState({
@@ -105,15 +109,23 @@ const CateringCommissionsPage = () => {
     const fetchUsers = async () => {
         try {
             const res = await usersAPI.getUsers();
-            setUsers(res.data.data || res.data.users || res.data || []);
-        } catch (error) { console.error(error); }
+            const rawData = res.data.data || res.data.users || res.data;
+            setUsers(Array.isArray(rawData) ? rawData : []);
+        } catch (error) {
+            console.error(error);
+            setUsers([]);
+        }
     };
 
     const fetchCustomers = async () => {
         try {
             const res = await customersAPI.getAll({ page: 1, limit: 1000 });
-            setCustomers(res.data.customers || res.data.data || res.data || []);
-        } catch (error) { console.error(error); }
+            const rawData = res.data.customers || res.data.data || res.data;
+            setCustomers(Array.isArray(rawData) ? rawData : []);
+        } catch (error) {
+            console.error(error);
+            setCustomers([]);
+        }
     };
 
     useEffect(() => {
@@ -143,8 +155,9 @@ const CateringCommissionsPage = () => {
                 sortBy,
                 search: debouncedSearchName || undefined
             });
-            setCommissions(response.data.commissions || []);
-            setTotal(response.data.total || 0);
+            const commData = response.data.commissions || response.data.data || response.data;
+            setCommissions(Array.isArray(commData) ? commData : []);
+            setTotal(response.data.total || (Array.isArray(commData) ? commData.length : 0));
         } catch (error) {
             console.error("Failed to fetch commissions", error);
             toast.error("Failed to fetch commissions");
@@ -432,7 +445,7 @@ const CateringCommissionsPage = () => {
                                                     <Tooltip
                                                         title={
                                                             comm.status === 'cancelled' ?
-                                                                `Reason: ${comm.actionHistory?.slice().reverse().find((h: any) => h.action === 'CANCELLED')?.details || 'No reason specified'}` :
+                                                                `Reason: ${(Array.isArray(comm.actionHistory) ? comm.actionHistory : []).slice().reverse().find((h: any) => h.action === 'CANCELLED')?.details || 'No reason specified'}` :
                                                                 `Paid on ${comm.paymentDate ? new Date(comm.paymentDate).toLocaleDateString() : 'N/A'} via ${comm.paymentMethod?.replace('_', ' ') || 'N/A'}${comm.paymentReference ? ` (Ref: ${comm.paymentReference})` : ''}`
                                                         }
                                                         arrow
@@ -589,9 +602,9 @@ const CateringCommissionsPage = () => {
                         <Grid item xs={12}>
                             {editForm.reference.type === 'internal_team' ? (
                                 <Autocomplete
-                                    options={users}
+                                    options={safeUsers}
                                     getOptionLabel={(option) => `${option.firstName || ''} ${option.lastName || ''} (${option.roles?.[0] || 'User'})`}
-                                    value={users.find(u => u._id === (editForm.reference.userId?._id || editForm.reference.userId)) || null}
+                                    value={safeUsers.find(u => u._id === (editForm.reference.userId?._id || editForm.reference.userId)) || null}
                                     onChange={(_, newValue) => setEditForm({
                                         ...editForm,
                                         reference: {
@@ -606,10 +619,10 @@ const CateringCommissionsPage = () => {
                                 />
                             ) : (
                                 <Autocomplete
-                                    options={customers}
+                                    options={safeCustomers}
                                     getOptionLabel={(option) => typeof option === 'string' ? option : `${option.name || ''} ${option.phone ? `(${option.phone})` : ''}`}
                                     freeSolo
-                                    value={customers.find(c => c._id === (editForm.reference.customerId?._id || editForm.reference.customerId)) || editForm.reference.name || ''}
+                                    value={safeCustomers.find(c => c._id === (editForm.reference.customerId?._id || editForm.reference.customerId)) || editForm.reference.name || ''}
                                     onChange={(_, newValue) => {
                                         if (typeof newValue === 'string') {
                                             setEditForm({

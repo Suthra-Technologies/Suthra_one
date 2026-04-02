@@ -327,30 +327,38 @@ const DashboardPage: React.FC = () => {
       const results = await Promise.all(promises);
       const [dashboardRes, billingRes, inventoryRes, poRes, bookingsRes, bestSellingRes, ordersByTypeRes] = results;
 
+      const dashboardDataActual = dashboardRes?.status === 'fulfilled' ? dashboardRes.value?.data : dashboardRes?.data;
+      const billingData = billingRes?.status === 'fulfilled' ? billingRes.value?.data : billingRes?.data;
+      const bestSellingData = bestSellingRes?.status === 'fulfilled' ? bestSellingRes.value?.data : bestSellingRes?.data;
+      const ordersByTypeData = ordersByTypeRes?.status === 'fulfilled' ? ordersByTypeRes.value?.data : ordersByTypeRes?.data;
+
       setDashboardData({
-        ...dashboardRes.data,
-        bestSellingItems: bestSellingRes.data,
-        ordersByType: ordersByTypeRes.data,
-        subscriptionStatus: billingRes.data?.status || 'unknown',
+        ...(dashboardDataActual || {}),
+        bestSellingItems: Array.isArray(bestSellingData) ? bestSellingData : [],
+        ordersByType: Array.isArray(ordersByTypeData) ? ordersByTypeData : [],
+        subscriptionStatus: billingData?.status || 'unknown',
       });
 
       // Process Inventory for low stock
-      const inventoryItems = inventoryRes.data?.items || [];
+      const inventoryData = inventoryRes?.status === 'fulfilled' ? inventoryRes.value?.data : inventoryRes?.data;
+      const inventoryItems = Array.isArray(inventoryData?.items) ? inventoryData.items : (Array.isArray(inventoryData) ? inventoryData : []);
       setInventoryCount(inventoryItems.length);
-      setLowStockItems(inventoryItems.filter((i: any) => i.currentStock <= i.minimumStockLevel).length);
+      setLowStockItems(inventoryItems.filter((i: any) => i && i.currentStock <= (i.minimumStockLevel || i.minimumStock || 0)).length);
 
       // Process Pending POs
-      setPendingPOs(poRes.data?.total || poRes.data?.length || 0);
+      const poData = poRes?.status === 'fulfilled' ? poRes.value?.data : poRes?.data;
+      setPendingPOs(poData?.total || (Array.isArray(poData) ? poData.length : 0));
 
       // Process Bookings (Today's active)
       const todayStr = new Date().toISOString().split('T')[0];
 
-      const bookingsData = Array.isArray(bookingsRes.data)
-        ? bookingsRes.data
-        : bookingsRes.data?.items || [];
+      const rawBookings = bookingsRes?.status === 'fulfilled' ? bookingsRes.value?.data : bookingsRes?.data;
+      const bookingsData = Array.isArray(rawBookings)
+        ? rawBookings
+        : (Array.isArray(rawBookings?.items) ? rawBookings.items : []);
 
       const todaysBookings = bookingsData.filter((b: any) =>
-        b.bookingDate &&
+        b && b.bookingDate &&
         b.bookingDate.startsWith(todayStr) &&
         b.status !== 'cancelled'
       );
@@ -834,7 +842,7 @@ const DashboardPage: React.FC = () => {
                         isAnimationActive={false}
                         labelLine={itemCount > 1}
                         label={(props: any) => {
-                          if (itemCount === 1 ) return null;
+                          if (itemCount === 1) return null;
 
                           const { cx, cy, midAngle, outerRadius } = props;
                           const value = Number(props.payload?.totalQuantity || 0);
