@@ -41,8 +41,9 @@ const KitchenOrdersPage: React.FC = () => {
         try {
             setLoading(true);
             const response = await ordersAPI.getActive();
+            const ordersData = Array.isArray(response.data) ? response.data : [];
             // Filter orders that should not be in kitchen (e.g. ready for pickup/takeaway are usually at counter)
-            const kitchenOrders = response.data.filter((order: any) =>
+            const kitchenOrders = ordersData.filter((order: any) =>
                 !['ready_to_takeaway', 'ready_to_pickup', 'on_the_way', 'served', 'delivered', 'completed', 'cancelled'].includes(order.status)
             );
             setOrders(kitchenOrders);

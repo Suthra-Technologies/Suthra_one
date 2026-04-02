@@ -207,12 +207,13 @@ const POSPage: React.FC = () => {
                 settingsAPI.getAll(),
                 traysAPI.getAll(),
             ]);
-            setMenuItems(menuRes.data);
-            setCategories(categoriesRes.data);
-            setTables(tablesRes.data);
-            setTrays(traysRes.data);
+            setMenuItems(Array.isArray(menuRes.data) ? menuRes.data : []);
+            setCategories(Array.isArray(categoriesRes.data) ? categoriesRes.data : []);
+            setTables(Array.isArray(tablesRes.data) ? tablesRes.data : []);
+            setTrays(Array.isArray(traysRes.data) ? traysRes.data : []);
 
-            const restaurantSettings = settingsRes.data.find((s: any) => s.category === 'restaurant')?.settings;
+            const settingsData = Array.isArray(settingsRes.data) ? settingsRes.data : [];
+            const restaurantSettings = settingsData.find((s: any) => s.category === 'restaurant')?.settings;
             if (restaurantSettings?.taxRate !== undefined) {
                 setGstPercent(restaurantSettings.taxRate);
                 setIsGstLocked(true);
@@ -488,7 +489,8 @@ const POSPage: React.FC = () => {
 
 
             // Load items into cart
-            const formattedCart = ord.items.map((i: any) => ({
+            const items = Array.isArray(ord.items) ? ord.items : [];
+            const formattedCart = items.map((i: any) => ({
                 _id: i.menuItem,
                 name: i.name,
                 price: i.price,
@@ -541,6 +543,8 @@ const POSPage: React.FC = () => {
         const now = new Date();
         const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
 
+        if (!Array.isArray(menuItems)) return [];
+
         return menuItems.filter((item) => {
             const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
             const matchesCategory =
@@ -556,7 +560,7 @@ const POSPage: React.FC = () => {
             if (item.isWeeklyScheduleEnabled) {
                 // Check if today is one of the available days
                 const isDayAvailable = (item.availableDays || []).some((d: string) => d.toLowerCase() === currentDay);
-                
+
                 // If it's "available_only" and today is NOT the day, hide it
                 if (item.availabilityType === 'available_only' && !isDayAvailable) {
                     isAvailableByMode = false;
@@ -720,7 +724,7 @@ const POSPage: React.FC = () => {
     const fetchTables = async () => {
         try {
             const res = await tablesAPI.getAll();
-            setTables(res.data);
+            setTables(Array.isArray(res.data) ? res.data : []);
         } catch (err) {
             console.error("Failed to load tables", err);
         }
@@ -729,7 +733,8 @@ const POSPage: React.FC = () => {
     const fetchWaiters = async () => {
         try {
             const res = await usersAPI.getUsers();
-            const allUsers = res.data.data || res.data.users || res.data || [];
+            const rawData = res.data.data || res.data.users || res.data;
+            const allUsers = Array.isArray(rawData) ? rawData : [];
             setWaiters(allUsers.filter((u: any) =>
                 u.isActive !== false &&
                 (u.role === 'waiter' || (Array.isArray(u.roles) && u.roles.includes('waiter')))
@@ -1530,131 +1535,131 @@ const POSPage: React.FC = () => {
                     </Box>
                 </Box>
                 {/* Food Type Toggle — above tabs, right-aligned */}
-               <Box
-    sx={{
-        display: 'flex',
-        justifyContent: { xs: 'center', sm: 'flex-end' },
-        mb: 1,
-    }}
->
-    <Box
-        sx={{
-            display: 'flex',
-            alignItems: 'center',
-            p: 0.4,
-            bgcolor: 'action.hover',
-            borderRadius: '50px',
-            width: { xs: '100%', sm: 'auto' },
-            justifyContent: { xs: 'center', sm: 'flex-start' },
-        }}
-    >
-        {(['all', 'veg', 'non-veg'] as const).map((type) => {
-            const isActive = foodTypeFilter === type;
-            const vegColor = '#00a852';
-            const nonVegColor = '#e43b3b';
-            const activeBg = type === 'veg' ? vegColor : type === 'non-veg' ? nonVegColor : undefined;
-            return (
                 <Box
-                    key={type}
-                    onClick={() => setFoodTypeFilter(type)}
                     sx={{
                         display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 0.6,
-                        px: { xs: 1.2, sm: 1.5 },
-                        py: { xs: 0.8, sm: 0.6 },
-                        borderRadius: '50px',
-                        cursor: 'pointer',
-                        fontWeight: isActive ? 700 : 400,
-                        fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                        flex: { xs: 1, sm: 'none' },
-                        transition: 'all 0.2s ease',
-                        bgcolor: isActive ? (activeBg ?? 'primary.main') : 'transparent',
-                        color: isActive ? 'white' : 'text.secondary',
-                        boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.2)' : 'none',
-                        userSelect: 'none',
-                        '&:hover': {
-                            bgcolor: isActive ? (activeBg ?? 'primary.main') : 'action.selected',
+                        justifyContent: { xs: 'center', sm: 'flex-end' },
+                        mb: 1,
+                    }}
+                >
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            p: 0.4,
+                            bgcolor: 'action.hover',
+                            borderRadius: '50px',
+                            width: { xs: '100%', sm: 'auto' },
+                            justifyContent: { xs: 'center', sm: 'flex-start' },
+                        }}
+                    >
+                        {(['all', 'veg', 'non-veg'] as const).map((type) => {
+                            const isActive = foodTypeFilter === type;
+                            const vegColor = '#00a852';
+                            const nonVegColor = '#e43b3b';
+                            const activeBg = type === 'veg' ? vegColor : type === 'non-veg' ? nonVegColor : undefined;
+                            return (
+                                <Box
+                                    key={type}
+                                    onClick={() => setFoodTypeFilter(type)}
+                                    sx={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: 0.6,
+                                        px: { xs: 1.2, sm: 1.5 },
+                                        py: { xs: 0.8, sm: 0.6 },
+                                        borderRadius: '50px',
+                                        cursor: 'pointer',
+                                        fontWeight: isActive ? 700 : 400,
+                                        fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                                        flex: { xs: 1, sm: 'none' },
+                                        transition: 'all 0.2s ease',
+                                        bgcolor: isActive ? (activeBg ?? 'primary.main') : 'transparent',
+                                        color: isActive ? 'white' : 'text.secondary',
+                                        boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.2)' : 'none',
+                                        userSelect: 'none',
+                                        '&:hover': {
+                                            bgcolor: isActive ? (activeBg ?? 'primary.main') : 'action.selected',
+                                        },
+                                    }}
+                                >
+                                    {type === 'veg' && (
+                                        <Box sx={{
+                                            width: 11, height: 11,
+                                            border: `2px solid ${isActive ? 'white' : vegColor}`,
+                                            borderRadius: '2px',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            bgcolor: isActive ? 'transparent' : 'white',
+                                            flexShrink: 0,
+                                        }}>
+                                            <Box sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: isActive ? 'white' : vegColor }} />
+                                        </Box>
+                                    )}
+                                    {type === 'non-veg' && (
+                                        <Box sx={{
+                                            width: 11, height: 11,
+                                            border: `2px solid ${isActive ? 'white' : nonVegColor}`,
+                                            borderRadius: '2px',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            bgcolor: isActive ? 'transparent' : 'white',
+                                            flexShrink: 0,
+                                        }}>
+                                            <Box sx={{ width: 0, height: 0, borderLeft: '3px solid transparent', borderRight: '3px solid transparent', borderBottom: `5px solid ${isActive ? 'white' : nonVegColor}` }} />
+                                        </Box>
+                                    )}
+                                    {type === 'all' ? 'All' : type === 'veg' ? 'Veg' : 'Non‑Veg'}
+                                </Box>
+                            );
+                        })}
+                    </Box>
+                </Box>
+
+                {/* Category Tabs */}
+                <Tabs
+                    value={selectedCategory}
+                    onChange={(_, v) => setSelectedCategory(v)}
+                    variant="scrollable"
+                    scrollButtons="auto"
+                    allowScrollButtonsMobile
+                    sx={{
+                        mb: 2,
+                        borderBottom: 1,
+                        borderColor: 'divider',
+                        minHeight: { xs: 40, sm: 48 },
+                        '& .MuiTabs-root': {
+                            minHeight: { xs: 40, sm: 48 },
+                        },
+                        '& .MuiTabs-flexContainer': {
+                            gap: 0, // ← removed gap causing trailing space
+                        },
+                        '& .MuiTab-root': {
+                            fontSize: { xs: '0.72rem', sm: '0.8rem', md: '0.875rem' },
+                            minWidth: { xs: 'auto', sm: 80, md: 90 }, // ← auto on mobile to shrink-fit
+                            maxWidth: { xs: 120, sm: 160, md: 200 },
+                            minHeight: { xs: 40, sm: 48 },
+                            px: { xs: 1.5, sm: 1.5, md: 2 },
+                            py: { xs: 0.8, sm: 1.2, md: 1.5 },
+                            textTransform: 'none',
+                            whiteSpace: 'nowrap',
+                        },
+                        '& .MuiTabScrollButton-root': {
+                            width: { xs: 20, sm: 28, md: 40 },
+                            opacity: 1,
+                            '&.Mui-disabled': {
+                                opacity: 0.3,
+                            },
+                        },
+                        '& .MuiTabs-indicator': {
+                            height: { xs: 2, sm: 3 },
                         },
                     }}
                 >
-                    {type === 'veg' && (
-                        <Box sx={{
-                            width: 11, height: 11,
-                            border: `2px solid ${isActive ? 'white' : vegColor}`,
-                            borderRadius: '2px',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            bgcolor: isActive ? 'transparent' : 'white',
-                            flexShrink: 0,
-                        }}>
-                            <Box sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: isActive ? 'white' : vegColor }} />
-                        </Box>
-                    )}
-                    {type === 'non-veg' && (
-                        <Box sx={{
-                            width: 11, height: 11,
-                            border: `2px solid ${isActive ? 'white' : nonVegColor}`,
-                            borderRadius: '2px',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            bgcolor: isActive ? 'transparent' : 'white',
-                            flexShrink: 0,
-                        }}>
-                            <Box sx={{ width: 0, height: 0, borderLeft: '3px solid transparent', borderRight: '3px solid transparent', borderBottom: `5px solid ${isActive ? 'white' : nonVegColor}` }} />
-                        </Box>
-                    )}
-                    {type === 'all' ? 'All' : type === 'veg' ? 'Veg' : 'Non‑Veg'}
-                </Box>
-            );
-        })}
-    </Box>
-</Box>
-
-                {/* Category Tabs */}
-               <Tabs
-    value={selectedCategory}
-    onChange={(_, v) => setSelectedCategory(v)}
-    variant="scrollable"
-    scrollButtons="auto"
-    allowScrollButtonsMobile
-    sx={{
-        mb: 2,
-        borderBottom: 1,
-        borderColor: 'divider',
-        minHeight: { xs: 40, sm: 48 },
-        '& .MuiTabs-root': {
-            minHeight: { xs: 40, sm: 48 },
-        },
-        '& .MuiTabs-flexContainer': {
-            gap: 0, // ← removed gap causing trailing space
-        },
-        '& .MuiTab-root': {
-            fontSize: { xs: '0.72rem', sm: '0.8rem', md: '0.875rem' },
-            minWidth: { xs: 'auto', sm: 80, md: 90 }, // ← auto on mobile to shrink-fit
-            maxWidth: { xs: 120, sm: 160, md: 200 },
-            minHeight: { xs: 40, sm: 48 },
-            px: { xs: 1.5, sm: 1.5, md: 2 },
-            py: { xs: 0.8, sm: 1.2, md: 1.5 },
-            textTransform: 'none',
-            whiteSpace: 'nowrap',
-        },
-        '& .MuiTabScrollButton-root': {
-            width: { xs: 20, sm: 28, md: 40 },
-            opacity: 1,
-            '&.Mui-disabled': {
-                opacity: 0.3,
-            },
-        },
-        '& .MuiTabs-indicator': {
-            height: { xs: 2, sm: 3 },
-        },
-    }}
->
-    <Tab label="All Items" value="all" />
-    {categories.map((cat) => (
-        <Tab key={cat._id} label={cat.name} value={cat._id} />
-    ))}
-</Tabs>
+                    <Tab label="All Items" value="all" />
+                    {categories.map((cat) => (
+                        <Tab key={cat._id} label={cat.name} value={cat._id} />
+                    ))}
+                </Tabs>
 
                 {/* Items grid */}
                 {loading ? (

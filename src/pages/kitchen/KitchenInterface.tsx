@@ -197,9 +197,10 @@ const KitchenInterface: React.FC = () => {
     try {
       setLoading(true);
       const response = await ordersAPI.getKitchen();
+      const ordersData = Array.isArray(response.data) ? response.data : [];
 
       // Sort by urgency first, then status
-      const sortedOrders = response.data.sort((a: any, b: any) => {
+      const sortedOrders = ordersData.sort((a: any, b: any) => {
         const urgencyA = getUrgencyLevel(a.createdAt);
         const urgencyB = getUrgencyLevel(b.createdAt);
 
@@ -420,8 +421,8 @@ const KitchenInterface: React.FC = () => {
           <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'text.primary', fontSize: { xs: '1.75rem', md: '2.125rem' } }}>
             Kitchen Orders
           </Typography>
-          <Tabs 
-            value={activeTab} 
+          <Tabs
+            value={activeTab}
             onChange={(_, newValue) => setActiveTab(newValue)}
             sx={{ mt: 1, minHeight: 36, '& .MuiTab-root': { minHeight: 36, py: 0.5 } }}
           >
@@ -589,8 +590,8 @@ const KitchenInterface: React.FC = () => {
                               fontWeight="bold"
                               color={urgency === 'critical' ? 'error.main' : urgency === 'warning' ? 'warning.main' : 'text.secondary'}
                             >
-                              {order.isPreOrder && order.scheduledTime 
-                                ? `Sch: ${new Date(order.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` 
+                              {order.isPreOrder && order.scheduledTime
+                                ? `Sch: ${new Date(order.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
                                 : getElapsedTime(order.createdAt)}
                             </Typography>
                           </Stack>
