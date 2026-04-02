@@ -200,7 +200,7 @@ const CheckoutPage: React.FC = () => {
             price: item.price,
             itemTotal: item.itemTotal,
             customizations: item.customizations || [],
-            spiceLevel: item.spiceLevel || 'medium'
+            spiceLevel: item.spiceLevel || ''
         })),
         orderType: orderType === 'delivery' ? 'delivery' : 'takeaway',
         paymentMethod,

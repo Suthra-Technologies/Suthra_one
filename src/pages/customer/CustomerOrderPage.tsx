@@ -47,6 +47,8 @@ interface MenuItem {
     image?: string;
     isAvailable: boolean;
     foodType?: 'veg' | 'non-veg';
+    isSpiceLevelAvailable?: boolean;
+    spiceLevels?: string[];
 }
 
 interface CartItem extends MenuItem {
@@ -132,7 +134,11 @@ const CustomerOrderPage: React.FC = () => {
     };
 
     const addToCart = (item: MenuItem) => {
-        setSpiceSelectionItem(item);
+        if (item.isSpiceLevelAvailable) {
+            setSpiceSelectionItem(item);
+        } else {
+            addItem(item, 1, [], '');
+        }
     };
 
     const handleConfirmSpice = (spiceLevel: string) => {
@@ -152,47 +158,55 @@ const CustomerOrderPage: React.FC = () => {
     const calculateTotal = () => cart.totalAmount;
     const totalQuantity = cart.totalItems;
 
-    const SpiceLevelDialog = () => (
-        <Dialog
-            open={Boolean(spiceSelectionItem)}
-            onClose={() => setSpiceSelectionItem(null)}
-            PaperProps={{
-                sx: { borderRadius: 5, width: '100%', maxWidth: 350, p: 1 }
-            }}
-        >
-            <DialogTitle sx={{ textAlign: 'center', pb: 1 }}>
-                <Typography variant="h6" fontWeight="900">Select Spice Level</Typography>
-                <Typography variant="body2" color="text.secondary">{spiceSelectionItem?.name}</Typography>
-            </DialogTitle>
-            <DialogContent>
-                <Stack spacing={1.5} sx={{ mt: 1 }}>
-                    {['Mild', 'Medium', 'Hot', 'Extra Hot'].map((level) => (
-                        <Button
-                            key={level}
-                            variant="outlined"
-                            fullWidth
-                            onClick={() => handleConfirmSpice(level.toLowerCase())}
-                            sx={{
-                                py: 1.5,
-                                borderRadius: 3,
-                                textTransform: 'none',
-                                fontWeight: '700',
-                                color: 'text.primary',
-                                borderColor: 'divider',
-                                '&:hover': {
-                                    bgcolor: alpha(theme.palette.primary.main, 0.05),
-                                    borderColor: 'primary.main',
-                                    color: 'primary.main'
-                                }
-                            }}
-                        >
-                            {level}
-                        </Button>
-                    ))}
-                </Stack>
-            </DialogContent>
-        </Dialog>
-    );
+    const SpiceLevelDialog = () => {
+        if (!spiceSelectionItem) return null;
+
+        const levels = spiceSelectionItem.spiceLevels && spiceSelectionItem.spiceLevels.length > 0
+            ? spiceSelectionItem.spiceLevels
+            : ['mild', 'medium', 'hot', 'extra hot'];
+
+        return (
+            <Dialog
+                open={Boolean(spiceSelectionItem)}
+                onClose={() => setSpiceSelectionItem(null)}
+                PaperProps={{
+                    sx: { borderRadius: 5, width: '100%', maxWidth: 350, p: 1 }
+                }}
+            >
+                <DialogTitle sx={{ textAlign: 'center', pb: 1 }}>
+                    <Typography variant="h6" fontWeight="900">Select Spice Level</Typography>
+                    <Typography variant="body2" color="text.secondary">{spiceSelectionItem?.name}</Typography>
+                </DialogTitle>
+                <DialogContent>
+                    <Stack spacing={1.5} sx={{ mt: 1 }}>
+                        {levels.map((level) => (
+                            <Button
+                                key={level}
+                                variant="outlined"
+                                fullWidth
+                                onClick={() => handleConfirmSpice(level.toLowerCase())}
+                                sx={{
+                                    py: 1.5,
+                                    borderRadius: 3,
+                                    textTransform: 'none',
+                                    fontWeight: '700',
+                                    color: 'text.primary',
+                                    borderColor: 'divider',
+                                    '&:hover': {
+                                        bgcolor: alpha(theme.palette.primary.main, 0.05),
+                                        borderColor: 'primary.main',
+                                        color: 'primary.main'
+                                    }
+                                }}
+                            >
+                                {level.charAt(0).toUpperCase() + level.slice(1).replace(/_/g, ' ')}
+                            </Button>
+                        ))}
+                    </Stack>
+                </DialogContent>
+            </Dialog>
+        );
+    };
 
     if (loading) {
         return (
