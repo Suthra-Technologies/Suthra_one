@@ -147,6 +147,9 @@ const POSPage: React.FC = () => {
     const [tempSelectedTray, setTempSelectedTray] = useState<any | null>(null);
     const [customerDialCode, setCustomerDialCode] = useState(settings?.restaurant?.dialCode || '1');
     const [checkingDistance, setCheckingDistance] = useState(false);
+    const [deliveryFee, setDeliveryFee] = useState<number>(0);
+    const [isFetchingQuote, setIsFetchingQuote] = useState<boolean>(false);
+    const [quoteError, setQuoteError] = useState<string | null>(null);
 
     // Sync dial code with settings when they load
     useEffect(() => {
@@ -154,6 +157,59 @@ const POSPage: React.FC = () => {
             setCustomerDialCode(settings.restaurant.dialCode);
         }
     }, [settings?.restaurant?.dialCode]);
+
+    // Handle live DoorDash quotes
+    useEffect(() => {
+        const addressString = typeof deliveryAddress === 'object' ? deliveryAddress.fullAddress : deliveryAddress;
+        if (orderType !== 'delivery' || !addressString || addressString.length < 10) {
+            setDeliveryFee(0);
+            setQuoteError(null);
+            return;
+        }
+
+        let isCancelled = false;
+        const fetchQuote = async () => {
+            try {
+                setIsFetchingQuote(true);
+                setQuoteError(null);
+                
+                const tenantSlug = tenantSlug || settings?.tenantSlug || '';
+                // Since this might be admin, try to get tenantSlug from context or route if possible.
+                // In POSPage, we have slug from useSearchParams maybe? No.
+                // But settings?.tenantSlug should work.
+
+                const response = await ordersAPI.getDeliveryQuote(
+                    { fullAddress: addressString },
+                    cart.map(i => ({ menuItem: i._id, name: i.name, quantity: i.quantity, price: i.price })),
+                    tenantSlug
+                );
+
+                if (!isCancelled) {
+                    if (response.data && response.data.fee !== undefined) {
+                        setDeliveryFee(response.data.fee);
+                    } else {
+                        setQuoteError(response.data?.message || 'Could not get delivery quote.');
+                        setDeliveryFee(0);
+                    }
+                }
+            } catch (err: any) {
+                if (!isCancelled) {
+                    const errMsg = err.response?.data?.message || 'Delivery not available for this address.';
+                    setQuoteError(errMsg);
+                    setDeliveryFee(0);
+                    toast.error(errMsg);
+                }
+            } finally {
+                if (!isCancelled) setIsFetchingQuote(false);
+            }
+        };
+
+        const debounceTimer = setTimeout(fetchQuote, 1000);
+        return () => {
+            isCancelled = true;
+            clearTimeout(debounceTimer);
+        };
+    }, [orderType, deliveryAddress, cart, settings?.tenantSlug]);
 
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -632,7 +688,7 @@ const POSPage: React.FC = () => {
     }, 0);
     const discountAmount = cartTotal * (discountPercent / 100);
     const serviceChargeAmount = (orderType === 'dine_in' && guestCount > 3) ? Math.round(cartTotal * 0.18) : 0;
-    const finalTotal = cartTotal + taxAmount - discountAmount - couponDiscount + serviceChargeAmount + (Number(tip) || 0);
+    const finalTotal = cartTotal + taxAmount - discountAmount - couponDiscount + serviceChargeAmount + (orderType === 'delivery' ? deliveryFee : 0) + (Number(tip) || 0);
 
     const handlePlaceOrder = async () => {
         if (cart.length === 0) return;
@@ -805,8 +861,10 @@ const POSPage: React.FC = () => {
                     tray: i.tray,
                     trayMultiplier: i.trayMultiplier,
                 })),
-                totalAmount: cartTotal,
+                totalAmount: finalTotal,
+                subtotal: cartTotal,
                 tip: tipValue,
+                deliveryCharge: orderType === 'delivery' ? deliveryFee : 0,
                 gstPercent,
                 discountPercent,
                 couponCode: couponCode || undefined,
@@ -2384,6 +2442,19 @@ const POSPage: React.FC = () => {
                             <Typography>Service Charge (18%)</Typography>
                             <Typography>{formatSmartPrice(serviceChargeAmount)}</Typography>
                         </Box>
+                    )}
+                    {orderType === 'delivery' && (
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                            <Typography>Delivery Fee</Typography>
+                            <Typography color={isFetchingQuote ? 'text.secondary' : 'text.primary'}>
+                                {isFetchingQuote ? 'Calculating...' : formatSmartPrice(deliveryFee)}
+                            </Typography>
+                        </Box>
+                    )}
+                    {quoteError && orderType === 'delivery' && (
+                        <Typography variant="caption" color="error" display="block" sx={{ mb: 1 }}>
+                            {quoteError}
+                        </Typography>
                     )}
                     {Number(tip) > 0 && (
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>

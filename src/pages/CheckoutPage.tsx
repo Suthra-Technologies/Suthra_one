@@ -88,6 +88,9 @@ const CheckoutPage: React.FC = () => {
   );
   const [error, setError] = useState<string>('');
   const [checkingDistance, setCheckingDistance] = useState<boolean>(false);
+  const [deliveryFee, setDeliveryFee] = useState<number>(0);
+  const [isFetchingQuote, setIsFetchingQuote] = useState<boolean>(false);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
 
   // Redirect if cart empty
   useEffect(() => {
@@ -118,6 +121,56 @@ const CheckoutPage: React.FC = () => {
       }
     }
   }, [selectedAddressMode, user?.savedAddresses]);
+
+  // Handle live DoorDash quotes
+  useEffect(() => {
+    if (orderType !== 'delivery' || !deliveryInfo.address || deliveryInfo.address.length < 10) {
+      setDeliveryFee(0);
+      setQuoteError(null);
+      return;
+    }
+
+    let isCancelled = false;
+    const fetchQuote = async () => {
+      try {
+        setIsFetchingQuote(true);
+        setQuoteError(null);
+        
+        const tenantSlug = slug || settings?.tenantSlug || '';
+        if (!tenantSlug) return;
+
+        const response = await ordersAPI.getDeliveryQuote(
+          { fullAddress: deliveryInfo.address },
+          cart.items.map(i => ({ menuItem: i.id, name: i.name, quantity: i.quantity, price: i.price })),
+          tenantSlug
+        );
+
+        if (!isCancelled) {
+          if (response.data && response.data.fee !== undefined) {
+            setDeliveryFee(response.data.fee);
+          } else {
+            setQuoteError(response.data?.message || 'Could not get delivery quote.');
+            setDeliveryFee(0);
+          }
+        }
+      } catch (err: any) {
+        if (!isCancelled) {
+          const errMsg = err.response?.data?.message || 'Delivery not available for this address.';
+          setQuoteError(errMsg);
+          setDeliveryFee(0);
+          toast.error(errMsg);
+        }
+      } finally {
+        if (!isCancelled) setIsFetchingQuote(false);
+      }
+    };
+
+    const debounceTimer = setTimeout(fetchQuote, 1000);
+    return () => {
+      isCancelled = true;
+      clearTimeout(debounceTimer);
+    };
+  }, [orderType, deliveryInfo.address, cart.items, slug, settings?.tenantSlug]);
 
   const handleNext = () => {
     if (activeStep === 1 && !isAuthenticated && authMethod !== 'guest') {
@@ -222,8 +275,9 @@ const CheckoutPage: React.FC = () => {
           email: '', // guest email if available
           notes: deliveryInfo.notes,
         },
-        total: cart.totalAmount,
+        total: cart.totalAmount + (orderType === 'delivery' ? deliveryFee : 0) + (cart.totalAmount * 0.08) + (orderType === 'delivery' ? Number(deliveryInfo.tip) || 0 : 0),
         tip: orderType === 'delivery' ? Number(deliveryInfo.tip) || 0 : 0,
+        deliveryCharge: orderType === 'delivery' ? deliveryFee : 0,
       };
       await ordersAPI.create(orderData);
       clearCart();
@@ -675,8 +729,15 @@ const CheckoutPage: React.FC = () => {
                 {orderType === 'delivery' && (
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                     <Typography>Delivery Fee</Typography>
-                    <Typography>$3.99</Typography>
+                    <Typography color={isFetchingQuote ? 'text.secondary' : 'text.primary'}>
+                      {isFetchingQuote ? 'Calculating...' : `$${deliveryFee.toFixed(2)}`}
+                    </Typography>
                   </Box>
+                )}
+                {quoteError && orderType === 'delivery' && (
+                  <Typography variant="caption" color="error" display="block" sx={{ mb: 1 }}>
+                    {quoteError}
+                  </Typography>
                 )}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                   <Typography>Tax</Typography>
@@ -694,7 +755,7 @@ const CheckoutPage: React.FC = () => {
                   <Typography variant="h6" color="primary">
                     ${(
                       cart.totalAmount +
-                      (orderType === 'delivery' ? 3.99 + (Number(deliveryInfo.tip) || 0) : 0) +
+                      (orderType === 'delivery' ? deliveryFee + (Number(deliveryInfo.tip) || 0) : 0) +
                       cart.totalAmount * 0.08
                     ).toFixed(2)}
                   </Typography>
