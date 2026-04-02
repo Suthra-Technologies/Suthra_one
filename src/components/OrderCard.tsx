@@ -631,6 +631,16 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                 </Typography>
                             </Box>
                         )}
+                        {order.rewardDiscount > 0 && (
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', color: 'success.main' }}>
+                                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                    Points Discount:
+                                </Typography>
+                                <Typography variant="body2" fontWeight="bold">
+                                    -{formatCurrency(order.rewardDiscount)}
+                                </Typography>
+                            </Box>
+                        )}
                         {order.deliveryCharge > 0 && (
                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                                 <Typography variant="body2" color="text.secondary">

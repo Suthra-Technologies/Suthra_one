@@ -141,12 +141,26 @@ export interface TenantPrinterSettings {
     kitchen?: PrinterConfig;
 }
 
+export interface RewardSettings {
+    isEnabled: boolean;
+    displayName: string;
+    pointValue: number;
+    earnRate: number;
+    calculationBase: 'subtotal' | 'total' | 'total_after_discount';
+    minOrderValueToEarn: number;
+    welcomeBonus: number;
+    firstOrderBonus: number;
+    minPointsToRedeem: number;
+    maxRedemptionPercentage: number;
+}
+
 export interface SettingsState {
     restaurant: RestaurantSettings;
     system: SystemSettings;
     payment: PaymentSettings;
     notification: NotificationSettings;
     printer: TenantPrinterSettings;
+    rewards: RewardSettings;
 }
 
 // Default settings
@@ -254,6 +268,18 @@ const defaultSettings: SettingsState = {
         enabled: false,
         billing: { name: 'Main Printer', type: 'none', ip: '', port: 80, paperWidth: 80, deviceId: 'local_printer' },
         kitchen: { name: 'Kitchen Printer', type: 'none', ip: '', port: 80, paperWidth: 80, deviceId: 'local_printer' },
+    },
+    rewards: {
+        isEnabled: true,
+        displayName: 'Points',
+        pointValue: 0.05,
+        earnRate: 1,
+        calculationBase: 'total',
+        minOrderValueToEarn: 0,
+        welcomeBonus: 100,
+        firstOrderBonus: 0,
+        minPointsToRedeem: 100,
+        maxRedemptionPercentage: 100,
     },
 };
 
@@ -458,6 +484,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                         ...defaultSettings.printer.kitchen!,
                         ...(fetched.printer?.kitchen || {}),
                     }
+                },
+                rewards: {
+                    ...defaultSettings.rewards,
+                    ...(fetched.rewards || {}),
                 }
             };
 
