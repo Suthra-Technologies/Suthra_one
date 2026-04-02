@@ -50,6 +50,11 @@ interface Ticket {
     messages: Message[];
     createdAt: string;
     updatedAt: string;
+    customerDetails?: {
+        fullName: string;
+        email: string;
+        phone: string;
+    };
 }
 
 const fixS3Url = (url: string) => {
@@ -210,9 +215,11 @@ const CustomerSupportPage: React.FC = () => {
                                 >
                                     <Grid container alignItems="center" spacing={2}>
                                         <Grid item xs={12} sm={6}>
-                                            <Typography variant="subtitle1" fontWeight="700" noWrap>
-                                                {t.subject}
-                                            </Typography>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                                <Typography variant="subtitle1" fontWeight="800" color="text.primary" noWrap>
+                                                    {t.subject}
+                                                </Typography>
+                                            </Box>
                                             <Stack direction="row" spacing={1} sx={{ mt: 0.5 }}>
                                                 <Typography variant="caption" color="text.secondary">
                                                     Ref: {t._id.slice(-6).toUpperCase()}
@@ -274,7 +281,30 @@ const CustomerSupportPage: React.FC = () => {
                         <DialogTitle sx={{ p: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: 'grey.50' }}>
                             <Box>
                                 <Typography variant="h6" fontWeight="900">{selectedTicket.subject}</Typography>
-                                <Typography variant="caption" color="text.secondary">Customer ID: {selectedTicket.messages[0]?.sender || 'Anonymous'}</Typography>
+                                <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                    <Typography variant="caption" color="text.secondary">
+                                        <strong>Customer ID:</strong> {selectedTicket.messages[0]?.sender || 'N/A'}
+                                    </Typography>
+                                    <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap', columnGap: 3, rowGap: 0.5 }}>
+                                        {selectedTicket.customerDetails ? (
+                                            <>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    <strong>Name:</strong> {selectedTicket.customerDetails.fullName}
+                                                </Typography>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    <strong>Email:</strong> {selectedTicket.customerDetails.email}
+                                                </Typography>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    <strong>Phone:</strong> {selectedTicket.customerDetails.phone}
+                                                </Typography>
+                                            </>
+                                        ) : (
+                                            <Typography variant="caption" color="text.secondary">
+                                                <strong>Name:</strong> Anonymous
+                                            </Typography>
+                                        )}
+                                    </Stack>
+                                </Box>
                             </Box>
                             <IconButton onClick={() => setViewDialogOpen(false)} size="small" sx={{ bgcolor: 'white' }}>
                                 <CloseIcon />
