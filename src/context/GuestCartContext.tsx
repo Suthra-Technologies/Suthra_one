@@ -100,7 +100,7 @@ function cartReducer(state: CartState, action: any): CartState {
           category: item.category,
           quantity,
           customizations,
-          spiceLevel: spiceLevel || state.customerPreferences.spiceLevel,
+          spiceLevel: spiceLevel !== undefined ? spiceLevel : (item.isSpiceLevelAvailable ? state.customerPreferences.spiceLevel : ''),
           itemTotal: (item.price + customizations.reduce((sum: number, c: any) => sum + (c.price || 0), 0)) * quantity,
         };
         updatedItems = [...state.items, newItem];

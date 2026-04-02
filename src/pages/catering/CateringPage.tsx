@@ -160,6 +160,12 @@ const CateringPage = () => {
     const [occasionInputValue, setOccasionInputValue] = useState('');
     const [addCustomOccasionOpen, setAddCustomOccasionOpen] = useState(false);
     const [customOccasion, setCustomOccasion] = useState('');
+    
+    // Check if the occasion is a celebratory one that needs a person's name
+    const isCelebratoryOccasion = [
+        'birthday', 'wedding', 'anniversary', 'engagement', 'baby shower'
+    ].some(keyword => formData.occasion?.toLowerCase().includes(keyword));
+
     const [occasionsList, setOccasionsList] = useState<string[]>((settings?.restaurant?.occasions || [
         "Birthday Party",
         "Sweet Sixteen Party",
@@ -672,8 +678,13 @@ const CateringPage = () => {
                                             <TextField label="Occasion Date" type="date" fullWidth value={formData.occasionDate} onChange={e => setFormData({ ...formData, occasionDate: e.target.value })} InputLabelProps={{ shrink: true }} />
                                         </Grid>
                                         <Grid item xs={12} sm={6}>
-                                            <TextField label="Occasion For (Person Name)" fullWidth value={formData.occasionPersonName} onChange={e => setFormData({ ...formData, occasionPersonName: e.target.value })} />
+                                            <TextField label=" Delivery Date & Time" type="datetime-local" fullWidth value={formData.requiredDate} onChange={e => setFormData({ ...formData, requiredDate: e.target.value })} InputLabelProps={{ shrink: true }} />
                                         </Grid>
+                                        {isCelebratoryOccasion && (
+                                            <Grid item xs={12}>
+                                                <TextField label="Occasion For (Person Name)" fullWidth value={formData.occasionPersonName} onChange={e => setFormData({ ...formData, occasionPersonName: e.target.value })} />
+                                            </Grid>
+                                        )}
                                     </Grid>
 
                                     <Box sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 3, bgcolor: alpha('#4F46E5', 0.02) }}>
@@ -682,15 +693,15 @@ const CateringPage = () => {
                                             <Grid item xs={12} sm={6}>
                                                 <Typography variant="caption" fontWeight={700} sx={{ display: 'block', mb: 1 }}>Adults</Typography>
                                                 <Box display="flex" gap={1}>
-                                                    <TextField label="Veg" size="small" type="number" value={guests.adults.veg} onChange={e => setGuests({ ...guests, adults: { ...guests.adults, veg: parseInt(e.target.value) || 0 } })} />
-                                                    <TextField label="Non-Veg" size="small" type="number" value={guests.adults.nonVeg} onChange={e => setGuests({ ...guests, adults: { ...guests.adults, nonVeg: parseInt(e.target.value) || 0 } })} />
+                                                    <TextField label="Veg" size="small" type="number" value={guests.adults.veg} onChange={e => setGuests({ ...guests, adults: { ...guests.adults, veg: Math.max(0, parseInt(e.target.value) || 0) } })} inputProps={{ min: 0 }} />
+                                                    <TextField label="Non-Veg" size="small" type="number" value={guests.adults.nonVeg} onChange={e => setGuests({ ...guests, adults: { ...guests.adults, nonVeg: Math.max(0, parseInt(e.target.value) || 0) } })} inputProps={{ min: 0 }} />
                                                 </Box>
                                             </Grid>
                                             <Grid item xs={12} sm={6}>
                                                 <Typography variant="caption" fontWeight={700} sx={{ display: 'block', mb: 1 }}>Kids</Typography>
                                                 <Box display="flex" gap={1}>
-                                                    <TextField label="Veg" size="small" type="number" value={guests.kids.veg} onChange={e => setGuests({ ...guests, kids: { ...guests.kids, veg: parseInt(e.target.value) || 0 } })} />
-                                                    <TextField label="Non-Veg" size="small" type="number" value={guests.kids.nonVeg} onChange={e => setGuests({ ...guests, kids: { ...guests.kids, nonVeg: parseInt(e.target.value) || 0 } })} />
+                                                    <TextField label="Veg" size="small" type="number" value={guests.kids.veg} onChange={e => setGuests({ ...guests, kids: { ...guests.kids, veg: Math.max(0, parseInt(e.target.value) || 0) } })} inputProps={{ min: 0 }} />
+                                                    <TextField label="Non-Veg" size="small" type="number" value={guests.kids.nonVeg} onChange={e => setGuests({ ...guests, kids: { ...guests.kids, nonVeg: Math.max(0, parseInt(e.target.value) || 0) } })} inputProps={{ min: 0 }} />
                                                 </Box>
                                             </Grid>
                                         </Grid>
@@ -708,7 +719,7 @@ const CateringPage = () => {
                                         />
                                     )}
 
-                                    <TextField label="Date & Time Required" type="datetime-local" fullWidth value={formData.requiredDate} onChange={e => setFormData({ ...formData, requiredDate: e.target.value })} InputLabelProps={{ shrink: true }} />
+
 
                                     <TextField label="Special Instructions / Additional Services" multiline rows={2} fullWidth value={formData.additionalServices} onChange={e => setFormData({ ...formData, additionalServices: e.target.value })} />
 
@@ -773,7 +784,17 @@ const CateringPage = () => {
                                         fullWidth
                                         size="large"
                                         disabled={cart.length === 0 || submitting}
-                                        sx={{ py: 1.5, borderRadius: 3, background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)' }}
+                                        sx={{ 
+                                            py: 1.5, 
+                                            borderRadius: 3, 
+                                            background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)',
+                                            color: '#ffffff !important',
+                                            fontWeight: 700,
+                                            '&:hover': {
+                                                background: 'linear-gradient(135deg, #4338CA 0%, #6D28D9 100%)',
+                                                color: '#ffffff !important',
+                                            }
+                                        }}
                                     >
                                         {submitting ? <CircularProgress size={24} color="inherit" /> : 'Submit Catering Order'}
                                     </Button>
