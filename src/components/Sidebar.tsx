@@ -34,7 +34,6 @@ import {
   LocalOffer,
   Event as EventIcon,
   Help,
-  SupportAgent,
   AutoStories,
   DeleteSweep,
   AccessTime as AccessTimeIcon,
@@ -48,6 +47,8 @@ import {
   AccountBox,
   ExpandLess,
   ExpandMore,
+  HeadsetMic,
+  Forum,
 } from '@mui/icons-material';
 import { Collapse } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
@@ -147,8 +148,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
       items: [
         { path: '/profile', label: 'Profile', icon: <Person />, roles: ['admin', 'manager', 'waiter', 'cashier', 'delivery', 'customer'] },
         { path: '/subscription', label: 'Subscription', icon: <AdminPanelSettings />, roles: ['admin'] },
-        { path: '/support', label: 'Super Admin Support', icon: <SupportAgent />, roles: ['admin', 'manager'] },
-        { path: '/customer-support', label: 'Customer Tickets', icon: <SupportAgent />, roles: ['admin', 'manager'] },
+        { path: '/support', label: 'Super Admin Support', icon: <HeadsetMic />, roles: ['admin', 'manager'] },
+        { path: '/customer-support', label: 'Customer Tickets', icon: <Forum />, roles: ['admin', 'manager'] },
         { path: '/settings', label: 'Settings', icon: <Settings />, roles: ['admin', 'manager'] },
         { path: '', label: 'Help & Guide', icon: <AutoStories />, roles: ['admin', 'manager', 'waiter', 'cashier', 'kitchen_staff', 'delivery', 'food_runner'], isAction: true, action: () => window.open('https://helpguide.restaurant.nexzenpos.com/#login', '_blank') },
       ]
