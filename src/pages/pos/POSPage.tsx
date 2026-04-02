@@ -177,15 +177,24 @@ const POSPage: React.FC = () => {
     const [isGstLocked, setIsGstLocked] = useState(false);
 
     // Dynamic Search Placeholder logic
-    const placeholderItems = ['Pizza', 'Biryani', 'Idli', 'Dosa', 'Burger', 'Coffee'];
+    const placeholderItems = useMemo(() => {
+        if (menuItems && menuItems.length > 0) {
+            // Get up to 10 unique item names from the menu
+            const names = Array.from(new Set(menuItems.map((item: any) => item.name))).slice(0, 10);
+            if (names.length > 0) return names;
+        }
+        return ['Pizza', 'Biryani', 'Idli', 'Dosa', 'Burger', 'Coffee', 'Juice'];
+    }, [menuItems]);
+
     const [placeholderIndex, setPlaceholderIndex] = useState(0);
 
     useEffect(() => {
+        if (!placeholderItems.length) return;
         const timer = setInterval(() => {
             setPlaceholderIndex((prev) => (prev + 1) % placeholderItems.length);
-        }, 3000); // Slightly slower for better readability
+        }, 3000); 
         return () => clearInterval(timer);
-    }, []);
+    }, [placeholderItems.length]);
 
     // Fetch menu, categories, tables
     const fetchMenu = async () => {
@@ -1481,19 +1490,19 @@ const POSPage: React.FC = () => {
                                 sx={{
                                     position: 'absolute',
                                     left: 42,
+                                    right: 14,
                                     top: '50%',
                                     transform: 'translateY(-50%)',
                                     display: 'flex',
                                     alignItems: 'center',
                                     pointerEvents: 'none',
                                     color: 'text.disabled',
-                                    whiteSpace: 'nowrap',
-                                    overflow: 'hidden',
-                                    height: '20px'
+                                    height: '24px',
+                                    overflow: 'hidden'
                                 }}
                             >
-                                <Typography variant="body2" sx={{ mr: 0.5 }}>Search for</Typography>
-                                <Box sx={{ position: 'relative', height: '100%', minWidth: '100px' }}>
+                                <Typography variant="body2" sx={{ mr: 0.5, flexShrink: 0, lineHeight: '24px' }}>Search for</Typography>
+                                <Box sx={{ position: 'relative', height: '24px', flexGrow: 1, overflow: 'hidden' }}>
                                     <Typography
                                         key={placeholderIndex}
                                         variant="body2"
@@ -1501,7 +1510,15 @@ const POSPage: React.FC = () => {
                                             position: 'absolute',
                                             top: 0,
                                             left: 0,
+                                            width: '100%',
+                                            height: '100%',
+                                            display: 'flex',
+                                            alignItems: 'center',
                                             color: 'text.disabled',
+                                            whiteSpace: 'nowrap',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            lineHeight: '24px',
                                             animation: 'dynamicTextSlide 3s ease-in-out forwards',
                                         }}
                                     >
@@ -2054,7 +2071,7 @@ const POSPage: React.FC = () => {
                                     mr: 2,
                                     flexShrink: 0
                                 }}>
-                                    <span style={{ fontSize: '20px' }}>🔥</span>
+                                    <span style={{ fontSize: '20px' }}>🌶️</span>
                                 </Box>
                                 <Box sx={{ flexGrow: 1 }}>
                                     <Typography sx={{
@@ -2071,20 +2088,26 @@ const POSPage: React.FC = () => {
                                         {selectedItem.name}
                                     </Typography>
                                     <Typography variant="body2" sx={{ color: '#757575', fontSize: '0.9rem' }}>
-                                        Pick the heat you want before adding this dish to cart.
+                                        Pick the spice level you want before adding this dish to cart.
                                     </Typography>
                                 </Box>
                                 <IconButton
                                     onClick={() => setVariantModalOpen(false)}
+                                    size="small"
                                     sx={{
                                         position: 'absolute',
                                         right: 24,
                                         top: 24,
-                                        border: '1px solid #eee',
-                                        '&:hover': { bgcolor: '#f5f5f5' }
+                                        bgcolor: 'error.main',
+                                        color: 'white',
+                                        width: 28,
+                                        height: 28,
+                                        '&:hover': { bgcolor: 'error.dark' },
+                                        zIndex: 1,
+                                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                                     }}
                                 >
-                                    <CloseIcon fontSize="small" />
+                                    <CloseIcon sx={{ fontSize: 14 }} />
                                 </IconButton>
                             </Box>
 
@@ -2137,9 +2160,9 @@ const POSPage: React.FC = () => {
                                     }}>
                                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                <span style={{ fontSize: '16px' }}>🔥</span>
+                                                <span style={{ fontSize: '16px' }}>🌶️</span>
                                                 <Typography sx={{ color: 'primary.main', fontWeight: 900, fontSize: '0.75rem', letterSpacing: '0.5px' }}>
-                                                    HEAT PREFERENCE
+                                                    SPICE SELECTION
                                                 </Typography>
                                             </Box>
                                             <Chip
@@ -2150,12 +2173,13 @@ const POSPage: React.FC = () => {
                                                     color: 'primary.main',
                                                     fontWeight: 900,
                                                     fontSize: '0.65rem',
-                                                    height: 24
+                                                    height: 24,
+                                                    textTransform: 'capitalize'
                                                 }}
                                             />
                                         </Box>
                                         <Typography variant="body2" sx={{ color: 'text.secondary', mb: 4 }}>
-                                            Slide to the heat you want, and we'll send that choice to the kitchen.
+                                            Slide to the spice level you want, and we'll send that choice to the kitchen.
                                         </Typography>
 
                                         <Box sx={{ px: 2, mb: 2 }}>
@@ -2176,13 +2200,13 @@ const POSPage: React.FC = () => {
                                                         width: 28,
                                                         bgcolor: 'primary.main',
                                                         border: '4px solid white',
-                                                        boxShadow: '0 4px 12px rgba(79, 70, 229, 0.2)',
+                                                        boxShadow: '0 4px 12px rgba(79, 70, 229, 0.25)',
                                                         transition: 'none',
                                                         '&:hover, &.Mui-active': {
                                                             boxShadow: '0 0 0 8px rgba(79, 70, 229, 0.16)',
                                                         },
                                                         '&::after': {
-                                                            content: '"🔥"',
+                                                            content: '"🌶️"',
                                                             fontSize: '14px',
                                                             position: 'absolute'
                                                         }
@@ -2201,6 +2225,7 @@ const POSPage: React.FC = () => {
                                             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
                                                 {(selectedItem as any).spiceLevels.map((level: string, i: number) => {
                                                     const isSel = (tempSelectedSpiceLevel || (selectedItem as any).spiceLevels[0]) === level;
+                                                    const normalizedLevel = level.toLowerCase().replace(/_/g, ' ');
                                                     return (
                                                         <Box
                                                             key={i}
@@ -2224,7 +2249,7 @@ const POSPage: React.FC = () => {
                                                                 justifyContent: 'center',
                                                                 gap: 0.5
                                                             }}>
-                                                                {level}
+                                                                {normalizedLevel}
                                                             </Typography>
                                                             <Typography variant="caption" sx={{
                                                                 fontSize: '0.6rem',
@@ -2232,9 +2257,9 @@ const POSPage: React.FC = () => {
                                                                 opacity: isSel ? 1 : 0.6,
                                                                 display: { xs: 'none', sm: 'block' }
                                                             }}>
-                                                                {level.toLowerCase().includes('mild') ? 'light' :
-                                                                    level.toLowerCase().includes('medium') ? 'Balanced' :
-                                                                        level.toLowerCase().includes('hot') ? 'spicy' : 'very spicy'}
+                                                                {normalizedLevel.includes('mild') ? 'Light' :
+                                                                    normalizedLevel.includes('medium') ? 'Balanced' :
+                                                                        normalizedLevel === 'hot' ? 'Spicy' : 'Extra Spicy'}
                                                             </Typography>
                                                         </Box>
                                                     );
