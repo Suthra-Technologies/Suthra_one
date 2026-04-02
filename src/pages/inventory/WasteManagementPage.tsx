@@ -429,10 +429,12 @@ const WasteManagementPage: React.FC = () => {
                                     value={formData.quantity}
                                     onChange={(e) => {
                                         const val = parseFloat(e.target.value);
-                                        setFormData(prev => ({ ...prev, quantity: isNaN(val) ? 0 : Math.max(0, val) }));
+                                        // Restrict quantity to 0-99,999 Range
+                                        setFormData(prev => ({ ...prev, quantity: isNaN(val) ? 0 : Math.min(99999, Math.max(0, val)) }));
                                     }}
-                                    inputProps={{ min: 0, step: "any" }}
+                                    inputProps={{ min: 0, max: 99999, step: "any" }}
                                     required
+                                    helperText="Max 99,999"
                                 />
                             </Grid>
                             <Grid item xs={6}>
@@ -470,8 +472,10 @@ const WasteManagementPage: React.FC = () => {
                                     name="notes"
                                     multiline
                                     rows={3}
+                                    inputProps={{ maxLength: 200 }}
                                     value={formData.notes}
                                     onChange={handleFormChange}
+                                    helperText={`${formData.notes.length}/200`}
                                     placeholder="e.g. Broke on floor, expired yesterday"
                                 />
                             </Grid>
