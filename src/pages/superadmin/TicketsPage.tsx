@@ -400,6 +400,15 @@ const TicketsPage: React.FC = () => {
               <Chip label={`Category: ${selectedTicket?.category}`} size="small" />
             </Box>
 
+            {(selectedTicket?.customerDetails?.fullName || selectedTicket?.customerDetails?.email || selectedTicket?.customerDetails?.phone) && (
+              <Box sx={{ p: 2, bgcolor: 'rgba(25, 118, 210, 0.05)', borderRadius: 1 }}>
+                <Typography variant="overline" color="text.secondary" display="block">Customer Details (Dynamic Metadata):</Typography>
+                <Typography variant="body2">
+                  {selectedTicket.customerDetails.fullName} {selectedTicket.customerDetails.email && `(${selectedTicket.customerDetails.email})`} {selectedTicket.customerDetails.phone && `| ${selectedTicket.customerDetails.phone}`}
+                </Typography>
+              </Box>
+            )}
+
             <Divider />
 
             {/* Messages */}

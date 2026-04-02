@@ -452,7 +452,7 @@ const AdminSupportPage: React.FC = () => {
           <Button onClick={() => setViewDialogOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
-    </Container>
+    </Container >
   );
 };
 
