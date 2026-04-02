@@ -48,8 +48,9 @@ const InvoicesPage = () => {
         setLoading(true);
         try {
             const response = await invoicesAPI.getAll({ page, limit: 10, search, requirePlan: true });
-            setInvoices(response.data.invoices);
-            setTotalPages(Math.ceil(response.data.total / 10));
+            const fetchedInvoices = Array.isArray(response.data.invoices) ? response.data.invoices : [];
+            setInvoices(fetchedInvoices);
+            setTotalPages(Math.ceil((response.data.total || fetchedInvoices.length) / 10));
         } catch (error) {
             console.error('Error fetching invoices:', error);
             toast.error('Failed to load invoices');
@@ -129,7 +130,7 @@ const InvoicesPage = () => {
                         <Box display="flex" justifyContent="center" p={3}>
                             <CircularProgress />
                         </Box>
-                    ) : invoices.length === 0 ? (
+                    ) : (!Array.isArray(invoices) || invoices.length === 0) ? (
                         <Typography align="center" color="textSecondary">No invoices found</Typography>
                     ) : (
                         <Stack spacing={2}>
@@ -200,7 +201,7 @@ const InvoicesPage = () => {
                                         <CircularProgress />
                                     </TableCell>
                                 </TableRow>
-                            ) : invoices.length === 0 ? (
+                            ) : (!Array.isArray(invoices) || invoices.length === 0) ? (
                                 <TableRow>
                                     <TableCell colSpan={6} align="center" sx={{ py: 5 }}>
                                         <Typography color="textSecondary">No invoices found</Typography>

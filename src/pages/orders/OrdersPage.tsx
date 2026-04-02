@@ -120,8 +120,8 @@ const OrdersPage = () => {
         page,
         limit: 10
       });
-      setOrders(response.data.orders);
-      setTotalPages(response.data.totalPages);
+      setOrders(Array.isArray(response.data.orders) ? response.data.orders : []);
+      setTotalPages(response.data.totalPages || 1);
     } catch (error) {
       console.error('Error fetching orders:', error);
       toast.error('Failed to load orders');
@@ -136,7 +136,7 @@ const OrdersPage = () => {
     try {
       setBookingsLoading(true);
       const response = await bookingsAPI.getAll();
-      setBookings(response.data);
+      setBookings(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching bookings:', error);
       toast.error('Failed to load bookings');
@@ -194,7 +194,7 @@ const OrdersPage = () => {
   };
 
   const handleOrderUpdate = () => {
-   if (selectedOrder) {
+    if (selectedOrder) {
       handleOrderRefresh(selectedOrder._id);
     } else {
       fetchOrders();
@@ -213,7 +213,7 @@ const OrdersPage = () => {
     console.log("Adding items to:", order);
   };
 
-  const handleAcceptPreOrder = async (orderId:  string) => {
+  const handleAcceptPreOrder = async (orderId: string) => {
     try {
       await ordersAPI.updateStatus(orderId, 'confirmed');
       toast.success('Pre-order accepted');
@@ -231,7 +231,7 @@ const OrdersPage = () => {
       handleOrderRefresh(orderId);
     } catch {
       toast.error('Failed to reject pre-order');
-    }  
+    }
   };
 
 
