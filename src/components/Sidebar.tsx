@@ -7,13 +7,13 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  Typography,
   Divider,
   alpha,
   Avatar,
   Menu,
   MenuItem,
   Tooltip,
+  Typography
 } from '@mui/material';
 import {
   Dashboard,
@@ -52,7 +52,6 @@ import {
 import { Collapse } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
-
 interface SidebarProps {
   onItemClick?: () => void;
   collapsed?: boolean;
