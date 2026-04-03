@@ -409,6 +409,7 @@ export const supportAPI = {
   listCustomerTickets: () => api.get('/support/mine', { params: { type: 'customer' } }),
   create: (payload: any) => api.post('/support', payload),
   reply: (id: string, payload: any) => api.post(`/support/${id}/reply`, payload),
+  resolve: (id: string, payload: any) => api.post(`/support/${id}/resolve`, payload),
 };
 
 
