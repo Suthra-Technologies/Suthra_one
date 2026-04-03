@@ -44,6 +44,8 @@ import {
     DeleteForever as DeleteForeverIcon,
     Close as CloseIcon,
     CloudUpload as BulkUploadIcon,
+    Assignment as ItemNotesIcon,
+    Notes as NotesIcon,
 } from '@mui/icons-material';
 import { Drawer } from '@mui/material';
 import { toast } from 'react-hot-toast';
