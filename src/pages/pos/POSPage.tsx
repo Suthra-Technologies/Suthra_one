@@ -271,6 +271,9 @@ const POSPage: React.FC = () => {
     const [tempSelectedTray, setTempSelectedTray] = useState<any | null>(null);
     const [customerDialCode, setCustomerDialCode] = useState(settings?.restaurant?.dialCode || '1');
     const [checkingDistance, setCheckingDistance] = useState(false);
+    const [deliveryFee, setDeliveryFee] = useState<number>(0);
+    const [isFetchingQuote, setIsFetchingQuote] = useState<boolean>(false);
+    const [quoteError, setQuoteError] = useState<string | null>(null);
 
     // Sync dial code with settings when they load
     useEffect(() => {
@@ -278,6 +281,59 @@ const POSPage: React.FC = () => {
             setCustomerDialCode(settings.restaurant.dialCode);
         }
     }, [settings?.restaurant?.dialCode]);
+
+    // Handle live DoorDash quotes
+    useEffect(() => {
+        const addressString = typeof deliveryAddress === 'object' ? deliveryAddress.fullAddress : deliveryAddress;
+        if (orderType !== 'delivery' || !addressString || addressString.length < 10) {
+            setDeliveryFee(0);
+            setQuoteError(null);
+            return;
+        }
+
+        let isCancelled = false;
+        const fetchQuote = async () => {
+            try {
+                setIsFetchingQuote(true);
+                setQuoteError(null);
+                
+                const tenantSlug = tenantSlug || settings?.tenantSlug || '';
+                // Since this might be admin, try to get tenantSlug from context or route if possible.
+                // In POSPage, we have slug from useSearchParams maybe? No.
+                // But settings?.tenantSlug should work.
+
+                const response = await ordersAPI.getDeliveryQuote(
+                    { fullAddress: addressString },
+                    cart.map(i => ({ menuItem: i._id, name: i.name, quantity: i.quantity, price: i.price })),
+                    tenantSlug
+                );
+
+                if (!isCancelled) {
+                    if (response.data && response.data.fee !== undefined) {
+                        setDeliveryFee(response.data.fee);
+                    } else {
+                        setQuoteError(response.data?.message || 'Could not get delivery quote.');
+                        setDeliveryFee(0);
+                    }
+                }
+            } catch (err: any) {
+                if (!isCancelled) {
+                    const errMsg = err.response?.data?.message || 'Delivery not available for this address.';
+                    setQuoteError(errMsg);
+                    setDeliveryFee(0);
+                    toast.error(errMsg);
+                }
+            } finally {
+                if (!isCancelled) setIsFetchingQuote(false);
+            }
+        };
+
+        const debounceTimer = setTimeout(fetchQuote, 1000);
+        return () => {
+            isCancelled = true;
+            clearTimeout(debounceTimer);
+        };
+    }, [orderType, deliveryAddress, cart, settings?.tenantSlug]);
 
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -300,15 +356,24 @@ const POSPage: React.FC = () => {
 
 
     // Dynamic Search Placeholder logic
-    const placeholderItems = ['Pizza', 'Biryani', 'Idli', 'Dosa', 'Burger', 'Coffee'];
+    const placeholderItems = useMemo(() => {
+        if (menuItems && menuItems.length > 0) {
+            // Get up to 10 unique item names from the menu
+            const names = Array.from(new Set(menuItems.map((item: any) => item.name))).slice(0, 10);
+            if (names.length > 0) return names;
+        }
+        return ['Pizza', 'Biryani', 'Idli', 'Dosa', 'Burger', 'Coffee', 'Juice'];
+    }, [menuItems]);
+
     const [placeholderIndex, setPlaceholderIndex] = useState(0);
 
     useEffect(() => {
+        if (!placeholderItems.length) return;
         const timer = setInterval(() => {
             setPlaceholderIndex((prev) => (prev + 1) % placeholderItems.length);
-        }, 3000); // Slightly slower for better readability
+        }, 3000); 
         return () => clearInterval(timer);
-    }, []);
+    }, [placeholderItems.length]);
 
     // Fetch menu with cursor pagination
     const fetchMenu = async (cursor?: string | null, fresh = false) => {
@@ -629,7 +694,8 @@ const POSPage: React.FC = () => {
 
 
             // Load items into cart
-            const formattedCart = ord.items.map((i: any) => ({
+            const items = Array.isArray(ord.items) ? ord.items : [];
+            const formattedCart = items.map((i: any) => ({
                 _id: i.menuItem,
                 name: i.name,
                 price: i.price,
@@ -691,6 +757,8 @@ const POSPage: React.FC = () => {
         const now = new Date();
         const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
 
+        if (!Array.isArray(menuItems)) return [];
+
         return menuItems.filter((item) => {
             const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
             const matchesCategory =
@@ -706,7 +774,7 @@ const POSPage: React.FC = () => {
             if (item.isWeeklyScheduleEnabled) {
                 // Check if today is one of the available days
                 const isDayAvailable = (item.availableDays || []).some((d: string) => d.toLowerCase() === currentDay);
-                
+
                 // If it's "available_only" and today is NOT the day, hide it
                 if (item.availabilityType === 'available_only' && !isDayAvailable) {
                     isAvailableByMode = false;
@@ -906,7 +974,7 @@ const POSPage: React.FC = () => {
     const fetchTables = async () => {
         try {
             const res = await tablesAPI.getAll();
-            setTables(res.data);
+            setTables(Array.isArray(res.data) ? res.data : []);
         } catch (err) {
             console.error("Failed to load tables", err);
         }
@@ -915,7 +983,8 @@ const POSPage: React.FC = () => {
     const fetchWaiters = async () => {
         try {
             const res = await usersAPI.getUsers();
-            const allUsers = res.data.data || res.data.users || res.data || [];
+            const rawData = res.data.data || res.data.users || res.data;
+            const allUsers = Array.isArray(rawData) ? rawData : [];
             setWaiters(allUsers.filter((u: any) =>
                 u.isActive !== false &&
                 (u.role === 'waiter' || (Array.isArray(u.roles) && u.roles.includes('waiter')))
@@ -1000,7 +1069,8 @@ const POSPage: React.FC = () => {
                     tray: i.tray,
                     trayMultiplier: i.trayMultiplier,
                 })),
-                totalAmount: cartTotal,
+                totalAmount: finalTotal,
+                subtotal: cartTotal,
                 tip: tipValue,
                 discountPercent,
                 couponCode: couponCode || undefined,
@@ -1326,19 +1396,19 @@ const POSPage: React.FC = () => {
                                 sx={{
                                     position: 'absolute',
                                     left: 42,
+                                    right: 14,
                                     top: '50%',
                                     transform: 'translateY(-50%)',
                                     display: 'flex',
                                     alignItems: 'center',
                                     pointerEvents: 'none',
                                     color: 'text.disabled',
-                                    whiteSpace: 'nowrap',
-                                    overflow: 'hidden',
-                                    height: '20px'
+                                    height: '24px',
+                                    overflow: 'hidden'
                                 }}
                             >
-                                <Typography variant="body2" sx={{ mr: 0.5 }}>Search for</Typography>
-                                <Box sx={{ position: 'relative', height: '100%', minWidth: '100px' }}>
+                                <Typography variant="body2" sx={{ mr: 0.5, flexShrink: 0, lineHeight: '24px' }}>Search for</Typography>
+                                <Box sx={{ position: 'relative', height: '24px', flexGrow: 1, overflow: 'hidden' }}>
                                     <Typography
                                         key={placeholderIndex}
                                         variant="body2"
@@ -1346,7 +1416,15 @@ const POSPage: React.FC = () => {
                                             position: 'absolute',
                                             top: 0,
                                             left: 0,
+                                            width: '100%',
+                                            height: '100%',
+                                            display: 'flex',
+                                            alignItems: 'center',
                                             color: 'text.disabled',
+                                            whiteSpace: 'nowrap',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            lineHeight: '24px',
                                             animation: 'dynamicTextSlide 3s ease-in-out forwards',
                                         }}
                                     >
@@ -1358,131 +1436,131 @@ const POSPage: React.FC = () => {
                     </Box>
                 </Box>
                 {/* Food Type Toggle — above tabs, right-aligned */}
-               <Box
-    sx={{
-        display: 'flex',
-        justifyContent: { xs: 'center', sm: 'flex-end' },
-        mb: 1,
-    }}
->
-    <Box
-        sx={{
-            display: 'flex',
-            alignItems: 'center',
-            p: 0.4,
-            bgcolor: 'action.hover',
-            borderRadius: '50px',
-            width: { xs: '100%', sm: 'auto' },
-            justifyContent: { xs: 'center', sm: 'flex-start' },
-        }}
-    >
-        {(['all', 'veg', 'non-veg'] as const).map((type) => {
-            const isActive = foodTypeFilter === type;
-            const vegColor = '#00a852';
-            const nonVegColor = '#e43b3b';
-            const activeBg = type === 'veg' ? vegColor : type === 'non-veg' ? nonVegColor : undefined;
-            return (
                 <Box
-                    key={type}
-                    onClick={() => setFoodTypeFilter(type)}
                     sx={{
                         display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 0.6,
-                        px: { xs: 1.2, sm: 1.5 },
-                        py: { xs: 0.8, sm: 0.6 },
-                        borderRadius: '50px',
-                        cursor: 'pointer',
-                        fontWeight: isActive ? 700 : 400,
-                        fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                        flex: { xs: 1, sm: 'none' },
-                        transition: 'all 0.2s ease',
-                        bgcolor: isActive ? (activeBg ?? 'primary.main') : 'transparent',
-                        color: isActive ? 'white' : 'text.secondary',
-                        boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.2)' : 'none',
-                        userSelect: 'none',
-                        '&:hover': {
-                            bgcolor: isActive ? (activeBg ?? 'primary.main') : 'action.selected',
+                        justifyContent: { xs: 'center', sm: 'flex-end' },
+                        mb: 1,
+                    }}
+                >
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            p: 0.4,
+                            bgcolor: 'action.hover',
+                            borderRadius: '50px',
+                            width: { xs: '100%', sm: 'auto' },
+                            justifyContent: { xs: 'center', sm: 'flex-start' },
+                        }}
+                    >
+                        {(['all', 'veg', 'non-veg'] as const).map((type) => {
+                            const isActive = foodTypeFilter === type;
+                            const vegColor = '#00a852';
+                            const nonVegColor = '#e43b3b';
+                            const activeBg = type === 'veg' ? vegColor : type === 'non-veg' ? nonVegColor : undefined;
+                            return (
+                                <Box
+                                    key={type}
+                                    onClick={() => setFoodTypeFilter(type)}
+                                    sx={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: 0.6,
+                                        px: { xs: 1.2, sm: 1.5 },
+                                        py: { xs: 0.8, sm: 0.6 },
+                                        borderRadius: '50px',
+                                        cursor: 'pointer',
+                                        fontWeight: isActive ? 700 : 400,
+                                        fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                                        flex: { xs: 1, sm: 'none' },
+                                        transition: 'all 0.2s ease',
+                                        bgcolor: isActive ? (activeBg ?? 'primary.main') : 'transparent',
+                                        color: isActive ? 'white' : 'text.secondary',
+                                        boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.2)' : 'none',
+                                        userSelect: 'none',
+                                        '&:hover': {
+                                            bgcolor: isActive ? (activeBg ?? 'primary.main') : 'action.selected',
+                                        },
+                                    }}
+                                >
+                                    {type === 'veg' && (
+                                        <Box sx={{
+                                            width: 11, height: 11,
+                                            border: `2px solid ${isActive ? 'white' : vegColor}`,
+                                            borderRadius: '2px',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            bgcolor: isActive ? 'transparent' : 'white',
+                                            flexShrink: 0,
+                                        }}>
+                                            <Box sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: isActive ? 'white' : vegColor }} />
+                                        </Box>
+                                    )}
+                                    {type === 'non-veg' && (
+                                        <Box sx={{
+                                            width: 11, height: 11,
+                                            border: `2px solid ${isActive ? 'white' : nonVegColor}`,
+                                            borderRadius: '2px',
+                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                            bgcolor: isActive ? 'transparent' : 'white',
+                                            flexShrink: 0,
+                                        }}>
+                                            <Box sx={{ width: 0, height: 0, borderLeft: '3px solid transparent', borderRight: '3px solid transparent', borderBottom: `5px solid ${isActive ? 'white' : nonVegColor}` }} />
+                                        </Box>
+                                    )}
+                                    {type === 'all' ? 'All' : type === 'veg' ? 'Veg' : 'Non‑Veg'}
+                                </Box>
+                            );
+                        })}
+                    </Box>
+                </Box>
+
+                {/* Category Tabs */}
+                <Tabs
+                    value={selectedCategory}
+                    onChange={(_, v) => setSelectedCategory(v)}
+                    variant="scrollable"
+                    scrollButtons="auto"
+                    allowScrollButtonsMobile
+                    sx={{
+                        mb: 2,
+                        borderBottom: 1,
+                        borderColor: 'divider',
+                        minHeight: { xs: 40, sm: 48 },
+                        '& .MuiTabs-root': {
+                            minHeight: { xs: 40, sm: 48 },
+                        },
+                        '& .MuiTabs-flexContainer': {
+                            gap: 0, // ← removed gap causing trailing space
+                        },
+                        '& .MuiTab-root': {
+                            fontSize: { xs: '0.72rem', sm: '0.8rem', md: '0.875rem' },
+                            minWidth: { xs: 'auto', sm: 80, md: 90 }, // ← auto on mobile to shrink-fit
+                            maxWidth: { xs: 120, sm: 160, md: 200 },
+                            minHeight: { xs: 40, sm: 48 },
+                            px: { xs: 1.5, sm: 1.5, md: 2 },
+                            py: { xs: 0.8, sm: 1.2, md: 1.5 },
+                            textTransform: 'none',
+                            whiteSpace: 'nowrap',
+                        },
+                        '& .MuiTabScrollButton-root': {
+                            width: { xs: 20, sm: 28, md: 40 },
+                            opacity: 1,
+                            '&.Mui-disabled': {
+                                opacity: 0.3,
+                            },
+                        },
+                        '& .MuiTabs-indicator': {
+                            height: { xs: 2, sm: 3 },
                         },
                     }}
                 >
-                    {type === 'veg' && (
-                        <Box sx={{
-                            width: 11, height: 11,
-                            border: `2px solid ${isActive ? 'white' : vegColor}`,
-                            borderRadius: '2px',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            bgcolor: isActive ? 'transparent' : 'white',
-                            flexShrink: 0,
-                        }}>
-                            <Box sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: isActive ? 'white' : vegColor }} />
-                        </Box>
-                    )}
-                    {type === 'non-veg' && (
-                        <Box sx={{
-                            width: 11, height: 11,
-                            border: `2px solid ${isActive ? 'white' : nonVegColor}`,
-                            borderRadius: '2px',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            bgcolor: isActive ? 'transparent' : 'white',
-                            flexShrink: 0,
-                        }}>
-                            <Box sx={{ width: 0, height: 0, borderLeft: '3px solid transparent', borderRight: '3px solid transparent', borderBottom: `5px solid ${isActive ? 'white' : nonVegColor}` }} />
-                        </Box>
-                    )}
-                    {type === 'all' ? 'All' : type === 'veg' ? 'Veg' : 'Non‑Veg'}
-                </Box>
-            );
-        })}
-    </Box>
-</Box>
-
-                {/* Category Tabs */}
-               <Tabs
-    value={selectedCategory}
-    onChange={(_, v) => setSelectedCategory(v)}
-    variant="scrollable"
-    scrollButtons="auto"
-    allowScrollButtonsMobile
-    sx={{
-        mb: 2,
-        borderBottom: 1,
-        borderColor: 'divider',
-        minHeight: { xs: 40, sm: 48 },
-        '& .MuiTabs-root': {
-            minHeight: { xs: 40, sm: 48 },
-        },
-        '& .MuiTabs-flexContainer': {
-            gap: 0, // ← removed gap causing trailing space
-        },
-        '& .MuiTab-root': {
-            fontSize: { xs: '0.72rem', sm: '0.8rem', md: '0.875rem' },
-            minWidth: { xs: 'auto', sm: 80, md: 90 }, // ← auto on mobile to shrink-fit
-            maxWidth: { xs: 120, sm: 160, md: 200 },
-            minHeight: { xs: 40, sm: 48 },
-            px: { xs: 1.5, sm: 1.5, md: 2 },
-            py: { xs: 0.8, sm: 1.2, md: 1.5 },
-            textTransform: 'none',
-            whiteSpace: 'nowrap',
-        },
-        '& .MuiTabScrollButton-root': {
-            width: { xs: 20, sm: 28, md: 40 },
-            opacity: 1,
-            '&.Mui-disabled': {
-                opacity: 0.3,
-            },
-        },
-        '& .MuiTabs-indicator': {
-            height: { xs: 2, sm: 3 },
-        },
-    }}
->
-    <Tab label="All Items" value="all" />
-    {categories.map((cat) => (
-        <Tab key={cat._id} label={cat.name} value={cat._id} />
-    ))}
-</Tabs>
+                    <Tab label="All Items" value="all" />
+                    {categories.map((cat) => (
+                        <Tab key={cat._id} label={cat.name} value={cat._id} />
+                    ))}
+                </Tabs>
 
                 {/* Items grid */}
                 {loading ? (
@@ -1930,7 +2008,7 @@ const POSPage: React.FC = () => {
                                     mr: 2,
                                     flexShrink: 0
                                 }}>
-                                    <span style={{ fontSize: '20px' }}>🔥</span>
+                                    <span style={{ fontSize: '20px' }}>🌶️</span>
                                 </Box>
                                 <Box sx={{ flexGrow: 1 }}>
                                     <Typography sx={{
@@ -1947,20 +2025,26 @@ const POSPage: React.FC = () => {
                                         {selectedItem.name}
                                     </Typography>
                                     <Typography variant="body2" sx={{ color: '#757575', fontSize: '0.9rem' }}>
-                                        Pick the heat you want before adding this dish to cart.
+                                        Pick the spice level you want before adding this dish to cart.
                                     </Typography>
                                 </Box>
                                 <IconButton
                                     onClick={() => setVariantModalOpen(false)}
+                                    size="small"
                                     sx={{
                                         position: 'absolute',
                                         right: 24,
                                         top: 24,
-                                        border: '1px solid #eee',
-                                        '&:hover': { bgcolor: '#f5f5f5' }
+                                        bgcolor: 'error.main',
+                                        color: 'white',
+                                        width: 28,
+                                        height: 28,
+                                        '&:hover': { bgcolor: 'error.dark' },
+                                        zIndex: 1,
+                                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                                     }}
                                 >
-                                    <CloseIcon fontSize="small" />
+                                    <CloseIcon sx={{ fontSize: 14 }} />
                                 </IconButton>
                             </Box>
 
@@ -2013,9 +2097,9 @@ const POSPage: React.FC = () => {
                                     }}>
                                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                <span style={{ fontSize: '16px' }}>🔥</span>
+                                                <span style={{ fontSize: '16px' }}>🌶️</span>
                                                 <Typography sx={{ color: 'primary.main', fontWeight: 900, fontSize: '0.75rem', letterSpacing: '0.5px' }}>
-                                                    HEAT PREFERENCE
+                                                    SPICE SELECTION
                                                 </Typography>
                                             </Box>
                                             <Chip
@@ -2026,12 +2110,13 @@ const POSPage: React.FC = () => {
                                                     color: 'primary.main',
                                                     fontWeight: 900,
                                                     fontSize: '0.65rem',
-                                                    height: 24
+                                                    height: 24,
+                                                    textTransform: 'capitalize'
                                                 }}
                                             />
                                         </Box>
                                         <Typography variant="body2" sx={{ color: 'text.secondary', mb: 4 }}>
-                                            Slide to the heat you want, and we'll send that choice to the kitchen.
+                                            Slide to the spice level you want, and we'll send that choice to the kitchen.
                                         </Typography>
 
                                         <Box sx={{ px: 2, mb: 2 }}>
@@ -2052,13 +2137,13 @@ const POSPage: React.FC = () => {
                                                         width: 28,
                                                         bgcolor: 'primary.main',
                                                         border: '4px solid white',
-                                                        boxShadow: '0 4px 12px rgba(79, 70, 229, 0.2)',
+                                                        boxShadow: '0 4px 12px rgba(79, 70, 229, 0.25)',
                                                         transition: 'none',
                                                         '&:hover, &.Mui-active': {
                                                             boxShadow: '0 0 0 8px rgba(79, 70, 229, 0.16)',
                                                         },
                                                         '&::after': {
-                                                            content: '"🔥"',
+                                                            content: '"🌶️"',
                                                             fontSize: '14px',
                                                             position: 'absolute'
                                                         }
@@ -2077,6 +2162,7 @@ const POSPage: React.FC = () => {
                                             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
                                                 {(selectedItem as any).spiceLevels.map((level: string, i: number) => {
                                                     const isSel = (tempSelectedSpiceLevel || (selectedItem as any).spiceLevels[0]) === level;
+                                                    const normalizedLevel = level.toLowerCase().replace(/_/g, ' ');
                                                     return (
                                                         <Box
                                                             key={i}
@@ -2100,7 +2186,7 @@ const POSPage: React.FC = () => {
                                                                 justifyContent: 'center',
                                                                 gap: 0.5
                                                             }}>
-                                                                {level}
+                                                                {normalizedLevel}
                                                             </Typography>
                                                             <Typography variant="caption" sx={{
                                                                 fontSize: '0.6rem',
@@ -2108,9 +2194,9 @@ const POSPage: React.FC = () => {
                                                                 opacity: isSel ? 1 : 0.6,
                                                                 display: { xs: 'none', sm: 'block' }
                                                             }}>
-                                                                {level.toLowerCase().includes('mild') ? 'light' :
-                                                                    level.toLowerCase().includes('medium') ? 'Balanced' :
-                                                                        level.toLowerCase().includes('hot') ? 'spicy' : 'very spicy'}
+                                                                {normalizedLevel.includes('mild') ? 'Light' :
+                                                                    normalizedLevel.includes('medium') ? 'Balanced' :
+                                                                        normalizedLevel === 'hot' ? 'Spicy' : 'Extra Spicy'}
                                                             </Typography>
                                                         </Box>
                                                     );

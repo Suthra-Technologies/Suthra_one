@@ -89,7 +89,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
     const [itemToDeleteIndex, setItemToDeleteIndex] = useState<number | null>(null);
     const [expanded, setExpanded] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
-    const { user , tenantSlug } = useAuth();
+    const { user, tenantSlug } = useAuth();
     const isDeliveryBoy = user?.role === 'delivery';
 
     const canAddMoreItems = canAddItems(order.status, order.orderType, order);
@@ -171,7 +171,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
     const theme = useTheme();
     const navigate = useNavigate();
     const { slug } = useParams();
-     const [hasFeedback, setHasFeedback] = useState(false);
+    const [hasFeedback, setHasFeedback] = useState(false);
     const mountedRef = useRef(true);
 
     useEffect(() => {
@@ -631,6 +631,16 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                 </Typography>
                             </Box>
                         )}
+                        {order.rewardDiscount > 0 && (
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', color: 'success.main' }}>
+                                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                    Points Discount:
+                                </Typography>
+                                <Typography variant="body2" fontWeight="bold">
+                                    -{formatCurrency(order.rewardDiscount)}
+                                </Typography>
+                            </Box>
+                        )}
                         {order.deliveryCharge > 0 && (
                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                                 <Typography variant="body2" color="text.secondary">
@@ -672,7 +682,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                         </Typography>
                     </Box>
                     <Chip
-                        label={order.paymentStatus === 'pending' ? 'PENDING' : getPaymentMethodLabel(order.payments && order.payments.length > 0 ? order.payments.map((p: any) => p.method) : order.paymentMethod)}
+                        label={getPaymentMethodLabel(order.payments && order.payments.length > 0 ? order.payments.map((p: any) => p.method) : order.paymentMethod)}
                         size="small"
                         sx={{
                             bgcolor: alpha(order.paymentStatus === 'pending' ? theme.palette.warning.main : getPaymentBadgeColor(order.payments && order.payments.length > 0 ? order.payments[0].method : order.paymentMethod), 0.1),
@@ -712,7 +722,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                             </IconButton>
                         </Tooltip>
                     )}
-{(order.orderType === 'dine_in' && order.status === 'completed') && (
+                    {(order.orderType === 'dine_in' && order.status === 'completed') && (
                         <Tooltip title={hasFeedback ? 'Feedback submitted' : 'Give feedback'}>
                             <span>
                                 <Button

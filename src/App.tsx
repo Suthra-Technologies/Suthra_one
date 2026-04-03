@@ -1,4 +1,4 @@
-import { CssBaseline, ThemeProvider, useMediaQuery } from '@mui/material';
+import { Box, Button, CssBaseline, Paper, ThemeProvider, Typography, useMediaQuery } from '@mui/material';
 import React, { useMemo } from 'react';
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import CustomerLayout from './components/CustomerLayout';
@@ -12,6 +12,7 @@ import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import CustomerOrderPage from './pages/customer/CustomerOrderPage';
 import MyBookingsPage from './pages/customer/MyBookingsPage';
 import TableBookingPage from './pages/customer/TableBookingPage';
+import CheckoutPage from './pages/CheckoutPage';
 import DashboardPage from './pages/DashboardPage';
 import GuestPOSPage from './pages/guest/GuestPOSPage';
 import InventoryPage from './pages/inventory/InventoryPage';
@@ -40,6 +41,7 @@ import SubscriptionCancel from './pages/subscription/SubscriptionCancel';
 import SubscriptionPage from './pages/subscription/SubscriptionPage';
 import SubscriptionSuccess from './pages/subscription/SubscriptionSuccess';
 import AdminSupportPage from './pages/support/AdminSupportPage';
+import CustomerSupportPage from './pages/support/CustomerSupportPage';
 import TablesPage from './pages/tables/TablesPage';
 import UsersPage from './pages/users/UsersPage';
 import { getTheme } from './theme/theme';
@@ -73,16 +75,47 @@ import VendorsPage from './pages/vendors/VendorsPage';
 import { SettingsProvider, useSettings } from './context/SettingsContext';
 
 import CustomerRegisterPage from './pages/auth/CustomerRegisterPage';
+import { GuestCartProvider } from './context/GuestCartContext';
+
+// Error Boundary Component to prevent white screens
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: any }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: any) { return { hasError: true, error }; }
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error('App Crash Logged:', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', p: 3, textAlign: 'center', bgcolor: '#fdf2f2' }}>
+          <Typography variant="h4" color="error" fontWeight="bold" gutterBottom>System Error</Typography>
+          <Typography variant="body1" sx={{ mb: 4, maxWidth: 500 }}>The application encountered an unexpected error. This is usually caused by a data mismatch from the server.</Typography>
+          <Paper variant="outlined" sx={{ p: 2, mb: 4, bgcolor: '#fff', maxWidth: '90%', overflow: 'auto' }}>
+            <Typography variant="caption" component="pre" sx={{ textAlign: 'left', color: '#d32f2f' }}>
+              {this.state.error?.toString()}
+            </Typography>
+          </Paper>
+          <Button variant="contained" onClick={() => window.location.reload()}>Reload Application</Button>
+        </Box>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const ThemedAppContent: React.FC = () => {
   const { settings } = useSettings();
   const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
 
   const mode = useMemo(() => {
+    if (!settings || !settings.system) return prefersDarkMode ? 'dark' : 'light';
     if (settings.system.theme === 'dark') return 'dark';
     if (settings.system.theme === 'light') return 'light';
     return prefersDarkMode ? 'dark' : 'light';
-  }, [settings.system.theme, prefersDarkMode]);
+  }, [settings?.system?.theme, prefersDarkMode]);
 
   const theme = useMemo(() => getTheme(mode), [mode]);
 
@@ -93,115 +126,119 @@ const ThemedAppContent: React.FC = () => {
       <NotificationProvider>
         <SocketProvider>
           <PushNotificationInitializer />
-          <Routes>
-            {/* Public routes (no layout, no slug) */}
-            <Route path="/" element={<HomePage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
-            <Route path="/register" element={<RestaurantRegisterPage />} />
+          <ErrorBoundary>
+            <Routes>
+              {/* Public routes (no layout, no slug) */}
+              <Route path="/" element={<HomePage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/reset-password" element={<ResetPasswordPage />} />
+              <Route path="/register" element={<RestaurantRegisterPage />} />
 
-            {/* ---- SUPERADMIN ROUTES ---- */}
-            <Route element={<RequireRole allowedRoles={["superadmin"]} />}>
-              <Route element={<SuperAdminLayout />}>
-                <Route path="/superadmin" element={<SuperAdminPortal />} />
-                <Route path="/superadmin/tenants" element={<TenantsPage />} />
-                <Route path="/superadmin/plans" element={<PlansPage />} />
-                <Route path="/superadmin/invoices" element={<InvoicesAdminPage />} />
-                <Route path="/superadmin/tickets" element={<TicketsPage />} />
-              </Route>
-            </Route>
-
-            {/* ---- ADMIN‑ONLY ROUTES ---- */}
-            <Route element={<RequireRole allowedRoles={["admin"]} />}>
-              {/* Admin-only routes can be added here if needed */}
-            </Route>
-
-            {/* ---- TENANT ROUTES ---- */}
-            <Route path="/:slug">
-              <Route index element={<GuestPOSPage />} />
-              <Route path="register" element={<CustomerRegisterPage />} />
-              <Route path="feedback/:orderId" element={<FeedbackPage />} />
-
-              {/* ─── Customer Routes (No Sidebar, Single Page Layout) ─── */}
-              <Route element={<CustomerLayout />}>
-                <Route path="customer/order" element={<CustomerOrderPage />} />
-                <Route path="customer/book-table" element={<TableBookingPage />} />
-                <Route path="customer/bookings" element={<MyBookingsPage />} />
-                {/* Guest-accessible customer catering routes */}
-                <Route element={<RequireFeature feature="catering" guestAllowed />}>
-                  <Route path="customer/catering" element={<CateringPage />} />
-                  <Route path="customer/catering/track/:id" element={<CateringTrackPage />} />
+              {/* ---- SUPERADMIN ROUTES ---- */}
+              <Route element={<RequireRole allowedRoles={["superadmin"]} />}>
+                <Route element={<SuperAdminLayout />}>
+                  <Route path="/superadmin" element={<SuperAdminPortal />} />
+                  <Route path="/superadmin/tenants" element={<TenantsPage />} />
+                  <Route path="/superadmin/plans" element={<PlansPage />} />
+                  <Route path="/superadmin/invoices" element={<InvoicesAdminPage />} />
+                  <Route path="/superadmin/tickets" element={<TicketsPage />} />
                 </Route>
               </Route>
 
-              {/* ─── Admin/Staff Routes (With Sidebar Layout) ─── */}
-              <Route element={<Layout />}>
-                <Route path="dashboard" element={<DashboardPage />} />
-                <Route path="orders" element={<OrdersPage />} />
-                <Route path="pos" element={<POSPage />} />
-                <Route element={<RequireRole allowedRoles={['admin', 'manager']} />}>
-                  <Route path="menu" element={<MenuPage />} />
-                  <Route path="inventory" element={<InventoryPage />} />
-                  <Route path="inventory/waste" element={<WasteManagementPage />} />
-                  <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
-                  <Route path="purchase-orders/create" element={<CreatePOPage />} />
-                  <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
-                  <Route path="vendors" element={<VendorsPage />} />
-                  <Route path="recipes" element={<RecipesPage />} />
-                  <Route path="recipes/create" element={<CreateRecipePage />} />
-                  <Route path="recipes/:id/edit" element={<CreateRecipePage />} />
-                  <Route path="reports" element={<ReportsPage />} />
-                  <Route path="users" element={<UsersPage />} />
-                  <Route path="customers" element={<CustomersPage />} />
-                  <Route path="settings" element={<SettingsPage />} />
-                  <Route path="support" element={<AdminSupportPage />} />
-                  <Route path="promocode" element={<PromoCodePage />} />
-                  <Route path="coupons" element={< CouponsAdminPage/>} />
-                  <Route path="attendance" element={<AttendancePage />} />
-                  <Route path="bookings" element={<BookingsAdminPage />} />
-                  <Route path="audit-logs" element={<AuditLogsPage />} />
+              {/* ---- ADMIN‑ONLY ROUTES ---- */}
+              <Route element={<RequireRole allowedRoles={["admin"]} />}>
+                {/* Admin-only routes can be added here if needed */}
+              </Route>
+
+              {/* ---- TENANT ROUTES ---- */}
+              <Route path="/:slug">
+                <Route index element={<GuestPOSPage />} />
+                <Route path="register" element={<CustomerRegisterPage />} />
+                <Route path="feedback/:orderId" element={<FeedbackPage />} />
+
+                {/* ─── Customer Routes (No Sidebar, Single Page Layout) ─── */}
+                <Route element={<CustomerLayout />}>
+                  <Route path="customer/order" element={<CustomerOrderPage />} />
+                  <Route path="customer/checkout" element={<CheckoutPage />} />
+                  <Route path="customer/book-table" element={<TableBookingPage />} />
+                  <Route path="customer/bookings" element={<MyBookingsPage />} />
+                  {/* Guest-accessible customer catering routes */}
+                  <Route element={<RequireFeature feature="catering" guestAllowed />}>
+                    <Route path="customer/catering" element={<CateringPage />} />
+                    <Route path="customer/catering/track/:id" element={<CateringTrackPage />} />
+                  </Route>
                 </Route>
 
-                <Route element={<RequireRole allowedRoles={['admin', 'superadmin']} />}>
-                  <Route path="invoices" element={<InvoicesPage />} />
-                  <Route path="invoices/:id" element={<InvoiceDetailPage />} />
-                </Route>
+                {/* ─── Admin/Staff Routes (With Sidebar Layout) ─── */}
+                <Route element={<Layout />}>
+                  <Route path="dashboard" element={<DashboardPage />} />
+                  <Route path="orders" element={<OrdersPage />} />
+                  <Route path="pos" element={<POSPage />} />
+                  <Route element={<RequireRole allowedRoles={['admin', 'manager']} />}>
+                    <Route path="menu" element={<MenuPage />} />
+                    <Route path="inventory" element={<InventoryPage />} />
+                    <Route path="inventory/waste" element={<WasteManagementPage />} />
+                    <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
+                    <Route path="purchase-orders/create" element={<CreatePOPage />} />
+                    <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
+                    <Route path="vendors" element={<VendorsPage />} />
+                    <Route path="recipes" element={<RecipesPage />} />
+                    <Route path="recipes/create" element={<CreateRecipePage />} />
+                    <Route path="recipes/:id/edit" element={<CreateRecipePage />} />
+                    <Route path="reports" element={<ReportsPage />} />
+                    <Route path="users" element={<UsersPage />} />
+                    <Route path="customers" element={<CustomersPage />} />
+                    <Route path="settings" element={<SettingsPage />} />
+                    <Route path="support" element={<AdminSupportPage />} />
+                    <Route path="customer-support" element={<CustomerSupportPage />} />
+                    <Route path="promocode" element={<PromoCodePage />} />
+                    <Route path="coupons" element={< CouponsAdminPage />} />
+                    <Route path="attendance" element={<AttendancePage />} />
+                    <Route path="bookings" element={<BookingsAdminPage />} />
+                    <Route path="audit-logs" element={<AuditLogsPage />} />
+                  </Route>
 
-                <Route element={<RequireRole allowedRoles={['admin']} />}>
-                  <Route path="subscription" element={<SubscriptionPage />} />
-                  <Route path="subscription/success" element={<SubscriptionSuccess />} />
-                  <Route path="subscription/cancel" element={<SubscriptionCancel />} />
-                </Route>
+                  <Route element={<RequireRole allowedRoles={['admin', 'superadmin']} />}>
+                    <Route path="invoices" element={<InvoicesPage />} />
+                    <Route path="invoices/:id" element={<InvoiceDetailPage />} />
+                  </Route>
 
-                <Route element={<RequireRole allowedRoles={['admin', 'manager', 'waiter', 'cashier']} />}>
-                  <Route path="tables" element={<TablesPage />} />
-                </Route>
+                  <Route element={<RequireRole allowedRoles={['admin']} />}>
+                    <Route path="subscription" element={<SubscriptionPage />} />
+                    <Route path="subscription/success" element={<SubscriptionSuccess />} />
+                    <Route path="subscription/cancel" element={<SubscriptionCancel />} />
+                  </Route>
 
-                <Route path="profile" element={<ProfilePage />} />
+                  <Route element={<RequireRole allowedRoles={['admin', 'manager', 'waiter', 'cashier']} />}>
+                    <Route path="tables" element={<TablesPage />} />
+                  </Route>
 
-                {/* Kitchen Routes */}
-                <Route element={<RequireRole allowedRoles={['admin', 'manager', 'kitchen_staff']} />}>
-                  <Route path="kitchen" element={<KitchenInterface />} />
-                  <Route path="kot" element={<KitchenOrdersPage />} />
-                </Route>
+                  <Route path="profile" element={<ProfilePage />} />
 
-                {/* Protected admin catering routes */}
-                <Route element={<RequireFeature feature="catering" />}>
-                  <Route path="catering-admin" element={<CateringManagementPage />} />
-                  <Route path="catering-commissions" element={<CateringCommissionsPage />} />
+                  {/* Kitchen Routes */}
+                  <Route element={<RequireRole allowedRoles={['admin', 'manager', 'kitchen_staff']} />}>
+                    <Route path="kitchen" element={<KitchenInterface />} />
+                    <Route path="kot" element={<KitchenOrdersPage />} />
+                  </Route>
+
+                  {/* Protected admin catering routes */}
+                  <Route element={<RequireFeature feature="catering" />}>
+                    <Route path="catering-admin" element={<CateringManagementPage />} />
+                    <Route path="catering-commissions" element={<CateringCommissionsPage />} />
+                  </Route>
                 </Route>
               </Route>
-            </Route>
 
-            {/* Fallback for old routes without slug - redirect to login */}
-            <Route path="/dashboard" element={<Navigate to="/login" replace />} />
-            <Route path="/users" element={<Navigate to="/login" replace />} />
-            <Route path="/unauthorized" element={<Unauthorized />} />
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          </Routes>
+              {/* Fallback for old routes without slug - redirect to login */}
+              <Route path="/dashboard" element={<Navigate to="/login" replace />} />
+              <Route path="/users" element={<Navigate to="/login" replace />} />
+              <Route path="/unauthorized" element={<Unauthorized />} />
+              <Route path="*" element={<Navigate to="/login" replace />} />
+            </Routes>
+          </ErrorBoundary>
         </SocketProvider>
       </NotificationProvider>
-    </ThemeProvider >
+    </ThemeProvider>
   );
 };
 
@@ -210,7 +247,9 @@ const App: React.FC = () => {
     <Router>
       <AuthProvider>
         <SettingsProvider>
-          <ThemedAppContent />
+          <GuestCartProvider>
+            <ThemedAppContent />
+          </GuestCartProvider>
         </SettingsProvider>
       </AuthProvider>
     </Router>

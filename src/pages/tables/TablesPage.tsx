@@ -233,10 +233,11 @@ const TablesPage: React.FC = () => {
         try {
             setLoading(true);
             const response = await tablesAPI.getAll();
-            setTables(response.data);
+            const tablesData = Array.isArray(response.data) ? response.data : [];
+            setTables(tablesData);
 
             const defaultLocations = ['indoor', 'outdoor', 'private_room', 'bar', 'patio', 'main_dining', 'vip_section', 'party_hall', 'terrace'];
-            const locations = response.data.map((t: any) => t.location).filter(Boolean);
+            const locations = tablesData.map((t: any) => t.location).filter(Boolean);
             const uniqueCustom = [...new Set(locations)].filter(loc => !defaultLocations.includes(loc as string)) as string[];
             setCustomLocations(uniqueCustom);
         } catch (error) {
@@ -251,7 +252,7 @@ const TablesPage: React.FC = () => {
         try {
             setBookingsLoading(true);
             const response = await bookingsAPI.getAll({ limit: 1000 });
-            setBookings(response.data.data || []);
+            setBookings(Array.isArray(response.data.data) ? response.data.data : []);
         } catch (error) {
             console.error('Error fetching bookings:', error);
             toast.error('Failed to load bookings');

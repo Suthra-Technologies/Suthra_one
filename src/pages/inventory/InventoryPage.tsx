@@ -16,7 +16,6 @@ import {
     Paper,
     Chip,
     IconButton,
-    Alert,
     CircularProgress,
     TextField,
     Card,
@@ -34,7 +33,6 @@ import {
     MenuItem,
     FormControl,
     InputLabel,
-    Badge,
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -46,9 +44,6 @@ import {
     DeleteForever as DeleteForeverIcon,
     Close as CloseIcon,
     CloudUpload as BulkUploadIcon,
-     Notes as NotesIcon,
-    EventNote as ItemNotesIcon,
-    History as HistoryIcon,
 } from '@mui/icons-material';
 import { Drawer } from '@mui/material';
 import { toast } from 'react-hot-toast';
@@ -330,8 +325,6 @@ const InventoryPage: React.FC = () => {
     const [usageDialogOpen, setUsageDialogOpen] = useState(false);
     const [bulkUploadDialogOpen, setBulkUploadDialogOpen] = useState(false);
     const [selectedMaterial, setSelectedMaterial] = useState<RawMaterial | null>(null);
-    const [selectedVendorForNotes, setSelectedVendorForNotes] = useState<Vendor | null>(null);
-    const [vendorNotesOpen, setVendorNotesOpen] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; title: string; message: React.ReactNode; onConfirm: () => void }>({
         open: false,
         title: '',
@@ -363,6 +356,7 @@ const InventoryPage: React.FC = () => {
             setRawMaterials(materials);
             setTotalMaterials(response.data?.total ?? materials.length);
         } catch (err: any) {
+            console.error('Failed to load raw materials:', err);
             toast.error(err.response?.data?.message || 'Failed to load raw materials');
         } finally {
             setLoading(false);
@@ -373,9 +367,15 @@ const InventoryPage: React.FC = () => {
         try {
             setLoading(true);
             const response = await inventoryAPI.getUsageReport(fromDate, toDate, { page: usagePage + 1, limit: usageLimit, type: reportType });
-            setDailyReport(response.data);
-            setTotalUsageRecords(response.data.pagination?.total || 0);
+            if (response.data) {
+                setDailyReport(response.data);
+                setTotalUsageRecords(response.data.pagination?.total || 0);
+            } else {
+                setDailyReport(null);
+                setTotalUsageRecords(0);
+            }
         } catch (err: any) {
+            console.error('Failed to load usage report:', err);
             toast.error(err.response?.data?.message || 'Failed to load usage report');
         } finally {
             setLoading(false);
@@ -687,7 +687,7 @@ const InventoryPage: React.FC = () => {
                                 </Grid>
                             </Grid>
 
-                            {dailyReport.records.length === 0 ? (
+                            {(dailyReport.records?.length || 0) === 0 ? (
                                 <Box sx={{ p: 4, textAlign: 'center' }}>
                                     <Typography color="text.secondary">
                                         No usage recorded for this date range.

@@ -39,7 +39,7 @@ import {
     InputAdornment,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
-import { Add, Remove, Delete, ShoppingCart, Close, LocalDining, Edit, Visibility, VisibilityOff, Chat, Person } from '@mui/icons-material';
+import { Add, Remove, Delete, ShoppingCart, Close, LocalDining, Edit, Visibility, VisibilityOff, Chat, Person, CheckCircle, RadioButtonUnchecked } from '@mui/icons-material';
 import { menuAPI, cateringAPI, traysAPI, authAPI, settingsAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
@@ -48,6 +48,7 @@ import PhoneInput from '../../components/PhoneInput';
 import { isWithinDeliveryRadius, METERS_PER_MILE } from '../../services/googleMapsService';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
+import { formatSpiceLevelLabel } from '../../utils/spiceLevel';
 
 interface CartItem {
     menuItem: string;
@@ -58,7 +59,14 @@ interface CartItem {
     tray?: string;
     trayName?: string;
     taxRate?: number | null;
+    spiceLevel?: string;
 }
+
+const SPICE_LEVELS = [
+    { id: 'mild', label: 'Mild' },
+    { id: 'moderate', label: 'Moderate' },
+    { id: 'more_spicy', label: 'More Spicy' }
+];
 
 interface CateringFormData {
     customerName: string;
@@ -122,6 +130,7 @@ const CateringPage = () => {
     const [trayDialogOpen, setTrayDialogOpen] = useState(false);
     const [trayDialogItem, setTrayDialogItem] = useState<any>(null);
     const [traySelections, setTraySelections] = useState<Record<string, number>>({});
+    const [selectedSpice, setSelectedSpice] = useState<string>('mild');
 
     // Edit mode state
     const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
@@ -151,6 +160,12 @@ const CateringPage = () => {
     const [occasionInputValue, setOccasionInputValue] = useState('');
     const [addCustomOccasionOpen, setAddCustomOccasionOpen] = useState(false);
     const [customOccasion, setCustomOccasion] = useState('');
+    
+    // Check if the occasion is a celebratory one that needs a person's name
+    const isCelebratoryOccasion = [
+        'birthday', 'wedding', 'anniversary', 'engagement', 'baby shower'
+    ].some(keyword => formData.occasion?.toLowerCase().includes(keyword));
+
     const [occasionsList, setOccasionsList] = useState<string[]>((settings?.restaurant?.occasions || [
         "Birthday Party",
         "Sweet Sixteen Party",
@@ -345,27 +360,35 @@ const CateringPage = () => {
 
     const handleOpenAddItem = (item: any) => {
         const hasTrays = item.isCateringAvailable && item.trayOptions?.length > 0;
-        if (hasTrays) {
+        const hasSpice = item.isSpiceLevelAvailable;
+
+        if (hasTrays || hasSpice) {
             setTrayDialogItem(item);
-            const init: Record<string, number> = { '__item__': 0 };
-            item.trayOptions.forEach((opt: any) => {
-                const id = opt.tray?._id || opt.tray || '';
-                if (id) init[id] = 0;
-            });
+            const init: Record<string, number> = { '__item__': hasTrays ? 0 : 1 };
+            if (hasTrays) {
+                item.trayOptions.forEach((opt: any) => {
+                    const id = opt.tray?._id || opt.tray || '';
+                    if (id) init[id] = 0;
+                });
+            }
             setTraySelections(init);
+            setSelectedSpice(item.spiceLevels && item.spiceLevels.length > 0 ? item.spiceLevels[0] : 'mild');
             setTrayDialogOpen(true);
         } else {
             addToCartDirect(item._id, item.name, 1, item.price, undefined, undefined, item.taxRate);
         }
     };
 
-    const addToCartDirect = (menuItemId: string, name: string, qty: number, unitPrice: number, trayId?: string, trayName?: string, taxRate?: number | null) => {
-        const key = trayId ? `${menuItemId}_${trayId}` : menuItemId;
+    const addToCartDirect = (menuItemId: string, name: string, qty: number, unitPrice: number, trayId?: string, trayName?: string, taxRate?: number | null, spiceLevel?: string) => {
+        const key = trayId ? `${menuItemId}_${trayId}_${spiceLevel || ''}` : `${menuItemId}_${spiceLevel || ''}`;
         setCart(prev => {
-            const existing = prev.find(i => (i.tray ? `${i.menuItem}_${i.tray}` : i.menuItem) === key);
+            const existing = prev.find(i => {
+                const k = i.tray ? `${i.menuItem}_${i.tray}_${i.spiceLevel || ''}` : `${i.menuItem}_${i.spiceLevel || ''}`;
+                return k === key;
+            });
             if (existing) {
                 return prev.map(i => {
-                    const k = i.tray ? `${i.menuItem}_${i.tray}` : i.menuItem;
+                    const k = i.tray ? `${i.menuItem}_${i.tray}_${i.spiceLevel || ''}` : `${i.menuItem}_${i.spiceLevel || ''}`;
                     if (k === key) return { ...i, quantity: i.quantity + qty, total: (i.quantity + qty) * i.unitPrice };
                     return i;
                 });
@@ -379,6 +402,7 @@ const CateringPage = () => {
                 tray: trayId,
                 trayName,
                 taxRate,
+                spiceLevel: spiceLevel && spiceLevel !== 'none' ? spiceLevel : undefined,
             }];
         });
     };
@@ -391,26 +415,28 @@ const CateringPage = () => {
             return;
         }
         const baseQty = traySelections['__item__'] || 0;
+        const spiceToUse = trayDialogItem.isSpiceLevelAvailable ? selectedSpice : undefined;
         if (baseQty > 0) {
-            addToCartDirect(trayDialogItem._id, trayDialogItem.name, baseQty, trayDialogItem.price || 0, undefined, undefined, trayDialogItem.taxRate);
+            addToCartDirect(trayDialogItem._id, trayDialogItem.name, baseQty, trayDialogItem.price || 0, undefined, undefined, trayDialogItem.taxRate, spiceToUse);
         }
         trayDialogItem.trayOptions.forEach((opt: any) => {
             const trayId = opt.tray?._id || opt.tray || '';
             const qty = traySelections[trayId] || 0;
             if (qty > 0) {
                 const trayData = trays.find((t: any) => t._id === trayId);
-                addToCartDirect(trayDialogItem._id, trayDialogItem.name, qty, opt.price || trayDialogItem.price || 0, trayId, trayData?.name, trayDialogItem.taxRate);
+                addToCartDirect(trayDialogItem._id, trayDialogItem.name, qty, opt.price || trayDialogItem.price || 0, trayId, trayData?.name, trayDialogItem.taxRate, spiceToUse);
             }
         });
         setTrayDialogOpen(false);
         setTrayDialogItem(null);
         setTraySelections({});
+        setSelectedSpice('mild');
     };
 
     const updateQuantity = (cartKey: string, change: number) => {
         setCart(prev =>
             prev.map(item => {
-                const k = item.tray ? `${item.menuItem}_${item.tray}` : item.menuItem;
+                const k = item.tray ? `${item.menuItem}_${item.tray}_${item.spiceLevel || ''}` : `${item.menuItem}_${item.spiceLevel || ''}`;
                 if (k === cartKey) {
                     const newQty = Math.max(0, item.quantity + change);
                     if (newQty === 0) return null;
@@ -590,13 +616,13 @@ const CateringPage = () => {
                             <Typography variant="h6" fontWeight={700} mb={3}>Order Details</Typography>
                             <form onSubmit={handleSubmit}>
                                 <Stack spacing={2.5}>
-                                    <TextField label="Full Name" fullWidth value={formData.customerName} onChange={e => setFormData({...formData, customerName: e.target.value})} />
-                                    <TextField label="Phone Number" fullWidth value={formData.customerPhone} onChange={e => setFormData({...formData, customerPhone: e.target.value})} />
-                                    <TextField label="Email" fullWidth value={formData.customerEmail} onChange={e => setFormData({...formData, customerEmail: e.target.value})} />
-                                    
+                                    <TextField label="Full Name" fullWidth value={formData.customerName} onChange={e => setFormData({ ...formData, customerName: e.target.value })} />
+                                    <TextField label="Phone Number" fullWidth value={formData.customerPhone} onChange={e => setFormData({ ...formData, customerPhone: e.target.value })} />
+                                    <TextField label="Email" fullWidth value={formData.customerEmail} onChange={e => setFormData({ ...formData, customerEmail: e.target.value })} />
+
                                     <Grid container spacing={2}>
                                         <Grid item xs={12} sm={6}>
-                                            <TextField select fullWidth label="Service Type" value={formData.serviceType} onChange={e => setFormData({...formData, serviceType: e.target.value})}>
+                                            <TextField select fullWidth label="Service Type" value={formData.serviceType} onChange={e => setFormData({ ...formData, serviceType: e.target.value })}>
                                                 <MenuItem value="takeaway">Online Takeaway</MenuItem>
                                                 <MenuItem value="delivery">Delivery</MenuItem>
                                                 <MenuItem value="delivery_service">Delivery & Service</MenuItem>
@@ -649,11 +675,16 @@ const CateringPage = () => {
 
                                     <Grid container spacing={2}>
                                         <Grid item xs={12} sm={6}>
-                                            <TextField label="Occasion Date" type="date" fullWidth value={formData.occasionDate} onChange={e => setFormData({...formData, occasionDate: e.target.value})} InputLabelProps={{ shrink: true }} />
+                                            <TextField label="Occasion Date" type="date" fullWidth value={formData.occasionDate} onChange={e => setFormData({ ...formData, occasionDate: e.target.value })} InputLabelProps={{ shrink: true }} />
                                         </Grid>
                                         <Grid item xs={12} sm={6}>
-                                            <TextField label="Occasion For (Person Name)" fullWidth value={formData.occasionPersonName} onChange={e => setFormData({...formData, occasionPersonName: e.target.value})} />
+                                            <TextField label=" Delivery Date & Time" type="datetime-local" fullWidth value={formData.requiredDate} onChange={e => setFormData({ ...formData, requiredDate: e.target.value })} InputLabelProps={{ shrink: true }} />
                                         </Grid>
+                                        {isCelebratoryOccasion && (
+                                            <Grid item xs={12}>
+                                                <TextField label="Occasion For (Person Name)" fullWidth value={formData.occasionPersonName} onChange={e => setFormData({ ...formData, occasionPersonName: e.target.value })} />
+                                            </Grid>
+                                        )}
                                     </Grid>
 
                                     <Box sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 3, bgcolor: alpha('#4F46E5', 0.02) }}>
@@ -662,15 +693,15 @@ const CateringPage = () => {
                                             <Grid item xs={12} sm={6}>
                                                 <Typography variant="caption" fontWeight={700} sx={{ display: 'block', mb: 1 }}>Adults</Typography>
                                                 <Box display="flex" gap={1}>
-                                                    <TextField label="Veg" size="small" type="number" value={guests.adults.veg} onChange={e => setGuests({...guests, adults: {...guests.adults, veg: parseInt(e.target.value) || 0}})} />
-                                                    <TextField label="Non-Veg" size="small" type="number" value={guests.adults.nonVeg} onChange={e => setGuests({...guests, adults: {...guests.adults, nonVeg: parseInt(e.target.value) || 0}})} />
+                                                    <TextField label="Veg" size="small" type="number" value={guests.adults.veg} onChange={e => setGuests({ ...guests, adults: { ...guests.adults, veg: Math.max(0, parseInt(e.target.value) || 0) } })} inputProps={{ min: 0 }} />
+                                                    <TextField label="Non-Veg" size="small" type="number" value={guests.adults.nonVeg} onChange={e => setGuests({ ...guests, adults: { ...guests.adults, nonVeg: Math.max(0, parseInt(e.target.value) || 0) } })} inputProps={{ min: 0 }} />
                                                 </Box>
                                             </Grid>
                                             <Grid item xs={12} sm={6}>
                                                 <Typography variant="caption" fontWeight={700} sx={{ display: 'block', mb: 1 }}>Kids</Typography>
                                                 <Box display="flex" gap={1}>
-                                                    <TextField label="Veg" size="small" type="number" value={guests.kids.veg} onChange={e => setGuests({...guests, kids: {...guests.kids, veg: parseInt(e.target.value) || 0}})} />
-                                                    <TextField label="Non-Veg" size="small" type="number" value={guests.kids.nonVeg} onChange={e => setGuests({...guests, kids: {...guests.kids, nonVeg: parseInt(e.target.value) || 0}})} />
+                                                    <TextField label="Veg" size="small" type="number" value={guests.kids.veg} onChange={e => setGuests({ ...guests, kids: { ...guests.kids, veg: Math.max(0, parseInt(e.target.value) || 0) } })} inputProps={{ min: 0 }} />
+                                                    <TextField label="Non-Veg" size="small" type="number" value={guests.kids.nonVeg} onChange={e => setGuests({ ...guests, kids: { ...guests.kids, nonVeg: Math.max(0, parseInt(e.target.value) || 0) } })} inputProps={{ min: 0 }} />
                                                 </Box>
                                             </Grid>
                                         </Grid>
@@ -688,9 +719,9 @@ const CateringPage = () => {
                                         />
                                     )}
 
-                                    <TextField label="Date & Time Required" type="datetime-local" fullWidth value={formData.requiredDate} onChange={e => setFormData({...formData, requiredDate: e.target.value})} InputLabelProps={{ shrink: true }} />
 
-                                    <TextField label="Special Instructions / Additional Services" multiline rows={2} fullWidth value={formData.additionalServices} onChange={e => setFormData({...formData, additionalServices: e.target.value})} />
+
+                                    <TextField label="Special Instructions / Additional Services" multiline rows={2} fullWidth value={formData.additionalServices} onChange={e => setFormData({ ...formData, additionalServices: e.target.value })} />
 
                                     <Divider />
                                     <Box>
@@ -699,15 +730,39 @@ const CateringPage = () => {
                                             <Typography variant="body2" color="text.secondary">Your cart is empty</Typography>
                                         ) : (
                                             <List dense>
-                                                {cart.map((item, idx) => (
-                                                    <ListItem key={idx} secondaryAction={
-                                                        <IconButton edge="end" size="small" color="error" onClick={() => updateQuantity(item.tray ? `${item.menuItem}_${item.tray}` : item.menuItem, -999)}>
-                                                            <Delete fontSize="small" />
-                                                        </IconButton>
-                                                    }>
-                                                        <ListItemText primary={item.name} secondary={`${item.quantity} x ${formatCurrency(item.unitPrice)}`} />
-                                                    </ListItem>
-                                                ))}
+                                                {cart.map((item, idx) => {
+                                                    const cartKey = item.tray ? `${item.menuItem}_${item.tray}_${item.spiceLevel || ''}` : `${item.menuItem}_${item.spiceLevel || ''}`;
+                                                    return (
+                                                        <ListItem key={idx} secondaryAction={
+                                                            <IconButton edge="end" size="small" color="error" onClick={() => updateQuantity(cartKey, -999)}>
+                                                                <Delete fontSize="small" />
+                                                            </IconButton>
+                                                        }>
+                                                            <ListItemText
+                                                                primary={
+                                                                    <Box display="flex" alignItems="center" gap={1}>
+                                                                        <Typography variant="body2" fontWeight={700}>{item.name}</Typography>
+                                                                        {item.spiceLevel && (
+                                                                            <Chip
+                                                                                label={item.spiceLevel}
+                                                                                size="small"
+                                                                                sx={{
+                                                                                    height: 18,
+                                                                                    fontSize: '0.6rem',
+                                                                                    bgcolor: alpha('#e65100', 0.1),
+                                                                                    color: '#e65100',
+                                                                                    border: '1px solid currentColor',
+                                                                                    textTransform: 'uppercase'
+                                                                                }}
+                                                                            />
+                                                                        )}
+                                                                    </Box>
+                                                                }
+                                                                secondary={`${item.quantity} x ${formatCurrency(item.unitPrice)}`}
+                                                            />
+                                                        </ListItem>
+                                                    );
+                                                })}
                                             </List>
                                         )}
                                     </Box>
@@ -729,7 +784,17 @@ const CateringPage = () => {
                                         fullWidth
                                         size="large"
                                         disabled={cart.length === 0 || submitting}
-                                        sx={{ py: 1.5, borderRadius: 3, background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)' }}
+                                        sx={{ 
+                                            py: 1.5, 
+                                            borderRadius: 3, 
+                                            background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)',
+                                            color: '#ffffff !important',
+                                            fontWeight: 700,
+                                            '&:hover': {
+                                                background: 'linear-gradient(135deg, #4338CA 0%, #6D28D9 100%)',
+                                                color: '#ffffff !important',
+                                            }
+                                        }}
                                     >
                                         {submitting ? <CircularProgress size={24} color="inherit" /> : 'Submit Catering Order'}
                                     </Button>
@@ -783,9 +848,9 @@ const CateringPage = () => {
                         <Box sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <Typography variant="body2">Base Item (No Tray)</Typography>
                             <Box display="flex" alignItems="center" gap={1}>
-                                <IconButton size="small" onClick={() => setTraySelections(p => ({...p, '__item__': Math.max(0, (p['__item__'] || 0) - 1)}))}><Remove /></IconButton>
+                                <IconButton size="small" onClick={() => setTraySelections(p => ({ ...p, '__item__': Math.max(0, (p['__item__'] || 0) - 1) }))}><Remove /></IconButton>
                                 <Typography>{traySelections['__item__'] || 0}</Typography>
-                                <IconButton size="small" onClick={() => setTraySelections(p => ({...p, '__item__': (p['__item__'] || 0) + 1}))}><Add /></IconButton>
+                                <IconButton size="small" onClick={() => setTraySelections(p => ({ ...p, '__item__': (p['__item__'] || 0) + 1 }))}><Add /></IconButton>
                             </Box>
                         </Box>
                         {trayDialogItem?.trayOptions?.map((opt: any) => {
@@ -798,13 +863,70 @@ const CateringPage = () => {
                                         <Typography variant="caption" color="text.secondary">Serves ~{opt.servingSize}</Typography>
                                     </Box>
                                     <Box display="flex" alignItems="center" gap={1}>
-                                        <IconButton size="small" onClick={() => setTraySelections(p => ({...p, [tid]: Math.max(0, (p[tid] || 0) - 1)}))}><Remove /></IconButton>
+                                        <IconButton size="small" onClick={() => setTraySelections(p => ({ ...p, [tid]: Math.max(0, (p[tid] || 0) - 1) }))}><Remove /></IconButton>
                                         <Typography>{traySelections[tid] || 0}</Typography>
-                                        <IconButton size="small" onClick={() => setTraySelections(p => ({...p, [tid]: (p[tid] || 0) + 1}))}><Add /></IconButton>
+                                        <IconButton size="small" onClick={() => setTraySelections(p => ({ ...p, [tid]: (p[tid] || 0) + 1 }))}><Add /></IconButton>
                                     </Box>
                                 </Box>
                             );
                         })}
+
+                        {trayDialogItem?.isSpiceLevelAvailable && (
+                            <Box sx={{ mt: 2 }}>
+                                <Typography variant="caption" sx={{ fontWeight: 700, mb: 1, display: 'block', color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                                    Spicy Level
+                                </Typography>
+                                <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap sx={{ gap: 1.5 }}>
+                                    {(trayDialogItem?.spiceLevels?.length > 0 ? trayDialogItem.spiceLevels : SPICE_LEVELS.map(l => l.id)).map((lvl: string) => {
+                                        const isSelected = selectedSpice === lvl;
+                                        const getSpiceColor = (l: string) => {
+                                            const norm = l.toLowerCase();
+                                            if (norm.includes('mild')) return { main: '#2e7d32' };
+                                            if (norm.includes('medium') || norm.includes('moderate')) return { main: '#ed6c02' };
+                                            if (norm.includes('hot') || norm.includes('spicy')) return { main: '#d32f2f' };
+                                            return { main: '#1a3353' };
+                                        };
+                                        const color = getSpiceColor(lvl);
+
+                                        return (
+                                            <Box
+                                                key={lvl}
+                                                onClick={() => setSelectedSpice(lvl)}
+                                                sx={{
+                                                    flex: '1 1 auto',
+                                                    minWidth: '100px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: 1,
+                                                    py: 1,
+                                                    px: { xs: 1, sm: 2 },
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    border: `1.5px solid ${isSelected ? color.main : alpha(color.main, 0.2)}`,
+                                                    bgcolor: isSelected ? color.main : 'white',
+                                                    color: isSelected ? 'white' : color.main,
+                                                    transition: 'all 0.2s',
+                                                    boxShadow: isSelected ? `0 4px 12px ${alpha(color.main, 0.3)}` : 'none',
+                                                    '&:hover': {
+                                                        bgcolor: isSelected ? color.main : alpha(color.main, 0.05),
+                                                        borderColor: color.main,
+                                                    }
+                                                }}
+                                            >
+                                                {isSelected ?
+                                                    <CheckCircle sx={{ fontSize: 18, color: 'white' }} /> :
+                                                    <RadioButtonUnchecked sx={{ fontSize: 18, color: alpha(color.main, 0.4) }} />
+                                                }
+                                                <Typography variant="body2" sx={{ fontWeight: isSelected ? 700 : 600, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                                                    {formatSpiceLevelLabel(lvl)}
+                                                </Typography>
+                                            </Box>
+                                        );
+                                    })}
+                                </Stack>
+                            </Box>
+                        )}
                     </Stack>
                 </DialogContent>
                 <DialogActions>
@@ -830,11 +952,11 @@ const CateringPage = () => {
                                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>Occasion Details</Typography>
                                 <Typography variant="body2"><b>For:</b> {viewOrder.occasionPersonName || 'N/A'}</Typography>
                                 <Typography variant="body2"><b>Date:</b> {viewOrder.occasionDate ? new Date(viewOrder.occasionDate).toLocaleDateString() : 'N/A'}</Typography>
-                                
+
                                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, mt: 1 }}>Guest Counts</Typography>
                                 <Typography variant="body2"><b>Adults:</b> {viewOrder.guests?.adults?.veg + viewOrder.guests?.adults?.nonVeg === 0 ? 'N/A' : `Veg: ${viewOrder.guests?.adults?.veg}, Non-Veg: ${viewOrder.guests?.adults?.nonVeg}`}</Typography>
                                 <Typography variant="body2"><b>Kids:</b> {viewOrder.guests?.kids?.veg + viewOrder.guests?.kids?.nonVeg === 0 ? 'N/A' : `Veg: ${viewOrder.guests?.kids?.veg}, Non-Veg: ${viewOrder.guests?.kids?.nonVeg}`}</Typography>
-                                
+
                                 {viewOrder.additionalServices && (
                                     <>
                                         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, mt: 1 }}>Special Instructions</Typography>
@@ -845,7 +967,30 @@ const CateringPage = () => {
                             <Divider sx={{ my: 1 }} />
                             <Typography variant="subtitle2" fontWeight="bold" sx={{ px: 2, mt: 1 }}>Items:</Typography>
                             {viewOrder.items?.map((item: any, i: number) => (
-                                <ListItem key={i}><ListItemText primary={item.name} secondary={`${item.quantity} x ${formatCurrency(item.unitPrice)}`} /></ListItem>
+                                <ListItem key={i}>
+                                    <ListItemText
+                                        primary={
+                                            <Box display="flex" alignItems="center" gap={1}>
+                                                <Typography variant="body2" fontWeight={700}>{item.name}</Typography>
+                                                {item.spiceLevel && (
+                                                    <Chip
+                                                        label={item.spiceLevel}
+                                                        size="small"
+                                                        sx={{
+                                                            height: 18,
+                                                            fontSize: '0.6rem',
+                                                            bgcolor: alpha('#e65100', 0.1),
+                                                            color: '#e65100',
+                                                            border: '1px solid currentColor',
+                                                            textTransform: 'uppercase'
+                                                        }}
+                                                    />
+                                                )}
+                                            </Box>
+                                        }
+                                        secondary={`${item.quantity} x ${formatCurrency(item.unitPrice)}`}
+                                    />
+                                </ListItem>
                             ))}
                         </List>
                     )}
@@ -868,8 +1013,8 @@ const CateringPage = () => {
                     <Stack spacing={2.5} sx={{ mt: 1 }}>
                         {loginDialogMode === 'register' && (
                             <Box display="flex" gap={2}>
-                                <TextField label="First Name" fullWidth value={regData.firstName} onChange={e => setRegData({...regData, firstName: e.target.value})} />
-                                <TextField label="Last Name" fullWidth value={regData.lastName} onChange={e => setRegData({...regData, lastName: e.target.value})} />
+                                <TextField label="First Name" fullWidth value={regData.firstName} onChange={e => setRegData({ ...regData, firstName: e.target.value })} />
+                                <TextField label="Last Name" fullWidth value={regData.lastName} onChange={e => setRegData({ ...regData, lastName: e.target.value })} />
                             </Box>
                         )}
                         <TextField label="Email" fullWidth value={loginEmail} onChange={e => setLoginEmail(e.target.value)} />

@@ -103,8 +103,8 @@ const WasteManagementPage: React.FC = () => {
                 wasteAPI.getAll(),
                 wasteAPI.getSummary(),
             ]);
-            setLogs(logsRes.data);
-            setSummary(summaryRes.data);
+            setLogs(Array.isArray(logsRes.data) ? logsRes.data : []);
+            setSummary(summaryRes.data || {});
         } catch (error) {
             console.error('Error fetching waste data:', error);
             enqueueSnackbar('Failed to fetch waste data', { variant: 'error' });
@@ -119,8 +119,8 @@ const WasteManagementPage: React.FC = () => {
                 inventoryAPI.getAll(), // This fetches all inventory items, we should filter for raw materials if needed
                 menuAPI.getAll(),
             ]);
-            setRawMaterials(rawRes.data.filter((i: any) => i.category === 'raw_materials'));
-            setMenuItems(menuRes.data);
+            setRawMaterials(Array.isArray(rawRes.data) ? rawRes.data.filter((i: any) => i.category === 'raw_materials') : []);
+            setMenuItems(Array.isArray(menuRes.data) ? menuRes.data : []);
         } catch (error) {
             console.error('Error fetching options:', error);
         }
@@ -251,7 +251,7 @@ const WasteManagementPage: React.FC = () => {
                                 <Typography variant="h6">Total Financial Loss</Typography>
                             </Box>
                             <Typography variant="h3" fontWeight="bold">
-                                ${summary?.totalLoss.toFixed(2) || '0.00'}
+                                ${(summary?.totalLoss || 0).toFixed(2)}
                             </Typography>
                             <Typography variant="body2" sx={{ opacity: 0.8 }}>
                                 Across {summary?.count || 0} waste records
@@ -267,7 +267,7 @@ const WasteManagementPage: React.FC = () => {
                                 <Typography variant="h6">Raw Material Loss</Typography>
                             </Box>
                             <Typography variant="h3" fontWeight="bold">
-                                ${summary?.byType?.raw_material.toFixed(2) || '0.00'}
+                                ${(summary?.byType?.raw_material || 0).toFixed(2)}
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
                                 Ingredients and Supplies
@@ -283,7 +283,7 @@ const WasteManagementPage: React.FC = () => {
                                 <Typography variant="h6">Menu Item Loss</Typography>
                             </Box>
                             <Typography variant="h3" fontWeight="bold">
-                                ${summary?.byType?.menu_item.toFixed(2) || '0.00'}
+                                ${(summary?.byType?.menu_item || 0).toFixed(2)}
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
                                 Prepared Food Waste
@@ -332,7 +332,7 @@ const WasteManagementPage: React.FC = () => {
                                         </TableCell>
                                         <TableCell>{log.quantity} {log.unit}</TableCell>
                                         <TableCell sx={{ color: 'error.main', fontWeight: 'bold' }}>
-                                            -${log.cost.toFixed(2)}
+                                            -${(log.cost || 0).toFixed(2)}
                                         </TableCell>
                                         <TableCell>
                                             <Chip label={getReasonLabel(log.reason)} size="small" />
@@ -429,10 +429,12 @@ const WasteManagementPage: React.FC = () => {
                                     value={formData.quantity}
                                     onChange={(e) => {
                                         const val = parseFloat(e.target.value);
-                                        setFormData(prev => ({ ...prev, quantity: isNaN(val) ? 0 : Math.max(0, val) }));
+                                        // Restrict quantity to 0-99,999 Range
+                                        setFormData(prev => ({ ...prev, quantity: isNaN(val) ? 0 : Math.min(99999, Math.max(0, val)) }));
                                     }}
-                                    inputProps={{ min: 0, step: "any" }}
+                                    inputProps={{ min: 0, max: 99999, step: "any" }}
                                     required
+                                    helperText="Max 99,999"
                                 />
                             </Grid>
                             <Grid item xs={6}>
@@ -470,8 +472,10 @@ const WasteManagementPage: React.FC = () => {
                                     name="notes"
                                     multiline
                                     rows={3}
+                                    inputProps={{ maxLength: 200 }}
                                     value={formData.notes}
                                     onChange={handleFormChange}
+                                    helperText={`${formData.notes.length}/200`}
                                     placeholder="e.g. Broke on floor, expired yesterday"
                                 />
                             </Grid>
@@ -479,7 +483,7 @@ const WasteManagementPage: React.FC = () => {
                             {selectedItem && (
                                 <Grid item xs={12}>
                                     <Alert severity="info">
-                                        Approximate Loss: <b>${(selectedItem.costPrice * formData.quantity).toFixed(2)}</b>
+                                        Approximate Loss: <b>${((selectedItem.costPrice || 0) * formData.quantity).toFixed(2)}</b>
                                     </Alert>
                                 </Grid>
                             )}
