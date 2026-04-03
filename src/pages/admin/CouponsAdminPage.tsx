@@ -157,7 +157,8 @@ const CouponsAdminPage: React.FC = () => {
     const fetchMenu = async () => {
         try {
             const res = await import('../../services/api').then(m => m.menuAPI.getAll());
-            setMenuItems(Array.isArray(res.data) ? res.data : []);
+            const data = res.data;
+            setMenuItems(Array.isArray(data) ? data : (data?.items || []));
         } catch (error) {
             console.error('Failed to load menu items');
         }

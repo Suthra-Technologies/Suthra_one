@@ -174,7 +174,8 @@ const AddItemsDialog: React.FC<AddItemsDialogProps> = ({ open, order, onClose, o
                 menuAPI.getAll(),
                 menuAPI.getAllCategories(),
             ]);
-            setMenuItems(menuRes.data);
+            const data = menuRes.data;
+            setMenuItems(Array.isArray(data) ? data : (data?.items || []));
             setCategories(categoriesRes.data);
         } catch (error) {
             console.error('Error fetching menu data:', error);

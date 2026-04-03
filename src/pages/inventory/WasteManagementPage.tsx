@@ -120,7 +120,8 @@ const WasteManagementPage: React.FC = () => {
                 menuAPI.getAll(),
             ]);
             setRawMaterials(Array.isArray(rawRes.data) ? rawRes.data.filter((i: any) => i.category === 'raw_materials') : []);
-            setMenuItems(Array.isArray(menuRes.data) ? menuRes.data : []);
+            const menuData = menuRes.data;
+            setMenuItems(Array.isArray(menuData) ? menuData : (menuData?.items || []));
         } catch (error) {
             console.error('Error fetching options:', error);
         }
