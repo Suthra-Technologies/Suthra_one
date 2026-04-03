@@ -45,14 +45,12 @@ import {
     Close as CloseIcon,
     CloudUpload as BulkUploadIcon,
 } from '@mui/icons-material';
-
-
+import { Drawer } from '@mui/material';
 import { toast } from 'react-hot-toast';
 import { inventoryAPI } from '../../services/api';
 import RawMaterialDialog from '../../components/RawMaterialDialog';
 import UsageDialog from '../../components/UsageDialog';
 import BulkUploadDialog from '../../components/BulkUploadDialog';
-
 import { useSettings } from '../../context/SettingsContext';
 
 interface RawMaterial {
@@ -128,16 +126,187 @@ interface DailyReport {
     };
 }
 
+// Components defined outside main InventoryPage for optimization
+const MemoizedMaterialCard = React.memo(({
+    material,
+    onUsage,
+    onNotes,
+    onItemNotes,
+    onEdit,
+    onDelete,
+    getStatus
+}: {
+    material: RawMaterial;
+    onUsage: (m: RawMaterial) => void;
+    onNotes: (m: RawMaterial) => void;
+    onItemNotes: (m: RawMaterial) => void;
+    onEdit: (m: RawMaterial) => void;
+    onDelete: (m: RawMaterial) => void;
+    getStatus: (m: RawMaterial) => { label: string; color: "error" | "warning" | "success" };
+}) => {
+    const status = getStatus(material);
+    return (
+        <Card>
+            <CardContent>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+                    <Box>
+                        <Typography variant="subtitle1" fontWeight="bold">
+                            {material.name}
+                        </Typography>
+                    </Box>
+                    <Chip label={status.label} color={status.color} size="small" />
+                </Stack>
+
+                <Grid container spacing={1} mb={2}>
+                    <Grid item xs={6}>
+                        <Typography variant="caption" color="text.secondary">Stock</Typography>
+                        <Typography variant="body2" fontWeight="bold">
+                            {parseFloat((material.currentStock || 0).toFixed(2))} {material.unit}
+                        </Typography>
+                    </Grid>
+                    <Grid item xs={6}>
+                        <Typography variant="caption" color="text.secondary">Reorder Level</Typography>
+                        <Typography variant="body2">
+                            {parseFloat((material.reorderLevel || 0).toFixed(2))}
+                        </Typography>
+                    </Grid>
+                    <Grid item xs={12}>
+                        <Typography variant="caption" color="text.secondary">Last Modified</Typography>
+                        <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
+                            {material.updatedBy ? `${material.updatedBy.firstName} ${material.updatedBy.lastName}` : 'System'}
+                            ({new Date(material.updatedAt).toLocaleString()})
+                        </Typography>
+                    </Grid>
+                </Grid>
+
+                <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ mt: 1, borderTop: 1, borderColor: 'divider', pt: 2 }}>
+                    <Button size="small" startIcon={<UsageIcon />} onClick={() => onUsage(material)}>Usage</Button>
+                    {material.supplier?.name && (
+                        <Button size="small" startIcon={<NotesIcon />} onClick={() => onNotes(material)} color="info">Notes</Button>
+                    )}
+                    <Button size="small" startIcon={<ItemNotesIcon />} onClick={() => onItemNotes(material)} color="primary">Item Notes</Button>
+                    <IconButton size="small" color="primary" onClick={() => onEdit(material)}><EditIcon /></IconButton>
+                    <IconButton size="small" color="error" onClick={() => onDelete(material)}><DeleteIcon /></IconButton>
+                </Stack>
+            </CardContent>
+        </Card>
+    );
+});
+
+const MemoizedMaterialRow = React.memo(({
+    material,
+    onUsage,
+    onItemNotes,
+    onEdit,
+    onDelete,
+    getStatus
+}: {
+    material: RawMaterial;
+    onUsage: (m: RawMaterial) => void;
+    onItemNotes: (m: RawMaterial) => void;
+    onEdit: (m: RawMaterial) => void;
+    onDelete: (m: RawMaterial) => void;
+    getStatus: (m: RawMaterial) => { label: string; color: "error" | "warning" | "success" };
+}) => {
+    const status = getStatus(material);
+    return (
+        <TableRow sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
+            <TableCell>{material.name}</TableCell>
+            <TableCell align="right"><strong>{parseFloat((material.currentStock || 0).toFixed(2))}</strong></TableCell>
+            <TableCell align="right">{parseFloat((material.minimumStock || 0).toFixed(2))}</TableCell>
+            <TableCell align="right">{parseFloat((material.reorderLevel || 0).toFixed(2))}</TableCell>
+            <TableCell>{material.unit}</TableCell>
+            <TableCell><Chip label={status.label} color={status.color} size="small" /></TableCell>
+            <TableCell>{material.supplier?.name || '-'}</TableCell>
+            <TableCell>
+                <Box>
+                    <Typography variant="body2" fontWeight="bold">
+                        {material.updatedBy ? `${material.updatedBy.firstName} ${material.updatedBy.lastName}` : (material.createdBy ? `${material.createdBy.firstName} ${material.createdBy.lastName}` : 'System')}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">{new Date(material.updatedAt).toLocaleString()}</Typography>
+                </Box>
+            </TableCell>
+            <TableCell align="center">
+                <IconButton size="small" color="primary" onClick={() => onUsage(material)} title="Record Usage"><UsageIcon /></IconButton>
+                <IconButton size="small" color="primary" onClick={() => onItemNotes(material)} title="Item Notes"><ItemNotesIcon /></IconButton>
+                <IconButton size="small" color="primary" onClick={() => onEdit(material)} title="Edit"><EditIcon /></IconButton>
+                <IconButton size="small" color="error" onClick={() => onDelete(material)} title="Delete"><DeleteIcon /></IconButton>
+            </TableCell>
+        </TableRow>
+    );
+});
+
+const MemoizedUsageCard = React.memo(({
+    record,
+    formatCurrency
+}: {
+    record: UsageRecord;
+    formatCurrency: (amount: number) => string;
+}) => {
+    return (
+        <Card>
+            <CardContent>
+                <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={2}>
+                    <Box>
+                        <Typography variant="subtitle1" fontWeight="bold">{record.item.name}</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                            {new Date(record.createdAt).toLocaleTimeString()} · {new Date(record.createdAt).toLocaleDateString()}
+                        </Typography>
+                    </Box>
+                    <Typography variant="body2" fontWeight="bold" color="primary">
+                        {formatCurrency(record.totalCost)}
+                    </Typography>
+                </Stack>
+                <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+                    User: {record.performedBy ? (record.performedBy.firstName ? `${record.performedBy.firstName} ${record.performedBy.lastName}` : (record.performedBy.username || record.performedBy.email)) : 'System'}
+                </Typography>
+                <Grid container spacing={1}>
+                    <Grid item xs={6}>
+                        <Typography variant="caption" color="text.secondary">Quantity Used</Typography>
+                        <Typography variant="body2">{Math.abs(record.quantity)} {record.item.unit}</Typography>
+                    </Grid>
+                    <Grid item xs={6}>
+                        <Typography variant="caption" color="text.secondary">Reason</Typography>
+                        <Typography variant="body2">{record.reason}</Typography>
+                    </Grid>
+                </Grid>
+            </CardContent>
+        </Card>
+    );
+});
+
+const MemoizedUsageRow = React.memo(({
+    record,
+    formatCurrency
+}: {
+    record: UsageRecord;
+    formatCurrency: (amount: number) => string;
+}) => {
+    return (
+        <TableRow sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
+            <TableCell>{record.item.name}</TableCell>
+            <TableCell align="right">{Math.abs(record.quantity)} {record.item.unit}</TableCell>
+            <TableCell>{record.reason}</TableCell>
+            <TableCell align="right">{formatCurrency(record.totalCost)}</TableCell>
+            <TableCell>{record.performedBy ? (record.performedBy.firstName ? `${record.performedBy.firstName} ${record.performedBy.lastName}` : (record.performedBy.username || record.performedBy.email)) : 'System'}</TableCell>
+            <TableCell>{new Date(record.createdAt).toLocaleTimeString()}</TableCell>
+        </TableRow>
+    );
+});
+
 const InventoryPage: React.FC = () => {
+
     const { formatCurrency } = useSettings();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const isTabletOrMobile = useMediaQuery(theme.breakpoints.down('lg'));
-    const [tabValue, setTabValue] = useState(0);
+    const [tabValue, setTabValue] = React.useState(0);
     const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>([]);
     const [dailyReport, setDailyReport] = useState<DailyReport | null>(null);
     const [loading, setLoading] = useState(false);
-
+// Notes History Feature
+    // const { openTab, activeTabs } = useNotesHistory();
+    const [notesDrawerOpen, setNotesDrawerOpen] = useState(false);
     // Date range for usage report - default to today
     const today = new Date().toISOString().split('T')[0];
     const [fromDate, setFromDate] = useState(today);
@@ -213,18 +382,18 @@ const InventoryPage: React.FC = () => {
         }
     };
 
-    const handleAddMaterial = () => {
+    const handleAddMaterial = React.useCallback(() => {
         setSelectedMaterial(null);
         setMaterialDialogOpen(true);
-    };
+    }, []);
 
-    const handleEditMaterial = (material: RawMaterial) => {
+    const handleEditMaterial = React.useCallback((material: RawMaterial) => {
         console.log('EDIT clicked for material:', material.name);
         setSelectedMaterial(material);
         setMaterialDialogOpen(true);
-    };
+    }, []);
 
-    const handleDeleteMaterial = async (material: RawMaterial) => {
+    const handleDeleteMaterial = React.useCallback(async (material: RawMaterial) => {
         setConfirmDelete({
             open: true,
             title: 'Delete Material',
@@ -239,29 +408,50 @@ const InventoryPage: React.FC = () => {
                 }
             }
         });
-    };
+    }, [loadRawMaterials]);
 
-    const handleRecordUsage = (material: RawMaterial) => {
+    const handleRecordUsage = React.useCallback((material: RawMaterial) => {
         console.log('USAGE clicked for material:', material.name);
         setSelectedMaterial(material);
         setUsageDialogOpen(true);
-    };
+    }, []);
 
-    const handleMaterialSaved = () => {
+    const handleMaterialSaved = React.useCallback(() => {
         console.log('handleMaterialSaved called - closing dialog and reloading');
         setMaterialDialogOpen(false);
         loadRawMaterials();
-    };
+    }, [loadRawMaterials]);
 
-    const handleUsageRecorded = () => {
+    const handleUsageRecorded = React.useCallback(() => {
         setUsageDialogOpen(false);
         loadRawMaterials();
         if (tabValue === 1) {
             loadDailyReport();
         }
-    };
+    }, [tabValue, loadRawMaterials, loadDailyReport]);
 
+    const handleVendorNotes = React.useCallback((material: RawMaterial) => {
+        if (material.supplier?.name) {
+            // Create vendor object from supplier data
+            const vendor: Vendor = {
+                _id: material._id + '_vendor', // Use material ID + suffix as vendor ID
+                name: material.supplier.name,
+                contact: material.supplier.contact,
+                email: (material.supplier as any).email,
+                address: (material.supplier as any).address,
+                status: 'active'
+            };
+            setSelectedVendorForNotes(vendor);
+            setVendorNotesOpen(true);
+        } else {
+            toast.error('No vendor assigned to this material');
+        }
+    }, []);
 
+    // const handleItemNotes = React.useCallback((material: RawMaterial) => {
+    //     openTab(material._id, material.name);
+    //     setNotesDrawerOpen(true);
+    // }, [openTab]);
 
     const getStockStatus = (material: RawMaterial) => {
         if (material.currentStock <= material.reorderLevel) {
@@ -302,7 +492,17 @@ const InventoryPage: React.FC = () => {
                     <Tab label="Raw Materials" />
                     <Tab label="Usage Reports" />
                 </Tabs>
-
+                  {/* <Box sx={{ display: 'flex', alignItems: 'center', px: 1 }}>
+                    <IconButton
+                        color={activeTabs?.length > 0 ? "primary" : "default"}
+                        onClick={() => setNotesDrawerOpen(true)}
+                        title="Item Notes Center"
+                    >
+                        <Badge badgeContent={activeTabs?.length} color="primary">
+                            <ItemNotesIcon />
+                        </Badge>
+                    </IconButton>
+                </Box> */}
             </Paper>
 
             {/* Raw Materials Tab */}
@@ -350,80 +550,18 @@ const InventoryPage: React.FC = () => {
                     ) : isTabletOrMobile ? (
                         // Mobile Card View for Raw Materials
                         <Stack spacing={2}>
-                            {rawMaterials.map((material) => {
-                                const status = getStockStatus(material);
-                                return (
-                                    <Card key={material._id}>
-                                        <CardContent>
-                                            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-                                                <Box>
-                                                    <Typography variant="subtitle1" fontWeight="bold">
-                                                        {material.name}
-                                                    </Typography>
-                                                </Box>
-                                                <Chip label={status.label} color={status.color} size="small" />
-                                            </Stack>
-
-                                            <Grid container spacing={1} mb={2}>
-                                                <Grid item xs={6}>
-                                                    <Typography variant="caption" color="text.secondary">Stock</Typography>
-                                                    <Typography variant="body2" fontWeight="bold">
-                                                        {parseFloat((material.currentStock || 0).toFixed(2))} {material.unit}
-                                                    </Typography>
-                                                </Grid>
-                                                <Grid item xs={6}>
-                                                    <Typography variant="caption" color="text.secondary">Reorder Level</Typography>
-                                                    <Typography variant="body2">
-                                                        {parseFloat((material.reorderLevel || 0).toFixed(2))}
-                                                    </Typography>
-                                                </Grid>
-                                                <Grid item xs={12}>
-                                                    <Typography variant="caption" color="text.secondary">Last Modified</Typography>
-                                                    <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
-                                                        {material.updatedBy ? `${material.updatedBy.firstName} ${material.updatedBy.lastName}` : 'System'}
-                                                        ({new Date(material.updatedAt).toLocaleString()})
-                                                    </Typography>
-                                                </Grid>
-                                            </Grid>
-
-                                            <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ mt: 1, borderTop: 1, borderColor: 'divider', pt: 2 }}>
-                                                <Button
-                                                    size="small"
-                                                    startIcon={<UsageIcon />}
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleRecordUsage(material);
-                                                    }}
-                                                >
-                                                    Usage
-                                                </Button>
-
-
-                                                <IconButton
-                                                    size="small"
-                                                    color="primary"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleEditMaterial(material);
-                                                    }}
-                                                >
-                                                    <EditIcon />
-                                                </IconButton>
-                                                <IconButton
-                                                    size="small"
-                                                    color="error"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleDeleteMaterial(material);
-                                                    }}
-                                                >
-                                                    <DeleteIcon />
-                                                </IconButton>
-                                            </Stack>
-                                        </CardContent>
-                                    </Card>
-                                );
-                            })}
+                            {rawMaterials.map((material) => (
+                                <MemoizedMaterialCard
+                                    key={material._id}
+                                    material={material}
+                                    onUsage={handleRecordUsage}
+                                    onNotes={handleVendorNotes}
+                                    // onItemNotes={handleItemNotes}
+                                    onEdit={handleEditMaterial}
+                                    onDelete={handleDeleteMaterial}
+                                    getStatus={getStockStatus}
+                                />
+                            ))}
                         </Stack>
                     ) : (
                         // Desktop Table View
@@ -443,69 +581,17 @@ const InventoryPage: React.FC = () => {
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
-                                    {rawMaterials.map((material) => {
-                                        const status = getStockStatus(material);
-                                        return (
-                                            <TableRow key={material._id}>
-                                                <TableCell>{material.name}</TableCell>
-                                                <TableCell align="right">
-                                                    <strong>{parseFloat((material.currentStock || 0).toFixed(2))}</strong>
-                                                </TableCell>
-                                                <TableCell align="right">{parseFloat((material.minimumStock || 0).toFixed(2))}</TableCell>
-                                                <TableCell align="right">{parseFloat((material.reorderLevel || 0).toFixed(2))}</TableCell>
-                                                <TableCell>{material.unit}</TableCell>
-                                                <TableCell>
-                                                    <Chip label={status.label} color={status.color} size="small" />
-                                                </TableCell>
-                                                <TableCell>{material.supplier?.name || '-'}</TableCell>
-                                                <TableCell>
-                                                    <Box>
-                                                        <Typography variant="body2" fontWeight="bold">
-                                                            {material.updatedBy ? `${material.updatedBy.firstName} ${material.updatedBy.lastName}` : (material.createdBy ? `${material.createdBy.firstName} ${material.createdBy.lastName}` : 'System')}
-                                                        </Typography>
-                                                        <Typography variant="caption" color="text.secondary">
-                                                            {new Date(material.updatedAt).toLocaleString()}
-                                                        </Typography>
-                                                    </Box>
-                                                </TableCell>
-                                                <TableCell align="center">
-                                                    <IconButton
-                                                        size="small"
-                                                        color="primary"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleRecordUsage(material);
-                                                        }}
-                                                        title="Record Usage"
-                                                    >
-                                                        <UsageIcon />
-                                                    </IconButton>
-                                                    <IconButton
-                                                        size="small"
-                                                        color="primary"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleEditMaterial(material);
-                                                        }}
-                                                        title="Edit"
-                                                    >
-                                                        <EditIcon />
-                                                    </IconButton>
-                                                    <IconButton
-                                                        size="small"
-                                                        color="error"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleDeleteMaterial(material);
-                                                        }}
-                                                        title="Delete"
-                                                    >
-                                                        <DeleteIcon />
-                                                    </IconButton>
-                                                </TableCell>
-                                            </TableRow>
-                                        );
-                                    })}
+                                    {rawMaterials.map((material) => (
+                                        <MemoizedMaterialRow
+                                            key={material._id}
+                                            material={material}
+                                            onUsage={handleRecordUsage}
+                                            // onItemNotes={handleItemNotes}
+                                            onEdit={handleEditMaterial}
+                                            onDelete={handleDeleteMaterial}
+                                            getStatus={getStockStatus}
+                                        />
+                                    ))}
                                 </TableBody>
                             </Table>
                         </TableContainer>
@@ -610,41 +696,12 @@ const InventoryPage: React.FC = () => {
                             ) : isTabletOrMobile ? (
                                 // Mobile Card View for Usage Reports
                                 <Stack spacing={2}>
-                                    {dailyReport.records?.map((record) => (
-                                        <Card key={record._id}>
-                                            <CardContent>
-                                                <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={2}>
-                                                    <Box>
-                                                        <Typography variant="subtitle1" fontWeight="bold">
-                                                            {record.item?.name || 'Deleted Item'}
-                                                        </Typography>
-                                                        <Typography variant="caption" color="text.secondary">
-                                                            {new Date(record.createdAt).toLocaleTimeString()} · {new Date(record.createdAt).toLocaleDateString()}
-                                                        </Typography>
-                                                    </Box>
-                                                    <Typography variant="body2" fontWeight="bold" color="primary">
-                                                        {formatCurrency(record.totalCost)}
-                                                    </Typography>
-                                                </Stack>
-
-                                                <Typography variant="caption" color="text.secondary" display="block" mb={1}>
-                                                    User: {record.performedBy ? (record.performedBy.firstName ? `${record.performedBy.firstName} ${record.performedBy.lastName}` : (record.performedBy.username || record.performedBy.email)) : 'System'}
-                                                </Typography>
-
-                                                <Grid container spacing={1}>
-                                                    <Grid item xs={6}>
-                                                        <Typography variant="caption" color="text.secondary">Quantity Used</Typography>
-                                                        <Typography variant="body2">
-                                                            {Math.abs(record.quantity)} {record.item?.unit || ''}
-                                                        </Typography>
-                                                    </Grid>
-                                                    <Grid item xs={6}>
-                                                        <Typography variant="caption" color="text.secondary">Reason</Typography>
-                                                        <Typography variant="body2">{record.reason}</Typography>
-                                                    </Grid>
-                                                </Grid>
-                                            </CardContent>
-                                        </Card>
+                                    {dailyReport.records.map((record) => (
+                                        <MemoizedUsageCard
+                                            key={record._id}
+                                            record={record}
+                                            formatCurrency={formatCurrency}
+                                        />
                                     ))}
                                 </Stack>
                             ) : (
@@ -661,19 +718,12 @@ const InventoryPage: React.FC = () => {
                                             </TableRow>
                                         </TableHead>
                                         <TableBody>
-                                            {dailyReport.records?.map((record) => (
-                                                <TableRow key={record._id}>
-                                                    <TableCell>{record.item?.name || 'Deleted Item'}</TableCell>
-                                                    <TableCell align="right">
-                                                        {Math.abs(record.quantity)} {record.item?.unit || ''}
-                                                    </TableCell>
-                                                    <TableCell>{record.reason}</TableCell>
-                                                    <TableCell align="right">{formatCurrency(record.totalCost)}</TableCell>
-                                                    <TableCell>{record.performedBy ? (record.performedBy.firstName ? `${record.performedBy.firstName} ${record.performedBy.lastName}` : (record.performedBy.username || record.performedBy.email)) : 'System'}</TableCell>
-                                                    <TableCell>
-                                                        {new Date(record.createdAt).toLocaleTimeString()}
-                                                    </TableCell>
-                                                </TableRow>
+                                            {dailyReport.records.map((record) => (
+                                                <MemoizedUsageRow
+                                                    key={record._id}
+                                                    record={record}
+                                                    formatCurrency={formatCurrency}
+                                                />
                                             ))}
                                         </TableBody>
                                     </Table>
@@ -789,8 +839,34 @@ const InventoryPage: React.FC = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
+              {/* Vendor Notes Dialog */}
+            {/* <VendorNotesDialog
+                open={vendorNotesOpen}
+                onClose={() => setVendorNotesOpen(false)}
+                vendor={selectedVendorForNotes}
+            /> */}
 
-
+            {/* Item Notes Recovery Drawer */}
+            <Drawer
+                anchor="right"
+                open={notesDrawerOpen}
+                onClose={() => setNotesDrawerOpen(false)}
+                PaperProps={{
+                    sx: { width: { xs: '100%', sm: 450, md: 500 }, p: 0 }
+                }}
+            >
+                <Box sx={{ h: '100%', display: 'flex', flexDirection: 'column', height: '100%' }}>
+                    <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: 'primary.main', color: 'white' }}>
+                        <Typography variant="h6" fontWeight="bold">Item Notes Center</Typography>
+                        <IconButton onClick={() => setNotesDrawerOpen(false)} size="small" sx={{ color: 'white' }}>
+                            <CloseIcon />
+                        </IconButton>
+                    </Box>
+                    <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
+                        {/* <NotesTabContainer /> */}
+                    </Box>
+                </Box>
+            </Drawer>
         </Container>
     );
 };

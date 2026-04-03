@@ -1,36 +1,35 @@
-import React, { useRef } from 'react';
 import {
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    Button,
-    Typography,
+    Close as CloseIcon,
+    Download as DownloadIcon,
+    Print as PrintIcon,
+} from '@mui/icons-material';
+import {
     Box,
+    Button,
+    CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
     Divider,
+    IconButton,
+    Stack,
     Table,
     TableBody,
     TableCell,
     TableContainer,
     TableHead,
     TableRow,
-    IconButton,
-    Stack,
-    CircularProgress,
+    Typography,
 } from '@mui/material';
-import {
-    Close as CloseIcon,
-    Print as PrintIcon,
-    Download as DownloadIcon,
-} from '@mui/icons-material';
+import { QRCodeSVG } from 'qrcode.react';
+import React, { useRef } from 'react';
+import { useSettings } from '../context/SettingsContext';
 import {
     formatDateTime,
     getOrderTypeLabel,
     getPaymentMethodLabel,
 } from '../utils/orderWorkflows';
-import { formatSpiceLevelLabel } from '../utils/spiceLevel';
-import { QRCodeSVG } from 'qrcode.react';
-import { useSettings } from '../context/SettingsContext';
 
 interface PrintBillDialogProps {
     open: boolean;
@@ -505,6 +504,16 @@ const PrintBillDialog: React.FC<PrintBillDialogProps> = ({ open, order, onClose 
                                             </TableCell>
                                             <TableCell align="right" sx={{ borderBottom: 'none', py: 0.25 }}>
                                                 <Typography variant="body2">-{formatCurrency(billData.discount.amount)}</Typography>
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                    {billData.rewardDiscount > 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={3} sx={{ borderBottom: 'none', py: 0.25 }}>
+                                                <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 'bold' }}>Points Discount:</Typography>
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ borderBottom: 'none', py: 0.25 }}>
+                                                <Typography variant="body2" sx={{ color: 'success.main', fontWeight: 'bold' }}>-{formatCurrency(billData.rewardDiscount)}</Typography>
                                             </TableCell>
                                         </TableRow>
                                     )}

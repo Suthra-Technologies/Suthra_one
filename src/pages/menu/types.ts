@@ -1,0 +1,79 @@
+export interface Category {
+    _id: string;
+    name: string;
+    description?: string;
+    icon?: string;
+    image?: string;
+    color?: string;
+    order?: number;
+    parentCategory?: string | Category | null;
+    taxCode?: string;
+    actionHistory?: any[];
+}
+
+export interface Subcategory extends Category {
+    parentCategory: string | Category;
+}
+
+export interface Variant {
+    name: string;
+    price: number;
+    description?: string;
+}
+
+export interface ModifierOption {
+    name: string;
+    price: number;
+    isDefault?: boolean;
+}
+
+export interface ModifierGroup {
+    name: string;
+    selectionType: 'single' | 'multiple';
+    required: boolean;
+    minSelection?: number;
+    maxSelection?: number;
+    options: ModifierOption[];
+}
+
+export interface TrayOption {
+    tray: string;
+    price: number;
+    servingSize?: number;
+    isActive?: boolean;
+}
+
+export interface IMenuItem {
+    _id: string;
+    name: string;
+    description?: string;
+    price: number;
+    category: string | Category;
+    subcategory?: string | Subcategory | null;
+    categories?: (string | Category)[];
+    image?: string;
+    isAvailable: boolean;
+    variants?: Variant[];
+    modifierGroups?: ModifierGroup[];
+    addOns?: string[];
+    actionHistory?: any[];
+    taxRate?: number | null;
+    isCateringAvailable: boolean;
+    isAutoDebit?: boolean;
+    foodType?: 'veg' | 'non-veg';
+    trayOptions?: TrayOption[];
+    quantityType?: 'number' | 'tray';
+    baseTray?: string;
+    servingSize?: number;
+    spiceLevel?: 'mild' | 'medium' | 'hot' | 'very_hot';
+    isSpiceLevelAvailable?: boolean;
+    spiceLevels?: string[];
+    spiceLevelData?: any;
+    availableDays?: string[];
+    isWeeklyScheduleEnabled?: boolean;
+    availabilityType?: 'highlight' | 'available_only';
+    displayOption?: 'normal' | 'weekly_special' | 'todays_special';
+    validFrom?: Date | null;
+    validTo?: Date | null;
+    priority?: number;
+}

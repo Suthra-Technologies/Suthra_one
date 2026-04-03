@@ -211,7 +211,7 @@ export const attendanceAPI = {
 
 // -------------------- Menu API --------------------
 export const menuAPI = {
-  getAll: (params?: { search?: string }) => api.get('/menu', { params }),
+  getAll: (params?: { search?: string; cursor?: string; limit?: number; category?: string; foodType?: string; isAvailable?: boolean }) => api.get('/menu', { params }),
   getAllCategories: () => api.get('/menu/categories'),
   getAllSubcategories: (categoryId?: string) => api.get('/menu/subcategories', { params: categoryId ? { categoryId } : undefined }),
   getOne: (id: string) => api.get(`/menu/${id}`),
@@ -228,6 +228,17 @@ export const menuAPI = {
   createSubcategory: (subcategoryData: any) => api.post('/menu/subcategories', subcategoryData),
   updateSubcategory: (id: string, subcategoryData: any) => api.put(`/menu/subcategories/${id}`, subcategoryData),
   deleteSubcategory: (id: string) => api.delete(`/menu/subcategories/${id}`),
+};
+
+// -------------------- Tax Categories API (External) --------------------
+export const taxCategoriesAPI = {
+  getAll: (params?: { search?: string; page?: number; limit?: number }) =>
+    axios.get('https://tax.evergreenfarmsusa.com/tax-categories', { params }),
+};
+
+// -------------------- Tax Calculation API --------------------
+export const taxAPI = {
+  calculate: (data: any) => api.post('/tax/calculate', data),
 };
 
 // -------------------- Trays API --------------------

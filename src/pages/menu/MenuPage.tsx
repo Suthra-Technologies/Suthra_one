@@ -57,92 +57,10 @@ import { useSettings } from '../../context/SettingsContext';
 import { menuAPI, traysAPI, uploadAPI } from '../../services/api';
 import TraysPage from './TraysPage';
 import RecipesPage from '../recipes/RecipesPage';
+import type { Category, Subcategory, IMenuItem } from './types';
+import MenuItemDialog from './components/MenuItemDialog';
+import TaxCategorySelector from './components/TaxCategorySelector';
 
-interface Category {
-    _id: string;
-    name: string;
-    description?: string;
-    icon?: string;
-    image?: string;
-    color?: string;
-    order?: number;
-    parentCategory?: string | Category | null;
-    actionHistory?: any[];
-}
-
-interface Subcategory extends Category {
-    parentCategory: string | Category;
-}
-
-interface Variant {
-    name: string;
-    price: number;
-    description?: string;
-}
-
-interface ModifierOption {
-    name: string;
-    price: number;
-    isDefault?: boolean;
-}
-
-interface ModifierGroup {
-    name: string;
-    selectionType: 'single' | 'multiple';
-    required: boolean;
-    minSelection?: number;
-    maxSelection?: number;
-    options: ModifierOption[];
-}
-
-interface TrayOption {
-    tray: string;
-    price: number;
-    servingSize?: number;
-    isActive?: boolean;
-}
-
-interface IMenuItem {
-    _id: string;
-    name: string;
-    description?: string;
-    price: number;               // base price (kept for backward compatibility)
-    category: string | Category;
-    subcategory?: string | Subcategory | null;
-    categories?: (string | Category)[];
-    image?: string;
-    isAvailable: boolean;
-    variants?: Variant[];        // new field
-    modifierGroups?: ModifierGroup[]; // modifiers
-    addOns?: string[];           // IDs of linked menu items
-    actionHistory?: any[];
-    taxRate?: number | null;
-    isCateringAvailable: boolean;
-    isAutoDebit?: boolean;
-    foodType?: 'veg' | 'non-veg';
-    trayOptions?: TrayOption[];
-    quantityType?: 'number' | 'tray';
-    baseTray?: string;
-    servingSize?: number;
-    spiceLevel?: 'mild' | 'medium' | 'hot' | 'very_hot';
-    isSpiceLevelAvailable?: boolean;
-    spiceLevels?: string[];      // List of available labels
-    spiceLevelData?: any;        // Mapping of labels to values
-    availableDays?: string[];    // New field for weekday/weekend scheduling
-    isWeeklyScheduleEnabled?: boolean;
-    availabilityType?: 'highlight' | 'available_only';
-    displayOption?: 'normal' | 'weekly_special' | 'todays_special';
-    validFrom?: Date | null;
-    validTo?: Date | null;
-    priority?: number;
-}
-
-const SPICE_LEVEL_OPTIONS = [
-    { value: 'mild', label: 'Mild' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'hot', label: 'Hot' },
-    { value: 'very_hot', label: 'Very Hot' },
-] as const;
 
 const MenuPage: React.FC = () => {
     const theme = useTheme();
@@ -161,12 +79,14 @@ const MenuPage: React.FC = () => {
     const [searchLoading, setSearchLoading] = useState(false);
     const [debouncedLoading, setDebouncedLoading] = useState(false);
     const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const [addOnsCategoryFilter, setAddOnsCategoryFilter] = useState<string>('all');
     const [trays, setTrays] = useState<any[]>([]);
     const hasInitializedSearch = useRef(false);
     const latestMenuRequestRef = useRef(0);
     const menuItemsRef = useRef<HTMLDivElement>(null);
     const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
+    const [nextCursor, setNextCursor] = useState<string | null>(null);
+    const [isFetchingMore, setIsFetchingMore] = useState(false);
+    const PAGE_LIMIT = 24;
 
     // Dialogs State
     const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
@@ -174,53 +94,19 @@ const MenuPage: React.FC = () => {
 
     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
     const [editingMenuItem, setEditingMenuItem] = useState<IMenuItem | null>(null);
-    const [dialogTab, setDialogTab] = useState<number>(0);
-    const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
     const [bulkCsv, setBulkCsv] = useState('');
+    const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+    const [dialogTab, setDialogTab] = useState(0);
 
-    // Form State
+    // Form State for Categories
     const [categoryForm, setCategoryForm] = useState({
         name: '',
         description: '',
         icon: '',
         parentCategory: '',
+        taxCode: '',
     });
-
-    const [menuItemForm, setMenuItemForm] = useState({
-        name: '',
-        description: '',
-        price: '',
-        category: '',
-        subcategory: '',
-        image: '',
-        isAvailable: true,
-        isCateringAvailable: true,
-        variants: [] as Variant[],          // <-- new
-        modifierGroups: [] as ModifierGroup[],
-        addOns: [] as string[],
-        taxRate: '',
-        isAutoDebit: true,
-        foodType: '' as '' | 'veg' | 'non-veg',
-        trayOptions: [] as TrayOption[],
-        quantityType: 'number' as 'number' | 'tray',
-        baseTray: '',
-        servingSize: 1,
-        isSpiceLevelAvailable: false,
-        spiceLevels: ['mild', 'medium', 'hot', 'very_hot'] as string[],
-        mild: '',
-        medium: '',
-        hot: '',
-        very_hot: '',
-        availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as string[], // New field
-        isWeeklyScheduleEnabled: false,
-        availabilityType: 'highlight' as 'highlight' | 'available_only',
-        displayOption: 'normal' as 'normal' | 'weekly_special' | 'todays_special',
-        validFrom: null as Date | null,
-        validTo: null as Date | null,
-        priority: 0,
-    });
-    const [menuItemTouched, setMenuItemTouched] = useState({ name: false, price: false, category: false, subcategory: false, image: false, foodType: false, taxRate: false });
-    const [categoryTouched, setCategoryTouched] = useState({ name: false, parentCategory: false });
+    const [categoryTouched, setCategoryTouched] = useState({ name: false, parentCategory: false, taxCode: false });
     const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; title: string; message: React.ReactNode; onConfirm: () => void }>({
         open: false,
         title: '',
@@ -273,9 +159,6 @@ const MenuPage: React.FC = () => {
     const isSubcategory = (category?: Category | null): category is Subcategory =>
         Boolean(category?.parentCategory);
 
-    const filteredSubcategories = menuItemForm.category
-        ? subcategories.filter((subcategory) => getSubcategoryParentId(subcategory) === menuItemForm.category)
-        : [];
 
     const fetchMenuItems = async (activeSearch = searchQuery) => {
         const requestId = latestMenuRequestRef.current + 1;
@@ -283,11 +166,15 @@ const MenuPage: React.FC = () => {
 
         try {
             setSearchLoading(true);
-            const menuRes = await menuAPI.getAll(activeSearch.trim() ? { search: activeSearch.trim() } : undefined);
+            const menuRes = await menuAPI.getAll(activeSearch.trim() ? { search: activeSearch.trim() } : { limit: PAGE_LIMIT });
             if (latestMenuRequestRef.current === requestId) {
-                const newMenuItems = Array.isArray(menuRes.data) ? menuRes.data : [];
+                const data = menuRes.data;
+                const newMenuItems = Array.isArray(data) ? data : (data?.items || []);
+                const newCursor = Array.isArray(data) ? null : data?.nextCursor;
+                
                 console.log('[Frontend] fetchMenuItems: Received', newMenuItems.length, 'menu items');
                 setMenuItems(newMenuItems);
+                setNextCursor(newCursor);
             }
         } catch (error: any) {
             console.error('Error fetching menu items:', error);
@@ -363,17 +250,21 @@ const MenuPage: React.FC = () => {
             ]);
 
             // Extract results, handling potential failures
-            const newMenuItems = menuRes.status === 'fulfilled' && Array.isArray(menuRes.value.data)
-                ? menuRes.value.data
+            let newMenuItems = [];
+            let newCursor = null;
+            if (menuRes.status === 'fulfilled') {
+                const data = (menuRes as PromiseFulfilledResult<any>).value.data;
+                newMenuItems = Array.isArray(data) ? data : (data?.items || []);
+                newCursor = Array.isArray(data) ? null : data?.nextCursor;
+            }
+            const newCategories = categoriesRes.status === 'fulfilled'
+                ? (categoriesRes as PromiseFulfilledResult<any>).value.data
                 : [];
-            const newCategories = categoriesRes.status === 'fulfilled' && Array.isArray(categoriesRes.value.data)
-                ? categoriesRes.value.data
+            const newSubcategories = subcategoriesRes.status === 'fulfilled'
+                ? (subcategoriesRes as PromiseFulfilledResult<any>).value.data
                 : [];
-            const newSubcategories = subcategoriesRes.status === 'fulfilled' && Array.isArray(subcategoriesRes.value.data)
-                ? subcategoriesRes.value.data
-                : [];
-            const newTrays = traysRes.status === 'fulfilled' && Array.isArray(traysRes.value.data)
-                ? traysRes.value.data
+            const newTrays = traysRes.status === 'fulfilled'
+                ? (traysRes as PromiseFulfilledResult<any>).value.data
                 : [];
 
             // Check if this request is still the latest one
@@ -403,6 +294,7 @@ const MenuPage: React.FC = () => {
                 }
 
                 setMenuItems(newMenuItems);
+                setNextCursor(newCursor);
                 setCategories(newCategories);
                 setSubcategories(newSubcategories);
                 setTrays(newTrays);
@@ -445,6 +337,33 @@ const MenuPage: React.FC = () => {
     };
 
 
+    // Fetch more items for pagination
+    const handleLoadMore = async () => {
+        if (!nextCursor || isFetchingMore) return;
+
+        try {
+            setIsFetchingMore(true);
+            const res = await menuAPI.getAll({
+                search: searchQuery.trim() || undefined,
+                cursor: nextCursor,
+                limit: PAGE_LIMIT
+            });
+
+            const data = res.data;
+            const moreItems = Array.isArray(data) ? data : (data?.items || []);
+            const newCursor = Array.isArray(data) ? null : data?.nextCursor;
+
+            setMenuItems(prev => [...prev, ...moreItems]);
+            setNextCursor(newCursor);
+        } catch (error) {
+            console.error('Error loading more items:', error);
+            toast.error('Failed to load more items');
+        } finally {
+            setIsFetchingMore(false);
+        }
+    };
+
+
 
     // Category Management
     const handleOpenCategoryDialog = (category?: Category, presetParentCategory = '') => {
@@ -455,13 +374,14 @@ const MenuPage: React.FC = () => {
                 description: category.description || '',
                 icon: category.icon || '',
                 parentCategory: getSubcategoryParentId(category) || '',
+                taxCode: category.taxCode || '',
             });
         } else {
             setEditingCategory(null);
-            setCategoryForm({ name: '', description: '', icon: '', parentCategory: presetParentCategory });
+            setCategoryForm({ name: '', description: '', icon: '', parentCategory: presetParentCategory, taxCode: '' });
         }
 
-        setCategoryTouched({ name: false, parentCategory: false });
+        setCategoryTouched({ name: false, parentCategory: false, taxCode: false });
         setDialogTab(0);
         setCategoryDialogOpen(true);
     };
@@ -470,6 +390,12 @@ const MenuPage: React.FC = () => {
         if (!categoryForm.name || !categoryForm.name.trim()) {
             setCategoryTouched((prev) => ({ ...prev, name: true }));
             toast.error('Category name is required');
+            return;
+        }
+
+        if (!categoryForm.taxCode || !categoryForm.taxCode.trim()) {
+            setCategoryTouched((prev) => ({ ...prev, taxCode: true }));
+            toast.error('Tax Code (TIC) is required');
             return;
         }
 
@@ -528,244 +454,8 @@ const MenuPage: React.FC = () => {
 
     // Menu Item Management
     const handleOpenMenuItemDialog = (item?: IMenuItem) => {
-        if (item) {
-            setEditingMenuItem(item);
-
-            // Load dynamic spice level data
-            const itemSpiceLevels = (item as any).spiceLevels || ['mild', 'medium', 'hot', 'very_hot'];
-            const itemSpiceLevelData = (item as any).spiceLevelData || {};
-
-            // Build form data with dynamic spice level fields
-            const spiceLevelFields: any = {
-                spiceLevels: itemSpiceLevels,
-            };
-
-            itemSpiceLevels.forEach((level: string, index: number) => {
-                const fieldKey = `spiceLevel_${index}`;
-                // Use the actual spice level name from spiceLevelData or fallback to level name
-                const savedValue = itemSpiceLevelData[level] || level || '';
-                spiceLevelFields[fieldKey] = savedValue;
-            });
-
-            setMenuItemForm({
-                name: item.name,
-                description: item.description || '',
-                price: item.price.toString(),
-                category: getCategoryId(item.category),
-                subcategory: getSubcategoryId(item.subcategory),
-                image: item.image || '',
-                isAvailable: item.isAvailable,
-                isCateringAvailable: item.isCateringAvailable,
-                variants: item.variants || [],           // <-- important
-                modifierGroups: item.modifierGroups || [],
-                addOns: item.addOns || [],
-                taxRate: (item.taxRate !== undefined && item.taxRate !== null) ? item.taxRate.toString() : '',
-                isAutoDebit: (item as any).isAutoDebit !== undefined ? (item as any).isAutoDebit : true,
-                foodType: (item.foodType as '' | 'veg' | 'non-veg') || '',
-                trayOptions: item.trayOptions || [],
-                quantityType: (item as any).quantityType || 'number',
-                baseTray: (item as any).baseTray || '',
-                servingSize: (item as any).servingSize || 1,
-                spiceLevel: item.isSpiceLevelAvailable ? (item.spiceLevel || 'mild') : '',
-                isSpiceLevelAvailable: item.isSpiceLevelAvailable || false,
-                availableDays: item.availableDays || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
-                isWeeklyScheduleEnabled: item.isWeeklyScheduleEnabled || false,
-                availabilityType: item.availabilityType || 'highlight',
-                displayOption: item.displayOption || 'normal',
-                validFrom: item.validFrom || null,
-                validTo: item.validTo || null,
-                priority: item.priority || 0,
-                ...spiceLevelFields, // Add dynamic spice level fields
-            });
-        } else {
-            setEditingMenuItem(null);
-            setMenuItemForm({
-                name: '',
-                description: '',
-                price: '',
-                category: '',
-                subcategory: '',
-                image: '',
-                isAvailable: true,
-                isCateringAvailable: true,
-                variants: [],
-                modifierGroups: [],
-                addOns: [],
-                taxRate: '',
-                isAutoDebit: true,
-                foodType: '',
-                trayOptions: [],
-                quantityType: 'number',
-                baseTray: '',
-                servingSize: 1,
-                isSpiceLevelAvailable: false,
-                spiceLevels: ['mild', 'medium', 'hot', 'very_hot'] as string[],
-                mild: '',
-                medium: '',
-                hot: '',
-                very_hot: '',
-                availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as string[], // New field
-                 isWeeklyScheduleEnabled: false,
-                availabilityType: 'highlight' as 'highlight' | 'available_only',
-                displayOption: 'normal' as 'normal' | 'weekly_special' | 'todays_special',
-                validFrom: null,
-                validTo: null,
-                priority: 0,
-            });
-        }
+        setEditingMenuItem(item || null);
         setMenuItemDialogOpen(true);
-    };
-
-    const handleSaveMenuItem = async () => {
-        if (!menuItemForm.name || !menuItemForm.name.trim()) {
-            setMenuItemTouched({ ...menuItemTouched, name: true });
-            toast.error('Item name is required');
-            return;
-        }
-
-        if (menuItemForm.taxRate && isNaN(parseFloat(menuItemForm.taxRate as any))) {
-            setMenuItemTouched({ ...menuItemTouched, taxRate: true });
-            toast.error('Enter a valid tax rate');
-            return;
-        }
-
-        if (menuItemForm.taxRate && parseFloat(menuItemForm.taxRate as any) < 0) {
-            setMenuItemTouched({ ...menuItemTouched, taxRate: true });
-            toast.error('Tax rate cannot be negative');
-            return;
-        }
-
-        if (!menuItemForm.category) {
-            setMenuItemTouched({ ...menuItemTouched, category: true });
-            toast.error('Please select a category');
-            return;
-        }
-
-        if (menuItemForm.quantityType === 'tray' && !menuItemForm.baseTray) {
-            toast.error('Please select a tray type');
-            return;
-        }
-
-        if (!menuItemForm.price || !menuItemForm.price.toString().trim()) {
-            setMenuItemTouched({ ...menuItemTouched, price: true });
-            toast.error('Base price is required');
-            return;
-        }
-        const parsedPrice = parseFloat(menuItemForm.price as any);
-
-        if (isNaN(parsedPrice)) {
-            setMenuItemTouched({ ...menuItemTouched, price: true });
-            toast.error('Enter a valid base price');
-            return;
-        }
-
-        if (parsedPrice < 0) {
-            setMenuItemTouched({ ...menuItemTouched, price: true });
-            toast.error('Base price must be 0 or greater');
-            return;
-        }
-
-        // Validate variants
-        for (const variant of menuItemForm.variants) {
-            if (!variant.name || !variant.name.trim()) {
-                toast.error('Each variant must have a name');
-                return;
-            }
-            if (variant.price < 0) {
-                toast.error(`Variant "${variant.name}" price cannot be negative`);
-                return;
-            }
-        }
-
-        // Validate tray options
-        for (const option of menuItemForm.trayOptions) {
-            if (!option.tray) {
-                toast.error('Please select a tray for all tray options');
-                return;
-            }
-            if (option.price < 0) {
-                toast.error('Tray option price cannot be negative');
-                return;
-            }
-        }
-
-        // Validate modifier groups
-        for (const group of menuItemForm.modifierGroups) {
-            if (!group.name || !group.name.trim()) {
-                toast.error('Each modifier group must have a name');
-                return;
-            }
-            if (group.options.length === 0) {
-                toast.error(`Modifier group "${group.name}" must have at least one option`);
-                return;
-            }
-            for (const option of group.options) {
-                if (!option.name || !option.name.trim()) {
-                    toast.error(`In group "${group.name}", each option must have a name`);
-                    return;
-                }
-                if (option.price < 0) {
-                    toast.error(`In group "${group.name}", option "${option.name}" price cannot be negative`);
-                    return;
-                }
-            }
-        }
-
-        try {
-            // Build spice level data for saving
-            const spiceLevelData: any = {};
-            const spiceLevels = (menuItemForm as any).spiceLevels || ['mild', 'medium', 'hot', 'very_hot'];
-
-            spiceLevels.forEach((level: string, index: number) => {
-                const fieldKey = `spiceLevel_${index}`;
-                const fieldValue = (menuItemForm as any)[fieldKey] || level || '';
-
-                if (level && level.trim() !== '') {
-                    spiceLevelData[level] = fieldValue;
-                }
-            });
-
-            // Filter out empty strings from spiceLevels array
-            const filteredSpiceLevels = spiceLevels.filter((level: string) => level && level.trim() !== '');
-
-            const payload = {
-                ...menuItemForm,
-                price: parseFloat(menuItemForm.price) || 0,
-                category: menuItemForm.category,
-                categories: menuItemForm.category ? [menuItemForm.category] : [],
-                subcategory: menuItemForm.subcategory || null,
-                taxRate: menuItemForm.taxRate === '' ? null : parseFloat(menuItemForm.taxRate),
-                foodType: menuItemForm.foodType === '' ? null : menuItemForm.foodType,
-                quantityType: menuItemForm.quantityType,
-                baseTray: menuItemForm.isCateringAvailable ? menuItemForm.baseTray : null,
-                servingSize: menuItemForm.servingSize,
-                spiceLevel: menuItemForm.isSpiceLevelAvailable ? menuItemForm.spiceLevel : undefined,
-                isSpiceLevelAvailable: menuItemForm.isSpiceLevelAvailable,
-                spiceLevels: filteredSpiceLevels,
-                spiceLevelData: spiceLevelData,
-                availableDays: menuItemForm.availableDays,
-                isWeeklyScheduleEnabled: menuItemForm.isWeeklyScheduleEnabled,
-                availabilityType: menuItemForm.availabilityType,
-                displayOption: menuItemForm.displayOption,
-                validFrom: menuItemForm.validFrom,
-                validTo: menuItemForm.validTo,
-                priority: menuItemForm.priority,
-                // variants are already in the correct shape
-            };
-
-            if (editingMenuItem) {
-                await menuAPI.update(editingMenuItem._id, payload);
-                toast.success('Menu item updated successfully');
-            } else {
-                await menuAPI.create(payload);
-                toast.success('Menu item created successfully');
-            }
-            fetchData();
-            setMenuItemDialogOpen(false);
-        } catch (error: any) {
-            console.error('Error saving menu item:', error);
-            toast.error(error.response?.data?.message || 'Failed to save menu item');
-        }
     };
 
     const handleDeleteMenuItem = async (item: IMenuItem) => {
@@ -1445,17 +1135,6 @@ const MenuPage: React.FC = () => {
                                                         </Box>
                                                     )}
 
- {/* Weekly schedule badge */}
-                                                    {(item as any).isWeeklyScheduleEnabled && (
-                                                        <Box sx={{
-                                                            px: 1, py: 0.3, borderRadius: '20px',
-                                                            bgcolor: alpha(theme.palette.warning.main, 0.1),
-                                                        }}>
-                                                            <Typography sx={{ fontSize: '0.63rem', fontWeight: 700, color: theme.palette.warning.dark, lineHeight: 1 }}>
-                                                                📅 {(item as any).displayOption === 'todays_special' ? "Today's Special" : (item as any).displayOption === 'weekly_special' ? 'Weekly Special' : 'Scheduled'}
-                                                            </Typography>
-                                                        </Box>
-                                                    )}
                                                     {/* Veg / Non-veg dot — pushed to the right */}
                                                     {(item as any).foodType && (
                                                         <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}>
@@ -1555,10 +1234,33 @@ const MenuPage: React.FC = () => {
                                         </Card>
                                     </Grid>
                                 ))}
-                            </Grid>
-                        </Box>
-                    )}
-                </Box>
+                             </Grid>
+                             
+                             {/* Pagination footer */}
+                             {nextCursor && (
+                                 <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+                                     <Button
+                                         variant="outlined"
+                                         onClick={handleLoadMore}
+                                         disabled={isFetchingMore}
+                                         startIcon={isFetchingMore ? <CircularProgress size={20} /> : null}
+                                         sx={{ 
+                                             borderRadius: '20px', 
+                                             px: 4, 
+                                             minWidth: 160,
+                                             borderColor: 'primary.main',
+                                             '&:disabled': {
+                                                 borderColor: 'divider'
+                                             }
+                                         }}
+                                     >
+                                         {isFetchingMore ? 'Loading...' : 'Load More Items'}
+                                     </Button>
+                                 </Box>
+                             )}
+                         </Box>
+                     )}
+                 </Box>
             )}
 
             {/* Categories Tab */}
@@ -1789,6 +1491,13 @@ const MenuPage: React.FC = () => {
                                 fullWidth
                                 required
                             />
+                            <TaxCategorySelector
+                                value={categoryForm.taxCode}
+                                onChange={(val) => setCategoryForm({ ...categoryForm, taxCode: val })}
+                                error={categoryTouched.taxCode && !categoryForm.taxCode.trim()}
+                                helperText={categoryTouched.taxCode && !categoryForm.taxCode.trim() ? 'Tax Code (TIC) is required' : ''}
+                                required
+                            />
                             <FormControl fullWidth>
                                 <InputLabel>Parent Category</InputLabel>
                                 <Select
@@ -1840,727 +1549,15 @@ const MenuPage: React.FC = () => {
             </Dialog>
 
             {/* Menu Item Dialog */}
-            <Dialog open={menuItemDialogOpen} onClose={() => setMenuItemDialogOpen(false)} maxWidth="lg" fullWidth>
-                <DialogTitle sx={{ m: 0, p: 2 }}>
-                    {editingMenuItem ? 'Edit Menu Item' : 'Add New Menu Item'}
-                    <IconButton
-                        aria-label="close menu item dialog"
-                        onClick={() => setMenuItemDialogOpen(false)}
-                        size="small"
-                        sx={{
-                            position: 'absolute',
-                            right: 8,
-                            top: 8,
-                            bgcolor: theme.palette.error.main,
-                            color: '#fff',
-                            width: 28,
-                            height: 28,
-                            minWidth: 28,
-                            padding: '4px',
-                            fontSize: '14px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            '&:hover': { bgcolor: alpha(theme.palette.error.main, 0.85) },
-                        }}
-                    >
-                        <CloseIcon sx={{ fontSize: 14 }} />
-                    </IconButton>
-                </DialogTitle>
-                <DialogContent sx={{ '& .MuiFormLabel-asterisk': { color: 'red' } }}>
-                    <Tabs value={dialogTab} onChange={(e, v) => setDialogTab(v)} sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>
-                        <Tab label="Details" />
-                        <Tab label="History" disabled={!editingMenuItem} />
-                    </Tabs>
-                    {dialogTab === 0 && (
-                        <Grid container spacing={3} sx={{ mt: 1 }}>
-                            {/* Left Column */}
-                            <Grid item xs={12} md={6}>
-                                <Stack spacing={3}>
-                                    <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: alpha(theme.palette.primary.main, 0.02) }}>
-                                        <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <RestaurantIcon fontSize="small" color="primary" /> Primary Information
-                                        </Typography>
-                                        <Stack spacing={2}>
-                                            <TextField
-                                                label="Item Name"
-                                                value={menuItemForm.name}
-                                                onChange={(e) => setMenuItemForm({ ...menuItemForm, name: e.target.value })}
-                                                onBlur={() => setMenuItemTouched({ ...menuItemTouched, name: true })}
-                                                error={menuItemTouched.name && !menuItemForm.name.trim()}
-                                                helperText={menuItemTouched.name && !menuItemForm.name.trim() ? 'Item name is required' : ''}
-                                                fullWidth
-                                                required
-                                            />
-
-
-                                            <FormControl
-                                                fullWidth
-                                                error={menuItemTouched.category && !menuItemForm.category}
-                                            >
-                                                <InputLabel>Category</InputLabel>
-                                                <Select
-                                                    value={menuItemForm.category}
-                                                    label="Category"
-                                                    onChange={(e) => {
-                                                        const nextCategory = e.target.value;
-                                                        setMenuItemForm({
-                                                            ...menuItemForm,
-                                                            category: nextCategory,
-                                                            subcategory: '',
-                                                        });
-                                                    }}
-                                                    onBlur={() => setMenuItemTouched((prev) => ({ ...prev, category: true }))}
-                                                >
-                                                    <MenuItem value="">
-                                                        <em>Select Category</em>
-                                                    </MenuItem>
-                                                    {categories.map((cat) => (
-                                                        <MenuItem key={cat._id} value={cat._id}>
-                                                            {cat.name}
-                                                        </MenuItem>
-                                                    ))}
-                                                </Select>
-                                            </FormControl>
-
-                                            <FormControl fullWidth disabled={!menuItemForm.category}>
-                                                <InputLabel>Subcategory</InputLabel>
-                                                <Select
-                                                    value={menuItemForm.subcategory}
-                                                    label="Subcategory"
-                                                    onChange={(e) =>
-                                                        setMenuItemForm({ ...menuItemForm, subcategory: e.target.value })
-                                                    }
-                                                >
-                                                    <MenuItem value="">
-                                                        <em>No Subcategory</em>
-                                                    </MenuItem>
-                                                    {filteredSubcategories.map((subcategory) => (
-                                                        <MenuItem key={subcategory._id} value={subcategory._id}>
-                                                            {subcategory.name}
-                                                        </MenuItem>
-                                                    ))}
-                                                </Select>
-                                            </FormControl>
-
-                                            {/* Food Type: Veg / Non-Veg */}
-                                            <FormControl
-                                                fullWidth
-                                            >
-                                                <InputLabel>Food Type</InputLabel>
-                                                <Select
-                                                    value={menuItemForm.foodType}
-                                                    label="Food Type"
-                                                    onChange={(e) =>
-                                                        setMenuItemForm({ ...menuItemForm, foodType: e.target.value as 'veg' | 'non-veg' })
-                                                    }
-                                                >
-                                                    <MenuItem value="veg">Veg</MenuItem>
-                                                    <MenuItem value="non-veg">Non-Veg</MenuItem>
-                                                </Select>
-                                            </FormControl>
-
-                                            <TextField
-                                                label="Description"
-                                                value={menuItemForm.description}
-                                                onChange={(e) => setMenuItemForm({ ...menuItemForm, description: e.target.value })}
-                                                fullWidth
-                                                multiline
-                                                rows={3}
-                                            />
-                                        </Stack>
-                                    </Paper>
-
-                                    <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-                                        <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <ImageIcon fontSize="small" color="primary" /> Media & Image
-                                        </Typography>
-                                        <Stack spacing={2}>
-                                            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
-                                                <Button
-                                                    variant="outlined"
-                                                    component="label"
-                                                    startIcon={<ImageIcon fontSize="small" />}
-                                                    color="primary"
-                                                >
-                                                    Upload Image
-                                                    <input
-                                                        type="file"
-                                                        hidden
-                                                        accept="image/*"
-                                                        onChange={async (e) => {
-                                                            const file = e.target.files?.[0];
-                                                            if (file) {
-                                                                try {
-                                                                    toast.loading('Uploading image...');
-                                                                    const { uploadAPI } = await import('../../services/api');
-                                                                    const response = await uploadAPI.uploadImage(file);
-                                                                    toast.dismiss();
-                                                                    toast.success('Image uploaded successfully!');
-                                                                    setMenuItemForm({ ...menuItemForm, image: response.data.url });
-                                                                } catch (error) {
-                                                                    toast.dismiss();
-                                                                    toast.error('Failed to upload image');
-                                                                }
-                                                            }
-                                                        }}
-                                                    />
-                                                </Button>
-                                                <TextField
-                                                    label="Or paste Image URL"
-                                                    value={menuItemForm.image}
-                                                    onChange={(e) => setMenuItemForm({ ...menuItemForm, image: e.target.value })}
-                                                    fullWidth
-                                                    placeholder="https://example.com/image.jpg"
-                                                    size="small"
-                                                />
-                                            </Stack>
-
-                                        </Stack>
-                                    </Paper>
-
-                                </Stack>
-                            </Grid>
-
-                            {/* Right Column */}
-                            <Grid item xs={12} md={6}>
-                                <Stack spacing={3}>
-                                    <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: alpha(theme.palette.secondary.main, 0.02) }}>
-                                        <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <StraightenIcon fontSize="small" color="secondary" /> Pricing & Serving
-                                        </Typography>
-                                        <Stack spacing={2}>
-                                            <TextField
-                                                label="Standard Price (Per Item) ($)"
-                                                type="number"
-                                                value={menuItemForm.price}
-                                                onChange={(e) => {
-                                                    const val = e.target.value;
-                                                    if (val === '' || parseFloat(val) > 0) setMenuItemForm({ ...menuItemForm, price: val });
-                                                }}
-                                                onBlur={() => setMenuItemTouched({ ...menuItemTouched, price: true })}
-                                                error={menuItemTouched.price && (menuItemForm.price === '' || parseFloat(menuItemForm.price as any) <= 0)}
-                                                fullWidth
-                                                required
-                                                inputProps={{ min: 0.01, step: 0.01 }}
-                                            />
-
-
-                                            {menuItemForm.isCateringAvailable && (
-                                                <Box sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
-                                                    <FormControl fullWidth size="small" sx={{ mb: 2 }}>
-                                                        <InputLabel>Primary Tray for Display</InputLabel>
-                                                        <Select
-                                                            value={menuItemForm.baseTray}
-                                                            label="Primary Tray for Display"
-                                                            onChange={(e) => setMenuItemForm({ ...menuItemForm, baseTray: e.target.value })}
-                                                        >
-                                                            {trays.map((t) => (
-                                                                <MenuItem key={t._id} value={t._id}>{t.name}</MenuItem>
-                                                            ))}
-                                                        </Select>
-                                                    </FormControl>
-                                                    <Typography variant="caption" fontWeight="bold" color="secondary" sx={{ mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', textTransform: 'uppercase' }}>
-                                                        Catering Tray Pricing
-                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                            {/* <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'none' }}>Base Serving Size:</Typography> */}
-                                                            {/* <TextField
-                                                                size="small"
-                                                                type="number"
-                                                                value={menuItemForm.servingSize}
-                                                                onChange={(e) => {
-                                                                    const val = parseInt(e.target.value);
-                                                                    if (val > 0) setMenuItemForm({ ...menuItemForm, servingSize: val });
-                                                                }}
-                                                                sx={{ width: 60, '& .MuiInputBase-input': { p: '2px 4px', fontSize: '0.75rem' } }}
-                                                                inputProps={{ min: 1, step: 1 }}
-                                                            /> */}
-                                                        </Box>
-                                                    </Typography>
-                                                    <Stack spacing={1.5}>
-                                                        {trays.map((t) => {
-                                                            const option = menuItemForm.trayOptions.find(o => o.tray === t._id);
-                                                            return (
-                                                                <Stack key={t._id} direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
-                                                                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                                                                        <Typography variant="body2" noWrap sx={{ color: option?.price ? 'text.primary' : 'text.secondary', fontWeight: option?.price ? 600 : 400 }}>
-                                                                            {t.name}
-                                                                        </Typography>
-                                                                    </Box>
-                                                                    <TextField
-                                                                        size="small"
-                                                                        sx={{ width: 90 }}
-                                                                        placeholder="Serves"
-                                                                        type="number"
-                                                                        label="Serves"
-                                                                        value={option?.servingSize || (menuItemForm.servingSize || 1)}
-                                                                        onChange={(e) => {
-                                                                            const val = parseInt(e.target.value);
-                                                                            if (!val || val < 1) return;
-                                                                            let newOptions = [...menuItemForm.trayOptions];
-                                                                            const idx = newOptions.findIndex(o => o.tray === t._id);
-                                                                            if (idx > -1) {
-                                                                                newOptions[idx].servingSize = val;
-                                                                            } else {
-                                                                                newOptions.push({ tray: t._id, price: 0, servingSize: val, isActive: true });
-                                                                            }
-                                                                            setMenuItemForm({ ...menuItemForm, trayOptions: newOptions });
-                                                                        }}
-                                                                        inputProps={{ min: 1, step: 1 }}
-                                                                    />
-                                                                    <TextField
-                                                                        size="small"
-                                                                        sx={{ width: 110 }}
-                                                                        placeholder="Price"
-                                                                        type="number"
-                                                                        label="Price"
-                                                                        value={option?.price || ''}
-                                                                        onChange={(e) => {
-                                                                            const raw = e.target.value;
-                                                                            const val = raw === '' ? null : parseFloat(raw);
-                                                                            if (val !== null && val <= 0) return;
-                                                                            let newOptions = [...menuItemForm.trayOptions];
-                                                                            const idx = newOptions.findIndex(o => o.tray === t._id);
-                                                                            if (idx > -1) {
-                                                                                if (val === null) newOptions.splice(idx, 1);
-                                                                                else newOptions[idx].price = val;
-                                                                            } else if (val !== null) {
-                                                                                newOptions.push({ tray: t._id, price: val, servingSize: (menuItemForm.servingSize || 1), isActive: true });
-                                                                            }
-                                                                            setMenuItemForm({ ...menuItemForm, trayOptions: newOptions });
-                                                                        }}
-                                                                        inputProps={{ min: 0.01, step: 0.01 }}
-                                                                        InputProps={{ startAdornment: <Typography variant="caption" sx={{ mr: 0.5 }}>$</Typography> }}
-                                                                    />
-                                                                </Stack>
-                                                            );
-                                                        })}
-                                                        {trays.length === 0 && (
-                                                            <Typography variant="caption" color="text.secondary">No trays defined. Please add trays in Tray Management.</Typography>
-                                                        )}
-                                                    </Stack>
-                                                </Box>
-                                            )}
-
-                                            <TextField
-                                                label="Tax Rate (%)"
-                                                type="number"
-                                                value={menuItemForm.taxRate}
-                                                onChange={(e) => {
-                                                    const val = e.target.value;
-                                                    if (val === '' || parseFloat(val) >= 0) setMenuItemForm({ ...menuItemForm, taxRate: val });
-                                                }}
-                                                fullWidth
-                                                placeholder="Override Global Tax"
-                                                inputProps={{ min: 0, step: 0.01 }}
-                                            />
-
-                                            {menuItemForm.isSpiceLevelAvailable ? (
-                                                <>
-                                                    <FormControl fullWidth>
-                                                        <InputLabel>Base Spice Level</InputLabel>
-                                                        <Select
-                                                            value={menuItemForm.spiceLevel}
-                                                            label="Base Spice Level"
-                                                            onChange={(e) =>
-                                                                setMenuItemForm({
-                                                                    ...menuItemForm,
-                                                                    spiceLevel: e.target.value as 'mild' | 'medium' | 'hot' | 'very_hot',
-                                                                })
-                                                            }
-                                                        >
-                                                            {SPICE_LEVEL_OPTIONS.map((level) => (
-                                                                <MenuItem key={level.value} value={level.value}>
-                                                                    {level.label}
-                                                                </MenuItem>
-                                                            ))}
-                                                        </Select>
-                                                    </FormControl>
-                                                    <Typography variant="caption" color="text.secondary">
-                                                        This is the default spice level shown to customers before they choose their own.
-                                                    </Typography>
-                                                </>
-                                            ) : null}
-
-                                        </Stack>
-                                    </Paper>
-
-                                    <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-                                        <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <AddIcon fontSize="small" color="primary" /> Inventory & Visibility
-                                        </Typography>
-                                        <Stack spacing={1}>
-                                            <FormControlLabel
-                                                control={<Switch checked={menuItemForm.isAvailable} onChange={(e) => setMenuItemForm({ ...menuItemForm, isAvailable: e.target.checked })} />}
-                                                label="Available for ordering"
-                                            />
-                                            <FormControlLabel
-                                                control={<Switch checked={!!(menuItemForm as any).isAutoDebit} onChange={(e) => setMenuItemForm(prev => ({ ...prev, isAutoDebit: e.target.checked } as any))} />}
-                                                label="Auto Debit from Inventory"
-                                            />
-                                            <FormControlLabel
-                                                control={<Switch checked={menuItemForm.isCateringAvailable} onChange={(e) => setMenuItemForm({ ...menuItemForm, isCateringAvailable: e.target.checked })} />}
-                                                label="Available for Catering"
-                                            />
-                                            <FormControlLabel
-                                                control={<Switch checked={menuItemForm.isSpiceLevelAvailable} onChange={(e) => setMenuItemForm({ ...menuItemForm, isSpiceLevelAvailable: e.target.checked })} />}
-                                                label="Enable Spice Level Selection"
-                                            />
-
-                                            {/* Dynamic Spice Level Management */}
-                                            {menuItemForm.isSpiceLevelAvailable && (
-                                                <Box sx={{ mt: 2 }}>
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
-                                                        <Typography variant="subtitle2" sx={{ fontSize: '0.9rem', fontWeight: 600, color: 'text.primary' }}>
-                                                            🌶️ Spice Levels
-                                                        </Typography>
-                                                        <Button
-                                                            size="small"
-                                                            startIcon={<AddIcon />}
-                                                            onClick={() => {
-                                                                const currentLevels = (menuItemForm as any).spiceLevels || ['mild', 'medium', 'hot', 'very_hot'];
-                                                                const nextIndex = currentLevels.length;
-                                                                const fieldKey = `spiceLevel_${nextIndex}`;
-
-                                                                setMenuItemForm(prev => ({
-                                                                    ...prev,
-                                                                    spiceLevels: [...currentLevels, ''],
-                                                                    [fieldKey]: ''
-                                                                }));
-                                                            }}
-                                                            sx={{ fontSize: '0.8rem' }}
-                                                        >
-                                                            Add Level
-                                                        </Button>
-                                                    </Box>
-
-                                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                                        {((menuItemForm as any).spiceLevels || ['mild', 'medium', 'hot', 'very_hot']).map((level: string, index: number) => {
-                                                            const fieldKey = `spiceLevel_${index}`;
-
-                                                            return (
-                                                                <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                                    <TextField
-                                                                        size="small"
-                                                                        label="Spice Level Name"
-                                                                        value={(menuItemForm as any)[fieldKey] || ''}
-                                                                        placeholder="Enter spice level name"
-                                                                        onChange={(e) => {
-                                                                            const newValue = e.target.value;
-                                                                            setMenuItemForm(prev => {
-                                                                                const currentLevels = [...((prev as any).spiceLevels || [])];
-                                                                                if (index < currentLevels.length) {
-                                                                                    currentLevels[index] = newValue;
-                                                                                }
-                                                                                return {
-                                                                                    ...prev,
-                                                                                    [fieldKey]: newValue,
-                                                                                    spiceLevels: currentLevels
-                                                                                };
-                                                                            });
-                                                                        }}
-                                                                        fullWidth
-                                                                    />
-                                                                    <IconButton
-                                                                        size="small"
-                                                                        color="error"
-                                                                        onClick={() => {
-                                                                            const currentLevels = (menuItemForm as any).spiceLevels || ['mild', 'medium', 'hot', 'very_hot'];
-                                                                            const newLevels = currentLevels.filter((_: string, i: number) => i !== index);
-
-                                                                            // Shift field values for remaining levels
-                                                                            const updatedForm: any = { ...menuItemForm };
-                                                                            delete updatedForm[fieldKey]; // Delete the removed one
-
-                                                                            // Re-index remaining fields to keep spiceLevel_X consistent with index
-                                                                            newLevels.forEach((_, i) => {
-                                                                                const oldKey = `spiceLevel_${i >= index ? i + 1 : i}`;
-                                                                                const newKey = `spiceLevel_${i}`;
-                                                                                (updatedForm as any)[newKey] = (menuItemForm as any)[oldKey];
-                                                                            });
-                                                                            if (newLevels.length < currentLevels.length) {
-                                                                                delete (updatedForm as any)[`spiceLevel_${currentLevels.length - 1}`];
-                                                                            }
-
-                                                                            setMenuItemForm({
-                                                                                ...updatedForm,
-                                                                                spiceLevels: newLevels
-                                                                            });
-                                                                        }}
-                                                                    >
-                                                                        <DeleteIcon fontSize="small" />
-                                                                    </IconButton>
-                                                                </Box>
-                                                            );
-                                                        })}
-                                                    </Box>
-                                                </Box>
-                                            )}
-                                        </Stack>
-                                    </Paper>
-                                </Stack>
-                            </Grid>
-
-                                            {/* Weekly Availability Section */}
-                            <Grid item xs={12}>
-                                <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: menuItemForm.isWeeklyScheduleEnabled ? 3 : 0 }}>
-                                        <Typography variant="subtitle2" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <TodayIcon fontSize="small" color="primary" /> Weekly Availability
-                                        </Typography>
-                                        <FormControlLabel
-                                            control={
-                                                <Switch 
-                                                    checked={menuItemForm.isWeeklyScheduleEnabled} 
-                                                    onChange={(e) => setMenuItemForm({ ...menuItemForm, isWeeklyScheduleEnabled: e.target.checked })} 
-                                                    color="primary"
-                                                />
-                                            }
-                                            label={<Typography variant="body2" sx={{ fontWeight: 500 }}>Enable Weekly Schedule</Typography>}
-                                            labelPlacement="start"
-                                            sx={{ mr: 0 }}
-                                        />
-                                    </Box>
-
-                                    {menuItemForm.isWeeklyScheduleEnabled && (
-                                        <Grid container spacing={3}>
-                                            <Grid item xs={12} sm={6}>
-                                                <FormControl fullWidth size="small">
-                                                    <InputLabel>Availability Type</InputLabel>
-                                                    <Select
-                                                        value={menuItemForm.availabilityType || 'available_only'}
-                                                        label="Availability Type"
-                                                        onChange={(e) => setMenuItemForm({ ...menuItemForm, availabilityType: e.target.value as any })}
-                                                    >
-                                                        <MenuItem value="highlight">Highlight Only (Available Everyday, Highlighted on specific days)</MenuItem>
-                                                        <MenuItem value="available_only">Available Only on Selected Days</MenuItem>
-                                                    </Select>
-                                                </FormControl>
-                                            </Grid>
-                                            <Grid item xs={12} sm={6}>
-                                                <FormControl fullWidth size="small">
-                                                    <InputLabel>Display Options</InputLabel>
-                                                    <Select
-                                                        value={menuItemForm.displayOption || 'normal'}
-                                                        label="Display Options"
-                                                        onChange={(e) => setMenuItemForm({ ...menuItemForm, displayOption: e.target.value as any })}
-                                                    >
-                                                        <MenuItem value="normal">Normal</MenuItem>
-                                                        <MenuItem value="weekly_special">Weekly Special</MenuItem>
-                                                        <MenuItem value="todays_special">Today's Special</MenuItem>
-                                                    </Select>
-                                                </FormControl>
-                                            </Grid>
-
-                                            <Grid item xs={12}>
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                                                    <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>Quick Select:</Typography>
-                                                    <Stack direction="row" spacing={1}>
-                                                        <Button 
-                                                            size="small" 
-                                                            variant="outlined" 
-                                                            sx={{ borderRadius: 2, textTransform: 'none', px: 2 }}
-                                                            onClick={() => setMenuItemForm({ ...menuItemForm, availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'] })}
-                                                        >
-                                                            Weekdays
-                                                        </Button>
-                                                        <Button 
-                                                            size="small" 
-                                                            variant="outlined" 
-                                                            sx={{ borderRadius: 2, textTransform: 'none', px: 2 }}
-                                                            onClick={() => setMenuItemForm({ ...menuItemForm, availableDays: ['saturday', 'sunday'] })}
-                                                        >
-                                                            Weekend
-                                                        </Button>
-                                                        <Button 
-                                                            size="small" 
-                                                            variant="outlined" 
-                                                            sx={{ borderRadius: 2, textTransform: 'none', px: 2 }}
-                                                            onClick={() => setMenuItemForm({ ...menuItemForm, availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] })}
-                                                        >
-                                                            All Days
-                                                        </Button>
-                                                    </Stack>
-                                                </Box>
-                                            </Grid>
-
-                                            <Grid item xs={12}>
-                                                <FormControl fullWidth size="small">
-                                                    <InputLabel>Days Available</InputLabel>
-                                                    <Select
-                                                        multiple
-                                                        value={menuItemForm.availableDays || []}
-                                                        label="Days Available"
-                                                        onChange={(e) => setMenuItemForm({ ...menuItemForm, availableDays: typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value as string[] })}
-                                                        input={<OutlinedInput label="Days Available" />}
-                                                        renderValue={(selected) => (
-                                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                                                {(selected as string[]).map((value) => (
-                                                                    <Chip 
-                                                                        key={value} 
-                                                                        label={value.charAt(0).toUpperCase() + value.slice(1)} 
-                                                                        size="small" 
-                                                                        sx={{ borderRadius: 1 }}
-                                                                    />
-                                                                ))}
-                                                            </Box>
-                                                        )}
-                                                    >
-                                                        {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
-                                                            <MenuItem key={day} value={day}>
-                                                                {day.charAt(0).toUpperCase() + day.slice(1)}
-                                                            </MenuItem>
-                                                        ))}
-                                                    </Select>
-                                                </FormControl>
-                                            </Grid>
-
-                                            <Grid item xs={12} sm={4}>
-                                                <TextField
-                                                    label="Valid From (Optional)"
-                                                    type="date"
-                                                    size="small"
-                                                    value={menuItemForm.validFrom ? new Date(menuItemForm.validFrom).toISOString().split('T')[0] : ''}
-                                                    onChange={(e) => setMenuItemForm({ ...menuItemForm, validFrom: e.target.value ? new Date(e.target.value) : null })}
-                                                    fullWidth
-                                                    InputLabelProps={{ shrink: true }}
-                                                />
-                                            </Grid>
-                                            <Grid item xs={12} sm={4}>
-                                                <TextField
-                                                    label="Valid Till (Optional)"
-                                                    type="date"
-                                                    size="small"
-                                                    value={menuItemForm.validTo ? new Date(menuItemForm.validTo).toISOString().split('T')[0] : ''}
-                                                    onChange={(e) => setMenuItemForm({ ...menuItemForm, validTo: e.target.value ? new Date(e.target.value) : null })}
-                                                    fullWidth
-                                                    InputLabelProps={{ shrink: true }}
-                                                />
-                                            </Grid>
-                                            <Grid item xs={12} sm={4}>
-                                                <TextField
-                                                    label="Priority (Higher first)"
-                                                    type="number"
-                                                    size="small"
-                                                    value={menuItemForm.priority || 0}
-                                                    onChange={(e) => setMenuItemForm({ ...menuItemForm, priority: parseInt(e.target.value) || 0 })}
-                                                    fullWidth
-                                                />
-                                            </Grid>
-                                        </Grid>
-                                    )}
-                                </Paper>
-                            </Grid>
-
-                            <Grid item xs={12}>
-                                <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-                                    <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <MenuBookIcon fontSize="small" color="primary" /> Linked Add-ons
-                                    </Typography>
-                                    <Grid container spacing={2}>
-                                        <Grid item xs={12} sm={4}>
-                                            <FormControl fullWidth size="small">
-                                                <InputLabel>Filter Category</InputLabel>
-                                                <Select value={addOnsCategoryFilter} label="Filter Category" onChange={(e) => setAddOnsCategoryFilter(e.target.value)}>
-                                                    <MenuItem value="all">All Categories</MenuItem>
-                                                    {categories.map((cat) => <MenuItem key={cat._id} value={cat._id}>{cat.name}</MenuItem>)}
-                                                </Select>
-                                            </FormControl>
-                                        </Grid>
-                                        <Grid item xs={12} sm={8}>
-                                            <FormControl fullWidth size="small">
-                                                <InputLabel>Select Items</InputLabel>
-                                                <Select
-                                                    multiple
-                                                    value={menuItemForm.addOns}
-                                                    onChange={(e) => setMenuItemForm({ ...menuItemForm, addOns: typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value as string[] })}
-                                                    renderValue={(selected) => (
-                                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                                            {selected.map((val) => <Chip key={val} label={menuItems.find(i => i._id === val)?.name} size="small" />)}
-                                                        </Box>
-                                                    )}
-                                                >
-                                                    {menuItems.filter(i => i._id !== editingMenuItem?._id && (addOnsCategoryFilter === 'all' || ((i.category as any)._id || i.category) === addOnsCategoryFilter)).map(i => <MenuItem key={i._id} value={i._id}>{i.name}</MenuItem>)}
-                                                </Select>
-                                            </FormControl>
-                                        </Grid>
-                                    </Grid>
-                                </Paper>
-                            </Grid>
-
-
-                            <Grid item xs={12}>
-                                <Typography variant="subtitle1" fontWeight="bold" sx={{ mt: 2, mb: 1 }}>
-                                    Variants (optional)
-                                </Typography>
-                                <Stack spacing={2}>
-                                    {menuItemForm.variants.map((v, i) => (
-                                        <Paper key={i} variant="outlined" sx={{ p: 2, position: 'relative' }}>
-                                            <IconButton size="small" color="error" sx={{ position: 'absolute', top: 8, right: 8 }} onClick={() => setMenuItemForm({ ...menuItemForm, variants: menuItemForm.variants.filter((_, idx) => idx !== i) })}>
-                                                <CloseIcon />
-                                            </IconButton>
-                                            <Grid container spacing={2}>
-                                                <Grid item xs={12} sm={4}><TextField label="Name" value={v.name} fullWidth size="small" onChange={(e) => { const n = [...menuItemForm.variants]; n[i].name = e.target.value; setMenuItemForm({ ...menuItemForm, variants: n }) }} /></Grid>
-                                                <Grid item xs={12} sm={4}><TextField label="Price" type="number" value={v.price || ''} fullWidth size="small" inputProps={{ min: 0.01, step: 0.01 }} onChange={(e) => { const val = parseFloat(e.target.value); if (e.target.value === '' || val > 0) { const n = [...menuItemForm.variants]; n[i].price = val || 0; setMenuItemForm({ ...menuItemForm, variants: n }); } }} /></Grid>
-                                                <Grid item xs={12} sm={4}><TextField label="Desc" value={v.description} fullWidth size="small" onChange={(e) => { const n = [...menuItemForm.variants]; n[i].description = e.target.value; setMenuItemForm({ ...menuItemForm, variants: n }) }} /></Grid>
-                                            </Grid>
-                                        </Paper>
-                                    ))}
-                                    <Button variant="outlined" startIcon={<AddIcon />} onClick={() => setMenuItemForm({ ...menuItemForm, variants: [...menuItemForm.variants, { name: '', price: 0, description: '' }] })} sx={{ alignSelf: 'flex-start' }}>Add Variant</Button>
-                                </Stack>
-                            </Grid>
-
-
-                            <Grid item xs={12}>
-                                <Typography variant="subtitle1" fontWeight="bold" sx={{ mt: 2, mb: 1 }}>
-                                    Customizations
-                                </Typography>
-                                {menuItemForm.modifierGroups.map((g, gi) => (
-                                    <Paper key={gi} variant="outlined" sx={{ p: 2, mb: 2 }}>
-                                        <Grid container spacing={2} alignItems="center">
-                                            <Grid item xs={12} sm={5}><TextField label="Name" value={g.name} fullWidth size="small" onChange={(e) => { const n = [...menuItemForm.modifierGroups]; n[gi].name = e.target.value; setMenuItemForm({ ...menuItemForm, modifierGroups: n }) }} /></Grid>
-                                            <Grid item xs={12} sm={4}>
-                                                <Select value={g.selectionType} size="small" fullWidth onChange={(e) => { const n = [...menuItemForm.modifierGroups]; n[gi].selectionType = e.target.value as any; setMenuItemForm({ ...menuItemForm, modifierGroups: n }) }}>
-                                                    <MenuItem value="single">Single</MenuItem>
-                                                    <MenuItem value="multiple">Multiple</MenuItem>
-                                                </Select>
-                                            </Grid>
-                                            <Grid item xs={12} sm={3} sx={{ display: 'flex', justifyContent: 'flex-end' }}><IconButton color="error" size="small" onClick={() => setMenuItemForm({ ...menuItemForm, modifierGroups: menuItemForm.modifierGroups.filter((_, idx) => idx !== gi) })}><DeleteIcon /></IconButton></Grid>
-                                        </Grid>
-                                        <Box sx={{ mt: 1, pl: 2, borderLeft: '2px solid #eee' }}>
-                                            {g.options.map((opt, oi) => (
-                                                <Grid container spacing={1} key={oi} sx={{ mb: 1 }}>
-                                                    <Grid item xs={6}><TextField placeholder="Opt" value={opt.name} size="small" fullWidth onChange={(e) => { const n = [...menuItemForm.modifierGroups]; n[gi].options[oi].name = e.target.value; setMenuItemForm({ ...menuItemForm, modifierGroups: n }) }} /></Grid>
-                                                    <Grid item xs={4}><TextField placeholder="Price" type="number" value={opt.price || ''} size="small" fullWidth inputProps={{ min: 0.01, step: 0.01 }} onChange={(e) => { const val = parseFloat(e.target.value); if (e.target.value === '' || val > 0) { const n = [...menuItemForm.modifierGroups]; n[gi].options[oi].price = val || 0; setMenuItemForm({ ...menuItemForm, modifierGroups: n }); } }} /></Grid>
-                                                    <Grid item xs={2}><IconButton size="small" color="error" onClick={() => { const n = [...menuItemForm.modifierGroups]; n[gi].options.splice(oi, 1); setMenuItemForm({ ...menuItemForm, modifierGroups: n }) }}><CloseIcon fontSize="small" /></IconButton></Grid>
-                                                </Grid>
-                                            ))}
-                                            <Button size="small" startIcon={<AddIcon />} onClick={() => { const n = [...menuItemForm.modifierGroups]; n[gi].options.push({ name: '', price: 0 }); setMenuItemForm({ ...menuItemForm, modifierGroups: n }) }}>Add</Button>
-                                        </Box>
-                                    </Paper>
-                                ))}
-                                <Button variant="outlined" startIcon={<AddIcon />} onClick={() => setMenuItemForm({ ...menuItemForm, modifierGroups: [...menuItemForm.modifierGroups, { name: '', selectionType: 'single', required: true, options: [] }] })}>Add Group</Button>
-                            </Grid>
-                        </Grid>
-                    )}
-
-                    {dialogTab === 1 && editingMenuItem && (
-                        <Box mt={2}>
-                            <ActionHistoryList history={editingMenuItem.actionHistory || []} emptyMessage="No history for this item." />
-                        </Box>
-                    )}
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setMenuItemDialogOpen(false)}>Cancel</Button>
-                    <Button
-                        variant="contained"
-                        onClick={handleSaveMenuItem}
-                        disabled={!menuItemForm.name || !menuItemForm.price}
-                    >
-                        {editingMenuItem ? 'Update' : 'Create'}
-                    </Button>
-                </DialogActions>
-            </Dialog>
+            <MenuItemDialog
+                open={menuItemDialogOpen}
+                onClose={() => setMenuItemDialogOpen(false)}
+                onSuccess={fetchData}
+                editingMenuItem={editingMenuItem}
+                categories={categories}
+                subcategories={subcategories}
+                trays={trays}
+            />
 
             {/* Bulk Upload Dialog */}
             <Dialog open={bulkDialogOpen} onClose={() => setBulkDialogOpen(false)} maxWidth="md" fullWidth>
