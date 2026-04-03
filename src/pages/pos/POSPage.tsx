@@ -53,9 +53,12 @@ import AddressAutocomplete from '../../components/AddressAutocomplete';
 import PaymentModal from '../../components/PaymentModal';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
-import { couponsAPI, menuAPI, ordersAPI, settingsAPI, tablesAPI, usersAPI, traysAPI } from '../../services/api';
-import PhoneInput from 'src/components/PhoneInput';
+import { couponsAPI, menuAPI, ordersAPI, settingsAPI, tablesAPI, usersAPI, traysAPI, taxAPI } from '../../services/api';
 import { isWithinDeliveryRadius, METERS_PER_MILE } from '../../services/googleMapsService';
+import type { Category, Subcategory, IMenuItem } from '../menu/types';
+import MenuItemDialog from '../menu/components/MenuItemDialog';
+import CustomerInfoSection from './components/CustomerInfoSection';
+import OrderDetailsSection from './components/OrderDetailsSection';
 
 
 type Variant = {
@@ -92,6 +95,122 @@ type MenuItem = {
     [k: string]: any;
 };
 
+// --- Memoized Sub-components for Optimization ---
+
+const MemoizedMenuItemCard = React.memo(({ 
+    item, 
+    onClick, 
+    formatCurrency 
+}: { 
+    item: MenuItem; 
+    onClick: (item: MenuItem) => void; 
+    formatCurrency: (amount: number) => string;
+}) => {
+    return (
+        <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+            <CardActionArea onClick={() => onClick(item)} sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
+                {item.image && (
+                    <CardMedia
+                        component="img"
+                        height="140"
+                        image={item.image}
+                        alt={item.name}
+                        sx={{ objectFit: 'cover' }}
+                    />
+                )}
+                <CardContent sx={{ flexGrow: 1, p: 1.5 }}>
+                    <Typography variant="subtitle1" fontWeight="bold" noWrap gutterBottom>
+                        {item.name}
+                    </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body1" color="primary" fontWeight="700">
+                            {formatCurrency(item.price)}
+                        </Typography>
+                        {item.foodType && (
+                            <Box sx={{
+                                width: 12, height: 12,
+                                border: `2px solid ${item.foodType === 'veg' ? '#00a852' : '#e43b3b'}`,
+                                borderRadius: '2px',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                bgcolor: 'white',
+                                p: '1px'
+                            }}>
+                                <Box sx={{
+                                    width: 5, height: 5, borderRadius: '50%',
+                                    bgcolor: item.foodType === 'veg' ? '#00a852' : '#e43b3b'
+                                }} />
+                            </Box>
+                        )}
+                    </Box>
+                </CardContent>
+            </CardActionArea>
+        </Card>
+    );
+});
+
+const MemoizedCartItem = React.memo(({
+    item,
+    onUpdateQuantity,
+    onRemove,
+    formatCurrency
+}: {
+    item: any;
+    onUpdateQuantity: (cartId: string, delta: number) => void;
+    onRemove: (cartId: string) => void;
+    formatCurrency: (amount: number) => string;
+}) => {
+    return (
+        <ListItem
+            divider
+            sx={{
+                px: 1,
+                py: 1.5,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'stretch',
+                gap: 0.5
+            }}
+        >
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
+                <ListItemText
+                    primary={item.name}
+                    secondary={
+                        <Box component="span">
+                            {item.variant && <Typography variant="caption" display="block">Variant: {item.variant.name}</Typography>}
+                            {item.modifiers && item.modifiers.length > 0 && (
+                                <Typography variant="caption" display="block" color="text.secondary">
+                                    Mods: {item.modifiers.map((m: any) => m.name).join(', ')}
+                                </Typography>
+                            )}
+                            {item.spiceLevel && <Typography variant="caption" display="block">Spice: {item.spiceLevel}</Typography>}
+                        </Box>
+                    }
+                    sx={{ m: 0, '& .MuiListItemText-primary': { fontWeight: 500, fontSize: '0.9rem' } }}
+                />
+                <Typography variant="body2" fontWeight="bold" sx={{ ml: 1, whiteSpace: 'nowrap' }}>
+                    {formatCurrency(item.price * item.quantity)}
+                </Typography>
+            </Box>
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 0.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, bgcolor: 'action.hover', borderRadius: 1, p: 0.25 }}>
+                    <IconButton size="small" onClick={() => onUpdateQuantity(item.cartId, -1)}>
+                        <RemoveIcon fontSize="small" />
+                    </IconButton>
+                    <Typography variant="body2" sx={{ minWidth: 20, textAlign: 'center', fontWeight: 'bold' }}>
+                        {item.quantity}
+                    </Typography>
+                    <IconButton size="small" onClick={() => onUpdateQuantity(item.cartId, 1)}>
+                        <AddIcon fontSize="small" />
+                    </IconButton>
+                </Box>
+                <IconButton size="small" color="error" onClick={() => onRemove(item.cartId)}>
+                    <DeleteIcon fontSize="small" />
+                </IconButton>
+            </Box>
+        </ListItem>
+    );
+});
 
 const POSPage: React.FC = () => {
     const { user, getUserFullName } = useAuth();
@@ -108,6 +227,10 @@ const POSPage: React.FC = () => {
     const [foodTypeFilter, setFoodTypeFilter] = useState<'all' | 'veg' | 'non-veg'>('all');
     const [cart, setCart] = useState<any[]>([]);
     const [placingOrder, setPlacingOrder] = useState(false);
+    const [nextCursor, setNextCursor] = useState<string | null>(null);
+    const [isFetchingMore, setIsFetchingMore] = useState(false);
+    const PAGE_LIMIT = 24;
+
 
     // Coupon handling
     const [availableCoupons, setAvailableCoupons] = useState<any[]>([]);
@@ -130,7 +253,6 @@ const POSPage: React.FC = () => {
     const [guestCount, setGuestCount] = useState(1);
     const [tableError, setTableError] = useState('');
     const [deliveryAddress, setDeliveryAddress] = useState<any>({});
-    const [gstPercent, setGstPercent] = useState(settings?.restaurant?.taxRate || 5);
     const [discountPercent, setDiscountPercent] = useState(0);
     const [tip, setTip] = useState(0);
     const [paymentMethod, setPaymentMethod] = useState<'cash' | 'online' | 'card' | 'zelle' | 'venmo'>('cash');
@@ -139,6 +261,8 @@ const POSPage: React.FC = () => {
     const [selectedTable, setSelectedTable] = useState<any>(null);
     const [cardPrintReceipt, setCardPrintReceipt] = useState(false);
     const [cardSignInForApiCall, setCardSignInForApiCall] = useState(false);
+    const [taxDetails, setTaxDetails] = useState<any>(null);
+    const [isCalculatingTax, setIsCalculatingTax] = useState(false);
     const [isCartVisible, setIsCartVisible] = useState(false);
     const cartSectionRef = useRef<HTMLDivElement | null>(null);
     // Guard to prevent re-loading stale order data after an order is submitted
@@ -230,7 +354,6 @@ const POSPage: React.FC = () => {
         };
     }, []);
 
-    const [isGstLocked, setIsGstLocked] = useState(false);
 
     // Dynamic Search Placeholder logic
     const placeholderItems = useMemo(() => {
@@ -252,35 +375,65 @@ const POSPage: React.FC = () => {
         return () => clearInterval(timer);
     }, [placeholderItems.length]);
 
-    // Fetch menu, categories, tables
-    const fetchMenu = async () => {
+    // Fetch menu with cursor pagination
+    const fetchMenu = async (cursor?: string | null, fresh = false) => {
+        try {
+            if (cursor) {
+                setIsFetchingMore(true);
+            } else {
+                setLoading(true);
+            }
+
+            const res = await menuAPI.getAll({
+                search: searchQuery || undefined,
+                category: selectedCategory !== 'all' ? selectedCategory : undefined,
+                foodType: foodTypeFilter !== 'all' ? foodTypeFilter : undefined,
+                cursor: cursor || undefined,
+                limit: PAGE_LIMIT,
+                isAvailable: true
+            });
+
+            // The backend returns { items, nextCursor, totalCount }
+            const { items, nextCursor: newCursor } = res.data;
+
+            if (fresh) {
+                setMenuItems(items);
+            } else {
+                setMenuItems(prev => [...prev, ...items]);
+            }
+            setNextCursor(newCursor);
+        } catch (error) {
+            console.error('Error fetching menuItems:', error);
+            // toast.error('Failed to load menu');
+        } finally {
+            setLoading(false);
+            setIsFetchingMore(false);
+        }
+    };
+
+    const initialLoad = async () => {
         try {
             setLoading(true);
-            const [menuRes, categoriesRes, tablesRes, settingsRes, traysRes] = await Promise.all([
-                menuAPI.getAll(),
+            const [categoriesRes, tablesRes, settingsRes, traysRes] = await Promise.all([
                 menuAPI.getAllCategories(),
                 tablesAPI.getAll(),
                 settingsAPI.getAll(),
                 traysAPI.getAll(),
             ]);
-            setMenuItems(Array.isArray(menuRes.data) ? menuRes.data : []);
-            setCategories(Array.isArray(categoriesRes.data) ? categoriesRes.data : []);
-            setTables(Array.isArray(tablesRes.data) ? tablesRes.data : []);
-            setTrays(Array.isArray(traysRes.data) ? traysRes.data : []);
 
-            const settingsData = Array.isArray(settingsRes.data) ? settingsRes.data : [];
-            const restaurantSettings = settingsData.find((s: any) => s.category === 'restaurant')?.settings;
-            if (restaurantSettings?.taxRate !== undefined) {
-                setGstPercent(restaurantSettings.taxRate);
-                setIsGstLocked(true);
-            }
+            setCategories(categoriesRes.data);
+            setTables(tablesRes.data);
+            setTrays(traysRes.data);
+
+            // Fetch initial menu
+            await fetchMenu(null, true);
         } catch (error) {
             console.error('Error fetching data:', error);
-            // toast.error('Failed to load menu data');
         } finally {
-            setLoading(false);
+            // setLoading(false) handled within fetchMenu
         }
     };
+
     // Fetch available coupons based on order type
     const fetchAvailableCoupons = async () => {
         try {
@@ -413,11 +566,10 @@ const POSPage: React.FC = () => {
     const orderId = searchParams.get("orderId");
     const existingOrderId = searchParams.get("orderId");
     const isEditMode = !!existingOrderId;
-    const resetData = () => {
+    const resetData = React.useCallback(() => {
         setCart([]);
         setCouponCode("");
         setCouponDiscount(0);
-        setGstPercent(settings?.restaurant?.taxRate || 5);
         setDiscountPercent(0);
         setOrderType("takeaway");
         setPaymentMethod("cash");
@@ -433,8 +585,7 @@ const POSPage: React.FC = () => {
         setSelectedTable(null);   // ✅ important
         setCardPrintReceipt(false);
         setCardSignInForApiCall(false);
-        setIsGstLocked(!!settings?.restaurant?.taxRate);
-    };
+    }, [settings?.restaurant?.dialCode]);
 
 
 
@@ -501,7 +652,7 @@ const POSPage: React.FC = () => {
             const cEmail = searchParams.get("customerEmail");
             if (cEmail) setCustomerEmail(cEmail);
         }
-    }, [isEditMode, existingOrderId, tables, searchParams]);
+    }, [isEditMode, existingOrderId, tables, searchParams, resetData]);
 
     const loadExistingOrder = async (id: string) => {
         setCart([]); // Clear any previous items before loading new ones
@@ -527,12 +678,10 @@ const POSPage: React.FC = () => {
                 setCustomerPhone(digits.slice(-10));
             }
             setCustomerEmail(urlEmail || ord.customer?.email || '');
-            setGstPercent(ord.gstPercent || 5);
             setDiscountPercent(ord.discountPercent || 0);
             setPaymentMethod(ord.paymentMethod || 'cash');
             setCardPrintReceipt(Boolean(ord.cardOptions?.printReceipt));
             setCardSignInForApiCall(Boolean(ord.cardOptions?.signInForApiCall));
-            setIsGstLocked(true);
 
             if (ord.orderType === "dine_in") {
                 const table = tables.find((t) => t.tableNumber === ord.tableNumber);
@@ -580,9 +729,18 @@ const POSPage: React.FC = () => {
 
     // Initialise data
     useEffect(() => {
-        fetchMenu();
+        initialLoad();
         fetchWaiters();
     }, []);
+
+    // Fetch menu when filters change
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            fetchMenu(null, true);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchQuery, selectedCategory, foodTypeFilter]);
+
 
     // Refresh coupons when order type or cart total changes
     useEffect(() => {
@@ -631,43 +789,30 @@ const POSPage: React.FC = () => {
         });
     }, [menuItems, searchQuery, selectedCategory, foodTypeFilter]);
 
-    const addToCart = (item: any) => {
-        setCart((prev: any[]) => {
-            const cartId = item.cartId ?? item._id; // unique key per variant
-
-            const existing = prev.find((c) => c.cartId === cartId);
-
+    const addToCart = React.useCallback((item: any) => {
+        setCart((prev) => {
+            const cartId = item.cartId || item._id;
+            const existing = prev.find((i) => i.cartId === cartId);
             if (existing) {
-                return prev.map((c) =>
-                    c.cartId === cartId ? { ...c, quantity: c.quantity + 1 } : c
+                return prev.map((i) =>
+                    i.cartId === cartId ? { ...i, quantity: i.quantity + (item.quantity || 1) } : i
                 );
             }
-
-            return [...prev, { ...item, cartId, quantity: 1 }];
+            return [...prev, { ...item, cartId, quantity: item.quantity || 1 }];
         });
-    };
+    }, []);
 
-
-
-    const removeFromCart = (cartId: string) => {
+    const removeFromCart = React.useCallback((cartId: string) => {
         setCart((prev) => prev.filter((i) => i.cartId !== cartId));
-    };
+    }, []);
 
-
-
-    const updateQuantity = (cartId: string, delta: number) => {
+    const updateCartItemQuantity = React.useCallback((cartId: string, delta: number) => {
         setCart((prev) =>
             prev
-                .map((i) => {
-                    if (i.cartId === cartId) {
-                        const newQty = i.quantity + delta;
-                        return newQty > 0 ? { ...i, quantity: newQty } : null;
-                    }
-                    return i;
-                })
-                .filter(Boolean) as any[]
+                .map((i) => (i.cartId === cartId ? { ...i, quantity: Math.max(0, i.quantity + delta) } : i))
+                .filter((i) => i.quantity > 0)
         );
-    };
+    }, []);
 
     const getItemQuantity = (itemId: string) => {
         return cart
@@ -679,29 +824,78 @@ const POSPage: React.FC = () => {
         // Find the last added variant of this item to decrement
         const itemInCart = [...cart].reverse().find((i) => i._id === itemId);
         if (itemInCart) {
-            updateQuantity(itemInCart.cartId, -1);
+            updateCartItemQuantity(itemInCart.cartId, -1);
         }
     };
-
-
 
     const formatSmartPrice = (price: number) => {
         const formatted = formatCurrency(price);
         return price % 1 === 0 ? formatted.replace(/\.00$/, '') : formatted;
     };
 
-    const cartTotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
-    // Calculate total tax based on item-specific rates
-    const taxAmount = cart.reduce((sum, item) => {
-        const itemTotal = item.price * item.quantity;
-        const itemTaxRate = (item.taxRate !== undefined && item.taxRate !== null)
-            ? item.taxRate
-            : gstPercent;
-        return sum + (itemTotal * (itemTaxRate / 100));
-    }, 0);
-    const discountAmount = cartTotal * (discountPercent / 100);
-    const serviceChargeAmount = (orderType === 'dine_in' && guestCount > 3) ? Math.round(cartTotal * 0.18) : 0;
-    const finalTotal = cartTotal + taxAmount - discountAmount - couponDiscount + serviceChargeAmount + (orderType === 'delivery' ? deliveryFee : 0) + (Number(tip) || 0);
+    const cartTotal = useMemo(() => cart.reduce((sum, i) => sum + i.price * i.quantity, 0), [cart]);
+
+    const discountAmount = useMemo(() => cartTotal * (discountPercent / 100), [cartTotal, discountPercent]);
+
+    // Debounced Tax Calculation
+    useEffect(() => {
+        if (cart.length === 0) {
+            setTaxDetails(null);
+            return;
+        }
+
+        const timer = setTimeout(async () => {
+            try {
+                setIsCalculatingTax(true);
+                const restaurantSettings = settings?.restaurant || {};
+                
+                // Determine to_zip
+                let to_zip = '';
+                if (typeof deliveryAddress === 'object' && (deliveryAddress as any).zipCode) {
+                    to_zip = (deliveryAddress as any).zipCode;
+                } else if (typeof deliveryAddress === 'string') {
+                    const match = deliveryAddress.match(/\b\d{5}\b/);
+                    if (match) to_zip = match[0];
+                }
+                
+                if (!to_zip) to_zip = restaurantSettings.zipCode || '30040';
+
+                const payload = {
+                    to_zip,
+                    totalDiscount: discountAmount + couponDiscount,
+                    line_items: cart.map(item => ({
+                        itemId: item.originalMenuItemId || item._id,
+                        quantity: item.quantity,
+                        price: item.price,
+                        discount: 0, // Individual discounts handled by totalDiscount in this simplified version
+                        name: item.name
+                    }))
+                };
+
+                const res = await taxAPI.calculate(payload);
+                setTaxDetails(res.data);
+            } catch (err) {
+                console.error("[Tax] Dynamic calculation failed:", err);
+                // Fallback to null will trigger standard % calculation
+            } finally {
+                setIsCalculatingTax(false);
+            }
+        }, 800);
+
+        return () => clearTimeout(timer);
+    }, [cart, discountAmount, couponDiscount, deliveryAddress, settings]);
+
+    const taxAmount = useMemo(() => {
+        return taxDetails?.taxAmount || 0;
+    }, [taxDetails]);
+
+    const serviceChargeAmount = useMemo(() => 
+        (orderType === 'dine_in' && guestCount > 3) ? Math.round(cartTotal * 0.18) : 0, 
+    [orderType, guestCount, cartTotal]);
+
+    const finalTotal = useMemo(() => 
+        cartTotal + taxAmount - discountAmount - couponDiscount + serviceChargeAmount + (Number(tip) || 0),
+    [cartTotal, taxAmount, discountAmount, couponDiscount, serviceChargeAmount, tip]);
 
     const handlePlaceOrder = async () => {
         if (cart.length === 0) return;
@@ -878,8 +1072,6 @@ const POSPage: React.FC = () => {
                 totalAmount: finalTotal,
                 subtotal: cartTotal,
                 tip: tipValue,
-                deliveryCharge: orderType === 'delivery' ? deliveryFee : 0,
-                gstPercent,
                 discountPercent,
                 couponCode: couponCode || undefined,
                 orderType,
@@ -1133,399 +1325,50 @@ const POSPage: React.FC = () => {
 
 
                 {/* Order details */}
-                <Box sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1, mb: 2 }}>
-                    <Typography variant="subtitle1" gutterBottom>
-                        Customer & Order Details
-                    </Typography>
-                    <Grid container spacing={2} sx={{ mb: 2 }}>
-                        <Grid item xs={12} sm={4}>
-                            <TextField
-                                label="Customer Name"
-                                size="small"
-                                fullWidth
-                                value={customerName}
-                                onChange={(e) => {
-                                    const value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
-                                    setCustomerName(value);
-                                    if (customerNameTouched && value.trim()) {
-                                        setCustomerNameError('');
-                                    }
-                                }}
-                                onBlur={() => {
-                                    setCustomerNameTouched(true);
-                                    const trimmedName = customerName.trim();
-                                    if (!trimmedName) {
-                                        setCustomerNameError('Customer name is required');
-                                    } else if (trimmedName.length < 3) {
-                                        setCustomerNameError('Customer name must be at least 3 characters');
-                                    } else {
-                                        setCustomerNameError('');
-                                    }
-                                }}
-                                error={customerNameTouched && !!customerNameError}
-                                helperText={customerNameTouched && customerNameError}
-                                disabled={user?.role === 'customer'}
-                                required
-                                InputLabelProps={{
-                                    sx: {
-                                        '& .MuiFormLabel-asterisk': {
-                                            color: 'error.main'
-                                        }
-                                    }
-                                }}
-                                autoComplete="off"
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={4}>
-                            <PhoneInput
-                                label="Phone"
-                                size="small"
-                                fullWidth
-                                value={customerPhone}
-                                onChange={(value) => {
-                                    const cleaned = value.replace(/\D/g, '').slice(0, 10);
-                                    setCustomerPhone(cleaned);
-                                    if (customerPhoneTouched && cleaned) {
-                                        setCustomerPhoneError('');
-                                    }
-                                }}
-                                onBlur={() => {
-                                    setCustomerPhoneTouched(true);
-                                    if (!customerPhone) {
-                                        setCustomerPhoneError('Phone number is required');
-                                    } else if (customerPhone.length !== 10) {
-                                        setCustomerPhoneError('Phone number must be exactly 10 digits');
-                                    } else {
-                                        setCustomerPhoneError('');
-                                    }
-                                }}
-                                error={customerPhoneTouched && !!customerPhoneError}
-                                helperText={customerPhoneTouched && customerPhoneError}
-                                disabled={user?.role === 'customer'}
-                                required
-                                dialCode={customerDialCode}
-                                onDialCodeChange={setCustomerDialCode}
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={4}>
-                            <TextField
-                                label="Email"
-                                size="small"
-                                fullWidth
-                                type="email"
-                                value={customerEmail}
-                                onChange={(e) => {
-                                    setCustomerEmail(e.target.value);
-                                    if (customerEmailTouched) {
-                                        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                                        if (e.target.value && !emailRegex.test(e.target.value)) {
-                                            setCustomerEmailError('Please enter a valid email address');
-                                        } else {
-                                            setCustomerEmailError('');
-                                        }
-                                    }
-                                }}
-                                onBlur={() => {
-                                    setCustomerEmailTouched(true);
-                                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                                    if (customerEmail && !emailRegex.test(customerEmail)) {
-                                        setCustomerEmailError('Please enter a valid email address');
-                                    } else {
-                                        setCustomerEmailError('');
-                                    }
-                                }}
-                                error={customerEmailTouched && !!customerEmailError}
-                                helperText={customerEmailTouched && customerEmailError}
-                                disabled={user?.role === 'customer'}
-                                autoComplete="off"
-                            />
-                        </Grid>
-                    </Grid>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mb: 2 }}>
-                        <FormControl component="fieldset" sx={{ alignItems: 'center' }}>
-                            <Typography variant="body2" gutterBottom fontWeight="bold">
-                                Order Type
-                            </Typography>
-                            <RadioGroup
-                                value={orderType}
-                                onChange={(e) => setOrderType(e.target.value as any)}
-                                sx={{ flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'center' }}
-                            >
-                                <FormControlLabel value="dine_in" control={<Radio size="small" />} label="Dine‑In" />
-                                <FormControlLabel value="takeaway" control={<Radio size="small" />} label="Takeaway" />
-                            </RadioGroup>
-                        </FormControl>
-
-                        {orderType !== 'dine_in' && (
-                            <FormControl component="fieldset" sx={{ alignItems: 'center' }}>
-                                <Typography variant="body2" gutterBottom fontWeight="bold">
-                                    Payment Method
-                                </Typography>
-                                <RadioGroup
-                                    value={paymentMethod}
-                                    onChange={(e) => setPaymentMethod(e.target.value as any)}
-                                    sx={{ flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'center' }}
-                                >
-                                    {(settings.system?.posPaymentMethods?.cash ?? true) && (
-                                        <FormControlLabel value="cash" control={<Radio size="small" />} label="Cash" />
-                                    )}
-                                    {(settings.system?.posPaymentMethods?.card ?? true) && (
-                                        <FormControlLabel value="card" control={<Radio size="small" />} label="Card" />
-                                    )}
-                                    {(settings.system?.posPaymentMethods?.zelle ?? true) && (
-                                        <FormControlLabel value="zelle" control={<Radio size="small" />} label="Zelle" />
-                                    )}
-                                    {(settings.system?.posPaymentMethods?.venmo ?? true) && (
-                                        <FormControlLabel value="venmo" control={<Radio size="small" />} label="Venmo" />
-                                    )}
-                                </RadioGroup>
-                            </FormControl>
-                        )}
-                    </Box>
-
-                    {/* {paymentMethod === 'card' && (
-                        <FormGroup sx={{ mb: 2 }}>
-                            <FormControlLabel
-                                control={
-                                    <Checkbox
-                                        checked={cardPrintReceipt}
-                                        onChange={(e) => setCardPrintReceipt(e.target.checked)}
-                                    />
-                                }
-                                label="Print receipt"
-                            />
-                            <FormControlLabel
-                                control={
-                                    <Checkbox
-                                        checked={cardSignInForApiCall}
-                                        onChange={(e) => setCardSignInForApiCall(e.target.checked)}
-                                    />
-                                }
-                                label="Sign"
-                            />
-                        </FormGroup>
-                    )} */}
-
-                    {/* Dine‑in specific */}
-                    {orderType === 'dine_in' && (
-                        <Box sx={{ mb: 2 }}>
-                            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', mb: 2, gap: 2 }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: { xs: '100%', sm: 'auto' } }}>
-                                    <Typography variant="body2">Number of Guests:</Typography>
-                                    <TextField
-                                        type="number"
-                                        size="small"
-                                        value={guestCount}
-                                        onChange={(e) => {
-                                            const val = parseInt(e.target.value);
-                                            if (val > 0) setGuestCount(val);
-                                        }}
-                                        sx={{ width: 80 }}
-                                        inputProps={{ min: 1 }}
-                                    />
-                                </Box>
-                                <FormControl size="small" sx={{ width: { xs: '100%', sm: 300 } }}>
-                                    <InputLabel>Waiter Name</InputLabel>
-                                    <Select
-                                        value={waiterName}
-                                        label="Waiter Name"
-                                        onChange={(e) => setWaiterName(e.target.value)}
-                                        MenuProps={{
-                                            PaperProps: {
-                                                sx: {
-                                                    maxWidth: '100%',
-                                                    maxHeight: 300
-                                                }
-                                            }
-                                        }}
-                                        fullWidth
-                                    >
-                                        {waiters.map((waiter) => {
-                                            const displayName = (waiter.firstName || waiter.lastName)
-                                                ? `${waiter.firstName || ''} ${waiter.lastName || ''}`.trim()
-                                                : (waiter.username || waiter.email || 'Unknown');
-                                            return (
-                                                <MenuItem key={waiter._id} value={displayName}>
-                                                    {displayName}
-                                                </MenuItem>
-                                            );
-                                        })}
-                                    </Select>
-                                </FormControl>
-                            </Box>
-                            <Typography variant="body2" gutterBottom sx={{ color: tableError ? 'error.main' : 'inherit' }}>
-                                Select Table (capacity ≥ {guestCount}) <Box component="span" sx={{ color: 'error.main' }}>*</Box>
-                            </Typography>
-                            {tableError && (
-                                <Typography variant="caption" color="error" sx={{ display: 'block', mb: 1 }}>
-                                    {tableError}
-                                </Typography>
-                            )}
-                            {loading ? (
-                                <CircularProgress size={20} />
-                            ) : (
-                                <Grid container spacing={1}>
-                                    {tables
-                                        .filter((t) => (t.status === "available" || t._id === selectedTable?._id) && t.capacity >= guestCount)
-                                        .map((table) => (
-                                            <Grid item key={table._id}>
-                                                <Chip
-                                                    label={`${table.tableName || "Table " + table.tableNumber} (${table.capacity} ppl)`}
-                                                    onClick={() => {
-                                                        setSelectedTable(table);
-                                                        setTableNumber(table.tableNumber);
-                                                        setTableError('');
-                                                    }}
-                                                    color={selectedTable?._id === table._id ? "primary" : "default"}
-                                                    variant={selectedTable?._id === table._id ? "filled" : "outlined"}
-                                                    clickable
-                                                />
-                                            </Grid>
-                                        ))}
-
-                                    {tables.filter((t) => (t.status === "available" || t._id === selectedTable?._id) && t.capacity >= guestCount).length === 0 && (
-                                        <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-                                            No tables available for {guestCount} guests
-                                        </Typography>
-                                    )}
-                                </Grid>
-
-                            )}
-                        </Box>
-                    )}
-
-                    {/* Delivery specific */}
-                    {orderType === 'delivery' && (
-                        <Box sx={{ mb: 2 }}>
-                            <AddressAutocomplete
-                                label="Delivery Address"
-                                value={deliveryAddress.fullAddress || ''}
-                                onChange={(val) => setDeliveryAddress({ ...deliveryAddress, fullAddress: val })}
-                                onSelect={(addr) => setDeliveryAddress({
-                                    ...deliveryAddress,
-                                    ...addr,
-                                    pincode: addr.zipCode
-                                })}
-                                apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
-                            />
-                            <Grid container spacing={2} sx={{ mt: 1 }}>
-                                <Grid item xs={12} sm={4}>
-                                    <TextField
-                                        label="City"
-                                        size="small"
-                                        fullWidth
-                                        value={deliveryAddress.city || ''}
-                                        onChange={(e) => setDeliveryAddress({ ...deliveryAddress, city: e.target.value })}
-                                    />
-                                </Grid>
-                                <Grid item xs={12} sm={4}>
-                                    <TextField
-                                        label="Pincode"
-                                        size="small"
-                                        fullWidth
-                                        value={deliveryAddress.pincode || ''}
-                                        onChange={(e) => setDeliveryAddress({ ...deliveryAddress, pincode: e.target.value })}
-                                    />
-                                </Grid>
-                                <Grid item xs={12} sm={4}>
-                                    <TextField
-                                        label="Landmark"
-                                        size="small"
-                                        fullWidth
-                                        value={deliveryAddress.landmark || ''}
-                                        onChange={(e) => setDeliveryAddress({ ...deliveryAddress, landmark: e.target.value })}
-                                    />
-                                </Grid>
-                            </Grid>
-                        </Box>
-                    )}
-
-                    {/* GST / Discount (admin only) */}
-                    <Box sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-                        {user?.role !== 'customer' && (
-                            <>
-                                <TextField
-                                    label="GST %"
-                                    type={isGstLocked ? "text" : "number"}
-                                    size="small"
-                                    value={gstPercent}
-                                    onChange={(e) => !isGstLocked && setGstPercent(Number(e.target.value))}
-                                    sx={{ width: '80px' }}
-                                    InputProps={{
-                                        readOnly: isGstLocked
-                                    }}
-                                />
-                                <TextField
-                                    label="Discount %"
-                                    type="number"
-                                    size="small"
-                                    value={discountPercent}
-                                    onChange={(e) => setDiscountPercent(Math.max(0, Number(e.target.value)))}
-                                    sx={{ width: '100px' }}
-                                    inputProps={{ min: 0 }}
-                                />
-                            </>
-                        )}
-                        <Box sx={{ display: 'flex', gap: 1, flexGrow: 1, width: { xs: '100%', sm: 'auto' } }}>
-                            <TextField
-                                label="Coupon Code"
-                                size="small"
-                                value={couponCode}
-                                onChange={(e) => setCouponCode(e.target.value)}
-                                sx={{ flexGrow: 1 }}
-                            />
-                            <Button variant="outlined" onClick={() => handleValidateCoupon(false)} sx={{ whiteSpace: 'nowrap' }}>
-                                Validate
-                            </Button>
-                        </Box>
-                    </Box>
-
-                    {/* Available coupons list */}
-                    {availableCoupons.length > 0 && (
-                        <Box sx={{ mt: 2 }}>
-                            <Typography variant="subtitle1" gutterBottom>
-                                Available Coupons
-                            </Typography>
-                            <List>
-                                {availableCoupons.map((c) => (
-                                    <ListItem
-                                        key={c.code}
-                                        divider
-                                        sx={{
-                                            px: 1,
-                                            py: 1.5,
-                                            flexDirection: { xs: 'column', sm: 'row' },
-                                            alignItems: { xs: 'stretch', sm: 'center' },
-                                            gap: 1
-                                        }}
-                                    >
-                                        <ListItemText
-                                            primary={`${c.code} - ${c.discountType === 'percentage' ? `${c.discountValue}%` : `$${c.discountValue}`}`}
-                                            secondary={`Min Order: $${c.minBillAmount || 0} | Expires: ${c.validTo ? new Date(c.validTo).toLocaleDateString('en-US') : 'N/A'}`}
-                                            sx={{ m: 0, flexGrow: 1 }}
-                                        />
-                                        <Button
-                                            variant="contained"
-                                            size="small"
-                                            onClick={() => {
-                                                setCouponCode(c.code);
-                                                handleValidateCoupon(false);
-                                            }}
-                                            sx={{
-                                                flexShrink: 0,
-                                                width: 'auto',
-                                                mt: { xs: 1, sm: 0 },
-                                                alignSelf: { xs: 'center', sm: 'auto' }
-                                            }}
-                                        >
-                                            Apply
-                                        </Button>
-                                    </ListItem>
-                                ))}
-                            </List>
-                        </Box>
-                    )}
-                </Box>
+                {/* Order details extracted to CustomerInfoSection */}
+                <CustomerInfoSection
+                    customerName={customerName}
+                    setCustomerName={setCustomerName}
+                    customerPhone={customerPhone}
+                    setCustomerPhone={setCustomerPhone}
+                    customerEmail={customerEmail}
+                    setCustomerEmail={setCustomerEmail}
+                    customerDialCode={customerDialCode}
+                    setCustomerDialCode={setCustomerDialCode}
+                    orderType={orderType}
+                    setOrderType={setOrderType}
+                    paymentMethod={paymentMethod}
+                    setPaymentMethod={setPaymentMethod}
+                    guestCount={guestCount}
+                    setGuestCount={setGuestCount}
+                    tableNumber={tableNumber}
+                    setTableNumber={setTableNumber}
+                    waiterName={waiterName}
+                    setWaiterName={setWaiterName}
+                    deliveryAddress={deliveryAddress}
+                    setDeliveryAddress={setDeliveryAddress}
+                    customerNameTouched={customerNameTouched}
+                    setCustomerNameTouched={setCustomerNameTouched}
+                    customerNameError={customerNameError}
+                    setCustomerNameError={setCustomerNameError}
+                    customerPhoneTouched={customerPhoneTouched}
+                    setCustomerPhoneTouched={setCustomerPhoneTouched}
+                    customerPhoneError={customerPhoneError}
+                    setCustomerPhoneError={setCustomerPhoneError}
+                    customerEmailTouched={customerEmailTouched}
+                    setCustomerEmailTouched={setCustomerEmailTouched}
+                    customerEmailError={customerEmailError}
+                    setCustomerEmailError={setCustomerEmailError}
+                    tableError={tableError}
+                    setTableError={setTableError}
+                    selectedTable={selectedTable}
+                    setSelectedTable={setSelectedTable}
+                    tables={tables}
+                    waiters={waiters}
+                    settings={settings}
+                    user={user}
+                    checkingDistance={checkingDistance}
+                />
                 {/* Search & category tabs */}
                 <Box sx={{ mb: 2, display: 'flex', gap: 2 }}>
                     <Box sx={{ position: 'relative', flexGrow: 1 }}>
@@ -2100,6 +1943,37 @@ const POSPage: React.FC = () => {
                                 </Grid>
                             )}
                         </Grid>
+
+                        {/* Load More Button */}
+                        {nextCursor && (
+                             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4, mb: 2 }}>
+                                <Button
+                                    variant="outlined"
+                                    onClick={() => fetchMenu(nextCursor)}
+                                    disabled={isFetchingMore}
+                                    sx={{
+                                        borderRadius: '50px',
+                                        px: 4,
+                                        py: 1,
+                                        fontWeight: 'bold',
+                                        textTransform: 'none',
+                                        '&:hover': {
+                                            bgcolor: 'action.hover'
+                                        }
+                                    }}
+                                >
+                                    {isFetchingMore ? (
+                                        <>
+                                            <CircularProgress size={20} sx={{ mr: 1, color: 'inherit' }} />
+                                            Loading...
+                                        </>
+                                    ) : (
+                                        'Load More Items'
+                                    )}
+                                </Button>
+                            </Box>
+                        )}
+
                     </Box>
                 )}
             </Box>
@@ -2391,125 +2265,29 @@ const POSPage: React.FC = () => {
                 ref={cartSectionRef}
                 sx={{ width: { xs: '100%', md: 350 }, display: 'flex', flexDirection: 'column', height: { xs: 'auto', md: '100%' }, flexShrink: 0 }}
             >
-                <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
-                    <Typography variant="h6">Current Order</Typography>
-                    {/* <Typography variant="body2" color="text.secondary">
-                        Order #{Math.floor(Math.random() * 10000)}
-                    </Typography> */}
-                </Box>
-                <List sx={{
-                    flexGrow: 1,
-                    overflowY: 'auto',
-                    pr: 1,
-                    '&::-webkit-scrollbar': {
-                        width: '4px',
-                    },
-                    '&::-webkit-scrollbar-track': {
-                        backgroundColor: 'rgba(0,0,0,0.02)',
-                    },
-                    '&::-webkit-scrollbar-thumb': {
-                        backgroundColor: 'rgba(0,0,0,0.1)',
-                        borderRadius: '10px',
-                    },
-                }}>
-                    {cart.map((item) => (
-                        <ListItem key={item._id} divider>
-                            <ListItemText
-                                primary={item.name}
-                                secondary={
-                                    <>
-                                        {formatSmartPrice(item.price)}
-                                        {item.modifiers && item.modifiers.length > 0 && (
-                                            <Typography variant="caption" display="block" color="text.secondary">
-                                                {item.modifiers.map((m: any) => m.name).join(', ')}
-                                            </Typography>
-                                        )}
-                                    </>
-                                }
-                            />
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <IconButton size="small" onClick={() => updateQuantity(item.cartId, -1)}>
-                                    <RemoveIcon fontSize="small" />
-                                </IconButton>
-                                <Typography>{item.quantity}</Typography>
-                                <IconButton size="small" onClick={() => updateQuantity(item.cartId, +1)}>
-                                    <AddIcon fontSize="small" />
-                                </IconButton>
-                                <IconButton size="small" color="error" onClick={() => removeFromCart(item.cartId)}>
-                                    <DeleteIcon fontSize="small" />
-                                </IconButton>
-                            </Box>
-                        </ListItem>
-                    ))}
-                    {cart.length === 0 && (
-                        <Box sx={{ p: 3, textAlign: 'center' }}>
-                            <CartIcon sx={{ fontSize: 40, color: 'text.disabled', mb: 1 }} />
-                            <Typography color="text.secondary">Cart is empty</Typography>
-                        </Box>
-                    )}
-                </List>
-                <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider', bgcolor: 'background.default' }}>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography>Subtotal</Typography>
-                        <Typography>{formatSmartPrice(cartTotal)}</Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                        <Typography>Discount ({discountPercent}%)</Typography>
-                        <Typography>{formatSmartPrice(discountAmount)}</Typography>
-                    </Box>
-                    {couponDiscount > 0 && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2, color: 'success.main' }}>
-                            <Typography>Coupon Discount</Typography>
-                            <Typography>-{formatSmartPrice(couponDiscount)}</Typography>
-                        </Box>
-                    )}
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                        <Typography>Sales Tax ({gstPercent}%)</Typography>
-                        <Typography>{formatSmartPrice(taxAmount)}</Typography>
-                    </Box>
-                    {serviceChargeAmount > 0 && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                            <Typography>Service Charge (18%)</Typography>
-                            <Typography>{formatSmartPrice(serviceChargeAmount)}</Typography>
-                        </Box>
-                    )}
-                    {orderType === 'delivery' && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                            <Typography>Delivery Fee</Typography>
-                            <Typography color={isFetchingQuote ? 'text.secondary' : 'text.primary'}>
-                                {isFetchingQuote ? 'Calculating...' : formatSmartPrice(deliveryFee)}
-                            </Typography>
-                        </Box>
-                    )}
-                    {quoteError && orderType === 'delivery' && (
-                        <Typography variant="caption" color="error" display="block" sx={{ mb: 1 }}>
-                            {quoteError}
-                        </Typography>
-                    )}
-                    {Number(tip) > 0 && (
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                            <Typography>Tip</Typography>
-                            <Typography>{formatSmartPrice(Number(tip))}</Typography>
-                        </Box>
-                    )}
-                    <Divider sx={{ mb: 2 }} />
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                        <Typography variant="h6">Total</Typography>
-                        <Typography variant="h6" color="primary.main">
-                            {formatSmartPrice(finalTotal)}
-                        </Typography>
-                    </Box>
-                    <Button
-                        variant="contained"
-                        fullWidth
-                        size="large"
-                        disabled={cart.length === 0 || placingOrder}
-                        startIcon={<CartIcon />}
-                        onClick={handlePlaceOrder}
-                    >
-                        {placingOrder ? 'Placing...' : 'Place Order'}
-                    </Button>
-                </Box>
+                <OrderDetailsSection
+                    cart={cart}
+                    updateQuantity={updateCartItemQuantity}
+                    removeFromCart={removeFromCart}
+                    formatSmartPrice={formatSmartPrice}
+                    cartTotal={cartTotal}
+                    taxAmount={taxAmount}
+                    discountAmount={discountAmount}
+                    couponDiscount={couponDiscount}
+                    serviceChargeAmount={serviceChargeAmount}
+                    tip={tip}
+                    setTip={setTip}
+                    finalTotal={finalTotal}
+                    discountPercent={discountPercent}
+                    setDiscountPercent={setDiscountPercent}
+                    couponCode={couponCode}
+                    setCouponCode={setCouponCode}
+                    onValidateCoupon={() => handleValidateCoupon(false)}
+                    availableCoupons={availableCoupons}
+                    placingOrder={placingOrder}
+                    handlePlaceOrder={handlePlaceOrder}
+                    user={user}
+                />
             </Paper>
 
             {/* Payment modal */}
