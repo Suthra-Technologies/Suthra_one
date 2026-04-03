@@ -342,9 +342,25 @@ const OrderTrackingDialog: React.FC<OrderTrackingDialogProps> = ({ open, order: 
                     </Box>
                     {order.tax?.amount > 0 && (
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                            <Typography variant="body2" color="text.secondary">Tax</Typography>
+                            <Typography variant="body2" color="text.secondary">Tax ({order.tax.rate}%)</Typography>
                             <Typography variant="body2">
                                 {formatCurrency(order.tax.amount)}
+                            </Typography>
+                        </Box>
+                    )}
+                    {order.processingFee > 0 && (
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                            <Typography variant="body2" color="text.secondary">Processing Fee</Typography>
+                            <Typography variant="body2">
+                                {formatCurrency(order.processingFee)}
+                            </Typography>
+                        </Box>
+                    )}
+                    {order.deliveryCharge > 0 && (
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                            <Typography variant="body2" color="text.secondary">Delivery Charge</Typography>
+                            <Typography variant="body2">
+                                {formatCurrency(order.deliveryCharge)}
                             </Typography>
                         </Box>
                     )}

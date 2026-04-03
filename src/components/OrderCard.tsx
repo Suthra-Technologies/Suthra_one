@@ -611,6 +611,16 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                 </Typography>
                             </Box>
                         )}
+                        {order.processingFee > 0 && (
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Typography variant="body2" color="text.secondary">
+                                    Processing Fee:
+                                </Typography>
+                                <Typography variant="body2" fontWeight="medium">
+                                    {formatCurrency(order.processingFee)}
+                                </Typography>
+                            </Box>
+                        )}
                         {order.serviceCharge?.amount > 0 && (
                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                                 <Typography variant="body2" color="text.secondary">
