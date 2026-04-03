@@ -271,6 +271,8 @@ export const inventoryAPI = {
     api.get('/inventory/reports/usage-range', { params: { fromDate, toDate, ...params } }),
   getUsageHistory: (id: string, startDate: string, endDate: string) =>
     api.get(`/inventory/${id}/usage-history`, { params: { startDate, endDate } }),
+  restockBulk: (items: Array<{ inventoryId: string; quantity: number; costPrice?: number }>) =>
+    api.post('/inventory/restock-bulk', { items }),
 };
 
 
@@ -436,6 +438,9 @@ export const purchaseOrdersAPI = {
   updateStatus: (id: string, status: string) => api.patch(`/purchase-orders/${id}/status`, { status }),
   receive: (id: string) => api.patch(`/purchase-orders/${id}/receive`),
   getAnalytics: (params?: any) => api.get('/purchase-orders/analytics', { params }),
+  extractInvoice: (formData: FormData) => api.post('/purchase-orders/extract-invoice', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
 };
 
 // -------------------- Vendors API --------------------
@@ -446,6 +451,7 @@ export const vendorsAPI = {
   update: (id: string, data: any) => api.put(`/vendors/${id}`, data),
   delete: (id: string) => api.delete(`/vendors/${id}`),
   toggleStatus: (id: string) => api.patch(`/vendors/${id}/toggle-status`),
+  getReorderAlerts: (id: string) => api.get(`/vendors/${id}/reorder-alerts`),
 };
 
 // -------------------- Recipes API --------------------
