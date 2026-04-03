@@ -382,6 +382,12 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                                     <Typography variant="body2">{formatCurrency(order.tax.amount)}</Typography>
                                 </Box>
                             )}
+                            {order.processingFee > 0 && (
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <Typography variant="body2">Processing Fee:</Typography>
+                                    <Typography variant="body2">{formatCurrency(order.processingFee)}</Typography>
+                                </Box>
+                            )}
                             {order.serviceCharge?.amount > 0 && (
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                                     <Typography variant="body2">Service Charge ({order.serviceCharge.rate}%):</Typography>

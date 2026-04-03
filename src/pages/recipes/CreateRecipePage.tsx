@@ -93,8 +93,10 @@ const CreateRecipePage: React.FC = () => {
     const fetchMenuItems = async () => {
         try {
             const response = await menuAPI.getAll();
-            setMenuItems(response.data || []);
-            return response.data || [];
+            const data = response.data;
+            const items = Array.isArray(data) ? data : (data?.items || []);
+            setMenuItems(items);
+            return items;
         } catch (error) {
             console.error('Error fetching menu items:', error);
             return [];

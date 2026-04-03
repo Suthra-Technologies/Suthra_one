@@ -159,15 +159,16 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [material, open, units.length, vendors]);
 
-    const handleChange = (field: string, value: any) => {
+    const handleChange = React.useCallback((field: string, value: any) => {
         setFormData((prev) => ({ ...prev, [field]: value }));
         // Clear error when user types
-        if (errors[field]) {
-            setErrors(prev => ({ ...prev, [field]: { isValid: true } }));
-        }
-    };
+        setErrors(prev => {
+            if (!prev[field] || prev[field].isValid) return prev;
+            return { ...prev, [field]: { isValid: true } };
+        });
+    }, []);
 
-    const handleSupplierChange = (field: string, value: string) => {
+    const handleSupplierChange = React.useCallback((field: string, value: string) => {
         let finalValue = value;
         if (field === 'contact') {
             // Only allow numbers and limit to 10 digits
@@ -178,18 +179,24 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
             supplier: { ...prev.supplier, [field]: finalValue },
         }));
         // Clear supplier field errors
-        if (errors[`supplier_${field}`]) {
-            setErrors(prev => ({ ...prev, [`supplier_${field}`]: { isValid: true } }));
-        }
-    };
+        setErrors(prev => {
+            const errorKey = `supplier_${field}`;
+            if (!prev[errorKey] || prev[errorKey].isValid) return prev;
+            return { ...prev, [errorKey]: { isValid: true } };
+        });
+    }, []);
 
-    const handleBlur = (field: string) => {
+    const handleBlur = React.useCallback((field: string) => {
         let validation: ValidationResult;
 
+        // Use a ref-like approach to get current formData without adding it to dependencies
+        // Actually, we can just use the state here since handleBlur is usually triggered by user action
+        // and we want the most recent data. 
+        
         switch (field) {
             case 'name':
                 validation = validateRequired(formData.name, 'Material name');
-                if (validation.isValid && formData.name.length < 2) {
+                if (validation.isValid && (formData.name?.length || 0) < 2) {
                     validation = { isValid: false, message: 'Material name must be at least 2 characters' };
                 }
                 break;
@@ -239,8 +246,14 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
                 validation = { isValid: true };
         }
 
-        setErrors(prev => ({ ...prev, [field]: validation }));
-    };
+        setErrors(prev => {
+            const currentError = prev[field];
+            if (currentError && currentError.isValid === validation.isValid && currentError.message === validation.message) {
+                return prev;
+            }
+            return { ...prev, [field]: validation };
+        });
+    }, [formData]);
 
     const validateForm = (): boolean => {
         const newErrors: Record<string, ValidationResult> = {
@@ -623,4 +636,4 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
     );
 };
 
-export default RawMaterialDialog;
+export default React.memo(RawMaterialDialog);

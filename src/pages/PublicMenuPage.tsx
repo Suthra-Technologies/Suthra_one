@@ -88,9 +88,15 @@ const PublicMenuPage: React.FC = () => {
     try {
       setLoading(true);
       const publicMenuResponse = await menuAPI.getPublicMenu(slug || '');
-      const menuByCategory = Array.isArray(publicMenuResponse.data) ? publicMenuResponse.data : [];
-      setCategories(menuByCategory.map((mc: any) => mc.category));
-      setMenuItems(menuByCategory.flatMap((mc: any) => mc.items));
+      const data = publicMenuResponse.data;
+      if (data && data.items) {
+        setCategories(data.categories || []);
+        setMenuItems(data.items);
+      } else {
+        const menuByCategory = Array.isArray(data) ? data : [];
+        setCategories(menuByCategory.map((mc: any) => mc.category));
+        setMenuItems(menuByCategory.flatMap((mc: any) => mc.items));
+      }
     } catch (err) {
       setError('Failed to load menu. Please try again.');
     } finally {
