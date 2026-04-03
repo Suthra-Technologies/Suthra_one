@@ -55,6 +55,13 @@ interface Ticket {
         email: string;
         phone: string;
     };
+    orderId?: string;
+    compensation?: {
+        type: string;
+        amount: number;
+        couponCode?: string;
+        reason?: string;
+    };
 }
 
 const fixS3Url = (url: string) => {
@@ -78,6 +85,12 @@ const CustomerSupportPage: React.FC = () => {
     const [replyAttachments, setReplyAttachments] = useState<{ url: string; name: string }[]>([]);
     const [replying, setReplying] = useState(false);
     const [uploading, setUploading] = useState(false);
+
+    const [resolveDialogOpen, setResolveDialogOpen] = useState(false);
+    const [compensationType, setCompensationType] = useState('none');
+    const [compensationAmount, setCompensationAmount] = useState('');
+    const [resolveMessage, setResolveMessage] = useState('');
+    const [resolving, setResolving] = useState(false);
 
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -139,6 +152,35 @@ const CustomerSupportPage: React.FC = () => {
             toast.error('Failed to send reply');
         } finally {
             setReplying(false);
+        }
+    };
+
+    const handleResolve = async () => {
+        if (!selectedTicket) return;
+
+        try {
+            setResolving(true);
+            const data: any = { message: resolveMessage };
+            if (compensationType !== 'none' && compensationAmount) {
+                data.compensation = {
+                    type: compensationType,
+                    amount: parseFloat(compensationAmount),
+                    reason: resolveMessage || 'Support ticket resolution'
+                };
+            }
+
+            const res = await supportAPI.resolve(selectedTicket._id, data);
+            toast.success('Ticket resolved successfully');
+            setResolveDialogOpen(false);
+            setCompensationType('none');
+            setCompensationAmount('');
+            setResolveMessage('');
+            setSelectedTicket(res.data);
+            loadTickets();
+        } catch (e) {
+            toast.error('Failed to resolve ticket');
+        } finally {
+            setResolving(false);
         }
     };
 
@@ -372,9 +414,45 @@ const CustomerSupportPage: React.FC = () => {
                                         </Paper>
                                     </Box>
                                 ))}
+                                
+                                {selectedTicket.compensation && (
+                                    <Box sx={{ mt: 2, p: 3, borderRadius: 3, bgcolor: alpha(theme.palette.success.main, 0.1), border: '1px solid', borderColor: alpha(theme.palette.success.main, 0.2) }}>
+                                        <Typography variant="subtitle2" fontWeight="800" color="success.main" gutterBottom>
+                                            COMPENSATION ISSUED
+                                        </Typography>
+                                        <Grid container spacing={2}>
+                                            <Grid item xs={6} sm={3}>
+                                                <Typography variant="caption" color="text.secondary" display="block">Type</Typography>
+                                                <Typography variant="body2" fontWeight="700" sx={{ textTransform: 'capitalize' }}>{selectedTicket.compensation.type}</Typography>
+                                            </Grid>
+                                            <Grid item xs={6} sm={3}>
+                                                <Typography variant="caption" color="text.secondary" display="block">Amount</Typography>
+                                                <Typography variant="body2" fontWeight="700">${selectedTicket.compensation.amount}</Typography>
+                                            </Grid>
+                                            {selectedTicket.compensation.couponCode && (
+                                                <Grid item xs={12} sm={6}>
+                                                    <Typography variant="caption" color="text.secondary" display="block">Promo Code</Typography>
+                                                    <Chip size="small" label={selectedTicket.compensation.couponCode} color="success" sx={{ fontWeight: 'bold' }} />
+                                                </Grid>
+                                            )}
+                                        </Grid>
+                                    </Box>
+                                )}
                             </Stack>
                         </DialogContent>
-                        <DialogActions sx={{ p: 2, bgcolor: 'grey.50' }}>
+                        <DialogActions sx={{ p: 2, bgcolor: 'grey.50', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            {selectedTicket.status !== 'resolved' && selectedTicket.status !== 'closed' && (
+                                <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+                                    <Button 
+                                        variant="outlined" 
+                                        color="success" 
+                                        onClick={() => setResolveDialogOpen(true)}
+                                        sx={{ borderRadius: 3, fontWeight: '700' }}
+                                    >
+                                        Resolve with Compensation
+                                    </Button>
+                                </Box>
+                            )}
                             <Box sx={{ width: '100%', px: 1 }}>
                                 <Grid container spacing={1} alignItems="flex-end">
                                     <Grid item xs>
@@ -426,6 +504,56 @@ const CustomerSupportPage: React.FC = () => {
                         </DialogActions>
                     </>
                 )}
+            </Dialog>
+
+            <Dialog open={resolveDialogOpen} onClose={() => setResolveDialogOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle sx={{ fontWeight: '900' }}>Resolve Ticket</DialogTitle>
+                <DialogContent dividers>
+                    <Stack spacing={3}>
+                        <TextField
+                            select
+                            fullWidth
+                            label="Compensation Type"
+                            value={compensationType}
+                            onChange={(e) => setCompensationType(e.target.value)}
+                        >
+                            <MenuItem value="none">No Compensation</MenuItem>
+                            <MenuItem value="coupon">Promo Code (Coupon)</MenuItem>
+                        </TextField>
+
+                        {compensationType !== 'none' && (
+                            <TextField
+                                fullWidth
+                                type="number"
+                                label="Amount ($)"
+                                value={compensationAmount}
+                                onChange={(e) => setCompensationAmount(e.target.value)}
+                                InputProps={{ inputProps: { min: 0 } }}
+                            />
+                        )}
+
+                        <TextField
+                            fullWidth
+                            multiline
+                            rows={3}
+                            label="Resolution Message"
+                            value={resolveMessage}
+                            onChange={(e) => setResolveMessage(e.target.value)}
+                            placeholder="Message to customer regarding this resolution..."
+                        />
+                    </Stack>
+                </DialogContent>
+                <DialogActions sx={{ p: 2 }}>
+                    <Button onClick={() => setResolveDialogOpen(false)} color="inherit">Cancel</Button>
+                    <Button 
+                        onClick={handleResolve} 
+                        variant="contained" 
+                        color="success"
+                        disabled={resolving || (compensationType !== 'none' && !compensationAmount)}
+                    >
+                        {resolving ? 'Resolving...' : 'Resolve Ticket'}
+                    </Button>
+                </DialogActions>
             </Dialog>
         </Container>
     );
