@@ -187,8 +187,8 @@ const GallerySettings: React.FC = () => {
                 <Grid container spacing={3}>
                     {items.map((item) => (
                         <Grid item xs={12} sm={6} md={4} key={item._id}>
-                            <Card sx={{ 
-                                borderRadius: 3, 
+                            <Card sx={{
+                                borderRadius: 3,
                                 overflow: 'hidden',
                                 transition: 'transform 0.2s',
                                 '&:hover': { transform: 'translateY(-4px)' },
@@ -203,17 +203,17 @@ const GallerySettings: React.FC = () => {
                                     alt={item.title}
                                     sx={{ bgcolor: 'grey.100' }}
                                 />
-                                <Box sx={{ 
-                                    position: 'absolute', 
-                                    top: 10, 
+                                <Box sx={{
+                                    position: 'absolute',
+                                    top: 10,
                                     right: 10,
                                     zIndex: 1
                                 }}>
                                     <Tooltip title={item.isActive ? "Active" : "Inactive"}>
-                                        <IconButton 
+                                        <IconButton
                                             size="small"
                                             onClick={() => handleToggleActive(item)}
-                                            sx={{ 
+                                            sx={{
                                                 bgcolor: item.isActive ? 'success.main' : 'grey.500',
                                                 color: 'white',
                                                 '&:hover': { bgcolor: item.isActive ? 'success.dark' : 'grey.600' }
@@ -227,8 +227,8 @@ const GallerySettings: React.FC = () => {
                                     <Typography variant="subtitle1" fontWeight={700} noWrap>
                                         {item.title || 'Untitled Image'}
                                     </Typography>
-                                    <Typography variant="body2" color="text.secondary" sx={{ 
-                                        height: 40, 
+                                    <Typography variant="body2" color="text.secondary" sx={{
+                                        height: 40,
                                         overflow: 'hidden',
                                         display: '-webkit-box',
                                         WebkitLineClamp: 2,
@@ -282,10 +282,10 @@ const GallerySettings: React.FC = () => {
                                         <CircularProgress size={24} />
                                     ) : editingItem?.imageUrl ? (
                                         <Box>
-                                            <img 
-                                                src={editingItem.imageUrl} 
-                                                alt="Preview" 
-                                                style={{ width: '100%', maxHeight: 200, objectFit: 'contain', borderRadius: 8 }} 
+                                            <img
+                                                src={editingItem.imageUrl}
+                                                alt="Preview"
+                                                style={{ width: '100%', maxHeight: 200, objectFit: 'contain', borderRadius: 8 }}
                                             />
                                             <Typography variant="caption" sx={{ display: 'block', mt: 1 }}>
                                                 Click to change image
@@ -324,16 +324,23 @@ const GallerySettings: React.FC = () => {
                             fullWidth
                             type="number"
                             label="Sort Order"
-                            value={editingItem?.sortOrder || 0}
-                            onChange={(e) => setEditingItem(prev => ({ ...prev, sortOrder: parseInt(e.target.value) }))}
-                            helperText="Lower numbers appear first"
+                            value={editingItem?.sortOrder ?? 0}
+                            onChange={(e) => {
+                                const val = parseInt(e.target.value);
+                                setEditingItem(prev => ({
+                                    ...prev,
+                                    sortOrder: isNaN(val) ? 0 : Math.max(0, val)
+                                }));
+                            }}
+                            inputProps={{ min: 0 }}
+                            helperText="Priority of the image (0 or higher). Lower numbers appear first."
                         />
                     </Box>
                 </DialogContent>
                 <DialogActions sx={{ p: 3 }}>
                     <Button onClick={handleCloseDialog}>Cancel</Button>
-                    <Button 
-                        variant="contained" 
+                    <Button
+                        variant="contained"
                         onClick={handleSave}
                         disabled={uploading || !editingItem?.imageUrl}
                     >

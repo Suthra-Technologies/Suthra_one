@@ -524,14 +524,14 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                             </Box>
                                         )}
 
-                                        <TextField
+                                        {/* <TextField
                                             label="Tax Rate (%)"
                                             type="number"
                                             value={menuItemForm.taxRate}
                                             onChange={(e) => setMenuItemForm({ ...menuItemForm, taxRate: e.target.value })}
                                             fullWidth
                                             placeholder="Override Global Tax"
-                                        />
+                                        /> */}
                                     </Stack>
                                 </Paper>
 
