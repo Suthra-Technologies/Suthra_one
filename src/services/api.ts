@@ -491,6 +491,15 @@ export const uploadAPI = {
   },
 };
 
+// -------------------- Gallery API --------------------
+export const galleryAPI = {
+  getAll: () => api.get('/gallery'),
+  getPublic: (tenantSlug: string) => api.get('/gallery/public', { params: { tenantSlug } }),
+  create: (data: any) => api.post('/gallery', data),
+  update: (id: string, data: any) => api.patch(`/gallery/${id}`, data),
+  delete: (id: string) => api.delete(`/gallery/${id}`),
+};
+
 // -------------------- Catering API --------------------
 export const cateringAPI = {
   create: (data: any) => api.post('/catering', data),

@@ -84,6 +84,8 @@ import {
 } from '../../context/SettingsContext';
 
 import { auditLogsAPI, paymentsAPI, printersAPI, settingsAPI, tenantAPI, usersAPI } from '../../services/api';
+import GallerySettings from './GallerySettings';
+import { Collections as CollectionsIcon } from '@mui/icons-material';
 
 import { NOTIFICATION_SOUNDS, previewSound } from '../../utils/notificationSounds';
 import type { ValidationResult } from '../../utils/validation';
@@ -1293,6 +1295,7 @@ const SettingsPage: React.FC = () => {
                     <Tab label="Printers" icon={<PrintIcon />} iconPosition="start" />
                     <Tab label="Audit Logs" icon={<CheckCircleIcon />} iconPosition="start" />
                     <Tab label="Loyalty / Rewards" icon={<StarIcon />} iconPosition="start" />
+                    <Tab label="Gallery" icon={<CollectionsIcon />} iconPosition="start" />
                 </Tabs>
                 <Divider />
 
@@ -3572,6 +3575,9 @@ const SettingsPage: React.FC = () => {
                             )}
                         </Paper>
                     </Box>
+                </TabPanel>
+                <TabPanel value={tabValue} index={8}>
+                    <GallerySettings />
                 </TabPanel>
             </Paper >
 

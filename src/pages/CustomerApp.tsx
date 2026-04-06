@@ -28,9 +28,11 @@ import {
   Dashboard as DashboardIcon,
   LocalOffer as LocalOfferIcon,
   SearchOff,
+  Collections as CollectionsIcon,
 } from '@mui/icons-material';
 import TableBookingPage from './customer/TableBookingPage';
 import CustomerBookingsPage from './CustomerBookingsPage';
+import GalleryPage from './customer/GalleryPage';
 import { menuAPI, ordersAPI } from '../services/api';
 import { Capacitor } from '@capacitor/core';
 import { Browser } from '@capacitor/browser';
@@ -142,6 +144,14 @@ const CustomerDashboard: React.FC = () => {
       color: 'success',
       action: () => navigate('/customer/orders'),
       buttonText: 'View Orders'
+    },
+    {
+      title: 'Restaurant Gallery',
+      description: 'See our delicious photos and venue',
+      icon: <CollectionsIcon sx={{ fontSize: 40 }} />,
+      color: 'warning',
+      action: () => navigate('/customer/gallery'),
+      buttonText: 'View Gallery'
     }
   ];
   return (
@@ -746,6 +756,7 @@ const CustomerApp: React.FC = () => {
       <Route path="/book-table" element={<TableBookingPage />} />
       <Route path="/bookings" element={<CustomerBookingsPage />} />
       <Route path="/orders" element={<CustomerBookingsPage />} />
+      <Route path="/gallery" element={<GalleryPage />} />
     </Routes>
   );
 };
