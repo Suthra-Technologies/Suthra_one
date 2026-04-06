@@ -382,10 +382,36 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                                     <Typography variant="body2">{formatCurrency(order.tax.amount)}</Typography>
                                 </Box>
                             )}
+                            {order.processingFee > 0 && (
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <Typography variant="body2">Processing Fee:</Typography>
+                                    <Typography variant="body2">{formatCurrency(order.processingFee)}</Typography>
+                                </Box>
+                            )}
                             {order.serviceCharge?.amount > 0 && (
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                                     <Typography variant="body2">Service Charge ({order.serviceCharge.rate}%):</Typography>
                                     <Typography variant="body2">{formatCurrency(order.serviceCharge.amount)}</Typography>
+                                </Box>
+                            )}
+                            {order.discount?.amount > 0 && (
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', color: 'success.main' }}>
+                                    <Typography variant="body2">
+                                        Discount {order.discount.code ? `(${order.discount.code})` : ''}:
+                                    </Typography>
+                                    <Typography variant="body2" fontWeight="medium">
+                                        -{formatCurrency(order.discount.amount)}
+                                    </Typography>
+                                </Box>
+                            )}
+                            {order.rewardDiscount > 0 && (
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', color: 'success.main' }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                        Points Discount:
+                                    </Typography>
+                                    <Typography variant="body2" fontWeight="bold">
+                                        -{formatCurrency(order.rewardDiscount)}
+                                    </Typography>
                                 </Box>
                             )}
                             {order.deliveryCharge > 0 && (

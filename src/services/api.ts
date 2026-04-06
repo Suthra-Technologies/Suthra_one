@@ -211,7 +211,7 @@ export const attendanceAPI = {
 
 // -------------------- Menu API --------------------
 export const menuAPI = {
-  getAll: (params?: { search?: string }) => api.get('/menu', { params }),
+  getAll: (params?: { search?: string; cursor?: string; limit?: number; category?: string; foodType?: string; isAvailable?: boolean }) => api.get('/menu', { params }),
   getAllCategories: () => api.get('/menu/categories'),
   getAllSubcategories: (categoryId?: string) => api.get('/menu/subcategories', { params: categoryId ? { categoryId } : undefined }),
   getOne: (id: string) => api.get(`/menu/${id}`),
@@ -228,6 +228,17 @@ export const menuAPI = {
   createSubcategory: (subcategoryData: any) => api.post('/menu/subcategories', subcategoryData),
   updateSubcategory: (id: string, subcategoryData: any) => api.put(`/menu/subcategories/${id}`, subcategoryData),
   deleteSubcategory: (id: string) => api.delete(`/menu/subcategories/${id}`),
+};
+
+// -------------------- Tax Categories API (External) --------------------
+export const taxCategoriesAPI = {
+  getAll: (params?: { search?: string; page?: number; limit?: number }) =>
+    axios.get('https://tax.evergreenfarmsusa.com/tax-categories', { params }),
+};
+
+// -------------------- Tax Calculation API --------------------
+export const taxAPI = {
+  calculate: (data: any) => api.post('/tax/calculate', data),
 };
 
 // -------------------- Trays API --------------------
@@ -271,6 +282,8 @@ export const inventoryAPI = {
     api.get('/inventory/reports/usage-range', { params: { fromDate, toDate, ...params } }),
   getUsageHistory: (id: string, startDate: string, endDate: string) =>
     api.get(`/inventory/${id}/usage-history`, { params: { startDate, endDate } }),
+  restockBulk: (items: Array<{ inventoryId: string; quantity: number; costPrice?: number }>) =>
+    api.post('/inventory/restock-bulk', { items }),
 };
 
 
@@ -406,8 +419,10 @@ export const superAdminAPI = superAPI; // alias for compatibility
 
 export const supportAPI = {
   listMine: () => api.get('/support/mine'),
+  listCustomerTickets: () => api.get('/support/tickets/customers'),
   create: (payload: any) => api.post('/support', payload),
   reply: (id: string, payload: any) => api.post(`/support/${id}/reply`, payload),
+  resolve: (id: string, payload: any) => api.post(`/support/${id}/resolve`, payload),
 };
 
 
@@ -435,6 +450,9 @@ export const purchaseOrdersAPI = {
   updateStatus: (id: string, status: string) => api.patch(`/purchase-orders/${id}/status`, { status }),
   receive: (id: string) => api.patch(`/purchase-orders/${id}/receive`),
   getAnalytics: (params?: any) => api.get('/purchase-orders/analytics', { params }),
+  extractInvoice: (formData: FormData) => api.post('/purchase-orders/extract-invoice', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
 };
 
 // -------------------- Vendors API --------------------
@@ -445,6 +463,7 @@ export const vendorsAPI = {
   update: (id: string, data: any) => api.put(`/vendors/${id}`, data),
   delete: (id: string) => api.delete(`/vendors/${id}`),
   toggleStatus: (id: string) => api.patch(`/vendors/${id}/toggle-status`),
+  getReorderAlerts: (id: string) => api.get(`/vendors/${id}/reorder-alerts`),
 };
 
 // -------------------- Recipes API --------------------
@@ -470,6 +489,15 @@ export const uploadAPI = {
       timeout: 60000, // 60 seconds
     });
   },
+};
+
+// -------------------- Gallery API --------------------
+export const galleryAPI = {
+  getAll: () => api.get('/gallery'),
+  getPublic: (tenantSlug: string) => api.get('/gallery/public', { params: { tenantSlug } }),
+  create: (data: any) => api.post('/gallery', data),
+  update: (id: string, data: any) => api.patch(`/gallery/${id}`, data),
+  delete: (id: string) => api.delete(`/gallery/${id}`),
 };
 
 // -------------------- Catering API --------------------

@@ -16,7 +16,8 @@ import {
     Search as SearchIcon,
     FilterList as FilterListIcon,
     Terminal as TerminalIcon,
-    Refresh as RefreshIcon
+    Refresh as RefreshIcon,
+    Star as StarIcon
 } from '@mui/icons-material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import {
@@ -83,6 +84,8 @@ import {
 } from '../../context/SettingsContext';
 
 import { auditLogsAPI, paymentsAPI, printersAPI, settingsAPI, tenantAPI, usersAPI } from '../../services/api';
+import GallerySettings from './GallerySettings';
+import { Collections as CollectionsIcon } from '@mui/icons-material';
 
 import { NOTIFICATION_SOUNDS, previewSound } from '../../utils/notificationSounds';
 import type { ValidationResult } from '../../utils/validation';
@@ -384,6 +387,18 @@ const createDefaultSettings = (): SettingsState => ({
         billing: { name: 'Main Printer', type: 'none', ip: '', port: 80, paperWidth: 80, deviceId: 'local_printer' },
         kitchen: { name: 'Kitchen Printer', type: 'none', ip: '', port: 80, paperWidth: 80, deviceId: 'local_printer' },
     },
+    rewards: {
+        isEnabled: true,
+        displayName: 'Points',
+        pointValue: 0.05,
+        earnRate: 1,
+        calculationBase: 'total',
+        minOrderValueToEarn: 0,
+        welcomeBonus: 100,
+        firstOrderBonus: 0,
+        minPointsToRedeem: 100,
+        maxRedemptionPercentage: 100,
+    },
 });
 
 const mergeSettingsWithDefaults = (defaults: SettingsState, partial: Partial<SettingsState>): SettingsState => {
@@ -455,6 +470,10 @@ const mergeSettingsWithDefaults = (defaults: SettingsState, partial: Partial<Set
             },
         },
         printer: mergedPrinter,
+        rewards: {
+            ...defaults.rewards,
+            ...(partial.rewards || {}),
+        },
     };
 };
 
@@ -684,7 +703,7 @@ const SettingsPage: React.FC = () => {
         setTabValue(newValue);
     };
 
-    const handleInputChange = (category: 'restaurant' | 'system', field: string, value: any) => {
+    const handleInputChange = (category: 'restaurant' | 'system' | 'rewards', field: string, value: any) => {
         setSettings(prev => {
             const newSettings = {
                 ...prev,
@@ -1187,6 +1206,11 @@ const SettingsPage: React.FC = () => {
                 await settingsAPI.update('printer', settings.printer);
                 updateGlobalSettings(settings);
                 successMessage = 'Printer settings saved successfully';
+            } else if (category === 'rewards') {
+                await settingsAPI.update('rewards', settings.rewards);
+                updateGlobalSettings(settings); // Update global context
+                await fetchSettings();
+                successMessage = 'Rewards settings saved successfully';
             }
 
 
@@ -1270,6 +1294,8 @@ const SettingsPage: React.FC = () => {
                     <Tab label="Payment" icon={<CreditCardIcon />} iconPosition="start" />
                     <Tab label="Printers" icon={<PrintIcon />} iconPosition="start" />
                     <Tab label="Audit Logs" icon={<CheckCircleIcon />} iconPosition="start" />
+                    <Tab label="Loyalty / Rewards" icon={<StarIcon />} iconPosition="start" />
+                    <Tab label="Gallery" icon={<CollectionsIcon />} iconPosition="start" />
                 </Tabs>
                 <Divider />
 
@@ -3388,6 +3414,171 @@ const SettingsPage: React.FC = () => {
                             </TableContainer>
                         )}
                     </Box>
+                </TabPanel>
+
+                <TabPanel value={tabValue} index={7}>
+                    <Box sx={{ mb: 4, maxWidth: 800 }}>
+                        <Typography variant="h6" gutterBottom>
+                            Loyalty & Reward Points
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                            Configure how customers earn and redeem points.
+                        </Typography>
+                        
+                        <Paper sx={{ p: 3, mb: 3 }} variant="outlined">
+                            <FormControlLabel
+                                control={
+                                    <Switch
+                                        checked={settings.rewards?.isEnabled ?? true}
+                                        onChange={(e) => handleInputChange('rewards', 'isEnabled', e.target.checked)}
+                                        color="primary"
+                                    />
+                                }
+                                label={<Typography fontWeight="bold">Enable Rewards System</Typography>}
+                                sx={{ mb: 2 }}
+                            />
+                            
+                            <Collapse in={settings.rewards?.isEnabled ?? true}>
+                                <Grid container spacing={3}>
+                                    <Grid size={{ xs: 12, md: 6 }}>
+                                        <TextField
+                                            fullWidth
+                                            label="Display Name"
+                                            value={settings.rewards?.displayName || 'Points'}
+                                            onChange={(e) => handleInputChange('rewards', 'displayName', e.target.value)}
+                                            helperText="e.g., Points, Coins, Stars"
+                                        />
+                                    </Grid>
+                                    <Grid size={{ xs: 12, md: 6 }}>
+                                        <TextField
+                                            fullWidth
+                                            type="number"
+                                            label="Point Value ($)"
+                                            value={settings.rewards?.pointValue ?? 0.05}
+                                            onChange={(e) => handleInputChange('rewards', 'pointValue', Number(e.target.value))}
+                                            helperText="Value of 1 point in dollars (e.g. 0.05 = $5 for 100 pts)"
+                                        />
+                                    </Grid>
+                                    
+                                    <Grid size={{ xs: 12 }}>
+                                        <Divider sx={{ my: 1 }} />
+                                        <Typography variant="subtitle2" sx={{ mb: 2 }}>Earning Rules</Typography>
+                                    </Grid>
+                                    
+                                    <Grid size={{ xs: 12, md: 4 }}>
+                                        <TextField
+                                            fullWidth
+                                            type="number"
+                                            label="Points per $1 Spent"
+                                            value={settings.rewards?.earnRate ?? 1}
+                                            onChange={(e) => handleInputChange('rewards', 'earnRate', Number(e.target.value))}
+                                        />
+                                    </Grid>
+                                    <Grid size={{ xs: 12, md: 4 }}>
+                                        <TextField
+                                            fullWidth
+                                            select
+                                            label="Calculation Base"
+                                            value={settings.rewards?.calculationBase || 'total'}
+                                            onChange={(e) => handleInputChange('rewards', 'calculationBase', e.target.value)}
+                                        >
+                                            <MenuItem value="subtotal">Subtotal</MenuItem>
+                                            <MenuItem value="total_after_discount">After Discount</MenuItem>
+                                            <MenuItem value="total">Final Total</MenuItem>
+                                        </TextField>
+                                    </Grid>
+                                    <Grid size={{ xs: 12, md: 4 }}>
+                                        <TextField
+                                            fullWidth
+                                            type="number"
+                                            label="Min Order to Earn"
+                                            value={settings.rewards?.minOrderValueToEarn ?? 0}
+                                            onChange={(e) => handleInputChange('rewards', 'minOrderValueToEarn', Number(e.target.value))}
+                                            InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
+                                        />
+                                    </Grid>
+
+                                    <Grid size={{ xs: 12 }}>
+                                        <Divider sx={{ my: 1 }} />
+                                        <Typography variant="subtitle2" sx={{ mb: 2 }}>Bonuses</Typography>
+                                    </Grid>
+
+                                    <Grid size={{ xs: 12, md: 6 }}>
+                                        <TextField
+                                            fullWidth
+                                            type="number"
+                                            label="Welcome Bonus"
+                                            value={settings.rewards?.welcomeBonus ?? 100}
+                                            onChange={(e) => handleInputChange('rewards', 'welcomeBonus', Number(e.target.value))}
+                                            helperText="Points given on sign up"
+                                        />
+                                    </Grid>
+                                    <Grid size={{ xs: 12, md: 6 }}>
+                                        <TextField
+                                            fullWidth
+                                            type="number"
+                                            label="First Order Bonus"
+                                            value={settings.rewards?.firstOrderBonus ?? 0}
+                                            onChange={(e) => handleInputChange('rewards', 'firstOrderBonus', Number(e.target.value))}
+                                        />
+                                    </Grid>
+
+                                    <Grid size={{ xs: 12 }}>
+                                        <Divider sx={{ my: 1 }} />
+                                        <Typography variant="subtitle2" sx={{ mb: 2 }}>Redemption Rules</Typography>
+                                    </Grid>
+
+                                    <Grid size={{ xs: 12, md: 6 }}>
+                                        <TextField
+                                            fullWidth
+                                            type="number"
+                                            label="Min Points to Redeem"
+                                            value={settings.rewards?.minPointsToRedeem ?? 100}
+                                            onChange={(e) => handleInputChange('rewards', 'minPointsToRedeem', Number(e.target.value))}
+                                        />
+                                    </Grid>
+                                    <Grid size={{ xs: 12, md: 6 }}>
+                                        <TextField
+                                            fullWidth
+                                            type="number"
+                                            label="Max Redemption % of Bill"
+                                            value={settings.rewards?.maxRedemptionPercentage ?? 100}
+                                            onChange={(e) => handleInputChange('rewards', 'maxRedemptionPercentage', Number(e.target.value))}
+                                            InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
+                                            helperText="Cap points usage to X% of the order total"
+                                        />
+                                    </Grid>
+
+                                    <Grid size={{ xs: 12 }}>
+                                        <Button 
+                                            variant="contained" 
+                                            startIcon={<SaveIcon />}
+                                            onClick={() => handleSave('rewards')}
+                                            disabled={loading}
+                                        >
+                                            Save Loyalty Rules
+                                        </Button>
+                                    </Grid>
+                                </Grid>
+                            </Collapse>
+
+                            {!(settings.rewards?.isEnabled ?? true) && (
+                                <Box sx={{ mt: 2 }}>
+                                    <Button 
+                                        variant="contained" 
+                                        startIcon={<SaveIcon />}
+                                        onClick={() => handleSave('rewards')}
+                                        disabled={loading}
+                                    >
+                                        Save Loyalty Status
+                                    </Button>
+                                </Box>
+                            )}
+                        </Paper>
+                    </Box>
+                </TabPanel>
+                <TabPanel value={tabValue} index={8}>
+                    <GallerySettings />
                 </TabPanel>
             </Paper >
 

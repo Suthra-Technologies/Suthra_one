@@ -83,7 +83,7 @@ const AdminSupportPage: React.FC = () => {
     setLoading(true);
     try {
       const res = await supportAPI.listMine();
-      setTickets(res.data || []);
+      setTickets(Array.isArray(res.data) ? res.data : []);
     } catch (e) {
       console.error(e);
       toast.error('Failed to load tickets');
@@ -178,7 +178,8 @@ const AdminSupportPage: React.FC = () => {
     setPage(0);
   };
 
-  const paginatedTickets = tickets.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+  const safeTickets = Array.isArray(tickets) ? tickets : [];
+  const paginatedTickets = safeTickets.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
   return (
     <Container maxWidth="md" sx={{ py: 4 }}>
@@ -193,9 +194,9 @@ const AdminSupportPage: React.FC = () => {
         <Box sx={{ display: 'grid', gridTemplateColumns: { sm: '1fr 200px 200px' }, gap: 2 }}>
           <TextField label={<Box component="span">Subject <Box component="span" sx={{ color: 'error.main' }}>*</Box></Box>} value={subject} onChange={(e) => setSubject(e.target.value)} fullWidth />
           <TextField select label="Category" value={category} onChange={(e) => setCategory(e.target.value)}>
-            {['billing', 'technical', 'feature_request', 'account', 'other'].map((c) => (
+            {['billing', 'technical', 'feature_request', 'account', 'other', 'order_issue', 'feedback', 'refund_issue'].map((c) => (
               <MenuItem key={c} value={c}>
-                {c}
+                {c.replace('_', ' ')}
               </MenuItem>
             ))}
           </TextField>
@@ -287,7 +288,7 @@ const AdminSupportPage: React.FC = () => {
           <Typography>Loading...</Typography>
         ) : (
           <Stack spacing={2}>
-            {paginatedTickets.map((t) => (
+            {(Array.isArray(paginatedTickets) ? paginatedTickets : []).map((t) => (
               <Paper
                 key={t._id}
                 variant="outlined"
@@ -451,7 +452,7 @@ const AdminSupportPage: React.FC = () => {
           <Button onClick={() => setViewDialogOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
-    </Container>
+    </Container >
   );
 };
 

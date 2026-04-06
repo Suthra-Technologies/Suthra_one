@@ -320,16 +320,25 @@ const MyBookingsPage: React.FC = () => {
                         <Typography variant="h6" fontWeight={800} sx={{ lineHeight: 1.2 }}>
                             Table {booking.tableNumber}
                         </Typography>
-                        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, display: 'block', mt: 0.5 }}>
-                            {booking.tableType} • {booking.location}
+                        <Typography variant="caption" sx={{ fontWeight: 800, display: 'block', mt: 0.5, letterSpacing: 0.5, color: 'primary.main' }}>
+                            ID: {booking.id.toUpperCase()}
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, display: 'block', mt: 1 }}>
+                             {booking.location}
                         </Typography>
                     </Box>
                     <Chip
                         icon={getStatusIcon(booking.status)}
                         label={booking.status.toUpperCase()}
                         color={getStatusColor(booking.status)}
-                        size="small"
-                        sx={{ fontWeight: 800, borderRadius: '8px', px: 1 }}
+                        size="medium"
+                        sx={{ 
+                            fontWeight: 800, 
+                            borderRadius: '12px', 
+                            px: 1.5,
+                            height: 32,
+                            boxShadow: booking.status === 'confirmed' ? '0 4px 12px rgba(16, 185, 129, 0.2)' : 'none',
+                        }}
                     />
                 </Box>
                 
@@ -396,19 +405,6 @@ const MyBookingsPage: React.FC = () => {
                     </Box>
                 )}
 
-                {booking.canCancel && (
-                    <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid rgba(0,0,0,0.05)', pt: 2 }}>
-                        <Button 
-                            variant="outlined" 
-                            color="error" 
-                            size="small"
-                            onClick={() => { setSelectedBooking(booking); setShowCancelDialog(true); }}
-                            sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700 }}
-                        >
-                            Cancel Reservation
-                        </Button>
-                    </Box>
-                )}
             </CardContent>
         </Card>
     );

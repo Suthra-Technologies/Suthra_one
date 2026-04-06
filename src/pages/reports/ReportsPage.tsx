@@ -1751,12 +1751,7 @@ const ReportsPage: React.FC = () => {
                                     Orders with Tips
                                 </Typography>
                                 <Typography variant="h4" sx={{ color: 'text.primary', fontWeight: 800 }}>
-                                    {salesReport ? (
-                                        (() => {
-                                            const totalOrders = salesReport.summary.totalOrders || 0;
-                                            return totalOrders > 0 ? "Analyzed" : "0%";
-                                        })()
-                                    ) : '-'}
+                                    {salesReport ? salesReport.summary.ordersWithTips || 0 : '-'}
                                 </Typography>
                             </Box>
                         </Stack>

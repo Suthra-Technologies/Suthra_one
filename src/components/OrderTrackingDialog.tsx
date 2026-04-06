@@ -264,7 +264,7 @@ const OrderTrackingDialog: React.FC<OrderTrackingDialogProps> = ({ open, order: 
                 <Divider />
 
                 {/* Driver Info (if delivery) */}
-                {order.orderType === 'delivery' && order.driver && (
+                {order.orderType === 'delivery' && (order.driver || order.trackingUrl) && (
                     <Box sx={{ p: 2, bgcolor: 'background.paper' }}>
                         <Typography variant="subtitle2" gutterBottom>
                             Delivery Partner
@@ -275,15 +275,29 @@ const OrderTrackingDialog: React.FC<OrderTrackingDialogProps> = ({ open, order: 
                             </Box>
                             <Box sx={{ flex: 1 }}>
                                 <Typography variant="body2" fontWeight="bold">
-                                    {order.driver.name}
+                                    {order.driver?.name || 'DoorDash Delivery'}
                                 </Typography>
                                 <Typography variant="caption" color="text.secondary">
-                                    On the way
+                                    {order.status === 'delivered' ? 'Delivered' : 'On the way'}
                                 </Typography>
                             </Box>
-                            <IconButton color="primary" href={`tel:${order.driver.phone}`}>
-                                <PhoneIcon />
-                            </IconButton>
+                            {order.driver?.phone && (
+                                <IconButton color="primary" href={`tel:${order.driver.phone}`}>
+                                    <PhoneIcon />
+                                </IconButton>
+                            )}
+                            {order.trackingUrl && (
+                                <Button 
+                                    variant="contained" 
+                                    size="small" 
+                                    href={order.trackingUrl} 
+                                    target="_blank"
+                                    startIcon={<DeliveryIcon />}
+                                    sx={{ borderRadius: '20px', textTransform: 'none' }}
+                                >
+                                    Track Live
+                                </Button>
+                            )}
                         </Stack>
                     </Box>
                 )}
@@ -328,9 +342,25 @@ const OrderTrackingDialog: React.FC<OrderTrackingDialogProps> = ({ open, order: 
                     </Box>
                     {order.tax?.amount > 0 && (
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                            <Typography variant="body2" color="text.secondary">Tax</Typography>
+                            <Typography variant="body2" color="text.secondary">Tax ({order.tax.rate}%)</Typography>
                             <Typography variant="body2">
                                 {formatCurrency(order.tax.amount)}
+                            </Typography>
+                        </Box>
+                    )}
+                    {order.processingFee > 0 && (
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                            <Typography variant="body2" color="text.secondary">Processing Fee</Typography>
+                            <Typography variant="body2">
+                                {formatCurrency(order.processingFee)}
+                            </Typography>
+                        </Box>
+                    )}
+                    {order.deliveryCharge > 0 && (
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                            <Typography variant="body2" color="text.secondary">Delivery Charge</Typography>
+                            <Typography variant="body2">
+                                {formatCurrency(order.deliveryCharge)}
                             </Typography>
                         </Box>
                     )}

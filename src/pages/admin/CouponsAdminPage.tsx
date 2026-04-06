@@ -136,13 +136,10 @@ const CouponsAdminPage: React.FC = () => {
         try {
             setLoading(true);
             const response = await couponsAPI.getAll({ page: page + 1, limit: rowsPerPage });
-            if (response.data.coupons) {
-                setCoupons(response.data.coupons);
-                setTotalCoupons(response.data.total);
-            } else {
-                setCoupons(response.data);
-                setTotalCoupons(response.data.length);
-            }
+            const data = response.data.coupons || response.data;
+            const safeCoupons = Array.isArray(data) ? data : [];
+            setCoupons(safeCoupons);
+            setTotalCoupons(response.data.total || safeCoupons.length);
         } catch (error) {
             console.error('Error fetching coupons:', error);
             toast.error('Failed to load coupons');
@@ -160,7 +157,8 @@ const CouponsAdminPage: React.FC = () => {
     const fetchMenu = async () => {
         try {
             const res = await import('../../services/api').then(m => m.menuAPI.getAll());
-            setMenuItems(res.data);
+            const data = res.data;
+            setMenuItems(Array.isArray(data) ? data : (data?.items || []));
         } catch (error) {
             console.error('Failed to load menu items');
         }
@@ -169,7 +167,8 @@ const CouponsAdminPage: React.FC = () => {
     const fetchCustomers = async () => {
         try {
             const response = await import('../../services/api').then(m => m.customersAPI.getAll({ page: 1, limit: 1000 }));
-            const fetched = response.data.customers || response.data;
+            const raw = response.data.customers || response.data;
+            const fetched = Array.isArray(raw) ? raw : [];
             setAllCustomers(fetched);
             const customersWithEmail = fetched.filter((c: any) => c.email);
             setCustomers(customersWithEmail);
@@ -328,7 +327,7 @@ const CouponsAdminPage: React.FC = () => {
         });
     };
 
-    const customersWithPhone = allCustomers.filter((c: any) => c.phone && c.phone.trim());
+    const customersWithPhone = (Array.isArray(allCustomers) ? allCustomers : []).filter((c: any) => c.phone && c.phone.trim());
 
     const handleOpenSmsDialog = (coupon: Coupon) => {
         setSelectedCoupon(coupon);
@@ -545,7 +544,7 @@ const CouponsAdminPage: React.FC = () => {
                                         Active Coupons
                                     </Typography>
                                     <Typography variant="h4" fontWeight="bold" color="success.main">
-                                        {coupons.filter(c => isCouponActive(c)).length}
+                                        {(Array.isArray(coupons) ? coupons : []).filter(c => isCouponActive(c)).length}
                                     </Typography>
                                 </Box>
                                 <EmailIcon sx={{ fontSize: 48, color: 'success.main', opacity: 0.3 }} />
@@ -580,7 +579,7 @@ const CouponsAdminPage: React.FC = () => {
             ) : isMobile ? (
                 // Mobile Card View
                 <Stack spacing={2}>
-                    {coupons.map((coupon) => (
+                    {(Array.isArray(coupons) ? coupons : []).map((coupon) => (
                         <Card key={coupon._id}>
                             <CardContent>
                                 <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
@@ -690,7 +689,7 @@ const CouponsAdminPage: React.FC = () => {
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {coupons.map((coupon) => (
+                                {(Array.isArray(coupons) ? coupons : []).map((coupon) => (
                                     <TableRow key={coupon._id}>
                                         <TableCell>
                                             <Chip label={coupon.code} color="primary" />

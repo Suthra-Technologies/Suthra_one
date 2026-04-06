@@ -44,7 +44,12 @@ import {
     LocationOn as AddressIcon,
     AccountBalance as BankIcon,
     Close as CloseIcon,
+    Inventory as InventoryIcon,
+    Warning as WarningIcon,
+    ShoppingCart as OrderIcon,
+    WhatsApp as WhatsAppIcon,
 } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { vendorsAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
@@ -82,6 +87,7 @@ const CATEGORIES = [
 const VendorsPage: React.FC = () => {
     const { settings } = useSettings();
     const theme = useTheme();
+    const navigate = useNavigate();
     const [vendors, setVendors] = useState<Vendor[]>([]);
     const [loading, setLoading] = useState(true);
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -92,6 +98,11 @@ const VendorsPage: React.FC = () => {
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [totalVendors, setTotalVendors] = useState(0);
+
+    // Reorder Alerts State
+    const [reorderDialogOpen, setReorderDialogOpen] = useState(false);
+    const [reorderItems, setReorderItems] = useState<any[]>([]);
+    const [reorderLoading, setReorderLoading] = useState(false);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -284,6 +295,71 @@ const VendorsPage: React.FC = () => {
         } catch (error: any) {
             toast.error('Failed to update vendor status');
         }
+    };
+
+    const handleReorderClick = async (vendor: Vendor) => {
+        try {
+            setSelectedVendor(vendor);
+            setReorderLoading(true);
+            setReorderDialogOpen(true);
+            const response = await vendorsAPI.getReorderAlerts(vendor._id);
+            setReorderItems(response.data.data || []);
+        } catch (error) {
+            console.error('Failed to fetch reorder alerts:', error);
+            toast.error('Failed to fetch reorder alerts');
+        } finally {
+            setReorderLoading(false);
+        }
+    };
+
+    const handleCreatePOFromReorder = () => {
+        if (!selectedVendor || reorderItems.length === 0) return;
+
+        // Map reorder items to PO item format
+        const itemsToReorder = reorderItems.map(item => ({
+            description: item.name,
+            quantity: item.lastOrderQuantity || 1,
+            unit: item.unit,
+            unitPrice: item.lastOrderPrice || 0,
+            total: (item.lastOrderQuantity || 1) * (item.lastOrderPrice || 0),
+            inventoryItem: item.itemId,
+            weightValue: '',
+            weightUnit: 'lb'
+        }));
+
+        // Navigate to Create PO page with pre-filled state
+        navigate('/purchase-orders/create', { 
+            state: { 
+                vendor: {
+                    name: selectedVendor.name,
+                    contact: selectedVendor.contact,
+                    email: selectedVendor.email,
+                    address: selectedVendor.address
+                },
+                items: itemsToReorder,
+                notes: `Auto-generated from Reorder Alerts for ${new Date().toLocaleDateString()}`
+            } 
+        });
+    };
+
+    const handleEmailReorder = () => {
+        if (!selectedVendor || reorderItems.length === 0) return;
+        
+        const itemBody = reorderItems.map(item => `- ${item.name}: ${item.lastOrderQuantity} ${item.unit}`).join('\n');
+        const subject = encodeURIComponent(`Reorder Request - ${new Date().toLocaleDateString()}`);
+        const body = encodeURIComponent(`Hi ${selectedVendor.name},\n\nI would like to place an order for the following items:\n\n${itemBody}\n\nPlease confirm receipt and let me know the availability.\n\nBest regards.`);
+        
+        window.location.href = `mailto:${selectedVendor.email || ''}?subject=${subject}&body=${body}`;
+    };
+
+    const handleWhatsAppReorder = () => {
+        if (!selectedVendor || reorderItems.length === 0) return;
+        
+        const itemBody = reorderItems.map(item => `* ${item.name}: ${item.lastOrderQuantity} ${item.unit}`).join('%0A');
+        const text = encodeURIComponent(`*Reorder Request*\n\nHi ${selectedVendor.name},\n\nI would like to place an order for the following items:\n${itemBody}`);
+        
+        const phoneNumber = selectedVendor.contact?.replace(/\D/g, '');
+        window.open(`https://wa.me/${phoneNumber}?text=${text}`, '_blank');
     };
 
     const handleCategoryChange = (category: string) => {
@@ -480,6 +556,15 @@ const VendorsPage: React.FC = () => {
                                         />
                                     </TableCell>
                                     <TableCell align="center">
+                                        <Tooltip title="Reorder Needed Items">
+                                            <IconButton 
+                                                onClick={() => handleReorderClick(vendor)} 
+                                                size="small" 
+                                                sx={{ color: 'warning.main' }}
+                                            >
+                                                <InventoryIcon />
+                                            </IconButton>
+                                        </Tooltip>
                                         <Tooltip title="Edit">
                                             <IconButton onClick={() => handleOpenDialog(vendor)} size="small">
                                                 <EditIcon />
@@ -751,6 +836,95 @@ const VendorsPage: React.FC = () => {
                     <Button variant="contained" color="error" onClick={handleDelete}>
                         Delete
                     </Button>
+                </DialogActions>
+            </Dialog>
+            
+            {/* Reorder Alerts Dialog */}
+            <Dialog 
+                open={reorderDialogOpen} 
+                onClose={() => setReorderDialogOpen(false)} 
+                maxWidth="md" 
+                fullWidth
+            >
+                <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 'bold' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <WarningIcon color="warning" />
+                        Reorder Alerts: {selectedVendor?.name}
+                    </Box>
+                    <IconButton onClick={() => setReorderDialogOpen(false)} size="small">
+                        <CloseIcon />
+                    </IconButton>
+                </DialogTitle>
+                <DialogContent dividers>
+                    {reorderLoading ? (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                            <CircularProgress />
+                        </Box>
+                    ) : reorderItems.length === 0 ? (
+                        <Typography sx={{ py: 2, textAlign: 'center' }}>
+                            All items for this vendor are within safe stock levels.
+                        </Typography>
+                    ) : (
+                        <TableContainer>
+                            <Table size="small">
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>Item Name</TableCell>
+                                        <TableCell align="right">Current Stock</TableCell>
+                                        <TableCell align="right">Reorder Level</TableCell>
+                                        <TableCell align="right">Default Qty (Last Order)</TableCell>
+                                        <TableCell align="right">Unit</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {reorderItems.map((item) => (
+                                        <TableRow key={item.itemId}>
+                                            <TableCell sx={{ fontWeight: 'medium' }}>{item.name}</TableCell>
+                                            <TableCell align="right" sx={{ color: 'error.main', fontWeight: 'bold' }}>
+                                                {item.currentStock}
+                                            </TableCell>
+                                            <TableCell align="right">{item.reorderLevel}</TableCell>
+                                            <TableCell align="right" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
+                                                {item.lastOrderQuantity}
+                                            </TableCell>
+                                            <TableCell align="right">{item.unit}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    )}
+                </DialogContent>
+                <DialogActions sx={{ p: 2, gap: 1 }}>
+                    <Button onClick={() => setReorderDialogOpen(false)}>Close</Button>
+                    {reorderItems.length > 0 && (
+                        <>
+                            <Button 
+                                variant="outlined" 
+                                color="info" 
+                                startIcon={<EmailIcon />}
+                                onClick={handleEmailReorder}
+                            >
+                                Email
+                            </Button>
+                            <Button 
+                                variant="outlined" 
+                                color="success" 
+                                startIcon={<WhatsAppIcon />}
+                                onClick={handleWhatsAppReorder}
+                            >
+                                WhatsApp
+                            </Button>
+                            <Button 
+                                variant="contained" 
+                                color="primary" 
+                                startIcon={<OrderIcon />}
+                                onClick={handleCreatePOFromReorder}
+                            >
+                                Create PO
+                            </Button>
+                        </>
+                    )}
                 </DialogActions>
             </Dialog>
         </Box>

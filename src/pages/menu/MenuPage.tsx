@@ -57,92 +57,10 @@ import { useSettings } from '../../context/SettingsContext';
 import { menuAPI, traysAPI, uploadAPI } from '../../services/api';
 import TraysPage from './TraysPage';
 import RecipesPage from '../recipes/RecipesPage';
+import type { Category, Subcategory, IMenuItem } from './types';
+import MenuItemDialog from './components/MenuItemDialog';
+import TaxCategorySelector from './components/TaxCategorySelector';
 
-interface Category {
-    _id: string;
-    name: string;
-    description?: string;
-    icon?: string;
-    image?: string;
-    color?: string;
-    order?: number;
-    parentCategory?: string | Category | null;
-    actionHistory?: any[];
-}
-
-interface Subcategory extends Category {
-    parentCategory: string | Category;
-}
-
-interface Variant {
-    name: string;
-    price: number;
-    description?: string;
-}
-
-interface ModifierOption {
-    name: string;
-    price: number;
-    isDefault?: boolean;
-}
-
-interface ModifierGroup {
-    name: string;
-    selectionType: 'single' | 'multiple';
-    required: boolean;
-    minSelection?: number;
-    maxSelection?: number;
-    options: ModifierOption[];
-}
-
-interface TrayOption {
-    tray: string;
-    price: number;
-    servingSize?: number;
-    isActive?: boolean;
-}
-
-interface IMenuItem {
-    _id: string;
-    name: string;
-    description?: string;
-    price: number;               // base price (kept for backward compatibility)
-    category: string | Category;
-    subcategory?: string | Subcategory | null;
-    categories?: (string | Category)[];
-    image?: string;
-    isAvailable: boolean;
-    variants?: Variant[];        // new field
-    modifierGroups?: ModifierGroup[]; // modifiers
-    addOns?: string[];           // IDs of linked menu items
-    actionHistory?: any[];
-    taxRate?: number | null;
-    isCateringAvailable: boolean;
-    isAutoDebit?: boolean;
-    foodType?: 'veg' | 'non-veg';
-    trayOptions?: TrayOption[];
-    quantityType?: 'number' | 'tray';
-    baseTray?: string;
-    servingSize?: number;
-    spiceLevel?: 'mild' | 'medium' | 'hot' | 'very_hot';
-    isSpiceLevelAvailable?: boolean;
-    spiceLevels?: string[];      // List of available labels
-    spiceLevelData?: any;        // Mapping of labels to values
-    availableDays?: string[];    // New field for weekday/weekend scheduling
-    isWeeklyScheduleEnabled?: boolean;
-    availabilityType?: 'highlight' | 'available_only';
-    displayOption?: 'normal' | 'weekly_special' | 'todays_special';
-    validFrom?: Date | null;
-    validTo?: Date | null;
-    priority?: number;
-}
-
-const SPICE_LEVEL_OPTIONS = [
-    { value: 'mild', label: 'Mild' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'hot', label: 'Hot' },
-    { value: 'very_hot', label: 'Very Hot' },
-] as const;
 
 const MenuPage: React.FC = () => {
     const theme = useTheme();
@@ -161,12 +79,14 @@ const MenuPage: React.FC = () => {
     const [searchLoading, setSearchLoading] = useState(false);
     const [debouncedLoading, setDebouncedLoading] = useState(false);
     const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    const [addOnsCategoryFilter, setAddOnsCategoryFilter] = useState<string>('all');
     const [trays, setTrays] = useState<any[]>([]);
     const hasInitializedSearch = useRef(false);
     const latestMenuRequestRef = useRef(0);
     const menuItemsRef = useRef<HTMLDivElement>(null);
     const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
+    const [nextCursor, setNextCursor] = useState<string | null>(null);
+    const [isFetchingMore, setIsFetchingMore] = useState(false);
+    const PAGE_LIMIT = 24;
 
     // Dialogs State
     const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
@@ -174,53 +94,19 @@ const MenuPage: React.FC = () => {
 
     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
     const [editingMenuItem, setEditingMenuItem] = useState<IMenuItem | null>(null);
-    const [dialogTab, setDialogTab] = useState<number>(0);
-    const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
     const [bulkCsv, setBulkCsv] = useState('');
+    const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+    const [dialogTab, setDialogTab] = useState(0);
 
-    // Form State
+    // Form State for Categories
     const [categoryForm, setCategoryForm] = useState({
         name: '',
         description: '',
         icon: '',
         parentCategory: '',
+        taxCode: '',
     });
-
-    const [menuItemForm, setMenuItemForm] = useState({
-        name: '',
-        description: '',
-        price: '',
-        category: '',
-        subcategory: '',
-        image: '',
-        isAvailable: true,
-        isCateringAvailable: true,
-        variants: [] as Variant[],          // <-- new
-        modifierGroups: [] as ModifierGroup[],
-        addOns: [] as string[],
-        taxRate: '',
-        isAutoDebit: true,
-        foodType: '' as '' | 'veg' | 'non-veg',
-        trayOptions: [] as TrayOption[],
-        quantityType: 'number' as 'number' | 'tray',
-        baseTray: '',
-        servingSize: 1,
-        isSpiceLevelAvailable: false,
-        spiceLevels: ['mild', 'medium', 'hot', 'very_hot'] as string[],
-        mild: '',
-        medium: '',
-        hot: '',
-        very_hot: '',
-        availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as string[], // New field
-        isWeeklyScheduleEnabled: false,
-        availabilityType: 'highlight' as 'highlight' | 'available_only',
-        displayOption: 'normal' as 'normal' | 'weekly_special' | 'todays_special',
-        validFrom: null as Date | null,
-        validTo: null as Date | null,
-        priority: 0,
-    });
-    const [menuItemTouched, setMenuItemTouched] = useState({ name: false, price: false, category: false, subcategory: false, image: false, foodType: false, taxRate: false });
-    const [categoryTouched, setCategoryTouched] = useState({ name: false, parentCategory: false });
+    const [categoryTouched, setCategoryTouched] = useState({ name: false, parentCategory: false, taxCode: false });
     const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; title: string; message: React.ReactNode; onConfirm: () => void }>({
         open: false,
         title: '',
@@ -273,9 +159,6 @@ const MenuPage: React.FC = () => {
     const isSubcategory = (category?: Category | null): category is Subcategory =>
         Boolean(category?.parentCategory);
 
-    const filteredSubcategories = menuItemForm.category
-        ? subcategories.filter((subcategory) => getSubcategoryParentId(subcategory) === menuItemForm.category)
-        : [];
 
     const fetchMenuItems = async (activeSearch = searchQuery) => {
         const requestId = latestMenuRequestRef.current + 1;
@@ -283,11 +166,15 @@ const MenuPage: React.FC = () => {
 
         try {
             setSearchLoading(true);
-            const menuRes = await menuAPI.getAll(activeSearch.trim() ? { search: activeSearch.trim() } : undefined);
+            const menuRes = await menuAPI.getAll(activeSearch.trim() ? { search: activeSearch.trim() } : { limit: PAGE_LIMIT });
             if (latestMenuRequestRef.current === requestId) {
-                const newMenuItems = Array.isArray(menuRes.data) ? menuRes.data : [];
+                const data = menuRes.data;
+                const newMenuItems = Array.isArray(data) ? data : (data?.items || []);
+                const newCursor = Array.isArray(data) ? null : data?.nextCursor;
+                
                 console.log('[Frontend] fetchMenuItems: Received', newMenuItems.length, 'menu items');
                 setMenuItems(newMenuItems);
+                setNextCursor(newCursor);
             }
         } catch (error: any) {
             console.error('Error fetching menu items:', error);
@@ -363,17 +250,21 @@ const MenuPage: React.FC = () => {
             ]);
 
             // Extract results, handling potential failures
-            const newMenuItems = menuRes.status === 'fulfilled' && Array.isArray(menuRes.value.data)
-                ? menuRes.value.data
+            let newMenuItems = [];
+            let newCursor = null;
+            if (menuRes.status === 'fulfilled') {
+                const data = (menuRes as PromiseFulfilledResult<any>).value.data;
+                newMenuItems = Array.isArray(data) ? data : (data?.items || []);
+                newCursor = Array.isArray(data) ? null : data?.nextCursor;
+            }
+            const newCategories = categoriesRes.status === 'fulfilled'
+                ? (categoriesRes as PromiseFulfilledResult<any>).value.data
                 : [];
-            const newCategories = categoriesRes.status === 'fulfilled' && Array.isArray(categoriesRes.value.data)
-                ? categoriesRes.value.data
+            const newSubcategories = subcategoriesRes.status === 'fulfilled'
+                ? (subcategoriesRes as PromiseFulfilledResult<any>).value.data
                 : [];
-            const newSubcategories = subcategoriesRes.status === 'fulfilled' && Array.isArray(subcategoriesRes.value.data)
-                ? subcategoriesRes.value.data
-                : [];
-            const newTrays = traysRes.status === 'fulfilled' && Array.isArray(traysRes.value.data)
-                ? traysRes.value.data
+            const newTrays = traysRes.status === 'fulfilled'
+                ? (traysRes as PromiseFulfilledResult<any>).value.data
                 : [];
 
             // Check if this request is still the latest one
@@ -403,6 +294,7 @@ const MenuPage: React.FC = () => {
                 }
 
                 setMenuItems(newMenuItems);
+                setNextCursor(newCursor);
                 setCategories(newCategories);
                 setSubcategories(newSubcategories);
                 setTrays(newTrays);
@@ -445,6 +337,33 @@ const MenuPage: React.FC = () => {
     };
 
 
+    // Fetch more items for pagination
+    const handleLoadMore = async () => {
+        if (!nextCursor || isFetchingMore) return;
+
+        try {
+            setIsFetchingMore(true);
+            const res = await menuAPI.getAll({
+                search: searchQuery.trim() || undefined,
+                cursor: nextCursor,
+                limit: PAGE_LIMIT
+            });
+
+            const data = res.data;
+            const moreItems = Array.isArray(data) ? data : (data?.items || []);
+            const newCursor = Array.isArray(data) ? null : data?.nextCursor;
+
+            setMenuItems(prev => [...prev, ...moreItems]);
+            setNextCursor(newCursor);
+        } catch (error) {
+            console.error('Error loading more items:', error);
+            toast.error('Failed to load more items');
+        } finally {
+            setIsFetchingMore(false);
+        }
+    };
+
+
 
     // Category Management
     const handleOpenCategoryDialog = (category?: Category, presetParentCategory = '') => {
@@ -455,13 +374,14 @@ const MenuPage: React.FC = () => {
                 description: category.description || '',
                 icon: category.icon || '',
                 parentCategory: getSubcategoryParentId(category) || '',
+                taxCode: category.taxCode || '',
             });
         } else {
             setEditingCategory(null);
-            setCategoryForm({ name: '', description: '', icon: '', parentCategory: presetParentCategory });
+            setCategoryForm({ name: '', description: '', icon: '', parentCategory: presetParentCategory, taxCode: '' });
         }
 
-        setCategoryTouched({ name: false, parentCategory: false });
+        setCategoryTouched({ name: false, parentCategory: false, taxCode: false });
         setDialogTab(0);
         setCategoryDialogOpen(true);
     };
@@ -470,6 +390,12 @@ const MenuPage: React.FC = () => {
         if (!categoryForm.name || !categoryForm.name.trim()) {
             setCategoryTouched((prev) => ({ ...prev, name: true }));
             toast.error('Category name is required');
+            return;
+        }
+
+        if (!categoryForm.taxCode || !categoryForm.taxCode.trim()) {
+            setCategoryTouched((prev) => ({ ...prev, taxCode: true }));
+            toast.error('Tax Code (TIC) is required');
             return;
         }
 
@@ -528,244 +454,8 @@ const MenuPage: React.FC = () => {
 
     // Menu Item Management
     const handleOpenMenuItemDialog = (item?: IMenuItem) => {
-        if (item) {
-            setEditingMenuItem(item);
-
-            // Load dynamic spice level data
-            const itemSpiceLevels = (item as any).spiceLevels || ['mild', 'medium', 'hot', 'very_hot'];
-            const itemSpiceLevelData = (item as any).spiceLevelData || {};
-
-            // Build form data with dynamic spice level fields
-            const spiceLevelFields: any = {
-                spiceLevels: itemSpiceLevels,
-            };
-
-            itemSpiceLevels.forEach((level: string, index: number) => {
-                const fieldKey = `spiceLevel_${index}`;
-                // Use the actual spice level name from spiceLevelData or fallback to level name
-                const savedValue = itemSpiceLevelData[level] || level || '';
-                spiceLevelFields[fieldKey] = savedValue;
-            });
-
-            setMenuItemForm({
-                name: item.name,
-                description: item.description || '',
-                price: item.price.toString(),
-                category: getCategoryId(item.category),
-                subcategory: getSubcategoryId(item.subcategory),
-                image: item.image || '',
-                isAvailable: item.isAvailable,
-                isCateringAvailable: item.isCateringAvailable,
-                variants: item.variants || [],           // <-- important
-                modifierGroups: item.modifierGroups || [],
-                addOns: item.addOns || [],
-                taxRate: (item.taxRate !== undefined && item.taxRate !== null) ? item.taxRate.toString() : '',
-                isAutoDebit: (item as any).isAutoDebit !== undefined ? (item as any).isAutoDebit : true,
-                foodType: (item.foodType as '' | 'veg' | 'non-veg') || '',
-                trayOptions: item.trayOptions || [],
-                quantityType: (item as any).quantityType || 'number',
-                baseTray: (item as any).baseTray || '',
-                servingSize: (item as any).servingSize || 1,
-                spiceLevel: item.isSpiceLevelAvailable ? (item.spiceLevel || 'mild') : '',
-                isSpiceLevelAvailable: item.isSpiceLevelAvailable || false,
-                availableDays: item.availableDays || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
-                isWeeklyScheduleEnabled: item.isWeeklyScheduleEnabled || false,
-                availabilityType: item.availabilityType || 'highlight',
-                displayOption: item.displayOption || 'normal',
-                validFrom: item.validFrom || null,
-                validTo: item.validTo || null,
-                priority: item.priority || 0,
-                ...spiceLevelFields, // Add dynamic spice level fields
-            });
-        } else {
-            setEditingMenuItem(null);
-            setMenuItemForm({
-                name: '',
-                description: '',
-                price: '',
-                category: '',
-                subcategory: '',
-                image: '',
-                isAvailable: true,
-                isCateringAvailable: true,
-                variants: [],
-                modifierGroups: [],
-                addOns: [],
-                taxRate: '',
-                isAutoDebit: true,
-                foodType: '',
-                trayOptions: [],
-                quantityType: 'number',
-                baseTray: '',
-                servingSize: 1,
-                isSpiceLevelAvailable: false,
-                spiceLevels: ['mild', 'medium', 'hot', 'very_hot'] as string[],
-                mild: '',
-                medium: '',
-                hot: '',
-                very_hot: '',
-                availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as string[], // New field
-                 isWeeklyScheduleEnabled: false,
-                availabilityType: 'highlight' as 'highlight' | 'available_only',
-                displayOption: 'normal' as 'normal' | 'weekly_special' | 'todays_special',
-                validFrom: null,
-                validTo: null,
-                priority: 0,
-            });
-        }
+        setEditingMenuItem(item || null);
         setMenuItemDialogOpen(true);
-    };
-
-    const handleSaveMenuItem = async () => {
-        if (!menuItemForm.name || !menuItemForm.name.trim()) {
-            setMenuItemTouched({ ...menuItemTouched, name: true });
-            toast.error('Item name is required');
-            return;
-        }
-
-        if (menuItemForm.taxRate && isNaN(parseFloat(menuItemForm.taxRate as any))) {
-            setMenuItemTouched({ ...menuItemTouched, taxRate: true });
-            toast.error('Enter a valid tax rate');
-            return;
-        }
-
-        if (menuItemForm.taxRate && parseFloat(menuItemForm.taxRate as any) < 0) {
-            setMenuItemTouched({ ...menuItemTouched, taxRate: true });
-            toast.error('Tax rate cannot be negative');
-            return;
-        }
-
-        if (!menuItemForm.category) {
-            setMenuItemTouched({ ...menuItemTouched, category: true });
-            toast.error('Please select a category');
-            return;
-        }
-
-        if (menuItemForm.quantityType === 'tray' && !menuItemForm.baseTray) {
-            toast.error('Please select a tray type');
-            return;
-        }
-
-        if (!menuItemForm.price || !menuItemForm.price.toString().trim()) {
-            setMenuItemTouched({ ...menuItemTouched, price: true });
-            toast.error('Base price is required');
-            return;
-        }
-        const parsedPrice = parseFloat(menuItemForm.price as any);
-
-        if (isNaN(parsedPrice)) {
-            setMenuItemTouched({ ...menuItemTouched, price: true });
-            toast.error('Enter a valid base price');
-            return;
-        }
-
-        if (parsedPrice < 0) {
-            setMenuItemTouched({ ...menuItemTouched, price: true });
-            toast.error('Base price must be 0 or greater');
-            return;
-        }
-
-        // Validate variants
-        for (const variant of menuItemForm.variants) {
-            if (!variant.name || !variant.name.trim()) {
-                toast.error('Each variant must have a name');
-                return;
-            }
-            if (variant.price < 0) {
-                toast.error(`Variant "${variant.name}" price cannot be negative`);
-                return;
-            }
-        }
-
-        // Validate tray options
-        for (const option of menuItemForm.trayOptions) {
-            if (!option.tray) {
-                toast.error('Please select a tray for all tray options');
-                return;
-            }
-            if (option.price < 0) {
-                toast.error('Tray option price cannot be negative');
-                return;
-            }
-        }
-
-        // Validate modifier groups
-        for (const group of menuItemForm.modifierGroups) {
-            if (!group.name || !group.name.trim()) {
-                toast.error('Each modifier group must have a name');
-                return;
-            }
-            if (group.options.length === 0) {
-                toast.error(`Modifier group "${group.name}" must have at least one option`);
-                return;
-            }
-            for (const option of group.options) {
-                if (!option.name || !option.name.trim()) {
-                    toast.error(`In group "${group.name}", each option must have a name`);
-                    return;
-                }
-                if (option.price < 0) {
-                    toast.error(`In group "${group.name}", option "${option.name}" price cannot be negative`);
-                    return;
-                }
-            }
-        }
-
-        try {
-            // Build spice level data for saving
-            const spiceLevelData: any = {};
-            const spiceLevels = (menuItemForm as any).spiceLevels || ['mild', 'medium', 'hot', 'very_hot'];
-
-            spiceLevels.forEach((level: string, index: number) => {
-                const fieldKey = `spiceLevel_${index}`;
-                const fieldValue = (menuItemForm as any)[fieldKey] || level || '';
-
-                if (level && level.trim() !== '') {
-                    spiceLevelData[level] = fieldValue;
-                }
-            });
-
-            // Filter out empty strings from spiceLevels array
-            const filteredSpiceLevels = spiceLevels.filter((level: string) => level && level.trim() !== '');
-
-            const payload = {
-                ...menuItemForm,
-                price: parseFloat(menuItemForm.price) || 0,
-                category: menuItemForm.category,
-                categories: menuItemForm.category ? [menuItemForm.category] : [],
-                subcategory: menuItemForm.subcategory || null,
-                taxRate: menuItemForm.taxRate === '' ? null : parseFloat(menuItemForm.taxRate),
-                foodType: menuItemForm.foodType === '' ? null : menuItemForm.foodType,
-                quantityType: menuItemForm.quantityType,
-                baseTray: menuItemForm.isCateringAvailable ? menuItemForm.baseTray : null,
-                servingSize: menuItemForm.servingSize,
-                spiceLevel: menuItemForm.isSpiceLevelAvailable ? menuItemForm.spiceLevel : undefined,
-                isSpiceLevelAvailable: menuItemForm.isSpiceLevelAvailable,
-                spiceLevels: filteredSpiceLevels,
-                spiceLevelData: spiceLevelData,
-                availableDays: menuItemForm.availableDays,
-                isWeeklyScheduleEnabled: menuItemForm.isWeeklyScheduleEnabled,
-                availabilityType: menuItemForm.availabilityType,
-                displayOption: menuItemForm.displayOption,
-                validFrom: menuItemForm.validFrom,
-                validTo: menuItemForm.validTo,
-                priority: menuItemForm.priority,
-                // variants are already in the correct shape
-            };
-
-            if (editingMenuItem) {
-                await menuAPI.update(editingMenuItem._id, payload);
-                toast.success('Menu item updated successfully');
-            } else {
-                await menuAPI.create(payload);
-                toast.success('Menu item created successfully');
-            }
-            fetchData();
-            setMenuItemDialogOpen(false);
-        } catch (error: any) {
-            console.error('Error saving menu item:', error);
-            toast.error(error.response?.data?.message || 'Failed to save menu item');
-        }
     };
 
     const handleDeleteMenuItem = async (item: IMenuItem) => {
@@ -1445,17 +1135,6 @@ const MenuPage: React.FC = () => {
                                                         </Box>
                                                     )}
 
- {/* Weekly schedule badge */}
-                                                    {(item as any).isWeeklyScheduleEnabled && (
-                                                        <Box sx={{
-                                                            px: 1, py: 0.3, borderRadius: '20px',
-                                                            bgcolor: alpha(theme.palette.warning.main, 0.1),
-                                                        }}>
-                                                            <Typography sx={{ fontSize: '0.63rem', fontWeight: 700, color: theme.palette.warning.dark, lineHeight: 1 }}>
-                                                                📅 {(item as any).displayOption === 'todays_special' ? "Today's Special" : (item as any).displayOption === 'weekly_special' ? 'Weekly Special' : 'Scheduled'}
-                                                            </Typography>
-                                                        </Box>
-                                                    )}
                                                     {/* Veg / Non-veg dot — pushed to the right */}
                                                     {(item as any).foodType && (
                                                         <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}>
@@ -1555,10 +1234,33 @@ const MenuPage: React.FC = () => {
                                         </Card>
                                     </Grid>
                                 ))}
-                            </Grid>
-                        </Box>
-                    )}
-                </Box>
+                             </Grid>
+                             
+                             {/* Pagination footer */}
+                             {nextCursor && (
+                                 <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+                                     <Button
+                                         variant="outlined"
+                                         onClick={handleLoadMore}
+                                         disabled={isFetchingMore}
+                                         startIcon={isFetchingMore ? <CircularProgress size={20} /> : null}
+                                         sx={{ 
+                                             borderRadius: '20px', 
+                                             px: 4, 
+                                             minWidth: 160,
+                                             borderColor: 'primary.main',
+                                             '&:disabled': {
+                                                 borderColor: 'divider'
+                                             }
+                                         }}
+                                     >
+                                         {isFetchingMore ? 'Loading...' : 'Load More Items'}
+                                     </Button>
+                                 </Box>
+                             )}
+                         </Box>
+                     )}
+                 </Box>
             )}
 
             {/* Categories Tab */}
@@ -1787,6 +1489,13 @@ const MenuPage: React.FC = () => {
                                 error={categoryTouched.name && !categoryForm.name.trim()}
                                 helperText={categoryTouched.name && !categoryForm.name.trim() ? 'Category name is required' : ''}
                                 fullWidth
+                                required
+                            />
+                            <TaxCategorySelector
+                                value={categoryForm.taxCode}
+                                onChange={(val) => setCategoryForm({ ...categoryForm, taxCode: val })}
+                                error={categoryTouched.taxCode && !categoryForm.taxCode.trim()}
+                                helperText={categoryTouched.taxCode && !categoryForm.taxCode.trim() ? 'Tax Code (TIC) is required' : ''}
                                 required
                             />
                             <FormControl fullWidth>

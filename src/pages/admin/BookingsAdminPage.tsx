@@ -145,13 +145,16 @@ const BookingsAdminPage: React.FC = () => {
                 tablesAPI.getAll()
             ]);
 
+            const bookingsData = (bookingsRes.data && Array.isArray(bookingsRes.data.data)) ? bookingsRes.data.data : [];
+            const tablesData = Array.isArray(tablesRes.data) ? tablesRes.data : [];
+
             if (tabValue === 0) {
-                setBookings(bookingsRes.data.data);
-                setTotalCount(bookingsRes.data.total);
+                setBookings(bookingsData);
+                setTotalCount(bookingsRes.data?.total || 0);
             } else {
-                setBookings(bookingsRes.data.data);
+                setBookings(bookingsData);
             }
-            setTables(tablesRes.data);
+            setTables(tablesData);
         } catch (error) {
             console.error('Error fetching data:', error);
             toast.error('Failed to load data');

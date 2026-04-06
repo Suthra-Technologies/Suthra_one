@@ -82,8 +82,9 @@ const CustomersPage: React.FC = () => {
                 limit: rowsPerPage,
                 search: searchTerm,
             });
-            setCustomers(response.data.customers);
-            setTotalCustomers(response.data.total);
+            const fetchedCustomers = Array.isArray(response.data.customers) ? response.data.customers : [];
+            setCustomers(fetchedCustomers);
+            setTotalCustomers(response.data.total || fetchedCustomers.length);
         } catch (error) {
             console.error('Failed to fetch customers:', error);
             toast.error('Failed to fetch customers');
@@ -179,7 +180,7 @@ const CustomersPage: React.FC = () => {
                     </Paper>
                     {loading ? (
                         <Box sx={{ py: 4, textAlign: 'center' }}>Loading...</Box>
-                    ) : customers.length === 0 ? (
+                    ) : (!Array.isArray(customers) || customers.length === 0) ? (
                         <Box sx={{ py: 4, textAlign: 'center' }}>
                             <Typography color="text.secondary">No customers found</Typography>
                         </Box>
@@ -242,7 +243,7 @@ const CustomersPage: React.FC = () => {
                                 <TableRow>
                                     <TableCell colSpan={5} align="center" sx={{ py: 4 }}>Loading...</TableCell>
                                 </TableRow>
-                            ) : customers.length === 0 ? (
+                            ) : (!Array.isArray(customers) || customers.length === 0) ? (
                                 <TableRow>
                                     <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
                                         <Typography color="text.secondary">No customers found</Typography>

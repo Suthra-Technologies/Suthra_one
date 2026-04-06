@@ -7,13 +7,13 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  Typography,
   Divider,
   alpha,
   Avatar,
   Menu,
   MenuItem,
   Tooltip,
+  Typography
 } from '@mui/material';
 import {
   Dashboard,
@@ -34,6 +34,7 @@ import {
   LocalOffer,
   Event as EventIcon,
   Help,
+  AutoStories,
   DeleteSweep,
   AccessTime as AccessTimeIcon,
   ChevronLeft,
@@ -47,12 +48,11 @@ import {
   ExpandLess,
   ExpandMore,
   HeadsetMic,
-  LibraryBooks,
+  Forum,
 } from '@mui/icons-material';
 import { Collapse } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
-
 interface SidebarProps {
   onItemClick?: () => void;
   collapsed?: boolean;
@@ -64,7 +64,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
   const location = useLocation();
   const { user, tenantSlug, activeRole, switchRole } = useAuth();
   const { settings } = useSettings();
-  const restaurantSettings = settings.restaurant;
+  const restaurantSettings = settings?.restaurant || {};
 
   const handleNavigation = (path: string) => {
     const fullPath = tenantSlug ? `/${tenantSlug}${path}` : path;
@@ -147,9 +147,10 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
       items: [
         { path: '/profile', label: 'Profile', icon: <Person />, roles: ['admin', 'manager', 'waiter', 'cashier', 'delivery', 'customer'] },
         { path: '/subscription', label: 'Subscription', icon: <AdminPanelSettings />, roles: ['admin'] },
-        { path: '/support', label: 'Support', icon: <HeadsetMic />, roles: ['admin', 'manager'] },
+        { path: '/support', label: 'Super Admin Support', icon: <HeadsetMic />, roles: ['admin', 'manager'] },
+        { path: '/customer-support', label: 'Customer Tickets', icon: <Forum />, roles: ['admin', 'manager'] },
         { path: '/settings', label: 'Settings', icon: <Settings />, roles: ['admin', 'manager'] },
-        { path: '', label: 'Help & Guide', icon: <LibraryBooks />, roles: ['admin', 'manager', 'waiter', 'cashier', 'kitchen_staff', 'delivery', 'food_runner'], isAction: true, action: () => window.open('https://helpguide.restaurant.nexzenpos.com/#login', '_blank') },
+        { path: '', label: 'Help & Guide', icon: <AutoStories />, roles: ['admin', 'manager', 'waiter', 'cashier', 'kitchen_staff', 'delivery', 'food_runner'], isAction: true, action: () => window.open('https://helpguide.restaurant.nexzenpos.com/#login', '_blank') },
       ]
     },
   ];

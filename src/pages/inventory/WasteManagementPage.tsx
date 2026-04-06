@@ -103,8 +103,8 @@ const WasteManagementPage: React.FC = () => {
                 wasteAPI.getAll(),
                 wasteAPI.getSummary(),
             ]);
-            setLogs(logsRes.data);
-            setSummary(summaryRes.data);
+            setLogs(Array.isArray(logsRes.data) ? logsRes.data : []);
+            setSummary(summaryRes.data || {});
         } catch (error) {
             console.error('Error fetching waste data:', error);
             enqueueSnackbar('Failed to fetch waste data', { variant: 'error' });
@@ -119,8 +119,9 @@ const WasteManagementPage: React.FC = () => {
                 inventoryAPI.getAll(), // This fetches all inventory items, we should filter for raw materials if needed
                 menuAPI.getAll(),
             ]);
-            setRawMaterials(rawRes.data.filter((i: any) => i.category === 'raw_materials'));
-            setMenuItems(menuRes.data);
+            setRawMaterials(Array.isArray(rawRes.data) ? rawRes.data.filter((i: any) => i.category === 'raw_materials') : []);
+            const menuData = menuRes.data;
+            setMenuItems(Array.isArray(menuData) ? menuData : (menuData?.items || []));
         } catch (error) {
             console.error('Error fetching options:', error);
         }
@@ -266,7 +267,7 @@ const WasteManagementPage: React.FC = () => {
                                 <Category sx={{ mr: 1 }} />
                                 <Typography variant="h6">Raw Material Loss</Typography>
                             </Box>
-                            <Typography variant={{ xs: 'h4', sm: 'h3' } as any} fontWeight="bold">
+                            <Typography variant="h3" fontWeight="bold">
                                 ${summary?.byType?.raw_material.toFixed(2) || '0.00'}
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
@@ -282,7 +283,7 @@ const WasteManagementPage: React.FC = () => {
                                 <Fastfood sx={{ mr: 1 }} />
                                 <Typography variant="h6">Menu Item Loss</Typography>
                             </Box>
-                            <Typography variant={{ xs: 'h4', sm: 'h3' } as any} fontWeight="bold">
+                            <Typography variant="h3" fontWeight="bold">
                                 ${summary?.byType?.menu_item.toFixed(2) || '0.00'}
                             </Typography>
                             <Typography variant="body2" color="text.secondary">
@@ -294,106 +295,66 @@ const WasteManagementPage: React.FC = () => {
             </Grid>
 
             {/* Waste Logs Table */}
-            <Box>
-                <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-                    <TableContainer component={Paper} sx={{ borderRadius: { xs: 0, sm: 3 }, boxShadow: 3 }}>
-                        <Table>
-                            <TableHead sx={{ backgroundColor: 'grey.100' }}>
-                                <TableRow>
-                                    <TableCell><b>Date</b></TableCell>
-                                    <TableCell><b>Item Name</b></TableCell>
-                                    <TableCell><b>Type</b></TableCell>
-                                    <TableCell><b>Quantity</b></TableCell>
-                                    <TableCell><b>Loss Value</b></TableCell>
-                                    <TableCell><b>Reason</b></TableCell>
-                                    <TableCell><b>Recorded By</b></TableCell>
-                                    <TableCell><b>Notes</b></TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {logs.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={8} align="center" sx={{ py: 3 }}>
-                                            No wastage records found
+            <TableContainer component={Paper} sx={{ borderRadius: { xs: 0, sm: 3 }, boxShadow: 3 }}>
+                <Table>
+                    <TableHead sx={{ backgroundColor: 'grey.100' }}>
+                        <TableRow>
+                            <TableCell><b>Date</b></TableCell>
+                            <TableCell><b>Item Name</b></TableCell>
+                            <TableCell><b>Type</b></TableCell>
+                            <TableCell><b>Quantity</b></TableCell>
+                            <TableCell><b>Loss Value</b></TableCell>
+                            <TableCell><b>Reason</b></TableCell>
+                            <TableCell><b>Recorded By</b></TableCell>
+                            <TableCell><b>Notes</b></TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {logs.length === 0 ? (
+                            <TableRow>
+                                <TableCell colSpan={8} align="center" sx={{ py: 3 }}>
+                                    No wastage records found
+                                </TableCell>
+                            </TableRow>
+                        ) : (
+                            logs
+                                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                                .map((log) => (
+                                    <TableRow key={log._id} hover>
+                                        <TableCell>{format(new Date(log.createdAt), 'MMM dd, yyyy HH:mm')}</TableCell>
+                                        <TableCell><b>{log.itemName}</b></TableCell>
+                                        <TableCell>
+                                            <Chip
+                                                label={log.itemType === 'raw_material' ? 'Raw Material' : 'Menu Item'}
+                                                size="small"
+                                                color={log.itemType === 'raw_material' ? 'warning' : 'info'}
+                                                variant="outlined"
+                                            />
                                         </TableCell>
+                                        <TableCell>{log.quantity} {log.unit}</TableCell>
+                                        <TableCell sx={{ color: 'error.main', fontWeight: 'bold' }}>
+                                            -${log.cost.toFixed(2)}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Chip label={getReasonLabel(log.reason)} size="small" />
+                                        </TableCell>
+                                        <TableCell>{log.recordedByName}</TableCell>
+                                        <TableCell>{log.notes || '-'}</TableCell>
                                     </TableRow>
-                                ) : (
-                                    logs
-                                        .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                                        .map((log) => (
-                                            <TableRow key={log._id} hover>
-                                                <TableCell>{format(new Date(log.createdAt), 'MMM dd, yyyy HH:mm')}</TableCell>
-                                                <TableCell><b>{log.itemName}</b></TableCell>
-                                                <TableCell>
-                                                    <Chip
-                                                        label={log.itemType === 'raw_material' ? 'Raw Material' : 'Menu Item'}
-                                                        size="small"
-                                                        color={log.itemType === 'raw_material' ? 'warning' : 'info'}
-                                                        variant="outlined"
-                                                    />
-                                                </TableCell>
-                                                <TableCell>{log.quantity} {log.unit}</TableCell>
-                                                <TableCell sx={{ color: 'error.main', fontWeight: 'bold' }}>
-                                                    -${log.cost.toFixed(2)}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Chip label={getReasonLabel(log.reason)} size="small" />
-                                                </TableCell>
-                                                <TableCell>{log.recordedByName}</TableCell>
-                                                <TableCell>{log.notes || '-'}</TableCell>
-                                            </TableRow>
-                                        ))
-                                )}
-                            </TableBody>
-                        </Table>
-                        <TablePagination
-                            rowsPerPageOptions={[5, 10, 25]}
-                            component="div"
-                            count={logs.length}
-                            rowsPerPage={rowsPerPage}
-                            page={page}
-                            onPageChange={handleChangePage}
-                            onRowsPerPageChange={handleChangeRowsPerPage}
-                        />
-                    </TableContainer>
-                </Box>
-
-                {/* Mobile Cards */}
-                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-                    {logs.length === 0 ? (
-                        <Typography align="center" color="text.secondary" sx={{ py: 3 }}>No wastage records found</Typography>
-                    ) : (
-                        logs.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((log) => (
-                            <Paper key={log._id} variant="outlined" sx={{ p: 2, mb: 1.5, borderRadius: 2 }}>
-                                <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                                    <Typography variant="subtitle2" fontWeight="bold">{log.itemName}</Typography>
-                                    <Chip
-                                        label={log.itemType === 'raw_material' ? 'Raw Material' : 'Menu Item'}
-                                        size="small"
-                                        color={log.itemType === 'raw_material' ? 'warning' : 'info'}
-                                        variant="outlined"
-                                    />
-                                </Box>
-                                <Typography variant="caption" color="text.secondary">{format(new Date(log.createdAt), 'MMM dd, yyyy HH:mm')}</Typography>
-                                <Typography variant="body2"><strong>Quantity:</strong> {log.quantity} {log.unit}</Typography>
-                                <Typography variant="body2" sx={{ color: 'error.main', fontWeight: 'bold' }}><strong>Loss:</strong> -${log.cost.toFixed(2)}</Typography>
-                                <Typography variant="body2"><strong>Reason:</strong> <Chip label={getReasonLabel(log.reason)} size="small" /></Typography>
-                                <Typography variant="body2"><strong>Recorded By:</strong> {log.recordedByName}</Typography>
-                                {log.notes && <Typography variant="body2"><strong>Notes:</strong> {log.notes}</Typography>}
-                            </Paper>
-                        ))
-                    )}
-                    <TablePagination
-                        rowsPerPageOptions={[5, 10, 25]}
-                        component="div"
-                        count={logs.length}
-                        rowsPerPage={rowsPerPage}
-                        page={page}
-                        onPageChange={handleChangePage}
-                        onRowsPerPageChange={handleChangeRowsPerPage}
-                    />
-                </Box>
-            </Box>
+                                ))
+                        )}
+                    </TableBody>
+                </Table>
+                <TablePagination
+                    rowsPerPageOptions={[5, 10, 25]}
+                    component="div"
+                    count={logs.length}
+                    rowsPerPage={rowsPerPage}
+                    page={page}
+                    onPageChange={handleChangePage}
+                    onRowsPerPageChange={handleChangeRowsPerPage}
+                />
+            </TableContainer>
 
             {/* Log Waste Dialog */}
             <Dialog
@@ -469,10 +430,12 @@ const WasteManagementPage: React.FC = () => {
                                     value={formData.quantity}
                                     onChange={(e) => {
                                         const val = parseFloat(e.target.value);
-                                        setFormData(prev => ({ ...prev, quantity: isNaN(val) ? 0 : Math.max(0, val) }));
+                                        // Restrict quantity to 0-99,999 Range
+                                        setFormData(prev => ({ ...prev, quantity: isNaN(val) ? 0 : Math.min(99999, Math.max(0, val)) }));
                                     }}
-                                    inputProps={{ min: 0, step: "any" }}
+                                    inputProps={{ min: 0, max: 99999, step: "any" }}
                                     required
+                                    helperText="Max 99,999"
                                 />
                             </Grid>
                             <Grid item xs={6}>
@@ -510,8 +473,10 @@ const WasteManagementPage: React.FC = () => {
                                     name="notes"
                                     multiline
                                     rows={3}
+                                    inputProps={{ maxLength: 200 }}
                                     value={formData.notes}
                                     onChange={handleFormChange}
+                                    helperText={`${formData.notes.length}/200`}
                                     placeholder="e.g. Broke on floor, expired yesterday"
                                 />
                             </Grid>
@@ -519,7 +484,7 @@ const WasteManagementPage: React.FC = () => {
                             {selectedItem && (
                                 <Grid item xs={12}>
                                     <Alert severity="info">
-                                        Approximate Loss: <b>${(selectedItem.costPrice * formData.quantity).toFixed(2)}</b>
+                                        Approximate Loss: <b>${((selectedItem.costPrice || 0) * formData.quantity).toFixed(2)}</b>
                                     </Alert>
                                 </Grid>
                             )}
