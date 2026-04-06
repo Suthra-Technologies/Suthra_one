@@ -1,54 +1,51 @@
-import React, { useEffect, useState, useMemo } from 'react';
 import {
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    Button,
-    IconButton,
-    Tabs,
-    Tab,
-    Grid,
-    Stack,
-    Paper,
-    Typography,
-    TextField,
-    FormControl,
-    InputLabel,
-    Select,
-    MenuItem,
-    Chip,
-    FormControlLabel,
-    Switch,
-    OutlinedInput,
-    Box,
-    alpha,
-    useTheme,
-    CircularProgress,
-    Tooltip
-} from '@mui/material';
-import {
-    Close as CloseIcon,
-    Restaurant as RestaurantIcon,
-    Image as ImageIcon,
-    Straighten as StraightenIcon,
     Add as AddIcon,
-    Delete as DeleteIcon,
-    Today as TodayIcon,
-    MenuBook as MenuBookIcon
+    Close as CloseIcon,
+    Image as ImageIcon,
+    Restaurant as RestaurantIcon,
+    Straighten as StraightenIcon,
+    Today as TodayIcon
 } from '@mui/icons-material';
+import {
+    Box,
+    Button,
+    Chip,
+    CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    FormControl,
+    FormControlLabel,
+    Grid,
+    IconButton,
+    InputLabel,
+    MenuItem,
+    OutlinedInput,
+    Paper,
+    Select,
+    Stack,
+    Switch,
+    Tab,
+    Tabs,
+    TextField,
+    Typography,
+    alpha,
+    useTheme
+} from '@mui/material';
+import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import { menuAPI, uploadAPI } from '../../../services/api';
-import { useSettings } from '../../../context/SettingsContext';
 import ActionHistoryList from '../../../components/common/ActionHistoryList';
+import { useSettings } from '../../../context/SettingsContext';
+import { menuAPI, uploadAPI } from '../../../services/api';
 import type {
-    IMenuItem,
     Category,
-    Subcategory,
-    Variant,
+    IMenuItem,
     ModifierGroup,
-    TrayOption
+    Subcategory,
+    TrayOption,
+    Variant
 } from '../types';
 
 interface MenuItemDialogProps {
@@ -552,36 +549,151 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                             </Stack>
                         </Grid>
 
+                        {/* Weekly Availability Section */}
                         <Grid item xs={12}>
                             <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
                                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: menuItemForm.isWeeklyScheduleEnabled ? 3 : 0 }}>
                                     <Typography variant="subtitle2" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                         <TodayIcon fontSize="small" color="primary" /> Weekly Availability
                                     </Typography>
-                                    <FormControlLabel control={<Switch checked={menuItemForm.isWeeklyScheduleEnabled} onChange={(e) => setMenuItemForm({ ...menuItemForm, isWeeklyScheduleEnabled: e.target.checked })} />} label="Enable Weekly Schedule" />
+                                    <FormControlLabel
+                                        control={
+                                            <Switch
+                                                checked={menuItemForm.isWeeklyScheduleEnabled}
+                                                onChange={(e) => setMenuItemForm({ ...menuItemForm, isWeeklyScheduleEnabled: e.target.checked })}
+                                                color="primary"
+                                            />
+                                        }
+                                        label={<Typography variant="body2" sx={{ fontWeight: 500 }}>Enable Weekly Schedule</Typography>}
+                                        labelPlacement="start"
+                                        sx={{ mr: 0 }}
+                                    />
                                 </Box>
+
                                 {menuItemForm.isWeeklyScheduleEnabled && (
-                                    <Grid container spacing={2}>
+                                    <Grid container spacing={3}>
                                         <Grid item xs={12} sm={6}>
                                             <FormControl fullWidth size="small">
                                                 <InputLabel>Availability Type</InputLabel>
-                                                <Select value={menuItemForm.availabilityType} label="Availability Type" onChange={(e) => setMenuItemForm({ ...menuItemForm, availabilityType: e.target.value as any })}>
-                                                    <MenuItem value="highlight">Highlight Only</MenuItem>
+                                                <Select
+                                                    value={menuItemForm.availabilityType || 'available_only'}
+                                                    label="Availability Type"
+                                                    onChange={(e) => setMenuItemForm({ ...menuItemForm, availabilityType: e.target.value as any })}
+                                                >
+                                                    <MenuItem value="highlight">Highlight Only (Available Everyday, Highlighted on specific days)</MenuItem>
                                                     <MenuItem value="available_only">Available Only on Selected Days</MenuItem>
                                                 </Select>
                                             </FormControl>
                                         </Grid>
+                                        <Grid item xs={12} sm={6}>
+                                            <FormControl fullWidth size="small">
+                                                <InputLabel>Display Options</InputLabel>
+                                                <Select
+                                                    value={menuItemForm.displayOption || 'normal'}
+                                                    label="Display Options"
+                                                    onChange={(e) => setMenuItemForm({ ...menuItemForm, displayOption: e.target.value as any })}
+                                                >
+                                                    <MenuItem value="normal">Normal</MenuItem>
+                                                    <MenuItem value="weekly_special">Weekly Special</MenuItem>
+                                                    <MenuItem value="todays_special">Today's Special</MenuItem>
+                                                </Select>
+                                            </FormControl>
+                                        </Grid>
+
+                                        <Grid item xs={12}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                                                <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>Quick Select:</Typography>
+                                                <Stack direction="row" spacing={1}>
+                                                    <Button
+                                                        size="small"
+                                                        variant="outlined"
+                                                        sx={{ borderRadius: 2, textTransform: 'none', px: 2 }}
+                                                        onClick={() => setMenuItemForm({ ...menuItemForm, availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'] })}
+                                                    >
+                                                        Weekdays
+                                                    </Button>
+                                                    <Button
+                                                        size="small"
+                                                        variant="outlined"
+                                                        sx={{ borderRadius: 2, textTransform: 'none', px: 2 }}
+                                                        onClick={() => setMenuItemForm({ ...menuItemForm, availableDays: ['saturday', 'sunday'] })}
+                                                    >
+                                                        Weekend
+                                                    </Button>
+                                                    <Button
+                                                        size="small"
+                                                        variant="outlined"
+                                                        sx={{ borderRadius: 2, textTransform: 'none', px: 2 }}
+                                                        onClick={() => setMenuItemForm({ ...menuItemForm, availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] })}
+                                                    >
+                                                        All Days
+                                                    </Button>
+                                                </Stack>
+                                            </Box>
+                                        </Grid>
+
                                         <Grid item xs={12}>
                                             <FormControl fullWidth size="small">
                                                 <InputLabel>Days Available</InputLabel>
-                                                <Select multiple value={menuItemForm.availableDays} label="Days Available" onChange={(e) => setMenuItemForm({ ...menuItemForm, availableDays: e.target.value as string[] })} input={<OutlinedInput label="Days Available" />} renderValue={(selected) => (
-                                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                                        {(selected as string[]).map((v) => <Chip key={v} label={v} size="small" />)}
-                                                    </Box>
-                                                )}>
-                                                    {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((d) => <MenuItem key={d} value={d}>{d}</MenuItem>)}
+                                                <Select
+                                                    multiple
+                                                    value={menuItemForm.availableDays || []}
+                                                    label="Days Available"
+                                                    onChange={(e) => setMenuItemForm({ ...menuItemForm, availableDays: typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value as string[] })}
+                                                    input={<OutlinedInput label="Days Available" />}
+                                                    renderValue={(selected) => (
+                                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                                            {(selected as string[]).map((value) => (
+                                                                <Chip
+                                                                    key={value}
+                                                                    label={value.charAt(0).toUpperCase() + value.slice(1)}
+                                                                    size="small"
+                                                                    sx={{ borderRadius: 1 }}
+                                                                />
+                                                            ))}
+                                                        </Box>
+                                                    )}
+                                                >
+                                                    {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
+                                                        <MenuItem key={day} value={day}>
+                                                            {day.charAt(0).toUpperCase() + day.slice(1)}
+                                                        </MenuItem>
+                                                    ))}
                                                 </Select>
                                             </FormControl>
+                                        </Grid>
+
+                                        <Grid item xs={12} sm={4}>
+                                            <TextField
+                                                label="Valid From (Optional)"
+                                                type="date"
+                                                size="small"
+                                                value={menuItemForm.validFrom ? new Date(menuItemForm.validFrom).toISOString().split('T')[0] : ''}
+                                                onChange={(e) => setMenuItemForm({ ...menuItemForm, validFrom: e.target.value ? new Date(e.target.value) : null })}
+                                                fullWidth
+                                                InputLabelProps={{ shrink: true }}
+                                            />
+                                        </Grid>
+                                        <Grid item xs={12} sm={4}>
+                                            <TextField
+                                                label="Valid Till (Optional)"
+                                                type="date"
+                                                size="small"
+                                                value={menuItemForm.validTo ? new Date(menuItemForm.validTo).toISOString().split('T')[0] : ''}
+                                                onChange={(e) => setMenuItemForm({ ...menuItemForm, validTo: e.target.value ? new Date(e.target.value) : null })}
+                                                fullWidth
+                                                InputLabelProps={{ shrink: true }}
+                                            />
+                                        </Grid>
+                                        <Grid item xs={12} sm={4}>
+                                            <TextField
+                                                label="Priority (Higher first)"
+                                                type="number"
+                                                size="small"
+                                                value={menuItemForm.priority || 0}
+                                                onChange={(e) => setMenuItemForm({ ...menuItemForm, priority: parseInt(e.target.value) || 0 })}
+                                                fullWidth
+                                            />
                                         </Grid>
                                     </Grid>
                                 )}
