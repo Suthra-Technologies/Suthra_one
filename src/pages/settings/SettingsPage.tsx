@@ -2463,7 +2463,7 @@ const SettingsPage: React.FC = () => {
                                 Click <strong>▶ Preview</strong> to hear a sound before selecting it.
                             </Typography>
 
-                            <Stack direction="row" flexWrap="nowrap" gap={2}>
+                            <Stack direction="row" flexWrap="wrap" gap={2}>
                                 {NOTIFICATION_SOUNDS.map((sound) => {
                                     // @ts-ignore
                                     const isSelected =
@@ -2476,7 +2476,7 @@ const SettingsPage: React.FC = () => {
                                                 p: 2.5,
                                                 borderRadius: 3,
                                                 cursor: 'pointer',
-                                                minWidth: 0,
+                                                minWidth: { xs: 'calc(50% - 8px)', sm: 0 },
                                                 flex: '1 1 0px',
                                                 transition: 'all 0.2s ease',
                                                 bgcolor: isSelected ? alpha('#4F46E5', 0.08) : '#fff',
@@ -2777,7 +2777,8 @@ const SettingsPage: React.FC = () => {
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 1 }} />
                         </Grid>
-                        <Grid size={{ xs: 12 }}>
+                        <Grid size={{ xs: 12 }} sx={{ display: 'flex', justifyContent: { xs: 'center', sm: 'flex-start' } }}>
+
                             <Button
                                 variant="contained"
                                 startIcon={<SaveIcon />}

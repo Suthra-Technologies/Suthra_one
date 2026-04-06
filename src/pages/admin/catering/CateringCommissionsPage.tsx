@@ -298,7 +298,7 @@ const CateringCommissionsPage = () => {
 
     return (
         <Box p={3}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+            <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} gap={{ xs: 1.5, sm: 0 }} mb={3}>
                 <Typography variant="h4" fontWeight="bold">
                     Catering Commissions
                 </Typography>
@@ -316,7 +316,7 @@ const CateringCommissionsPage = () => {
                             </InputAdornment>
                         ),
                     }}
-                    sx={{ width: 300, bgcolor: 'background.paper' }}
+                    sx={{ width: { xs: '100%', sm: 250, md: 300 }, bgcolor: 'background.paper' }}
                 />
             </Box>
 
@@ -328,7 +328,9 @@ const CateringCommissionsPage = () => {
                 <Box textAlign="center" p={4}>
                     <Typography color="textSecondary">No commissions found.</Typography>
                 </Box>
-            ) : (
+           ) : (
+                <Box>
+                <Box sx={{ display: { xs: 'none', md: 'block' } }}>
                 <TableContainer component={Paper}>
                     <Table>
                         <TableHead sx={{ bgcolor: '#f5f5f5' }}>
@@ -487,7 +489,99 @@ const CateringCommissionsPage = () => {
                             })}
                         </TableBody>
                     </Table>
-                </TableContainer>
+            </TableContainer>
+                </Box>
+
+                {/* Mobile Cards */}
+                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                    {commissions.map((item, index) => {
+                        const comm = item.commission || item;
+                        const orderNumber = item.cateringOrder?.orderNumber || item.orderNumber || '-';
+                        const createdAt = item.createdAt || item.date || new Date().toISOString();
+                        if (!comm) return null;
+                        return (
+                            <Paper key={item._id || index} variant="outlined" sx={{ p: 2, mb: 1.5, borderRadius: 2 }}>
+                                <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                                    <Typography variant="subtitle2" fontWeight="bold">Order #{orderNumber}</Typography>
+                                    <Chip
+                                        label={comm.status?.toUpperCase() || 'PENDING'}
+                                        color={
+                                            comm.status === 'paid' ? 'success' :
+                                            comm.status === 'approved' ? 'info' :
+                                            comm.status === 'cancelled' ? 'error' : 'warning'
+                                        }
+                                        size="small"
+                                    />
+                                </Box>
+                                <Box display="flex" gap={1} alignItems="center" mb={1}>
+                                    <Chip
+                                        label={comm.reference?.type === 'internal_team' ? 'Internal' : 'External'}
+                                        color={comm.reference?.type === 'internal_team' ? 'primary' : 'secondary'}
+                                        size="small"
+                                        variant="outlined"
+                                    />
+                                    <Typography variant="caption" color="text.secondary">
+                                        {new Date(createdAt).toLocaleDateString()}
+                                    </Typography>
+                                </Box>
+                                <Typography variant="body2"><strong>Referrer:</strong> {comm.reference?.name || '-'}{comm.reference?.contact ? ` (${comm.reference.contact})` : ''}</Typography>
+                                <Typography variant="body2"><strong>Type:</strong> {comm.type === 'fixed' || comm.commissionType === 'fixed' ? 'Fixed Amount' : 'Percentage'}</Typography>
+                                <Typography variant="body2">
+                                    <strong>Value:</strong> {(comm.type === 'fixed' || comm.commissionType === 'fixed')
+                                        ? formatCurrency(comm.amount || comm.commissionAmount || 0)
+                                        : `${comm.percentage || comm.commissionPercentage || 0}%`}
+                                </Typography>
+                                {(comm.notes || item.notes) && (
+                                    <Typography variant="body2"><strong>Notes:</strong> {comm.notes || item.notes}</Typography>
+                                )}
+                                {(comm.status === 'paid' || comm.status === 'cancelled') && (
+                                    <Typography variant="caption" color="text.secondary">
+                                        {comm.status === 'cancelled'
+                                            ? `Reason: ${comm.actionHistory?.slice().reverse().find((h: any) => h.action === 'CANCELLED')?.details || 'No reason specified'}`
+                                            : `Paid on ${comm.paymentDate ? new Date(comm.paymentDate).toLocaleDateString() : 'N/A'} via ${comm.paymentMethod?.replace('_', ' ') || 'N/A'}${comm.paymentReference ? ` (Ref: ${comm.paymentReference})` : ''}`
+                                        }
+                                    </Typography>
+                                )}
+                                <Box display="flex" justifyContent="flex-end" gap={0.5} mt={1}>
+                                    <Tooltip title="Edit">
+                                        <IconButton size="small" onClick={() => handleEditClick(item)} disabled={comm.status === 'paid'}>
+                                            <Edit fontSize="small" />
+                                        </IconButton>
+                                    </Tooltip>
+                                    {comm.status === 'pending' && (
+                                        <Tooltip title="Approve">
+                                            <IconButton size="small" color="primary" onClick={() => handleApprove(item._id)}>
+                                                <CheckCircle fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
+                                    )}
+                                    {comm.status === 'approved' && (
+                                        <Tooltip title="Mark as Paid">
+                                            <IconButton size="small" color="success" onClick={() => handlePayClick(item)}>
+                                                <Payments fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
+                                    )}
+                                    {comm.status !== 'cancelled' && comm.status !== 'paid' && (
+                                        <Tooltip title="Cancel">
+                                            <IconButton size="small" color="error" onClick={() => handleCancel(item._id)}>
+                                                <Block fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
+                                    )}
+                                    {comm.status !== 'paid' && (
+                                        <Tooltip title="Delete">
+                                            <IconButton size="small" color="error" onClick={() => handleDelete(item._id)}>
+                                                <DeleteIcon fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
+                                    )}
+                                </Box>
+                            </Paper>
+                        );
+                    })}
+                </Box>
+                </Box>
             )}
 
             <TablePagination

@@ -2645,7 +2645,7 @@ const CateringManagementPage = () => {
                                                                 (Enter number of guests per category)
                                                             </Typography>
                                                         </Box>
-                                                        <TableContainer component={Paper} elevation={0} sx={{ overflow: 'hidden' }}>
+                                                        <TableContainer component={Paper} elevation={0} sx={{ overflow: 'auto' }}>
                                                             <Table size="small">
                                                                 <TableHead>
                                                                     <TableRow sx={{ bgcolor: '#f5f5f5' }}>
@@ -2666,10 +2666,10 @@ const CateringManagementPage = () => {
                                                                             <Typography variant="body2" fontWeight={600}>Adults</Typography>
                                                                         </TableCell>
                                                                         <TableCell align="center" sx={{ py: 1.5 }}>
-                                                                            <TextField size="small" type="number" value={newOrder.guests.adults.veg || ''} onChange={(e) => setNewOrder({ ...newOrder, guests: { ...newOrder.guests, adults: { ...newOrder.guests.adults, veg: parseInt(e.target.value) || 0 } } })} inputProps={{ min: 0 }} sx={{ width: 80, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} />
+                                                                            <TextField size="small" type="number" value={newOrder.guests.adults.veg || ''} onChange={(e) => setNewOrder({ ...newOrder, guests: { ...newOrder.guests, adults: { ...newOrder.guests.adults, veg: parseInt(e.target.value) || 0 } } })} inputProps={{ min: 0 }} sx={{ width: { xs: 60, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} />
                                                                         </TableCell>
                                                                         <TableCell align="center" sx={{ py: 1.5 }}>
-                                                                            <TextField size="small" type="number" value={newOrder.guests.adults.nonVeg || ''} onChange={(e) => setNewOrder({ ...newOrder, guests: { ...newOrder.guests, adults: { ...newOrder.guests.adults, nonVeg: parseInt(e.target.value) || 0 } } })} inputProps={{ min: 0 }} sx={{ width: 80, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} />
+                                                                            <TextField size="small" type="number" value={newOrder.guests.adults.nonVeg || ''} onChange={(e) => setNewOrder({ ...newOrder, guests: { ...newOrder.guests, adults: { ...newOrder.guests.adults, nonVeg: parseInt(e.target.value) || 0 } } })} inputProps={{ min: 0 }} sx={{ width: { xs: 60, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} />
                                                                         </TableCell>
                                                                     </TableRow>
                                                                     <TableRow>
@@ -2677,10 +2677,10 @@ const CateringManagementPage = () => {
                                                                             <Typography variant="body2" fontWeight={600}>Kids</Typography>
                                                                         </TableCell>
                                                                         <TableCell align="center" sx={{ py: 1.5 }}>
-                                                                            <TextField size="small" type="number" value={newOrder.guests.kids.veg || ''} onChange={(e) => setNewOrder({ ...newOrder, guests: { ...newOrder.guests, kids: { ...newOrder.guests.kids, veg: parseInt(e.target.value) || 0 } } })} inputProps={{ min: 0 }} sx={{ width: 80, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} />
+                                                                            <TextField size="small" type="number" value={newOrder.guests.kids.veg || ''} onChange={(e) => setNewOrder({ ...newOrder, guests: { ...newOrder.guests, kids: { ...newOrder.guests.kids, veg: parseInt(e.target.value) || 0 } } })} inputProps={{ min: 0 }} sx={{ width: { xs: 60, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} />
                                                                         </TableCell>
                                                                         <TableCell align="center" sx={{ py: 1.5 }}>
-                                                                            <TextField size="small" type="number" value={newOrder.guests.kids.nonVeg || ''} onChange={(e) => setNewOrder({ ...newOrder, guests: { ...newOrder.guests, kids: { ...newOrder.guests.kids, nonVeg: parseInt(e.target.value) || 0 } } })} inputProps={{ min: 0 }} sx={{ width: 80, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} />
+                                                                            <TextField size="small" type="number" value={newOrder.guests.kids.nonVeg || ''} onChange={(e) => setNewOrder({ ...newOrder, guests: { ...newOrder.guests, kids: { ...newOrder.guests.kids, nonVeg: parseInt(e.target.value) || 0 } } })} inputProps={{ min: 0 }} sx={{ width: { xs: 60, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} />
                                                                         </TableCell>
                                                                     </TableRow>
                                                                     <TableRow sx={{ bgcolor: '#f5f5f5', borderTop: '1px solid #e0e0e0' }}>
@@ -2966,63 +2966,67 @@ const CateringManagementPage = () => {
                                                             Add Payment
                                                         </Button>
                                                     </Box>
-                                                    <TableContainer component={Paper} variant="outlined">
+
+                                                    <TableContainer component={Paper} variant="outlined" sx={{ overflowX: 'hidden' }}>
                                                         <Table size="small">
                                                             <TableHead>
                                                                 <TableRow>
-                                                                    <TableCell>Amount</TableCell>
-                                                                    <TableCell>Method</TableCell>
-                                                                    <TableCell>Date</TableCell>
-                                                                    <TableCell>Notes</TableCell>
-                                                                    <TableCell align="center">Action</TableCell>
+                                                                    <TableCell sx={{ px: { xs: 0.5, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>Amount</TableCell>
+                                                                    <TableCell sx={{ px: { xs: 0.5, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>Method</TableCell>
+                                                                    <TableCell sx={{ px: { xs: 0.5, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>Date</TableCell>
+                                                                    <TableCell sx={{ px: { xs: 0.5, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>Notes</TableCell>
+                                                                    <TableCell align="center" sx={{ px: { xs: 0.5, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>Action</TableCell>
                                                                 </TableRow>
                                                             </TableHead>
                                                             <TableBody>
                                                                 {(newOrder.payments || []).map((payment: any, idx: number) => (
                                                                     <TableRow key={idx}>
-                                                                        <TableCell>
-                                                                            <TextField
-                                                                                type="number"
-                                                                                size="small"
-                                                                                inputProps={{ min: 0, step: "0.01" }}
-                                                                                value={payment.amount}
-                                                                                onChange={(e) => handleUpdatePaymentFromCreate(idx, 'amount', parseFloat(e.target.value) || 0)}
-                                                                                sx={{ width: 100 }}
-                                                                            />
-                                                                        </TableCell>
-                                                                        <TableCell>
-                                                                            <Select
-                                                                                size="small"
-                                                                                value={payment.method || 'cash'}
-                                                                                onChange={(e) => handleUpdatePaymentFromCreate(idx, 'method', e.target.value)}
-                                                                            >
-                                                                                {availablePaymentMethods.map(m => (
-                                                                                    <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
-                                                                                ))}
-                                                                            </Select>
-                                                                        </TableCell>
-                                                                        <TableCell>
-                                                                            <TextField
-                                                                                type="date"
-                                                                                size="small"
-                                                                                value={payment.timestamp ? new Date(payment.timestamp).toISOString().split('T')[0] : ''}
-                                                                                onChange={(e) => handleUpdatePaymentFromCreate(idx, 'timestamp', e.target.value)}
-                                                                            />
-                                                                        </TableCell>
-                                                                        <TableCell>
-                                                                            <TextField
-                                                                                size="small"
-                                                                                value={payment.notes || ''}
-                                                                                onChange={(e) => handleUpdatePaymentFromCreate(idx, 'notes', e.target.value)}
-                                                                                placeholder="Ref/Note"
-                                                                            />
-                                                                        </TableCell>
-                                                                        <TableCell align="center">
-                                                                            <IconButton color="error" size="small" onClick={() => handleRemovePaymentFromCreate(idx)}>
-                                                                                <Cancel fontSize="small" />
-                                                                            </IconButton>
-                                                                        </TableCell>
-                                                                    </TableRow>
+    <TableCell sx={{ px: { xs: 0.5, sm: 1 } }}>
+        <TextField
+            type="number"
+            size="small"
+            inputProps={{ min: 0, step: "0.01" }}
+            value={payment.amount}
+            onChange={(e) => handleUpdatePaymentFromCreate(idx, 'amount', parseFloat(e.target.value) || 0)}
+            sx={{ width: { xs: 60, sm: 100 } }}
+        />
+    </TableCell>
+    <TableCell sx={{ px: { xs: 0.5, sm: 1 } }}>
+        <Select
+            size="small"
+            value={payment.method || 'cash'}
+            onChange={(e) => handleUpdatePaymentFromCreate(idx, 'method', e.target.value)}
+            sx={{ width: { xs: 70, sm: 'auto' } }}
+        >
+            {availablePaymentMethods.map(m => (
+                <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
+            ))}
+        </Select>
+    </TableCell>
+    <TableCell sx={{ px: { xs: 0.5, sm: 1 } }}>
+        <TextField
+            type="date"
+            size="small"
+            value={payment.timestamp ? new Date(payment.timestamp).toISOString().split('T')[0] : ''}
+            onChange={(e) => handleUpdatePaymentFromCreate(idx, 'timestamp', e.target.value)}
+            sx={{ width: { xs: 100, sm: 'auto' } }}
+        />
+    </TableCell>
+    <TableCell sx={{ px: { xs: 0.5, sm: 1 } }}>
+        <TextField
+            size="small"
+            value={payment.notes || ''}
+            onChange={(e) => handleUpdatePaymentFromCreate(idx, 'notes', e.target.value)}
+            placeholder="Ref/Note"
+            sx={{ width: { xs: 70, sm: 'auto' } }}
+        />
+    </TableCell>
+    <TableCell align="center" sx={{ px: { xs: 0.5, sm: 1 } }}>
+        <IconButton color="error" size="small" onClick={() => handleRemovePaymentFromCreate(idx)}>
+            <Cancel fontSize="small" />
+        </IconButton>
+    </TableCell>
+</TableRow>
                                                                 ))}
                                                                 {(!newOrder.payments || newOrder.payments.length === 0) && (
                                                                     <TableRow>

@@ -85,17 +85,17 @@ const RestaurantStatusToggle: React.FC = () => {
       const timezone = hoursRes.data?.timezone || 'America/New_York';
 
       let effectiveIsOpen = autoIsOpen;
-      
+
       if (lastStatusChangedAt) {
         try {
           const now = new Date();
           const tzNowStr = now.toLocaleString('en-US', { timeZone: timezone });
           const tzChangedStr = new Date(lastStatusChangedAt).toLocaleString('en-US', { timeZone: timezone });
-          
+
           if (tzNowStr.split(',')[0] === tzChangedStr.split(',')[0]) {
             effectiveIsOpen = manualIsOpen;
           }
-        } catch {}
+        } catch { }
       } else {
         effectiveIsOpen = autoIsOpen ? manualIsOpen : false;
       }
@@ -497,6 +497,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
           color: 'text.primary',
           boxShadow: '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24)',
           transition: 'width 0.3s ease, margin-left 0.3s ease',
+          pt: { xs: 'env(safe-area-inset-top)', md: 0 },
         }}
       >
         <Toolbar>
@@ -535,7 +536,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
             {getPageTitle()}
           </Typography> */}
           <Box sx={{ flexGrow: 1 }} />
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
             <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 0.5 }}>
               <ShiftManager />
               <SubscriptionStatus />
@@ -741,7 +742,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
           flexGrow: 1,
           p: { xs: 0.5, sm: 2, md: 3 },
           width: { md: `calc(100% - ${currentDrawerWidth}px)` },
-          mt: '64px',
+          mt: { xs: 'calc(64px + env(safe-area-inset-top))', md: '64px' },
           minHeight: 'calc(100vh - 64px)',
           backgroundColor: 'background.default',
           position: 'relative',

@@ -2353,9 +2353,9 @@ const MenuPage: React.FC = () => {
                                             </Grid>
 
                                             <Grid item xs={12}>
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                                                <Box sx={{ display: 'flex', alignItems: 'flex-start', flexWrap: 'wrap', gap: 1, mb: 1 }}>
                                                     <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>Quick Select:</Typography>
-                                                    <Stack direction="row" spacing={1}>
+                                                    <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
                                                         <Button 
                                                             size="small" 
                                                             variant="outlined" 
