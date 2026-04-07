@@ -57,6 +57,9 @@ const PlansPage: React.FC = () => {
         maxOrders: 1000,
         isActive: true,
         cateringEnabled: false,
+        inventoryEnabled: false,
+        wasteManagementEnabled: false,
+        attendanceEnabled: false,
     });
 
     const fetchPlans = async () => {
@@ -80,7 +83,10 @@ const PlansPage: React.FC = () => {
         if (plan) {
             setEditingPlan(plan);
             const hasCatering = plan.features.includes('catering');
-            const otherFeatures = plan.features.filter(f => f !== 'catering').join('\n');
+            const hasInventory = plan.features.includes('inventory');
+            const hasWasteManagement = plan.features.includes('wastemanagement');
+            const hasAttendance = plan.features.includes('attendance');
+            const otherFeatures = plan.features.filter(f => !['catering', 'inventory', 'wastemanagement', 'attendance'].includes(f)).join('\n');
 
             setFormData({
                 name: plan.name,
@@ -92,6 +98,9 @@ const PlansPage: React.FC = () => {
                 maxOrders: plan.maxOrders || 1000,
                 isActive: plan.isActive,
                 cateringEnabled: hasCatering,
+                inventoryEnabled: hasInventory,
+                wasteManagementEnabled: hasWasteManagement,
+                attendanceEnabled: hasAttendance,
             });
         } else {
             setEditingPlan(null);
@@ -105,6 +114,9 @@ const PlansPage: React.FC = () => {
                 maxOrders: 1000,
                 isActive: true,
                 cateringEnabled: false,
+                inventoryEnabled: false,
+                wasteManagementEnabled: false,
+                attendanceEnabled: false,
             });
         }
         setDialogOpen(true);
@@ -121,6 +133,15 @@ const PlansPage: React.FC = () => {
             if (formData.cateringEnabled) {
                 featuresList.push('catering');
             }
+            if (formData.inventoryEnabled) {
+                featuresList.push('inventory');
+            }
+            if (formData.wasteManagementEnabled) {
+                featuresList.push('wastemanagement');
+            }
+            if (formData.attendanceEnabled) {
+                featuresList.push('attendance');
+            }
 
             const planData = {
                 ...formData,
@@ -129,6 +150,9 @@ const PlansPage: React.FC = () => {
             // Remove auxiliary field before sending to API if needed, or API ignores it. 
             // Better to clean it up or strictly type the DTO. 
             delete (planData as any).cateringEnabled;
+            delete (planData as any).inventoryEnabled;
+            delete (planData as any).wasteManagementEnabled;
+            delete (planData as any).attendanceEnabled;
 
             if (editingPlan) {
                 await superAPI.updatePlan(editingPlan._id, planData);
@@ -410,21 +434,76 @@ const PlansPage: React.FC = () => {
 
                         <Divider sx={{ my: 1 }} />
                         <Typography variant="subtitle2" color="primary">System Modules</Typography>
-                        <FormControlLabel
-                            control={
-                                <Switch
-                                    checked={formData.cateringEnabled}
-                                    onChange={(e) => setFormData({ ...formData, cateringEnabled: e.target.checked })}
-                                    color="secondary"
+                        <Grid container spacing={2}>
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                                <FormControlLabel
+                                    control={
+                                        <Switch
+                                            checked={formData.cateringEnabled}
+                                            onChange={(e) => setFormData({ ...formData, cateringEnabled: e.target.checked })}
+                                            color="secondary"
+                                        />
+                                    }
+                                    label={
+                                        <Box>
+                                            <Typography variant="body2" fontWeight="bold">Catering Service</Typography>
+                                            <Typography variant="caption" color="text.secondary">Enable Catering Management Module</Typography>
+                                        </Box>
+                                    }
                                 />
-                            }
-                            label={
-                                <Box>
-                                    <Typography variant="body2" fontWeight="bold">Catering Service</Typography>
-                                    <Typography variant="caption" color="text.secondary">Enable access to Catering Management module</Typography>
-                                </Box>
-                            }
-                        />
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                                <FormControlLabel
+                                    control={
+                                        <Switch
+                                            checked={formData.inventoryEnabled}
+                                            onChange={(e) => setFormData({ ...formData, inventoryEnabled: e.target.checked })}
+                                            color="secondary"
+                                        />
+                                    }
+                                    label={
+                                        <Box>
+                                            <Typography variant="body2" fontWeight="bold">Inventory</Typography>
+                                            <Typography variant="caption" color="text.secondary">Enable Inventory Management Module</Typography>
+                                        </Box>
+                                    }
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                                <FormControlLabel
+                                    control={
+                                        <Switch
+                                            checked={formData.wasteManagementEnabled}
+                                            onChange={(e) => setFormData({ ...formData, wasteManagementEnabled: e.target.checked })}
+                                            color="secondary"
+                                        />
+                                    }
+                                    label={
+                                        <Box>
+                                            <Typography variant="body2" fontWeight="bold">Waste Management</Typography>
+                                            <Typography variant="caption" color="text.secondary">Enable Waste Management Module</Typography>
+                                        </Box>
+                                    }
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                                <FormControlLabel
+                                    control={
+                                        <Switch
+                                            checked={formData.attendanceEnabled}
+                                            onChange={(e) => setFormData({ ...formData, attendanceEnabled: e.target.checked })}
+                                            color="secondary"
+                                        />
+                                    }
+                                    label={
+                                        <Box>
+                                            <Typography variant="body2" fontWeight="bold">Attendance</Typography>
+                                            <Typography variant="caption" color="text.secondary">Enable Staff Attendance Module</Typography>
+                                        </Box>
+                                    }
+                                />
+                            </Grid>
+                        </Grid>
                     </Box>
                 </DialogContent>
                 <DialogActions>
