@@ -211,7 +211,7 @@ export const attendanceAPI = {
 
 // -------------------- Menu API --------------------
 export const menuAPI = {
-  getAll: (params?: { search?: string; cursor?: string; limit?: number; category?: string; foodType?: string; isAvailable?: boolean }) => api.get('/menu', { params }),
+  getAll: (params?: { search?: string; cursor?: string; limit?: number; category?: string; foodType?: string; isAvailable?: boolean; isCateringAvailable?: boolean }) => api.get('/menu', { params }),
   getAllCategories: () => api.get('/menu/categories'),
   getAllSubcategories: (categoryId?: string) => api.get('/menu/subcategories', { params: categoryId ? { categoryId } : undefined }),
   getOne: (id: string) => api.get(`/menu/${id}`),
