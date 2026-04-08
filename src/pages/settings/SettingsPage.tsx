@@ -85,6 +85,8 @@ import {
 } from '../../context/SettingsContext';
 
 import { auditLogsAPI, paymentsAPI, printersAPI, settingsAPI, tenantAPI, usersAPI } from '../../services/api';
+import GallerySettings from './GallerySettings';
+import { Collections as CollectionsIcon } from '@mui/icons-material';
 
 import { NOTIFICATION_SOUNDS, previewSound } from '../../utils/notificationSounds';
 import type { ValidationResult } from '../../utils/validation';
@@ -1338,6 +1340,7 @@ const SettingsPage: React.FC = () => {
                     <Tab label="Audit Logs" icon={<CheckCircleIcon />} iconPosition="start" />
                     <Tab label="Loyalty / Rewards" icon={<StarIcon />} iconPosition="start" />
                     <Tab label="Delivery" icon={<DeliveryDiningIcon />} iconPosition="start" />
+                    <Tab label="Gallery" icon={<CollectionsIcon />} iconPosition="start" />
                 </Tabs>
                 <Divider />
 
@@ -3477,7 +3480,7 @@ const SettingsPage: React.FC = () => {
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                             Configure how customers earn and redeem points.
                         </Typography>
-                        
+
                         <Paper sx={{ p: 3, mb: 3 }} variant="outlined">
                             <FormControlLabel
                                 control={
@@ -3490,7 +3493,7 @@ const SettingsPage: React.FC = () => {
                                 label={<Typography fontWeight="bold">Enable Rewards System</Typography>}
                                 sx={{ mb: 2 }}
                             />
-                            
+
                             <Collapse in={settings.rewards?.isEnabled ?? true}>
                                 <Grid container spacing={3}>
                                     <Grid size={{ xs: 12, md: 6 }}>
@@ -3512,12 +3515,12 @@ const SettingsPage: React.FC = () => {
                                             helperText="Value of 1 point in dollars (e.g. 0.05 = $5 for 100 pts)"
                                         />
                                     </Grid>
-                                    
+
                                     <Grid size={{ xs: 12 }}>
                                         <Divider sx={{ my: 1 }} />
                                         <Typography variant="subtitle2" sx={{ mb: 2 }}>Earning Rules</Typography>
                                     </Grid>
-                                    
+
                                     <Grid size={{ xs: 12, md: 4 }}>
                                         <TextField
                                             fullWidth
@@ -3603,8 +3606,8 @@ const SettingsPage: React.FC = () => {
                                     </Grid>
 
                                     <Grid size={{ xs: 12 }}>
-                                        <Button 
-                                            variant="contained" 
+                                        <Button
+                                            variant="contained"
                                             startIcon={<SaveIcon />}
                                             onClick={() => handleSave('rewards')}
                                             disabled={loading}
@@ -3617,8 +3620,8 @@ const SettingsPage: React.FC = () => {
 
                             {!(settings.rewards?.isEnabled ?? true) && (
                                 <Box sx={{ mt: 2 }}>
-                                    <Button 
-                                        variant="contained" 
+                                    <Button
+                                        variant="contained"
                                         startIcon={<SaveIcon />}
                                         onClick={() => handleSave('rewards')}
                                         disabled={loading}
@@ -3770,6 +3773,9 @@ const SettingsPage: React.FC = () => {
                             </Grid>
                         </Grid>
                     </Box>
+                </TabPanel>
+                <TabPanel value={tabValue} index={8}>
+                    <GallerySettings />
                 </TabPanel>
             </Paper >
 

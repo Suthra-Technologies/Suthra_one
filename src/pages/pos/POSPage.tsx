@@ -97,13 +97,13 @@ type MenuItem = {
 
 // --- Memoized Sub-components for Optimization ---
 
-const MemoizedMenuItemCard = React.memo(({ 
-    item, 
-    onClick, 
-    formatCurrency 
-}: { 
-    item: MenuItem; 
-    onClick: (item: MenuItem) => void; 
+const MemoizedMenuItemCard = React.memo(({
+    item,
+    onClick,
+    formatCurrency
+}: {
+    item: MenuItem;
+    onClick: (item: MenuItem) => void;
     formatCurrency: (amount: number) => string;
 }) => {
     return (
@@ -296,7 +296,7 @@ const POSPage: React.FC = () => {
             try {
                 setIsFetchingQuote(true);
                 setQuoteError(null);
-                
+
                 const tenantSlug = tenantSlug || settings?.tenantSlug || '';
                 // Since this might be admin, try to get tenantSlug from context or route if possible.
                 // In POSPage, we have slug from useSearchParams maybe? No.
@@ -371,7 +371,7 @@ const POSPage: React.FC = () => {
         if (!placeholderItems.length) return;
         const timer = setInterval(() => {
             setPlaceholderIndex((prev) => (prev + 1) % placeholderItems.length);
-        }, 3000); 
+        }, 3000);
         return () => clearInterval(timer);
     }, [placeholderItems.length]);
 
@@ -848,7 +848,7 @@ const POSPage: React.FC = () => {
             try {
                 setIsCalculatingTax(true);
                 const restaurantSettings = settings?.restaurant || {};
-                
+
                 // Determine to_zip
                 let to_zip = '';
                 if (typeof deliveryAddress === 'object' && (deliveryAddress as any).zipCode) {
@@ -857,7 +857,7 @@ const POSPage: React.FC = () => {
                     const match = deliveryAddress.match(/\b\d{5}\b/);
                     if (match) to_zip = match[0];
                 }
-                
+
                 if (!to_zip) to_zip = restaurantSettings.zipCode || '30040';
 
                 const payload = {
@@ -889,13 +889,13 @@ const POSPage: React.FC = () => {
         return taxDetails?.taxAmount || 0;
     }, [taxDetails]);
 
-    const serviceChargeAmount = useMemo(() => 
-        (orderType === 'dine_in' && guestCount > 3) ? Math.round(cartTotal * 0.18) : 0, 
-    [orderType, guestCount, cartTotal]);
+    const serviceChargeAmount = useMemo(() =>
+        (orderType === 'dine_in' && guestCount > 3) ? Math.round(cartTotal * 0.18) : 0,
+        [orderType, guestCount, cartTotal]);
 
-    const finalTotal = useMemo(() => 
+    const finalTotal = useMemo(() =>
         cartTotal + taxAmount - discountAmount - couponDiscount + serviceChargeAmount + (Number(tip) || 0),
-    [cartTotal, taxAmount, discountAmount, couponDiscount, serviceChargeAmount, tip]);
+        [cartTotal, taxAmount, discountAmount, couponDiscount, serviceChargeAmount, tip]);
 
     const handlePlaceOrder = async () => {
         if (cart.length === 0) return;
@@ -1946,7 +1946,7 @@ const POSPage: React.FC = () => {
 
                         {/* Load More Button */}
                         {nextCursor && (
-                             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4, mb: 2 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4, mb: 2 }}>
                                 <Button
                                     variant="outlined"
                                     onClick={() => fetchMenu(nextCursor)}

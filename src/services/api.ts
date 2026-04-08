@@ -214,7 +214,7 @@ export const attendanceAPI = {
 
 // -------------------- Menu API --------------------
 export const menuAPI = {
-  getAll: (params?: { search?: string; cursor?: string; limit?: number; category?: string; foodType?: string; isAvailable?: boolean }) => api.get('/menu', { params }),
+  getAll: (params?: { search?: string; cursor?: string; limit?: number; category?: string; foodType?: string; isAvailable?: boolean; isCateringAvailable?: boolean }) => api.get('/menu', { params }),
   getAllCategories: () => api.get('/menu/categories'),
   getAllSubcategories: (categoryId?: string) => api.get('/menu/subcategories', { params: categoryId ? { categoryId } : undefined }),
   getOne: (id: string) => api.get(`/menu/${id}`),
@@ -422,9 +422,10 @@ export const superAdminAPI = superAPI; // alias for compatibility
 
 export const supportAPI = {
   listMine: () => api.get('/support/mine'),
-  listCustomerTickets: () => api.get('/support/mine', { params: { type: 'customer' } }),
+  listCustomerTickets: () => api.get('/support/tickets/customers'),
   create: (payload: any) => api.post('/support', payload),
   reply: (id: string, payload: any) => api.post(`/support/${id}/reply`, payload),
+  resolve: (id: string, payload: any) => api.post(`/support/${id}/resolve`, payload),
 };
 
 
@@ -491,6 +492,15 @@ export const uploadAPI = {
       timeout: 60000, // 60 seconds
     });
   },
+};
+
+// -------------------- Gallery API --------------------
+export const galleryAPI = {
+  getAll: () => api.get('/gallery'),
+  getPublic: (tenantSlug: string) => api.get('/gallery/public', { params: { tenantSlug } }),
+  create: (data: any) => api.post('/gallery', data),
+  update: (id: string, data: any) => api.patch(`/gallery/${id}`, data),
+  delete: (id: string) => api.delete(`/gallery/${id}`),
 };
 
 // -------------------- Catering API --------------------

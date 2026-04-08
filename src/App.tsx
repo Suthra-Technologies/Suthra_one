@@ -176,8 +176,12 @@ const ThemedAppContent: React.FC = () => {
                   <Route path="pos" element={<POSPage />} />
                   <Route element={<RequireRole allowedRoles={['admin', 'manager']} />}>
                     <Route path="menu" element={<MenuPage />} />
-                    <Route path="inventory" element={<InventoryPage />} />
-                    <Route path="inventory/waste" element={<WasteManagementPage />} />
+                    <Route element={<RequireFeature feature="inventory" />}>
+                      <Route path="inventory" element={<InventoryPage />} />
+                    </Route>
+                    <Route element={<RequireFeature feature="wastemanagement" />}>
+                      <Route path="inventory/waste" element={<WasteManagementPage />} />
+                    </Route>
                     <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
                     <Route path="purchase-orders/create" element={<CreatePOPage />} />
                     <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
@@ -193,7 +197,9 @@ const ThemedAppContent: React.FC = () => {
                     <Route path="customer-support" element={<CustomerSupportPage />} />
                     <Route path="promocode" element={<PromoCodePage />} />
                     <Route path="coupons" element={< CouponsAdminPage />} />
-                    <Route path="attendance" element={<AttendancePage />} />
+                    <Route element={<RequireFeature feature="attendance" />}>
+                      <Route path="attendance" element={<AttendancePage />} />
+                    </Route>
                     <Route path="bookings" element={<BookingsAdminPage />} />
                     <Route path="audit-logs" element={<AuditLogsPage />} />
                   </Route>
