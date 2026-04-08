@@ -62,6 +62,14 @@ const WasteManagementPage: React.FC = () => {
     const [openDialog, setOpenDialog] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const { enqueueSnackbar } = useSnackbar();
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     // Pagination
     const [page, setPage] = useState(0);
@@ -243,118 +251,266 @@ const WasteManagementPage: React.FC = () => {
             </Box>
 
             {/* Summary Cards */}
-            <Grid container spacing={3} mb={4}>
-                <Grid item xs={12} md={4}>
-                    <Card sx={{ borderRadius: 3, boxShadow: 3, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white' }}>
-                        <CardContent>
-                            <Box display="flex" alignItems="center" mb={1}>
-                                <TrendingDown sx={{ mr: 1 }} />
-                                <Typography variant="h6">Total Financial Loss</Typography>
-                            </Box>
-                            <Typography variant={{ xs: 'h4', sm: 'h3' } as any} fontWeight="bold">
-                                ${summary?.totalLoss.toFixed(2) || '0.00'}
-                            </Typography>
-                            <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                                Across {summary?.count || 0} waste records
-                            </Typography>
-                        </CardContent>
-                    </Card>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                    <Card sx={{ borderRadius: 3, boxShadow: 3 }}>
-                        <CardContent>
-                            <Box display="flex" alignItems="center" mb={1} color="warning.main">
-                                <Category sx={{ mr: 1 }} />
-                                <Typography variant="h6">Raw Material Loss</Typography>
-                            </Box>
-                            <Typography variant="h3" fontWeight="bold">
-                                ${summary?.byType?.raw_material.toFixed(2) || '0.00'}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                Ingredients and Supplies
-                            </Typography>
-                        </CardContent>
-                    </Card>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                    <Card sx={{ borderRadius: 3, boxShadow: 3 }}>
-                        <CardContent>
-                            <Box display="flex" alignItems="center" mb={1} color="error.main">
-                                <Fastfood sx={{ mr: 1 }} />
-                                <Typography variant="h6">Menu Item Loss</Typography>
-                            </Box>
-                            <Typography variant="h3" fontWeight="bold">
-                                ${summary?.byType?.menu_item.toFixed(2) || '0.00'}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                                Prepared Food Waste
-                            </Typography>
-                        </CardContent>
-                    </Card>
-                </Grid>
-            </Grid>
+         <Grid container spacing={3} mb={4}>
+    <Grid item xs={12} md={4}>
+        <Card sx={{ 
+            borderRadius: 3, 
+            boxShadow: 3, 
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+            color: 'white',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center'
+        }}>
+            <CardContent sx={{ 
+                p: { xs: 2, sm: 3 },
+                width: '100%',
+                textAlign: 'center'
+            }}>
+                <Box display="flex" alignItems="center" justifyContent="center" mb={1}>
+                    <TrendingDown sx={{ mr: 1, fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
+                    <Typography variant="h6" sx={{ fontSize: { xs: '0.95rem', sm: '1.25rem' } }}>
+                        Total Financial Loss
+                    </Typography>
+                </Box>
+                <Typography
+                    variant="h3"
+                    fontWeight="bold"
+                    sx={{ fontSize: { xs: '1.75rem', sm: '2.5rem', md: '3rem' } }}
+                >
+                    ${summary?.totalLoss.toFixed(2) || '0.00'}
+                </Typography>
+                <Typography variant="body2" sx={{ opacity: 0.8, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                    Across {summary?.count || 0} waste records
+                </Typography>
+            </CardContent>
+        </Card>
+    </Grid>
+    <Grid item xs={12} md={4}>
+        <Card sx={{ 
+            borderRadius: 3, 
+            boxShadow: 3,
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center'
+        }}>
+            <CardContent sx={{ 
+                p: { xs: 2, sm: 3 },
+                width: '100%',
+                textAlign: 'center'
+            }}>
+                <Box display="flex" alignItems="center" justifyContent="center" mb={1} color="warning.main">
+                    <Category sx={{ mr: 1, fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
+                    <Typography variant="h6" sx={{ fontSize: { xs: '0.95rem', sm: '1.25rem' } }}>
+                        Raw Material Loss
+                    </Typography>
+                </Box>
+                <Typography
+                    variant="h3"
+                    fontWeight="bold"
+                    sx={{ fontSize: { xs: '1.75rem', sm: '2.5rem', md: '3rem' } }}
+                >
+                    ${summary?.byType?.raw_material.toFixed(2) || '0.00'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                    Ingredients and Supplies
+                </Typography>
+            </CardContent>
+        </Card>
+    </Grid>
+    <Grid item xs={12} md={4}>
+        <Card sx={{ 
+            borderRadius: 3, 
+            boxShadow: 3,
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center'
+        }}>
+            <CardContent sx={{ 
+                p: { xs: 2, sm: 3 },
+                width: '100%',
+                textAlign: 'center'
+            }}>
+                <Box display="flex" alignItems="center" justifyContent="center" mb={1} color="error.main">
+                    <Fastfood sx={{ mr: 1, fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
+                    <Typography variant="h6" sx={{ fontSize: { xs: '0.95rem', sm: '1.25rem' } }}>
+                        Menu Item Loss
+                    </Typography>
+                </Box>
+                <Typography
+                    variant="h3"
+                    fontWeight="bold"
+                    sx={{ fontSize: { xs: '1.75rem', sm: '2.5rem', md: '3rem' } }}
+                >
+                    ${summary?.byType?.menu_item.toFixed(2) || '0.00'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                    Prepared Food Waste
+                </Typography>
+            </CardContent>
+        </Card>
+    </Grid>
+</Grid>
 
             {/* Waste Logs Table */}
-            <TableContainer component={Paper} sx={{ borderRadius: { xs: 0, sm: 3 }, boxShadow: 3 }}>
-                <Table>
-                    <TableHead sx={{ backgroundColor: 'grey.100' }}>
-                        <TableRow>
-                            <TableCell><b>Date</b></TableCell>
-                            <TableCell><b>Item Name</b></TableCell>
-                            <TableCell><b>Type</b></TableCell>
-                            <TableCell><b>Quantity</b></TableCell>
-                            <TableCell><b>Loss Value</b></TableCell>
-                            <TableCell><b>Reason</b></TableCell>
-                            <TableCell><b>Recorded By</b></TableCell>
-                            <TableCell><b>Notes</b></TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {logs.length === 0 ? (
-                            <TableRow>
-                                <TableCell colSpan={8} align="center" sx={{ py: 3 }}>
-                                    No wastage records found
-                                </TableCell>
-                            </TableRow>
-                        ) : (
-                            logs
-                                .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                                .map((log) => (
-                                    <TableRow key={log._id} hover>
-                                        <TableCell>{format(new Date(log.createdAt), 'MMM dd, yyyy HH:mm')}</TableCell>
-                                        <TableCell><b>{log.itemName}</b></TableCell>
-                                        <TableCell>
+            {isMobile ? (
+                // Mobile Card View
+                <Box>
+                    {logs.length === 0 ? (
+                        <Paper sx={{ p: 3, textAlign: 'center', borderRadius: 3 }}>
+                            No wastage records found
+                        </Paper>
+                    ) : (
+                        logs
+                            .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                            .map((log) => (
+                                <Card key={log._id} sx={{ mb: 2, boxShadow: 2, borderRadius: 2 }}>
+                                    <CardContent>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                                            <Typography variant="caption" color="text.secondary">
+                                                {format(new Date(log.createdAt), 'MMM dd, yyyy HH:mm')}
+                                            </Typography>
                                             <Chip
                                                 label={log.itemType === 'raw_material' ? 'Raw Material' : 'Menu Item'}
                                                 size="small"
                                                 color={log.itemType === 'raw_material' ? 'warning' : 'info'}
                                                 variant="outlined"
                                             />
-                                        </TableCell>
-                                        <TableCell>{log.quantity} {log.unit}</TableCell>
-                                        <TableCell sx={{ color: 'error.main', fontWeight: 'bold' }}>
-                                            -${log.cost.toFixed(2)}
-                                        </TableCell>
-                                        <TableCell>
-                                            <Chip label={getReasonLabel(log.reason)} size="small" />
-                                        </TableCell>
-                                        <TableCell>{log.recordedByName}</TableCell>
-                                        <TableCell>{log.notes || '-'}</TableCell>
-                                    </TableRow>
-                                ))
-                        )}
-                    </TableBody>
-                </Table>
-                <TablePagination
-                    rowsPerPageOptions={[5, 10, 25]}
-                    component="div"
-                    count={logs.length}
-                    rowsPerPage={rowsPerPage}
-                    page={page}
-                    onPageChange={handleChangePage}
-                    onRowsPerPageChange={handleChangeRowsPerPage}
-                />
-            </TableContainer>
+                                        </Box>
+
+                                        <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
+                                            {log.itemName}
+                                        </Typography>
+
+                                        <Box sx={{ display: 'grid', gap: 1.5 }}>
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <Typography variant="body2" color="text.secondary">Quantity:</Typography>
+                                                <Typography variant="body2" fontWeight="medium">
+                                                    {log.quantity} {log.unit}
+                                                </Typography>
+                                            </Box>
+
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <Typography variant="body2" color="text.secondary">Loss Value:</Typography>
+                                                <Typography variant="body1" sx={{ color: 'error.main', fontWeight: 'bold' }}>
+                                                    -${log.cost.toFixed(2)}
+                                                </Typography>
+                                            </Box>
+
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <Typography variant="body2" color="text.secondary">Reason:</Typography>
+                                                <Chip label={getReasonLabel(log.reason)} size="small" />
+                                            </Box>
+
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <Typography variant="body2" color="text.secondary">Recorded By:</Typography>
+                                                <Typography variant="body2">{log.recordedByName}</Typography>
+                                            </Box>
+
+                                            {log.notes && log.notes !== '-' && (
+                                                <Box sx={{ mt: 1, pt: 1.5, borderTop: 1, borderColor: 'divider' }}>
+                                                    <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
+                                                        Notes:
+                                                    </Typography>
+                                                    <Typography variant="body2">{log.notes}</Typography>
+                                                </Box>
+                                            )}
+                                        </Box>
+                                    </CardContent>
+                                </Card>
+                            ))
+                    )}
+                    <Paper sx={{ mt: 2, borderRadius: 2 }}>
+                        <TablePagination
+                            rowsPerPageOptions={[5, 10, 25]}
+                            component="div"
+                            count={logs.length}
+                            rowsPerPage={rowsPerPage}
+                            page={page}
+                            onPageChange={handleChangePage}
+                            onRowsPerPageChange={handleChangeRowsPerPage}
+                        />
+                    </Paper>
+                </Box>
+            ) : (
+
+                // Desktop/Tablet Table View
+                <TableContainer
+                    component={Paper}
+                    sx={{
+                        borderRadius: { xs: 0, sm: 3 },
+                        boxShadow: 3,
+                        overflow: 'hidden', // Remove scroll
+                    }}
+                >
+                    <Table>
+                        <TableHead sx={{ backgroundColor: 'grey.100' }}>
+                            <TableRow>
+                                <TableCell><b>Date</b></TableCell>
+                                <TableCell><b>Item Name</b></TableCell>
+                                <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}><b>Type</b></TableCell>
+                                <TableCell><b>Quantity</b></TableCell>
+                                <TableCell><b>Loss Value</b></TableCell>
+                                <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}><b>Reason</b></TableCell>
+                                <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}><b>Recorded By</b></TableCell>
+                                <TableCell sx={{ display: { xs: 'none', xl: 'table-cell' } }}><b>Notes</b></TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {logs.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={8} align="center" sx={{ py: 3 }}>
+                                        No wastage records found
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                logs
+                                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                                    .map((log) => (
+                                        <TableRow key={log._id} hover>
+                                            <TableCell sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' } }}>
+                                                {format(new Date(log.createdAt), 'MMM dd, yyyy HH:mm')}
+                                            </TableCell>
+                                            <TableCell><b>{log.itemName}</b></TableCell>
+                                            <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
+                                                <Chip
+                                                    label={log.itemType === 'raw_material' ? 'Raw Material' : 'Menu Item'}
+                                                    size="small"
+                                                    color={log.itemType === 'raw_material' ? 'warning' : 'info'}
+                                                    variant="outlined"
+                                                />
+                                            </TableCell>
+                                            <TableCell sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' } }}>
+                                                {log.quantity} {log.unit}
+                                            </TableCell>
+                                            <TableCell sx={{ color: 'error.main', fontWeight: 'bold', fontSize: { xs: '0.75rem', md: '0.875rem' } }}>
+                                                -${log.cost.toFixed(2)}
+                                            </TableCell>
+                                            <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>
+                                                <Chip label={getReasonLabel(log.reason)} size="small" />
+                                            </TableCell>
+                                            <TableCell sx={{ display: { xs: 'none', lg: 'table-cell' } }}>
+                                                {log.recordedByName}
+                                            </TableCell>
+                                            <TableCell sx={{ display: { xs: 'none', xl: 'table-cell' } }}>
+                                                {log.notes || '-'}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))
+                            )}
+                        </TableBody>
+                    </Table>
+                    <TablePagination
+                        rowsPerPageOptions={[5, 10, 25]}
+                        component="div"
+                        count={logs.length}
+                        rowsPerPage={rowsPerPage}
+                        page={page}
+                        onPageChange={handleChangePage}
+                        onRowsPerPageChange={handleChangeRowsPerPage}
+                    />
+                </TableContainer>
+            )}
 
             {/* Log Waste Dialog */}
             <Dialog
