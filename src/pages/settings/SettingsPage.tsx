@@ -379,7 +379,9 @@ const createDefaultSettings = (): SettingsState => ({
                 customer: { orders: false, catering: false, inventory: false }
             },
             users: {}
-        }
+        },
+        sound: 'notification',
+        soundDuration: 6,
     },
     printer: {
         enabled: false,
@@ -460,6 +462,8 @@ const mergeSettingsWithDefaults = (defaults: SettingsState, partial: Partial<Set
         notification: {
             ...defaults.notification,
             ...((partial.notification as Partial<NotificationSettings>) || {}),
+            sound: (partial.notification as Partial<NotificationSettings>)?.sound ?? defaults.notification.sound,
+            soundDuration: (partial.notification as Partial<NotificationSettings>)?.soundDuration ?? defaults.notification.soundDuration,
             sms: {
                 ...defaults.notification.sms,
                 ...((partial.notification as Partial<NotificationSettings>)?.sms || {}),
@@ -1142,7 +1146,8 @@ const SettingsPage: React.FC = () => {
                 },
                 // @ts-ignore
                 push: settings.notification.push,
-                sound: soundId
+                sound: soundId,
+                soundDuration: settings.notification.soundDuration || 6
             };
             await settingsAPI.update('notification', payload);
             updateGlobalSettings(updatedSettings);
@@ -1150,6 +1155,46 @@ const SettingsPage: React.FC = () => {
         } catch (error) {
             console.error('Error saving sound:', error);
             toast.error('Failed to save sound preference');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSoundDurationChange = async (duration: number) => {
+        setLoading(true);
+
+        // Optimistic local update
+        const updatedSettings = {
+            ...settings,
+            notification: {
+                ...settings.notification,
+                soundDuration: duration
+            }
+        };
+        setSettings(updatedSettings);
+
+        try {
+            const payload = {
+                sms: {
+                    enabled: settings.notification.sms.enabled,
+                    provider: 'twilio',
+                    twilio: {
+                        accountSid: settings.notification.sms.twilio.accountSid,
+                        authToken: settings.notification.sms.twilio.authToken,
+                        fromNumber: settings.notification.sms.twilio.fromNumber,
+                    },
+                },
+                // @ts-ignore
+                push: settings.notification.push,
+                sound: settings.notification.sound || 'notification',
+                soundDuration: duration
+            };
+            await settingsAPI.update('notification', payload);
+            updateGlobalSettings(updatedSettings);
+            toast.success('Notification duration saved globally');
+        } catch (error) {
+            console.error('Error saving duration:', error);
+            toast.error('Failed to save duration preference');
         } finally {
             setLoading(false);
         }
@@ -2568,6 +2613,26 @@ const SettingsPage: React.FC = () => {
                                 })}
                             </Stack>
 
+                            <Grid container spacing={3} sx={{ mt: 1 }}>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        select
+                                        fullWidth
+                                        label="Sound Duration"
+                                        value={settings.notification.soundDuration || 6}
+                                        onChange={(e) => handleSoundDurationChange(Number(e.target.value))}
+                                        helperText="Choose how long the alert sound plays for new notifications."
+                                        sx={{ mt: 2 }}
+                                    >
+                                        <MenuItem value={3}>3 Seconds</MenuItem>
+                                        <MenuItem value={6}>6 Seconds</MenuItem>
+                                        <MenuItem value={10}>10 Seconds</MenuItem>
+                                        <MenuItem value={15}>15 Seconds (Medium)</MenuItem>
+                                        <MenuItem value={30}>30 Seconds (Long)</MenuItem>
+                                        <MenuItem value={60}>60 Seconds (Looping)</MenuItem>
+                                    </TextField>
+                                </Grid>
+                            </Grid>
                         </Grid>
 
 
