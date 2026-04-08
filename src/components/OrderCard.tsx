@@ -806,6 +806,31 @@ const OrderCard: React.FC<OrderCardProps> = ({
                             </IconButton>
                         </Tooltip>
                     )}
+                    {order.uberEatsDeliveryId && isOrderActive(order.status) && order.status !== 'delivered' && (
+                        <Tooltip title="Sync Uber Eats Status">
+                            <IconButton
+                                size="small"
+                                color="info"
+                                onClick={async (e) => {
+                                    e.stopPropagation();
+                                    setIsProcessing(true);
+                                    try {
+                                        await ordersAPI.syncUberEatsStatus(order._id);
+                                        toast.success('Sync complete');
+                                        if (onRefresh) onRefresh();
+                                    } catch (error) {
+                                        toast.error('Sync failed');
+                                    } finally {
+                                        setIsProcessing(false);
+                                    }
+                                }}
+                                disabled={isProcessing}
+                                sx={{ padding: '4px' }}
+                            >
+                                <SyncIcon />
+                            </IconButton>
+                        </Tooltip>
+                    )}
                 </Stack>
 
                 <Stack direction="row" spacing={0.5} alignItems="center">

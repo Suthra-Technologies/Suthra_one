@@ -92,10 +92,10 @@ export interface SystemSettings {
     autoPrint: boolean;
     googleMapsApiKey?: string;
     posPaymentMethods?: {
-        cash: boolean;
-        card: boolean;
-        zelle: boolean;
-        venmo: boolean;
+        cash?: boolean;
+        card?: boolean;
+        zelle?: boolean;
+        venmo?: boolean;
     };
 }
 
@@ -143,12 +143,29 @@ export interface TenantPrinterSettings {
     kitchen?: PrinterConfig;
 }
 
+export interface DeliverySettings {
+    doordash: {
+        enabled: boolean;
+        developerId: string;
+        keyId: string;
+        signingSecret: string;
+        isSandbox: boolean;
+    };
+    ubereats: {
+        enabled: boolean;
+        clientId: string;
+        clientSecret: string;
+        customerId: string;
+        isSandbox: boolean;
+    };
+}
+
 export interface RewardSettings {
     isEnabled: boolean;
     displayName: string;
     pointValue: number;
     earnRate: number;
-    calculationBase: 'subtotal' | 'total' | 'total_after_discount';
+    calculationBase: string;
     minOrderValueToEarn: number;
     welcomeBonus: number;
     firstOrderBonus: number;
@@ -163,6 +180,7 @@ export interface SettingsState {
     notification: NotificationSettings;
     printer: TenantPrinterSettings;
     rewards: RewardSettings;
+    delivery?: DeliverySettings;
 }
 
 // Default settings
@@ -284,6 +302,22 @@ const defaultSettings: SettingsState = {
         minPointsToRedeem: 100,
         maxRedemptionPercentage: 100,
     },
+    delivery: {
+        doordash: {
+            enabled: false,
+            developerId: '',
+            keyId: '',
+            signingSecret: '',
+            isSandbox: true,
+        },
+        ubereats: {
+            enabled: false,
+            clientId: '',
+            clientSecret: '',
+            customerId: '',
+            isSandbox: true,
+        }
+    }
 };
 
 interface SettingsContextType {
@@ -494,6 +528,16 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 rewards: {
                     ...defaultSettings.rewards,
                     ...(fetched.rewards || {}),
+                },
+                delivery: {
+                    doordash: {
+                        ...defaultSettings.delivery!.doordash,
+                        ...(fetched.delivery?.doordash || {}),
+                    },
+                    ubereats: {
+                        ...defaultSettings.delivery!.ubereats,
+                        ...(fetched.delivery?.ubereats || {}),
+                    }
                 }
             };
 
