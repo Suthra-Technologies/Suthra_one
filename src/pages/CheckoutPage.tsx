@@ -92,6 +92,34 @@ const CheckoutPage: React.FC = () => {
   const [isFetchingQuote, setIsFetchingQuote] = useState<boolean>(false);
   const [quoteError, setQuoteError] = useState<string | null>(null);
 
+  // Tip selection state
+  const TIP_PERCENTAGES = [5, 10, 15, 20];
+  const [selectedTipPercent, setSelectedTipPercent] = useState<number | 'custom'>(5);
+  const [customTipValue, setCustomTipValue] = useState<string>('');
+
+  // Calculate tip amount from percentage
+  const computeTip = (percent: number | 'custom'): number => {
+    if (percent === 'custom') return parseFloat(customTipValue) || 0;
+    return Math.round(cart.totalAmount * (percent / 100) * 100) / 100;
+  };
+
+  // Initialise tip to 5% on mount / when subtotal changes
+  useEffect(() => {
+    if (selectedTipPercent !== 'custom') {
+      setDeliveryInfo(prev => ({ ...prev, tip: computeTip(selectedTipPercent) }));
+    }
+  }, [cart.totalAmount, selectedTipPercent]);
+
+  const handleTipSelect = (percent: number | 'custom') => {
+    setSelectedTipPercent(percent);
+    if (percent === 'custom') {
+      const val = parseFloat(customTipValue) || 0;
+      setDeliveryInfo(prev => ({ ...prev, tip: val }));
+    } else {
+      setDeliveryInfo(prev => ({ ...prev, tip: computeTip(percent) }));
+    }
+  };
+
   // Redirect if cart empty
   useEffect(() => {
     if (cart.items.length === 0 && activeStep === 0) {
@@ -509,14 +537,60 @@ const CheckoutPage: React.FC = () => {
             </FormControl>
           </Grid>
           <Grid size={{ xs: 12 }}>
-            <TextField
-              fullWidth
-              label="Driver Tip ($) (Optional)"
-              type="number"
-              value={deliveryInfo.tip}
-              onChange={(e) => setDeliveryInfo((prev) => ({ ...prev, tip: e.target.value === '' ? '' : Math.max(0, Number(e.target.value)) }))}
-              inputProps={{ step: "0.50", min: "0" }}
-            />
+            <Box>
+              <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
+                Driver Tip
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1.5 }}>
+                {TIP_PERCENTAGES.map((pct) => (
+                  <Chip
+                    key={pct}
+                    label={`${pct}%  ($${computeTip(pct).toFixed(2)})`}
+                    clickable
+                    color={selectedTipPercent === pct ? 'primary' : 'default'}
+                    variant={selectedTipPercent === pct ? 'filled' : 'outlined'}
+                    onClick={() => handleTipSelect(pct)}
+                    sx={{
+                      fontWeight: selectedTipPercent === pct ? 700 : 500,
+                      fontSize: '0.85rem',
+                      px: 1,
+                    }}
+                  />
+                ))}
+                <Chip
+                  label="Custom"
+                  clickable
+                  color={selectedTipPercent === 'custom' ? 'primary' : 'default'}
+                  variant={selectedTipPercent === 'custom' ? 'filled' : 'outlined'}
+                  onClick={() => handleTipSelect('custom')}
+                  sx={{
+                    fontWeight: selectedTipPercent === 'custom' ? 700 : 500,
+                    fontSize: '0.85rem',
+                    px: 1,
+                  }}
+                />
+              </Box>
+              {selectedTipPercent === 'custom' && (
+                <TextField
+                  size="small"
+                  label="Custom Tip ($)"
+                  type="number"
+                  value={customTipValue}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setCustomTipValue(val);
+                    setDeliveryInfo(prev => ({ ...prev, tip: parseFloat(val) || 0 }));
+                  }}
+                  inputProps={{ step: '0.50', min: '0' }}
+                  sx={{ maxWidth: 200 }}
+                />
+              )}
+              {Number(deliveryInfo.tip) > 0 && (
+                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                  Tip amount: ${Number(deliveryInfo.tip).toFixed(2)}
+                </Typography>
+              )}
+            </Box>
           </Grid>
           <Grid size={{ xs: 12 }}>
             <TextField

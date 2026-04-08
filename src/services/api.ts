@@ -194,6 +194,9 @@ export const ordersAPI = {
   confirmStripeCheckout: (orderId: string, sessionId: string) => api.post(`/orders/${orderId}/confirm-payment`, { sessionId }),
   updateLocation: (id: string, lat: number, lng: number) => api.patch(`/orders/${id}/location`, { lat, lng }),
   syncDoordashStatus: (orderId: string) => api.post(`/doordash/sync/${orderId}`),
+  syncUberEatsStatus: (orderId: string) => api.post(`/ubereats/sync/${orderId}`),
+  dispatchUberEatsDelivery: (orderId: string) => api.post(`/ubereats/dispatch/${orderId}`),
+  simulateUberEatsStatus: (orderId: string, status: string) => api.post(`/ubereats/simulate/${orderId}`, { status }),
 };
 
 // -------------------- Attendance API --------------------
