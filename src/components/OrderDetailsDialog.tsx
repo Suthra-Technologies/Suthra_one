@@ -265,7 +265,7 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                     )}
 
                     {/* Delivery Information Container */}
-                    {['delivery', 'online'].includes(order.orderType) && (order.driverName || order.driverPhone || order.dasherPickupPhone || order.dasherDropoffPhone || order.trackingUrl) && (
+                    {(['delivery', 'online'].includes(order.orderType) || order.driverName || order.driverPhone || order.trackingUrl || order.uberEatsDeliveryId || order.doordashDeliveryId) && (
                         <>
                             <Divider sx={{ my: 2 }} />
                             <Box sx={{ mb: 3 }}>

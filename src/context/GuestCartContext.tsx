@@ -11,6 +11,8 @@ export interface CartItem {
   customizations?: any[];
   spiceLevel?: string;
   itemTotal: number;
+  isAlcohol?: boolean;
+  categoryName?: string;
 }
 
 export interface CustomerPreferences {
@@ -86,11 +88,19 @@ function cartReducer(state: CartState, action: any): CartState {
       );
       let updatedItems;
       if (existingItemIndex >= 0) {
-        updatedItems = state.items.map((cartItem, index) =>
-          index === existingItemIndex
-            ? { ...cartItem, quantity: cartItem.quantity + quantity }
-            : cartItem
-        );
+        updatedItems = state.items.map((cartItem, index) => {
+          if (index === existingItemIndex) {
+            const nextQty = cartItem.quantity + quantity;
+            const customizations = cartItem.customizations ?? [];
+            const basePrice = cartItem.price + customizations.reduce((sum: number, c: any) => sum + (c.price || 0), 0);
+            return { 
+              ...cartItem, 
+              quantity: nextQty,
+              itemTotal: basePrice * nextQty 
+            };
+          }
+          return cartItem;
+        });
       } else {
         const newItem: CartItem = {
           id: item._id,
@@ -101,6 +111,8 @@ function cartReducer(state: CartState, action: any): CartState {
           quantity,
           customizations,
           spiceLevel: spiceLevel !== undefined ? spiceLevel : (item.isSpiceLevelAvailable ? state.customerPreferences.spiceLevel : ''),
+          isAlcohol: item.isAlcohol,
+          categoryName: typeof item.category === 'string' ? item.category : item.category?.name,
           itemTotal: (item.price + customizations.reduce((sum: number, c: any) => sum + (c.price || 0), 0)) * quantity,
         };
         updatedItems = [...state.items, newItem];

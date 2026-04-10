@@ -94,6 +94,9 @@ export const authAPI = {
   getPublicMenu: () => api.get('/menu/public'),
   resetPasswordWithToken: (token: string, newPassword: string) => api.post('/auth/reset-password', { token, newPassword }),
   forgotPassword: (email: string) => api.post('/auth/forgot-password', { email }),
+  getCustomerCards: () => api.get('/auth/customer/cards'),
+  saveCustomerCard: (cardData: any) => api.post('/auth/customer/cards', cardData),
+  deleteCustomerCard: (index: number) => api.delete(`/auth/customer/cards/${index}`),
 };
 
 

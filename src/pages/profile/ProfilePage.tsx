@@ -33,6 +33,8 @@ import {
     Star as StarIcon,
     StarBorder as StarBorderIcon,
     Close as CloseIcon,
+    Payment as PaymentIcon,
+    CreditCard as CreditCardIcon,
 } from '@mui/icons-material';
 import {
     Dialog,
@@ -79,6 +81,11 @@ const ProfilePage: React.FC = () => {
         open: false,
         index: null,
     });
+    const [savedCards, setSavedCards] = useState<any[]>([]);
+    const [cardDeleteConfirm, setCardDeleteConfirm] = useState<{ open: boolean; index: number | null }>({
+        open: false,
+        index: null,
+    });
     const [addressForm, setAddressForm] = useState({
         label: 'Home',
         street: '',
@@ -106,6 +113,7 @@ const ProfilePage: React.FC = () => {
                     hireDate: userData.hireDate || '',
                 });
                 setSavedAddresses(userData.savedAddresses || []);
+                fetchSavedCards();
             } catch (error) {
                 console.error('Error fetching profile:', error);
             } finally {
@@ -402,6 +410,37 @@ const ProfilePage: React.FC = () => {
         }
     };
 
+    const fetchSavedCards = async () => {
+        try {
+            const response = await authAPI.getCustomerCards();
+            setSavedCards(response.data.savedCards || []);
+        } catch (err) {
+            console.error('Failed to fetch cards:', err);
+        }
+    };
+
+    const handleDeleteCard = (index: number) => {
+        setCardDeleteConfirm({ open: true, index });
+    };
+
+    const confirmDeleteCard = async () => {
+        const index = cardDeleteConfirm.index;
+        if (index === null) return;
+        setCardDeleteConfirm({ open: false, index: null });
+
+        try {
+            setLoading(true);
+            await (authAPI as any).deleteCustomerCard(index);
+            toast.success('Card removed successfully');
+            fetchSavedCards();
+        } catch (error) {
+            console.error('Error deleting card:', error);
+            toast.error('Failed to remove card');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <Box>
             <Typography variant="h4" gutterBottom sx={{ mb: 2, textAlign: { xs: 'center', md: 'left' } }}>
@@ -418,6 +457,9 @@ const ProfilePage: React.FC = () => {
                     <Tab label="Profile" id="profile-tab-0" aria-controls="profile-tabpanel-0" />
                     {activeRole === 'customer' && (
                         <Tab label="Saved Addresses" id="profile-tab-1" aria-controls="profile-tabpanel-1" />
+                    )}
+                    {activeRole === 'customer' && (
+                        <Tab label="Cards" id="profile-tab-2" aria-controls="profile-tabpanel-2" />
                     )}
                 </Tabs>
             </Box>
@@ -732,6 +774,73 @@ const ProfilePage: React.FC = () => {
                 </Box>
             )}
 
+            {/* ── TAB 2: Cards (customer only) ── */}
+            {activeRole === 'customer' && (
+                <Box role="tabpanel" hidden={activeTab !== 2} id="profile-tabpanel-2" aria-labelledby="profile-tab-2">
+                    {activeTab === 2 && (
+                        <Paper sx={{ p: 3 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                <Typography variant="h6">Saved Cards</Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                    Cards are saved for faster checkout
+                                </Typography>
+                            </Box>
+                            <Divider sx={{ mb: 3 }} />
+
+                            {savedCards.length === 0 ? (
+                                <Box sx={{ textAlign: 'center', py: 6, color: 'text.secondary', bgcolor: 'grey.50', borderRadius: 2 }}>
+                                    <CreditCardIcon sx={{ fontSize: 48, mb: 1, opacity: 0.5 }} />
+                                    <Typography variant="body1">No saved cards yet.</Typography>
+                                    <Typography variant="body2">You can save your card details during checkout for future use.</Typography>
+                                </Box>
+                            ) : (
+                                <Grid container spacing={2}>
+                                    {savedCards.map((card, index) => (
+                                        <Grid size={{ xs: 12, sm: 6, md: 4 }} key={index}>
+                                            <Card variant="outlined" sx={{ borderRadius: 2 }}>
+                                                <CardContent>
+                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                            <PaymentIcon color="primary" />
+                                                            <Typography variant="subtitle1" fontWeight="700">
+                                                                {card.brand}
+                                                            </Typography>
+                                                        </Box>
+                                                        <IconButton 
+                                                            size="small" 
+                                                            color="error"
+                                                            onClick={() => handleDeleteCard(index)}
+                                                        >
+                                                            <DeleteIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Box>
+                                                    <Typography variant="h6" letterSpacing={1} sx={{ mb: 1 }}>
+                                                        •••• •••• •••• {card.last4}
+                                                    </Typography>
+                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                                                        <Box>
+                                                            <Typography variant="caption" color="text.secondary" display="block">
+                                                                EXPIRES
+                                                            </Typography>
+                                                            <Typography variant="body2" fontWeight="500">
+                                                                {card.expMonth}/{card.expYear}
+                                                            </Typography>
+                                                        </Box>
+                                                        {card.isDefault && (
+                                                            <Chip label="DEFAULT" size="small" variant="outlined" color="primary" sx={{ height: 20, fontSize: '0.65rem' }} />
+                                                        )}
+                                                    </Box>
+                                                </CardContent>
+                                            </Card>
+                                        </Grid>
+                                    ))}
+                                </Grid>
+                            )}
+                        </Paper>
+                    )}
+                </Box>
+            )}
+
             {/* Address Form Dialog */}
             <Dialog open={addressDialogOpen} onClose={() => setAddressDialogOpen(false)} maxWidth="sm" fullWidth>
                 <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pr: 1 }}>
@@ -887,6 +996,43 @@ const ProfilePage: React.FC = () => {
                         sx={{ borderRadius: 2, flex: 1 }}
                     >
                         Yes, Delete
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Card Delete Confirmation Dialog */}
+            <Dialog
+                open={cardDeleteConfirm.open}
+                onClose={() => setCardDeleteConfirm({ open: false, index: null })}
+                maxWidth="xs"
+                fullWidth
+                PaperProps={{ sx: { borderRadius: 3 } }}
+            >
+                <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <DeleteIcon color="error" />
+                    <Typography fontWeight={700}>Remove Card</Typography>
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" color="text.secondary">
+                        Are you sure you want to remove this saved card? You will need to re-enter your details next time you order.
+                    </Typography>
+                </DialogContent>
+                <DialogActions sx={{ p: 2, gap: 1 }}>
+                    <Button
+                        variant="outlined"
+                        onClick={() => setCardDeleteConfirm({ open: false, index: null })}
+                        sx={{ flex: 1 }}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="contained"
+                        color="error"
+                        onClick={confirmDeleteCard}
+                        disabled={loading}
+                        sx={{ flex: 1 }}
+                    >
+                        Remove
                     </Button>
                 </DialogActions>
             </Dialog>
