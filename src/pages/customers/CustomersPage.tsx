@@ -65,7 +65,7 @@ const CustomersPage: React.FC = () => {
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [totalCustomers, setTotalCustomers] = useState(0);
-    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
     const isTabletOrBelow = useMediaQuery(theme.breakpoints.down('lg'));
     const isTablet = isTabletOrBelow && !isMobile;
 
@@ -128,12 +128,13 @@ const CustomersPage: React.FC = () => {
     };
 
     return (
-        <Box sx={{ p: 3 }}>
+        <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
             {/* Header */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <PersonIcon sx={{ fontSize: 32, color: 'primary.main' }} />
-                    <Typography variant="h4" fontWeight="bold">
+                    <Typography variant={{ xs: 'h5', sm: 'h4' } as any} fontWeight="bold">
+
                         Customers
                     </Typography>
                 </Box>
@@ -160,23 +161,9 @@ const CustomersPage: React.FC = () => {
             {/* Customers Table */}
 
 
-            {isTablet ? (
+            {isMobile ? (
                 <Stack spacing={2}>
-                    <Paper sx={{ borderRadius: 2, overflow: 'hidden' }}>
-                        <TableContainer>
-                            <Table>
-                                <TableHead>
-                                    <TableRow sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1) }}>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>Customer</TableCell>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>Contact</TableCell>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>Stats</TableCell>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>Last Visit</TableCell>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>Order Types</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                            </Table>
-                        </TableContainer>
-                    </Paper>
+
                     {loading ? (
                         <Box sx={{ py: 4, textAlign: 'center' }}>Loading...</Box>
                     ) : (!Array.isArray(customers) || customers.length === 0) ? (

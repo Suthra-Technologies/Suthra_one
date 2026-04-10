@@ -1095,7 +1095,40 @@ const ReportsPage: React.FC = () => {
                     <Typography variant="h6" gutterBottom>
                         Recent Orders
                     </Typography>
-                    <TableContainer component={Paper} sx={{ maxWidth: '100%', overflowX: 'auto' }}>
+                    {/* Mobile Cards */}
+                    <Box sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', gap: 1.5 }}>
+                        {recentOrders.length === 0 ? (
+                            <Typography align="center" color="text.secondary" sx={{ py: 3 }}>No recent orders found</Typography>
+                        ) : (
+                            recentOrders
+                                .slice(recentOrdersPage * recentOrdersRowsPerPage, recentOrdersPage * recentOrdersRowsPerPage + recentOrdersRowsPerPage)
+                                .map((order: any) => (
+                                    <Paper key={order._id || order.id} elevation={1} sx={{ p: 2, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                            <Typography variant="subtitle2" fontWeight={600}>#{order.orderNumber}</Typography>
+                                            <Chip
+                                                label={order.status}
+                                                size="small"
+                                                color={order.status === 'completed' ? 'success' : order.status === 'cancelled' ? 'error' : 'warning'}
+                                            />
+                                        </Box>
+                                        <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+                                            {new Date(order.createdAt).toLocaleString()}
+                                        </Typography>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+                                            <Chip label={formatOrderType(order.orderType)} size="small" variant="outlined" />
+                                            <Box sx={{ display: 'flex', gap: 2 }}>
+                                                <Typography variant="body2">Amount: <strong>{formatCurrency(order.totalAmount)}</strong></Typography>
+                                                <Typography variant="body2">Tip: <strong>{formatCurrency(order.tip || 0)}</strong></Typography>
+                                            </Box>
+                                        </Box>
+                                    </Paper>
+                                ))
+                        )}
+                    </Box>
+
+                    {/* Desktop Table */}
+                    <TableContainer component={Paper} sx={{ display: { xs: 'none', md: 'block' } }}>
                         <Table>
                             <TableHead>
                                 <TableRow>
@@ -1464,7 +1497,46 @@ const ReportsPage: React.FC = () => {
                 </Grid>
 
                 <Grid item xs={12}>
-                    <TableContainer component={Paper} sx={{ maxWidth: '100%', overflowX: 'auto' }}>
+                    {/* Mobile Cards */}
+                    <Box sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', gap: 1.5 }}>
+                        {bestSellingItems
+                            .slice(bestSellingPage * bestSellingRowsPerPage, bestSellingPage * bestSellingRowsPerPage + bestSellingRowsPerPage)
+                            .map((item, index) => {
+                                const rank = bestSellingPage * bestSellingRowsPerPage + index + 1;
+                                return (
+                                    <Paper key={index} elevation={1} sx={{ p: 2, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <Chip label={rank} size="small" color={rank <= 3 ? 'primary' : 'default'} />
+                                                <Typography variant="subtitle2" fontWeight={600}>{item.itemName}</Typography>
+                                            </Box>
+                                            <Typography variant="caption" color="text.secondary">{item.category}</Typography>
+                                        </Box>
+                                        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+                                            <Box>
+                                                <Typography variant="caption" color="text.secondary">Qty Sold</Typography>
+                                                <Typography variant="body2" fontWeight={600}>{item.totalQuantity}</Typography>
+                                            </Box>
+                                            <Box>
+                                                <Typography variant="caption" color="text.secondary">Revenue</Typography>
+                                                <Typography variant="body2" fontWeight={600}>{formatCurrency(item.totalRevenue)}</Typography>
+                                            </Box>
+                                            <Box>
+                                                <Typography variant="caption" color="text.secondary">Order Count</Typography>
+                                                <Typography variant="body2" fontWeight={600}>{item.orderCount}</Typography>
+                                            </Box>
+                                            <Box>
+                                                <Typography variant="caption" color="text.secondary">Avg Price</Typography>
+                                                <Typography variant="body2" fontWeight={600}>{formatCurrency(item.averagePrice)}</Typography>
+                                            </Box>
+                                        </Box>
+                                    </Paper>
+                                );
+                            })}
+                    </Box>
+
+                    {/* Desktop Table */}
+                    <TableContainer component={Paper} sx={{ display: { xs: 'none', md: 'block' } }}>
                         <Table>
                             <TableHead>
                                 <TableRow>
@@ -1516,7 +1588,7 @@ const ReportsPage: React.FC = () => {
             </Grid>
         </Paper >
     );
- 
+
     // Tips Report Tab
     const renderTipsReport = () => (
         <Grid container spacing={3}>
@@ -1524,8 +1596,8 @@ const ReportsPage: React.FC = () => {
             <Grid item xs={12}>
                 <Box display="flex" justifyContent="space-between" alignItems="center">
                     <Typography variant="h5" sx={{ color: 'black', fontWeight: 'bold' }}>Tips Report</Typography>
-                    <Button 
-                        variant="contained" 
+                    <Button
+                        variant="contained"
                         startIcon={<DownloadIcon />}
                         onClick={() => downloadExcel('tips-report')}
                         sx={{ borderRadius: 2, textTransform: 'none' }}
@@ -1536,7 +1608,7 @@ const ReportsPage: React.FC = () => {
             </Grid>
             {/* Tip Summary Cards */}
             <Grid item xs={12} md={4}>
-                <Card sx={{ 
+                <Card sx={{
                     position: 'relative',
                     overflow: 'hidden',
                     borderRadius: 4,
@@ -1550,17 +1622,17 @@ const ReportsPage: React.FC = () => {
                         boxShadow: '0 12px 30px 0 rgba(79, 70, 229, 0.12)',
                     }
                 }}>
-                    <Box sx={{ 
-                        position: 'absolute', 
-                        top: 0, 
-                        left: 0, 
-                        width: 4, 
-                        height: '100%', 
-                        bgcolor: 'primary.main' 
+                    <Box sx={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: 4,
+                        height: '100%',
+                        bgcolor: 'primary.main'
                     }} />
                     <CardContent sx={{ p: 3 }}>
-                        <Stack direction="row" spacing={2} alignItems="center">
-                            <Box sx={{ 
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
+                            <Box sx={{
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
@@ -1586,7 +1658,7 @@ const ReportsPage: React.FC = () => {
             </Grid>
 
             <Grid item xs={12} md={4}>
-                <Card sx={{ 
+                <Card sx={{
                     position: 'relative',
                     overflow: 'hidden',
                     borderRadius: 4,
@@ -1600,17 +1672,17 @@ const ReportsPage: React.FC = () => {
                         boxShadow: '0 12px 30px 0 rgba(236, 72, 153, 0.12)',
                     }
                 }}>
-                    <Box sx={{ 
-                        position: 'absolute', 
-                        top: 0, 
-                        left: 0, 
-                        width: 4, 
-                        height: '100%', 
-                        bgcolor: 'secondary.main' 
+                    <Box sx={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: 4,
+                        height: '100%',
+                        bgcolor: 'secondary.main'
                     }} />
                     <CardContent sx={{ p: 3 }}>
                         <Stack direction="row" spacing={2} alignItems="center">
-                            <Box sx={{ 
+                            <Box sx={{
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
@@ -1638,7 +1710,7 @@ const ReportsPage: React.FC = () => {
             </Grid>
 
             <Grid item xs={12} md={4}>
-                <Card sx={{ 
+                <Card sx={{
                     position: 'relative',
                     overflow: 'hidden',
                     borderRadius: 4,
@@ -1652,17 +1724,17 @@ const ReportsPage: React.FC = () => {
                         boxShadow: '0 12px 30px 0 rgba(16, 185, 129, 0.12)',
                     }
                 }}>
-                    <Box sx={{ 
-                        position: 'absolute', 
-                        top: 0, 
-                        left: 0, 
-                        width: 4, 
-                        height: '100%', 
-                        bgcolor: 'success.main' 
+                    <Box sx={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: 4,
+                        height: '100%',
+                        bgcolor: 'success.main'
                     }} />
                     <CardContent sx={{ p: 3 }}>
                         <Stack direction="row" spacing={2} alignItems="center">
-                            <Box sx={{ 
+                            <Box sx={{
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
@@ -1689,9 +1761,9 @@ const ReportsPage: React.FC = () => {
 
             {/* Tips Trend Chart */}
             <Grid item xs={12}>
-                <Paper sx={{ 
-                    p: 3, 
-                    borderRadius: 4, 
+                <Paper sx={{
+                    p: 3,
+                    borderRadius: 4,
                     boxShadow: '0 4px 20px 0 rgba(0,0,0,0.05)',
                     border: '1px solid',
                     borderColor: 'divider'
@@ -1704,13 +1776,13 @@ const ReportsPage: React.FC = () => {
                             <BarChart data={salesReport?.dailySales || []} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="colorTips" x1="0" y1="0" x2="0" y2="1">
-                                        <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.8}/>
-                                        <stop offset="95%" stopColor="#4F46E5" stopOpacity={0.2}/>
+                                        <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.8} />
+                                        <stop offset="95%" stopColor="#4F46E5" stopOpacity={0.2} />
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={alpha('#000', 0.05)} />
-                                <XAxis 
-                                    dataKey="date" 
+                                <XAxis
+                                    dataKey="date"
                                     axisLine={false}
                                     tickLine={false}
                                     tickFormatter={(str) => new Date(str).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}
@@ -1718,19 +1790,19 @@ const ReportsPage: React.FC = () => {
                                     tick={{ fill: alpha('#000', 0.5) }}
                                     dy={10}
                                 />
-                                <YAxis 
+                                <YAxis
                                     axisLine={false}
                                     tickLine={false}
-                                    tickFormatter={(val) => formatCurrency(val)} 
+                                    tickFormatter={(val) => formatCurrency(val)}
                                     style={{ fontSize: 12, fontWeight: 600 }}
                                     tick={{ fill: alpha('#000', 0.5) }}
                                     dx={-10}
                                 />
-                                <RechartsTooltip 
+                                <RechartsTooltip
                                     cursor={{ fill: alpha('#000', 0.05), radius: 8 }}
-                                    contentStyle={{ 
-                                        borderRadius: '12px', 
-                                        border: 'none', 
+                                    contentStyle={{
+                                        borderRadius: '12px',
+                                        border: 'none',
                                         boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
                                         padding: '12px'
                                     }}
@@ -1739,10 +1811,10 @@ const ReportsPage: React.FC = () => {
                                     formatter={(value: any) => [formatCurrency(value), 'Total Tips']}
                                     labelFormatter={(label) => new Date(label).toLocaleDateString(undefined, { dateStyle: 'long' })}
                                 />
-                                <Bar 
-                                    dataKey="totalTips" 
+                                <Bar
+                                    dataKey="totalTips"
                                     fill="url(#colorTips)"
-                                    radius={[6, 6, 0, 0]} 
+                                    radius={[6, 6, 0, 0]}
                                     barSize={32}
                                     name="Tips"
                                     animationDuration={1500}
@@ -1761,52 +1833,99 @@ const ReportsPage: React.FC = () => {
                             Orders with Tips
                         </Typography>
                     </Stack>
-                    <TableContainer>
-                        <Table size="small">
-                            <TableHead>
-                                <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-                                    <TableCell sx={{ fontWeight: 700, color: 'black' }}>Order #</TableCell>
-                                    <TableCell sx={{ fontWeight: 700, color: 'black' }}>Date/Time</TableCell>
-                                    <TableCell sx={{ fontWeight: 700, color: 'black' }}>Type</TableCell>
-                                    <TableCell sx={{ fontWeight: 700, color: 'black' }}>Waiter</TableCell>
-                                    <TableCell sx={{ fontWeight: 700, color: 'black' }} align="right">Order Amount</TableCell>
-                                    <TableCell sx={{ fontWeight: 700, color: 'black' }} align="right">Tip Amount</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {recentOrders
-                                    .filter(order => (order.tip || 0) > 0)
-                                    .slice(tipsReportPage * tipsReportRowsPerPage, tipsReportPage * tipsReportRowsPerPage + tipsReportRowsPerPage)
-                                    .map((order) => (
-                                        <TableRow key={order._id}>
-                                            <TableCell>{order.orderNumber}</TableCell>
-                                            <TableCell>{new Date(order.createdAt).toLocaleString()}</TableCell>
-                                            <TableCell>
-                                                <Chip label={formatOrderType(order.orderType)} size="small" variant="outlined" />
-                                            </TableCell>
-                                            <TableCell>
-                                                {order.waiter && typeof order.waiter === 'object' 
-                                                    ? `${order.waiter.firstName || ''} ${order.waiter.lastName || ''}`.trim() || order.waiter.email || '-'
-                                                    : order.waiterName || '-'}
-                                            </TableCell>
-                                            <TableCell align="right">{formatCurrency(order.totalAmount)}</TableCell>
-                                            <TableCell align="right">
-                                                <Typography sx={{ fontWeight: 700, color: 'black' }}>
-                                                    {formatCurrency(order.tip || 0)}
-                                                </Typography>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                {recentOrders.filter(order => (order.tip || 0) > 0).length === 0 && (
-                                    <TableRow>
-                                        <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                                            <Typography color="text.secondary">No orders with tips found in the selected period.</Typography>
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
+                    <Box>
+    {/* Mobile Card View */}
+    <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+        {recentOrders.filter(order => (order.tip || 0) > 0).length > 0 ? (
+            recentOrders
+                .filter(order => (order.tip || 0) > 0)
+                .slice(tipsReportPage * tipsReportRowsPerPage, tipsReportPage * tipsReportRowsPerPage + tipsReportRowsPerPage)
+                .map((order) => (
+                    <Paper key={order._id} sx={{ p: 2, mb: 2, borderRadius: 2 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5, alignItems: 'flex-start' }}>
+                            <Box>
+                                <Typography variant="body2" fontWeight="bold">{order.orderNumber}</Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                    {new Date(order.createdAt).toLocaleString()}
+                                </Typography>
+                            </Box>
+                            <Chip label={formatOrderType(order.orderType)} size="small" variant="outlined" />
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                            <Typography variant="body2" color="text.secondary">Waiter:</Typography>
+                            <Typography variant="body2" fontWeight={600}>
+                                {order.waiter && typeof order.waiter === 'object'
+                                    ? `${order.waiter.firstName || ''} ${order.waiter.lastName || ''}`.trim() || order.waiter.email || '-'
+                                    : order.waiterName || '-'}
+                            </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                            <Typography variant="body2" color="text.secondary">Order Amount:</Typography>
+                            <Typography variant="body2" fontWeight={600}>{formatCurrency(order.totalAmount)}</Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 1, borderTop: '1px solid #f0f0f0' }}>
+                            <Typography variant="body2" color="text.secondary">Tip Amount:</Typography>
+                            <Typography variant="body2" fontWeight={700} color="black">
+                                {formatCurrency(order.tip || 0)}
+                            </Typography>
+                        </Box>
+                    </Paper>
+                ))
+        ) : (
+            <Paper sx={{ p: 3, textAlign: 'center' }}>
+                <Typography variant="body2" color="text.secondary">No orders with tips found in the selected period.</Typography>
+            </Paper>
+        )}
+    </Box>
+
+    {/* Desktop Table View */}
+    <TableContainer sx={{ display: { xs: 'none', md: 'block' } }}>
+        <Table size="small">
+            <TableHead>
+                <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+                    <TableCell sx={{ fontWeight: 700, color: 'black' }}>Order #</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: 'black' }}>Date/Time</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: 'black' }}>Type</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: 'black' }}>Waiter</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: 'black' }} align="right">Order Amount</TableCell>
+                    <TableCell sx={{ fontWeight: 700, color: 'black' }} align="right">Tip Amount</TableCell>
+                </TableRow>
+            </TableHead>
+            <TableBody>
+                {recentOrders
+                    .filter(order => (order.tip || 0) > 0)
+                    .slice(tipsReportPage * tipsReportRowsPerPage, tipsReportPage * tipsReportRowsPerPage + tipsReportRowsPerPage)
+                    .map((order) => (
+                        <TableRow key={order._id}>
+                            <TableCell>{order.orderNumber}</TableCell>
+                            <TableCell>{new Date(order.createdAt).toLocaleString()}</TableCell>
+                            <TableCell>
+                                <Chip label={formatOrderType(order.orderType)} size="small" variant="outlined" />
+                            </TableCell>
+                            <TableCell>
+                                {order.waiter && typeof order.waiter === 'object'
+                                    ? `${order.waiter.firstName || ''} ${order.waiter.lastName || ''}`.trim() || order.waiter.email || '-'
+                                    : order.waiterName || '-'}
+                            </TableCell>
+                            <TableCell align="right">{formatCurrency(order.totalAmount)}</TableCell>
+                            <TableCell align="right">
+                                <Typography sx={{ fontWeight: 700, color: 'black' }}>
+                                    {formatCurrency(order.tip || 0)}
+                                </Typography>
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                {recentOrders.filter(order => (order.tip || 0) > 0).length === 0 && (
+                    <TableRow>
+                        <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                            <Typography color="text.secondary">No orders with tips found in the selected period.</Typography>
+                        </TableCell>
+                    </TableRow>
+                )}
+            </TableBody>
+        </Table>
+    </TableContainer>
+</Box>
                     <TablePagination
                         rowsPerPageOptions={[5, 10, 25, 50]}
                         component="div"
@@ -2300,7 +2419,42 @@ const ReportsPage: React.FC = () => {
                 </Grid>
 
                 <Grid item xs={12}>
-                    <TableContainer component={Paper} sx={{ maxWidth: '100%', overflowX: 'auto' }}>
+                    {/* Mobile Cards */}
+                    <Box sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', gap: 1.5 }}>
+                        {ordersByType.map((type, index) => (
+                            <Paper key={index} elevation={1} sx={{ p: 2, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                    <Chip label={formatOrderType(type.orderType)} color="primary" />
+                                    <Chip
+                                        label={`${type.successRate?.toFixed(1)}%`}
+                                        color={type.successRate > 90 ? 'success' : 'warning'}
+                                        size="small"
+                                    />
+                                </Box>
+                                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+                                    <Box>
+                                        <Typography variant="caption" color="text.secondary">Total Orders</Typography>
+                                        <Typography variant="body2" fontWeight={600}>{type.totalOrders}</Typography>
+                                    </Box>
+                                    <Box>
+                                        <Typography variant="caption" color="text.secondary">Total Revenue</Typography>
+                                        <Typography variant="body2" fontWeight={600}>{formatCurrency(type.totalRevenue)}</Typography>
+                                    </Box>
+                                    <Box>
+                                        <Typography variant="caption" color="text.secondary">Avg Order Value</Typography>
+                                        <Typography variant="body2" fontWeight={600}>{formatCurrency(type.averageOrderValue)}</Typography>
+                                    </Box>
+                                    <Box>
+                                        <Typography variant="caption" color="text.secondary">Cancelled</Typography>
+                                        <Typography variant="body2" fontWeight={600}>{type.cancelledOrders}</Typography>
+                                    </Box>
+                                </Box>
+                            </Paper>
+                        ))}
+                    </Box>
+
+                    {/* Desktop Table */}
+                    <TableContainer component={Paper} sx={{ display: { xs: 'none', md: 'block' } }}>
                         <Table>
                             <TableHead>
                                 <TableRow>
@@ -2341,7 +2495,7 @@ const ReportsPage: React.FC = () => {
 
     // Waiter Performance Tab
     const renderWaiterPerformance = () => (
-        <Paper sx={{ p: 3 }}>
+        <Paper sx={{ p: { xs: 0, sm: 3 } }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
                 <Typography variant="h6">Waiter Performance Report</Typography>
                 <Button
@@ -2423,42 +2577,71 @@ const ReportsPage: React.FC = () => {
                 </Grid>
 
                 <Grid item xs={12}>
-                    <TableContainer component={Paper} sx={{ maxWidth: '100%', overflowX: 'auto' }}>
-                        <Table>
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell>Rank</TableCell>
-                                    <TableCell>Waiter Name</TableCell>
-                                    <TableCell align="right">Total Orders</TableCell>
-                                    <TableCell align="right">Total Sales</TableCell>
-                                    <TableCell align="right">Avg Order Value</TableCell>
-                                    <TableCell align="right">Total Tips</TableCell>
+                    <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                        {waiterPerformance.map((waiter, index) => (
+                            <Card key={index} sx={{ mb: 2, mx: 1 }}>
+                                <CardContent>
+                                    <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+                                        <Stack direction="row" alignItems="center" spacing={1}>
+                                            <Chip label={index + 1} size="small" color={index < 3 ? 'primary' : 'default'} />
+                                            <PeopleIcon />
+                                            <Typography variant="subtitle2">{waiter.waiterName}</Typography>
+                                        </Stack>
+                                    </Stack>
+                                    <Grid container spacing={2}>
+                                        <Grid item xs={6}>
+                                            <Typography variant="caption" color="text.secondary">Total Orders</Typography>
+                                            <Typography variant="body2" fontWeight="bold">{waiter.totalOrders}</Typography>
+                                        </Grid>
+                                        <Grid item xs={6}>
+                                            <Typography variant="caption" color="text.secondary">Total Sales</Typography>
+                                            <Typography variant="body2" fontWeight="bold">{formatCurrency(waiter.totalSales)}</Typography>
+                                        </Grid>
+                                        <Grid item xs={6}>
+                                            <Typography variant="caption" color="text.secondary">Avg Order Value</Typography>
+                                            <Typography variant="body2" fontWeight="bold">{formatCurrency(waiter.averageOrderValue)}</Typography>
+                                        </Grid>
+                                        <Grid item xs={6}>
+                                            <Typography variant="caption" color="text.secondary">Total Tips</Typography>
+                                            <Typography variant="body2" fontWeight="bold">{formatCurrency(waiter.totalTips)}</Typography>
+                                        </Grid>
+                                    </Grid>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </Box>
+
+                    <TableContainer component={Paper} sx={{ display: { xs: 'none', md: 'block' } }}>                        <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>Rank</TableCell>
+                                <TableCell>Waiter Name</TableCell>
+                                <TableCell align="right">Total Orders</TableCell>
+                                <TableCell align="right">Total Sales</TableCell>
+                                <TableCell align="right">Avg Order Value</TableCell>
+                                <TableCell align="right">Total Tips</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {waiterPerformance.map((waiter, index) => (
+                                <TableRow key={index}>
+                                    <TableCell>
+                                        <Chip label={index + 1} size="small" color={index < 3 ? 'primary' : 'default'} />
+                                    </TableCell>
+                                    <TableCell>
+                                        <Stack direction="row" alignItems="center" spacing={1}>
+                                            <PeopleIcon />
+                                            <Typography>{waiter.waiterName}</Typography>
+                                        </Stack>
+                                    </TableCell>
+                                    <TableCell align="right">{waiter.totalOrders}</TableCell>
+                                    <TableCell align="right">{formatCurrency(waiter.totalSales)}</TableCell>
+                                    <TableCell align="right">{formatCurrency(waiter.averageOrderValue)}</TableCell>
+                                    <TableCell align="right">{formatCurrency(waiter.totalTips)}</TableCell>
                                 </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {waiterPerformance.map((waiter, index) => (
-                                    <TableRow key={index}>
-                                        <TableCell>
-                                            <Chip
-                                                label={index + 1}
-                                                size="small"
-                                                color={index < 3 ? 'primary' : 'default'}
-                                            />
-                                        </TableCell>
-                                        <TableCell>
-                                            <Stack direction="row" alignItems="center" spacing={1}>
-                                                <PeopleIcon />
-                                                <Typography>{waiter.waiterName}</Typography>
-                                            </Stack>
-                                        </TableCell>
-                                        <TableCell align="right">{waiter.totalOrders}</TableCell>
-                                        <TableCell align="right">{formatCurrency(waiter.totalSales)}</TableCell>
-                                        <TableCell align="right">{formatCurrency(waiter.averageOrderValue)}</TableCell>
-                                        <TableCell align="right">{formatCurrency(waiter.totalTips)}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                            ))}
+                        </TableBody>
+                    </Table>
                     </TableContainer>
                 </Grid>
             </Grid>
@@ -2529,31 +2712,46 @@ const ReportsPage: React.FC = () => {
                 </Grid>
 
                 <Grid item xs={12}>
-                    <TableContainer component={Paper} sx={{ maxWidth: '100%', overflowX: 'auto' }}>
-                        <Table>
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell>Item Name</TableCell>
-                                    <TableCell>Category</TableCell>
-                                    <TableCell align="right">Unit</TableCell>
-                                    <TableCell align="right">Total Used</TableCell>
-                                    <TableCell align="right">Usage Count</TableCell>
+                    <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
+                        {materialUsage.map((item, index) => (
+                            <Paper key={index} sx={{ mb: 1.5, p: 1.5, borderRadius: 2 }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                                    <Typography sx={{ fontWeight: 600, fontSize: '0.8rem', flex: 1, mr: 1 }}>{item.itemName}</Typography>
+                                    <Chip label={item.category} size="small" />
+                                </Box>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+                                    <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>Unit: <b>{item.unit}</b></Typography>
+                                    <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>Used: <b>{Number(item.totalUsed).toFixed(3)}</b></Typography>
+                                    <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>Count: <b>{item.usageCount}</b></Typography>
+                                </Box>
+                            </Paper>
+                        ))}
+                    </Box>
+
+                    <TableContainer component={Paper} sx={{ display: { xs: 'none', sm: 'block' }, maxWidth: '100%', overflowX: 'auto' }}>                        <Table sx={{ minWidth: { xs: 'unset', sm: 650 } }}>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell sx={{ fontSize: { xs: '0.65rem', sm: '0.875rem' }, px: { xs: 0.2, sm: 2 }, py: { xs: 1, sm: 2 }, whiteSpace: 'nowrap' }}>Item Name</TableCell>
+                                <TableCell sx={{ fontSize: { xs: '0.65rem', sm: '0.875rem' }, px: { xs: 0.2, sm: 2 }, py: { xs: 1, sm: 2 }, whiteSpace: 'nowrap' }}>Category</TableCell>
+                                <TableCell align="right" sx={{ fontSize: { xs: '0.65rem', sm: '0.875rem' }, px: { xs: 0.2, sm: 2 }, py: { xs: 1, sm: 2 }, whiteSpace: 'nowrap' }}>Unit</TableCell>
+                                <TableCell align="right" sx={{ fontSize: { xs: '0.65rem', sm: '0.875rem' }, px: { xs: 0.2, sm: 2 }, py: { xs: 1, sm: 2 }, whiteSpace: 'nowrap' }}>Total Used</TableCell>
+                                <TableCell align="right" sx={{ fontSize: { xs: '0.65rem', sm: '0.875rem' }, px: { xs: 0.2, sm: 2 }, py: { xs: 1, sm: 2 }, whiteSpace: 'nowrap' }}>Usage Count</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {materialUsage.map((item, index) => (
+                                <TableRow key={index}>
+                                    <TableCell sx={{ fontSize: { xs: '0.65rem', sm: '0.875rem' }, px: { xs: 0.2, sm: 2 } }}>{item.itemName}</TableCell>
+                                    <TableCell sx={{ px: { xs: 0.2, sm: 2 } }}>
+                                        <Chip label={item.category} size="small" />
+                                    </TableCell>
+                                    <TableCell align="right" sx={{ fontSize: { xs: '0.65rem', sm: '0.875rem' }, px: { xs: 0.2, sm: 2 } }}>{item.unit}</TableCell>
+                                    <TableCell align="right" sx={{ fontSize: { xs: '0.65rem', sm: '0.875rem' }, px: { xs: 0.2, sm: 2 } }}>{Number(item.totalUsed).toFixed(3)}</TableCell>
+                                    <TableCell align="right" sx={{ fontSize: { xs: '0.65rem', sm: '0.875rem' }, px: { xs: 0.2, sm: 2 } }}>{item.usageCount}</TableCell>
                                 </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {materialUsage.map((item, index) => (
-                                    <TableRow key={index}>
-                                        <TableCell>{item.itemName}</TableCell>
-                                        <TableCell>
-                                            <Chip label={item.category} size="small" />
-                                        </TableCell>
-                                        <TableCell align="right">{item.unit}</TableCell>
-                                        <TableCell align="right">{Number(item.totalUsed).toFixed(3)}</TableCell>
-                                        <TableCell align="right">{item.usageCount}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                            ))}
+                        </TableBody>
+                    </Table>
                     </TableContainer>
                 </Grid>
             </Grid>
@@ -2655,42 +2853,82 @@ const ReportsPage: React.FC = () => {
                             <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
                                 Tax Breakdown by Order Type
                             </Typography>
-                            <TableContainer component={Paper}>
-                                <Table size="small">
-                                    <TableHead>
-                                        <TableRow>
-                                            <TableCell>Order Type</TableCell>
-                                            <TableCell align="right">Count</TableCell>
-                                            <TableCell align="right">Total Sales</TableCell>
-                                            <TableCell align="right">Total Tax</TableCell>
-                                            <TableCell align="right">Country Tax</TableCell>
-                                            <TableCell align="right">State Tax</TableCell>
-                                            <TableCell align="right">City Tax</TableCell>
-                                            <TableCell align="right">County Tax</TableCell>
+                            <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
+                                {salesReport.taxByOrderType.map((row: any) => (
+                                    <Paper key={row.orderType} sx={{ mb: 1.5, p: 1.5, borderRadius: 2 }}>
+                                        <Typography sx={{ fontWeight: 600, fontSize: '0.8rem', mb: 0.5 }}>{formatOrderType(row.orderType)}</Typography>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.3 }}>
+                                            <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>Count: <b>{row.count}</b></Typography>
+                                            <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>Total Sales: <b>{formatCurrency(row.totalSales)}</b></Typography>
+                                        </Box>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.3 }}>
+                                            <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>Total Tax: <b>{formatCurrency(row.totalTax)}</b></Typography>
+                                            <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>Country Tax: <b>{formatCurrency(row.countryTax)}</b></Typography>
+                                        </Box>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                            <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>State Tax: <b>{formatCurrency(row.stateTax)}</b></Typography>
+                                            <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>City Tax: <b>{formatCurrency(row.cityTax)}</b></Typography>
+                                            <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>County Tax: <b>{formatCurrency(row.countyTax)}</b></Typography>
+                                        </Box>
+                                    </Paper>
+                                ))}
+                            </Box>
+
+
+
+                            <TableContainer component={Paper} sx={{ display: { xs: 'none', sm: 'block' }, overflowX: 'hidden' }}>                                <Table size="small">
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>Order Type</TableCell>
+                                        <TableCell align="right">Count</TableCell>
+                                        <TableCell align="right">Total Sales</TableCell>
+                                        <TableCell align="right">Total Tax</TableCell>
+                                        <TableCell align="right">Country Tax</TableCell>
+                                        <TableCell align="right">State Tax</TableCell>
+                                        <TableCell align="right">City Tax</TableCell>
+                                        <TableCell align="right">County Tax</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {salesReport.taxByOrderType.map((row: any) => (
+                                        <TableRow key={row.orderType}>
+                                            <TableCell>{formatOrderType(row.orderType)}</TableCell>
+                                            <TableCell align="right">{row.count}</TableCell>
+                                            <TableCell align="right">{formatCurrency(row.totalSales)}</TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 'bold' }}>{formatCurrency(row.totalTax)}</TableCell>
+                                            <TableCell align="right">{formatCurrency(row.countryTax)}</TableCell>
+                                            <TableCell align="right">{formatCurrency(row.stateTax)}</TableCell>
+                                            <TableCell align="right">{formatCurrency(row.cityTax)}</TableCell>
+                                            <TableCell align="right">{formatCurrency(row.countyTax)}</TableCell>
                                         </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {salesReport.taxByOrderType.map((row: any) => (
-                                            <TableRow key={row.orderType}>
-                                                <TableCell>{formatOrderType(row.orderType)}</TableCell>
-                                                <TableCell align="right">{row.count}</TableCell>
-                                                <TableCell align="right">{formatCurrency(row.totalSales)}</TableCell>
-                                                <TableCell align="right" sx={{ fontWeight: 'bold' }}>{formatCurrency(row.totalTax)}</TableCell>
-                                                <TableCell align="right">{formatCurrency(row.countryTax)}</TableCell>
-                                                <TableCell align="right">{formatCurrency(row.stateTax)}</TableCell>
-                                                <TableCell align="right">{formatCurrency(row.cityTax)}</TableCell>
-                                                <TableCell align="right">{formatCurrency(row.countyTax)}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                                    ))}
+                                </TableBody>
+                            </Table>
                             </TableContainer>
                         </Grid>
                     )}
 
                     {/* Table */}
                     <Grid item xs={12}>
-                        <TableContainer component={Paper} sx={{ maxWidth: '100%', overflowX: 'auto' }}>
+                        <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
+                            {salesReport.dailySales
+                                .slice(salesPage * salesRowsPerPage, salesPage * salesRowsPerPage + salesRowsPerPage)
+                                .map((day: any, index: number) => (
+                                    <Paper key={index} sx={{ mb: 1.5, p: 1.5, borderRadius: 2 }}>
+                                        <Typography sx={{ fontWeight: 600, fontSize: '0.8rem', mb: 0.5 }}>{new Date(day.date).toLocaleDateString()}</Typography>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.3 }}>
+                                            <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>Total Sales: <b>{formatCurrency(day.totalSales)}</b></Typography>
+                                            <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>Total Tips: <b>{formatCurrency(day.totalTips || 0)}</b></Typography>
+                                        </Box>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                            <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>Total Orders: <b>{day.totalOrders}</b></Typography>
+                                            <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>Avg Order Value: <b>{formatCurrency(day.averageOrderValue)}</b></Typography>
+                                        </Box>
+                                    </Paper>
+                                ))}
+                        </Box>
+
+                        <TableContainer component={Paper} sx={{ display: { xs: 'none', sm: 'block' }, overflowX: 'hidden' }}>
                             <Table>
                                 <TableHead>
                                     <TableRow>
@@ -2737,7 +2975,7 @@ const ReportsPage: React.FC = () => {
     // Peak Hours Tab
     const renderPeakHours = () => (
         <Paper sx={{ p: 3 }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} gap={2} mb={3}>
                 <Typography variant="h6">Peak Hours Analysis</Typography>
                 <Button variant="contained" startIcon={<DownloadIcon />} onClick={() => downloadExcel('peak-hours')}>
                     Export Excel
@@ -2858,10 +3096,10 @@ const ReportsPage: React.FC = () => {
 
         return (
             <Paper sx={{ p: 3 }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} gap={2} mb={3}>
                     <Typography variant="h6">Payment Method Analytics</Typography>
-                    <Stack direction="row" spacing={2} alignItems="center">
-                        <FormControl size="small" sx={{ minWidth: 200 }}>
+                    <Stack direction={{ xs: 'row', sm: 'row' }} spacing={2} alignItems="center" sx={{ width: { xs: '100%', sm: 'auto' } }}>
+                        <FormControl size="small" sx={{ minWidth: { xs: 0, sm: 200 }, flex: { xs: 1, sm: 'unset' } }}>
                             <InputLabel id="payment-method-select-label">Payment Method</InputLabel>
                             <Select
                                 labelId="payment-method-select-label"
@@ -2970,7 +3208,7 @@ const ReportsPage: React.FC = () => {
 
                     <Grid item xs={12}>
                         <TableContainer component={Paper} sx={{ maxWidth: '100%', overflowX: 'auto' }}>
-                            <Table>
+                            <Table sx={{ '& .MuiTableCell-root': { padding: { xs: '8px 4px', sm: '16px' } } }}>
                                 <TableHead>
                                     <TableRow>
                                         <TableCell>Payment Method</TableCell>
@@ -3008,7 +3246,34 @@ const ReportsPage: React.FC = () => {
                         <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
                             Detailed Transactions ({paymentMethodFilter === 'all' ? 'All Methods' : paymentMethodFilter})
                         </Typography>
-                        <TableContainer component={Paper} sx={{ maxWidth: '100%', overflowX: 'auto' }}>
+                        <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
+                            {paymentDetails.slice(paymentDetailsPage * paymentDetailsRowsPerPage, paymentDetailsPage * paymentDetailsRowsPerPage + paymentDetailsRowsPerPage)
+                                .map((detail: any, index: number) => (
+                                    <Paper key={index} sx={{ mb: 1.5, p: 1.5, borderRadius: 2 }}>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                                            <Typography sx={{ fontWeight: 600, fontSize: '0.8rem' }}>{detail.orderNumber}</Typography>
+                                            <Chip label={detail.status} size="small" variant="outlined" />
+                                        </Box>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.3 }}>
+                                            <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>Date: <b>{new Date(detail.createdAt).toLocaleDateString()}</b></Typography>
+                                            <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>Customer: <b>{detail.customer?.name || 'Guest'}</b></Typography>
+                                        </Box>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.3 }}>
+                                            <Chip label={detail.paymentMethod || 'Unknown'} size="small" />
+                                            <Chip label={formatOrderType(detail.orderType)} size="small" variant="outlined" />
+                                        </Box>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                            <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>Amount: <b>{formatCurrency(detail.totalAmount)}</b></Typography>
+                                            <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>Tip: <b>{formatCurrency(detail.tip || 0)}</b></Typography>
+                                        </Box>
+                                    </Paper>
+                                ))}
+                            {paymentDetails.length === 0 && (
+                                <Typography sx={{ textAlign: 'center', py: 2, color: 'text.secondary' }}>No transactions found</Typography>
+                            )}
+                        </Box>
+
+                        <TableContainer component={Paper} sx={{ display: { xs: 'none', sm: 'block' }, overflowX: 'hidden' }}>
                             <Table>
                                 <TableHead>
                                     <TableRow>
@@ -3181,7 +3446,28 @@ const ReportsPage: React.FC = () => {
                     </Grid>
 
                     <Grid item xs={12}>
-                        <TableContainer component={Paper} sx={{ maxWidth: '100%', overflowX: 'auto' }}>
+                        <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
+                            {data.length === 0 ? (
+                                <Typography sx={{ textAlign: 'center', py: 2, color: 'text.secondary' }}>No data available</Typography>
+                            ) : data.map((cat, index) => (
+                                <Paper key={index} sx={{ mb: 1.5, p: 1.5, borderRadius: 2 }}>
+                                    <Box sx={{ mb: 0.5 }}>
+                                        <Chip label={cat.category || 'Uncategorized'} color="primary" />
+                                    </Box>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.3 }}>
+                                        <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>Total Quantity: <b>{cat.totalQuantity || 0}</b></Typography>
+                                        <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>Item Count: <b>{cat.itemCount || 0}</b></Typography>
+                                    </Box>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.3 }}>
+                                        <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>Total Revenue: <b>{formatCurrency(cat.totalRevenue || 0)}</b></Typography>
+                                        <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>Order Count: <b>{cat.orderCount || 0}</b></Typography>
+                                    </Box>
+                                    <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>Avg Revenue/Order: <b>{formatCurrency(cat.averageRevenuePerOrder || 0)}</b></Typography>
+                                </Paper>
+                            ))}
+                        </Box>
+
+                        <TableContainer component={Paper} sx={{ display: { xs: 'none', sm: 'block' }, overflowX: 'hidden' }}>
                             <Table>
                                 <TableHead>
                                     <TableRow>
@@ -3331,37 +3617,68 @@ const ReportsPage: React.FC = () => {
                             </ResponsiveContainer>
                         </Paper>
 
-                        <TableContainer component={Paper} sx={{ borderRadius: 4, overflow: 'hidden' }}>
-                            <Table size="small">
-                                <TableHead sx={{ bgcolor: '#f8fafc' }}>
-                                    <TableRow>
-                                        <TableCell sx={{ fontWeight: 600 }}>Order Type</TableCell>
-                                        <TableCell align="right" sx={{ fontWeight: 600 }}>Order Cancels</TableCell>
-                                        <TableCell align="right" sx={{ fontWeight: 600 }}>Item Cancels</TableCell>
-                                        <TableCell align="right" sx={{ fontWeight: 600 }}>Revenue Loss</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {byOrderType.map((type: any, index: number) => (
-                                        <TableRow key={index} hover>
-                                            <TableCell>
-                                                <Chip label={formatOrderType(type.orderType)} color="error" size="small" variant="outlined" />
-                                            </TableCell>
-                                            <TableCell align="right">{type.cancelledCount}</TableCell>
-                                            <TableCell align="right">{type.itemCancelledCount}</TableCell>
-                                            <TableCell align="right">{formatCurrency(type.revenueLoss)}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                    {byOrderType.length === 0 && (
+                        <Box>
+                            {/* Mobile Card View */}
+                            <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                                {byOrderType.map((type: any, index: number) => (
+                                    <Paper key={index} sx={{ p: 2, mb: 2, borderRadius: 2 }}>
+                                        <Box sx={{ mb: 1.5 }}>
+                                            <Chip label={formatOrderType(type.orderType)} color="error" size="small" variant="outlined" />
+                                        </Box>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                            <Typography variant="body2" color="text.secondary">Order Cancels:</Typography>
+                                            <Typography variant="body2" fontWeight={600}>{type.cancelledCount}</Typography>
+                                        </Box>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                            <Typography variant="body2" color="text.secondary">Item Cancels:</Typography>
+                                            <Typography variant="body2" fontWeight={600}>{type.itemCancelledCount}</Typography>
+                                        </Box>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                            <Typography variant="body2" color="text.secondary">Revenue Loss:</Typography>
+                                            <Typography variant="body2" fontWeight={600}>{formatCurrency(type.revenueLoss)}</Typography>
+                                        </Box>
+                                    </Paper>
+                                ))}
+                                {byOrderType.length === 0 && (
+                                    <Paper sx={{ p: 3, textAlign: 'center' }}>
+                                        <Typography variant="body2" color="text.secondary">No cancellation data available</Typography>
+                                    </Paper>
+                                )}
+                            </Box>
+
+                            {/* Desktop Table View */}
+                            <TableContainer component={Paper} sx={{ borderRadius: 4, overflow: 'hidden', display: { xs: 'none', md: 'block' } }}>
+                                <Table size="small">
+                                    <TableHead sx={{ bgcolor: '#f8fafc' }}>
                                         <TableRow>
-                                            <TableCell colSpan={4} align="center" sx={{ py: 3 }}>
-                                                No cancellation data available
-                                            </TableCell>
+                                            <TableCell sx={{ fontWeight: 600 }}>Order Type</TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 600 }}>Order Cancels</TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 600 }}>Item Cancels</TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 600 }}>Revenue Loss</TableCell>
                                         </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
+                                    </TableHead>
+                                    <TableBody>
+                                        {byOrderType.map((type: any, index: number) => (
+                                            <TableRow key={index} hover>
+                                                <TableCell>
+                                                    <Chip label={formatOrderType(type.orderType)} color="error" size="small" variant="outlined" />
+                                                </TableCell>
+                                                <TableCell align="right">{type.cancelledCount}</TableCell>
+                                                <TableCell align="right">{type.itemCancelledCount}</TableCell>
+                                                <TableCell align="right">{formatCurrency(type.revenueLoss)}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                        {byOrderType.length === 0 && (
+                                            <TableRow>
+                                                <TableCell colSpan={4} align="center" sx={{ py: 3 }}>
+                                                    No cancellation data available
+                                                </TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                        </Box>
                     </Grid>
 
                     {/* Right side: Top Cancelled Items Table */}
@@ -3422,72 +3739,122 @@ const ReportsPage: React.FC = () => {
                             <Typography variant="subtitle1" fontWeight={600} mb={3}>
                                 Recent Cancelled Orders Details
                             </Typography>
-                            <TableContainer>
-                                <Table>
-                                    <TableHead sx={{ bgcolor: '#f8fafc' }}>
-                                        <TableRow>
-                                            <TableCell sx={{ fontWeight: 600 }}>Date</TableCell>
-                                            <TableCell sx={{ fontWeight: 600 }}>Order #</TableCell>
-                                            <TableCell sx={{ fontWeight: 600 }}>Customer</TableCell>
-                                            <TableCell sx={{ fontWeight: 600 }}>Type</TableCell>
-                                            <TableCell sx={{ fontWeight: 600 }}>Cancellation Reason</TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 600 }}>Loss Amount</TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {cancelledOrders
-                                            .slice(cancelledOrdersPage * cancelledOrdersRowsPerPage, cancelledOrdersPage * cancelledOrdersRowsPerPage + cancelledOrdersRowsPerPage)
-                                            .map((order: any, index: number) => (
-                                                <TableRow key={index} hover>
-                                                    <TableCell>
-                                                        <Typography variant="body2">{new Date(order.createdAt).toLocaleDateString()}</Typography>
-                                                        <Typography variant="caption" color="text.secondary">{new Date(order.createdAt).toLocaleTimeString()}</Typography>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Stack direction="row" spacing={1} alignItems="center">
-                                                            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{order.orderNumber}</Typography>
-                                                            <Chip
-                                                                label={order.isFullOrder ? 'Full Order' : 'Item(s)'}
-                                                                size="small"
-                                                                color={order.isFullOrder ? 'error' : 'warning'}
-                                                                variant="outlined"
-                                                                sx={{ height: 18, fontSize: '0.65rem' }}
-                                                            />
-                                                        </Stack>
-                                                    </TableCell>
-                                                    <TableCell>{order.customer?.name || 'Guest'}</TableCell>
-                                                    <TableCell>
-                                                        <Chip label={formatOrderType(order.orderType)} size="small" variant="outlined" />
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <MuiTooltip title={order.cancellationReason} arrow>
-                                                            <Typography variant="body2" sx={{
-                                                                maxWidth: 250,
-                                                                whiteSpace: 'nowrap',
-                                                                overflow: 'hidden',
-                                                                textOverflow: 'ellipsis',
-                                                                color: 'text.secondary',
-                                                                fontStyle: 'italic'
-                                                            }}>
-                                                                {order.cancellationReason}
-                                                            </Typography>
-                                                        </MuiTooltip>
-                                                    </TableCell>
-                                                    <TableCell align="right" sx={{ fontWeight: 600, color: 'error.main' }}>
+                            <Box>
+                                {/* Mobile Card View */}
+                                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                                    {cancelledOrders
+                                        .slice(cancelledOrdersPage * cancelledOrdersRowsPerPage, cancelledOrdersPage * cancelledOrdersRowsPerPage + cancelledOrdersRowsPerPage)
+                                        .map((order: any, index: number) => (
+                                            <Paper key={index} sx={{ p: 2, mb: 2, borderRadius: 2 }}>
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5, alignItems: 'flex-start' }}>
+                                                    <Box>
+                                                        <Typography variant="body2" fontWeight="bold">{order.orderNumber}</Typography>
+                                                        <Typography variant="caption" color="text.secondary">{new Date(order.createdAt).toLocaleDateString()}</Typography>
+                                                    </Box>
+                                                    <Chip
+                                                        label={order.isFullOrder ? 'Full Order' : 'Item(s)'}
+                                                        size="small"
+                                                        color={order.isFullOrder ? 'error' : 'warning'}
+                                                        variant="outlined"
+                                                    />
+                                                </Box>
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                                    <Typography variant="body2" color="text.secondary">Customer:</Typography>
+                                                    <Typography variant="body2" fontWeight={600}>{order.customer?.name || 'Guest'}</Typography>
+                                                </Box>
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                                    <Typography variant="body2" color="text.secondary">Type:</Typography>
+                                                    <Chip label={formatOrderType(order.orderType)} size="small" variant="outlined" />
+                                                </Box>
+                                                <Box sx={{ mb: 1 }}>
+                                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>Reason:</Typography>
+                                                    <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
+                                                        {order.cancellationReason}
+                                                    </Typography>
+                                                </Box>
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 1, borderTop: '1px solid #f0f0f0' }}>
+                                                    <Typography variant="body2" color="text.secondary">Loss Amount:</Typography>
+                                                    <Typography variant="body2" fontWeight={600} color="error.main">
                                                         {formatCurrency(order.cancellationLoss)}
+                                                    </Typography>
+                                                </Box>
+                                            </Paper>
+                                        ))}
+                                    {cancelledOrders.length === 0 && (
+                                        <Paper sx={{ p: 3, textAlign: 'center' }}>
+                                            <Typography variant="body2" color="text.secondary">No cancelled orders found for this period</Typography>
+                                        </Paper>
+                                    )}
+                                </Box>
+
+                                {/* Desktop Table View */}
+                                <TableContainer sx={{ display: { xs: 'none', md: 'block' } }}>
+                                    <Table>
+                                        <TableHead sx={{ bgcolor: '#f8fafc' }}>
+                                            <TableRow>
+                                                <TableCell sx={{ fontWeight: 600 }}>Date</TableCell>
+                                                <TableCell sx={{ fontWeight: 600 }}>Order #</TableCell>
+                                                <TableCell sx={{ fontWeight: 600 }}>Customer</TableCell>
+                                                <TableCell sx={{ fontWeight: 600 }}>Type</TableCell>
+                                                <TableCell sx={{ fontWeight: 600 }}>Cancellation Reason</TableCell>
+                                                <TableCell align="right" sx={{ fontWeight: 600 }}>Loss Amount</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {cancelledOrders
+                                                .slice(cancelledOrdersPage * cancelledOrdersRowsPerPage, cancelledOrdersPage * cancelledOrdersRowsPerPage + cancelledOrdersRowsPerPage)
+                                                .map((order: any, index: number) => (
+                                                    <TableRow key={index} hover>
+                                                        <TableCell>
+                                                            <Typography variant="body2">{new Date(order.createdAt).toLocaleDateString()}</Typography>
+                                                            <Typography variant="caption" color="text.secondary">{new Date(order.createdAt).toLocaleTimeString()}</Typography>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Stack direction="row" spacing={1} alignItems="center">
+                                                                <Typography variant="body2" sx={{ fontWeight: 'bold' }}>{order.orderNumber}</Typography>
+                                                                <Chip
+                                                                    label={order.isFullOrder ? 'Full Order' : 'Item(s)'}
+                                                                    size="small"
+                                                                    color={order.isFullOrder ? 'error' : 'warning'}
+                                                                    variant="outlined"
+                                                                    sx={{ height: 18, fontSize: '0.65rem' }}
+                                                                />
+                                                            </Stack>
+                                                        </TableCell>
+                                                        <TableCell>{order.customer?.name || 'Guest'}</TableCell>
+                                                        <TableCell>
+                                                            <Chip label={formatOrderType(order.orderType)} size="small" variant="outlined" />
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <MuiTooltip title={order.cancellationReason} arrow>
+                                                                <Typography variant="body2" sx={{
+                                                                    maxWidth: 250,
+                                                                    whiteSpace: 'nowrap',
+                                                                    overflow: 'hidden',
+                                                                    textOverflow: 'ellipsis',
+                                                                    color: 'text.secondary',
+                                                                    fontStyle: 'italic'
+                                                                }}>
+                                                                    {order.cancellationReason}
+                                                                </Typography>
+                                                            </MuiTooltip>
+                                                        </TableCell>
+                                                        <TableCell align="right" sx={{ fontWeight: 600, color: 'error.main' }}>
+                                                            {formatCurrency(order.cancellationLoss)}
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            {cancelledOrders.length === 0 && (
+                                                <TableRow>
+                                                    <TableCell colSpan={6} align="center" sx={{ py: 3, color: 'text.secondary' }}>
+                                                        No cancelled orders found for this period
                                                     </TableCell>
                                                 </TableRow>
-                                            ))}
-                                        {cancelledOrders.length === 0 && (
-                                            <TableRow>
-                                                <TableCell colSpan={6} align="center" sx={{ py: 3, color: 'text.secondary' }}>
-                                                    No cancelled orders found for this period
-                                                </TableCell>
-                                            </TableRow>
-                                        )}
-                                    </TableBody>
-                                </Table>
-                            </TableContainer>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            </Box>
                             <TablePagination
                                 rowsPerPageOptions={[10, 25, 50]}
                                 component="div"
@@ -3550,34 +3917,64 @@ const ReportsPage: React.FC = () => {
                         <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
                             Expense Breakdown (Purchase Orders)
                         </Typography>
-                        <TableContainer component={Paper} variant="outlined" sx={{ maxWidth: '100%', overflowX: 'auto' }}>
-                            <Table size="small">
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>Date</TableCell>
-                                        <TableCell>PO Number</TableCell>
-                                        <TableCell>Vendor</TableCell>
-                                        <TableCell align="right">Amount</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {profitLoss.expenses && profitLoss.expenses.length > 0 ? (
-                                        profitLoss.expenses.map((item: any, index: number) => (
-                                            <TableRow key={index}>
-                                                <TableCell>{new Date(item.date).toLocaleDateString()}</TableCell>
-                                                <TableCell>{item.poNumber || '-'}</TableCell>
-                                                <TableCell>{item.vendor || 'Unknown'}</TableCell>
-                                                <TableCell align="right">{formatCurrency(item.amount)}</TableCell>
-                                            </TableRow>
-                                        ))
-                                    ) : (
+                        <Box>
+                            {/* Mobile Card View */}
+                            <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                                {profitLoss.expenses && profitLoss.expenses.length > 0 ? (
+                                    profitLoss.expenses.map((item: any, index: number) => (
+                                        <Paper key={index} sx={{ p: 2, mb: 2, borderRadius: 2 }} variant="outlined">
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5, alignItems: 'flex-start' }}>
+                                                <Box>
+                                                    <Typography variant="body2" fontWeight="bold">{item.poNumber || '-'}</Typography>
+                                                    <Typography variant="caption" color="text.secondary">{new Date(item.date).toLocaleDateString()}</Typography>
+                                                </Box>
+                                                <Typography variant="body2" fontWeight={600} color="primary">
+                                                    {formatCurrency(item.amount)}
+                                                </Typography>
+                                            </Box>
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                <Typography variant="body2" color="text.secondary">Vendor:</Typography>
+                                                <Typography variant="body2" fontWeight={600}>{item.vendor || 'Unknown'}</Typography>
+                                            </Box>
+                                        </Paper>
+                                    ))
+                                ) : (
+                                    <Paper sx={{ p: 3, textAlign: 'center' }} variant="outlined">
+                                        <Typography variant="body2" color="text.secondary">No expenses recorded for this period</Typography>
+                                    </Paper>
+                                )}
+                            </Box>
+
+                            {/* Desktop Table View */}
+                            <TableContainer component={Paper} variant="outlined" sx={{ maxWidth: '100%', overflowX: 'auto', display: { xs: 'none', md: 'block' } }}>
+                                <Table size="small">
+                                    <TableHead>
                                         <TableRow>
-                                            <TableCell colSpan={4} align="center">No expenses recorded for this period</TableCell>
+                                            <TableCell>Date</TableCell>
+                                            <TableCell>PO Number</TableCell>
+                                            <TableCell>Vendor</TableCell>
+                                            <TableCell align="right">Amount</TableCell>
                                         </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
+                                    </TableHead>
+                                    <TableBody>
+                                        {profitLoss.expenses && profitLoss.expenses.length > 0 ? (
+                                            profitLoss.expenses.map((item: any, index: number) => (
+                                                <TableRow key={index}>
+                                                    <TableCell>{new Date(item.date).toLocaleDateString()}</TableCell>
+                                                    <TableCell>{item.poNumber || '-'}</TableCell>
+                                                    <TableCell>{item.vendor || 'Unknown'}</TableCell>
+                                                    <TableCell align="right">{formatCurrency(item.amount)}</TableCell>
+                                                </TableRow>
+                                            ))
+                                        ) : (
+                                            <TableRow>
+                                                <TableCell colSpan={4} align="center">No expenses recorded for this period</TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                        </Box>
                     </Grid>
                 </Grid>
             )}
@@ -3587,34 +3984,67 @@ const ReportsPage: React.FC = () => {
     const renderCustomerAnalytics = () => (
         <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>Top Customers</Typography>
-            <TableContainer component={Paper} sx={{ maxWidth: '100%', overflowX: 'auto' }}>
-                <Table>
-                    <TableHead>
-                        <TableRow>
-                            <TableCell>Name</TableCell>
-                            <TableCell>Email</TableCell>
-                            <TableCell>Phone</TableCell>
-                            <TableCell align="right">Total Orders</TableCell>
-                            <TableCell align="right">Total Spend</TableCell>
-                            <TableCell align="right">Avg Order Value</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {customerAnalytics
-                            .slice(customerPage * customerRowsPerPage, customerPage * customerRowsPerPage + customerRowsPerPage)
-                            .map((customer: any, index: number) => (
-                                <TableRow key={index}>
-                                    <TableCell>{customer.name || 'Guest'}</TableCell>
-                                    <TableCell>{customer.email || '-'}</TableCell>
-                                    <TableCell>{customer.phone || '-'}</TableCell>
-                                    <TableCell align="right">{customer.totalOrders}</TableCell>
-                                    <TableCell align="right">{formatCurrency(customer.totalSpend)}</TableCell>
-                                    <TableCell align="right">{formatCurrency(customer.averageOrderValue)}</TableCell>
-                                </TableRow>
-                            ))}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+            <Box>
+                {/* Mobile Card View */}
+                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                    {customerAnalytics
+                        .slice(customerPage * customerRowsPerPage, customerPage * customerRowsPerPage + customerRowsPerPage)
+                        .map((customer: any, index: number) => (
+                            <Paper key={index} sx={{ p: 2, mb: 2, borderRadius: 2 }}>
+                                <Box sx={{ mb: 1.5 }}>
+                                    <Typography variant="body2" fontWeight="bold">{customer.name || 'Guest'}</Typography>
+                                    <Typography variant="caption" color="text.secondary">{customer.email || '-'}</Typography>
+                                </Box>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                    <Typography variant="body2" color="text.secondary">Phone:</Typography>
+                                    <Typography variant="body2" fontWeight={600}>{customer.phone || '-'}</Typography>
+                                </Box>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                    <Typography variant="body2" color="text.secondary">Total Orders:</Typography>
+                                    <Typography variant="body2" fontWeight={600}>{customer.totalOrders}</Typography>
+                                </Box>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                    <Typography variant="body2" color="text.secondary">Total Spend:</Typography>
+                                    <Typography variant="body2" fontWeight={600}>{formatCurrency(customer.totalSpend)}</Typography>
+                                </Box>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <Typography variant="body2" color="text.secondary">Avg Order Value:</Typography>
+                                    <Typography variant="body2" fontWeight={600}>{formatCurrency(customer.averageOrderValue)}</Typography>
+                                </Box>
+                            </Paper>
+                        ))}
+                </Box>
+
+                {/* Desktop Table View */}
+                <TableContainer component={Paper} sx={{ maxWidth: '100%', overflowX: 'auto', display: { xs: 'none', md: 'block' } }}>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>Name</TableCell>
+                                <TableCell>Email</TableCell>
+                                <TableCell>Phone</TableCell>
+                                <TableCell align="right">Total Orders</TableCell>
+                                <TableCell align="right">Total Spend</TableCell>
+                                <TableCell align="right">Avg Order Value</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {customerAnalytics
+                                .slice(customerPage * customerRowsPerPage, customerPage * customerRowsPerPage + customerRowsPerPage)
+                                .map((customer: any, index: number) => (
+                                    <TableRow key={index}>
+                                        <TableCell>{customer.name || 'Guest'}</TableCell>
+                                        <TableCell>{customer.email || '-'}</TableCell>
+                                        <TableCell>{customer.phone || '-'}</TableCell>
+                                        <TableCell align="right">{customer.totalOrders}</TableCell>
+                                        <TableCell align="right">{formatCurrency(customer.totalSpend)}</TableCell>
+                                        <TableCell align="right">{formatCurrency(customer.averageOrderValue)}</TableCell>
+                                    </TableRow>
+                                ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            </Box>
             <TablePagination
                 rowsPerPageOptions={[5, 10, 25, 50]}
                 component="div"
@@ -3661,42 +4091,78 @@ const ReportsPage: React.FC = () => {
                             </Card>
                         </Grid>
                     </Grid>
-                    <TableContainer component={Paper} sx={{ maxWidth: '100%', overflowX: 'auto' }}>
-                        <Table>
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell>Item Name</TableCell>
-                                    <TableCell>SKU</TableCell>
-                                    <TableCell align="right">Current Stock</TableCell>
-                                    <TableCell align="right">Min Stock</TableCell>
-                                    <TableCell>Status</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {inventoryStock.items
-                                    .slice(inventoryPage * inventoryRowsPerPage, inventoryPage * inventoryRowsPerPage + inventoryRowsPerPage)
-                                    .map((item: any, index: number) => (
-                                        <TableRow key={index}>
-                                            <TableCell>{item.name}</TableCell>
-                                            <TableCell>{item.sku}</TableCell>
-                                            <TableCell align="right">
+                    <Box>
+                        {/* Mobile Card View */}
+                        <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                            {inventoryStock.items
+                                .slice(inventoryPage * inventoryRowsPerPage, inventoryPage * inventoryRowsPerPage + inventoryRowsPerPage)
+                                .map((item: any, index: number) => (
+                                    <Paper key={index} sx={{ p: 2, mb: 2, borderRadius: 2 }}>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5, alignItems: 'flex-start' }}>
+                                            <Box>
+                                                <Typography variant="body2" fontWeight="bold">{item.name}</Typography>
+                                                <Typography variant="caption" color="text.secondary">SKU: {item.sku}</Typography>
+                                            </Box>
+                                            <Chip
+                                                label={item.status}
+                                                color={item.status === 'Low Stock' ? 'error' : 'success'}
+                                                size="small"
+                                            />
+                                        </Box>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                            <Typography variant="body2" color="text.secondary">Current Stock:</Typography>
+                                            <Typography variant="body2" fontWeight={600}>
                                                 {Number(item.currentStock).toFixed(3)} {item.unit}
-                                            </TableCell>
-                                            <TableCell align="right">
+                                            </Typography>
+                                        </Box>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                            <Typography variant="body2" color="text.secondary">Min Stock:</Typography>
+                                            <Typography variant="body2" fontWeight={600}>
                                                 {Number(item.minimumStock).toFixed(3)} {item.unit}
-                                            </TableCell>
-                                            <TableCell>
-                                                <Chip
-                                                    label={item.status}
-                                                    color={item.status === 'Low Stock' ? 'error' : 'success'}
-                                                    size="small"
-                                                />
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
+                                            </Typography>
+                                        </Box>
+                                    </Paper>
+                                ))}
+                        </Box>
+
+                        {/* Desktop Table View */}
+                        <TableContainer component={Paper} sx={{ maxWidth: '100%', overflowX: 'auto', display: { xs: 'none', md: 'block' } }}>
+                            <Table>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>Item Name</TableCell>
+                                        <TableCell>SKU</TableCell>
+                                        <TableCell align="right">Current Stock</TableCell>
+                                        <TableCell align="right">Min Stock</TableCell>
+                                        <TableCell>Status</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {inventoryStock.items
+                                        .slice(inventoryPage * inventoryRowsPerPage, inventoryPage * inventoryRowsPerPage + inventoryRowsPerPage)
+                                        .map((item: any, index: number) => (
+                                            <TableRow key={index}>
+                                                <TableCell>{item.name}</TableCell>
+                                                <TableCell>{item.sku}</TableCell>
+                                                <TableCell align="right">
+                                                    {Number(item.currentStock).toFixed(3)} {item.unit}
+                                                </TableCell>
+                                                <TableCell align="right">
+                                                    {Number(item.minimumStock).toFixed(3)} {item.unit}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Chip
+                                                        label={item.status}
+                                                        color={item.status === 'Low Stock' ? 'error' : 'success'}
+                                                        size="small"
+                                                    />
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    </Box>
                     <TablePagination
                         rowsPerPageOptions={[5, 10, 25, 50]}
                         component="div"
@@ -3891,36 +4357,69 @@ const ReportsPage: React.FC = () => {
     const renderCouponAnalytics = () => (
         <Paper sx={{ p: 3 }}>
             <Typography variant="h6" gutterBottom>Coupon Performance</Typography>
-            <TableContainer component={Paper} sx={{ maxWidth: '100%', overflowX: 'auto' }}>
-                <Table>
-                    <TableHead>
-                        <TableRow>
-                            <TableCell>Coupon Code</TableCell>
-                            <TableCell>Name</TableCell>
-                            <TableCell>Discount Type</TableCell>
-                            <TableCell align="right">Usage Count</TableCell>
-                            <TableCell align="right">Total Revenue Generated</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {couponAnalytics
-                            .slice(couponPage * couponRowsPerPage, couponPage * couponRowsPerPage + couponRowsPerPage)
-                            .map((coupon: any, index: number) => (
-                                <TableRow key={index}>
-                                    <TableCell>{coupon.code}</TableCell>
-                                    <TableCell>{coupon.name}</TableCell>
-                                    <TableCell>
+            <Box>
+                {/* Mobile Card View */}
+                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                    {couponAnalytics
+                        .slice(couponPage * couponRowsPerPage, couponPage * couponRowsPerPage + couponRowsPerPage)
+                        .map((coupon: any, index: number) => (
+                            <Paper key={index} sx={{ p: 2, mb: 2, borderRadius: 2 }}>
+                                <Box sx={{ mb: 1.5 }}>
+                                    <Typography variant="body2" fontWeight="bold">{coupon.code}</Typography>
+                                    <Typography variant="caption" color="text.secondary">{coupon.name}</Typography>
+                                </Box>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                    <Typography variant="body2" color="text.secondary">Discount:</Typography>
+                                    <Typography variant="body2" fontWeight={600}>
                                         {coupon.discountType === 'percentage'
                                             ? `${coupon.discountValue}%`
                                             : formatCurrency(coupon.discountValue)}
-                                    </TableCell>
-                                    <TableCell align="right">{coupon.usageCount}</TableCell>
-                                    <TableCell align="right">{formatCurrency(coupon.totalRevenue)}</TableCell>
-                                </TableRow>
-                            ))}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+                                    </Typography>
+                                </Box>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                    <Typography variant="body2" color="text.secondary">Usage Count:</Typography>
+                                    <Typography variant="body2" fontWeight={600}>{coupon.usageCount}</Typography>
+                                </Box>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <Typography variant="body2" color="text.secondary">Total Revenue:</Typography>
+                                    <Typography variant="body2" fontWeight={600}>{formatCurrency(coupon.totalRevenue)}</Typography>
+                                </Box>
+                            </Paper>
+                        ))}
+                </Box>
+
+                {/* Desktop Table View */}
+                <TableContainer component={Paper} sx={{ maxWidth: '100%', overflowX: 'auto', display: { xs: 'none', md: 'block' } }}>
+                    <Table>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell>Coupon Code</TableCell>
+                                <TableCell>Name</TableCell>
+                                <TableCell>Discount Type</TableCell>
+                                <TableCell align="right">Usage Count</TableCell>
+                                <TableCell align="right">Total Revenue Generated</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {couponAnalytics
+                                .slice(couponPage * couponRowsPerPage, couponPage * couponRowsPerPage + couponRowsPerPage)
+                                .map((coupon: any, index: number) => (
+                                    <TableRow key={index}>
+                                        <TableCell>{coupon.code}</TableCell>
+                                        <TableCell>{coupon.name}</TableCell>
+                                        <TableCell>
+                                            {coupon.discountType === 'percentage'
+                                                ? `${coupon.discountValue}%`
+                                                : formatCurrency(coupon.discountValue)}
+                                        </TableCell>
+                                        <TableCell align="right">{coupon.usageCount}</TableCell>
+                                        <TableCell align="right">{formatCurrency(coupon.totalRevenue)}</TableCell>
+                                    </TableRow>
+                                ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            </Box>
             <TablePagination
                 rowsPerPageOptions={[5, 10, 25, 50]}
                 component="div"
@@ -3951,21 +4450,24 @@ const ReportsPage: React.FC = () => {
             <Paper sx={{ p: 3 }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
                     <Typography variant="h6">Customer Feedback Analysis</Typography>
-                    <Box>
-                        <Button
-                            variant={feedbackView === 'summary' ? "contained" : "outlined"}
-                            onClick={() => setFeedbackView('summary')}
-                            sx={{ mr: 1 }}
-                        >
-                            Review Summary
-                        </Button>
-                        <Button
-                            variant={feedbackView === 'item-wise' ? "contained" : "outlined"}
-                            onClick={() => setFeedbackView('item-wise')}
-                        >
-                            Item Risk Analysis
-                        </Button>
-                    </Box>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+    <Button
+        variant={feedbackView === 'summary' ? "contained" : "outlined"}
+        onClick={() => setFeedbackView('summary')}
+        size="small"
+        sx={{ flex: { xs: '1 1 auto', sm: '0 1 auto' } }}
+    >
+        Review Summary
+    </Button>
+    <Button
+        variant={feedbackView === 'item-wise' ? "contained" : "outlined"}
+        onClick={() => setFeedbackView('item-wise')}
+        size="small"
+        sx={{ flex: { xs: '1 1 auto', sm: '0 1 auto' } }}
+    >
+        Item Risk Analysis
+    </Button>
+</Box>
                 </Stack>
 
                 {/* KPI Cards */}
@@ -4003,63 +4505,128 @@ const ReportsPage: React.FC = () => {
                 </Grid>
 
                 {feedbackView === 'summary' ? (
-                    <TableContainer component={Paper}>
-                        <Table>
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell>Date</TableCell>
-                                    <TableCell>Order #</TableCell>
-                                    <TableCell>Customer</TableCell>
-                                    <TableCell align="center">Service</TableCell>
-                                    <TableCell align="center">Ambiance</TableCell>
-                                    <TableCell>Item Ratings</TableCell>
-                                    <TableCell>Suggestions</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {feedbackData.map((fb: any) => (
-                                    <TableRow key={fb._id}>
-                                        <TableCell>{new Date(fb.createdAt).toLocaleDateString()}</TableCell>
-                                        <TableCell>{fb.orderNumber}</TableCell>
-                                        <TableCell>{fb.customerName}</TableCell>
-                                        <TableCell align="center">
+                    <Box>
+                        {/* Mobile Card View */}
+                        <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                            {feedbackData.length > 0 ? (
+                                feedbackData.map((fb: any) => (
+                                    <Paper key={fb._id} sx={{ p: 2, mb: 2, borderRadius: 2 }}>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5, alignItems: 'flex-start' }}>
+                                            <Box>
+                                                <Typography variant="body2" fontWeight="bold">{fb.orderNumber}</Typography>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    {new Date(fb.createdAt).toLocaleDateString()}
+                                                </Typography>
+                                            </Box>
+                                        </Box>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                            <Typography variant="body2" color="text.secondary">Customer:</Typography>
+                                            <Typography variant="body2" fontWeight={600}>{fb.customerName}</Typography>
+                                        </Box>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                            <Typography variant="body2" color="text.secondary">Service:</Typography>
                                             <Chip
                                                 label={fb.serviceRating}
                                                 color={fb.serviceRating >= 4 ? 'success' : fb.serviceRating >= 3 ? 'warning' : 'error'}
                                                 size="small"
                                             />
-                                        </TableCell>
-                                        <TableCell align="center">
+                                        </Box>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                            <Typography variant="body2" color="text.secondary">Ambiance:</Typography>
                                             <Chip
                                                 label={fb.ambianceRating}
                                                 color={fb.ambianceRating >= 4 ? 'success' : fb.ambianceRating >= 3 ? 'warning' : 'error'}
                                                 size="small"
                                             />
-                                        </TableCell>
-                                        <TableCell>
-                                            <Box sx={{ maxHeight: 100, overflowY: 'auto' }}>
-                                                {fb.itemRatings && fb.itemRatings.map((item: any) => (
-                                                    <Typography variant="caption" display="block" key={item.menuItem}>
-                                                        {item.name}: {item.tasteRating} (Taste), {item.quantityRating} (Qty)
-                                                    </Typography>
-                                                ))}
+                                        </Box>
+                                        {fb.itemRatings && fb.itemRatings.length > 0 && (
+                                            <Box sx={{ mb: 1 }}>
+                                                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>Item Ratings:</Typography>
+                                                <Box sx={{ pl: 1 }}>
+                                                    {fb.itemRatings.map((item: any) => (
+                                                        <Typography variant="caption" display="block" key={item.menuItem} color="text.secondary">
+                                                            {item.name}: {item.tasteRating} (Taste), {item.quantityRating} (Qty)
+                                                        </Typography>
+                                                    ))}
+                                                </Box>
                                             </Box>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Typography variant="body2" sx={{ maxWidth: 200, whiteSpace: 'pre-wrap' }}>
-                                                {fb.suggestions || '-'}
-                                            </Typography>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                {feedbackData.length === 0 && (
+                                        )}
+                                        {fb.suggestions && (
+                                            <Box sx={{ pt: 1, borderTop: '1px solid #f0f0f0' }}>
+                                                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>Suggestions:</Typography>
+                                                <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
+                                                    {fb.suggestions}
+                                                </Typography>
+                                            </Box>
+                                        )}
+                                    </Paper>
+                                ))
+                            ) : (
+                                <Paper sx={{ p: 3, textAlign: 'center' }}>
+                                    <Typography variant="body2" color="text.secondary">No feedback found</Typography>
+                                </Paper>
+                            )}
+                        </Box>
+
+                        {/* Desktop Table View */}
+                        <TableContainer component={Paper} sx={{ display: { xs: 'none', md: 'block' } }}>
+                            <Table>
+                                <TableHead>
                                     <TableRow>
-                                        <TableCell colSpan={7} align="center">No feedback found</TableCell>
+                                        <TableCell>Date</TableCell>
+                                        <TableCell>Order #</TableCell>
+                                        <TableCell>Customer</TableCell>
+                                        <TableCell align="center">Service</TableCell>
+                                        <TableCell align="center">Ambiance</TableCell>
+                                        <TableCell>Item Ratings</TableCell>
+                                        <TableCell>Suggestions</TableCell>
                                     </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
+                                </TableHead>
+                                <TableBody>
+                                    {feedbackData.map((fb: any) => (
+                                        <TableRow key={fb._id}>
+                                            <TableCell>{new Date(fb.createdAt).toLocaleDateString()}</TableCell>
+                                            <TableCell>{fb.orderNumber}</TableCell>
+                                            <TableCell>{fb.customerName}</TableCell>
+                                            <TableCell align="center">
+                                                <Chip
+                                                    label={fb.serviceRating}
+                                                    color={fb.serviceRating >= 4 ? 'success' : fb.serviceRating >= 3 ? 'warning' : 'error'}
+                                                    size="small"
+                                                />
+                                            </TableCell>
+                                            <TableCell align="center">
+                                                <Chip
+                                                    label={fb.ambianceRating}
+                                                    color={fb.ambianceRating >= 4 ? 'success' : fb.ambianceRating >= 3 ? 'warning' : 'error'}
+                                                    size="small"
+                                                />
+                                            </TableCell>
+                                            <TableCell>
+                                                <Box sx={{ maxHeight: 100, overflowY: 'auto' }}>
+                                                    {fb.itemRatings && fb.itemRatings.map((item: any) => (
+                                                        <Typography variant="caption" display="block" key={item.menuItem}>
+                                                            {item.name}: {item.tasteRating} (Taste), {item.quantityRating} (Qty)
+                                                        </Typography>
+                                                    ))}
+                                                </Box>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Typography variant="body2" sx={{ maxWidth: 200, whiteSpace: 'pre-wrap' }}>
+                                                    {fb.suggestions || '-'}
+                                                </Typography>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                    {feedbackData.length === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={7} align="center">No feedback found</TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    </Box>
                 ) : (
                     <TableContainer component={Paper}>
                         <Table>
