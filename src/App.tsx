@@ -60,6 +60,7 @@ import AuditLogsPage from './pages/admin/AuditLogsPage';
 import BookingsAdminPage from './pages/admin/BookingsAdminPage';
 import CateringCommissionsPage from './pages/admin/catering/CateringCommissionsPage';
 import CateringManagementPage from './pages/admin/catering/CateringManagementPage';
+import CustomiseScreensPage from './pages/admin/customise-screens/CustomiseScreensPage';
 import AttendancePage from './pages/AttendancePage';
 import CateringPage from './pages/catering/CateringPage';
 import CateringTrackPage from './pages/customer/CateringTrackPage';
@@ -201,6 +202,7 @@ const ThemedAppContent: React.FC = () => {
                       <Route path="attendance" element={<AttendancePage />} />
                     </Route>
                     <Route path="bookings" element={<BookingsAdminPage />} />
+                    <Route path="customise-screens" element={<CustomiseScreensPage />} />
                     <Route path="audit-logs" element={<AuditLogsPage />} />
                   </Route>
 

@@ -123,6 +123,7 @@ export interface NotificationSettings {
         };
     };
     sound?: string;
+    soundDuration?: number; // duration in seconds
     push?: any;
 }
 
@@ -282,6 +283,7 @@ const defaultSettings: SettingsState = {
             },
         },
         sound: 'notification',
+        soundDuration: 6,
     },
     printer: {
         enabled: false,
@@ -488,8 +490,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                     ...(fetched.system || {}),
                     googleMapsApiKey: (fetched.system?.googleMapsApiKey) || defaultSettings.system.googleMapsApiKey,
                     posPaymentMethods: {
-                        ...defaultSettings.system.posPaymentMethods,
-                        ...(fetched.system?.posPaymentMethods || {})
+                        cash: fetched.system?.posPaymentMethods?.cash ?? defaultSettings.system.posPaymentMethods?.cash ?? true,
+                        card: fetched.system?.posPaymentMethods?.card ?? defaultSettings.system.posPaymentMethods?.card ?? true,
+                        zelle: fetched.system?.posPaymentMethods?.zelle ?? defaultSettings.system.posPaymentMethods?.zelle ?? true,
+                        venmo: fetched.system?.posPaymentMethods?.venmo ?? defaultSettings.system.posPaymentMethods?.venmo ?? true,
                     }
                 },
                 payment: {
@@ -507,6 +511,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                             ...(fetched.notification?.sms?.twilio || {}),
                         },
                     },
+                    soundDuration: fetched.notification?.soundDuration ?? defaultSettings.notification.soundDuration ?? 6,
                 },
                 printer: {
                     ...defaultSettings.printer,

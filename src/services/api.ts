@@ -566,10 +566,15 @@ export const auditLogsAPI = {
 
 // -------------------- Maps API --------------------
 export const mapsAPI = {
-  getDirections: (origin: string, destination: string) =>
-    api.get('/maps/directions', { params: { origin, destination } }),
   getNearby: (location: string, radius: number, type: string) =>
     api.get('/maps/nearby', { params: { location, radius, type } }),
+};
+
+// -------------------- Homepage API --------------------
+export const homepageAPI = {
+  getContent: () => api.get('/homepage'),
+  updateContent: (htmlContent: string, sections?: any[]) => api.put('/homepage', { htmlContent, sections }),
+  getPublicContent: (tenantSlug: string) => api.get('/homepage/public', { params: { tenantSlug } }),
 };
 
 export default api;
