@@ -163,21 +163,7 @@ const CustomersPage: React.FC = () => {
 
             {isMobile ? (
                 <Stack spacing={2}>
-                    <Paper sx={{ borderRadius: 2, overflow: 'hidden' }}>
-                        <TableContainer sx={{ overflowX: 'hidden' }}>
-                            <Table>
-                                <TableHead>
-                                    <TableRow sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1) }}>
-                                        <TableCell sx={{ fontWeight: 'bold', fontSize: { xs: '0.7rem', sm: '0.875rem' }, px: { xs: 0.5, sm: 1 } }}>Customer</TableCell>
-                                        <TableCell sx={{ fontWeight: 'bold', fontSize: { xs: '0.7rem', sm: '0.875rem' }, px: { xs: 0.5, sm: 1 } }}>Contact</TableCell>
-                                       <TableCell sx={{ fontWeight: 'bold', fontSize: { xs: '0.7rem', sm: '0.875rem' }, px: { xs: 0.5, sm: 1 } }}>Stats</TableCell>
-                                        <TableCell sx={{ fontWeight: 'bold', fontSize: { xs: '0.7rem', sm: '0.875rem' }, px: { xs: 0.5, sm: 1 } }}>Last Visit</TableCell>
-                                        <TableCell sx={{ fontWeight: 'bold', fontSize: { xs: '0.7rem', sm: '0.875rem' }, px: { xs: 0.5, sm: 1 } }}>Order Types</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                            </Table>
-                        </TableContainer>
-                    </Paper>
+
                     {loading ? (
                         <Box sx={{ py: 4, textAlign: 'center' }}>Loading...</Box>
                     ) : (!Array.isArray(customers) || customers.length === 0) ? (

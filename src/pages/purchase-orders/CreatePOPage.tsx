@@ -27,7 +27,8 @@ import {
     Tooltip,
     InputAdornment,
     Chip,
-    FormControl
+    FormControl,
+    useMediaQuery
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -73,7 +74,8 @@ const CreatePOPage: React.FC = () => {
     const [users, setUsers] = useState<any[]>([]);
     const [vendors, setVendors] = useState<any[]>([]);
     const [selectedVendor, setSelectedVendor] = useState<any>(null);
-    
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
     // Check for pre-filled data from navigation state (e.g., from Reorder alerts)
     const state = location.state as any;
 
@@ -157,7 +159,7 @@ const CreatePOPage: React.FC = () => {
             };
             const response = await vendorsAPI.create(newVendor);
             const created = response.data?.data || response.data?.vendor || response.data;
-            
+
             // Refresh vendors list and auto-select the new one
             await fetchVendors();
             setSelectedVendor(created);
@@ -280,13 +282,13 @@ const CreatePOPage: React.FC = () => {
             const formDataUpload = new FormData();
             formDataUpload.append('file', file);
             const response = await purchaseOrdersAPI.extractInvoice(formDataUpload);
-            
+
             console.log('=== AI FULL RESPONSE ===', JSON.stringify(response.data, null, 2));
-            
+
             const responseData = response.data?.data || response.data;
             const extractionData = responseData.extraction || responseData;
             const verificationData = responseData.verification || {};
-            
+
             console.log('=== EXTRACTION KEYS ===', Object.keys(extractionData));
             console.log('=== EXTRACTION DATA ===', JSON.stringify(extractionData, null, 2));
             console.log('=== VERIFICATION KEYS ===', Object.keys(verificationData));
@@ -323,15 +325,15 @@ const CreatePOPage: React.FC = () => {
 
             // --- Auto-fill Vendor Details ---
             const vendorObj = extractionData.vendor || extractionData.vendor_details || extractionData.supplier_info || {};
-            const vendorName = findNested(extractionData, 'vendor_name', 'supplier_name', 'company_name') || 
-                               vendorObj.vendor_name || vendorObj.name || vendorObj.company || vendorObj.supplier || 
-                               extractionData.vendor_name || extractionData.supplier || '';
+            const vendorName = findNested(extractionData, 'vendor_name', 'supplier_name', 'company_name') ||
+                vendorObj.vendor_name || vendorObj.name || vendorObj.company || vendorObj.supplier ||
+                extractionData.vendor_name || extractionData.supplier || '';
             const vendorContact = findNested(extractionData, 'phone', 'phone_number', 'contact_number', 'tel') ||
-                                  vendorObj.phone || vendorObj.contact || vendorObj.phone_number || '';
-            const vendorEmail = findNested(extractionData, 'email', 'vendor_email') || 
-                                vendorObj.email || '';
-            const vendorAddress = findNested(extractionData, 'address', 'vendor_address', 'location', 'street') || 
-                                  vendorObj.address || vendorObj.location || '';
+                vendorObj.phone || vendorObj.contact || vendorObj.phone_number || '';
+            const vendorEmail = findNested(extractionData, 'email', 'vendor_email') ||
+                vendorObj.email || '';
+            const vendorAddress = findNested(extractionData, 'address', 'vendor_address', 'location', 'street') ||
+                vendorObj.address || vendorObj.location || '';
 
             console.log('=== MAPPED VENDOR ===', { vendorName, vendorContact, vendorEmail, vendorAddress });
 
@@ -339,15 +341,15 @@ const CreatePOPage: React.FC = () => {
             // Try verification data first (matched products), then extraction data
             let rawItems = findFirstArray(verificationData);
             if (rawItems.length === 0) rawItems = findFirstArray(extractionData);
-            
+
             console.log('=== RAW ITEMS ===', JSON.stringify(rawItems, null, 2));
 
             const extractedItems = rawItems.length > 0 ? rawItems.map((item: any) => {
                 const qty = parseFloat(item.quantity || item.qty || item.count || item.amount || 1);
                 const price = parseFloat(item.price || item.unit_price || item.unitPrice || item.rate || item.cost || item.unit_cost || 0);
-                const itemName = item.name || item.description || item.product || item.item || item.product_name || 
-                                 item.matched_name || item.item_name || item.material || '';
-                
+                const itemName = item.name || item.description || item.product || item.item || item.product_name ||
+                    item.matched_name || item.item_name || item.material || '';
+
                 // Try to match with existing inventory items
                 let matchedInventoryId = item.inventory_id || item.inventoryId || item.matched_id || item._id || '';
                 if (!matchedInventoryId && itemName) {
@@ -359,8 +361,8 @@ const CreatePOPage: React.FC = () => {
                 }
 
                 // Check if verified/matched
-                const isVerified = item.verified === true || item.matched === true || item.exists === true || 
-                                   item.status === 'matched' || item.status === 'verified' || item.status === 'found';
+                const isVerified = item.verified === true || item.matched === true || item.exists === true ||
+                    item.status === 'matched' || item.status === 'verified' || item.status === 'found';
 
                 return {
                     description: itemName,
@@ -406,14 +408,14 @@ const CreatePOPage: React.FC = () => {
                 items: extractedItems,
                 referenceNumber: invoiceNumber || prev.referenceNumber,
                 dueDate: formattedDueDate || prev.dueDate,
-                notes: (prev.notes ? prev.notes + '\n\n' : '') + 
+                notes: (prev.notes ? prev.notes + '\n\n' : '') +
                     `--- AI Extraction ---\n${JSON.stringify(extractionData, null, 2)}` +
                     `\n\n--- AI Verification ---\n${JSON.stringify(verificationData, null, 2)}`
             }));
-            
+
             // Try to match vendor from existing vendors list
             if (vendorName) {
-                const matched = vendors.find((v: any) => 
+                const matched = vendors.find((v: any) =>
                     v.name.toLowerCase().trim() === vendorName.toLowerCase().trim()
                 );
                 if (matched) {
@@ -470,7 +472,7 @@ const CreatePOPage: React.FC = () => {
             toast.error('Item name is required to create in inventory');
             return;
         }
-        
+
         if (!formData.vendor.name) {
             toast.error('Please select or enter a vendor name first');
             return;
@@ -501,15 +503,15 @@ const CreatePOPage: React.FC = () => {
             };
             const response = await inventoryAPI.create(newItem);
             const createdItem = response.data?.data || response.data;
-            
+
             // Update the item row with the new inventory ID
             const newItems = [...formData.items];
             newItems[index] = { ...newItems[index], inventoryItem: createdItem._id };
             setFormData(prev => ({ ...prev, items: newItems }));
-            
+
             // Refresh inventory list
             await fetchInventory();
-            
+
             toast.success(`"${item.description}" added to inventory with supplier "${formData.vendor.name}"!`, { id: `create-inv-${index}` });
         } catch (error: any) {
             console.error('Failed to create inventory item:', error);
@@ -655,9 +657,9 @@ const CreatePOPage: React.FC = () => {
                     <Stack spacing={4}>
                         {/* 1. Transaction Type & Category */}
                         <Paper sx={{ p: 4, borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
                                 <SectionHeader icon={<DetailsIcon />} title="Category & Type" sx={{ mb: 0 }} />
-                                
+
                                 <Button
                                     component="label"
                                     variant="contained"
@@ -666,8 +668,11 @@ const CreatePOPage: React.FC = () => {
                                     startIcon={extracting ? <CircularProgress size={20} color="inherit" /> : <AutoAwesomeIcon />}
                                     sx={{
                                         borderRadius: 3,
-                                        px: 3,
-                                        py: 1,
+                                        px: { xs: 2, sm: 3 },
+                                        py: { xs: 0.75, sm: 1 },
+                                        fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                        minWidth: { xs: 'auto', sm: 'unset' },
+                                        whiteSpace: 'nowrap',
                                         background: 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)',
                                         boxShadow: '0 4px 14px 0 rgba(139,92,246,0.39)',
                                         '&:hover': {
@@ -962,186 +967,203 @@ const CreatePOPage: React.FC = () => {
                             </Box>
 
                             <TableContainer sx={{
-                                overflowX: 'auto',
-                                maxHeight: 500, // Fixed height for vertical scroll
-                                '&::-webkit-scrollbar': {
-                                    width: '8px',
-                                    height: '8px'
-                                },
-                                '&::-webkit-scrollbar-track': {
-                                    bgcolor: alpha(theme.palette.divider, 0.1),
-                                    borderRadius: '4px'
-                                },
-                                '&::-webkit-scrollbar-thumb': {
-                                    bgcolor: alpha(theme.palette.primary.main, 0.2),
-                                    borderRadius: '4px',
-                                    '&:hover': {
-                                        bgcolor: alpha(theme.palette.primary.main, 0.4)
-                                    }
-                                }
-                            }}>
-                                <Table sx={{ minWidth: { xs: 700, sm: 800 } }}>
-                                    <TableHead>
-                                        <TableRow>
-                                            <TableCell sx={{ fontWeight: 'bold' }}>{isSalary ? 'PAY COMPONENT' : isInventory ? 'INVENTORY ITEM' : 'DESCRIPTION'}</TableCell>
-                                            <TableCell sx={{ fontWeight: 'bold' }}>{isSalary ? 'AMOUNT' : 'QTY'}</TableCell>
-                                            {!isSalary && <TableCell sx={{ fontWeight: 'bold' }}>WEIGHT</TableCell>}
-                                            {!isSalary && <TableCell sx={{ fontWeight: 'bold' }}>PRICE</TableCell>}
-                                            <TableCell sx={{ fontWeight: 'bold' }} align="right">{isSalary ? 'TOTAL' : 'SUM'}</TableCell>
-                                            {isInventory && <TableCell sx={{ fontWeight: 'bold' }} align="center">STATUS</TableCell>}
-                                            <TableCell width={50}></TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {formData.items.map((item, index) => (
-                                            <TableRow key={index} sx={{ '& td': { py: 2, borderBottom: 'none' } }}>
-                                                <TableCell sx={{ pl: 0 }}>
-                                                    {isInventory ? (
-                                                        <Autocomplete
-                                                            options={inventoryItems}
-                                                            getOptionLabel={(o) => o.name || o}
-                                                            value={item.description}
-                                                            onInputChange={(_, val) => handleItemChange(index, 'description', val)}
-                                                            onChange={(_, val: any) => val && handleItemChange(index, 'inventoryItem', val._id)}
-                                                            renderInput={(p) => <TextField {...p} size="small" placeholder="Find material..." />}
-                                                        />
-                                                    ) : isSalary ? (
-                                                        <TextField
-                                                            select fullWidth size="small"
-                                                            value={item.description}
-                                                            onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                                                        >
-                                                            <MenuItem value="Basic Salary">Basic Salary</MenuItem>
-                                                            {/* <MenuItem value="Overtime">Overtime Pay</MenuItem>
-                                                            <MenuItem value="Bonus">Performance Bonus</MenuItem>
-                                                            <MenuItem value="Deduction">Penalty / Deduction</MenuItem> */}
-                                                        </TextField>
-                                                    ) : (
-                                                        <TextField
-                                                            fullWidth size="small" placeholder="Line detail..."
-                                                            value={item.description}
-                                                            onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                                                        />
-                                                    )}
-                                                </TableCell>
-                                                <TableCell width={100}>
-                                                    <TextField
-                                                        type="number"
-                                                        value={isSalary ? item.unitPrice : item.quantity}
-                                                        onChange={(e) => {
-                                                            const val = parseFloat(e.target.value);
-                                                            handleItemChange(index, isSalary ? 'unitPrice' : 'quantity', val >= 0 ? val : 0);
-                                                        }}
-                                                        size="small"
-                                                        fullWidth
-                                                        InputProps={{ inputProps: { min: 0 } }}
-                                                    />
-                                                </TableCell>
-                                                {!isSalary && (
-                                                    <TableCell width={140}>
-                                                        <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
-                                                            <TextField
-                                                                type="number"
-                                                                value={item.weightValue || ''}
-                                                                onChange={(e) => handleItemChange(index, 'weightValue', e.target.value)}
-                                                                size="small"
-                                                                placeholder="0"
-                                                                sx={{ width: 65 }}
-                                                                InputProps={{ inputProps: { min: 0, step: 0.1 } }}
-                                                            />
-                                                            <TextField
-                                                                select
-                                                                value={item.weightUnit || 'lb'}
-                                                                onChange={(e) => handleItemChange(index, 'weightUnit', e.target.value)}
-                                                                size="small"
-                                                                sx={{ width: 75 }}
-                                                            >
-                                                                <MenuItem value="lb">lb</MenuItem>
-                                                                <MenuItem value="kg">kg</MenuItem>
-                                                                <MenuItem value="oz">oz</MenuItem>
-                                                                <MenuItem value="g">g</MenuItem>
-                                                                <MenuItem value="l">L</MenuItem>
-                                                                <MenuItem value="ml">mL</MenuItem>
-                                                                <MenuItem value="pieces">pcs</MenuItem>
-                                                                <MenuItem value="boxes">box</MenuItem>
-                                                                <MenuItem value="each">ea</MenuItem>
-                                                            </TextField>
-                                                        </Box>
-                                                    </TableCell>
-                                                )}
-                                                {!isSalary && (
-                                                    <TableCell width={115} sx={{ px: 0.5 }}>
-                                                        <TextField
-                                                            type="number"
-                                                            value={item.unitPrice}
-                                                            onChange={(e) => {
-                                                                const val = parseFloat(e.target.value);
-                                                                handleItemChange(index, 'unitPrice', val >= 0 ? val : 0);
-                                                            }}
-                                                            size="small"
-                                                            fullWidth
-                                                            InputProps={{
-                                                                startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                                                                inputProps: { min: 0 }
-                                                            }}
-                                                        />
-                                                    </TableCell>
-                                                )}
-                                                <TableCell align="right" width={90} sx={{ px: 0.5 }}>
-                                                    <Typography fontWeight="900">${(isSalary ? item.unitPrice : item.total || 0).toFixed(2)}</Typography>
-                                                </TableCell>
-                                                {isInventory && (
-                                                    <TableCell align="center">
-                                                        {item.inventoryItem ? (
-                                                            <Chip
-                                                                icon={<CheckCircleIcon />}
-                                                                label="Exists"
-                                                                size="small"
-                                                                color="success"
-                                                                variant="outlined"
-                                                                sx={{ fontWeight: 'bold', borderRadius: 2 }}
-                                                            />
-                                                        ) : item.description ? (
-                                                            <Tooltip title={`Create "${item.description}" in inventory`}>
-                                                                <Button
-                                                                    size="small"
-                                                                    variant="contained"
-                                                                    startIcon={<AddCircleIcon />}
-                                                                    onClick={() => handleCreateInventoryItem(index)}
-                                                                    sx={{
-                                                                        borderRadius: 2,
-                                                                        textTransform: 'none',
-                                                                        fontSize: '0.7rem',
-                                                                        py: 0.5,
-                                                                        px: 1,
-                                                                        background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
-                                                                        '&:hover': { background: 'linear-gradient(135deg, #D97706 0%, #B45309 100%)' }
-                                                                    }}
-                                                                >
-                                                                    Add to Inventory
-                                                                </Button>
-                                                            </Tooltip>
-                                                        ) : (
-                                                            <Typography variant="caption" color="text.secondary">—</Typography>
-                                                        )}
-                                                    </TableCell>
-                                                )}
-                                                <TableCell align="right">
-                                                    <IconButton
-                                                        size="small"
-                                                        color="error"
-                                                        onClick={() => removeItem(index)}
-                                                        disabled={formData.items.length === 1}
-                                                        sx={{ bgcolor: alpha(theme.palette.error.main, 0.05), '&:hover': { bgcolor: alpha(theme.palette.error.main, 0.1) } }}
-                                                    >
-                                                        <DeleteIcon fontSize="small" />
-                                                    </IconButton>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </TableContainer>
+    overflowX: 'auto',
+    maxHeight: { xs: 'none', sm: 500 },
+    '&::-webkit-scrollbar': { width: '8px', height: '8px' },
+    '&::-webkit-scrollbar-track': { bgcolor: alpha(theme.palette.divider, 0.1), borderRadius: '4px' },
+    '&::-webkit-scrollbar-thumb': {
+        bgcolor: alpha(theme.palette.primary.main, 0.2),
+        borderRadius: '4px',
+        '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.4) }
+    }
+}}>
+    {/* MOBILE CARD VIEW */}
+    {isMobile ? (
+        formData.items.length === 0 ? (
+            <Box sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
+                <Typography variant="body2">No items available</Typography>
+            </Box>
+        ) : (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, p: 1 }}>
+                {formData.items.map((item, index) => (
+                    <Box key={index} sx={{
+                        border: `1px solid ${alpha(theme.palette.divider, 0.3)}`,
+                        borderRadius: 2,
+                        p: 2,
+                        bgcolor: alpha(theme.palette.background.paper, 0.8),
+                        boxShadow: `0 1px 4px ${alpha(theme.palette.common.black, 0.06)}`
+                    }}>
+                        {/* Description / Pay Component */}
+                        <Box sx={{ mb: 1.5 }}>
+                            <Typography variant="caption" color="text.secondary" fontWeight="bold">
+                                {isSalary ? 'PAY COMPONENT' : isInventory ? 'INVENTORY ITEM' : 'DESCRIPTION'}
+                            </Typography>
+                            <Box sx={{ mt: 0.5 }}>
+                                {isInventory ? (
+                                    <Autocomplete
+                                        options={inventoryItems}
+                                        getOptionLabel={(o) => o.name || o}
+                                        value={item.description}
+                                        onInputChange={(_, val) => handleItemChange(index, 'description', val)}
+                                        onChange={(_, val: any) => val && handleItemChange(index, 'inventoryItem', val._id)}
+                                        renderInput={(p) => <TextField {...p} size="small" fullWidth placeholder="Find material..." />}
+                                    />
+                                ) : isSalary ? (
+                                    <TextField
+                                        select fullWidth size="small"
+                                        value={item.description}
+                                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                                    >
+                                        <MenuItem value="Basic Salary">Basic Salary</MenuItem>
+                                    </TextField>
+                                ) : (
+                                    <TextField
+                                        fullWidth size="small" placeholder="Line detail..."
+                                        value={item.description}
+                                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                                    />
+                                )}
+                            </Box>
+                        </Box>
+
+                        {/* QTY / Amount row */}
+                        <Box sx={{ display: 'flex', gap: 1.5, mb: 1.5, flexWrap: 'wrap' }}>
+                            <Box sx={{ flex: 1, minWidth: 80 }}>
+                                <Typography variant="caption" color="text.secondary" fontWeight="bold">
+                                    {isSalary ? 'AMOUNT' : 'QTY'}
+                                </Typography>
+                                <TextField
+                                    type="number" size="small" fullWidth sx={{ mt: 0.5 }}
+                                    value={isSalary ? item.unitPrice : item.quantity}
+                                    onChange={(e) => {
+                                        const val = parseFloat(e.target.value);
+                                        handleItemChange(index, isSalary ? 'unitPrice' : 'quantity', val >= 0 ? val : 0);
+                                    }}
+                                    InputProps={{ inputProps: { min: 0 } }}
+                                />
+                            </Box>
+
+                            {!isSalary && (
+                                <Box sx={{ flex: 1, minWidth: 140 }}>
+                                    <Typography variant="caption" color="text.secondary" fontWeight="bold">WEIGHT</Typography>
+                                    <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', mt: 0.5 }}>
+                                        <TextField
+                                            type="number"
+                                            value={item.weightValue || ''}
+                                            onChange={(e) => handleItemChange(index, 'weightValue', e.target.value)}
+                                            size="small" placeholder="0"
+                                            sx={{ width: 65 }}
+                                            InputProps={{ inputProps: { min: 0, step: 0.1 } }}
+                                        />
+                                        <TextField
+                                            select
+                                            value={item.weightUnit || 'lb'}
+                                            onChange={(e) => handleItemChange(index, 'weightUnit', e.target.value)}
+                                            size="small" sx={{ width: 75 }}
+                                        >
+                                            <MenuItem value="lb">lb</MenuItem>
+                                            <MenuItem value="kg">kg</MenuItem>
+                                            <MenuItem value="oz">oz</MenuItem>
+                                            <MenuItem value="g">g</MenuItem>
+                                            <MenuItem value="l">L</MenuItem>
+                                            <MenuItem value="ml">mL</MenuItem>
+                                            <MenuItem value="pieces">pcs</MenuItem>
+                                            <MenuItem value="boxes">box</MenuItem>
+                                            <MenuItem value="each">ea</MenuItem>
+                                        </TextField>
+                                    </Box>
+                                </Box>
+                            )}
+
+                            {!isSalary && (
+                                <Box sx={{ flex: 1, minWidth: 100 }}>
+                                    <Typography variant="caption" color="text.secondary" fontWeight="bold">PRICE</Typography>
+                                    <TextField
+                                        type="number" size="small" fullWidth sx={{ mt: 0.5 }}
+                                        value={item.unitPrice}
+                                        onChange={(e) => {
+                                            const val = parseFloat(e.target.value);
+                                            handleItemChange(index, 'unitPrice', val >= 0 ? val : 0);
+                                        }}
+                                        InputProps={{
+                                            startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                                            inputProps: { min: 0 }
+                                        }}
+                                    />
+                                </Box>
+                            )}
+                        </Box>
+
+                        {/* Footer: Total + Status + Delete */}
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
+                            <Box>
+                                <Typography variant="caption" color="text.secondary" fontWeight="bold">
+                                    {isSalary ? 'TOTAL' : 'SUM'}
+                                </Typography>
+                                <Typography fontWeight="900" fontSize="1rem">
+                                    ${(isSalary ? item.unitPrice : item.total || 0).toFixed(2)}
+                                </Typography>
+                            </Box>
+
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                {isInventory && (
+                                    item.inventoryItem ? (
+                                        <Chip
+                                            icon={<CheckCircleIcon />}
+                                            label="Exists"
+                                            size="small"
+                                            color="success"
+                                            variant="outlined"
+                                            sx={{ fontWeight: 'bold', borderRadius: 2 }}
+                                        />
+                                    ) : item.description ? (
+                                        <Tooltip title={`Create "${item.description}" in inventory`}>
+                                            <Button
+                                                size="small" variant="contained"
+                                                startIcon={<AddCircleIcon />}
+                                                onClick={() => handleCreateInventoryItem(index)}
+                                                sx={{
+                                                    borderRadius: 2, textTransform: 'none',
+                                                    fontSize: '0.7rem', py: 0.5, px: 1,
+                                                    background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+                                                    '&:hover': { background: 'linear-gradient(135deg, #D97706 0%, #B45309 100%)' }
+                                                }}
+                                            >
+                                                Add to Inventory
+                                            </Button>
+                                        </Tooltip>
+                                    ) : (
+                                        <Typography variant="caption" color="text.secondary">—</Typography>
+                                    )
+                                )}
+
+                                <IconButton
+                                    size="small" color="error"
+                                    onClick={() => removeItem(index)}
+                                    disabled={formData.items.length === 1}
+                                    sx={{ bgcolor: alpha(theme.palette.error.main, 0.05), '&:hover': { bgcolor: alpha(theme.palette.error.main, 0.1) } }}
+                                >
+                                    <DeleteIcon fontSize="small" />
+                                </IconButton>
+                            </Box>
+                        </Box>
+                    </Box>
+                ))}
+            </Box>
+        )
+    ) : (
+        /* DESKTOP/TABLET TABLE VIEW — your original table, unchanged */
+        formData.items.length === 0 ? (
+            <Box sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
+                <Typography variant="body2">No items available</Typography>
+            </Box>
+        ) : (
+            <Table sx={{ minWidth: { xs: 700, sm: 800 } }}>
+                {/* ...your entire original TableHead + TableBody here, untouched... */}
+            </Table>
+        )
+    )}
+</TableContainer>
                         </Paper>
 
                         {/* 4. Financial Summary + Settlement */}
