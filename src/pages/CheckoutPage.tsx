@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+git import React, { useState, useEffect } from 'react';
 import Grid from '@mui/material/Grid2';
 import {
   Box,
@@ -44,6 +44,7 @@ import {
   CheckCircle,
   Home as HomeIcon,
   Work as WorkIcon,
+  Warning as WarningIcon
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -69,6 +70,7 @@ interface DeliveryInfo {
   dropOffInstructions: string;
   latitude?: number;
   longitude?: number;
+  businessName?: string;
 }
 
 const CheckoutPage: React.FC = () => {
@@ -96,7 +98,8 @@ const CheckoutPage: React.FC = () => {
     isContactless: false,
     dropOffInstructions: '',
     latitude: undefined,
-    longitude: undefined
+    longitude: undefined,
+    businessName: ''
   });
   const [selectedAddressMode, setSelectedAddressMode] = useState<'saved' | 'new'>(
     user?.savedAddresses?.length ? 'saved' : 'new'
@@ -108,7 +111,9 @@ const CheckoutPage: React.FC = () => {
   const [selectedProvider, setSelectedProvider] = useState<string>('');
   const [isFetchingQuote, setIsFetchingQuote] = useState<boolean>(false);
   const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [showDistanceDialog, setShowDistanceDialog] = useState<boolean>(false);
   const [placingOrder, setPlacingOrder] = useState<boolean>(false);
+  const [placedOrder, setPlacedOrder] = useState<any>(null);
 
   // Card saving state
   const [saveCard, setSaveCard] = useState<boolean>(false);
@@ -179,14 +184,14 @@ const CheckoutPage: React.FC = () => {
 
   // Redirect if cart empty
   useEffect(() => {
-    if (cart.items.length === 0 && activeStep === 0) {
+    if (cart.items.length === 0 && activeStep === 0 && !placedOrder) {
       if (slug) {
         navigate(`/${slug}/customer/order`);
       } else {
         navigate('/login');
       }
     }
-  }, [cart.items.length, navigate, slug, activeStep]);
+  }, [cart.items.length, navigate, slug, activeStep, placedOrder]);
 
   // Auto‑skip account step for logged‑in users
   useEffect(() => {
@@ -307,6 +312,13 @@ const CheckoutPage: React.FC = () => {
         if (!isCancelled) {
           const errMsg = err.response?.data?.message || 'Delivery not available for this address.';
           setQuoteError(errMsg);
+          
+          // Detect distance error
+          const lowerMsg = errMsg.toLowerCase();
+          if (lowerMsg.includes('distance') || lowerMsg.includes('range') || lowerMsg.includes('too long') || lowerMsg.includes('far')) {
+            setShowDistanceDialog(true);
+          }
+          
           setDeliveryFee(0);
           setDeliveryQuotes([]);
           toast.error(errMsg);
@@ -359,6 +371,7 @@ const CheckoutPage: React.FC = () => {
               const errorMessage = `Sorry, we only deliver within ${settings.restaurant.deliveryRadius || 15} miles. Your address is approx. ${result.distanceText || 'too far away'}.`;
               toast.error(errorMessage, { duration: 5000 });
               setError(errorMessage);
+              setShowDistanceDialog(true);
               return false;
             }
             
@@ -442,6 +455,7 @@ const CheckoutPage: React.FC = () => {
         deliveryTime: deliveryInfo.deliveryTime === 'asap' ? 'ASAP' : `${scheduledDate} ${scheduledTime}`,
         isContactless: deliveryInfo.isContactless,
         dropOffInstructions: deliveryInfo.dropOffInstructions,
+        businessName: deliveryInfo.businessName,
         total: cart.totalAmount + (orderType === 'delivery' ? deliveryFee : 0) + (cart.totalAmount * (taxRate / 100)) + (orderType === 'delivery' ? Number(deliveryInfo.tip) || 0 : 0),
         deliveryCharge: orderType === 'delivery' ? deliveryFee : 0,
         deliveryProvider: orderType === 'delivery' ? selectedProvider : null,
@@ -483,7 +497,7 @@ const CheckoutPage: React.FC = () => {
         }
       }
 
-      await ordersAPI.create(orderData);
+      const response = await ordersAPI.create(orderData);
       setPlacingOrder(false);
       clearCart();
       toast.success('Order placed successfully!', {
@@ -491,12 +505,9 @@ const CheckoutPage: React.FC = () => {
           position: 'top-center',
           style: { background: '#2ecc71', color: '#fff', fontWeight: 'bold' }
       });
-      // Redirect back to menu or track order page
-      if (slug) {
-        navigate(`/${slug}/customer/order`);
-      } else {
-        navigate('/');
-      }
+      
+      setPlacedOrder(response.data);
+      // We don't redirect yet so user can see tracking link if delivery
     } catch (err: any) {
       setPlacingOrder(false);
       // Prioritize 'error' field which contains subscription limit messages
@@ -505,6 +516,30 @@ const CheckoutPage: React.FC = () => {
       toast.error(errorMessage);
     }
   };
+
+  if (placedOrder) {
+    return (
+      <Container maxWidth="sm" sx={{ py: 8 }}>
+        <Paper sx={{ p: 4, textAlign: 'center' }}>
+          <CheckCircle color="success" sx={{ fontSize: 64, mb: 2 }} />
+          <Typography variant="h4" gutterBottom>Order Placed!</Typography>
+          <Typography variant="body1" gutterBottom>Your order number is <strong>{placedOrder.orderNumber || 'N/A'}</strong></Typography>
+          {placedOrder.trackingUrl && (
+            <Button 
+              variant="contained" 
+              size="large" 
+              href={placedOrder.trackingUrl} 
+              target="_blank" 
+              sx={{ mt: 3, borderRadius: 2, px: 4 }}
+            >
+              Track on {placedOrder.deliveryProvider === 'doordash' ? 'DoorDash' : 'Delivery Partner'}
+            </Button>
+          )}
+          <Button fullWidth variant="outlined" sx={{ mt: 2 }} onClick={() => navigate('/')}>Back to Home</Button>
+        </Paper>
+      </Container>
+    );
+  }
 
   const renderCartReview = () => (
     <Paper sx={{ p: 3 }}>
@@ -760,7 +795,8 @@ const CheckoutPage: React.FC = () => {
                       ...prev, 
                       address: placeData.formattedAddress,
                       latitude: placeData.lat,
-                      longitude: placeData.lng
+                      longitude: placeData.lng,
+                      businessName: (placeData.name && placeData.name !== placeData.formattedAddress) ? placeData.name : prev.businessName
                     }));
                   }
                 }}
@@ -771,6 +807,17 @@ const CheckoutPage: React.FC = () => {
               />
             </Grid>
           )}
+
+          <Grid size={{ xs: 12 }}>
+            <TextField
+              fullWidth
+              label="Business / Building Name (Optional)"
+              placeholder="e.g. Apartment, Suite, Floor, or Business Name"
+              value={deliveryInfo.businessName}
+              onChange={(e) => setDeliveryInfo((prev) => ({ ...prev, businessName: e.target.value }))}
+              helperText="Helps the courier identify your specific location."
+            />
+          </Grid>
 
           {/* Delivery Provider Selection */}
           <Grid size={{ xs: 12 }}>
@@ -1291,6 +1338,51 @@ const CheckoutPage: React.FC = () => {
     }
   };
 
+  if (placedOrder) {
+    const trackingUrl = placedOrder.trackingUrl || placedOrder.uberEatsTrackingUrl || placedOrder.doordashTrackingUrl;
+    return (
+      <Container maxWidth="md" sx={{ py: 8 }}>
+        <Paper sx={{ p: 6, textAlign: 'center', borderRadius: 8, bgcolor: alpha(theme.palette.success.main, 0.05), border: '1px solid', borderColor: alpha(theme.palette.success.main, 0.1) }}>
+          <CheckCircle sx={{ fontSize: 80, color: 'success.main', mb: 3 }} />
+          <Typography variant="h3" fontWeight="900" gutterBottom>
+            Order Placed!
+          </Typography>
+          <Typography variant="h6" color="text.secondary" paragraph>
+            Your order <strong>#{placedOrder.orderNumber}</strong> has been received and is being prepared.
+          </Typography>
+          
+          <Stack spacing={2} sx={{ mt: 4, maxWidth: 400, mx: 'auto' }}>
+            {trackingUrl && (
+              <Button 
+                variant="contained" 
+                color="success" 
+                size="large" 
+                fullWidth
+                startIcon={<DeliveryDining />}
+                sx={{ py: 2, borderRadius: 4, fontWeight: 'bold', fontSize: '1.1rem' }}
+                onClick={() => window.open(trackingUrl, '_blank')}
+              >
+                Track on {placedOrder.deliveryProvider === 'ubereats' ? 'Uber Eats' : 'DoorDash'}
+              </Button>
+            )}
+            <Button 
+              variant="outlined" 
+              size="large" 
+              fullWidth
+              sx={{ py: 1.5, borderRadius: 4, fontWeight: 'bold' }}
+              onClick={() => {
+                 if (slug) navigate(`/${slug}/customer/order`);
+                 else navigate('/');
+              }}
+            >
+              Return to Menu
+            </Button>
+          </Stack>
+        </Paper>
+      </Container>
+    );
+  }
+
   if (cart.items.length === 0) {
     return (
       <Container maxWidth="md" sx={{ py: 4 }}>
@@ -1343,12 +1435,19 @@ const CheckoutPage: React.FC = () => {
                   <Typography>${cart.totalAmount.toFixed(2)}</Typography>
                 </Box>
                 {orderType === 'delivery' && (
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography>Delivery Fee</Typography>
-                    <Typography color={isFetchingQuote ? 'text.secondary' : 'text.primary'} sx={{ fontStyle: activeStep < 2 ? 'italic' : 'normal', fontSize: activeStep < 2 ? '0.85rem' : '1rem' }}>
-                      {activeStep < 2 ? 'Calculated at next step' : isFetchingQuote ? 'Calculating...' : `$${deliveryFee.toFixed(2)}`}
-                    </Typography>
-                  </Box>
+                  <>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                      <Typography>Delivery Fee</Typography>
+                      <Typography color={isFetchingQuote ? 'text.secondary' : 'text.primary'} sx={{ fontStyle: activeStep < 2 ? 'italic' : 'normal', fontSize: activeStep < 2 ? '0.85rem' : '1rem' }}>
+                        {activeStep < 2 ? 'Calculated at next step' : isFetchingQuote ? 'Calculating...' : `$${deliveryFee.toFixed(2)}`}
+                      </Typography>
+                    </Box>
+                    {selectedProvider && !isFetchingQuote && activeStep >= 2 && (
+                      <Typography variant="caption" align="right" display="block" color="primary" sx={{ fontWeight: 700, mb: 1, textTransform: 'uppercase', letterSpacing: 0.5, fontSize: '0.65rem' }}>
+                        via {selectedProvider === 'doordash' ? 'DoorDash' : 'Uber Eats'}
+                      </Typography>
+                    )}
+                  </>
                 )}
                 {quoteError && orderType === 'delivery' && activeStep >= 2 && (
                   <Typography variant="caption" color="error" display="block" sx={{ mb: 1 }}>
@@ -1437,6 +1536,74 @@ const CheckoutPage: React.FC = () => {
         <Typography variant="h6">Placing your delicious order...</Typography>
         <Typography variant="body2">Please don't refresh the page</Typography>
       </Backdrop>
+      {/* Distance Error Dialog */}
+      <Dialog
+        open={showDistanceDialog}
+        onClose={() => setShowDistanceDialog(false)}
+        maxWidth="xs"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 4,
+            p: 1
+          }
+        }}
+      >
+        <DialogContent sx={{ textAlign: 'center', p: 4 }}>
+          <Box sx={{ 
+            bgcolor: alpha(theme.palette.warning.main, 0.1), 
+            color: 'warning.main',
+            width: 80,
+            height: 80,
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            mx: 'auto',
+            mb: 3
+          }}>
+            <WarningIcon sx={{ fontSize: 48 }} />
+          </Box>
+          <Typography variant="h5" fontWeight="900" gutterBottom sx={{ color: 'text.primary' }}>
+            Out of Delivery Range
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 4, lineHeight: 1.6 }}>
+            Unfortunately, this address is outside our standard 15-mile delivery zone. 
+            Uber and DoorDash are unable to service this distance.
+          </Typography>
+          
+          <Stack spacing={2}>
+            <Button
+              variant="contained"
+              fullWidth
+              size="large"
+              color="primary"
+              startIcon={<Storefront />}
+              sx={{ py: 1.5, borderRadius: 3, fontWeight: 'bold' }}
+              onClick={() => {
+                setOrderTypeState('takeaway');
+                setOrderType('takeaway');
+                setShowDistanceDialog(false);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+            >
+              Switch to Takeaway
+            </Button>
+            <Button
+              variant="outlined"
+              fullWidth
+              size="large"
+              sx={{ py: 1.5, borderRadius: 3, fontWeight: 'bold' }}
+              onClick={() => setShowDistanceDialog(false)}
+            >
+              Try Another Address
+            </Button>
+            <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.disabled', textTransform: 'uppercase', letterSpacing: 1.5 }}>
+              Delivery zone: within 15 miles
+            </Typography>
+          </Stack>
+        </DialogContent>
+      </Dialog>
     </Container>
   );
 };
