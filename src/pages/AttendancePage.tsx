@@ -431,8 +431,8 @@ const AttendancePage: React.FC = () => {
                     sx={{
                         display: 'flex',
                         gap: 1.5,
-                        overflowX: { xs: 'auto', md: 'visible' },
-                        flexWrap: { xs: 'nowrap', md: 'wrap' },
+                        overflowX: 'visible',
+                        flexWrap: 'wrap',
                         pb: { xs: 2, md: 0 },
                         px: { xs: 0.5, md: 0 },
                         mx: { xs: -1, md: 0 }, // Negative margin to bleed to edges on mobile

@@ -264,6 +264,8 @@ export const tablesAPI = {
   update: (id: string, tableData: any) => api.put(`/tables/${id}`, tableData),
   delete: (id: string) => api.delete(`/tables/${id}`),
   updateStatus: (id: string, status: string) => api.patch(`/tables/${id}/status`, { status }),
+  merge: (primaryId: string, secondaryIds: string[]) => api.post('/tables/merge', { primaryId, secondaryIds }),
+  unmerge: (primaryId: string) => api.post('/tables/unmerge', { primaryId }),
 };
 
 // -------------------- Inventory API --------------------

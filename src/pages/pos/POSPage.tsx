@@ -59,6 +59,7 @@ import type { Category, Subcategory, IMenuItem } from '../menu/types';
 import MenuItemDialog from '../menu/components/MenuItemDialog';
 import CustomerInfoSection from './components/CustomerInfoSection';
 import OrderDetailsSection from './components/OrderDetailsSection';
+import MergeTablesDialog from './components/MergeTablesDialog';
 
 
 type Variant = {
@@ -213,7 +214,7 @@ const MemoizedCartItem = React.memo(({
 });
 
 const POSPage: React.FC = () => {
-    const { user, getUserFullName } = useAuth();
+    const { user, getUserFullName, tenantSlug } = useAuth();
     const { formatCurrency, settings } = useSettings();
 
     // Basic data
@@ -274,6 +275,7 @@ const POSPage: React.FC = () => {
     const [deliveryFee, setDeliveryFee] = useState<number>(0);
     const [isFetchingQuote, setIsFetchingQuote] = useState<boolean>(false);
     const [quoteError, setQuoteError] = useState<string | null>(null);
+    const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
 
     // Sync dial code with settings when they load
     useEffect(() => {
@@ -297,7 +299,7 @@ const POSPage: React.FC = () => {
                 setIsFetchingQuote(true);
                 setQuoteError(null);
 
-                const tenantSlug = tenantSlug || settings?.tenantSlug || '';
+                const effectiveTenantSlug = tenantSlug || (settings as any)?.tenantSlug || '';
                 // Since this might be admin, try to get tenantSlug from context or route if possible.
                 // In POSPage, we have slug from useSearchParams maybe? No.
                 // But settings?.tenantSlug should work.
@@ -305,7 +307,7 @@ const POSPage: React.FC = () => {
                 const response = await ordersAPI.getDeliveryQuote(
                     { fullAddress: addressString },
                     cart.map(i => ({ menuItem: i._id, name: i.name, quantity: i.quantity, price: i.price })),
-                    tenantSlug
+                    effectiveTenantSlug
                 );
 
                 if (!isCancelled) {
@@ -333,7 +335,7 @@ const POSPage: React.FC = () => {
             isCancelled = true;
             clearTimeout(debounceTimer);
         };
-    }, [orderType, deliveryAddress, cart, settings?.tenantSlug]);
+    }, [orderType, deliveryAddress, cart, (settings as any)?.tenantSlug, tenantSlug]);
 
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -353,6 +355,24 @@ const POSPage: React.FC = () => {
             }
         };
     }, []);
+
+    // Synchronize selectedTable with latest data from tables array (e.g. after a merge)
+    useEffect(() => {
+        if (selectedTable && tables.length > 0) {
+            const latestTable = tables.find(t => t._id === selectedTable._id);
+            if (latestTable) {
+                // Only update if something meaningful changed to avoid infinite loops or unnecessary renders
+                if (
+                    latestTable.isPrimary !== selectedTable.isPrimary ||
+                    latestTable.isMerged !== selectedTable.isMerged ||
+                    latestTable.mergedWith !== selectedTable.mergedWith ||
+                    latestTable.status !== selectedTable.status
+                ) {
+                    setSelectedTable(latestTable);
+                }
+            }
+        }
+    }, [tables, selectedTable?._id]);
 
 
     // Dynamic Search Placeholder logic
@@ -381,7 +401,11 @@ const POSPage: React.FC = () => {
             if (cursor) {
                 setIsFetchingMore(true);
             } else {
-                setLoading(true);
+                // Only show global loading spinner if we don't have any items yet
+                // This prevents the "menu reloading" flicker when selecting tables
+                if (menuItems.length === 0) {
+                    setLoading(true);
+                }
             }
 
             const res = await menuAPI.getAll({
@@ -425,12 +449,13 @@ const POSPage: React.FC = () => {
             setTables(tablesRes.data);
             setTrays(traysRes.data);
 
-            // Fetch initial menu
-            await fetchMenu(null, true);
+            // Removing explicit fetchMenu(null, true) here because it is redundant
+            // with the debounced useEffect([searchQuery, selectedCategory, ...]) 
+            // that runs immediately on mount. This prevents "double loading" on start.
         } catch (error) {
             console.error('Error fetching data:', error);
         } finally {
-            // setLoading(false) handled within fetchMenu
+            // setLoading(false) is handled by the fetchMenu call triggered by useEffect
         }
     };
 
@@ -617,11 +642,30 @@ const POSPage: React.FC = () => {
                             return;
                         }
                     }
-                    // For a NEW order from booking, clear previous state first
-                    resetData();
-                    setSelectedTable(table);
-                    setTableNumber(table.tableNumber);
-                    setOrderType('dine_in');
+
+                    // Only reset and pre-select if it's not already the selected table
+                    // to avoid unnecessary state churn and menu refreshes
+                    if (selectedTable?._id !== table._id) {
+                        resetData();
+                        setSelectedTable(table);
+                        setOrderType('dine_in');
+
+                        // Handle Merged Table Numbers
+                        let displayTableNumber = table.tableNumber;
+                        if (table.isPrimary) {
+                            const linkedTables = tables.filter(t => t.mergedWith === table._id);
+                            if (linkedTables.length > 0) {
+                                displayTableNumber = `${table.tableNumber} + ${linkedTables.map(t => t.tableNumber).join(', ')}`;
+                            }
+                        } else if (table.mergedWith) {
+                            const primary = tables.find(t => t._id === table.mergedWith);
+                            const linkedTables = tables.filter(t => t.mergedWith === table.mergedWith && t._id !== table._id);
+                            if (primary) {
+                                displayTableNumber = `${primary.tableNumber} + ${table.tableNumber}${linkedTables.length > 0 ? ', ' + linkedTables.map(t => t.tableNumber).join(', ') : ''}`;
+                            }
+                        }
+                        setTableNumber(displayTableNumber);
+                    }
                 }
             }
         }
@@ -684,10 +728,24 @@ const POSPage: React.FC = () => {
             setCardSignInForApiCall(Boolean(ord.cardOptions?.signInForApiCall));
 
             if (ord.orderType === "dine_in") {
-                const table = tables.find((t) => t.tableNumber === ord.tableNumber);
+                const table = tables.find((t) => t.tableNumber === ord.tableNumber || t._id === ord.table);
 
                 setSelectedTable(table || null);
-                setTableNumber(ord.tableNumber || "");
+
+                // Handle Merged Table Numbers from Order
+                let displayTableNumber = ord.tableNumber || "";
+                if (ord.mergedTables && ord.mergedTables.length > 0) {
+                    const linkedNumbers = ord.mergedTables.map((mt: any) => {
+                        const found = tables.find(t => t._id === (typeof mt === 'string' ? mt : mt._id));
+                        return found?.tableNumber;
+                    }).filter(Boolean);
+
+                    if (linkedNumbers.length > 0) {
+                        displayTableNumber = `${displayTableNumber} + ${linkedNumbers.join(', ')}`;
+                    }
+                }
+
+                setTableNumber(displayTableNumber);
                 setWaiterName(ord.waiterName || "");
                 setGuestCount(ord.guestCount || 1);
             }
@@ -706,6 +764,32 @@ const POSPage: React.FC = () => {
 
         } catch (err) {
             toast.error("Failed to load order");
+        }
+    };
+
+    const handleUnmerge = async (table: any) => {
+        const primaryId = table.isPrimary ? table._id : table.mergedWith;
+        if (!primaryId) return;
+
+        try {
+            await tablesAPI.unmerge(primaryId);
+            toast.success('Tables unmerged successfully');
+            
+            // Refresh tables WITHOUT reloading the menu
+            await fetchTables(); 
+            
+            // After unmerge, find the table again from the updated state to sync selection
+            // fetchTables() updates the 'tables' state, so we can search it
+            const res = await tablesAPI.getAll(); // Fetch once more to get local data for immediate update
+            const refreshedTables = res.data;
+            const updatedTable = refreshedTables.find((t: any) => t._id === table._id);
+            if (updatedTable) {
+                setSelectedTable(updatedTable);
+                setTableNumber(updatedTable.tableNumber);
+            }
+        } catch (error) {
+            console.error('Error unmerging tables:', error);
+            toast.error('Failed to unmerge tables');
         }
     };
 
@@ -862,12 +946,12 @@ const POSPage: React.FC = () => {
 
                 const payload = {
                     to_zip,
-                    totalDiscount: discountAmount + couponDiscount,
+                    discount: discountAmount + couponDiscount,
                     line_items: cart.map(item => ({
                         itemId: item.originalMenuItemId || item._id,
                         quantity: item.quantity,
                         price: item.price,
-                        discount: 0, // Individual discounts handled by totalDiscount in this simplified version
+                        discount: 0, 
                         name: item.name
                     }))
                 };
@@ -1057,6 +1141,13 @@ const POSPage: React.FC = () => {
                 }
             }
 
+            // Calculate merged tables IDs
+            const mergedTableIdsArray = selectedTable?.isPrimary
+                ? tables.filter(t => t.mergedWith === selectedTable._id).map(t => t._id)
+                : selectedTable?.mergedWith
+                    ? [selectedTable.mergedWith, ...tables.filter(t => t.mergedWith === selectedTable.mergedWith && t._id !== selectedTable._id).map(t => t._id)]
+                    : [];
+
             const payload = {
                 items: cart.map((i) => ({
                     menuItem: i._id,
@@ -1075,7 +1166,8 @@ const POSPage: React.FC = () => {
                 discountPercent,
                 couponCode: couponCode || undefined,
                 orderType,
-                table: selectedTable?._id || undefined,
+                table: selectedTable?.isMerged ? selectedTable.mergedWith : selectedTable?._id,
+                mergedTables: mergedTableIdsArray,
                 paymentMethod: finalPaymentMethod,
                 paymentStatus: finalPaymentStatus,
                 paymentIntentId: finalPaymentIntentId,
@@ -1087,7 +1179,9 @@ const POSPage: React.FC = () => {
                 }),
 
                 ...(orderType === "dine_in" && {
-                    tableNumber: selectedTable?.tableNumber || tableNumber,
+                    tableNumber: selectedTable?.isMerged
+                        ? (tables.find(t => t._id === selectedTable.mergedWith)?.tableNumber || tableNumber.split(' + ')[0])
+                        : tableNumber.split(' + ')[0],
                     waiterName,
                     guestCount,
                 }),
@@ -1368,6 +1462,8 @@ const POSPage: React.FC = () => {
                     settings={settings}
                     user={user}
                     checkingDistance={checkingDistance}
+                    onOpenMerge={() => setMergeDialogOpen(true)}
+                    onUnmerge={handleUnmerge}
                 />
                 {/* Search & category tabs */}
                 <Box sx={{ mb: 2, display: 'flex', gap: 2 }}>
@@ -2397,6 +2493,14 @@ const POSPage: React.FC = () => {
                     100% { transform: translateY(-20px); opacity: 0; }
                 }
             `}</style>
+            {/* Merge Tables Dialog */}
+            <MergeTablesDialog
+                open={mergeDialogOpen}
+                onClose={() => setMergeDialogOpen(false)}
+                tables={tables}
+                onSuccess={() => fetchTables()}
+                initialPrimaryTableId={selectedTable?._id}
+            />
         </Box>
     );
 };

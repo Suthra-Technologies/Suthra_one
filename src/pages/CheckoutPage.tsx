@@ -1407,13 +1407,31 @@ const CheckoutPage: React.FC = () => {
       <Typography variant="h4" gutterBottom align="center">
         Checkout
       </Typography>
-      <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
-        {steps.map((label, index) => (
-          <Step key={label} completed={activeStep > index}>
+      <Stepper 
+    activeStep={activeStep} 
+    sx={{ 
+        mb: 4,
+        '& .MuiStepLabel-label': {
+            fontSize: { xs: '0.65rem', sm: '0.875rem' },
+            fontWeight: 700,
+        },
+        '& .MuiStepIcon-root': {
+            fontSize: { xs: '1.2rem', sm: '1.5rem' },
+        },
+        '& .MuiStep-root': {
+            px: { xs: 0.5, sm: 1 },
+        },
+        '& .MuiStepConnector-line': {
+            minWidth: { xs: '10px', sm: '20px' },
+        }
+    }}
+>
+    {steps.map((label, index) => (
+        <Step key={label} completed={activeStep > index}>
             <StepLabel>{label}</StepLabel>
-          </Step>
-        ))}
-      </Stepper>
+        </Step>
+    ))}
+</Stepper>
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
