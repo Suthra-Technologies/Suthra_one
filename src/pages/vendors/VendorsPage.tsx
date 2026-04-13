@@ -428,7 +428,45 @@ const VendorsPage: React.FC = () => {
             </Paper>
 
             {/* Vendors Table */}
-            <TableContainer component={Paper} sx={{ borderRadius: 2 }}>
+           {/* Mobile Cards */}
+<Box sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', gap: 2 }}>
+  {loading ? (
+    <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
+  ) : vendors.length === 0 ? (
+    <Box sx={{ textAlign: 'center', py: 4 }}>
+      <Typography color="text.secondary">No vendors found</Typography>
+      <Button variant="outlined" startIcon={<AddIcon />} onClick={() => handleOpenDialog()} sx={{ mt: 2 }}>Add First Vendor</Button>
+    </Box>
+  ) : vendors.map((vendor) => (
+    <Paper key={vendor._id} sx={{ p: 2, borderRadius: 2 }} elevation={2}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <Box>
+          <Typography fontWeight="bold">{vendor.name}</Typography>
+          {vendor.shopName && <Typography variant="body2" color="text.secondary">{vendor.shopName}</Typography>}
+          {vendor.address && <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}><AddressIcon fontSize="inherit" />{vendor.address}</Typography>}
+        </Box>
+        <Box>
+          <IconButton onClick={() => handleOpenDialog(vendor)} size="small"><EditIcon fontSize="small" /></IconButton>
+          <IconButton onClick={() => { setSelectedVendor(vendor); setDeleteDialogOpen(true); }} size="small" color="error"><DeleteIcon fontSize="small" /></IconButton>
+        </Box>
+      </Box>
+      {vendor.contact && <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}><PhoneIcon fontSize="small" color="action" /><Typography variant="body2">{vendor.contact}</Typography></Box>}
+      {vendor.email && <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}><EmailIcon fontSize="small" color="action" /><Typography variant="body2" sx={{ wordBreak: 'break-all' }}>{vendor.email}</Typography></Box>}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1.5, flexWrap: 'wrap', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
+          {vendor.categories?.slice(0, 2).map((cat) => (
+            <Chip key={cat} label={CATEGORIES.find(c => c.value === cat)?.label || cat} size="small" variant="outlined" />
+          ))}
+          {vendor.categories?.length > 2 && <Chip label={`+${vendor.categories.length - 2}`} size="small" />}
+        </Box>
+        <Chip label={vendor.status} color={vendor.status === 'active' ? 'success' : 'default'} size="small" onClick={() => handleToggleStatus(vendor)} sx={{ cursor: 'pointer', textTransform: 'capitalize' }} />
+      </Box>
+    </Paper>
+  ))}
+</Box>
+
+{/* Desktop Table */}
+<TableContainer component={Paper} sx={{ borderRadius: 2, display: { xs: 'none', md: 'block' } }}>
                 <Table>
                     <TableHead>
                         <TableRow sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1) }}>

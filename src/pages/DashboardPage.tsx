@@ -181,7 +181,7 @@ const OrdersChart: React.FC<OrdersChartProps> = ({ data }) => {
     <ResponsiveContainer width="100%" height={isXs ? 240 : isSm ? 280 : 320}>
       <AreaChart
         data={data}
-        margin={{ top: 20, right: 40, left: 10, bottom: 10 }}
+       margin={{ top: 20, right: isXs ? 0 : 40, left: isXs ? -20 : 10, bottom: 10 }}
       >
         {/* Gradient Fill */}
         <defs>
@@ -213,6 +213,7 @@ const OrdersChart: React.FC<OrdersChartProps> = ({ data }) => {
           axisLine={false}
           tickLine={false}
           tick={{ fill: "#9ca3af", fontSize: 12 }}
+          width={isXs ? 30 : 40}
         />
 
         {/* Tooltip */}
@@ -564,50 +565,53 @@ const DashboardPage: React.FC = () => {
           alignItems={{ xs: "stretch", sm: "center" }}
           sx={{ width: { xs: "100%", sm: "auto" } }}
         >
-          <ToggleButtonGroup
-            value={timeRange}
-            exclusive
-            onChange={(_, v) => {
-              if (v) {
-                setTimeRange(v);
-                if (v === 'custom') {
-                  const today = new Date().toISOString().split('T')[0];
-                  setStartDate(today);
-                  setEndDate(today);
-                }
-              }
-            }}
-            size="small"
-            fullWidth={false}
-          >
-            <ToggleButton value="today">Today</ToggleButton>
-            <ToggleButton value="week">Week</ToggleButton>
-            <ToggleButton value="month">Month</ToggleButton>
-            <ToggleButton value="custom">Custom</ToggleButton>
-          </ToggleButtonGroup>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
 
-          {timeRange === 'custom' && (
-            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-              <TextField
-                type="date"
-                size="small"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                sx={{ width: 140 }}
-              />
-              <Typography variant="body2">-</Typography>
-              <TextField
-                type="date"
-                size="small"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                sx={{ width: 140 }}
-              />
-            </Box>
-          )}
-          <IconButton onClick={fetchDashboardData} color="primary" disabled={loading}>
-            <Refresh />
-          </IconButton>
+            <ToggleButtonGroup
+              value={timeRange}
+              exclusive
+              onChange={(_, v) => {
+                if (v) {
+                  setTimeRange(v);
+                  if (v === 'custom') {
+                    const today = new Date().toISOString().split('T')[0];
+                    setStartDate(today);
+                    setEndDate(today);
+                  }
+                }
+              }}
+              size="small"
+              fullWidth={false}
+            >
+              <ToggleButton value="today">Today</ToggleButton>
+              <ToggleButton value="week">Week</ToggleButton>
+              <ToggleButton value="month">Month</ToggleButton>
+              <ToggleButton value="custom">Custom</ToggleButton>
+            </ToggleButtonGroup>
+
+            {timeRange === 'custom' && (
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                <TextField
+                  type="date"
+                  size="small"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  sx={{ width: 140 }}
+                />
+                <Typography variant="body2">-</Typography>
+                <TextField
+                  type="date"
+                  size="small"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  sx={{ width: 140 }}
+                />
+              </Box>
+            )}
+            <IconButton onClick={fetchDashboardData} color="primary" disabled={loading}>
+              <Refresh />
+            </IconButton>
+          </Box>
         </Stack>
       </Box>
 

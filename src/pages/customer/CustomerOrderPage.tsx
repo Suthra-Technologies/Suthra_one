@@ -411,85 +411,90 @@ const CustomerOrderPage: React.FC = () => {
             </Container>
 
             {/* Premium Sticky Floating Cart Bar */}
-            {cart.items.length > 0 && (
-                <Zoom in>
-                    <Box sx={{
-                        position: 'fixed',
-                        bottom: 24,
-                        left: '50%',
-                        transform: 'translateX(-50%)',
-                        width: { xs: 'calc(100% - 32px)', sm: '420px' },
-                        zIndex: 1000
-                    }}>
-                        <Paper
-                            elevation={15}
-                            sx={{
-                                p: 1.5,
-                                bgcolor: '#1a1a1a',
-                                color: 'white',
-                                borderRadius: 10,
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                border: '1px solid rgba(255,255,255,0.1)',
-                                backdropFilter: 'blur(20px)',
-                            }}
-                        >
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, ml: 1 }}>
-                                <Badge
-                                    badgeContent={totalQuantity}
-                                    color="error"
-                                    overlap="circular"
-                                    sx={{
-                                        '& .MuiBadge-badge': {
-                                            fontWeight: 'bold',
-                                            fontSize: '0.75rem',
-                                            height: 22,
-                                            minWidth: 22,
-                                            border: '2px solid #1a1a1a'
-                                        }
-                                    }}
-                                >
-                                    <Box sx={{
-                                        width: 44,
-                                        height: 44,
-                                        bgcolor: alpha(theme.palette.primary.main, 0.2),
-                                        borderRadius: '50%',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        color: 'primary.main'
-                                    }}>
-                                        <CartIcon />
-                                    </Box>
-                                </Badge>
-                                <Box>
-                                    <Typography variant="caption" sx={{ opacity: 0.6, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }}>Total Order</Typography>
-                                    <Typography variant="h6" fontWeight="900" sx={{ lineHeight: 1.1 }}>{formatCurrency(calculateTotal())}</Typography>
-                                </Box>
-                            </Box>
-                            <Button
-                                variant="contained"
-                                onClick={() => navigate(`/${slug}/customer/checkout`)}
-                                endIcon={<ChevronIcon />}
-                                sx={{
-                                    bgcolor: 'primary.main',
-                                    color: 'white',
-                                    fontWeight: '900',
-                                    borderRadius: 10,
-                                    height: 52,
-                                    px: 4,
-                                    textTransform: 'none',
-                                    fontSize: '1rem',
-                                    '&:hover': { bgcolor: 'primary.dark' }
-                                }}
-                            >
-                                Checkout
-                            </Button>
-                        </Paper>
+           {cart.items.length > 0 && (
+    <Box sx={{
+        position: 'fixed',
+        bottom: 24,
+        left: 0,
+        right: 0,
+        display: 'flex',
+        justifyContent: 'center',
+        zIndex: 1000,
+        px: 2,
+        pointerEvents: 'none', // let clicks pass through the wrapper
+    }}>
+        <Zoom in>
+            <Paper
+                elevation={15}
+                sx={{
+                    p: 1.5,
+                    bgcolor: '#1a1a1a',
+                    color: 'white',
+                    borderRadius: 10,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    backdropFilter: 'blur(20px)',
+                    width: { xs: '100%', sm: '420px' },
+                    pointerEvents: 'auto', // re-enable clicks on the actual bar
+                }}
+            >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, ml: 1 }}>
+                    <Badge
+                        badgeContent={totalQuantity}
+                        color="error"
+                        overlap="circular"
+                        sx={{
+                            '& .MuiBadge-badge': {
+                                fontWeight: 'bold',
+                                fontSize: '0.75rem',
+                                height: 22,
+                                minWidth: 22,
+                                border: '2px solid #1a1a1a'
+                            }
+                        }}
+                    >
+                        <Box sx={{
+                            width: 44,
+                            height: 44,
+                            bgcolor: alpha(theme.palette.primary.main, 0.2),
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'primary.main'
+                        }}>
+                            <CartIcon />
+                        </Box>
+                    </Badge>
+                    <Box>
+                        <Typography variant="caption" sx={{ opacity: 0.6, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }}>Total Order</Typography>
+                        <Typography variant="h6" fontWeight="900" sx={{ lineHeight: 1.1 }}>{formatCurrency(calculateTotal())}</Typography>
                     </Box>
-                </Zoom>
-            )}
+                </Box>
+                <Button
+                    variant="contained"
+                    onClick={() => navigate(`/${slug}/customer/checkout`)}
+                    endIcon={<ChevronIcon />}
+                    sx={{
+                        bgcolor: 'primary.main',
+                        color: 'white',
+                        fontWeight: '900',
+                        borderRadius: 10,
+                        height: 52,
+                        px: 4,
+                        textTransform: 'none',
+                        fontSize: '1rem',
+                        '&:hover': { bgcolor: 'primary.dark' }
+                    }}
+                >
+                    Checkout
+                </Button>
+            </Paper>
+        </Zoom>
+    </Box>
+)}
         </Box>
     );
 };

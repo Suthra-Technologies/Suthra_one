@@ -185,7 +185,50 @@ const TraysPage: React.FC<TraysPageProps> = ({ hideHeader = false }) => {
                     </Button>
                 </Paper>
             ) : (
-                <TableContainer component={Paper} elevation={1} sx={{ borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+              <>
+{/* Mobile Cards */}
+<Box sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', gap: 2 }}>
+  {trays.map((tray) => (
+    <Paper key={tray._id} elevation={1} sx={{ p: 2, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <Box sx={{ flex: 1 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 600, color: 'text.primary' }}>{tray.name}</Typography>
+          {tray.description && (
+            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block' }}>{tray.description}</Typography>
+          )}
+        </Box>
+        <Box>
+          <IconButton size="small" onClick={() => handleOpenDialog(tray)} color="primary" sx={{ mr: 0.5 }}><EditIcon fontSize="small" /></IconButton>
+          <IconButton size="small" onClick={() => handleDelete(tray._id)} color="error"><DeleteIcon fontSize="small" /></IconButton>
+        </Box>
+      </Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1.5, flexWrap: 'wrap', gap: 1 }}>
+        {tray.width && tray.length ? (
+          <Typography variant="body2" color="text.secondary">
+            📐 {tray.width} × {tray.length}{tray.depth ? ` × ${tray.depth}` : ''}
+          </Typography>
+        ) : (
+          <Typography variant="body2" color="text.secondary">No dimensions</Typography>
+        )}
+        <Typography
+          variant="caption"
+          sx={{
+            px: 1, py: 0.25, borderRadius: 1, fontWeight: 600,
+            bgcolor: tray.isActive ? 'success.50' : 'error.50',
+            color: tray.isActive ? 'success.main' : 'error.main',
+            border: '1px solid',
+            borderColor: tray.isActive ? 'success.200' : 'error.200',
+          }}
+        >
+          {tray.isActive ? 'Active' : 'Inactive'}
+        </Typography>
+      </Box>
+    </Paper>
+  ))}
+</Box>
+
+{/* Desktop Table */}
+<TableContainer component={Paper} elevation={1} sx={{ borderRadius: 2, border: '1px solid', borderColor: 'divider', display: { xs: 'none', md: 'block' } }}>
                     <Table size="small" sx={{ minWidth: 500 }}>
                         <TableHead sx={{ bgcolor: 'grey.50' }}>
                             <TableRow>
@@ -253,6 +296,7 @@ const TraysPage: React.FC<TraysPageProps> = ({ hideHeader = false }) => {
                         </TableBody>
                     </Table>
                 </TableContainer>
+                </>
             )}
 
             <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
