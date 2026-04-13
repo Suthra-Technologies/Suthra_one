@@ -75,13 +75,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             console.error('🔔 [NotificationProvider] Error playing sound:', err);
         });
 
-        // Auto-stop after 6 seconds
+        // Auto-stop after the configured duration (fallback to 6s)
+        const durationMs = (settings?.notification?.soundDuration || 6) * 1000;
         soundTimeoutRef.current = setTimeout(() => {
             audio.pause();
             audio.currentTime = 0;
             audio.loop        = false;
-        }, 6000);
-    }, [settings?.notification?.sound]);
+        }, durationMs);
+    }, [settings?.notification?.sound, settings?.notification?.soundDuration]);
 
     const showNotification = useCallback(async (title: string, body: string) => {
         console.log('🔔 [NotificationProvider] Requesting to show notification:', title);

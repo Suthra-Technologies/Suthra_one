@@ -60,6 +60,7 @@ export interface RestaurantSettings {
     currencySymbol: string;
     taxRate: number;
     logo: string;
+    stamp?: string;
     country: string;
     timezone: string;
     dialCode: string;
@@ -91,10 +92,10 @@ export interface SystemSettings {
     autoPrint: boolean;
     googleMapsApiKey?: string;
     posPaymentMethods?: {
-        cash: boolean;
-        card: boolean;
-        zelle: boolean;
-        venmo: boolean;
+        cash?: boolean;
+        card?: boolean;
+        zelle?: boolean;
+        venmo?: boolean;
     };
 }
 
@@ -122,6 +123,7 @@ export interface NotificationSettings {
         };
     };
     sound?: string;
+    soundDuration?: number; // duration in seconds
     push?: any;
 }
 
@@ -141,12 +143,29 @@ export interface TenantPrinterSettings {
     kitchen?: PrinterConfig;
 }
 
+export interface DeliverySettings {
+    doordash: {
+        enabled: boolean;
+        developerId: string;
+        keyId: string;
+        signingSecret: string;
+        isSandbox: boolean;
+    };
+    ubereats: {
+        enabled: boolean;
+        clientId: string;
+        clientSecret: string;
+        customerId: string;
+        isSandbox: boolean;
+    };
+}
+
 export interface RewardSettings {
     isEnabled: boolean;
     displayName: string;
     pointValue: number;
     earnRate: number;
-    calculationBase: 'subtotal' | 'total' | 'total_after_discount';
+    calculationBase: string;
     minOrderValueToEarn: number;
     welcomeBonus: number;
     firstOrderBonus: number;
@@ -161,6 +180,7 @@ export interface SettingsState {
     notification: NotificationSettings;
     printer: TenantPrinterSettings;
     rewards: RewardSettings;
+    delivery?: DeliverySettings;
 }
 
 // Default settings
@@ -263,6 +283,7 @@ const defaultSettings: SettingsState = {
             },
         },
         sound: 'notification',
+        soundDuration: 6,
     },
     printer: {
         enabled: false,
@@ -281,6 +302,22 @@ const defaultSettings: SettingsState = {
         minPointsToRedeem: 100,
         maxRedemptionPercentage: 100,
     },
+    delivery: {
+        doordash: {
+            enabled: false,
+            developerId: '',
+            keyId: '',
+            signingSecret: '',
+            isSandbox: true,
+        },
+        ubereats: {
+            enabled: false,
+            clientId: '',
+            clientSecret: '',
+            customerId: '',
+            isSandbox: true,
+        }
+    }
 };
 
 interface SettingsContextType {
@@ -453,8 +490,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                     ...(fetched.system || {}),
                     googleMapsApiKey: (fetched.system?.googleMapsApiKey) || defaultSettings.system.googleMapsApiKey,
                     posPaymentMethods: {
-                        ...defaultSettings.system.posPaymentMethods,
-                        ...(fetched.system?.posPaymentMethods || {})
+                        cash: fetched.system?.posPaymentMethods?.cash ?? defaultSettings.system.posPaymentMethods?.cash ?? true,
+                        card: fetched.system?.posPaymentMethods?.card ?? defaultSettings.system.posPaymentMethods?.card ?? true,
+                        zelle: fetched.system?.posPaymentMethods?.zelle ?? defaultSettings.system.posPaymentMethods?.zelle ?? true,
+                        venmo: fetched.system?.posPaymentMethods?.venmo ?? defaultSettings.system.posPaymentMethods?.venmo ?? true,
                     }
                 },
                 payment: {
@@ -472,6 +511,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                             ...(fetched.notification?.sms?.twilio || {}),
                         },
                     },
+                    soundDuration: fetched.notification?.soundDuration ?? defaultSettings.notification.soundDuration ?? 6,
                 },
                 printer: {
                     ...defaultSettings.printer,
@@ -488,6 +528,16 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                 rewards: {
                     ...defaultSettings.rewards,
                     ...(fetched.rewards || {}),
+                },
+                delivery: {
+                    doordash: {
+                        ...defaultSettings.delivery!.doordash,
+                        ...(fetched.delivery?.doordash || {}),
+                    },
+                    ubereats: {
+                        ...defaultSettings.delivery!.ubereats,
+                        ...(fetched.delivery?.ubereats || {}),
+                    }
                 }
             };
 

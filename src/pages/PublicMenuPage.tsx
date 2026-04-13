@@ -58,6 +58,7 @@ interface MenuItem {
   reviewCount?: number;
   dietaryInfo?: string[];
   specialOffer?: string;
+  isAlcohol?: boolean;
 }
 
 interface Category {
@@ -386,6 +387,9 @@ const todaysSpecials = filteredItems
                 <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
                   <Typography variant="h6" component="h3" gutterBottom>
                     {item.name}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontWeight: 500 }}>
+                    {categories.find(c => c._id === item.category)?.name || 'General'}
                   </Typography>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                     <Rating value={item.rating || 4.5} readOnly size="small" />

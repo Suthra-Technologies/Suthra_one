@@ -94,6 +94,9 @@ export const authAPI = {
   getPublicMenu: () => api.get('/menu/public'),
   resetPasswordWithToken: (token: string, newPassword: string) => api.post('/auth/reset-password', { token, newPassword }),
   forgotPassword: (email: string) => api.post('/auth/forgot-password', { email }),
+  getCustomerCards: () => api.get('/auth/customer/cards'),
+  saveCustomerCard: (cardData: any) => api.post('/auth/customer/cards', cardData),
+  deleteCustomerCard: (index: number) => api.delete(`/auth/customer/cards/${index}`),
 };
 
 
@@ -194,6 +197,9 @@ export const ordersAPI = {
   confirmStripeCheckout: (orderId: string, sessionId: string) => api.post(`/orders/${orderId}/confirm-payment`, { sessionId }),
   updateLocation: (id: string, lat: number, lng: number) => api.patch(`/orders/${id}/location`, { lat, lng }),
   syncDoordashStatus: (orderId: string) => api.post(`/doordash/sync/${orderId}`),
+  syncUberEatsStatus: (orderId: string) => api.post(`/ubereats/sync/${orderId}`),
+  dispatchUberEatsDelivery: (orderId: string) => api.post(`/ubereats/dispatch/${orderId}`),
+  simulateUberEatsStatus: (orderId: string, status: string) => api.post(`/ubereats/simulate/${orderId}`, { status }),
 };
 
 // -------------------- Attendance API --------------------
@@ -562,10 +568,15 @@ export const auditLogsAPI = {
 
 // -------------------- Maps API --------------------
 export const mapsAPI = {
-  getDirections: (origin: string, destination: string) =>
-    api.get('/maps/directions', { params: { origin, destination } }),
   getNearby: (location: string, radius: number, type: string) =>
     api.get('/maps/nearby', { params: { location, radius, type } }),
+};
+
+// -------------------- Homepage API --------------------
+export const homepageAPI = {
+  getContent: () => api.get('/homepage'),
+  updateContent: (htmlContent: string, sections?: any[]) => api.put('/homepage', { htmlContent, sections }),
+  getPublicContent: (tenantSlug: string) => api.get('/homepage/public', { params: { tenantSlug } }),
 };
 
 export default api;

@@ -17,7 +17,8 @@ import {
     FilterList as FilterListIcon,
     Terminal as TerminalIcon,
     Refresh as RefreshIcon,
-    Star as StarIcon
+    Star as StarIcon,
+    DeliveryDining as DeliveryDiningIcon
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -382,7 +383,9 @@ const createDefaultSettings = (): SettingsState => ({
                 customer: { orders: false, catering: false, inventory: false }
             },
             users: {}
-        }
+        },
+        sound: 'notification',
+        soundDuration: 6,
     },
     printer: {
         enabled: false,
@@ -402,6 +405,22 @@ const createDefaultSettings = (): SettingsState => ({
         minPointsToRedeem: 100,
         maxRedemptionPercentage: 100,
     },
+    delivery: {
+        doordash: {
+            enabled: false,
+            developerId: '',
+            keyId: '',
+            signingSecret: '',
+            isSandbox: true,
+        },
+        ubereats: {
+            enabled: false,
+            clientId: '',
+            clientSecret: '',
+            customerId: '',
+            isSandbox: true,
+        }
+    }
 });
 
 const mergeSettingsWithDefaults = (defaults: SettingsState, partial: Partial<SettingsState>): SettingsState => {
@@ -463,6 +482,8 @@ const mergeSettingsWithDefaults = (defaults: SettingsState, partial: Partial<Set
         notification: {
             ...defaults.notification,
             ...((partial.notification as Partial<NotificationSettings>) || {}),
+            sound: (partial.notification as Partial<NotificationSettings>)?.sound ?? defaults.notification.sound,
+            soundDuration: (partial.notification as Partial<NotificationSettings>)?.soundDuration ?? defaults.notification.soundDuration,
             sms: {
                 ...defaults.notification.sms,
                 ...((partial.notification as Partial<NotificationSettings>)?.sms || {}),
@@ -477,6 +498,16 @@ const mergeSettingsWithDefaults = (defaults: SettingsState, partial: Partial<Set
             ...defaults.rewards,
             ...(partial.rewards || {}),
         },
+        delivery: {
+            doordash: {
+                ...defaults.delivery!.doordash,
+                ...(partial.delivery?.doordash || {}),
+            },
+            ubereats: {
+                ...defaults.delivery!.ubereats,
+                ...(partial.delivery?.ubereats || {}),
+            }
+        }
     };
 };
 
@@ -805,12 +836,24 @@ const SettingsPage: React.FC = () => {
                     ...createDefaultMailingSettings(),
                     ...(prev.restaurant.mailing || {}),
                     [section]: {
-                        ...createDefaultMailingSettings()[section],
                         ...((prev.restaurant.mailing || {})[section] || {}),
                         [field]: value,
                     },
                 },
             },
+        }));
+    };
+
+    const handleDeliveryChange = (provider: 'doordash' | 'ubereats', field: string, value: any) => {
+        setSettings(prev => ({
+            ...prev,
+            delivery: {
+                ...prev.delivery!,
+                [provider]: {
+                    ...prev.delivery![provider],
+                    [field]: value
+                }
+            }
         }));
     };
 
@@ -1147,7 +1190,8 @@ const SettingsPage: React.FC = () => {
                 },
                 // @ts-ignore
                 push: settings.notification.push,
-                sound: soundId
+                sound: soundId,
+                soundDuration: settings.notification.soundDuration || 6
             };
             await settingsAPI.update('notification', payload);
             updateGlobalSettings(updatedSettings);
@@ -1155,6 +1199,46 @@ const SettingsPage: React.FC = () => {
         } catch (error) {
             console.error('Error saving sound:', error);
             toast.error('Failed to save sound preference');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSoundDurationChange = async (duration: number) => {
+        setLoading(true);
+
+        // Optimistic local update
+        const updatedSettings = {
+            ...settings,
+            notification: {
+                ...settings.notification,
+                soundDuration: duration
+            }
+        };
+        setSettings(updatedSettings);
+
+        try {
+            const payload = {
+                sms: {
+                    enabled: settings.notification.sms.enabled,
+                    provider: 'twilio',
+                    twilio: {
+                        accountSid: settings.notification.sms.twilio.accountSid,
+                        authToken: settings.notification.sms.twilio.authToken,
+                        fromNumber: settings.notification.sms.twilio.fromNumber,
+                    },
+                },
+                // @ts-ignore
+                push: settings.notification.push,
+                sound: settings.notification.sound || 'notification',
+                soundDuration: duration
+            };
+            await settingsAPI.update('notification', payload);
+            updateGlobalSettings(updatedSettings);
+            toast.success('Notification duration saved globally');
+        } catch (error) {
+            console.error('Error saving duration:', error);
+            toast.error('Failed to save duration preference');
         } finally {
             setLoading(false);
         }
@@ -1216,6 +1300,11 @@ const SettingsPage: React.FC = () => {
                 updateGlobalSettings(settings); // Update global context
                 await fetchSettings();
                 successMessage = 'Rewards settings saved successfully';
+            } else if (category === 'delivery') {
+                await settingsAPI.update('delivery', settings.delivery);
+                updateGlobalSettings(settings);
+                await fetchSettings();
+                successMessage = 'Delivery providers configured successfully';
             }
 
 
@@ -1300,6 +1389,7 @@ const SettingsPage: React.FC = () => {
                     <Tab label="Printers" icon={<PrintIcon />} iconPosition="start" />
                     <Tab label="Audit Logs" icon={<CheckCircleIcon />} iconPosition="start" />
                     <Tab label="Loyalty / Rewards" icon={<StarIcon />} iconPosition="start" />
+                    <Tab label="Delivery" icon={<DeliveryDiningIcon />} iconPosition="start" />
                     <Tab label="Gallery" icon={<CollectionsIcon />} iconPosition="start" />
                 </Tabs>
                 <Divider />
@@ -1408,6 +1498,18 @@ const SettingsPage: React.FC = () => {
                                             startAdornment: <InputAdornment position="start">+</InputAdornment>,
                                         }}
                                         helperText="Default prefix for phone number fields across the app"
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12 }}>
+                                    <AddressAutocomplete
+                                        label="Restaurant Address *"
+                                        value={settings.restaurant.address || ''}
+                                        apiKey={settings.system.googleMapsApiKey}
+                                        onChange={(val) => handleInputChange('restaurant', 'address', val)}
+                                        onSelect={(addr) => {
+                                            handleInputChange('restaurant', 'address', addr.fullAddress);
+                                        }}
+                                        required
                                     />
                                 </Grid>
                             </Grid>
@@ -2574,6 +2676,26 @@ const SettingsPage: React.FC = () => {
                                 })}
                             </Stack>
 
+                            <Grid container spacing={3} sx={{ mt: 1 }}>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        select
+                                        fullWidth
+                                        label="Sound Duration"
+                                        value={settings.notification.soundDuration || 6}
+                                        onChange={(e) => handleSoundDurationChange(Number(e.target.value))}
+                                        helperText="Choose how long the alert sound plays for new notifications."
+                                        sx={{ mt: 2 }}
+                                    >
+                                        <MenuItem value={3}>3 Seconds</MenuItem>
+                                        <MenuItem value={6}>6 Seconds</MenuItem>
+                                        <MenuItem value={10}>10 Seconds</MenuItem>
+                                        <MenuItem value={15}>15 Seconds (Medium)</MenuItem>
+                                        <MenuItem value={30}>30 Seconds (Long)</MenuItem>
+                                        <MenuItem value={60}>60 Seconds (Looping)</MenuItem>
+                                    </TextField>
+                                </Grid>
+                            </Grid>
                         </Grid>
 
 
@@ -3712,6 +3834,147 @@ const SettingsPage: React.FC = () => {
                                 </Box>
                             )}
                         </Paper>
+                    </Box>
+                </TabPanel>
+
+                <TabPanel value={tabValue} index={8}>
+                    <Box sx={{ mb: 4 }}>
+                        <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <DeliveryDiningIcon color="primary" /> Delivery Integration
+                        </Typography>
+                        <Alert severity="info" sx={{ mb: 3 }}>
+                            Configure your DoorDash and Uber Eats accounts to enable automated delivery dispatch from your POS and Storefront.
+                        </Alert>
+
+                        <Grid container spacing={4}>
+                            {/* DoorDash Section */}
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <Paper variant="outlined" sx={{ p: 3, borderRadius: 4, height: '100%', borderColor: settings.delivery?.doordash?.enabled ? 'primary.main' : 'divider', bgcolor: settings.delivery?.doordash?.enabled ? alpha('#4F46E5', 0.02) : 'background.paper' }}>
+                                    <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                                        <Typography variant="h6" fontWeight="bold">DoorDash Drive</Typography>
+                                        <FormControlLabel
+                                            control={
+                                                <Switch
+                                                    checked={settings.delivery?.doordash?.enabled || false}
+                                                    onChange={(e) => handleDeliveryChange('doordash', 'enabled', e.target.checked)}
+                                                />
+                                            }
+                                            label={settings.delivery?.doordash?.enabled ? 'Enabled' : 'Disabled'}
+                                        />
+                                    </Stack>
+                                    <Divider sx={{ mb: 3 }} />
+                                    <Stack spacing={2.5}>
+                                        <TextField
+                                            fullWidth
+                                            label="Developer ID"
+                                            value={settings.delivery?.doordash?.developerId || ''}
+                                            onChange={(e) => handleDeliveryChange('doordash', 'developerId', e.target.value)}
+                                            placeholder="Your DoorDash Developer ID"
+                                        />
+                                        <TextField
+                                            fullWidth
+                                            label="Key ID"
+                                            value={settings.delivery?.doordash?.keyId || ''}
+                                            onChange={(e) => handleDeliveryChange('doordash', 'keyId', e.target.value)}
+                                            placeholder="DoorDash API Key ID"
+                                        />
+                                        <TextField
+                                            fullWidth
+                                            type="password"
+                                            label="Signing Secret"
+                                            value={settings.delivery?.doordash?.signingSecret || ''}
+                                            onChange={(e) => handleDeliveryChange('doordash', 'signingSecret', e.target.value)}
+                                            placeholder="DoorDash API Secret"
+                                        />
+                                        <Stack direction="row" spacing={2} alignItems="center">
+                                            <FormControlLabel
+                                                control={
+                                                    <Checkbox
+                                                        checked={settings.delivery?.doordash?.isSandbox || false}
+                                                        onChange={(e) => handleDeliveryChange('doordash', 'isSandbox', e.target.checked)}
+                                                    />
+                                                }
+                                                label="Use Sandbox Mode"
+                                            />
+                                        </Stack>
+                                    </Stack>
+                                    <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end' }}>
+                                        <Button
+                                            variant="contained"
+                                            startIcon={<SaveIcon />}
+                                            onClick={() => handleSave('delivery')}
+                                            disabled={loading}
+                                        >
+                                            Save DoorDash Settings
+                                        </Button>
+                                    </Box>
+                                </Paper>
+                            </Grid>
+
+                            {/* Uber Eats Section */}
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <Paper variant="outlined" sx={{ p: 3, borderRadius: 4, height: '100%', borderColor: settings.delivery?.ubereats?.enabled ? 'primary.main' : 'divider', bgcolor: settings.delivery?.ubereats?.enabled ? alpha('#4F46E5', 0.02) : 'background.paper' }}>
+                                    <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                                        <Typography variant="h6" fontWeight="bold">Uber Eats Direct</Typography>
+                                        <FormControlLabel
+                                            control={
+                                                <Switch
+                                                    checked={settings.delivery?.ubereats?.enabled || false}
+                                                    onChange={(e) => handleDeliveryChange('ubereats', 'enabled', e.target.checked)}
+                                                />
+                                            }
+                                            label={settings.delivery?.ubereats?.enabled ? 'Enabled' : 'Disabled'}
+                                        />
+                                    </Stack>
+                                    <Divider sx={{ mb: 3 }} />
+                                    <Stack spacing={2.5}>
+                                        <TextField
+                                            fullWidth
+                                            label="Client ID"
+                                            value={settings.delivery?.ubereats?.clientId || ''}
+                                            onChange={(e) => handleDeliveryChange('ubereats', 'clientId', e.target.value)}
+                                            placeholder="Uber Eats Client ID"
+                                        />
+                                        <TextField
+                                            fullWidth
+                                            type="password"
+                                            label="Client Secret"
+                                            value={settings.delivery?.ubereats?.clientSecret || ''}
+                                            onChange={(e) => handleDeliveryChange('ubereats', 'clientSecret', e.target.value)}
+                                            placeholder="Uber Eats Client Secret"
+                                        />
+                                        <TextField
+                                            fullWidth
+                                            label="Customer ID (Store ID)"
+                                            value={settings.delivery?.ubereats?.customerId || ''}
+                                            onChange={(e) => handleDeliveryChange('ubereats', 'customerId', e.target.value)}
+                                            placeholder="Uber Eats Customer ID"
+                                        />
+                                        <Stack direction="row" spacing={2} alignItems="center">
+                                            <FormControlLabel
+                                                control={
+                                                    <Checkbox
+                                                        checked={settings.delivery?.ubereats?.isSandbox || false}
+                                                        onChange={(e) => handleDeliveryChange('ubereats', 'isSandbox', e.target.checked)}
+                                                    />
+                                                }
+                                                label="Use Sandbox Mode"
+                                            />
+                                        </Stack>
+                                    </Stack>
+                                    <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end' }}>
+                                        <Button
+                                            variant="contained"
+                                            startIcon={<SaveIcon />}
+                                            onClick={() => handleSave('delivery')}
+                                            disabled={loading}
+                                        >
+                                            Save Uber Eats Settings
+                                        </Button>
+                                    </Box>
+                                </Paper>
+                            </Grid>
+                        </Grid>
                     </Box>
                 </TabPanel>
                 <TabPanel value={tabValue} index={8}>

@@ -152,6 +152,26 @@ const OrdersPage = () => {
     }
   }, [page, statusFilter, typeFilter, dateFilter, posActiveTab]);
 
+  // Real-time synchronization
+  useEffect(() => {
+    const handleRealtimeUpdate = (e?: any) => {
+      // Provide single order refresh if detail is available
+      if (e?.detail && e.detail._id) {
+        handleOrderRefresh(e.detail._id);
+      } else {
+        fetchOrders();
+      }
+    };
+
+    window.addEventListener('orderStatusUpdate', handleRealtimeUpdate);
+    window.addEventListener('newOrder', handleRealtimeUpdate);
+
+    return () => {
+      window.removeEventListener('orderStatusUpdate', handleRealtimeUpdate);
+      window.removeEventListener('newOrder', handleRealtimeUpdate);
+    };
+  }, []);
+
   // Debounce search
   useEffect(() => {
     const timer = setTimeout(() => {

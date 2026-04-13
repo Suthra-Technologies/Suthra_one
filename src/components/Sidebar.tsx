@@ -49,6 +49,8 @@ import {
   ExpandMore,
   HeadsetMic,
   Forum,
+  Public as WebIcon,
+  DashboardCustomize,
 } from '@mui/icons-material';
 import { Collapse } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
@@ -134,6 +136,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
         { path: '/users', label: 'Users', icon: <People />, roles: ['admin', 'manager'] },
         { path: '/customers', label: 'Customers', icon: <AccountBox />, roles: ['admin', 'manager'] },
         { path: '/attendance', label: 'Attendance', icon: <AccessTimeIcon />, roles: ['admin', 'manager'], feature: 'attendance' },
+      ]
+    },
+    {
+      title: 'APPLICATION SETTINGS',
+      items: [
+        { path: '/customise-screens', label: 'Customise Screens', icon: <DashboardCustomize />, roles: ['admin', 'manager'] },
       ]
     },
     {
