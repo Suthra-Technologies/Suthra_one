@@ -49,7 +49,7 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
-import { useGuestCart } from '../context/GuestCartContext';
+import { useActiveTenant } from '../hooks/useActiveTenant';
 import CustomerRegistration from '../components/auth/CustomerRegistration';
 import GooglePlacesAutocomplete from '../components/common/GooglePlacesAutocomplete';
 import { toast } from 'react-hot-toast';
@@ -74,7 +74,7 @@ interface DeliveryInfo {
 }
 
 const CheckoutPage: React.FC = () => {
-  const { slug } = useParams<{ slug: string }>();
+  const { slug, getRelativePath } = useActiveTenant();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { settings } = useSettings();
@@ -186,7 +186,7 @@ const CheckoutPage: React.FC = () => {
   useEffect(() => {
     if (cart.items.length === 0 && activeStep === 0 && !placedOrder) {
       if (slug) {
-        navigate(`/${slug}/customer/order`);
+        navigate(getRelativePath('/customer/order'));
       } else {
         navigate('/login');
       }
@@ -598,7 +598,7 @@ const CheckoutPage: React.FC = () => {
               <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
                 <Typography 
                   variant="caption" 
-                  onClick={() => navigate(`/${slug}/customer/order`)}
+                  onClick={() => navigate(getRelativePath('/customer/order'))}
                   sx={{ 
                     cursor: 'pointer', 
                     color: 'primary.main', 
@@ -613,7 +613,7 @@ const CheckoutPage: React.FC = () => {
                 </Typography>
                 <Typography 
                   variant="caption" 
-                  onClick={() => navigate(`/${slug}/customer/order`)}
+                  onClick={() => navigate(getRelativePath('/customer/order'))}
                   sx={{ 
                     cursor: 'pointer', 
                     color: 'text.secondary', 

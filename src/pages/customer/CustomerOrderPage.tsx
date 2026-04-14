@@ -37,6 +37,7 @@ import { toast } from 'react-hot-toast';
 import { menuAPI, ordersAPI } from '../../services/api';
 import { useSettings } from '../../context/SettingsContext';
 import { useGuestCart } from '../../context/GuestCartContext';
+import { useActiveTenant } from '../../hooks/useActiveTenant';
 
 interface MenuItem {
     _id: string;
@@ -85,7 +86,7 @@ const DietarySymbol = ({ type }: { type?: 'veg' | 'non-veg' }) => {
 };
 
 const CustomerOrderPage: React.FC = () => {
-    const { slug } = useParams<{ slug: string }>();
+    const { slug, getRelativePath } = useActiveTenant();
     const navigate = useNavigate();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -475,7 +476,7 @@ const CustomerOrderPage: React.FC = () => {
                 </Box>
                 <Button
                     variant="contained"
-                    onClick={() => navigate(`/${slug}/customer/checkout`)}
+                    onClick={() => navigate(getRelativePath('/customer/checkout'))}
                     endIcon={<ChevronIcon />}
                     sx={{
                         bgcolor: 'primary.main',

@@ -55,6 +55,7 @@ import {
 import { Collapse } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
+import { useActiveTenant } from '../hooks/useActiveTenant';
 interface SidebarProps {
   onItemClick?: () => void;
   collapsed?: boolean;
@@ -64,13 +65,13 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onToggleCollapse }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, tenantSlug, activeRole, switchRole } = useAuth();
+  const { user, activeRole, switchRole } = useAuth();
+  const { slug, getRelativePath } = useActiveTenant();
   const { settings } = useSettings();
   const restaurantSettings = settings?.restaurant || {};
 
   const handleNavigation = (path: string) => {
-    const fullPath = tenantSlug ? `/${tenantSlug}${path}` : path;
-    navigate(fullPath);
+    navigate(getRelativePath(path));
     if (onItemClick) onItemClick();
   };
 
@@ -165,8 +166,11 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
   ];
 
   const isActiveRoute = (path: string) => {
-    const normalizedPath = location.pathname.replace(`/${tenantSlug}`, '');
-    return normalizedPath === path;
+    const normalizedPath = location.pathname.replace(`/${slug}`, '') || '/';
+    // If we are on subdomain, clean path is just location.pathname
+    // If we are on path-base, clean path is normalizedPath
+    const currentPath = slug && location.pathname.startsWith(`/${slug}`) ? normalizedPath : location.pathname;
+    return currentPath === path;
   };
 
   const tenantConfig: any = user?.tenant;
@@ -298,7 +302,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
             {!collapsed && (
               <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
                 <Typography variant="subtitle2" fontWeight="bold" noWrap>
-                  {user?.sub?.slice(0, 12) || user?.firstName || 'User'}
+                  {user?.fullName || user?.firstName || user?.name || user?.sub?.slice(0, 12) || 'User'}
                 </Typography>
                 <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'capitalize' }}>
                   {activeRole === 'admin' ? 'Administrator' : activeRole}
