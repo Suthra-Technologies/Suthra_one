@@ -410,20 +410,23 @@ const POSPage: React.FC = () => {
 
             const res = await menuAPI.getAll({
                 search: searchQuery || undefined,
-                category: selectedCategory !== 'all' ? selectedCategory : undefined,
+                // Do NOT pass category here — we fetch all items and filter client-side.
+                // This ensures items always load even if the backend category filter is unreliable.
                 foodType: foodTypeFilter !== 'all' ? foodTypeFilter : undefined,
                 cursor: cursor || undefined,
                 limit: PAGE_LIMIT,
                 isAvailable: true
             });
 
-            // The backend returns { items, nextCursor, totalCount }
-            const { items, nextCursor: newCursor } = res.data;
+            // Handle both array response and { items, nextCursor } object response
+            const data = res.data;
+            const fetchedItems: any[] = Array.isArray(data) ? data : (data?.items ?? []);
+            const newCursor = Array.isArray(data) ? null : (data?.nextCursor ?? null);
 
             if (fresh) {
-                setMenuItems(items);
+                setMenuItems(fetchedItems);
             } else {
-                setMenuItems(prev => [...prev, ...items]);
+                setMenuItems(prev => [...prev, ...fetchedItems]);
             }
             setNextCursor(newCursor);
         } catch (error) {
@@ -577,12 +580,23 @@ const POSPage: React.FC = () => {
         } catch (error: any) {
             console.error('Coupon validation error:', error);
             setCouponDiscount(0);
-            setCouponCode(''); // Clear invalid coupon
             if (!silent) {
+                // In manual mode: clear the code so user knows it failed
+                setCouponCode('');
                 toast.error(error.response?.data?.message || error.message || 'Invalid coupon');
             } else {
-                // Silent notification that coupon was removed
-                toast.success('Coupon removed - minimum order amount not met', { icon: 'ℹ️' });
+                // In silent re-validation: keep the coupon code so it can auto-apply
+                // once the cart total reaches the required minimum — do NOT clear it.
+                // Only show a notification if the error is NOT about minimum bill amount,
+                // since that resolves itself as items are added.
+                const msg: string = error.response?.data?.message || error.message || '';
+                const isMinAmountError = msg.toLowerCase().includes('minimum') || msg.toLowerCase().includes('min');
+                if (!isMinAmountError) {
+                    // Coupon is genuinely invalid (expired, not applicable etc.) — clear it
+                    setCouponCode('');
+                    toast.success('Coupon removed - no longer valid', { icon: 'ℹ️' });
+                }
+                // Otherwise: silently keep the code; discount stays 0 until cart total grows
             }
         }
     }, [couponCode, cart]);
@@ -774,10 +788,10 @@ const POSPage: React.FC = () => {
         try {
             await tablesAPI.unmerge(primaryId);
             toast.success('Tables unmerged successfully');
-            
+
             // Refresh tables WITHOUT reloading the menu
-            await fetchTables(); 
-            
+            await fetchTables();
+
             // After unmerge, find the table again from the updated state to sync selection
             // fetchTables() updates the 'tables' state, so we can search it
             const res = await tablesAPI.getAll(); // Fetch once more to get local data for immediate update
@@ -830,11 +844,14 @@ const POSPage: React.FC = () => {
     useEffect(() => {
         fetchAvailableCoupons();
 
-        // Re-validate applied coupon when cart changes
-        if (couponCode && couponDiscount > 0) {
+        // Re-validate the coupon whenever cart changes:
+        // - If there's already an applied discount, re-check it's still valid
+        // - If there's a code but no discount yet (min amount wasn't met before),
+        //   attempt validation again now that the cart total may have increased
+        if (couponCode) {
             handleValidateCoupon(true); // Silent re-validation
         }
-    }, [orderType, cart, couponCode, couponDiscount, handleValidateCoupon]);
+    }, [orderType, cart]);
 
     // Filtering menu items
     const filteredItems = useMemo(() => {
@@ -844,20 +861,32 @@ const POSPage: React.FC = () => {
         if (!Array.isArray(menuItems)) return [];
 
         return menuItems.filter((item) => {
+            // --- Search ---
             const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-            const matchesCategory =
-                selectedCategory === 'all' ||
-                (item.category && (item.category._id === selectedCategory || item.category === selectedCategory));
-            const matchesFoodType =
-                foodTypeFilter === 'all' || item.foodType === foodTypeFilter;
 
-            // In standard modes, show items that are specifically available for regular ordering
-            let isAvailableByMode = !!item.isAvailable && !!item.isActive;
+            // --- Category ---
+            // item.category can be a string ID or a populated { _id, name } object.
+            const rawCat = item.category;
+            const itemCatId: string = rawCat
+                ? (typeof rawCat === 'object' ? (rawCat._id ?? rawCat.id ?? '') : String(rawCat))
+                : '';
+            const matchesCategory = selectedCategory === 'all' || itemCatId === selectedCategory;
 
-            // Apply scheduling filters for regular items (if not using special catering interface)
+            // --- Food Type ---
+            const matchesFoodType = foodTypeFilter === 'all' || item.foodType === foodTypeFilter;
+
+            // --- Availability ---
+            // NOTE: item.isActive is NOT a field on IMenuItem returned by the backend.
+            // Using !!item.isActive would always be false and hide everything.
+            // We only gate on item.isAvailable which IS a real backend field.
+            let isAvailableByMode = !!item.isAvailable;
+
+            // Apply weekly-schedule restrictions only when explicitly enabled
             if (item.isWeeklyScheduleEnabled) {
                 // Check if today is one of the available days
-                const isDayAvailable = (item.availableDays || []).some((d: string) => d.toLowerCase() === currentDay);
+                const isDayAvailable = (item.availableDays || []).some(
+                    (d: string) => d.toLowerCase() === currentDay
+                );
 
                 // If it's "available_only" and today is NOT the day, hide it
                 if (item.availabilityType === 'available_only' && !isDayAvailable) {
@@ -951,7 +980,7 @@ const POSPage: React.FC = () => {
                         itemId: item.originalMenuItemId || item._id,
                         quantity: item.quantity,
                         price: item.price,
-                        discount: 0, 
+                        discount: 0,
                         name: item.name
                     }))
                 };
@@ -1464,6 +1493,13 @@ const POSPage: React.FC = () => {
                     checkingDistance={checkingDistance}
                     onOpenMerge={() => setMergeDialogOpen(true)}
                     onUnmerge={handleUnmerge}
+                    discountPercent={discountPercent}
+                    setDiscountPercent={setDiscountPercent}
+                    couponCode={couponCode}
+                    setCouponCode={setCouponCode}
+                    onValidateCoupon={() => handleValidateCoupon(false)}
+                    availableCoupons={availableCoupons}
+                    cartTotal={cartTotal}
                 />
                 {/* Search & category tabs */}
                 <Box sx={{ mb: 2, display: 'flex', gap: 2 }}>
@@ -2369,20 +2405,14 @@ const POSPage: React.FC = () => {
                     cartTotal={cartTotal}
                     taxAmount={taxAmount}
                     discountAmount={discountAmount}
+                    discountPercent={discountPercent}
                     couponDiscount={couponDiscount}
                     serviceChargeAmount={serviceChargeAmount}
                     tip={tip}
                     setTip={setTip}
                     finalTotal={finalTotal}
-                    discountPercent={discountPercent}
-                    setDiscountPercent={setDiscountPercent}
-                    couponCode={couponCode}
-                    setCouponCode={setCouponCode}
-                    onValidateCoupon={() => handleValidateCoupon(false)}
-                    availableCoupons={availableCoupons}
                     placingOrder={placingOrder}
                     handlePlaceOrder={handlePlaceOrder}
-                    user={user}
                 />
             </Paper>
 

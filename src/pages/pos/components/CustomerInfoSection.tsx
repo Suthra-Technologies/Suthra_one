@@ -1,6 +1,7 @@
 import React from 'react';
 import {
     Box,
+    Button,
     Grid,
     TextField,
     Typography,
@@ -69,6 +70,14 @@ interface CustomerInfoSectionProps {
     checkingDistance: boolean;
     onOpenMerge: () => void;
     onUnmerge: (table: any) => void;
+    // Discount & Coupon
+    discountPercent: number;
+    setDiscountPercent: (val: number) => void;
+    couponCode: string;
+    setCouponCode: (val: string) => void;
+    onValidateCoupon: () => void;
+    availableCoupons: any[];
+    cartTotal: number;
 }
 
 const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
@@ -114,7 +123,14 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
     user,
     checkingDistance,
     onOpenMerge,
-    onUnmerge
+    onUnmerge,
+    discountPercent,
+    setDiscountPercent,
+    couponCode,
+    setCouponCode,
+    onValidateCoupon,
+    availableCoupons,
+    cartTotal,
 }) => {
     const mergedGroup = React.useMemo(() => {
         if (!selectedTable || (!selectedTable.isPrimary && !selectedTable.mergedWith)) return null;
@@ -280,6 +296,64 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                     </FormControl>
                 )}
             </Box>
+
+            {/* Discount & Coupon — shown after Order Type */}
+            <Box sx={{ display: 'flex', gap: 1, mb: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+                {user?.role !== 'customer' && (
+                    <TextField
+                        label="Disc %"
+                        type="number"
+                        size="small"
+                        value={discountPercent}
+                        onChange={(e) => setDiscountPercent(Math.max(0, Number(e.target.value)))}
+                        sx={{ width: '90px' }}
+                        inputProps={{ min: 0 }}
+                    />
+                )}
+                <Box sx={{ display: 'flex', gap: 1, flexGrow: 1 }}>
+                    <TextField
+                        label="Coupon Code"
+                        size="small"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value)}
+                        sx={{ flexGrow: 1 }}
+                        onKeyDown={(e) => { if (e.key === 'Enter') onValidateCoupon(); }}
+                    />
+                    <Button
+                        variant="outlined"
+                        onClick={onValidateCoupon}
+                        size="small"
+                        sx={{ whiteSpace: 'nowrap', minWidth: 60 }}
+                    >
+                        Apply
+                    </Button>
+                </Box>
+            </Box>
+
+            {/* Available coupon hints — only shown when cart total meets minimum */}
+            {(() => {
+                const qualifiedCoupons = availableCoupons.filter(
+                    (c: any) => !c.minBillAmount || cartTotal >= c.minBillAmount
+                );
+                return qualifiedCoupons.length > 0 && !couponCode ? (
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5, alignItems: 'center' }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>
+                            Available:
+                        </Typography>
+                        {qualifiedCoupons.slice(0, 4).map((c: any) => (
+                            <Chip
+                                key={c._id}
+                                label={c.code}
+                                size="small"
+                                variant="outlined"
+                                color="primary"
+                                onClick={() => setCouponCode(c.code)}
+                                sx={{ fontSize: '0.7rem', cursor: 'pointer', fontWeight: 'bold' }}
+                            />
+                        ))}
+                    </Box>
+                ) : null;
+            })()}
 
             {/* Dine‑in specific */}
             {orderType === 'dine_in' && (
