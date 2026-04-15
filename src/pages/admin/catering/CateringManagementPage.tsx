@@ -302,6 +302,46 @@ const CateringManagementPage = () => {
         }
     };
 
+    const preventScientificNotation = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (['e', 'E', '.', '-', '+'].includes(e.key)) {
+            e.preventDefault();
+        }
+    };
+
+    const handleGuestCountChange = (
+        target: 'newOrder' | 'editData',
+        type: 'adults' | 'kids',
+        category: 'veg' | 'nonVeg',
+        value: string
+    ) => {
+        const num = parseInt(value);
+        const safeValue = isNaN(num) ? 0 : Math.max(0, Math.min(num, 9999));
+        
+        if (target === 'newOrder') {
+            setNewOrder(prev => ({
+                ...prev,
+                guests: {
+                    ...prev.guests,
+                    [type]: {
+                        ...prev.guests[type],
+                        [category]: safeValue
+                    }
+                }
+            }));
+        } else {
+            setEditData(prev => ({
+                ...prev,
+                guests: {
+                    ...prev.guests,
+                    [type]: {
+                        ...prev.guests[type],
+                        [category]: safeValue
+                    }
+                }
+            }));
+        }
+    };
+
     const handleDownloadPDF = async (orderId: string, orderNumber: string) => {
         try {
             const response = await cateringAPI.downloadPDF(orderId);
@@ -2614,7 +2654,11 @@ const CateringManagementPage = () => {
                                                             helperText={formSubmitted && !newOrder.occasionPersonName?.trim() ? "Name is required" : ""}
                                                             FormHelperTextProps={{ sx: { color: 'error.main' } }}
                                                             InputLabelProps={{ sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }}
-                                                            onChange={(e) => setNewOrder({ ...newOrder, occasionPersonName: e.target.value })}
+                                                            onChange={(e) => {
+                                                                if (/^[a-zA-Z\s]*$/.test(e.target.value)) {
+                                                                    setNewOrder({ ...newOrder, occasionPersonName: e.target.value })
+                                                                }
+                                                            }}
                                                         />
                                                     </Grid>
                                                 )}
@@ -2769,10 +2813,26 @@ const CateringManagementPage = () => {
                                                                             <Typography variant="body2" fontWeight={600}>Adults</Typography>
                                                                         </TableCell>
                                                                         <TableCell align="center" sx={{ py: 1.5 }}>
-                                                                            <TextField size="small" type="number" value={newOrder.guests.adults.veg || ''} onChange={(e) => setNewOrder({ ...newOrder, guests: { ...newOrder.guests, adults: { ...newOrder.guests.adults, veg: parseInt(e.target.value) || 0 } } })} inputProps={{ min: 0 }} sx={{ width: { xs: 60, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} />
+                                                                            <TextField 
+                                                                                size="small" 
+                                                                                type="number" 
+                                                                                value={newOrder.guests.adults.veg || ''} 
+                                                                                onKeyDown={preventScientificNotation}
+                                                                                onChange={(e) => handleGuestCountChange('newOrder', 'adults', 'veg', e.target.value)} 
+                                                                                inputProps={{ min: 0, max: 9999 }} 
+                                                                                sx={{ width: { xs: 60, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} 
+                                                                            />
                                                                         </TableCell>
                                                                         <TableCell align="center" sx={{ py: 1.5 }}>
-                                                                            <TextField size="small" type="number" value={newOrder.guests.adults.nonVeg || ''} onChange={(e) => setNewOrder({ ...newOrder, guests: { ...newOrder.guests, adults: { ...newOrder.guests.adults, nonVeg: parseInt(e.target.value) || 0 } } })} inputProps={{ min: 0 }} sx={{ width: { xs: 60, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} />
+                                                                            <TextField 
+                                                                                size="small" 
+                                                                                type="number" 
+                                                                                value={newOrder.guests.adults.nonVeg || ''} 
+                                                                                onKeyDown={preventScientificNotation}
+                                                                                onChange={(e) => handleGuestCountChange('newOrder', 'adults', 'nonVeg', e.target.value)} 
+                                                                                inputProps={{ min: 0, max: 9999 }} 
+                                                                                sx={{ width: { xs: 60, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} 
+                                                                            />
                                                                         </TableCell>
                                                                     </TableRow>
                                                                     <TableRow>
@@ -2780,10 +2840,26 @@ const CateringManagementPage = () => {
                                                                             <Typography variant="body2" fontWeight={600}>Kids</Typography>
                                                                         </TableCell>
                                                                         <TableCell align="center" sx={{ py: 1.5 }}>
-                                                                            <TextField size="small" type="number" value={newOrder.guests.kids.veg || ''} onChange={(e) => setNewOrder({ ...newOrder, guests: { ...newOrder.guests, kids: { ...newOrder.guests.kids, veg: parseInt(e.target.value) || 0 } } })} inputProps={{ min: 0 }} sx={{ width: { xs: 60, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} />
+                                                                            <TextField 
+                                                                                size="small" 
+                                                                                type="number" 
+                                                                                value={newOrder.guests.kids.veg || ''} 
+                                                                                onKeyDown={preventScientificNotation}
+                                                                                onChange={(e) => handleGuestCountChange('newOrder', 'kids', 'veg', e.target.value)} 
+                                                                                inputProps={{ min: 0, max: 9999 }} 
+                                                                                sx={{ width: { xs: 60, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} 
+                                                                            />
                                                                         </TableCell>
                                                                         <TableCell align="center" sx={{ py: 1.5 }}>
-                                                                            <TextField size="small" type="number" value={newOrder.guests.kids.nonVeg || ''} onChange={(e) => setNewOrder({ ...newOrder, guests: { ...newOrder.guests, kids: { ...newOrder.guests.kids, nonVeg: parseInt(e.target.value) || 0 } } })} inputProps={{ min: 0 }} sx={{ width: { xs: 60, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} />
+                                                                            <TextField 
+                                                                                size="small" 
+                                                                                type="number" 
+                                                                                value={newOrder.guests.kids.nonVeg || ''} 
+                                                                                onKeyDown={preventScientificNotation}
+                                                                                onChange={(e) => handleGuestCountChange('newOrder', 'kids', 'nonVeg', e.target.value)} 
+                                                                                inputProps={{ min: 0, max: 9999 }} 
+                                                                                sx={{ width: { xs: 60, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} 
+                                                                            />
                                                                         </TableCell>
                                                                     </TableRow>
                                                                     <TableRow sx={{ bgcolor: '#f5f5f5', borderTop: '1px solid #e0e0e0' }}>

@@ -686,31 +686,33 @@ const POSPage: React.FC = () => {
 
         // Always try to pick up customer info/guest count from URL if provided,
         // to support navigation from bookings even when an order already exists.
-        if (tables.length > 0 || isEditMode) {
-            const guests = searchParams.get("guestCount");
-            if (guests) {
-                const gCount = parseInt(guests);
+        if (tables.length > 0) {
+            const urlGuests = searchParams.get("guestCount");
+            const urlName = searchParams.get("customerName");
+            const urlPhone = searchParams.get("customerPhone");
+            const urlEmail = searchParams.get("customerEmail");
+
+            if (urlGuests) {
+                const gCount = parseInt(urlGuests);
                 if (!isNaN(gCount) && gCount > 0) setGuestCount(gCount);
             }
 
-            const cName = searchParams.get("customerName");
-            if (cName) setCustomerName(cName);
+            if (urlName) setCustomerName(urlName);
 
-            const cPhone = searchParams.get("customerPhone");
-            if (cPhone) {
-                const digits = cPhone.replace(/\D/g, '');
-                if (cPhone.startsWith('+')) {
-                    setCustomerDialCode(digits.slice(0, -10));
+            if (urlPhone) {
+                const digits = urlPhone.replace(/\D/g, '');
+                if (urlPhone.startsWith('+')) {
+                    setCustomerDialCode(digits.slice(0, -10) || settings?.restaurant?.dialCode || '1');
                     setCustomerPhone(digits.slice(-10));
                 } else {
                     setCustomerPhone(digits.slice(-10));
+                    // Keep existing dial code or use settings default
                 }
             }
 
-            const cEmail = searchParams.get("customerEmail");
-            if (cEmail) setCustomerEmail(cEmail);
+            if (urlEmail) setCustomerEmail(urlEmail);
         }
-    }, [isEditMode, existingOrderId, tables, searchParams, resetData]);
+    }, [isEditMode, existingOrderId, tables, searchParams, resetData, settings?.restaurant?.dialCode]);
 
     const loadExistingOrder = async (id: string) => {
         setCart([]); // Clear any previous items before loading new ones
@@ -725,17 +727,31 @@ const POSPage: React.FC = () => {
             const urlName = searchParams.get("customerName");
             const urlPhone = searchParams.get("customerPhone");
             const urlEmail = searchParams.get("customerEmail");
+            const urlGuestCount = searchParams.get("guestCount");
 
             setCustomerName(urlName || ord.customer?.name || '');
+            
             const rawPhone = urlPhone || ord.customer?.phone || '';
             const digits = rawPhone.replace(/\D/g, '');
             if (rawPhone.startsWith('+')) {
-                setCustomerDialCode(digits.slice(0, -10));
+                setCustomerDialCode(digits.slice(0, -10) || settings?.restaurant?.dialCode || '1');
                 setCustomerPhone(digits.slice(-10));
             } else {
                 setCustomerPhone(digits.slice(-10));
+                // Default dial code if not provided in phone string
+                if (!urlPhone && ord.customer?.phone && !ord.customer.phone.startsWith('+')) {
+                   // Keep current dial code or fallback to settings
+                }
             }
             setCustomerEmail(urlEmail || ord.customer?.email || '');
+            
+            if (urlGuestCount) {
+                const gCount = parseInt(urlGuestCount);
+                if (!isNaN(gCount) && gCount > 0) setGuestCount(gCount);
+            } else {
+                setGuestCount(ord.guestCount || 1);
+            }
+
             setDiscountPercent(ord.discountPercent || 0);
             setPaymentMethod(ord.paymentMethod || 'cash');
             setCardPrintReceipt(Boolean(ord.cardOptions?.printReceipt));
@@ -761,7 +777,7 @@ const POSPage: React.FC = () => {
 
                 setTableNumber(displayTableNumber);
                 setWaiterName(ord.waiterName || "");
-                setGuestCount(ord.guestCount || 1);
+                // guestCount already handled above with URL priority
             }
 
 

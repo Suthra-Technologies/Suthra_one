@@ -2,9 +2,14 @@ import React from 'react';
 import { Box, Typography, Button, Card, CardContent } from '@mui/material';
 import { Cancel } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { isSubdomainAccess } from '../../utils/tenant.utils';
 
 const SubscriptionCancel: React.FC = () => {
     const navigate = useNavigate();
+    const { tenantSlug } = useAuth();
+    
+    const dashboardPath = isSubdomainAccess() ? '/dashboard' : `/${tenantSlug}/dashboard`;
 
     return (
         <Box sx={{ p: 4, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
@@ -28,7 +33,7 @@ const SubscriptionCancel: React.FC = () => {
                         <Button
                             variant="contained"
                             size="large"
-                            onClick={() => navigate('/')}
+                            onClick={() => navigate(dashboardPath)}
                         >
                             Go to Dashboard
                         </Button>

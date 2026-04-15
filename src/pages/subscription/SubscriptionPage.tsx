@@ -27,6 +27,7 @@ import { toast } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { subscriptionAPI, tenantAPI } from '../../services/api';
+import { getTenantSlugFromHostname, isSubdomainAccess } from '../../utils/tenant.utils';
 
 interface Plan {
     _id: string;
@@ -94,13 +95,24 @@ const SubscriptionPage: React.FC = () => {
 
         try {
             const baseUrl = window.location.origin;
-            const tenantSlug = window.location.pathname.split('/')[1];
+            const currentSlug = getTenantSlugFromHostname();
+            const isSubdomain = isSubdomainAccess();
+            
+            // If on a subdomain, the path starts with /subscription
+            // If on a standard path, the path starts with /:slug/subscription
+            const successUrl = isSubdomain 
+                ? `${baseUrl}/subscription/success?session_id={CHECKOUT_SESSION_ID}`
+                : `${baseUrl}/${currentSlug || window.location.pathname.split('/')[1]}/subscription/success?session_id={CHECKOUT_SESSION_ID}`;
+                
+            const cancelUrl = isSubdomain
+                ? `${baseUrl}/subscription`
+                : `${baseUrl}/${currentSlug || window.location.pathname.split('/')[1]}/subscription`;
 
             const response = await subscriptionAPI.createCheckoutSession({
                 planId: plan._id,
                 amount: plan.price,
-                successUrl: `${baseUrl}/${tenantSlug}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
-                cancelUrl: `${baseUrl}/${tenantSlug}/subscription`,
+                successUrl,
+                cancelUrl,
             });
 
             // Redirect to Stripe Checkout
