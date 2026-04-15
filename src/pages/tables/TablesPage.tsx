@@ -68,11 +68,20 @@ import {
     ShoppingCart as OrderIcon,
     ViewList as ListIcon,
     Timeline as TimelineIcon,
+    Link as LinkIcon,
+    LinkOff as LinkOffIcon,
+    PlaylistAddCheck as SelectionIcon,
 } from '@mui/icons-material';
 import { validatePhone, validateEmail } from '../../utils/validation';
 import { useSettings } from '../../context/SettingsContext';
 import PhoneInput from '../../components/PhoneInput';
 import { tablesAPI, bookingsAPI } from '../../services/api';
+
+// Extracted Dialog Components
+import AddTableDialog from './components/AddTableDialog';
+import EditTableDialog from './components/EditTableDialog';
+import BookingDialog from './components/BookingDialog';
+import ViewBookingDialog from './components/ViewBookingDialog';
 
 // Import Table Images
 import Table2Img from '../../assets/images/table-2.jpeg';
@@ -143,11 +152,6 @@ const TablesPage: React.FC = () => {
 
     // Add Table Dialog
     const [addDialogOpen, setAddDialogOpen] = useState(false);
-    const [newTableName, setNewTableName] = useState('');
-    const [newTableNumber, setNewTableNumber] = useState(0);
-    const [newTableCapacity, setNewTableCapacity] = useState(0);
-    const [newTableLocation, setNewTableLocation] = useState('indoor');
-    const [newTableStatus, setNewTableStatus] = useState('available');
 
     // Custom Location State
     const [customLocations, setCustomLocations] = useState<string[]>([]);
@@ -162,72 +166,18 @@ const TablesPage: React.FC = () => {
     const [bookingDialogOpen, setBookingDialogOpen] = useState(false);
     const [viewBookingDialogOpen, setViewBookingDialogOpen] = useState(false);
     const [selectedBookingForView, setSelectedBookingForView] = useState<any>(null);
-    const [bookingDate, setBookingDate] = useState(new Date().toISOString().split('T')[0]);
-    const [bookingTime, setBookingTime] = useState('19:00');
-    const [guestCount, setGuestCount] = useState(2);
-    const [customerName, setCustomerName] = useState('');
-    const [customerPhone, setCustomerPhone] = useState('');
-    const [customerDialCode, setCustomerDialCode] = useState(settings?.restaurant?.dialCode || '1');
-    const [customerEmail, setCustomerEmail] = useState('');
-    const [bookingDuration, setBookingDuration] = useState(120);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [tableToDelete, setTableToDelete] = useState<any>(null);
-
-    // Sync dial code with settings
-    useEffect(() => {
-        if (settings?.restaurant?.dialCode && !customerPhone) {
-            setCustomerDialCode(settings.restaurant.dialCode);
-        }
-    }, [settings?.restaurant?.dialCode]);
 
     // Quick Actions Menu
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const [menuTable, setMenuTable] = useState<any>(null);
 
-    // Available Time Slots Management
-    const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
-
-    useEffect(() => {
-        const fetchUnavailableSlots = async () => {
-            // Generate all slots first
-            const slots: string[] = [];
-            for (let h = 11; h < 22; h++) {
-                slots.push(`${h.toString().padStart(2, '0')}:00`);
-                slots.push(`${h.toString().padStart(2, '0')}:30`);
-            }
-
-            // 1. Filter out past times if date is today
-            const today = new Date();
-            const selectedDate = new Date(bookingDate);
-            const isToday = selectedDate.toDateString() === today.toDateString();
-
-            let filteredSlots = slots;
-            if (isToday) {
-                const currentHours = today.getHours();
-                const currentMinutes = today.getMinutes();
-                filteredSlots = slots.filter(slot => {
-                    const [h, m] = slot.split(':').map(Number);
-                    if (h < currentHours) return false;
-                    if (h === currentHours && m < currentMinutes) return false;
-                    return true;
-                });
-            }
-
-            // 2. Fetch unavailable slots from backend
-            if (bookingDate) {
-                try {
-                    const res = await bookingsAPI.getUnavailableSlots(bookingDate, guestCount || 2);
-                    const unavailable = res.data || [];
-                    filteredSlots = filteredSlots.filter(s => !unavailable.includes(s));
-                } catch (e) {
-                    console.error("Failed to fetch unavailable slots", e);
-                }
-            }
-
-            setAvailableTimeSlots(filteredSlots);
-        };
-        fetchUnavailableSlots();
-    }, [bookingDate, guestCount]);
+    // Table Merging State
+    const [selectionMode, setSelectionMode] = useState(false);
+    const [selectedTableIds, setSelectedTableIds] = useState<string[]>([]);
+    const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
+    const [primaryTableId, setPrimaryTableId] = useState<string>('');
 
     const fetchTables = async () => {
         try {
@@ -316,171 +266,10 @@ const TablesPage: React.FC = () => {
             checkPaidBookings();
         }
     }, [bookings, tables, bookingsLoading]);
-    const [touched, setTouched] = useState({
-        tableName: false,
-        tableNumber: false,
-        capacity: false,
-        location: false,
-        status: false
-    });
-    const [errors, setErrors] = useState({
-        tableName: '',
-        tableNumber: '',
-        capacity: '',
-        location: '',
-        status: ''
-    });
-    const [bookingTouched, setBookingTouched] = useState({
-        date: false,
-        time: false,
-        customerName: false,
-        customerPhone: false,
-        guests: false,
-        duration: false,
-        customerEmail: false
-    });
-    const [bookingErrors, setBookingErrors] = useState({
-        date: '',
-        time: '',
-        customerName: '',
-        customerPhone: '',
-        guests: '',
-        duration: '',
-        customerEmail: ''
-    });
-
-    const handleAddTable = async () => {
-        // Validate before submitting
-        if (!validateAll()) {
-            toast.error('Please fill all the required fields correctly');
-            return;
-        }
-        try {
-            const payload = {
-                tableName: newTableName,
-                tableNumber: newTableNumber,
-                capacity: newTableCapacity,
-                location: newTableLocation,
-                status: newTableStatus,
-            };
-            await tablesAPI.create(payload);
-            toast.success('Table added successfully');
-            setAddDialogOpen(false);
-            // reset fields
-            setNewTableName('');
-            setNewTableNumber(0);
-            setNewTableCapacity(0);
-            setNewTableLocation('indoor');
-            setNewTableStatus('available');
-            fetchTables();
-        } catch (error: any) {
-            console.error('Error adding table:', error);
-            const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to add table';
-            toast.error(errorMessage);
-        }
-    };
-
     const handleEditTable = (table: any) => {
         setSelectedTable(table);
         setEditDialogOpen(true);
         handleCloseMenu();
-    };
-
-    const handleUpdateTable = async () => {
-        if (!selectedTable) return;
-        try {
-            const updateData = {
-                tableName: selectedTable.tableName,
-                tableNumber: selectedTable.tableNumber,
-                capacity: selectedTable.capacity,
-                location: selectedTable.location,
-                status: selectedTable.status,
-            };
-            await tablesAPI.update(selectedTable._id, updateData);
-            toast.success('Table updated successfully');
-            setEditDialogOpen(false);
-            setSelectedTable(null);
-            fetchTables();
-        } catch (error) {
-            console.error('Error updating table:', error);
-            toast.error('Failed to update table');
-        }
-    };
-    const validateField = (name: string, value: any): string => {
-        let error = '';
-        if (name === 'tableName') {
-            const val = value ? value.toString().trim() : '';
-            if (val.length > 0 && val.length < 2) {
-                error = 'Table name must be at least 2 characters';
-            }
-        }
-        if (name === 'tableNumber') {
-            const raw = value === undefined || value === null || value === '' ? '' : value.toString();
-            if (raw === '') {
-                error = 'Table number is required';
-            } else {
-                const num = Number(raw);
-                if (Number.isNaN(num) || !Number.isInteger(num)) {
-                    error = 'Table number must be a whole number';
-                } else if (num < 1) {
-                    error = 'Table number must be at least 1';
-                }
-
-            }
-        }
-        if (name === 'capacity') {
-            const raw = value === undefined || value === null || value === '' ? '' : value.toString();
-            if (raw === '') {
-                error = 'Capacity is required';
-            } else {
-                const num = Number(raw);
-                if (Number.isNaN(num) || !Number.isInteger(num)) {
-                    error = 'Capacity must be a whole number';
-                } else if (num < 1) {
-                    error = 'Capacity must be at least 1';
-                }
-            }
-        }
-        if (name === 'location') {
-            if (!value || value.toString().trim() === '') {
-                error = 'Location is required';
-            }
-        }
-        if (name === 'status') {
-            if (!value || value.toString().trim() === '') {
-                error = 'Status is required';
-            }
-        }
-        setErrors(prev => ({ ...prev, [name]: error }));
-        return error;
-    };
-
-    // Validate all add-table fields and mark them touched so errors show in UI
-    const validateAll = (): boolean => {
-        const fields = ['tableName', 'tableNumber', 'capacity', 'location', 'status'];
-        // mark all as touched
-        setTouched(prev => {
-            const next = { ...prev } as any;
-            fields.forEach(f => next[f] = true);
-            return next;
-        });
-
-        let hasError = false;
-        fields.forEach((f) => {
-            let value: any;
-            switch (f) {
-                case 'tableName': value = newTableName; break;
-                case 'tableNumber': value = newTableNumber; break;
-                case 'capacity': value = newTableCapacity; break;
-                case 'location': value = newTableLocation; break;
-                case 'status': value = newTableStatus; break;
-                default: value = '';
-            }
-            const err = validateField(f, value);
-            if (err) hasError = true;
-        });
-
-        return !hasError;
     };
     const handleDeleteTable = (table: any) => {
         setTableToDelete(table);
@@ -502,64 +291,8 @@ const TablesPage: React.FC = () => {
         }
     };
 
-    const validateBookingField = (name: string, value: any): string => {
-        let error = '';
-        if (name === 'date') {
-            if (!value || value.trim() === '') {
-                error = 'Date is required';
-            }
-        }
-        if (name === 'time') {
-            if (!value || value.trim() === '') {
-                error = 'Time is required';
-            }
-        }
-        if (name === 'customerName') {
-            if (!value || value.trim() === '') {
-                error = 'Customer name is required';
-            }
-        }
-        if (name === 'customerPhone') {
-            const validation = validatePhone(value);
-            if (!validation.isValid) {
-                error = validation.message || '';
-            }
-        }
-        if (name === 'guests') {
-            if (value === undefined || value === null || value === '') {
-                error = 'Number of guests is required';
-            } else if (value < 1) {
-                error = 'Number of guests must be at least 1';
-            } else if (value < 0) {
-                error = 'Number of guests cannot be negative';
-            }
-        }
-        if (name === 'duration') {
-            if (value === undefined || value === null || value === '') {
-                error = 'Duration is required';
-            } else if (value < 1) {
-                error = 'Duration must be at least 1 minute';
-            } else if (value < 0) {
-                error = 'Duration cannot be negative';
-            }
-        }
-        if (name === 'customerEmail') {
-            if (value && value.trim() !== '') {
-                const validation = validateEmail(value);
-                if (!validation.isValid) {
-                    error = validation.message || '';
-                }
-            }
-        }
-        setBookingErrors(prev => ({ ...prev, [name]: error }));
-        return error;
-    };
-
     const handleOpenBooking = (table: any) => {
         setSelectedTable(table);
-        setGuestCount(Math.min(2, table.capacity));
-        setBookingTouched({ date: false, time: false, customerName: false, customerPhone: false, guests: false, duration: false, customerEmail: false });
-        setBookingErrors({ date: '', time: '', customerName: '', customerPhone: '', guests: '', duration: '', customerEmail: '' });
         setBookingDialogOpen(true);
         handleCloseMenu();
     };
@@ -567,74 +300,6 @@ const TablesPage: React.FC = () => {
     const handleViewBooking = (booking: any) => {
         setSelectedBookingForView(booking);
         setViewBookingDialogOpen(true);
-    };
-
-    const handleCreateBooking = async () => {
-        if (!selectedTable) return;
-
-        // Validate all fields
-        const fields = ['date', 'time', 'customerName', 'customerPhone', 'guests', 'duration', 'customerEmail'];
-        setBookingTouched({ date: true, time: true, customerName: true, customerPhone: true, guests: true, duration: true, customerEmail: true });
-
-        let hasError = false;
-        const values: any = {
-            date: bookingDate,
-            time: bookingTime,
-            customerName: customerName,
-            customerPhone: customerPhone,
-            guests: guestCount,
-            duration: bookingDuration
-        };
-
-        fields.forEach((field) => {
-            const err = validateBookingField(field, values[field]);
-            if (err) hasError = true;
-        });
-
-        if (hasError) {
-            toast.error('Please fill all required fields');
-            return;
-        }
-
-        if (guestCount > selectedTable.capacity) {
-            toast.error(`Guest count exceeds table capacity (${selectedTable.capacity})`);
-            return;
-        }
-
-        try {
-            const payload = {
-                tableId: selectedTable._id,
-                bookingDate,
-                bookingTime,
-                guestCount,
-                duration: bookingDuration,
-                guestInfo: {
-                    firstName: customerName.split(' ')[0] || customerName,
-                    lastName: customerName.split(' ').slice(1).join(' ') || '',
-                    phone: customerPhone,
-                    dialCode: customerDialCode,
-                    email: customerEmail || undefined
-                },
-                source: 'admin',
-            };
-
-            await bookingsAPI.create(payload);
-            toast.success('Booking created successfully');
-            setBookingDialogOpen(false);
-
-            // Reset booking fields
-            setCustomerName('');
-            setCustomerPhone('');
-            setCustomerEmail('');
-            setBookingDate(new Date().toISOString().split('T')[0]);
-            setBookingTime('19:00');
-
-            fetchTables();
-            fetchBookings();
-        } catch (error: any) {
-            console.error('Error creating booking:', error);
-            toast.error(error.response?.data?.message || 'Failed to create booking');
-        }
     };
 
     // Quick Status Update
@@ -648,6 +313,48 @@ const TablesPage: React.FC = () => {
             toast.error('Failed to update table status');
         }
         handleCloseMenu();
+    };
+
+    const handleToggleSelection = (id: string) => {
+        setSelectedTableIds(prev =>
+            prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+        );
+    };
+
+    const handleMerge = async () => {
+        if (!primaryTableId || selectedTableIds.length < 2) {
+            toast.error('Please select a primary table and at least one secondary table');
+            return;
+        }
+
+        const secondaryIds = selectedTableIds.filter(id => id !== primaryTableId);
+
+        try {
+            await tablesAPI.merge(primaryTableId, secondaryIds);
+            toast.success('Tables merged successfully');
+            setMergeDialogOpen(false);
+            setSelectionMode(false);
+            setSelectedTableIds([]);
+            fetchTables();
+        } catch (error) {
+            console.error('Error merging tables:', error);
+            toast.error('Failed to merge tables');
+        }
+    };
+
+    const handleUnmerge = async (table: any) => {
+        const primaryId = table.isPrimary ? table._id : table.mergedWith;
+        if (!primaryId) return;
+
+        try {
+            await tablesAPI.unmerge(primaryId);
+            toast.success('Tables unmerged successfully');
+            fetchTables();
+            handleCloseMenu();
+        } catch (error) {
+            console.error('Error unmerging tables:', error);
+            toast.error('Failed to unmerge tables');
+        }
     };
 
     // Booking Status Update
@@ -787,23 +494,23 @@ const TablesPage: React.FC = () => {
         }
     };
 
-    // Filter tables based on status
-    const filteredTables = statusFilter === 'all'
-        ? tables
-        : tables.filter(t => t.status === statusFilter);
-
     // Count tables by status
-    const statusCounts = {
+    const statusCounts = React.useMemo(() => ({
         all: tables.length,
         available: tables.filter(t => t.status === 'available').length,
         occupied: tables.filter(t => t.status === 'occupied').length,
         partially_occupied: tables.filter(t => t.status === 'partially_occupied').length,
         reserved: tables.filter(t => t.status === 'reserved').length,
         cleaning: tables.filter(t => t.status === 'cleaning').length,
-    };
+    }), [tables]);
+
+    // Filter tables based on status
+    const filteredTables = React.useMemo(() => statusFilter === 'all'
+        ? tables
+        : tables.filter(t => t.status === statusFilter), [tables, statusFilter]);
 
     // Filter bookings based on date, status, and search
-    const filteredBookings = bookings.filter(booking => {
+    const filteredBookings = React.useMemo(() => bookings.filter(booking => {
         // Date filter
         if (bookingDateFilter) {
             const bookingDateStr = new Date(booking.date).toISOString().split('T')[0];
@@ -834,16 +541,16 @@ const TablesPage: React.FC = () => {
         }
 
         return true;
-    });
+    }), [bookings, bookingDateFilter, bookingStatusFilter, bookingSearchQuery]);
 
     // Pagination
-    const paginatedBookings = filteredBookings.slice(
+    const paginatedBookings = React.useMemo(() => filteredBookings.slice(
         page * rowsPerPage,
         page * rowsPerPage + rowsPerPage
-    );
+    ), [filteredBookings, page, rowsPerPage]);
 
     // Count bookings by status for the selected date
-    const bookingStatusCounts = {
+    const bookingStatusCounts = React.useMemo(() => ({
         all: filteredBookings.length,
         pending: bookings.filter(b => {
             const d = new Date(b.date).toISOString().split('T')[0];
@@ -861,7 +568,7 @@ const TablesPage: React.FC = () => {
             const d = new Date(b.date).toISOString().split('T')[0];
             return (!bookingDateFilter || d === bookingDateFilter) && b.status === 'cancelled';
         }).length,
-    };
+    }), [bookings, filteredBookings.length, bookingDateFilter]);
 
     // Format date for display
     const formatDate = (dateStr: string) => {
@@ -912,9 +619,35 @@ const TablesPage: React.FC = () => {
         <Box>
             <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: 3, gap: 2 }}>
                 <Typography variant="h4">Table Management</Typography>
-                <Button variant="contained" fullWidth={false} sx={{ width: { xs: '100%', sm: 'auto' } }} startIcon={<AddIcon />} onClick={() => setAddDialogOpen(true)}>
-                    Add Table
-                </Button>
+                <Stack direction="row" spacing={2} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+                    <Button
+                        variant={selectionMode ? "contained" : "outlined"}
+                        color={selectionMode ? "secondary" : "primary"}
+                        startIcon={<SelectionIcon />}
+                        onClick={() => {
+                            setSelectionMode(!selectionMode);
+                            setSelectedTableIds([]);
+                        }}
+                    >
+                        {selectionMode ? "Exit Selection" : "Select Tables"}
+                    </Button>
+                    {selectionMode && selectedTableIds.length >= 2 && (
+                        <Button
+                            variant="contained"
+                            color="warning"
+                            startIcon={<LinkIcon />}
+                            onClick={() => {
+                                setPrimaryTableId(selectedTableIds[0]);
+                                setMergeDialogOpen(true);
+                            }}
+                        >
+                            Merge ({selectedTableIds.length})
+                        </Button>
+                    )}
+                    <Button variant="contained" startIcon={<AddIcon />} onClick={() => setAddDialogOpen(true)}>
+                        Add Table
+                    </Button>
+                </Stack>
             </Box>
 
             {/* Tabs */}
@@ -998,8 +731,25 @@ const TablesPage: React.FC = () => {
                                     position: 'relative',
                                     borderLeft: `4px solid`,
                                     borderLeftColor: `${getStatusColor(table.status)}.main`,
+                                    outline: selectionMode && selectedTableIds.includes(table._id) ? `3px solid ${theme.palette.secondary.main}` : 'none',
+                                    opacity: selectionMode && !selectedTableIds.includes(table._id) && selectedTableIds.length > 0 ? 0.8 : 1,
+                                    transition: 'all 0.2s ease',
+                                    ...(table.isMerged && {
+                                        '&::after': {
+                                            content: '""',
+                                            position: 'absolute',
+                                            top: 0,
+                                            right: 0,
+                                            width: 0,
+                                            height: 0,
+                                            borderStyle: 'solid',
+                                            borderWidth: '0 40px 40px 0',
+                                            borderColor: `transparent ${theme.palette.warning.main} transparent transparent`,
+                                            zIndex: 2,
+                                        }
+                                    })
                                 }}>
-                                    <CardActionArea onClick={() => handleOpenBooking(table)}>
+                                    <CardActionArea onClick={() => selectionMode ? handleToggleSelection(table._id) : handleOpenBooking(table)}>
                                         <CardContent sx={{ textAlign: 'center', p: 0, pb: 1 }}>
                                             <Box sx={{ mb: 2, position: 'relative', width: '100%', mx: 0 }}>
                                                 <Box
@@ -1030,6 +780,22 @@ const TablesPage: React.FC = () => {
                                             <Typography variant="body2" color="text.secondary">
                                                 Capacity: {table.capacity} | {table.location}
                                             </Typography>
+                                            {table.isMerged && (
+                                                <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, color: 'warning.main' }}>
+                                                    <LinkIcon fontSize="inherit" />
+                                                    <Typography variant="caption" fontWeight="bold">
+                                                        MERGED WITH TABLE {tables.find(t => t._id === table.mergedWith)?.tableNumber || '?'}
+                                                    </Typography>
+                                                </Box>
+                                            )}
+                                            {table.isPrimary && (
+                                                <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, color: 'primary.main' }}>
+                                                    <LinkIcon fontSize="inherit" />
+                                                    <Typography variant="caption" fontWeight="bold">
+                                                        PRIMARY (LINKED)
+                                                    </Typography>
+                                                </Box>
+                                            )}
                                         </CardContent>
                                     </CardActionArea>
 
@@ -1573,6 +1339,12 @@ const TablesPage: React.FC = () => {
                     <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
                     <ListItemText>Edit Table</ListItemText>
                 </MenuItem>
+                {(menuTable?.isMerged || menuTable?.isPrimary) && (
+                    <MenuItem onClick={() => menuTable && handleUnmerge(menuTable)}>
+                        <ListItemIcon><LinkOffIcon fontSize="small" color="error" /></ListItemIcon>
+                        <ListItemText sx={{ color: 'error.main' }}>Unmerge Table(s)</ListItemText>
+                    </MenuItem>
+                )}
                 <Divider />
                 {/* <MenuItem onClick={() => menuTable && handleQuickStatusChange(menuTable._id, 'available')}>
                     <ListItemIcon><AvailableIcon fontSize="small" color="success" /></ListItemIcon>
@@ -1602,633 +1374,54 @@ const TablesPage: React.FC = () => {
             </Menu>
 
             {/* Add Table Dialog */}
-            <Dialog open={addDialogOpen} onClose={() => setAddDialogOpen(false)} maxWidth="sm" fullWidth>
-                <DialogTitle sx={{ m: 0, p: 2, position: 'relative' }}>
-                    Add New Table
-                    <IconButton
-                        aria-label="close"
-                        onClick={() => setAddDialogOpen(false)}
-                        size="small"
-                        sx={{ position: 'absolute', right: 8, top: 8, bgcolor: 'error.main', color: 'common.white', '&:hover': { bgcolor: 'error.dark' }, width: 20, height: 20, padding: '4px', minWidth: 'auto', borderRadius: '50%' }}
-                    >
-                        <CloseIcon fontSize="small" />
-                    </IconButton>
-                </DialogTitle>
-                <DialogContent>
-                    <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-                        {/* <TextField
-    label="Table Name"
-    value={newTableName}
-    onChange={e => setNewTableName(e.target.value)}
-    onBlur={() => {
-        setTouched(prev => ({ ...prev, tableName: true }));
-        validateField('tableName', newTableName);
-    }}
-    // required
-    error={touched.tableName && Boolean(errors.tableName)}
-    helperText={touched.tableName && errors.tableName ? errors.tableName : ''}
-/> */}
-                        <TextField
-                            label="Table Number"
-                            type="number"
-                            value={newTableNumber === 0 ? '' : newTableNumber}
-                            onChange={e => {
-                                const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
-                                if (val >= 0) setNewTableNumber(val);
-                            }}
-                            onBlur={() => {
-                                setTouched(prev => ({ ...prev, tableNumber: true }));
-                                validateField('tableNumber', newTableNumber);
-                            }}
-                            required
-                            error={touched.tableNumber && Boolean(errors.tableNumber)}
-                            helperText={touched.tableNumber && errors.tableNumber ? errors.tableNumber : ''}
-                            slotProps={{ htmlInput: { min: 1 } }}
-                            InputLabelProps={{
-                                sx: {
-                                    '& .MuiFormLabel-asterisk': {
-                                        color: 'error.main'
-                                    }
-                                }
-                            }}
-                        />
-                        <FormControl fullWidth required error={touched.capacity && Boolean(errors.capacity)}>
-                            <InputLabel id="add-capacity-label" sx={{ '& .MuiFormLabel-asterisk': { color: 'error.main' } }}>Capacity</InputLabel>
-                            <Select
-                                labelId="add-capacity-label"
-                                value={newTableCapacity || ''}
-                                label="Capacity"
-                                onChange={e => {
-                                    const val = Number(e.target.value);
-                                    setNewTableCapacity(val);
-                                    setTouched(prev => ({ ...prev, capacity: true }));
-                                    validateField('capacity', val);
-                                }}
-                            >
-                                {CAPACITY_OPTIONS.map(opt => (
-                                    <MenuItem key={opt} value={opt}>{opt} People</MenuItem>
-                                ))}
-                            </Select>
-                            {touched.capacity && errors.capacity && <FormHelperText>{errors.capacity}</FormHelperText>}
-                        </FormControl>
-                        <Stack direction="row" sx={{ width: '100%' }}>
-                            <FormControl fullWidth sx={{ '& .MuiOutlinedInput-root': { borderTopRightRadius: 0, borderBottomRightRadius: 0 } }}>
-                                <InputLabel>Location</InputLabel>
-                                <Select
-                                    value={newTableLocation}
-                                    label="Location"
-                                    onChange={e => {
-                                        const v = e.target.value as string;
-                                        setNewTableLocation(v);
-                                        setTouched(prev => ({ ...prev, location: true }));
-                                        validateField('location', v);
-                                    }}
-                                    MenuProps={{
-                                        PaperProps: {
-                                            style: {
-                                                maxHeight: 250
-                                            }
-                                        }
-                                    }}
-                                >
-                                    <MenuItem value="indoor">Indoor</MenuItem>
-                                    <MenuItem value="outdoor">Outdoor</MenuItem>
-                                    <MenuItem value="private_room">Private Room</MenuItem>
-                                    <MenuItem value="bar">Bar</MenuItem>
-                                    <MenuItem value="patio">Patio</MenuItem>
-                                    <MenuItem value="main_dining">Main Dining</MenuItem>
-                                    <MenuItem value="vip_section">VIP Section</MenuItem>
-                                    <MenuItem value="party_hall">Party Hall</MenuItem>
-                                    <MenuItem value="terrace">Terrace</MenuItem>
-                                    {customLocations.map(loc => (
-                                        <MenuItem key={loc} value={loc} sx={{ textTransform: 'capitalize' }}>
-                                            {loc.replace(/_/g, ' ')}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-                            <Button
-                                variant="contained"
-                                color="primary"
-                                onClick={() => setAddLocationDialogOpen(true)}
-                                sx={{
-                                    borderTopLeftRadius: 0,
-                                    borderBottomLeftRadius: 0,
-                                    minWidth: '56px',
-                                    boxShadow: 'none'
-                                }}
-                            >
-                                <AddIcon />
-                            </Button>
-                        </Stack>
-                        <FormControl fullWidth>
-                            <InputLabel>Status</InputLabel>
-                            <Select
-                                value={newTableStatus}
-                                label="Status"
-                                onChange={e => {
-                                    const v = e.target.value as string;
-                                    setNewTableStatus(v);
-                                    setTouched(prev => ({ ...prev, status: true }));
-                                    validateField('status', v);
-                                }}>
-                                <MenuItem value="available">Available</MenuItem>
-                                <MenuItem value="occupied">Occupied</MenuItem>
-                                <MenuItem value="reserved">Reserved</MenuItem>
-                                <MenuItem value="cleaning">Cleaning</MenuItem>
-                            </Select>
-                        </FormControl>
-                    </Box>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setAddDialogOpen(false)}>Cancel</Button>
-                    <Button variant="contained" onClick={handleAddTable}>Add</Button>
-                </DialogActions>
-            </Dialog>
+            <AddTableDialog
+                open={addDialogOpen}
+                onClose={() => setAddDialogOpen(false)}
+                onSuccess={() => {
+                    setAddDialogOpen(false);
+                    fetchTables();
+                }}
+                customLocations={customLocations}
+                onOpenAddLocation={() => setAddLocationDialogOpen(true)}
+            />
 
             {/* Edit Table Dialog */}
-            <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)} maxWidth="sm" fullWidth>
-                <DialogTitle sx={{ m: 0, p: 2, position: 'relative' }}>
-                    Edit Table
-                    <IconButton
-                        aria-label="close"
-                        onClick={() => setEditDialogOpen(false)}
-                        size="small"
-                        sx={{ position: 'absolute', right: 8, top: 8, bgcolor: 'error.main', color: 'common.white', '&:hover': { bgcolor: 'error.dark' }, width: 20, height: 20, padding: '4px', minWidth: 'auto', borderRadius: '50%' }}
-                    >
-                        <CloseIcon fontSize="small" />
-                    </IconButton>
-                </DialogTitle>
-                <DialogContent>
-                    {selectedTable && (
-                        <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-                            {/* <TextField
-    label="Table Name"
-    value={selectedTable.tableName || ''}
-    onChange={e => setSelectedTable({ ...selectedTable, tableName: e.target.value })}
-    onBlur={() => {
-        setTouched(prev => ({ ...prev, tableName: true }));
-        validateField('tableName', selectedTable.tableName);
-    }}
-    // required
-    error={touched.tableName && Boolean(errors.tableName)}
-    helperText={touched.tableName && errors.tableName ? errors.tableName : ''}
-/> */}
-                            <TextField
-                                label="Table Number"
-                                type="number"
-                                value={selectedTable.tableNumber || ''}
-                                onChange={e => {
-                                    const val = e.target.value === '' ? 0 : parseInt(e.target.value, 10);
-                                    if (val >= 0) setSelectedTable({ ...selectedTable, tableNumber: val });
-                                }}
-                                onBlur={() => {
-                                    setTouched(prev => ({ ...prev, tableNumber: true }));
-                                    validateField('tableNumber', selectedTable.tableNumber);
-                                }}
-                                required
-                                error={touched.tableNumber && Boolean(errors.tableNumber)}
-                                helperText={touched.tableNumber && errors.tableNumber ? errors.tableNumber : ''}
-                                slotProps={{ htmlInput: { min: 1 } }}
-                                InputLabelProps={{
-                                    sx: {
-                                        '& .MuiFormLabel-asterisk': {
-                                            color: 'error.main'
-                                        }
-                                    }
-                                }}
-                            />
-                            <FormControl fullWidth required error={touched.capacity && Boolean(errors.capacity)}>
-                                <InputLabel id="edit-capacity-label" sx={{ '& .MuiFormLabel-asterisk': { color: 'error.main' } }}>Capacity</InputLabel>
-                                <Select
-                                    labelId="edit-capacity-label"
-                                    value={selectedTable.capacity || ''}
-                                    label="Capacity"
-                                    onChange={e => {
-                                        const val = Number(e.target.value);
-                                        setSelectedTable({ ...selectedTable, capacity: val });
-                                        setTouched(prev => ({ ...prev, capacity: true }));
-                                        validateField('capacity', val);
-                                    }}
-                                >
-                                    {CAPACITY_OPTIONS.map(opt => (
-                                        <MenuItem key={opt} value={opt}>{opt} People</MenuItem>
-                                    ))}
-                                </Select>
-                                {touched.capacity && errors.capacity && <FormHelperText>{errors.capacity}</FormHelperText>}
-                            </FormControl>
-                            <Stack direction="row" sx={{ width: '100%' }}>
-                                <FormControl fullWidth sx={{ '& .MuiOutlinedInput-root': { borderTopRightRadius: 0, borderBottomRightRadius: 0 } }}>
-                                    <InputLabel>Location</InputLabel>
-                                    <Select
-                                        value={selectedTable.location || 'indoor'}
-                                        label="Location"
-                                        onChange={e => {
-                                            const v = e.target.value as string;
-                                            setSelectedTable({ ...selectedTable, location: v });
-                                            setTouched(prev => ({ ...prev, location: true }));
-                                            validateField('location', v);
-                                        }}
-                                        MenuProps={{
-                                            PaperProps: {
-                                                style: {
-                                                    maxHeight: 250
-                                                }
-                                            }
-                                        }}
-                                    >
-                                        <MenuItem value="indoor">Indoor</MenuItem>
-                                        <MenuItem value="outdoor">Outdoor</MenuItem>
-                                        <MenuItem value="private_room">Private Room</MenuItem>
-                                        <MenuItem value="bar">Bar</MenuItem>
-                                        <MenuItem value="patio">Patio</MenuItem>
-                                        <MenuItem value="main_dining">Main Dining</MenuItem>
-                                        <MenuItem value="vip_section">VIP Section</MenuItem>
-                                        <MenuItem value="party_hall">Party Hall</MenuItem>
-                                        <MenuItem value="terrace">Terrace</MenuItem>
-                                        {customLocations.map(loc => (
-                                            <MenuItem key={loc} value={loc} sx={{ textTransform: 'capitalize' }}>
-                                                {loc.replace(/_/g, ' ')}
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
-                                <Button
-                                    variant="contained"
-                                    color="primary"
-                                    onClick={() => setAddLocationDialogOpen(true)}
-                                    sx={{
-                                        borderTopLeftRadius: 0,
-                                        borderBottomLeftRadius: 0,
-                                        minWidth: '56px',
-                                        boxShadow: 'none'
-                                    }}
-                                >
-                                    <AddIcon />
-                                </Button>
-                            </Stack>
-                            <FormControl fullWidth>
-                                <InputLabel>Status</InputLabel>
-                                <Select
-                                    value={selectedTable.status || 'available'}
-                                    label="Status"
-                                    onChange={e => {
-                                        const v = e.target.value as string;
-                                        setSelectedTable({ ...selectedTable, status: v });
-                                        setTouched(prev => ({ ...prev, status: true }));
-                                        validateField('status', v);
-                                    }}
-                                >
-                                    <MenuItem value="available">Available</MenuItem>
-                                    <MenuItem value="occupied">Occupied</MenuItem>
-                                    <MenuItem value="reserved">Reserved</MenuItem>
-                                    {/* <MenuItem value="cleaning">Cleaning</MenuItem>
-                                    <MenuItem value="out_of_order">Out of Order</MenuItem> */}
-                                </Select>
-                            </FormControl>
-                        </Box>
-                    )}
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
-                    <Button variant="contained" onClick={handleUpdateTable}>Update</Button>
-                </DialogActions>
-            </Dialog>
+            <EditTableDialog
+                open={editDialogOpen}
+                onClose={() => setEditDialogOpen(false)}
+                onSuccess={() => {
+                    setEditDialogOpen(false);
+                    fetchTables();
+                }}
+                table={selectedTable}
+                customLocations={customLocations}
+                onOpenAddLocation={() => setAddLocationDialogOpen(true)}
+            />
 
             {/* Booking Dialog */}
-            <Dialog open={bookingDialogOpen} onClose={() => setBookingDialogOpen(false)} maxWidth="sm" fullWidth>
-                <DialogTitle sx={{ m: 0, p: 2, position: 'relative' }}>
-                    Book Table {selectedTable?.tableNumber}
-                    <IconButton
-                        aria-label="close"
-                        onClick={() => setBookingDialogOpen(false)}
-                        size="small"
-                        sx={{ position: 'absolute', right: 8, top: 8, bgcolor: 'error.main', color: 'common.white', '&:hover': { bgcolor: 'error.dark' }, width: 20, height: 20, padding: '4px', minWidth: 'auto', borderRadius: '50%' }}
-                    >
-                        <CloseIcon sx={{ fontSize: 14 }} />
-                    </IconButton>
-                </DialogTitle>
-                <DialogContent>
-                    <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
-                        <Stack direction="row" spacing={2}>
-                            <TextField
-                                label="Date"
-                                type="date"
-                                value={bookingDate}
-                                onChange={e => {
-                                    setBookingDate(e.target.value);
-                                    if (bookingTouched.date) {
-                                        validateBookingField('date', e.target.value);
-                                    }
-                                }}
-                                onBlur={() => {
-                                    setBookingTouched(prev => ({ ...prev, date: true }));
-                                    validateBookingField('date', bookingDate);
-                                }}
-                                error={bookingTouched.date && Boolean(bookingErrors.date)}
-                                helperText={bookingTouched.date && bookingErrors.date ? bookingErrors.date : ''}
-                                fullWidth
-                                InputLabelProps={{
-                                    shrink: true,
-                                    sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } }
-                                }}
-                                inputProps={{ min: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0] }} // Restrict to Today (Local Time)
-                                required
-                            />
-                            <FormControl fullWidth required error={bookingTouched.time && Boolean(bookingErrors.time)}>
-                                <InputLabel id="booking-time-label" sx={{ '& .MuiFormLabel-asterisk': { color: 'error.main' } }}>Time</InputLabel>
-                                <Select
-                                    labelId="booking-time-label"
-                                    value={bookingTime}
-                                    label="Time"
-                                    onChange={e => {
-                                        setBookingTime(e.target.value);
-                                        if (bookingTouched.time) validateBookingField('time', e.target.value);
-                                    }}
-                                    onBlur={() => {
-                                        setBookingTouched(prev => ({ ...prev, time: true }));
-                                        validateBookingField('time', bookingTime);
-                                    }}
-                                >
-                                    {availableTimeSlots.map(slot => (
-                                        <MenuItem key={slot} value={slot}>{slot}</MenuItem>
-                                    ))}
-                                    {availableTimeSlots.length === 0 && (
-                                        <MenuItem disabled value="">No slots available</MenuItem>
-                                    )}
-                                </Select>
-                                {bookingTouched.time && bookingErrors.time && <FormHelperText>{bookingErrors.time}</FormHelperText>}
-                            </FormControl>
-                        </Stack>
-                        <Stack direction="row" spacing={2}>
-                            <TextField
-                                label="Guests"
-                                type="number"
-                                value={guestCount}
-                                onChange={e => {
-                                    setGuestCount(Number(e.target.value));
-                                    if (bookingTouched.guests) {
-                                        validateBookingField('guests', Number(e.target.value));
-                                    }
-                                }}
-                                onBlur={() => {
-                                    setBookingTouched(prev => ({ ...prev, guests: true }));
-                                    validateBookingField('guests', guestCount);
-                                }}
-                                fullWidth
-                                required
-                                helperText={
-                                    bookingTouched.guests && bookingErrors.guests
-                                        ? bookingErrors.guests
-                                        : (selectedTable && guestCount > selectedTable.capacity)
-                                            ? `Exceeds capacity of ${selectedTable.capacity}`
-                                            : `Max Capacity: ${selectedTable?.capacity || 0}`
-                                }
-                                error={(bookingTouched.guests && Boolean(bookingErrors.guests)) || (selectedTable && guestCount > selectedTable.capacity)}
-                                inputProps={{ min: 1 }}
-                                InputLabelProps={{
-                                    sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } }
-                                }}
-                            />
-                            <TextField
-                                label="Duration (min)"
-                                type="number"
-                                value={bookingDuration}
-                                onChange={e => {
-                                    setBookingDuration(Number(e.target.value));
-                                    if (bookingTouched.duration) {
-                                        validateBookingField('duration', Number(e.target.value));
-                                    }
-                                }}
-                                onBlur={() => {
-                                    setBookingTouched(prev => ({ ...prev, duration: true }));
-                                    validateBookingField('duration', bookingDuration);
-                                }}
-                                error={bookingTouched.duration && Boolean(bookingErrors.duration)}
-                                helperText={bookingTouched.duration && bookingErrors.duration ? bookingErrors.duration : ''}
-                                fullWidth
-                                required
-                                inputProps={{ min: 1 }}
-                                InputLabelProps={{
-                                    sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } }
-                                }}
-                            />
-                        </Stack>
-
-                        <TextField
-                            label="Customer Name"
-                            value={customerName}
-                            onChange={e => {
-                                setCustomerName(e.target.value);
-                                if (bookingTouched.customerName) {
-                                    validateBookingField('customerName', e.target.value);
-                                }
-                            }}
-                            onBlur={() => {
-                                setBookingTouched(prev => ({ ...prev, customerName: true }));
-                                validateBookingField('customerName', customerName);
-                            }}
-                            error={bookingTouched.customerName && Boolean(bookingErrors.customerName)}
-                            helperText={bookingTouched.customerName && bookingErrors.customerName ? bookingErrors.customerName : ''}
-                            fullWidth
-                            required
-                            InputLabelProps={{
-                                sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } }
-                            }}
-                        />
-                        <PhoneInput
-                            fullWidth
-                            label="Phone Number"
-                            value={customerPhone}
-                            onChange={(val) => {
-                                const clean = val.replace(/\D/g, '').slice(0, 10);
-                                setCustomerPhone(clean);
-                                if (bookingTouched.customerPhone) {
-                                    validateBookingField('customerPhone', clean);
-                                }
-                            }}
-                            dialCode={customerDialCode}
-                            onDialCodeChange={setCustomerDialCode}
-                            error={bookingTouched.customerPhone && Boolean(bookingErrors.customerPhone)}
-                            helperText={bookingTouched.customerPhone && bookingErrors.customerPhone ? bookingErrors.customerPhone : '10-digit mobile number'}
-                            required
-                        />
-                        <TextField
-                            label="Email (Optional)"
-                            value={customerEmail}
-                            onChange={e => {
-                                setCustomerEmail(e.target.value);
-                                if (bookingTouched.customerEmail) {
-                                    validateBookingField('customerEmail', e.target.value);
-                                }
-                            }}
-                            onBlur={() => {
-                                setBookingTouched(prev => ({ ...prev, customerEmail: true }));
-                                validateBookingField('customerEmail', customerEmail);
-                            }}
-                            error={bookingTouched.customerEmail && Boolean(bookingErrors.customerEmail)}
-                            helperText={bookingTouched.customerEmail && bookingErrors.customerEmail ? bookingErrors.customerEmail : ''}
-                            fullWidth
-                            type="email"
-                        />
-                    </Box>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setBookingDialogOpen(false)}>Cancel</Button>
-                    <Button
-                        variant="contained"
-                        color="success"
-                        onClick={handleCreateBooking}
-                        disabled={selectedTable && guestCount > selectedTable.capacity}
-                    >
-                        Book Now
-                    </Button>
-                </DialogActions>
-            </Dialog>
+            <BookingDialog
+                open={bookingDialogOpen}
+                onClose={() => setBookingDialogOpen(false)}
+                onSuccess={() => {
+                    setBookingDialogOpen(false);
+                    fetchTables();
+                    fetchBookings();
+                }}
+                table={selectedTable}
+                settings={settings}
+            />
 
             {/* View Booking Details Dialog */}
-            <Dialog open={viewBookingDialogOpen} onClose={() => setViewBookingDialogOpen(false)} maxWidth="sm" fullWidth>
-                <DialogTitle sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="h6">Booking Details</Typography>
-                    <IconButton
-                        aria-label="close"
-                        onClick={() => setViewBookingDialogOpen(false)}
-                        size="small"
-                        sx={{ bgcolor: 'grey.100', '&:hover': { bgcolor: 'grey.200' } }}
-                    >
-                        <CloseIcon fontSize="small" />
-                    </IconButton>
-                </DialogTitle>
-                <DialogContent dividers>
-                    {selectedBookingForView && (
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <Typography variant="subtitle1" fontWeight="bold">
-                                    #{selectedBookingForView.bookingId}
-                                </Typography>
-                                <Chip
-                                    label={selectedBookingForView.status.toUpperCase()}
-                                    color={getBookingStatusColor(selectedBookingForView.status) as any}
-                                    size="small"
-                                />
-                            </Box>
-
-                            <Grid container spacing={2}>
-                                <Grid size={{ xs: 6 }}>
-                                    <Typography variant="caption" color="text.secondary">Default Table</Typography>
-                                    <Typography variant="body1">
-                                        {selectedBookingForView.table?.tableName || `Table ${selectedBookingForView.table?.tableNumber}` || 'N/A'}
-                                    </Typography>
-                                </Grid>
-                                <Grid size={{ xs: 6 }}>
-                                    <Typography variant="caption" color="text.secondary">Date</Typography>
-                                    <Typography variant="body1">
-                                        {formatDate(selectedBookingForView.date)}
-                                    </Typography>
-                                </Grid>
-                                <Grid size={{ xs: 6 }}>
-                                    <Typography variant="caption" color="text.secondary">Time</Typography>
-                                    <Typography variant="body1">
-                                        {selectedBookingForView.timeSlot?.requested}
-                                    </Typography>
-                                </Grid>
-                                <Grid size={{ xs: 6 }}>
-                                    <Typography variant="caption" color="text.secondary">Guests</Typography>
-                                    <Typography variant="body1">
-                                        {selectedBookingForView.guests} People
-                                    </Typography>
-                                </Grid>
-                                <Grid size={{ xs: 12 }}>
-                                    <Divider sx={{ my: 1 }} />
-                                </Grid>
-                                <Grid size={{ xs: 12 }}>
-                                    <Typography variant="caption" color="text.secondary">Customer Name</Typography>
-                                    <Typography variant="body1" fontWeight={500}>
-                                        {selectedBookingForView.guestInfo?.firstName} {selectedBookingForView.guestInfo?.lastName}
-                                    </Typography>
-                                </Grid>
-                                <Grid size={{ xs: 6 }}>
-                                    <Typography variant="caption" color="text.secondary">Phone</Typography>
-                                    <Typography variant="body2">
-                                        {selectedBookingForView.guestInfo?.phone}
-                                    </Typography>
-                                </Grid>
-                                <Grid size={{ xs: 6 }}>
-                                    <Typography variant="caption" color="text.secondary">Email</Typography>
-                                    <Typography variant="body2">
-                                        {selectedBookingForView.guestInfo?.email || '-'}
-                                    </Typography>
-                                </Grid>
-                            </Grid>
-                        </Box>
-                    )}
-                </DialogContent>
-                <DialogActions sx={{ p: 2 }}>
-                    {selectedBookingForView && selectedBookingForView.status === 'pending' && (
-                        <Button
-                            variant="contained"
-                            color="success"
-                            onClick={() => {
-                                handleBookingStatusChange(selectedBookingForView._id, 'confirmed');
-                                setViewBookingDialogOpen(false);
-                            }}
-                        >
-                            Confirm Booking
-                        </Button>
-                    )}
-
-                    {(() => {
-                        if (!selectedBookingForView) return null;
-
-                        const tableId = selectedBookingForView.table?._id || (typeof selectedBookingForView.table === 'string' ? selectedBookingForView.table : null);
-                        const realTable = tables.find(t => t._id === tableId);
-                        const hasActiveOrder = !!realTable?.currentOrder;
-
-                        return (
-                            <>
-                                {selectedBookingForView.status === 'confirmed' && (!selectedBookingForView.checkedIn || !hasActiveOrder) && (
-                                    <Button
-                                        variant="contained"
-                                        color="primary"
-                                        onClick={() => {
-                                            handleCheckIn(selectedBookingForView._id);
-                                            setViewBookingDialogOpen(false);
-                                        }}
-                                    >
-                                        Check In
-                                    </Button>
-                                )}
-                                {selectedBookingForView.checkedIn && selectedBookingForView.status !== 'completed' && hasActiveOrder && (
-                                    <Button
-                                        variant="contained"
-                                        color="warning"
-                                        onClick={() => {
-                                            handleCheckIn(selectedBookingForView._id);
-                                            setViewBookingDialogOpen(false);
-                                        }}
-                                    >
-                                        Checkout
-                                    </Button>
-                                )}
-                            </>
-                        );
-                    })()}
-
-                    {selectedBookingForView && (selectedBookingForView.status === 'pending' || selectedBookingForView.status === 'confirmed') && (
-                        <Button
-                            variant="outlined"
-                            color="error"
-                            onClick={() => {
-                                handleBookingStatusChange(selectedBookingForView._id, 'cancelled');
-                                setViewBookingDialogOpen(false);
-                            }}
-                        >
-                            Cancel Booking
-                        </Button>
-                    )}
-                    <Button onClick={() => setViewBookingDialogOpen(false)}>Close</Button>
-                </DialogActions>
-            </Dialog>
+            <ViewBookingDialog
+                open={viewBookingDialogOpen}
+                onClose={() => setViewBookingDialogOpen(false)}
+                booking={selectedBookingForView}
+                tables={tables}
+                onStatusChange={handleBookingStatusChange}
+                onCheckIn={handleCheckIn}
+                getBookingStatusColor={getBookingStatusColor}
+                formatDate={formatDate}
+            />
 
             {/* Custom Delete Confirmation Dialog */}
             <Dialog
@@ -2324,7 +1517,6 @@ const TablesPage: React.FC = () => {
                                 if (!customLocations.includes(formatted)) {
                                     setCustomLocations(prev => [...prev, formatted]);
                                 }
-                                setNewTableLocation(formatted);
                                 if (editDialogOpen && selectedTable) {
                                     setSelectedTable({ ...selectedTable, location: formatted });
                                 }
@@ -2336,6 +1528,48 @@ const TablesPage: React.FC = () => {
                         disabled={!newLocationName.trim()}
                     >
                         Add
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Merge Tables Dialog */}
+            <Dialog
+                open={mergeDialogOpen}
+                onClose={() => setMergeDialogOpen(false)}
+                maxWidth="xs"
+                fullWidth
+            >
+                <DialogTitle>Merge Tables</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" sx={{ mb: 2 }}>
+                        Select the <strong>primary table</strong>. The order session will be linked to this table.
+                    </Typography>
+                    <FormControl fullWidth size="small">
+                        <InputLabel>Primary Table</InputLabel>
+                        <Select
+                            value={primaryTableId}
+                            label="Primary Table"
+                            onChange={(e) => setPrimaryTableId(e.target.value)}
+                        >
+                            {selectedTableIds.map(id => {
+                                const table = tables.find(t => t._id === id);
+                                return (
+                                    <MenuItem key={id} value={id}>
+                                        Table {table?.tableNumber} {table?.tableName ? `(${table.tableName})` : ''}
+                                    </MenuItem>
+                                );
+                            })}
+                        </Select>
+                    </FormControl>
+                </DialogContent>
+                <DialogActions sx={{ pb: 3, px: 3 }}>
+                    <Button onClick={() => setMergeDialogOpen(false)}>Cancel</Button>
+                    <Button
+                        onClick={handleMerge}
+                        variant="contained"
+                        disabled={!primaryTableId}
+                    >
+                        Merge {selectedTableIds.length} Tables
                     </Button>
                 </DialogActions>
             </Dialog>

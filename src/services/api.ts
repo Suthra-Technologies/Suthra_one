@@ -94,6 +94,9 @@ export const authAPI = {
   getPublicMenu: () => api.get('/menu/public'),
   resetPasswordWithToken: (token: string, newPassword: string) => api.post('/auth/reset-password', { token, newPassword }),
   forgotPassword: (email: string) => api.post('/auth/forgot-password', { email }),
+  getCustomerCards: () => api.get('/auth/customer/cards'),
+  saveCustomerCard: (cardData: any) => api.post('/auth/customer/cards', cardData),
+  deleteCustomerCard: (index: number) => api.delete(`/auth/customer/cards/${index}`),
 };
 
 
@@ -261,6 +264,8 @@ export const tablesAPI = {
   update: (id: string, tableData: any) => api.put(`/tables/${id}`, tableData),
   delete: (id: string) => api.delete(`/tables/${id}`),
   updateStatus: (id: string, status: string) => api.patch(`/tables/${id}/status`, { status }),
+  merge: (primaryId: string, secondaryIds: string[]) => api.post('/tables/merge', { primaryId, secondaryIds }),
+  unmerge: (primaryId: string) => api.post('/tables/unmerge', { primaryId }),
 };
 
 // -------------------- Inventory API --------------------

@@ -11,8 +11,17 @@ import {
     Select,
     MenuItem,
     InputLabel,
-    CircularProgress
+    CircularProgress,
+    Tooltip,
+    IconButton,
+    Chip,
+    Stack
 } from '@mui/material';
+import {
+    Link as LinkIcon,
+    LinkOff as LinkOffIcon,
+    TableRestaurant as GroupIcon
+} from '@mui/icons-material';
 import PhoneInput from '../../../components/PhoneInput';
 import AddressAutocomplete from '../../../components/AddressAutocomplete';
 
@@ -58,6 +67,8 @@ interface CustomerInfoSectionProps {
     settings: any;
     user: any;
     checkingDistance: boolean;
+    onOpenMerge: () => void;
+    onUnmerge: (table: any) => void;
 }
 
 const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
@@ -101,8 +112,23 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
     waiters,
     settings,
     user,
-    checkingDistance
+    checkingDistance,
+    onOpenMerge,
+    onUnmerge
 }) => {
+    const mergedGroup = React.useMemo(() => {
+        if (!selectedTable || (!selectedTable.isPrimary && !selectedTable.mergedWith)) return null;
+
+        const primaryId = selectedTable.isPrimary ? selectedTable._id : selectedTable.mergedWith;
+        const primary = tables.find(t => t._id === primaryId);
+        const secondaries = tables.filter(t => t.mergedWith === primaryId);
+
+        return {
+            primary,
+            secondaries
+        };
+    }, [selectedTable, tables]);
+
     return (
         <Box sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1, mb: 2 }}>
             <Typography variant="subtitle1" gutterBottom>
@@ -285,12 +311,35 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                 >
                                     {tables.map((t) => (
                                         <MenuItem key={t._id} value={t._id}>
-                                            Table {t.tableNumber} {t.status !== 'available' ? `(${t.status})` : ''}
+                                            Table {t.tableNumber} (Cap: {t.capacity}) 
+                                            {t.status !== 'available' ? ` (${t.status})` : ''}
+                                            {(t.isPrimary || t.isMerged) ? ' (Merged)' : ''}
                                         </MenuItem>
                                     ))}
                                 </Select>
                                 {tableError && <Typography variant="caption" color="error">{tableError}</Typography>}
                             </FormControl>
+                            {(selectedTable?.isMerged || selectedTable?.isPrimary) ? (
+                                <Tooltip title="Unmerge Tables">
+                                    <IconButton
+                                        color="error"
+                                        onClick={() => onUnmerge && onUnmerge(selectedTable)}
+                                        sx={{ bgcolor: 'error.lighter', '&:hover': { bgcolor: 'error.light' } }}
+                                    >
+                                        <LinkOffIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            ) : (
+                                <Tooltip title="Merge Tables">
+                                    <IconButton
+                                        color="primary"
+                                        onClick={onOpenMerge}
+                                        sx={{ bgcolor: 'primary.lighter', '&:hover': { bgcolor: 'primary.light' } }}
+                                    >
+                                        <LinkIcon />
+                                    </IconButton>
+                                </Tooltip>
+                            )}
                             <FormControl size="small" fullWidth>
                                 <InputLabel>Waiter</InputLabel>
                                 <Select
@@ -307,6 +356,35 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                             </FormControl>
                         </Box>
                     </Box>
+
+                    {mergedGroup && (
+                        <Box sx={{ mt: 1, p: 1, bgcolor: 'action.hover', borderRadius: 1 }}>
+                            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                                <GroupIcon fontSize="small" color="action" />
+                                <Typography variant="caption" fontWeight="bold" sx={{ mr: 1 }}>
+                                    Merged Group:
+                                </Typography>
+                                {mergedGroup.primary && (
+                                    <Tooltip title="Primary Table">
+                                        <Chip
+                                            label={`Table ${mergedGroup.primary.tableNumber}`}
+                                            size="small"
+                                            color="primary"
+                                            variant="filled"
+                                        />
+                                    </Tooltip>
+                                )}
+                                {mergedGroup.secondaries.map(st => (
+                                    <Chip
+                                        key={st._id}
+                                        label={`Table ${st.tableNumber}`}
+                                        size="small"
+                                        variant="outlined"
+                                    />
+                                ))}
+                            </Stack>
+                        </Box>
+                    )}
                 </Box>
             )}
 

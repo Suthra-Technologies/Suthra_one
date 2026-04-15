@@ -38,8 +38,8 @@ import {
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
-import { menuAPI, ordersAPI } from '../../services/api';
 import { useSettings } from '../../context/SettingsContext';
+import { useActiveTenant } from '../../hooks/useActiveTenant';
 
 interface MenuItem {
     _id: string;
@@ -58,7 +58,7 @@ interface CartItem extends MenuItem {
 }
 
 const GuestPOSPage: React.FC = () => {
-    const { slug } = useParams<{ slug: string }>();
+    const { slug, getRelativePath } = useActiveTenant();
     const navigate = useNavigate();
     const theme = useTheme();
     const { formatCurrency } = useSettings();
@@ -395,7 +395,7 @@ const GuestPOSPage: React.FC = () => {
                         variant="outlined"
                         color="primary"
                         startIcon={<LoginIcon />}
-                        onClick={() => navigate(`/${slug}/login`)}
+                        onClick={() => navigate(getRelativePath('/login'))}
                         sx={{ mr: 2 }}
                     >
                         Login

@@ -45,6 +45,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from 'src/context/AuthContext';
 import { useNotifications } from 'src/context/NotificationProvider';
 import { useSettings } from 'src/context/SettingsContext';
+import { useActiveTenant } from 'src/hooks/useActiveTenant';
 import { settingsAPI, tenantAPI } from 'src/services/api';
 import AddRestaurantDialog from './AddRestaurantDialog';
 import NotificationPanel from './NotificationPanel';
@@ -346,9 +347,9 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout, isLoading, availableTenants, switchTenant, tenantSlug: authTenantSlug, activeRole } = useAuth(); // Added availableTenants, switchTenant, tenantSlug
-  const { slug: urlSlug } = useParams<{ slug: string }>();
-  const tenantSlug = authTenantSlug || urlSlug;
+  const { user, logout, isLoading, availableTenants, switchTenant, activeRole } = useAuth(); // Added availableTenants, switchTenant, tenantSlug
+  const { slug, isSubdomain, getRelativePath } = useActiveTenant();
+  const tenantSlug = slug;
   const { notifications } = useNotifications();
   const { settings, updateSettings } = useSettings();
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -402,12 +403,12 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
 
   const handleProfile = () => {
     handleProfileMenuClose();
-    navigate('profile');
+    navigate(getRelativePath('/profile'));
   };
 
   const handleSettings = () => {
     handleProfileMenuClose();
-    navigate('settings');
+    navigate(getRelativePath('/settings'));
   };
   const handleNotificationToggle = () => {
     setNotificationOpen(!notificationOpen);
@@ -585,7 +586,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
               <Button
                 variant="contained"
                 size="small"
-                onClick={() => navigate(tenantSlug ? `/${tenantSlug}/register` : '/register', { state: { from: location.pathname } })}
+                onClick={() => navigate(getRelativePath('/register'), { state: { from: location.pathname } })}
                 sx={{
                   ml: 1,
                   borderRadius: '20px',

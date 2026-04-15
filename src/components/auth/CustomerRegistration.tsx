@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 import {
   Box,
   Card,
@@ -57,6 +58,7 @@ interface CustomerRegistrationProps {
 }
 
 const CustomerRegistration: React.FC<CustomerRegistrationProps> = ({ onClose, onSuccess }) => {
+  const { slug } = useParams<{ slug: string }>();
   const { login } = useAuth();
   const { settings } = useSettings();
   const [activeStep, setActiveStep] = useState(0);
@@ -147,11 +149,17 @@ const CustomerRegistration: React.FC<CustomerRegistrationProps> = ({ onClose, on
         dialCode: formData.dialCode,
         dietaryRestrictions: formData.dietaryRestrictions,
         spiceLevel: formData.spiceLevel,
-        defaultDeliveryAddress: formData.defaultDeliveryAddress
+        defaultDeliveryAddress: formData.defaultDeliveryAddress,
+        tenantSlug: slug
       };
       const response = await customerRegister(registrationData);
       if (response.data) {
-        await login(response.data);
+        // Log in the user immediately after successful registration
+        await login({ 
+          email: formData.email, 
+          password: formData.password, 
+          tenantSlug: slug 
+        });
         onSuccess && onSuccess(response.data);
       }
     } catch (err: any) {

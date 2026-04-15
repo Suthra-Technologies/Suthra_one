@@ -170,7 +170,7 @@ const CateringManagementPage = () => {
                     to_state: newOrder.state,
                     to_city: newOrder.city,
                     to_street: newOrder.address,
-                    totalDiscount: discountAmt,
+                    discount: discountAmt,
                     line_items: newOrder.items.map(item => ({
                         itemId: item.menuItem,
                         quantity: item.quantity,

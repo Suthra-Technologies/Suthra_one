@@ -50,7 +50,7 @@ import {
     WhatsApp as WhatsAppIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { vendorsAPI } from '../../services/api';
+import { vendorsAPI, inventoryAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
 import PhoneInput from 'src/components/PhoneInput';
@@ -59,6 +59,7 @@ interface Vendor {
     _id: string;
     name: string;
     contact: string;
+    dialCode?: string;
     email: string;
     address: string;
     gstNumber?: string;
@@ -108,6 +109,7 @@ const VendorsPage: React.FC = () => {
         name: '',
         shopName: '',
         contact: '',
+        dialCode: '1',
         email: '',
         address: '',
         gstNumber: '',
@@ -179,11 +181,11 @@ const VendorsPage: React.FC = () => {
                 panNumber: vendor.panNumber || '',
                 categories: vendor.categories || ['raw_materials'],
                 notes: vendor.notes || '',
-                bankDetails: vendor.bankDetails || {
-                    accountName: '',
-                    accountNumber: '',
-                    bankName: '',
-                    ifscCode: '',
+                bankDetails: {
+                    accountName: vendor.bankDetails?.accountName || '',
+                    accountNumber: vendor.bankDetails?.accountNumber || '',
+                    bankName: vendor.bankDetails?.bankName || '',
+                    ifscCode: vendor.bankDetails?.ifscCode || '',
                 },
             });
         } else {
@@ -312,6 +314,28 @@ const VendorsPage: React.FC = () => {
         }
     };
 
+    const handleReorderItemChange = (itemId: string, field: string, value: any) => {
+        setReorderItems(prev => prev.map(item => 
+            item.itemId === itemId ? { ...item, [field]: value } : item
+        ));
+    };
+
+    const handleSaveReorderSettings = async () => {
+        try {
+            setReorderLoading(true);
+            // Specifically save reorder levels back to inventory
+            await Promise.all(reorderItems.map(item => 
+                inventoryAPI.update(item.itemId, { reorderLevel: item.reorderLevel })
+            ));
+            toast.success('Inventory reorder levels updated successfully');
+        } catch (error) {
+            console.error('Failed to save reorder levels:', error);
+            toast.error('Failed to save some reorder levels');
+        } finally {
+            setReorderLoading(false);
+        }
+    };
+
     const handleCreatePOFromReorder = () => {
         if (!selectedVendor || reorderItems.length === 0) return;
 
@@ -345,9 +369,12 @@ const VendorsPage: React.FC = () => {
     const handleEmailReorder = () => {
         if (!selectedVendor || reorderItems.length === 0) return;
         
+        const restaurantName = settings?.restaurant?.restaurantName || settings?.restaurant?.name || 'our restaurant';
+        const dateStr = new Date().toLocaleDateString();
+        
         const itemBody = reorderItems.map(item => `- ${item.name}: ${item.lastOrderQuantity} ${item.unit}`).join('\n');
-        const subject = encodeURIComponent(`Reorder Request - ${new Date().toLocaleDateString()}`);
-        const body = encodeURIComponent(`Hi ${selectedVendor.name},\n\nI would like to place an order for the following items:\n\n${itemBody}\n\nPlease confirm receipt and let me know the availability.\n\nBest regards.`);
+        const subject = encodeURIComponent(`Reorder Request from ${restaurantName} - ${dateStr}`);
+        const body = encodeURIComponent(`Hi ${selectedVendor.name},\n\nThis is ${restaurantName}. I would like to place an order for the following items on ${dateStr}:\n\n${itemBody}\n\nPlease confirm receipt and let me know the availability.\n\nBest regards,\n${restaurantName}`);
         
         window.location.href = `mailto:${selectedVendor.email || ''}?subject=${subject}&body=${body}`;
     };
@@ -355,8 +382,11 @@ const VendorsPage: React.FC = () => {
     const handleWhatsAppReorder = () => {
         if (!selectedVendor || reorderItems.length === 0) return;
         
+        const restaurantName = settings?.restaurant?.restaurantName || settings?.restaurant?.name || 'our restaurant';
+        const dateStr = new Date().toLocaleDateString();
+        
         const itemBody = reorderItems.map(item => `* ${item.name}: ${item.lastOrderQuantity} ${item.unit}`).join('%0A');
-        const text = encodeURIComponent(`*Reorder Request*\n\nHi ${selectedVendor.name},\n\nI would like to place an order for the following items:\n${itemBody}`);
+        const text = encodeURIComponent(`*Reorder Request from ${restaurantName}*\n_Date: ${dateStr}_\n\nHi ${selectedVendor.name},\n\nI would like to place an order for the following items:\n${itemBody}\n\nPlease confirm receipt.\n\nBest regards,\n*${restaurantName}*`);
         
         const phoneNumber = selectedVendor.contact?.replace(/\D/g, '');
         window.open(`https://wa.me/${phoneNumber}?text=${text}`, '_blank');
@@ -555,7 +585,12 @@ const VendorsPage: React.FC = () => {
                                             sx={{ cursor: 'pointer', textTransform: 'capitalize' }}
                                         />
                                     </TableCell>
-                                    <TableCell align="center">
+                                     <TableCell align="center">
+                                        <Tooltip title="Edit">
+                                            <IconButton onClick={() => handleOpenDialog(vendor)} size="small">
+                                                <EditIcon />
+                                            </IconButton>
+                                        </Tooltip>
                                         <Tooltip title="Reorder Needed Items">
                                             <IconButton 
                                                 onClick={() => handleReorderClick(vendor)} 
@@ -563,11 +598,6 @@ const VendorsPage: React.FC = () => {
                                                 sx={{ color: 'warning.main' }}
                                             >
                                                 <InventoryIcon />
-                                            </IconButton>
-                                        </Tooltip>
-                                        <Tooltip title="Edit">
-                                            <IconButton onClick={() => handleOpenDialog(vendor)} size="small">
-                                                <EditIcon />
                                             </IconButton>
                                         </Tooltip>
                                         <Tooltip title="Delete">
@@ -866,13 +896,13 @@ const VendorsPage: React.FC = () => {
                         </Typography>
                     ) : (
                         <TableContainer>
-                            <Table size="small">
+                                <Table size="small">
                                 <TableHead>
                                     <TableRow>
                                         <TableCell>Item Name</TableCell>
                                         <TableCell align="right">Current Stock</TableCell>
-                                        <TableCell align="right">Reorder Level</TableCell>
-                                        <TableCell align="right">Default Qty (Last Order)</TableCell>
+                                        <TableCell align="right" sx={{ width: 120 }}>Reorder Level</TableCell>
+                                        <TableCell align="right" sx={{ width: 140 }}>Order Qty</TableCell>
                                         <TableCell align="right">Unit</TableCell>
                                     </TableRow>
                                 </TableHead>
@@ -880,12 +910,34 @@ const VendorsPage: React.FC = () => {
                                     {reorderItems.map((item) => (
                                         <TableRow key={item.itemId}>
                                             <TableCell sx={{ fontWeight: 'medium' }}>{item.name}</TableCell>
-                                            <TableCell align="right" sx={{ color: 'error.main', fontWeight: 'bold' }}>
+                                            <TableCell align="right" sx={{ color: item.currentStock <= item.reorderLevel ? 'error.main' : 'text.primary', fontWeight: 'bold' }}>
                                                 {item.currentStock}
                                             </TableCell>
-                                            <TableCell align="right">{item.reorderLevel}</TableCell>
-                                            <TableCell align="right" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
-                                                {item.lastOrderQuantity}
+                                            <TableCell align="right">
+                                                <TextField
+                                                    size="small"
+                                                    type="number"
+                                                    value={item.reorderLevel}
+                                                    onChange={(e) => handleReorderItemChange(item.itemId, 'reorderLevel', parseFloat(e.target.value) || 0)}
+                                                    InputProps={{ inputProps: { min: 0, style: { textAlign: 'right' } } }}
+                                                    sx={{ width: 80 }}
+                                                />
+                                            </TableCell>
+                                            <TableCell align="right">
+                                                <TextField
+                                                    size="small"
+                                                    type="number"
+                                                    value={item.lastOrderQuantity}
+                                                    onChange={(e) => handleReorderItemChange(item.itemId, 'lastOrderQuantity', parseFloat(e.target.value) || 0)}
+                                                    InputProps={{ inputProps: { min: 1, style: { textAlign: 'right' } } }}
+                                                    sx={{ 
+                                                        width: 100,
+                                                        '& .MuiInputBase-input': { 
+                                                            color: 'primary.main', 
+                                                            fontWeight: 'bold' 
+                                                        }
+                                                    }}
+                                                />
                                             </TableCell>
                                             <TableCell align="right">{item.unit}</TableCell>
                                         </TableRow>
@@ -897,8 +949,17 @@ const VendorsPage: React.FC = () => {
                 </DialogContent>
                 <DialogActions sx={{ p: 2, gap: 1 }}>
                     <Button onClick={() => setReorderDialogOpen(false)}>Close</Button>
-                    {reorderItems.length > 0 && (
+                     {reorderItems.length > 0 && (
                         <>
+                            <Button 
+                                variant="outlined"
+                                color="warning"
+                                startIcon={reorderLoading ? <CircularProgress size={20} /> : <EditIcon />}
+                                onClick={handleSaveReorderSettings}
+                                disabled={reorderLoading}
+                            >
+                                Save Levels
+                            </Button>
                             <Button 
                                 variant="outlined" 
                                 color="info" 
