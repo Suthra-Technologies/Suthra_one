@@ -2698,10 +2698,10 @@ const SettingsPage: React.FC = () => {
                             </Grid>
                         </Grid>
 
-
+{/* 
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 1 }} />
-                        </Grid>
+                        </Grid> */}
 
                         {/* 
                         <Grid size={{ xs: 12 }}>

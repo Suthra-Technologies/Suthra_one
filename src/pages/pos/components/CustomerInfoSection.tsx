@@ -254,213 +254,216 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                     />
                 </Grid>
             </Grid>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mb: 2 }}>
-                <FormControl component="fieldset" sx={{ alignItems: 'center' }}>
-                    <Typography variant="body2" gutterBottom fontWeight="bold">
-                        Order Type
-                    </Typography>
-                    <RadioGroup
-                        value={orderType}
-                        onChange={(e) => setOrderType(e.target.value as any)}
-                        sx={{ flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'center' }}
-                    >
-                        <FormControlLabel value="dine_in" control={<Radio size="small" />} label="Dine‑In" />
-                        <FormControlLabel value="takeaway" control={<Radio size="small" />} label="Takeaway" />
-                        {/* <FormControlLabel value="delivery" control={<Radio size="small" />} label="Delivery" /> */}
-                    </RadioGroup>
-                </FormControl>
-
-                {orderType !== 'dine_in' && (
+            <Box sx={{ mb: 2 }}>
+                {/* Order Type & Payment Method */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mb: 2 }}>
                     <FormControl component="fieldset" sx={{ alignItems: 'center' }}>
                         <Typography variant="body2" gutterBottom fontWeight="bold">
-                            Payment Method
+                            Order Type
                         </Typography>
                         <RadioGroup
-                            value={paymentMethod}
-                            onChange={(e) => setPaymentMethod(e.target.value as any)}
+                            value={orderType}
+                            onChange={(e) => setOrderType(e.target.value as any)}
                             sx={{ flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'center' }}
                         >
-                            {(settings.system?.posPaymentMethods?.cash ?? true) && (
-                                <FormControlLabel value="cash" control={<Radio size="small" />} label="Cash" />
-                            )}
-                            {(settings.system?.posPaymentMethods?.card ?? true) && (
-                                <FormControlLabel value="card" control={<Radio size="small" />} label="Card" />
-                            )}
-                            {(settings.system?.posPaymentMethods?.zelle ?? true) && (
-                                <FormControlLabel value="zelle" control={<Radio size="small" />} label="Zelle" />
-                            )}
-                            {(settings.system?.posPaymentMethods?.venmo ?? true) && (
-                                <FormControlLabel value="venmo" control={<Radio size="small" />} label="Venmo" />
-                            )}
+                            <FormControlLabel value="dine_in" control={<Radio size="small" />} label="Dine‑In" />
+                            <FormControlLabel value="takeaway" control={<Radio size="small" />} label="Takeaway" />
+                            {/* <FormControlLabel value="delivery" control={<Radio size="small" />} label="Delivery" /> */}
                         </RadioGroup>
                     </FormControl>
-                )}
-            </Box>
 
-            {/* Discount & Coupon — shown after Order Type */}
-            <Box sx={{ display: 'flex', gap: 1, mb: 2, alignItems: 'center', flexWrap: 'wrap' }}>
-                {user?.role !== 'customer' && (
-                    <TextField
-                        label="Disc %"
-                        type="number"
-                        size="small"
-                        value={discountPercent}
-                        onChange={(e) => setDiscountPercent(Math.max(0, Number(e.target.value)))}
-                        sx={{ width: '90px' }}
-                        inputProps={{ min: 0 }}
-                    />
-                )}
-                <Box sx={{ display: 'flex', gap: 1, flexGrow: 1 }}>
-                    <TextField
-                        label="Coupon Code"
-                        size="small"
-                        value={couponCode}
-                        onChange={(e) => setCouponCode(e.target.value)}
-                        sx={{ flexGrow: 1 }}
-                        onKeyDown={(e) => { if (e.key === 'Enter') onValidateCoupon(); }}
-                    />
-                    <Button
-                        variant="outlined"
-                        onClick={onValidateCoupon}
-                        size="small"
-                        sx={{ whiteSpace: 'nowrap', minWidth: 60 }}
-                    >
-                        Apply
-                    </Button>
-                </Box>
-            </Box>
-
-            {/* Available coupon hints — only shown when cart total meets minimum */}
-            {(() => {
-                const qualifiedCoupons = availableCoupons.filter(
-                    (c: any) => !c.minBillAmount || cartTotal >= c.minBillAmount
-                );
-                return qualifiedCoupons.length > 0 && !couponCode ? (
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5, alignItems: 'center' }}>
-                        <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>
-                            Available:
-                        </Typography>
-                        {qualifiedCoupons.slice(0, 4).map((c: any) => (
-                            <Chip
-                                key={c._id}
-                                label={c.code}
-                                size="small"
-                                variant="outlined"
-                                color="primary"
-                                onClick={() => setCouponCode(c.code)}
-                                sx={{ fontSize: '0.7rem', cursor: 'pointer', fontWeight: 'bold' }}
-                            />
-                        ))}
-                    </Box>
-                ) : null;
-            })()}
-
-            {/* Dine‑in specific */}
-            {orderType === 'dine_in' && (
-                <Box sx={{ mb: 2 }}>
-                    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', mb: 2, gap: 2 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: { xs: '100%', sm: 'auto' } }}>
-                            <Typography variant="body2">Number of Guests:</Typography>
-                            <TextField
-                                type="number"
-                                size="small"
-                                value={guestCount}
-                                onChange={(e) => setGuestCount(parseInt(e.target.value) || 1)}
-                                sx={{ width: '70px' }}
-                                inputProps={{ min: 1 }}
-                            />
-                        </Box>
-                        <Box sx={{ display: 'flex', gap: 2, flexGrow: 1, width: { xs: '100%', sm: 'auto' } }}>
-                            <FormControl size="small" fullWidth error={!!tableError}>
-                                <InputLabel>Table</InputLabel>
-                                <Select
-                                    value={selectedTable?._id || ''}
-                                    label="Table"
-                                    onChange={(e) => {
-                                        const table = tables.find(t => t._id === e.target.value);
-                                        setSelectedTable(table);
-                                        setTableNumber(table?.tableNumber || '');
-                                        setTableError('');
-                                    }}
-                                >
-                                    {tables.map((t) => (
-                                        <MenuItem key={t._id} value={t._id}>
-                                            Table {t.tableNumber} (Cap: {t.capacity}) 
-                                            {t.status !== 'available' ? ` (${t.status})` : ''}
-                                            {(t.isPrimary || t.isMerged) ? ' (Merged)' : ''}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                                {tableError && <Typography variant="caption" color="error">{tableError}</Typography>}
-                            </FormControl>
-                            {(selectedTable?.isMerged || selectedTable?.isPrimary) ? (
-                                <Tooltip title="Unmerge Tables">
-                                    <IconButton
-                                        color="error"
-                                        onClick={() => onUnmerge && onUnmerge(selectedTable)}
-                                        sx={{ bgcolor: 'error.lighter', '&:hover': { bgcolor: 'error.light' } }}
-                                    >
-                                        <LinkOffIcon />
-                                    </IconButton>
-                                </Tooltip>
-                            ) : (
-                                <Tooltip title="Merge Tables">
-                                    <IconButton
-                                        color="primary"
-                                        onClick={onOpenMerge}
-                                        sx={{ bgcolor: 'primary.lighter', '&:hover': { bgcolor: 'primary.light' } }}
-                                    >
-                                        <LinkIcon />
-                                    </IconButton>
-                                </Tooltip>
-                            )}
-                            <FormControl size="small" fullWidth>
-                                <InputLabel>Waiter</InputLabel>
-                                <Select
-                                    value={waiterName}
-                                    label="Waiter"
-                                    onChange={(e) => setWaiterName(e.target.value)}
-                                >
-                                    {waiters.map((w) => (
-                                        <MenuItem key={w._id} value={w.name || w.fullName || w.username}>
-                                            {w.name || w.fullName || w.username}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-                        </Box>
-                    </Box>
-
-                    {mergedGroup && (
-                        <Box sx={{ mt: 1, p: 1, bgcolor: 'action.hover', borderRadius: 1 }}>
-                            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                                <GroupIcon fontSize="small" color="action" />
-                                <Typography variant="caption" fontWeight="bold" sx={{ mr: 1 }}>
-                                    Merged Group:
-                                </Typography>
-                                {mergedGroup.primary && (
-                                    <Tooltip title="Primary Table">
-                                        <Chip
-                                            label={`Table ${mergedGroup.primary.tableNumber}`}
-                                            size="small"
-                                            color="primary"
-                                            variant="filled"
-                                        />
-                                    </Tooltip>
+                    {orderType !== 'dine_in' && (
+                        <FormControl component="fieldset" sx={{ alignItems: 'center' }}>
+                            <Typography variant="body2" gutterBottom fontWeight="bold">
+                                Payment Method
+                            </Typography>
+                            <RadioGroup
+                                value={paymentMethod}
+                                onChange={(e) => setPaymentMethod(e.target.value as any)}
+                                sx={{ flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'center' }}
+                            >
+                                {(settings.system?.posPaymentMethods?.cash ?? true) && (
+                                    <FormControlLabel value="cash" control={<Radio size="small" />} label="Cash" />
                                 )}
-                                {mergedGroup.secondaries.map(st => (
-                                    <Chip
-                                        key={st._id}
-                                        label={`Table ${st.tableNumber}`}
-                                        size="small"
-                                        variant="outlined"
-                                    />
-                                ))}
-                            </Stack>
-                        </Box>
+                                {(settings.system?.posPaymentMethods?.card ?? true) && (
+                                    <FormControlLabel value="card" control={<Radio size="small" />} label="Card" />
+                                )}
+                                {(settings.system?.posPaymentMethods?.zelle ?? true) && (
+                                    <FormControlLabel value="zelle" control={<Radio size="small" />} label="Zelle" />
+                                )}
+                                {(settings.system?.posPaymentMethods?.venmo ?? true) && (
+                                    <FormControlLabel value="venmo" control={<Radio size="small" />} label="Venmo" />
+                                )}
+                            </RadioGroup>
+                        </FormControl>
                     )}
                 </Box>
-            )}
+
+                {/* Dine-in specific — guests, table, waiter (shown between Order Type and Coupon) */}
+                {orderType === 'dine_in' && (
+                    <Box sx={{ mb: 2 }}>
+                        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between', mb: 2, gap: 2 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: { xs: '100%', sm: 'auto' } }}>
+                                <Typography variant="body2">Number of Guests:</Typography>
+                                <TextField
+                                    type="number"
+                                    size="small"
+                                    value={guestCount}
+                                    onChange={(e) => setGuestCount(parseInt(e.target.value) || 1)}
+                                    sx={{ width: '70px' }}
+                                    inputProps={{ min: 1 }}
+                                />
+                            </Box>
+                            <Box sx={{ display: 'flex', gap: 2, flexGrow: 1, width: { xs: '100%', sm: 'auto' } }}>
+                                <FormControl size="small" fullWidth error={!!tableError}>
+                                    <InputLabel>Table</InputLabel>
+                                    <Select
+                                        value={selectedTable?._id || ''}
+                                        label="Table"
+                                        onChange={(e) => {
+                                            const table = tables.find(t => t._id === e.target.value);
+                                            setSelectedTable(table);
+                                            setTableNumber(table?.tableNumber || '');
+                                            setTableError('');
+                                        }}
+                                    >
+                                        {tables.map((t) => (
+                                            <MenuItem key={t._id} value={t._id}>
+                                                Table {t.tableNumber} (Cap: {t.capacity})
+                                                {t.status !== 'available' ? ` (${t.status})` : ''}
+                                                {(t.isPrimary || t.isMerged) ? ' (Merged)' : ''}
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                    {tableError && <Typography variant="caption" color="error">{tableError}</Typography>}
+                                </FormControl>
+                                {(selectedTable?.isMerged || selectedTable?.isPrimary) ? (
+                                    <Tooltip title="Unmerge Tables">
+                                        <IconButton
+                                            color="error"
+                                            onClick={() => onUnmerge && onUnmerge(selectedTable)}
+                                            sx={{ bgcolor: 'error.lighter', '&:hover': { bgcolor: 'error.light' } }}
+                                        >
+                                            <LinkOffIcon />
+                                        </IconButton>
+                                    </Tooltip>
+                                ) : (
+                                    <Tooltip title="Merge Tables">
+                                        <IconButton
+                                            color="primary"
+                                            onClick={onOpenMerge}
+                                            sx={{ bgcolor: 'primary.lighter', '&:hover': { bgcolor: 'primary.light' } }}
+                                        >
+                                            <LinkIcon />
+                                        </IconButton>
+                                    </Tooltip>
+                                )}
+                                <FormControl size="small" fullWidth>
+                                    <InputLabel>Waiter</InputLabel>
+                                    <Select
+                                        value={waiterName}
+                                        label="Waiter"
+                                        onChange={(e) => setWaiterName(e.target.value)}
+                                    >
+                                        {waiters.map((w) => (
+                                            <MenuItem key={w._id} value={w.name || w.fullName || w.username}>
+                                                {w.name || w.fullName || w.username}
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </Box>
+                        </Box>
+
+                        {mergedGroup && (
+                            <Box sx={{ mt: 1, p: 1, bgcolor: 'action.hover', borderRadius: 1 }}>
+                                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                                    <GroupIcon fontSize="small" color="action" />
+                                    <Typography variant="caption" fontWeight="bold" sx={{ mr: 1 }}>
+                                        Merged Group:
+                                    </Typography>
+                                    {mergedGroup.primary && (
+                                        <Tooltip title="Primary Table">
+                                            <Chip
+                                                label={`Table ${mergedGroup.primary.tableNumber}`}
+                                                size="small"
+                                                color="primary"
+                                                variant="filled"
+                                            />
+                                        </Tooltip>
+                                    )}
+                                    {mergedGroup.secondaries.map(st => (
+                                        <Chip
+                                            key={st._id}
+                                            label={`Table ${st.tableNumber}`}
+                                            size="small"
+                                            variant="outlined"
+                                        />
+                                    ))}
+                                </Stack>
+                            </Box>
+                        )}
+                    </Box>
+                )}
+
+                {/* Discount & Coupon — always below Order Type (and Tables if dine-in) */}
+                <Box sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                    {user?.role !== 'customer' && (
+                        <TextField
+                            label="Disc %"
+                            type="number"
+                            size="small"
+                            value={discountPercent}
+                            onChange={(e) => setDiscountPercent(Math.max(0, Number(e.target.value)))}
+                            sx={{ width: '90px' }}
+                            inputProps={{ min: 0 }}
+                        />
+                    )}
+                    <Box sx={{ display: 'flex', gap: 1, flexGrow: 1 }}>
+                        <TextField
+                            label="Coupon Code"
+                            size="small"
+                            value={couponCode}
+                            onChange={(e) => setCouponCode(e.target.value)}
+                            sx={{ flexGrow: 1 }}
+                            onKeyDown={(e) => { if (e.key === 'Enter') onValidateCoupon(); }}
+                        />
+                        <Button
+                            variant="outlined"
+                            onClick={onValidateCoupon}
+                            size="small"
+                            sx={{ whiteSpace: 'nowrap', minWidth: 60 }}
+                        >
+                            Apply
+                        </Button>
+                    </Box>
+                </Box>
+
+                {/* Available coupon hints — only when cart total meets minimum */}
+                {(() => {
+                    const qualifiedCoupons = availableCoupons.filter(
+                        (c: any) => !c.minBillAmount || cartTotal >= c.minBillAmount
+                    );
+                    return qualifiedCoupons.length > 0 && !couponCode ? (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>
+                                Available:
+                            </Typography>
+                            {qualifiedCoupons.slice(0, 4).map((c: any) => (
+                                <Chip
+                                    key={c._id}
+                                    label={c.code}
+                                    size="small"
+                                    variant="outlined"
+                                    color="primary"
+                                    onClick={() => setCouponCode(c.code)}
+                                    sx={{ fontSize: '0.7rem', cursor: 'pointer', fontWeight: 'bold' }}
+                                />
+                            ))}
+                        </Box>
+                    ) : null;
+                })()}
+            </Box>
 
             {/* Delivery address */}
             {orderType === 'delivery' && (
