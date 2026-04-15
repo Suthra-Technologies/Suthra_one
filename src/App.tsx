@@ -1,4 +1,4 @@
-import { Box, Button, CssBaseline, Paper, ThemeProvider, Typography, useMediaQuery } from '@mui/material';
+import { Box, Button, CircularProgress, CssBaseline, Paper, ThemeProvider, Typography, useMediaQuery } from '@mui/material';
 import React, { useMemo } from 'react';
 import { Navigate, Route, BrowserRouter as Router, Routes, useParams, useLocation } from 'react-router-dom';
 import CustomerLayout from './components/CustomerLayout';
@@ -208,15 +208,32 @@ const SubdomainRedirect: React.FC<{ contextSlug: string }> = ({ contextSlug }) =
   const { slug } = useParams<{ slug: string }>();
   const location = useLocation();
 
+  const redirectContent = (path: string) => (
+    <Box sx={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      alignItems: 'center', 
+      justifyContent: 'center', 
+      height: '100vh', 
+      bgcolor: '#f8f9fa' 
+    }}>
+      <CircularProgress size={40} sx={{ mb: 2, color: '#4F46E5' }} />
+      <Typography variant="body2" color="text.secondary" fontWeight="medium">
+        Redirecting...
+      </Typography>
+      <Navigate to={path} replace />
+    </Box>
+  );
+
   if (slug === contextSlug) {
-    // Remove the slug from the path
-    const newPath = location.pathname.replace(`/${slug}`, '') || '/';
-    return <Navigate to={newPath} replace />;
+    // Remove the slug from the path but preserve query parameters
+    const newPath = (location.pathname.replace(`/${slug}`, '') || '/') + location.search;
+    return redirectContent(newPath);
   }
 
-  // If the slug doesn't match the subdomain, they might be trying to access another tenant from this subdomain
-  // This is technically an error/cross-tenant access. For now, just allow or redirect to home.
-  return <Navigate to="/" replace />;
+  // If the slug doesn't match the subdomain, fallback redirect
+  const fallbackPath = "/" + location.search;
+  return redirectContent(fallbackPath);
 };
 
 export default App;

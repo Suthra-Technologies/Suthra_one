@@ -10,32 +10,32 @@ export const ORDER_WORKFLOWS: Record<string, OrderWorkflow> = {
     dine_in: {
         type: 'dine_in',
         label: 'Dine In',
-        statuses: ['pending', 'confirmed', 'preparing', 'ready', 'approved', 'served', 'completed', 'cancelled']
+        statuses: ['pending', 'confirmed', 'preparing', 'in-progress', 'ready', 'served', 'completed', 'cancelled']
     },
     takeaway: {
         type: 'takeaway',
         label: 'Takeaway',
-        statuses: ['pending', 'confirmed', 'preparing', 'ready_to_takeaway', 'completed', 'cancelled']
+        statuses: ['pending', 'confirmed', 'preparing', 'in-progress', 'ready_to_takeaway', 'completed', 'cancelled']
     },
     online_takeaway: {
         type: 'online_takeaway',
         label: 'Online Takeaway',
-        statuses: ['pending', 'confirmed', 'preparing', 'ready_to_pickup', 'completed', 'cancelled']
+        statuses: ['pending', 'confirmed', 'preparing', 'in-progress', 'ready_to_pickup', 'completed', 'cancelled']
     },
     global_dine_in: {
         type: 'global_dine_in',
         label: 'Online Dine In',
-        statuses: ['pending', 'confirmed', 'preparing', 'ready', 'approved', 'served', 'completed', 'cancelled']
+        statuses: ['pending', 'confirmed', 'preparing', 'in-progress', 'ready', 'served', 'completed', 'cancelled']
     },
     global_takeaway: {
         type: 'global_takeaway',
         label: 'Online Takeaway',
-        statuses: ['pending', 'confirmed', 'preparing', 'ready_to_takeaway', 'completed', 'cancelled']
+        statuses: ['pending', 'confirmed', 'preparing', 'in-progress', 'ready_to_takeaway', 'completed', 'cancelled']
     },
     delivery: {
         type: 'delivery',
         label: 'Online Delivery',
-        statuses: ['pending', 'confirmed', 'preparing', 'ready_to_pickup', 'on_the_way', 'delivered', 'completed', 'cancelled']
+        statuses: ['pending', 'confirmed', 'preparing', 'in-progress', 'ready_to_pickup', 'on_the_way', 'delivered', 'completed', 'cancelled']
     }
 };
 

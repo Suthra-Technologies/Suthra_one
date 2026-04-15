@@ -176,6 +176,18 @@ const BookingsAdminPage: React.FC = () => {
         setPage(0);
     };
 
+    const preventScientificNotation = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (['e', 'E', '.', '-', '+'].includes(e.key)) {
+            e.preventDefault();
+        }
+    };
+
+    const handleGuestCountChange = (value: string) => {
+        const num = parseInt(value);
+        const safeValue = isNaN(num) ? 1 : Math.max(1, Math.min(num, 9999));
+        setNewBooking(prev => ({ ...prev, guests: safeValue }));
+    };
+
     const timeSlots = useMemo(() => {
         const slots = [];
         const startHour = 11; // 11 AM
@@ -882,7 +894,9 @@ const BookingsAdminPage: React.FC = () => {
                                         required
                                         InputLabelProps={{ sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }}
                                         value={newBooking.guests}
-                                        onChange={(e) => setNewBooking({ ...newBooking, guests: parseInt(e.target.value) || 1 })}
+                                        onKeyDown={preventScientificNotation}
+                                        onChange={(e) => handleGuestCountChange(e.target.value)}
+                                        inputProps={{ min: 1, max: 9999 }}
                                     />
                                 </Grid>
                             </Grid>
