@@ -1,0 +1,12 @@
+{
+  "appName": "Andhra Spicefeast POS",
+  "appId": "com.andhraspicefeast.pos",
+  "primaryColor": "#9C27B0",
+  "secondaryColor": "#E91E63",
+  "accentColor": "#FF9800",
+  "apiBaseUrl": "https://api.andhraspicefeast.nexzenpos.com",
+  "tenantSlug": "andhra-spicefeast",
+  "stripePublicKey": "pk_test_andhraspicefeast",
+  "fontFamily": "Inter",
+  "splashBg": "#1a0027"
+}

@@ -112,6 +112,8 @@ export const HeroSectionEditor: React.FC<SectionEditorProps> = ({ section, onUpd
         label="Hero Title"
         fullWidth
         value={data.title || ''}
+        inputProps={{ maxLength: 100 }}
+        helperText={`${(data.title || '').length}/100`}
         onChange={(e) => onUpdate({ ...data, title: e.target.value })}
       />
       <TextField
@@ -120,6 +122,8 @@ export const HeroSectionEditor: React.FC<SectionEditorProps> = ({ section, onUpd
         multiline
         rows={2}
         value={data.description || ''}
+        inputProps={{ maxLength: 100 }}
+        helperText={`${(data.description || '').length}/100`}
         onChange={(e) => onUpdate({ ...data, description: e.target.value })}
       />
       <Box>
@@ -164,6 +168,8 @@ export const OnlineOrderEditor: React.FC<SectionEditorProps> = ({ section, onUpd
         label="Section Title"
         fullWidth
         value={data.title || ''}
+        inputProps={{ maxLength: 100 }}
+        helperText={`${(data.title || '').length}/100`}
         onChange={(e) => updateField('title', e.target.value)}
       />
       
@@ -216,6 +222,8 @@ export const HospitalitySectionEditor: React.FC<SectionEditorProps> = ({ section
   const handleDescChange = (idx: number, val: string) => {
     const newDesc = [...data.description];
     newDesc[idx] = val;
+    const totalLength = newDesc.reduce((acc, curr) => acc + (curr || '').length, 0);
+    if (totalLength > 1000) return;
     onUpdate({ ...data, description: newDesc });
   };
 
@@ -243,8 +251,8 @@ export const HospitalitySectionEditor: React.FC<SectionEditorProps> = ({ section
           </Button>
         </Box>
         <Stack spacing={2} flex={1}>
-          <TextField label="Title" fullWidth value={data.title} onChange={(e) => onUpdate({ ...data, title: e.target.value })} />
-          <TextField label="Subtitle" fullWidth value={data.subtitle} onChange={(e) => onUpdate({ ...data, subtitle: e.target.value })} />
+          <TextField label="Title" fullWidth value={data.title} inputProps={{ maxLength: 100 }} helperText={`${(data.title || '').length}/100`} onChange={(e) => onUpdate({ ...data, title: e.target.value })} />
+          <TextField label="Subtitle" fullWidth value={data.subtitle} inputProps={{ maxLength: 100 }} helperText={`${(data.subtitle || '').length}/100`} onChange={(e) => onUpdate({ ...data, subtitle: e.target.value })} />
           <Stack direction="row" spacing={2} alignItems="center">
              <Typography variant="body2">Image Position:</Typography>
              <Button variant={data.imagePosition === 'left' ? 'contained' : 'outlined'} onClick={() => onUpdate({ ...data, imagePosition: 'left' })}>Left</Button>
@@ -252,8 +260,13 @@ export const HospitalitySectionEditor: React.FC<SectionEditorProps> = ({ section
           </Stack>
         </Stack>
       </Stack>
-      <Box>
-        <Typography variant="subtitle2" gutterBottom>Description Paragraphs</Typography>
+      <Box sx={{ mt: 2 }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+          <Typography variant="subtitle2">Description Paragraphs</Typography>
+          <Typography variant="caption" color={data.description.reduce((acc, curr) => acc + (curr || '').length, 0) >= 1000 ? 'error' : 'textSecondary'}>
+            Total characters: {data.description.reduce((acc, curr) => acc + (curr || '').length, 0)}/1000
+          </Typography>
+        </Stack>
         <Stack spacing={2}>
           {data.description.map((para, idx) => (
             <Stack key={idx} direction="row" spacing={1}>
@@ -292,8 +305,8 @@ export const ServicesSectionEditor: React.FC<SectionEditorProps> = ({ section, o
 
   return (
     <Stack spacing={3}>
-      <TextField label="Section Title" fullWidth value={data.title} onChange={(e) => onUpdate({ ...data, title: e.target.value })} />
-      <TextField label="Subtitle" fullWidth value={data.subtitle} onChange={(e) => onUpdate({ ...data, subtitle: e.target.value })} />
+      <TextField label="Section Title" fullWidth value={data.title} inputProps={{ maxLength: 100 }} helperText={`${(data.title || '').length}/100`} onChange={(e) => onUpdate({ ...data, title: e.target.value })} />
+      <TextField label="Subtitle" fullWidth value={data.subtitle} inputProps={{ maxLength: 100 }} helperText={`${(data.subtitle || '').length}/100`} onChange={(e) => onUpdate({ ...data, subtitle: e.target.value })} />
       <Stack spacing={2}>
         {data.items.map((item, idx) => (
           <Paper key={idx} variant="outlined" sx={{ p: 2 }}>
@@ -309,8 +322,8 @@ export const ServicesSectionEditor: React.FC<SectionEditorProps> = ({ section, o
                 />
               </Box>
               <Stack spacing={1} flex={1}>
-                <TextField label="Title" fullWidth size="small" value={item.title} onChange={(e) => updateItem(idx, { title: e.target.value })} />
-                <TextField label="Description" fullWidth size="small" multiline rows={2} value={item.description} onChange={(e) => updateItem(idx, { description: e.target.value })} />
+                <TextField label="Title" fullWidth size="small" value={item.title} inputProps={{ maxLength: 25 }} helperText={`${(item.title || '').length}/25`} onChange={(e) => updateItem(idx, { title: e.target.value })} />
+                <TextField label="Description" fullWidth size="small" multiline rows={2} value={item.description} inputProps={{ maxLength: 50 }} helperText={`${(item.description || '').length}/50`} onChange={(e) => updateItem(idx, { description: e.target.value })} />
                 <TextField label="Link Path" fullWidth size="small" value={item.path} onChange={(e) => updateItem(idx, { path: e.target.value })} />
               </Stack>
               <IconButton color="error" onClick={() => removeItem(idx)}><Delete /></IconButton>

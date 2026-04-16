@@ -99,6 +99,11 @@ const ReportsPage: React.FC = () => {
     const [feedbackData, setFeedbackData] = useState<any[]>([]);
     const [feedbackView, setFeedbackView] = useState<'summary' | 'item-wise'>('summary');
     const [itemWiseReport, setItemWiseReport] = useState<any[]>([]);
+    const [promoSummary, setPromoSummary] = useState<any>(null);
+    const [promoRedemptions, setPromoRedemptions] = useState<any[]>([]);
+    const [promoCompensation, setPromoCompensation] = useState<any[]>([]);
+    const [promoType, setPromoType] = useState('all');
+    const [promoSearch, setPromoSearch] = useState('');
     const [bestSellingPage, setBestSellingPage] = useState(0);
     const [bestSellingRowsPerPage, setBestSellingRowsPerPage] = useState(10);
     const [salesPage, setSalesPage] = useState(0);
@@ -288,6 +293,15 @@ const ReportsPage: React.FC = () => {
                         ordersAPI.filter({ page: 1, limit: 100, ...params }).then(res => setRecentOrders(res.data.orders || []))
                     ]);
                     break;
+                case 17: // Promo Summary
+                    await fetchPromoSummary(params);
+                    break;
+                case 18: // Promo Redemptions
+                    await fetchPromoRedemptions(params);
+                    break;
+                case 19: // Promo Compensation
+                    await fetchPromoCompensation(params);
+                    break;
             }
         } catch (error) {
             console.error('Error fetching report:', error);
@@ -400,6 +414,30 @@ const ReportsPage: React.FC = () => {
     const fetchFeedback = async (params: any) => {
         const response = await feedbackAPI.getAll(params);
         setFeedbackData(response.data);
+    };
+
+    const fetchPromoSummary = async (params: any) => {
+        const response = await axios.get(`${API_URL}/api/reports/promo-summary`, { 
+            params: { ...params, promoType, promoCode: promoSearch }, 
+            headers 
+        });
+        setPromoSummary(response.data);
+    };
+
+    const fetchPromoRedemptions = async (params: any) => {
+        const response = await axios.get(`${API_URL}/api/reports/promo-redemptions`, { 
+            params: { ...params, promoType, promoCode: promoSearch }, 
+            headers 
+        });
+        setPromoRedemptions(response.data);
+    };
+
+    const fetchPromoCompensation = async (params: any) => {
+        const response = await axios.get(`${API_URL}/api/reports/promo-compensation`, { 
+            params: { ...params, promoType }, 
+            headers 
+        });
+        setPromoCompensation(response.data);
     };
 
     const downloadExcel = async (reportType: string, customPaymentMethod?: string) => {
@@ -4435,6 +4473,157 @@ const ReportsPage: React.FC = () => {
         </Paper>
     );
 
+    const renderPromoSummary = () => (
+        <Grid container spacing={3}>
+            <Grid item xs={12}>
+                <Paper sx={{ p: 2, mb: 2 }}>
+                    <Stack direction="row" spacing={2} alignItems="center">
+                        <FormControl size="small" sx={{ minWidth: 150 }}>
+                            <InputLabel>Promo Type</InputLabel>
+                            <Select value={promoType} onChange={(e) => setPromoType(e.target.value)} label="Promo Type">
+                                <MenuItem value="all">All Types</MenuItem>
+                                <MenuItem value="campaign">Marketing</MenuItem>
+                                <MenuItem value="compensation">Goodwill</MenuItem>
+                            </Select>
+                        </FormControl>
+                        <TextField 
+                            size="small" 
+                            placeholder="Search code..." 
+                            value={promoSearch} 
+                            onChange={(e) => setPromoSearch(e.target.value)}
+                        />
+                        <Button variant="contained" onClick={fetchReportData}>Apply</Button>
+                    </Stack>
+                </Paper>
+            </Grid>
+            <Grid item xs={12} md={3}>
+                <Card sx={{ bgcolor: 'primary.main', color: 'white' }}>
+                    <CardContent>
+                        <Typography variant="subtitle2" sx={{ opacity: 0.8 }}>Codes Created (Total)</Typography>
+                        <Typography variant="h4" fontWeight="bold">{promoSummary?.totalCreated || 0}</Typography>
+                    </CardContent>
+                </Card>
+            </Grid>
+            <Grid item xs={12} md={3}>
+                <Card sx={{ bgcolor: 'secondary.main', color: 'white' }}>
+                    <CardContent>
+                        <Typography variant="subtitle2" sx={{ opacity: 0.8 }}>Redemptions (Period)</Typography>
+                        <Typography variant="h4" fontWeight="bold">{promoSummary?.redemptionCount || 0}</Typography>
+                    </CardContent>
+                </Card>
+            </Grid>
+            <Grid item xs={12} md={3}>
+                <Card sx={{ bgcolor: 'success.main', color: 'white' }}>
+                    <CardContent>
+                        <Typography variant="subtitle2" sx={{ opacity: 0.8 }}>Total Value Saved</Typography>
+                        <Typography variant="h4" fontWeight="bold">{formatCurrency(promoSummary?.totalRedeemedValue || 0)}</Typography>
+                    </CardContent>
+                </Card>
+            </Grid>
+            <Grid item xs={12} md={3}>
+                <Card sx={{ bgcolor: 'warning.main', color: 'white' }}>
+                    <CardContent>
+                        <Typography variant="subtitle2" sx={{ opacity: 0.8 }}>Avg. Saving per Order</Typography>
+                        <Typography variant="h4" fontWeight="bold">
+                            {promoSummary?.redemptionCount > 0 
+                                ? formatCurrency(promoSummary.totalRedeemedValue / promoSummary.redemptionCount) 
+                                : formatCurrency(0)}
+                        </Typography>
+                    </CardContent>
+                </Card>
+            </Grid>
+
+            {promoSummary?.topPromos?.length > 0 && (
+                <Grid item xs={12}>
+                    <Paper sx={{ p: 3, borderRadius: 2 }}>
+                        <Typography variant="h6" gutterBottom>Top Performing Promos</Typography>
+                        <Box sx={{ height: 300 }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={promoSummary.topPromos}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="code" />
+                                    <YAxis />
+                                    <RechartsTooltip />
+                                    <Legend />
+                                    <Bar dataKey="count" fill="#4F46E5" name="Redemptions" radius={[4, 4, 0, 0]} />
+                                    <Bar dataKey="value" fill="#10B981" name="Value Saved" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </Box>
+                    </Paper>
+                </Grid>
+            )}
+        </Grid>
+    );
+
+    const renderPromoRedemptions = () => (
+        <TableContainer component={Paper}>
+            <Table>
+                <TableHead>
+                    <TableRow sx={{ bgcolor: 'grey.50' }}>
+                        <TableCell>Order #</TableCell>
+                        <TableCell>Promo Code</TableCell>
+                        <TableCell>Date</TableCell>
+                        <TableCell>Customer</TableCell>
+                        <TableCell align="right">Order Total</TableCell>
+                        <TableCell align="right">Discount</TableCell>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {promoRedemptions.map((row: any) => (
+                        <TableRow key={row._id}>
+                            <TableCell>{row.orderNumber}</TableCell>
+                            <TableCell>
+                                <Chip label={row.couponCode} size="small" variant="outlined" color="primary" />
+                            </TableCell>
+                            <TableCell>{new Date(row.createdAt).toLocaleDateString()}</TableCell>
+                            <TableCell>{row.customer?.name || 'Guest'}</TableCell>
+                            <TableCell align="right">{formatCurrency(row.totalAmount)}</TableCell>
+                            <TableCell align="right" sx={{ color: 'error.main' }}>
+                                -{formatCurrency(row.discount?.amount || 0)}
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                    {promoRedemptions.length === 0 && (
+                        <TableRow>
+                            <TableCell colSpan={6} align="center">No redemptions found</TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+        </TableContainer>
+    );
+
+    const renderPromoCompensation = () => (
+        <TableContainer component={Paper}>
+            <Table>
+                <TableHead>
+                    <TableRow sx={{ bgcolor: 'grey.50' }}>
+                        <TableCell>Reason</TableCell>
+                        <TableCell align="right">Count</TableCell>
+                        <TableCell align="right">Total Compensation Value</TableCell>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {promoCompensation.map((row: any, i: number) => (
+                        <TableRow key={i}>
+                            <TableCell>{row._id || 'General Support'}</TableCell>
+                            <TableCell align="right">{row.count}</TableCell>
+                            <TableCell align="right" sx={{ color: 'error.main', fontWeight: 'bold' }}>
+                                {formatCurrency(row.totalValue)}
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                    {promoCompensation.length === 0 && (
+                        <TableRow>
+                            <TableCell colSpan={3} align="center">No compensation data found</TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+        </TableContainer>
+    );
+
     const renderCustomerFeedback = () => {
         // Hooks moved to top level
 
@@ -4767,8 +4956,11 @@ const ReportsPage: React.FC = () => {
                     <Tab label="Inventory Stock" />
                     <Tab label="Coupon Analytics" />
                     <Tab label="Table Performance" />
-                    <Tab label="Customer Feedback" />
+                    <Tab label="Feedback" />
                     <Tab label="Tips Report" />
+                    <Tab label="Promo Summary" />
+                    <Tab label="Promo Redemptions" />
+                    <Tab label="Promo Compensation" />
                 </Tabs>
             </Paper>
 
@@ -4796,6 +4988,9 @@ const ReportsPage: React.FC = () => {
                     {activeTab === 14 && renderTableStats()}
                     {activeTab === 15 && renderCustomerFeedback()}
                     {activeTab === 16 && renderTipsReport()}
+                    {activeTab === 17 && renderPromoSummary()}
+                    {activeTab === 18 && renderPromoRedemptions()}
+                    {activeTab === 19 && renderPromoCompensation()}
                 </>
             )}
         </Container>

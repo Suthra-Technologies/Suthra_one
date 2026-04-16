@@ -77,6 +77,7 @@ const GuestPOSPage: React.FC = () => {
     const [showPayment, setShowPayment] = useState(false);
     const [successOrderNumber, setSuccessOrderNumber] = useState<string | null>(null);
     const [orderType, setOrderType] = useState<'global_dine_in' | 'global_takeaway' | 'delivery' | 'online_takeaway'>('global_dine_in');
+    const [tableNumber, setTableNumber] = useState<string>('');
     const [taxRate, setTaxRate] = useState<number>(5); // Default 5%, will be updated from settings
 
     useEffect(() => {
@@ -252,7 +253,8 @@ const GuestPOSPage: React.FC = () => {
                 discount: totals.discount,
                 couponCode: appliedCoupon?.code,
                 tax: { rate: taxRate, amount: totals.gst },
-                notes: `Guest Order - ${orderType} - Paid via QR`,
+                tableNumber: orderType === 'global_dine_in' ? tableNumber : undefined,
+                notes: `Guest Order - ${orderType}${orderType === 'global_dine_in' && tableNumber ? ` - Table ${tableNumber}` : ''} - Paid via QR`,
                 source: 'website'
             };
 
@@ -674,6 +676,34 @@ const GuestPOSPage: React.FC = () => {
                                     </ToggleButton> */}
                                 </ToggleButtonGroup>
                             </Box>
+
+                            {/* Table Number — shown only for Dine In */}
+                            {orderType === 'global_dine_in' && (
+                                <Box sx={{ mb: 3 }}>
+                                    <Typography variant="subtitle2" gutterBottom>
+                                        Table Number <Typography component="span" color="text.secondary" variant="caption">(recommended)</Typography>
+                                    </Typography>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        placeholder="Enter your table number"
+                                        value={tableNumber}
+                                        onChange={e => setTableNumber(e.target.value)}
+                                        style={{
+                                            width: '100%',
+                                            padding: '10px 12px',
+                                            fontSize: '16px',
+                                            borderRadius: '8px',
+                                            border: `2px solid ${tableNumber ? '#4F46E5' : '#ddd'}`,
+                                            outline: 'none',
+                                            boxSizing: 'border-box',
+                                        }}
+                                    />
+                                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                                        So the server knows which table to bring your order to
+                                    </Typography>
+                                </Box>
+                            )}
 
                             {/* Coupons Section */}
                             <Box sx={{ mb: 2 }}>

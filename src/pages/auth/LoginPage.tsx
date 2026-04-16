@@ -364,10 +364,10 @@ const LoginPage: React.FC = () => {
       </Grid>
 
       {/* Login Form Section (Right Side) */}
-      <Grid item xs={12} sm={7} md={6} component={Paper} elevation={6} square>
+      <Grid item xs={12} sm={7} md={6} component={Paper} elevation={6} square sx={{ overflowY: 'auto', maxHeight: { xs: 'none', sm: '100vh' } }}>
         <Box
           sx={{
-            my: { xs: 3, sm: 3, md: 6 },
+            my: { xs: 3, sm: 3, md: 4 },
             mx: { xs: 2, sm: 3 },
             display: 'flex',
             flexDirection: 'column',

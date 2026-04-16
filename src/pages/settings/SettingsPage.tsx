@@ -2698,10 +2698,10 @@ const SettingsPage: React.FC = () => {
                             </Grid>
                         </Grid>
 
-
+{/* 
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 1 }} />
-                        </Grid>
+                        </Grid> */}
 
                         {/* 
                         <Grid size={{ xs: 12 }}>
@@ -3977,7 +3977,7 @@ const SettingsPage: React.FC = () => {
                         </Grid>
                     </Box>
                 </TabPanel>
-                <TabPanel value={tabValue} index={8}>
+                <TabPanel value={tabValue} index={9}>
                     <GallerySettings />
                 </TabPanel>
             </Paper >

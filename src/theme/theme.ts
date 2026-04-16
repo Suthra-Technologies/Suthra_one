@@ -1,17 +1,18 @@
 import { alpha, createTheme, type Theme } from '@mui/material/styles';
+import { BRAND_CONFIG } from '../config/brandConfig';
 
 const getPalette = (mode: 'light' | 'dark') => ({
     mode,
     primary: {
-        main: '#4F46E5', // Indigo 600
-        light: '#818CF8', // Indigo 400
-        dark: '#3730A3', // Indigo 800
+        main: BRAND_CONFIG.primaryColor,
+        light: alpha(BRAND_CONFIG.primaryColor, 0.7),
+        dark: alpha(BRAND_CONFIG.primaryColor, 0.85),
         contrastText: '#ffffff',
     },
     secondary: {
-        main: '#EC4899', // Pink 500
-        light: '#F472B6', // Pink 400
-        dark: '#DB2777', // Pink 600
+        main: BRAND_CONFIG.secondaryColor,
+        light: alpha(BRAND_CONFIG.secondaryColor, 0.7),
+        dark: alpha(BRAND_CONFIG.secondaryColor, 0.85),
         contrastText: '#ffffff',
     },
     success: {
@@ -39,6 +40,7 @@ const getPalette = (mode: 'light' | 'dark') => ({
     },
     divider: mode === 'light' ? 'rgba(0, 0, 0, 0.08)' : 'rgba(255, 255, 255, 0.08)',
 });
+
 
 export const getTheme = (mode: 'light' | 'dark'): Theme => createTheme({
     palette: getPalette(mode),
@@ -98,12 +100,12 @@ export const getTheme = (mode: 'light' | 'dark'): Theme => createTheme({
                 },
                 containedPrimary: {
                     boxShadow: mode === 'light'
-                        ? '0 4px 6px -1px rgba(79, 70, 229, 0.3), 0 2px 4px -1px rgba(79, 70, 229, 0.16)'
+                        ? `0 4px 6px -1px ${alpha(BRAND_CONFIG.primaryColor, 0.3)}, 0 2px 4px -1px ${alpha(BRAND_CONFIG.primaryColor, 0.16)}`
                         : '0 4px 6px -1px rgba(0, 0, 0, 0.5)',
                     '&:hover': {
                         transform: 'translateY(-1px)',
                         boxShadow: mode === 'light'
-                            ? '0 6px 8px -1px rgba(79, 70, 229, 0.4), 0 3px 6px -1px rgba(79, 70, 229, 0.2)'
+                            ? `0 6px 8px -1px ${alpha(BRAND_CONFIG.primaryColor, 0.4)}, 0 3px 6px -1px ${alpha(BRAND_CONFIG.primaryColor, 0.2)}`
                             : '0 6px 8px -1px rgba(0, 0, 0, 0.6)',
                     },
                 },
@@ -144,7 +146,7 @@ export const getTheme = (mode: 'light' | 'dark'): Theme => createTheme({
                             borderColor: mode === 'light' ? '#9CA3AF' : 'rgba(255, 255, 255, 0.2)',
                         },
                         '&.Mui-focused fieldset': {
-                            borderColor: '#4F46E5',
+                            borderColor: BRAND_CONFIG.primaryColor,
                             borderWidth: 2,
                         },
                     },

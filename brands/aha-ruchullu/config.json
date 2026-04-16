@@ -1,0 +1,12 @@
+{
+  "appName": "Aha Ruchullu POS",
+  "appId": "com.aharuchullu.pos",
+  "primaryColor": "#E31837",
+  "secondaryColor": "#008C45",
+  "accentColor": "#FFD700",
+  "apiBaseUrl": "https://api.aharuchullu.nexzenpos.com",
+  "tenantSlug": "aha-ruchullu",
+  "stripePublicKey": "pk_test_aharuchullu",
+  "fontFamily": "Inter",
+  "splashBg": "#1a0008"
+}

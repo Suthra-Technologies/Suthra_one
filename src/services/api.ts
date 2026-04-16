@@ -313,6 +313,9 @@ export const reportsAPI = {
   getCustomerAnalytics: (params?: any) => api.get('/reports/customer-analytics', { params }),
   getInventoryStockLevels: () => api.get('/reports/inventory-stock'),
   getCouponAnalytics: (params?: any) => api.get('/reports/coupon-analytics', { params }),
+  getPromoSummary: (params?: any) => api.get('/reports/promo-summary', { params }),
+  getPromoRedemptions: (params?: any) => api.get('/reports/promo-redemptions', { params }),
+  getPromoCompensation: (params?: any) => api.get('/reports/promo-compensation', { params }),
   exportExcel: (params?: any) => api.get('/reports/export/excel', { params, responseType: 'blob' }),
 };
 
@@ -364,6 +367,20 @@ export const couponsAPI = {
   delete: (id: string) => api.delete(`/coupons/${id}`),
   apply: (id: string, orderId: string, customerId?: string) =>
     api.post(`/coupons/${id}/apply`, { orderId, customerId }),
+};
+
+// New Promos API – separate endpoints for promo codes
+export const promosAPI = {
+  getAll: (params?: { page: number; limit: number }) => api.get('/promos', { params }),
+  getActive: (orderType?: string, billAmount?: number) =>
+    api.get('/promos/active', { params: { orderType, billAmount } }),
+  validate: (code: string, orderType: string, billAmount: number, customerId?: string) =>
+    api.get(`/promos/validate/${code}`, { params: { orderType, billAmount, customerId } }),
+  getOne: (id: string) => api.get(`/promos/${id}`),
+  create: (promoData: any) => api.post('/promos', promoData),
+  update: (id: string, promoData: any) => api.put(`/promos/${id}`, promoData),
+  delete: (id: string) => api.delete(`/promos/${id}`),
+  // apply endpoint can be added if needed
 };
 
 // -------------------- Bookings API --------------------
@@ -446,6 +463,18 @@ export const tenantAPI = {
   // Restaurant open/close status
   updateRestaurantStatus: (data: { isOpen: boolean; reopenAt?: string; closeReason?: string; customerMessage?: string }) => api.patch('/tenants/restaurant-status', data),
   getRestaurantStatus: (slug: string) => api.get(`/tenants/${slug}/status`),
+  // ── White-Label Branding ──────────────────────────────────────────────
+  /** Public — no auth required. Called by BrandContext at app startup. */
+  getBranding: (slug: string) => api.get(`/tenants/${slug}/branding`),
+  /** Admin — saves brand colors from the Settings page. */
+  updateBranding: (data: {
+    primaryColor?:   string;
+    secondaryColor?: string;
+    accentColor?:    string;
+    splashBg?:       string;
+    fontFamily?:     string;
+    appName?:        string;
+  }) => api.patch('/tenants/branding', data),
 };
 
 // -------------------- Purchase Orders API --------------------

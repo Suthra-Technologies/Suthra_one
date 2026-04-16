@@ -65,7 +65,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onToggleCollapse }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, activeRole, switchRole } = useAuth();
+  const { user, activeRole, switchRole, getUserFullName } = useAuth();
   const { slug, getRelativePath } = useActiveTenant();
   const { settings } = useSettings();
   const restaurantSettings = settings?.restaurant || {};
@@ -268,7 +268,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
       </Box>
 
       {/* User Info Card */}
-      <Tooltip title={collapsed ? `${user?.sub?.slice(0, 12) || user?.firstName || 'User'} - ${activeRole}` : ''} placement="right">
+      <Tooltip title={collapsed ? `${getUserFullName()} - ${activeRole}` : ''} placement="right">
         <Box
           sx={{
             mx: collapsed ? 1 : 2,
@@ -302,7 +302,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
             {!collapsed && (
               <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
                 <Typography variant="subtitle2" fontWeight="bold" noWrap>
-                  {user?.fullName || user?.firstName || user?.name || user?.sub?.slice(0, 12) || 'User'}
+                  {getUserFullName()}
                 </Typography>
                 <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'capitalize' }}>
                   {activeRole === 'admin' ? 'Administrator' : activeRole}
