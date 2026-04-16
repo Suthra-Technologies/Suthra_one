@@ -73,6 +73,7 @@ interface AuthContextProps {
   switchRole: (role: string) => void;
   switchTenant: (slug: string) => Promise<void>;
   tenantSlug: string | null;
+  getUserFullName: () => string;
   isAuthenticated: boolean;
   updateUserData: (data: Partial<JwtPayload>) => void;
   refreshProfile: () => Promise<void>;
