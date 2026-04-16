@@ -25,7 +25,7 @@ interface MergeTablesDialogProps {
     open: boolean;
     onClose: () => void;
     tables: any[];
-    onSuccess: () => void;
+    onSelect: (primaryId: string, secondaryIds: string[]) => void;
     initialPrimaryTableId?: string;
 }
 
@@ -33,7 +33,7 @@ const MergeTablesDialog: React.FC<MergeTablesDialogProps> = ({
     open,
     onClose,
     tables,
-    onSuccess,
+    onSelect,
     initialPrimaryTableId
 }) => {
     const [primaryTableId, setPrimaryTableId] = useState<string>('');
@@ -52,24 +52,14 @@ const MergeTablesDialog: React.FC<MergeTablesDialogProps> = ({
     // For primary, we can also include already primary tables if we want to add more to them
     const primaryOptions = tables.filter(t => !t.isMerged || t.isPrimary);
 
-    const handleMerge = async () => {
+    const handleMerge = () => {
         if (!primaryTableId || selectedSecondaryIds.length === 0) {
             toast.error('Please select a primary table and at least one table to merge with.');
             return;
         }
 
-        try {
-            setLoading(true);
-            await tablesAPI.merge(primaryTableId, selectedSecondaryIds);
-            toast.success('Tables merged successfully');
-            onSuccess();
-            onClose();
-        } catch (error: any) {
-            console.error('Error merging tables:', error);
-            toast.error(error.response?.data?.message || 'Failed to merge tables');
-        } finally {
-            setLoading(false);
-        }
+        onSelect(primaryTableId, selectedSecondaryIds);
+        onClose();
     };
 
     return (
@@ -131,11 +121,24 @@ const MergeTablesDialog: React.FC<MergeTablesDialogProps> = ({
                     </FormControl>
 
                     {primaryTableId && (
-                        <Box>
+                        <Box sx={{ mt: 1 }}>
                             <Typography variant="subtitle2" gutterBottom>Resulting Group:</Typography>
+                            <Box sx={{ p: 1.5, bgcolor: 'info.lighter', borderRadius: 1, border: '1px solid', borderColor: 'info.light', mb: 2 }}>
+                                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                    <Typography variant="body2" color="info.darker" fontWeight="bold">
+                                        Combined Capacity:
+                                    </Typography>
+                                    <Typography variant="body1" color="info.darker" fontWeight="bold">
+                                        {[primaryTableId, ...selectedSecondaryIds].reduce((sum, id) => {
+                                            const table = tables.find(t => t._id === id);
+                                            return sum + (table?.capacity || 0);
+                                        }, 0)} Guests
+                                    </Typography>
+                                </Stack>
+                            </Box>
                             <Stack direction="row" spacing={1} alignItems="center">
                                 <Chip label={`Primary: ${tables.find(t => t._id === primaryTableId)?.tableNumber}`} color="primary" />
-                                <Typography variant="body2">+</Typography>
+                                {selectedSecondaryIds.length > 0 && <Typography variant="body2">+</Typography>}
                                 {selectedSecondaryIds.map(id => (
                                     <Chip key={id} label={tables.find(t => t._id === id)?.tableNumber} variant="outlined" />
                                 ))}
@@ -149,10 +152,9 @@ const MergeTablesDialog: React.FC<MergeTablesDialogProps> = ({
                 <Button 
                     onClick={handleMerge} 
                     variant="contained" 
-                    disabled={loading || !primaryTableId || selectedSecondaryIds.length === 0}
-                    startIcon={loading && <CircularProgress size={20} />}
+                    disabled={!primaryTableId || selectedSecondaryIds.length === 0}
                 >
-                    Merge Tables
+                    Confirm Merge
                 </Button>
             </DialogActions>
         </Dialog>

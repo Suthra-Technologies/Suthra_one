@@ -69,6 +69,7 @@ interface CustomerInfoSectionProps {
     checkingDistance: boolean;
     onOpenMerge: () => void;
     onUnmerge: (table: any) => void;
+    pendingMergeSecondaryIds?: string[];
 }
 
 const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
@@ -114,20 +115,49 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
     user,
     checkingDistance,
     onOpenMerge,
-    onUnmerge
+    onUnmerge,
+    pendingMergeSecondaryIds = []
 }) => {
     const mergedGroup = React.useMemo(() => {
-        if (!selectedTable || (!selectedTable.isPrimary && !selectedTable.mergedWith)) return null;
+        if (!selectedTable) {
+            return null;
+        }
 
-        const primaryId = selectedTable.isPrimary ? selectedTable._id : selectedTable.mergedWith;
-        const primary = tables.find(t => t._id === primaryId);
-        const secondaries = tables.filter(t => t.mergedWith === primaryId);
+        // 1. If we have pending merges from the POS UI
+        if (pendingMergeSecondaryIds.length > 0) {
+            const secondaries = pendingMergeSecondaryIds.map(id => tables.find(t => t._id === id)).filter(Boolean);
+            const combinedCapacity = (selectedTable.capacity || 0) + secondaries.reduce((sum, t) => sum + (t.capacity || 0), 0);
+            return {
+                primary: selectedTable,
+                secondaries,
+                combinedCapacity,
+                isPending: true
+            };
+        }
 
+        // 2. If the table is already merged in the DB
+        if (selectedTable.isPrimary || selectedTable.mergedWith) {
+            const primaryId = selectedTable.isPrimary ? selectedTable._id : selectedTable.mergedWith;
+            const primary = tables.find(t => t._id === primaryId);
+            const secondaries = tables.filter(t => t.mergedWith === primaryId);
+            const combinedCapacity = (primary?.capacity || 0) + secondaries.reduce((sum, t) => sum + (t.capacity || 0), 0);
+
+            return {
+                primary,
+                secondaries,
+                combinedCapacity,
+                isPending: false
+            };
+        }
+
+        // 3. Single table
         return {
-            primary,
-            secondaries
+            primary: selectedTable,
+            secondaries: [],
+            combinedCapacity: selectedTable?.capacity || 0,
+            isPending: false
         };
-    }, [selectedTable, tables]);
+    }, [selectedTable, tables, pendingMergeSecondaryIds]);
 
     return (
         <Box sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1, mb: 2 }}>
@@ -358,31 +388,42 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                     </Box>
 
                     {mergedGroup && (
-                        <Box sx={{ mt: 1, p: 1, bgcolor: 'action.hover', borderRadius: 1 }}>
-                            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                                <GroupIcon fontSize="small" color="action" />
-                                <Typography variant="caption" fontWeight="bold" sx={{ mr: 1 }}>
-                                    Merged Group:
-                                </Typography>
-                                {mergedGroup.primary && (
-                                    <Tooltip title="Primary Table">
+                        <Box sx={{ mt: 1 }}>
+                            <Box sx={{ p: 1, bgcolor: 'action.hover', borderRadius: 1 }}>
+                                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                                    <GroupIcon fontSize="small" color="action" />
+                                    <Typography variant="caption" fontWeight="bold" sx={{ mr: 1 }}>
+                                        {mergedGroup.secondaries.length > 0 ? 'Merged Group:' : 'Selected Table:'}
+                                    </Typography>
+                                    {mergedGroup.primary && (
+                                        <Tooltip title={mergedGroup.secondaries.length > 0 ? "Primary Table" : ""}>
+                                            <Chip
+                                                label={`Table ${mergedGroup.primary.tableNumber}`}
+                                                size="small"
+                                                color={mergedGroup.isPending ? "warning" : "primary"}
+                                                variant="filled"
+                                            />
+                                        </Tooltip>
+                                    )}
+                                    {mergedGroup.secondaries.map(st => (
                                         <Chip
-                                            label={`Table ${mergedGroup.primary.tableNumber}`}
+                                            key={st._id}
+                                            label={`Table ${st.tableNumber}`}
                                             size="small"
-                                            color="primary"
-                                            variant="filled"
+                                            variant="outlined"
                                         />
-                                    </Tooltip>
-                                )}
-                                {mergedGroup.secondaries.map(st => (
-                                    <Chip
-                                        key={st._id}
-                                        label={`Table ${st.tableNumber}`}
-                                        size="small"
-                                        variant="outlined"
-                                    />
-                                ))}
-                            </Stack>
+                                    ))}
+                                    <Box sx={{ flexGrow: 1 }} />
+                                    <Typography variant="caption" sx={{ fontWeight: 700, color: guestCount > mergedGroup.combinedCapacity ? 'error.main' : 'success.main' }}>
+                                        Total Capacity: {mergedGroup.combinedCapacity} Guests {mergedGroup.isPending && '(Pending Merge)'}
+                                    </Typography>
+                                </Stack>
+                            </Box>
+                            {guestCount > mergedGroup.combinedCapacity && (
+                                <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block', fontWeight: 'bold' }}>
+                                    ⚠️ Guest count exceeds combined table capacity!
+                                </Typography>
+                            )}
                         </Box>
                     )}
                 </Box>

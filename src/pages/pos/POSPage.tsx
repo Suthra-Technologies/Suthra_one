@@ -9,6 +9,7 @@ import {
     SearchOff,
 } from '@mui/icons-material';
 import {
+    Alert,
     Box,
     Button,
     Card,
@@ -263,6 +264,8 @@ const POSPage: React.FC = () => {
     const [cardPrintReceipt, setCardPrintReceipt] = useState(false);
     const [cardSignInForApiCall, setCardSignInForApiCall] = useState(false);
     const [taxDetails, setTaxDetails] = useState<any>(null);
+    const [pendingMergeSecondaryIds, setPendingMergeSecondaryIds] = useState<string[]>([]);
+    const [pendingPrimaryTableId, setPendingPrimaryTableId] = useState<string>('');
     const [isCalculatingTax, setIsCalculatingTax] = useState(false);
     const [isCartVisible, setIsCartVisible] = useState(false);
     const cartSectionRef = useRef<HTMLDivElement | null>(null);
@@ -1158,11 +1161,14 @@ const POSPage: React.FC = () => {
             }
 
             // Calculate merged tables IDs
-            const mergedTableIdsArray = selectedTable?.isPrimary
-                ? tables.filter(t => t.mergedWith === selectedTable._id).map(t => t._id)
-                : selectedTable?.mergedWith
-                    ? [selectedTable.mergedWith, ...tables.filter(t => t.mergedWith === selectedTable.mergedWith && t._id !== selectedTable._id).map(t => t._id)]
-                    : [];
+            // Use pending merges if available, otherwise use existing merges from the table object
+            const mergedTableIdsArray = pendingMergeSecondaryIds.length > 0 
+                ? pendingMergeSecondaryIds
+                : (selectedTable?.isPrimary
+                    ? tables.filter(t => t.mergedWith === selectedTable._id).map(t => t._id)
+                    : selectedTable?.mergedWith
+                        ? [selectedTable.mergedWith, ...tables.filter(t => t.mergedWith === selectedTable.mergedWith && t._id !== selectedTable._id).map(t => t._id)]
+                        : []);
 
             const payload = {
                 items: cart.map((i) => ({
@@ -1226,6 +1232,8 @@ const POSPage: React.FC = () => {
             // First clear URL and local state to exit edit/booking mode
             setSearchParams({}, { replace: true });
             resetData();
+            setPendingMergeSecondaryIds([]);
+            setPendingPrimaryTableId('');
 
             // Then handle table status update and refresh
             if (orderType === "dine_in" && selectedTable?._id) {
@@ -1480,7 +1488,26 @@ const POSPage: React.FC = () => {
                     checkingDistance={checkingDistance}
                     onOpenMerge={() => setMergeDialogOpen(true)}
                     onUnmerge={handleUnmerge}
+                    pendingMergeSecondaryIds={pendingMergeSecondaryIds}
                 />
+                {/* Table Group Actions (Clear Pending Merge) */}
+                {pendingMergeSecondaryIds.length > 0 && (
+                    <Box sx={{ mb: 2 }}>
+                        <Alert 
+                            severity="warning" 
+                            action={
+                                <Button color="inherit" size="small" onClick={() => {
+                                    setPendingMergeSecondaryIds([]);
+                                    setPendingPrimaryTableId('');
+                                }}>
+                                    Clear
+                                </Button>
+                            }
+                        >
+                            Pending merge: Table {tables.find(t => t._id === pendingPrimaryTableId)?.tableNumber} + {pendingMergeSecondaryIds.map(id => tables.find(t => t._id === id)?.tableNumber).join(', ')}
+                        </Alert>
+                    </Box>
+                )}
                 {/* Search & category tabs */}
                 <Box sx={{ mb: 2, display: 'flex', gap: 2 }}>
                     <Box sx={{ position: 'relative', flexGrow: 1 }}>
@@ -2514,7 +2541,16 @@ const POSPage: React.FC = () => {
                 open={mergeDialogOpen}
                 onClose={() => setMergeDialogOpen(false)}
                 tables={tables}
-                onSuccess={() => fetchTables()}
+                onSelect={(pid, sids) => {
+                    setPendingPrimaryTableId(pid);
+                    setPendingMergeSecondaryIds(sids);
+                    
+                    const primary = tables.find(t => t._id === pid);
+                    if (primary) {
+                        setSelectedTable(primary);
+                        setTableNumber(primary.tableNumber);
+                    }
+                }}
                 initialPrimaryTableId={selectedTable?._id}
             />
         </Box>

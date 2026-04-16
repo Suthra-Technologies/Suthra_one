@@ -336,9 +336,10 @@ const TablesPage: React.FC = () => {
             setSelectionMode(false);
             setSelectedTableIds([]);
             fetchTables();
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error merging tables:', error);
-            toast.error('Failed to merge tables');
+            const msg = error.response?.data?.message || 'Failed to merge tables';
+            toast.error(msg);
         }
     };
 
@@ -1555,12 +1556,38 @@ const TablesPage: React.FC = () => {
                                 const table = tables.find(t => t._id === id);
                                 return (
                                     <MenuItem key={id} value={id}>
-                                        Table {table?.tableNumber} {table?.tableName ? `(${table.tableName})` : ''}
+                                        Table {table?.tableNumber} {table?.tableName ? `(${table.tableName})` : ''} — Cap: {table?.capacity}
                                     </MenuItem>
                                 );
                             })}
                         </Select>
                     </FormControl>
+
+                    <Box sx={{ mt: 2, p: 1.5, bgcolor: 'info.lighter', borderRadius: 1, border: '1px solid', borderColor: 'info.light' }}>
+                        <Stack direction="row" justifyContent="space-between" alignItems="center">
+                            <Typography variant="body2" color="info.darker" fontWeight="bold">
+                                Combined Capacity:
+                            </Typography>
+                            <Typography variant="body1" color="info.darker" fontWeight="bold">
+                                {selectedTableIds.reduce((sum, id) => {
+                                    const table = tables.find(t => t._id === id);
+                                    return sum + (table?.capacity || 0);
+                                }, 0)} Guests
+                            </Typography>
+                        </Stack>
+                    </Box>
+
+                    {(() => {
+                        const prim = tables.find(t => t._id === primaryTableId);
+                        if (prim?.status === 'occupied') {
+                            return (
+                                <Alert severity="warning" sx={{ mt: 2 }}>
+                                    The primary table is currently occupied. Ensure the combined capacity can accommodate the guest count.
+                                </Alert>
+                            );
+                        }
+                        return null;
+                    })()}
                 </DialogContent>
                 <DialogActions sx={{ pb: 3, px: 3 }}>
                     <Button onClick={() => setMergeDialogOpen(false)}>Cancel</Button>
