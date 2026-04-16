@@ -29,6 +29,8 @@ import {
     Visibility as VisibilityIcon,
     Send as SendIcon,
     Image as ImageIcon,
+    ExpandMore as ExpandMoreIcon,
+    ExpandLess as ExpandLessIcon,
 } from '@mui/icons-material';
 import { supportAPI, uploadAPI } from '../../services/api';
 import toast from 'react-hot-toast';
@@ -56,6 +58,7 @@ interface Ticket {
         phone: string;
     };
     orderId?: string;
+    orderSnapshot?: any;
     compensation?: {
         type: string;
         amount: number;
@@ -83,6 +86,7 @@ const CustomerSupportPage: React.FC = () => {
 
     const [replyMessage, setReplyMessage] = useState('');
     const [replyAttachments, setReplyAttachments] = useState<{ url: string; name: string }[]>([]);
+    const [showSnapshotDetails, setShowSnapshotDetails] = useState(false);
     const [replying, setReplying] = useState(false);
     const [uploading, setUploading] = useState(false);
 
@@ -320,7 +324,7 @@ const CustomerSupportPage: React.FC = () => {
             }}>
                 {selectedTicket && (
                     <>
-                        <DialogTitle sx={{ p: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: 'grey.50' }}>
+                        <DialogTitle sx={{ p: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: theme.palette.mode === 'dark' ? 'background.default' : 'grey.50' }}>
                             <Box>
                                 <Typography variant="h6" fontWeight="900">{selectedTicket.subject}</Typography>
                                 <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -345,14 +349,19 @@ const CustomerSupportPage: React.FC = () => {
                                                 <strong>Name:</strong> Anonymous
                                             </Typography>
                                         )}
+                                        {selectedTicket.orderId && (
+                                            <Typography variant="caption" color="text.secondary">
+                                                <strong>Linked Order:</strong> #{selectedTicket.orderSnapshot?.orderNumber || selectedTicket.orderId.slice(-6).toUpperCase()}
+                                            </Typography>
+                                        )}
                                     </Stack>
                                 </Box>
                             </Box>
-                            <IconButton onClick={() => setViewDialogOpen(false)} size="small" sx={{ bgcolor: 'white' }}>
+                            <IconButton onClick={() => setViewDialogOpen(false)} size="small" sx={{ bgcolor: 'background.paper' }}>
                                 <CloseIcon />
                             </IconButton>
                         </DialogTitle>
-                        <DialogContent dividers sx={{ p: 3, bgcolor: '#fbfcfd', minHeight: 400 }}>
+                        <DialogContent dividers sx={{ p: 3, bgcolor: 'background.default', minHeight: 400 }}>
                             <Box sx={{ mb: 4 }}>
                                 <Typography variant="subtitle2" gutterBottom fontWeight="700">Status Management</Typography>
                                 <Stack direction="row" spacing={1}>
@@ -369,6 +378,65 @@ const CustomerSupportPage: React.FC = () => {
                                 </Stack>
                             </Box>
 
+                            {selectedTicket.orderSnapshot && (
+                                <Box sx={{ mb: 4, borderRadius: 3, bgcolor: alpha(theme.palette.info.main, 0.05), border: '1px solid', borderColor: alpha(theme.palette.info.main, 0.1), overflow: 'hidden' }}>
+                                    <Box 
+                                        onClick={() => setShowSnapshotDetails(!showSnapshotDetails)}
+                                        sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', '&:hover': { bgcolor: alpha(theme.palette.info.main, 0.08) } }}
+                                    >
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                            <Typography variant="subtitle2" fontWeight="800" color="info.main">ORDER SNAPSHOT</Typography>
+                                            <Chip size="small" label={`#${selectedTicket.orderSnapshot.orderNumber}`} sx={{ fontWeight: 'bold', fontSize: '0.65rem' }} />
+                                            <Typography variant="body2" fontWeight="700" color="primary.main">${selectedTicket.orderSnapshot.totalAmount}</Typography>
+                                        </Box>
+                                        <IconButton size="small">
+                                            {showSnapshotDetails ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                                        </IconButton>
+                                    </Box>
+                                    
+                                    <Box sx={{ display: showSnapshotDetails ? 'block' : 'none', p: 3, pt: 1, borderTop: '1px solid', borderColor: alpha(theme.palette.info.main, 0.1) }}>
+                                        <Grid container spacing={2}>
+                                            <Grid item xs={6} sm={4}>
+                                                <Typography variant="caption" color="text.secondary">Order Type</Typography>
+                                                <Typography variant="body2" fontWeight="700" sx={{ textTransform: 'uppercase' }}>{selectedTicket.orderSnapshot.orderType?.replace('_', ' ')}</Typography>
+                                            </Grid>
+                                            <Grid item xs={6} sm={4}>
+                                                <Typography variant="caption" color="text.secondary">Date</Typography>
+                                                <Typography variant="body2" fontWeight="700">{new Date(selectedTicket.orderSnapshot.createdAt).toLocaleDateString()}</Typography>
+                                            </Grid>
+                                            <Grid item xs={12}>
+                                                <Divider sx={{ my: 1.5, borderStyle: 'dashed' }} />
+                                                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold', textTransform: 'uppercase', mb: 1, display: 'block' }}>Items</Typography>
+                                                <Stack spacing={1}>
+                                                    {selectedTicket.orderSnapshot.items?.map((item: any, i: number) => (
+                                                        <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                            <Typography variant="caption">• {item.quantity}x {item.name}</Typography>
+                                                            <Typography variant="caption" fontWeight="600">${item.total}</Typography>
+                                                        </Box>
+                                                    ))}
+                                                </Stack>
+                                                {selectedTicket.orderSnapshot.subtotal && (
+                                                    <Box sx={{ mt: 2, pt: 1, borderTop: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'space-between' }}>
+                                                        <Typography variant="caption" color="text.secondary">Subtotal</Typography>
+                                                        <Typography variant="caption">${selectedTicket.orderSnapshot.subtotal}</Typography>
+                                                    </Box>
+                                                )}
+                                            </Grid>
+                                        </Grid>
+                                    </Box>
+                                </Box>
+                            )}
+                            
+                            {!selectedTicket.orderSnapshot && selectedTicket.orderId && (
+                                <Box sx={{ mb: 4, p: 2, borderRadius: 3, border: '1px dashed', borderColor: 'divider', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <Box>
+                                        <Typography variant="caption" color="text.secondary" display="block">Linked Order ID</Typography>
+                                        <Typography variant="body2" fontWeight="700">{selectedTicket.orderId}</Typography>
+                                    </Box>
+                                    <Typography variant="caption" color="text.secondary">No snapshot available</Typography>
+                                </Box>
+                            )}
+
                             <Typography variant="subtitle2" gutterBottom fontWeight="700">Conversation History</Typography>
                             <Stack spacing={2} sx={{ mb: 4 }}>
                                 {selectedTicket.messages.map((msg, idx) => (
@@ -381,7 +449,7 @@ const CustomerSupportPage: React.FC = () => {
                                             p: 2,
                                             borderRadius: 3,
                                             maxWidth: '80%',
-                                            bgcolor: msg.senderRole === 'customer' ? 'white' : alpha(theme.palette.primary.main, 0.05),
+                                            bgcolor: msg.senderRole === 'customer' ? 'background.paper' : alpha(theme.palette.primary.main, 0.05),
                                             border: '1px solid',
                                             borderColor: msg.senderRole === 'customer' ? 'divider' : alpha(theme.palette.primary.main, 0.1),
                                             boxShadow: 'none'
@@ -440,7 +508,7 @@ const CustomerSupportPage: React.FC = () => {
                                 )}
                             </Stack>
                         </DialogContent>
-                        <DialogActions sx={{ p: 2, bgcolor: 'grey.50', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <DialogActions sx={{ p: 2, bgcolor: theme.palette.mode === 'dark' ? 'background.default' : 'grey.50', display: 'flex', flexDirection: 'column', gap: 2 }}>
                             {selectedTicket.status !== 'resolved' && selectedTicket.status !== 'closed' && (
                                 <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
                                     <Button 
@@ -464,7 +532,7 @@ const CustomerSupportPage: React.FC = () => {
                                             value={replyMessage}
                                             onChange={(e) => setReplyMessage(e.target.value)}
                                             variant="outlined"
-                                            sx={{ bgcolor: 'white' }}
+                                            sx={{ bgcolor: 'background.paper' }}
                                             InputProps={{
                                                 sx: { borderRadius: 3 }
                                             }}
@@ -472,7 +540,7 @@ const CustomerSupportPage: React.FC = () => {
                                     </Grid>
                                     <Grid item>
                                         <Stack direction="row" spacing={1}>
-                                            <IconButton component="label" sx={{ bgcolor: 'white', border: '1px solid', borderColor: 'divider' }}>
+                                            <IconButton component="label" sx={{ bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}>
                                                 <ImageIcon />
                                                 <input type="file" hidden accept="image/*" onChange={handleImageUpload} />
                                             </IconButton>
