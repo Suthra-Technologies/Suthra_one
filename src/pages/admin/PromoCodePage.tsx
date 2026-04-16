@@ -1,62 +1,64 @@
-import React, { useState, useEffect, useMemo } from 'react';
 import {
+    Add as AddIcon,
+    Cancel as CancelIcon,
+    CheckCircle as CheckCircleIcon,
+    Close as CloseIcon,
+    ContentCopy as CopyIcon,
+    Delete as DeleteIcon,
+    Edit as EditIcon,
+    Email as EmailIcon,
+    EventAvailable as EventIcon,
+    Info as InfoIcon,
+    LocalOffer as LocalOfferIcon,
+    Search as SearchIcon,
+    TrendingUp as TrendingUpIcon,
+    AccountBalanceWallet as WalletIcon
+} from '@mui/icons-material';
+import {
+    alpha,
     Box,
-    Typography,
-    Paper,
     Button,
-    Grid,
     Card,
     CardContent,
     Chip,
-    IconButton,
-    TextField,
-    InputAdornment,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    FormControl,
-    InputLabel,
-    Select,
-    MenuItem,
-    Stack,
-    Tooltip,
     CircularProgress,
-    useTheme,
-    alpha,
-    Switch,
-    FormControlLabel,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
     Divider,
-    Tabs,
-    Tab,
+    Fade,
+    FormControl,
+    Grid,
+    IconButton,
+    InputAdornment,
+    InputLabel,
+    MenuItem,
+    Paper,
+    Select,
+    Stack,
+    Switch,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
     TablePagination,
-    Zoom,
-    Fade
+    TableRow,
+    TextField,
+    Tooltip,
+    Typography,
+    useTheme
 } from '@mui/material';
 import {
-    Add as AddIcon,
-    Search as SearchIcon,
-    Edit as EditIcon,
-    Delete as DeleteIcon,
-    ContentCopy as CopyIcon,
-    FilterList as FilterIcon,
-    TrendingUp as TrendingUpIcon,
-    LocalOffer as LocalOfferIcon,
-    EventAvailable as EventIcon,
-    CheckCircle as CheckCircleIcon,
-    Cancel as CancelIcon,
-    Email as EmailIcon,
-    Sms as SmsIcon,
-    Close as CloseIcon,
-    Info as InfoIcon,
-    KeyboardArrowRight as ArrowRightIcon,
-    AccountBalanceWallet as WalletIcon
+    ViewList as ViewListIcon,
+    GridView as GridViewIcon
 } from '@mui/icons-material';
-import { couponsAPI, menuAPI, customersAPI } from '../../services/api';
-import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
+import React, { useEffect, useMemo, useState } from 'react';
+import { toast } from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
-import axios from 'axios';
+import { promosAPI } from '../../services/api';
 
 // types
 interface PromoCode {
@@ -173,6 +175,7 @@ const PromoCodePage: React.FC = () => {
     const [openSmsDialog, setOpenSmsDialog] = useState(false);
     const [selectedForMessage, setSelectedForMessage] = useState<PromoCode | null>(null);
     const [renderError, setRenderError] = useState<string | null>(null);
+    const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
 
     // Defensive date formatter
     const safeFormatDate = (dateStr: string, formatStr: string = 'MMM dd, yyyy') => {
@@ -205,12 +208,13 @@ const PromoCodePage: React.FC = () => {
     const fetchPromos = async () => {
         try {
             setLoading(true);
-            const response = await couponsAPI.getAll({ page: page + 1, limit: rowsPerPage });
+            const response = await promosAPI.getAll({ page: page + 1, limit: rowsPerPage });
             const responseData = response.data;
-            
-            if (responseData && responseData.coupons && Array.isArray(responseData.coupons)) {
-                setPromos(responseData.coupons);
-                setTotalItems(responseData.total || responseData.coupons.length);
+
+            if (responseData && (responseData.promos || responseData.coupons) && Array.isArray(responseData.promos || responseData.coupons)) {
+                const promosList = responseData.promos || responseData.coupons;
+                setPromos(promosList);
+                setTotalItems(responseData.total || promosList.length);
             } else if (Array.isArray(responseData)) {
                 setPromos(responseData);
                 setTotalItems(responseData.length);
@@ -287,10 +291,10 @@ const PromoCodePage: React.FC = () => {
             };
 
             if (editingPromo) {
-                await couponsAPI.update(editingPromo._id, payload);
+                await promosAPI.update(editingPromo._id, payload);
                 toast.success('Promo code updated');
             } else {
-                await couponsAPI.create(payload);
+                await promosAPI.create(payload);
                 toast.success('Promo code created');
             }
             setOpenDialog(false);
@@ -305,7 +309,7 @@ const PromoCodePage: React.FC = () => {
     const handleDelete = async (id: string) => {
         if (!window.confirm('Are you sure you want to delete this promo code?')) return;
         try {
-            await couponsAPI.delete(id);
+            await promosAPI.delete(id);
             toast.success('Promo code deleted');
             fetchPromos();
         } catch (error) {
@@ -315,7 +319,7 @@ const PromoCodePage: React.FC = () => {
 
     const toggleStatus = async (promo: PromoCode) => {
         try {
-            await couponsAPI.update(promo._id, { ...promo, active: !promo.active });
+            await promosAPI.update(promo._id, { ...promo, active: !promo.active });
             toast.success(`Promo ${!promo.active ? 'activated' : 'deactivated'}`);
             fetchPromos();
         } catch (error) {
@@ -331,25 +335,25 @@ const PromoCodePage: React.FC = () => {
     const getStatusInfo = (promo: PromoCode) => {
         if (!promo) return { label: 'Unknown', color: 'default', icon: <InfoIcon fontSize="small" /> };
         if (!promo.active) return { label: 'Inactive', color: 'error', icon: <CancelIcon fontSize="small" /> };
-        
+
         try {
             const now = new Date();
             const to = new Date(promo.validTo);
             if (isNaN(to.getTime()) || now > to) return { label: 'Expired', color: 'error', icon: <CancelIcon fontSize="small" /> };
-            
+
             const from = new Date(promo.validFrom);
             if (!isNaN(from.getTime()) && now < from) return { label: 'Scheduled', color: 'warning', icon: <EventIcon fontSize="small" /> };
         } catch (e) {
             console.error('Date parsing error:', e);
         }
-        
+
         return { label: 'Active', color: 'success', icon: <CheckCircleIcon fontSize="small" /> };
     };
 
     const safePromos = Array.isArray(promos) ? promos : [];
 
-    const filteredPromos = safePromos.filter(p => 
-        (p.code?.toLowerCase() || '').includes(searchTerm.toLowerCase()) || 
+    const filteredPromos = safePromos.filter(p =>
+        (p.code?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
         (p.name?.toLowerCase() || '').includes(searchTerm.toLowerCase())
     );
 
@@ -358,7 +362,7 @@ const PromoCodePage: React.FC = () => {
             const activeCount = safePromos.filter(p => getStatusInfo(p).label === 'Active').length;
             const scheduledCount = safePromos.filter(p => getStatusInfo(p).label === 'Scheduled').length;
             const expiredCount = safePromos.filter(p => getStatusInfo(p).label === 'Expired').length;
-            
+
             return {
                 total: totalItems || safePromos.length,
                 active: activeCount,
@@ -401,7 +405,25 @@ const PromoCodePage: React.FC = () => {
                         Create and manage discount codes for your customers
                     </Typography>
                 </Box>
-                <Stack direction="row" spacing={2} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+                <Stack direction="row" spacing={2} sx={{ width: { xs: '100%', sm: 'auto' }, alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', bgcolor: 'background.paper', borderRadius: 3, p: 0.5, border: '1px solid', borderColor: 'divider' }}>
+                        <IconButton 
+                            size="small" 
+                            onClick={() => setViewMode('list')}
+                            color={viewMode === 'list' ? 'primary' : 'default'}
+                            sx={{ borderRadius: 2, bgcolor: viewMode === 'list' ? alpha(theme.palette.primary.main, 0.1) : 'transparent' }}
+                        >
+                            <ViewListIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton 
+                            size="small" 
+                            onClick={() => setViewMode('grid')}
+                            color={viewMode === 'grid' ? 'primary' : 'default'}
+                            sx={{ borderRadius: 2, bgcolor: viewMode === 'grid' ? alpha(theme.palette.primary.main, 0.1) : 'transparent' }}
+                        >
+                            <GridViewIcon fontSize="small" />
+                        </IconButton>
+                    </Box>
                     <TextField
                         placeholder="Search codes..."
                         size="small"
@@ -453,7 +475,7 @@ const PromoCodePage: React.FC = () => {
                 <Box sx={{ display: 'flex', justifyContent: 'center', p: 10 }}>
                     <CircularProgress />
                 </Box>
-            ) : (
+            ) : viewMode === 'grid' ? (
                 <Grid container spacing={3}>
                     {filteredPromos.map((promo, index) => {
                         const status = getStatusInfo(promo);
@@ -612,6 +634,123 @@ const PromoCodePage: React.FC = () => {
                         );
                     })}
                 </Grid>
+            ) : (
+                <TableContainer component={Paper} sx={{ borderRadius: 4, overflow: 'hidden', border: '1px solid', borderColor: 'divider', boxShadow: 'none' }}>
+                    <Table>
+                        <TableHead sx={{ bgcolor: alpha(theme.palette.background.default, 0.5) }}>
+                            <TableRow>
+                                <TableCell sx={{ fontWeight: 700 }}>Promo Code</TableCell>
+                                <TableCell sx={{ fontWeight: 700 }}>Name & Description</TableCell>
+                                <TableCell sx={{ fontWeight: 700 }}>Discount</TableCell>
+                                <TableCell sx={{ fontWeight: 700 }}>Usage</TableCell>
+                                <TableCell sx={{ fontWeight: 700 }}>Validity</TableCell>
+                                <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
+                                <TableCell align="right" sx={{ fontWeight: 700 }}>Actions</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {filteredPromos.map((promo) => {
+                                const status = getStatusInfo(promo);
+                                return (
+                                    <TableRow key={promo._id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                                        <TableCell>
+                                            <Box sx={{ 
+                                                display: 'inline-flex', 
+                                                alignItems: 'center', 
+                                                gap: 1, 
+                                                px: 1.5, 
+                                                py: 0.5, 
+                                                borderRadius: 1.5, 
+                                                bgcolor: alpha(theme.palette.primary.main, 0.05),
+                                                border: '1px dashed',
+                                                borderColor: alpha(theme.palette.primary.main, 0.3),
+                                                cursor: 'pointer'
+                                            }} onClick={() => copyToClipboard(promo.code)}>
+                                                <Typography sx={{ fontWeight: 700, color: 'primary.main', fontFamily: 'monospace' }}>
+                                                    {promo.code}
+                                                </Typography>
+                                                <CopyIcon sx={{ fontSize: 14, color: 'primary.main' }} />
+                                            </Box>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Typography variant="body2" fontWeight={600}>{promo.name}</Typography>
+                                            <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', maxWidth: 200 }}>
+                                                {promo.description || 'No description'}
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Typography variant="body2" fontWeight={700} color="secondary.main">
+                                                {promo.discountValue}{promo.discountType === 'percentage' ? '%' : '$'} OFF
+                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary">
+                                                Min: {formatCurrency(promo.minBillAmount)}
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <Box sx={{ flexGrow: 1, width: 40, height: 4, bgcolor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
+                                                    <Box sx={{ 
+                                                        width: `${Math.min(100, ((promo.currentUses || 0) / (promo.maxTotalUses || 100)) * 100)}%`, 
+                                                        height: '100%', 
+                                                        bgcolor: 'primary.main' 
+                                                    }} />
+                                                </Box>
+                                                <Typography variant="caption" fontWeight={600}>
+                                                    {promo.currentUses || 0}/{promo.maxTotalUses || '∞'}
+                                                </Typography>
+                                            </Box>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Typography variant="caption" display="block">
+                                                <Box component="span" sx={{ color: 'text.secondary' }}>From: </Box>
+                                                {safeFormatDate(promo.validFrom)}
+                                            </Typography>
+                                            <Typography variant="caption" display="block">
+                                                <Box component="span" sx={{ color: 'text.secondary' }}>To: </Box>
+                                                {safeFormatDate(promo.validTo)}
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Stack direction="row" spacing={1} alignItems="center">
+                                                <Chip
+                                                    label={status.label}
+                                                    color={status.color as any}
+                                                    size="small"
+                                                    sx={{ fontWeight: 700, height: 24 }}
+                                                />
+                                                <Switch
+                                                    checked={promo.active}
+                                                    onChange={() => toggleStatus(promo)}
+                                                    size="small"
+                                                    color="success"
+                                                />
+                                            </Stack>
+                                        </TableCell>
+                                        <TableCell align="right">
+                                            <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                                                <Tooltip title="Send Email">
+                                                    <IconButton size="small" color="info" onClick={() => { setSelectedForMessage(promo); setOpenEmailDialog(true); }}>
+                                                        <EmailIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                                <Tooltip title="Edit">
+                                                    <IconButton size="small" onClick={() => handleOpenDialog(promo)}>
+                                                        <EditIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                                <Tooltip title="Delete">
+                                                    <IconButton size="small" color="error" onClick={() => handleDelete(promo._id)}>
+                                                        <DeleteIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            </Stack>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
             )}
 
             {/* Pagination */}
