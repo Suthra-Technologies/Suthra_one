@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import axios from 'axios';
+import { getTenantUrl } from '../utils/tenant.utils';
 
 // JWT payload shape
 export interface JwtPayload {
@@ -29,6 +30,7 @@ export interface JwtPayload {
   name?: string;
   firstName?: string;
   lastName?: string;
+  fullName?: string;
   email?: string;
   phone?: string;
   profileImage?: string;
@@ -53,6 +55,7 @@ type LoginResponse = {
   error?: string;
   slug?: string;
   user?: any;
+  token?: string;
   availableTenants?: Array<{ slug: string; name: string }>; // Added field
 };
 
@@ -140,7 +143,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
           console.warn('AuthContext: No tenant slug in response (likely superadmin)');
         }
 
-        return { success: true, slug: response.data.tenant?.slug, user: userObj };
+        return { success: true, slug: response.data.tenant?.slug, user: userObj, token: jwt };
       }
       console.error('AuthContext: Invalid response structure', response.data);
       return { success: false, error: 'Invalid response from server' };
@@ -233,8 +236,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
           localStorage.setItem('availableTenants', JSON.stringify(response.data.availableTenants));
         }
 
-        // Reload to ensure fresh start in new context
-        window.location.href = `/${slug}/dashboard`;
+        // Reload to ensure fresh start in new context with correct subdomain and token handover
+        window.location.href = getTenantUrl(slug, '/dashboard', newToken);
       }
     } catch (error) {
       console.error('Failed to switch tenant', error);
@@ -245,9 +248,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
 
   const getUserFullName = () => {
     if (!user) return '';
+    if (user.fullName) return user.fullName;
     if (user.name) return user.name;
-    if (user.firstName && user.lastName) return `${user.firstName} ${user.lastName}`;
-    return user.sub?.slice(0, 8) || '';
+    if (user.firstName) return `${user.firstName} ${user.lastName || ''}`.trim();
+    if (user.email) return user.email.split('@')[0];
+    return user.sub?.slice(0, 8) || 'User';
   };
 
   const updateUserData = (data: Partial<JwtPayload>) => {
@@ -263,7 +268,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
       setIsLoading(false);
       return;
     }
-    const stored = localStorage.getItem('jwt');
+    // Check for token in URL (for cross-subdomain session handover)
+    const params = new URLSearchParams(window.location.search);
+    const urlToken = params.get('token');
+    
+    if (urlToken) {
+      console.log('AuthContext: Found token in URL, initiating handover...');
+      localStorage.setItem('jwt', urlToken);
+      // Clean up URL instantly
+      params.delete('token');
+      const cleanUrl = window.location.pathname + (params.toString() ? `?${params.toString()}` : '') + window.location.hash;
+      window.history.replaceState({}, '', cleanUrl);
+    }
+
+    const stored = urlToken || localStorage.getItem('jwt');
     const storedSlug = localStorage.getItem('tenantSlug');
     const storedUser = localStorage.getItem('user');
     const storedActiveRole = localStorage.getItem('activeRole');
@@ -274,20 +292,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
         setToken(stored);
 
         let u: any = null;
-        if (storedUser) {
+        if (urlToken) {
+          u = jwtDecode<JwtPayload>(stored);
+          console.log('AuthContext: Decoded fresh user from urlToken during handover', u.email);
+        } else if (storedUser) {
           u = JSON.parse(storedUser);
         } else {
           u = jwtDecode<JwtPayload>(stored);
         }
 
         if (u) {
+          console.log('AuthContext: Successfully rehydrated user:', u.email, 'Tenant:', u.tenantSlug);
           setUser(u);
+          
+          // Save back to localStorage if it was missing (e.g. during subdomain handover)
+          if (!storedUser || urlToken) {
+            localStorage.setItem('user', JSON.stringify(u));
+          }
+
           // Construct roles
           const roles = u.roles || (u.role ? [u.role] : ['cashier']);
-          if (storedActiveRole && roles.includes(storedActiveRole)) {
-            setActiveRole(storedActiveRole);
-          } else {
-            setActiveRole(roles[0]);
+          const targetRole = (storedActiveRole && roles.includes(storedActiveRole)) ? storedActiveRole : roles[0];
+          setActiveRole(targetRole);
+          if (!storedActiveRole || urlToken) {
+            localStorage.setItem('activeRole', targetRole);
           }
 
           // Rehydrate tenant slug
@@ -296,9 +324,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
           } else if (u.tenantSlug) {
             setTenantSlug(u.tenantSlug);
             localStorage.setItem('tenantSlug', u.tenantSlug);
-          } else if (typeof u.tenant === 'string') {
-            // Try to use ID as slug if nothing else (fallback, likely wrong but better than null)
-            // But backend usually sends object or ID. 
           }
         }
 

@@ -1,5 +1,17 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* ── White-Label Brand Variables ─────────────────────────────────
+   * These are injected by renamer.cjs at build time for APK builds,
+   * OR overridden at runtime by BrandContext for the multi-tenant SaaS.
+   * Components should use these variables for all brand-sensitive colors.
+   * ──────────────────────────────────────────────────────────────── */
+  --brand-primary:   #4F46E5;
+  --brand-secondary: #EC4899;
+  --brand-accent:    #10B981;
+  --brand-splash-bg: #0f172a;
+  --brand-name:      "Nexzen Restaurant POS";
+  --brand-font:      "Inter";
+
+  font-family: var(--brand-font, "Inter"), system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 

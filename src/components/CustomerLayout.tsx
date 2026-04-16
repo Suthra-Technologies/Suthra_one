@@ -40,13 +40,14 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from 'src/context/AuthContext';
 import { useSettings } from 'src/context/SettingsContext';
+import { useActiveTenant } from 'src/hooks/useActiveTenant';
 
 const CustomerLayout: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
   const location = useLocation();
-  const { slug } = useParams<{ slug: string }>();
+  const { slug, getRelativePath } = useActiveTenant();
   const { user, logout, isLoading } = useAuth();
   const { settings } = useSettings();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -55,14 +56,14 @@ const CustomerLayout: React.FC = () => {
   const restaurant = settings?.restaurant;
 
   const baseNavLinks = [
-    { label: 'Order', path: `/${slug}/customer/order`, icon: <ShoppingCart fontSize="small" /> },
-    { label: 'Book Table', path: `/${slug}/customer/book-table`, icon: <EventSeat fontSize="small" /> },
-    { label: 'Catering', path: `/${slug}/customer/catering`, icon: <MenuBook fontSize="small" /> },
+    { label: 'Order', path: getRelativePath('/customer/order'), icon: <ShoppingCart fontSize="small" /> },
+    { label: 'Book Table', path: getRelativePath('/customer/book-table'), icon: <EventSeat fontSize="small" /> },
+    { label: 'Catering', path: getRelativePath('/customer/catering'), icon: <MenuBook fontSize="small" /> },
   ];
 
   // Show 'My Activity' only for logged-in customers
   const navLinks = user
-    ? [...baseNavLinks, { label: 'My Activity', path: `/${slug}/customer/bookings`, icon: <HistoryIcon fontSize="small" /> }]
+    ? [...baseNavLinks, { label: 'My Activity', path: getRelativePath('/customer/bookings'), icon: <HistoryIcon fontSize="small" /> }]
     : baseNavLinks;
 
   const isActive = (path: string) => location.pathname === path;
@@ -121,7 +122,7 @@ const CustomerLayout: React.FC = () => {
                 cursor: 'pointer',
                 mr: { md: 4 },
               }}
-              onClick={() => navigate(`/${slug}/customer/order`)}
+              onClick={() => navigate(getRelativePath('/customer/order'))}
             >
               {restaurant?.logo ? (
                 <Avatar
@@ -221,7 +222,7 @@ const CustomerLayout: React.FC = () => {
                 <Button
                   variant="contained"
                   size="small"
-                  onClick={() => navigate(slug ? `/${slug}/register` : '/register', { state: { from: location.pathname } })}
+                  onClick={() => navigate(slug ? getRelativePath('/register') : '/register', { state: { from: location.pathname } })}
                   sx={{
                     borderRadius: '10px',
                     textTransform: 'none',
@@ -279,11 +280,11 @@ const CustomerLayout: React.FC = () => {
                     </Typography>
                     <Typography variant="caption" color="text.secondary">{user?.email}</Typography>
                   </Box>
-                  <MenuItem onClick={() => { setAnchorEl(null); navigate(`/${slug}/customer/bookings`); }}>
+                  <MenuItem onClick={() => { setAnchorEl(null); navigate(getRelativePath('/customer/bookings')); }}>
                     <HistoryIcon fontSize="small" sx={{ mr: 1.5, color: 'text.secondary' }} />
                     My Activity
                   </MenuItem>
-                  <MenuItem onClick={() => { setAnchorEl(null); navigate(`/${slug}/profile`); }}>
+                  <MenuItem onClick={() => { setAnchorEl(null); navigate(getRelativePath('/profile')); }}>
                     <Person fontSize="small" sx={{ mr: 1.5, color: 'text.secondary' }} />
                     Profile
                   </MenuItem>

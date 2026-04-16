@@ -33,15 +33,18 @@ import {
 } from '@mui/icons-material';
 
 import { useAuth } from '../../context/AuthContext';
-import { authAPI } from '../../services/api';
+import { authAPI, tenantAPI } from '../../services/api';
+import { useActiveTenant } from '../../hooks/useActiveTenant';
 import { toast } from 'react-hot-toast';
 import logo from '../../assets/images/icons/logo.jpeg';
+import { getTenantSlugFromHostname, getTenantUrl } from '../../utils/tenant.utils';
 
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
+  const { isSubdomain } = useActiveTenant();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -57,6 +60,14 @@ const LoginPage: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [forgotPasswordView, setForgotPasswordView] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  
+  // Dynamic Tenant Branding
+  const [activeTenant, setActiveTenant] = useState<{
+    slug: string;
+    name: string;
+    logo?: string;
+  } | null>(null);
+  const [tenantLoading, setTenantLoading] = useState(false);
 
   // Multi-tenant switching support
   const searchParams = new URLSearchParams(location.search);
@@ -78,6 +89,32 @@ const LoginPage: React.FC = () => {
       setRememberMe(true);
     }
   }, [prefillEmail]);
+
+  // Load dynamic tenant branding
+  React.useEffect(() => {
+    const fetchTenantBranding = async () => {
+      const slug = getTenantSlugFromHostname();
+      if (slug) {
+        setTenantLoading(true);
+        try {
+          const response = await tenantAPI.getRestaurantStatus(slug);
+          if (response.data) {
+            setActiveTenant({
+              slug: response.data.slug,
+              name: response.data.name,
+              logo: response.data.logo
+            });
+          }
+        } catch (error) {
+          console.error('[LoginPage] Failed to fetch tenant branding:', error);
+        } finally {
+          setTenantLoading(false);
+        }
+      }
+    };
+
+    fetchTenantBranding();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -129,10 +166,13 @@ const LoginPage: React.FC = () => {
         localStorage.removeItem('rememberedPassword');
       }
 
-      // Pass tenantSlug if we are switching tenants
+      // Use detected slug if present, otherwise fallback to URL param
+      const slugToUse = activeTenant?.slug || targetTenant || undefined;
+
+      // Pass tenantSlug if we are switching tenants or on dynamic subdomain
       const result = await login({
         ...formData,
-        tenantSlug: targetTenant || undefined
+        tenantSlug: slugToUse
       });
 
       if (result.success) {
@@ -148,9 +188,19 @@ const LoginPage: React.FC = () => {
           if (from) {
             setTimeout(() => navigate(from, { replace: true }), 100);
           } else if (userRole === 'customer') {
-            setTimeout(() => navigate(`/${result.slug}/customer/order`, { replace: true }), 100);
+            if (isSubdomain) {
+              setTimeout(() => navigate('/customer/order', { replace: true }), 100);
+            } else {
+              // Redirect to subdomain if on main domain, passing token for handover
+              window.location.href = getTenantUrl(result.slug!, '/customer/order', result.token);
+            }
           } else {
-            setTimeout(() => navigate(`/${result.slug}/dashboard`, { replace: true }), 100);
+            if (isSubdomain) {
+              setTimeout(() => navigate('/dashboard', { replace: true }), 100);
+            } else {
+              // Redirect to subdomain if on main domain, passing token for handover
+              window.location.href = getTenantUrl(result.slug!, '/dashboard', result.token);
+            }
           }
         } else {
           console.error('LoginPage: No slug and not superadmin');
@@ -193,8 +243,9 @@ const LoginPage: React.FC = () => {
     setShowPassword(!showPassword);
   };
 
-  // const logoUrl = "https://www.divinecurry.us/storage/app/public/logos/njwVBA1lkQToTPB27hDpNcCund3gPSV8rdjp6bgh.webp";
-  const logoUrl = logo;
+  // Branding resolution
+  const displayLogo = activeTenant?.logo || logo;
+  const displayName = activeTenant?.name || "Restaurant POS";
 
   return (
     <Grid container component="main" sx={{ minHeight: '100vh', height: { xs: 'auto', sm: '100vh' }, overflow: { xs: 'auto', sm: 'hidden' } }}>
@@ -305,18 +356,18 @@ const LoginPage: React.FC = () => {
         </Box>
 
         <Typography variant="h4" sx={{ mt: { sm: 3, md: 5 }, color: '#fff', fontWeight: 'bold', textShadow: '0 2px 4px rgba(0,0,0,0.5)', fontSize: { sm: '1.1rem', md: '1.6rem', lg: '2.125rem' }, textAlign: 'center', px: 2 }}>
-          Welcome to a World of Great Taste
+          {activeTenant ? `Welcome to ${displayName}` : 'Welcome to a World of Great Taste'}
         </Typography>
         <Typography variant="subtitle1" sx={{ color: 'rgba(255,255,255,0.7)', mt: 1, fontSize: { sm: '0.75rem', md: '0.9rem', lg: '1rem' }, textAlign: 'center', px: 2 }}>
-          Manage your orders with ease
+          {activeTenant ? 'Log in to manage your kitchen and orders' : 'Manage your orders with ease'}
         </Typography>
       </Grid>
 
       {/* Login Form Section (Right Side) */}
-      <Grid item xs={12} sm={7} md={6} component={Paper} elevation={6} square>
+      <Grid item xs={12} sm={7} md={6} component={Paper} elevation={6} square sx={{ overflowY: 'auto', maxHeight: { xs: 'none', sm: '100vh' } }}>
         <Box
           sx={{
-            my: { xs: 3, sm: 3, md: 6 },
+            my: { xs: 3, sm: 3, md: 4 },
             mx: { xs: 2, sm: 3 },
             display: 'flex',
             flexDirection: 'column',
@@ -328,10 +379,9 @@ const LoginPage: React.FC = () => {
         >
           <Box
             component="img"
-            src={logoUrl}
-            alt="Restaurant POS"
-            sx={{ height: { xs: 90, sm: 110, md: 150 }, width: "auto", objectFit: "contain", mb: 2 }}
-
+            src={displayLogo}
+            alt={displayName}
+            sx={{ height: { xs: 90, sm: 110, md: 150 }, width: "auto", maxWidth: "100%", objectFit: "contain", mb: 2, borderRadius: activeTenant ? '8px' : '0' }}
           />
           <Typography component="h1" variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' } }}>
             {forgotPasswordView ? 'Reset Password' : 'Sign In'}
@@ -493,7 +543,7 @@ const LoginPage: React.FC = () => {
                 <Grid item>
                   <Link
                     component={RouterLink}
-                    to={targetTenant ? `/${targetTenant}/register` : "/register"}
+                    to={activeTenant?.slug ? `/${activeTenant.slug}/register` : (targetTenant ? `/${targetTenant}/register` : "/register")}
                     variant="body2"
                   >
                     {"Don't have an account? Sign Up"}

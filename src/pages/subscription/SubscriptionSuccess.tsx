@@ -4,6 +4,8 @@ import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { subscriptionAPI } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import { isSubdomainAccess } from '../../utils/tenant.utils';
 
 const SubscriptionSuccess: React.FC = () => {
     const navigate = useNavigate();
@@ -11,6 +13,9 @@ const SubscriptionSuccess: React.FC = () => {
     const sessionId = searchParams.get('session_id');
     const [verifying, setVerifying] = useState(true);
     const [success, setSuccess] = useState(false);
+    const { tenantSlug } = useAuth();
+    
+    const dashboardPath = isSubdomainAccess() ? '/dashboard' : `/${tenantSlug}/dashboard`;
 
     useEffect(() => {
         const verify = async () => {
@@ -63,7 +68,7 @@ const SubscriptionSuccess: React.FC = () => {
                             <Button
                                 variant="contained"
                                 size="large"
-                                onClick={() => navigate('/')}
+                                onClick={() => navigate(dashboardPath)}
                             >
                                 Go to Dashboard
                             </Button>
