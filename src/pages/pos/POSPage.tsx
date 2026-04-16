@@ -59,6 +59,7 @@ import type { Category, Subcategory, IMenuItem } from '../menu/types';
 import MenuItemDialog from '../menu/components/MenuItemDialog';
 import CustomerInfoSection from './components/CustomerInfoSection';
 import OrderDetailsSection from './components/OrderDetailsSection';
+import MergeTablesDialog from './components/MergeTablesDialog';
 
 
 type Variant = {
@@ -97,13 +98,13 @@ type MenuItem = {
 
 // --- Memoized Sub-components for Optimization ---
 
-const MemoizedMenuItemCard = React.memo(({ 
-    item, 
-    onClick, 
-    formatCurrency 
-}: { 
-    item: MenuItem; 
-    onClick: (item: MenuItem) => void; 
+const MemoizedMenuItemCard = React.memo(({
+    item,
+    onClick,
+    formatCurrency
+}: {
+    item: MenuItem;
+    onClick: (item: MenuItem) => void;
     formatCurrency: (amount: number) => string;
 }) => {
     return (
@@ -213,7 +214,7 @@ const MemoizedCartItem = React.memo(({
 });
 
 const POSPage: React.FC = () => {
-    const { user, getUserFullName } = useAuth();
+    const { user, getUserFullName, tenantSlug } = useAuth();
     const { formatCurrency, settings } = useSettings();
 
     // Basic data
@@ -274,6 +275,7 @@ const POSPage: React.FC = () => {
     const [deliveryFee, setDeliveryFee] = useState<number>(0);
     const [isFetchingQuote, setIsFetchingQuote] = useState<boolean>(false);
     const [quoteError, setQuoteError] = useState<string | null>(null);
+    const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
 
     // Sync dial code with settings when they load
     useEffect(() => {
@@ -296,8 +298,8 @@ const POSPage: React.FC = () => {
             try {
                 setIsFetchingQuote(true);
                 setQuoteError(null);
-                
-                const tenantSlug = tenantSlug || settings?.tenantSlug || '';
+
+                const effectiveTenantSlug = tenantSlug || (settings as any)?.tenantSlug || '';
                 // Since this might be admin, try to get tenantSlug from context or route if possible.
                 // In POSPage, we have slug from useSearchParams maybe? No.
                 // But settings?.tenantSlug should work.
@@ -305,7 +307,7 @@ const POSPage: React.FC = () => {
                 const response = await ordersAPI.getDeliveryQuote(
                     { fullAddress: addressString },
                     cart.map(i => ({ menuItem: i._id, name: i.name, quantity: i.quantity, price: i.price })),
-                    tenantSlug
+                    effectiveTenantSlug
                 );
 
                 if (!isCancelled) {
@@ -333,7 +335,7 @@ const POSPage: React.FC = () => {
             isCancelled = true;
             clearTimeout(debounceTimer);
         };
-    }, [orderType, deliveryAddress, cart, settings?.tenantSlug]);
+    }, [orderType, deliveryAddress, cart, (settings as any)?.tenantSlug, tenantSlug]);
 
     useEffect(() => {
         const observer = new IntersectionObserver(
@@ -354,6 +356,24 @@ const POSPage: React.FC = () => {
         };
     }, []);
 
+    // Synchronize selectedTable with latest data from tables array (e.g. after a merge)
+    useEffect(() => {
+        if (selectedTable && tables.length > 0) {
+            const latestTable = tables.find(t => t._id === selectedTable._id);
+            if (latestTable) {
+                // Only update if something meaningful changed to avoid infinite loops or unnecessary renders
+                if (
+                    latestTable.isPrimary !== selectedTable.isPrimary ||
+                    latestTable.isMerged !== selectedTable.isMerged ||
+                    latestTable.mergedWith !== selectedTable.mergedWith ||
+                    latestTable.status !== selectedTable.status
+                ) {
+                    setSelectedTable(latestTable);
+                }
+            }
+        }
+    }, [tables, selectedTable?._id]);
+
 
     // Dynamic Search Placeholder logic
     const placeholderItems = useMemo(() => {
@@ -371,7 +391,7 @@ const POSPage: React.FC = () => {
         if (!placeholderItems.length) return;
         const timer = setInterval(() => {
             setPlaceholderIndex((prev) => (prev + 1) % placeholderItems.length);
-        }, 3000); 
+        }, 3000);
         return () => clearInterval(timer);
     }, [placeholderItems.length]);
 
@@ -381,25 +401,32 @@ const POSPage: React.FC = () => {
             if (cursor) {
                 setIsFetchingMore(true);
             } else {
-                setLoading(true);
+                // Only show global loading spinner if we don't have any items yet
+                // This prevents the "menu reloading" flicker when selecting tables
+                if (menuItems.length === 0) {
+                    setLoading(true);
+                }
             }
 
             const res = await menuAPI.getAll({
                 search: searchQuery || undefined,
-                category: selectedCategory !== 'all' ? selectedCategory : undefined,
+                // Do NOT pass category here — we fetch all items and filter client-side.
+                // This ensures items always load even if the backend category filter is unreliable.
                 foodType: foodTypeFilter !== 'all' ? foodTypeFilter : undefined,
                 cursor: cursor || undefined,
                 limit: PAGE_LIMIT,
                 isAvailable: true
             });
 
-            // The backend returns { items, nextCursor, totalCount }
-            const { items, nextCursor: newCursor } = res.data;
+            // Handle both array response and { items, nextCursor } object response
+            const data = res.data;
+            const fetchedItems: any[] = Array.isArray(data) ? data : (data?.items ?? []);
+            const newCursor = Array.isArray(data) ? null : (data?.nextCursor ?? null);
 
             if (fresh) {
-                setMenuItems(items);
+                setMenuItems(fetchedItems);
             } else {
-                setMenuItems(prev => [...prev, ...items]);
+                setMenuItems(prev => [...prev, ...fetchedItems]);
             }
             setNextCursor(newCursor);
         } catch (error) {
@@ -425,12 +452,13 @@ const POSPage: React.FC = () => {
             setTables(tablesRes.data);
             setTrays(traysRes.data);
 
-            // Fetch initial menu
-            await fetchMenu(null, true);
+            // Removing explicit fetchMenu(null, true) here because it is redundant
+            // with the debounced useEffect([searchQuery, selectedCategory, ...]) 
+            // that runs immediately on mount. This prevents "double loading" on start.
         } catch (error) {
             console.error('Error fetching data:', error);
         } finally {
-            // setLoading(false) handled within fetchMenu
+            // setLoading(false) is handled by the fetchMenu call triggered by useEffect
         }
     };
 
@@ -552,12 +580,23 @@ const POSPage: React.FC = () => {
         } catch (error: any) {
             console.error('Coupon validation error:', error);
             setCouponDiscount(0);
-            setCouponCode(''); // Clear invalid coupon
             if (!silent) {
+                // In manual mode: clear the code so user knows it failed
+                setCouponCode('');
                 toast.error(error.response?.data?.message || error.message || 'Invalid coupon');
             } else {
-                // Silent notification that coupon was removed
-                toast.success('Coupon removed - minimum order amount not met', { icon: 'ℹ️' });
+                // In silent re-validation: keep the coupon code so it can auto-apply
+                // once the cart total reaches the required minimum — do NOT clear it.
+                // Only show a notification if the error is NOT about minimum bill amount,
+                // since that resolves itself as items are added.
+                const msg: string = error.response?.data?.message || error.message || '';
+                const isMinAmountError = msg.toLowerCase().includes('minimum') || msg.toLowerCase().includes('min');
+                if (!isMinAmountError) {
+                    // Coupon is genuinely invalid (expired, not applicable etc.) — clear it
+                    setCouponCode('');
+                    toast.success('Coupon removed - no longer valid', { icon: 'ℹ️' });
+                }
+                // Otherwise: silently keep the code; discount stays 0 until cart total grows
             }
         }
     }, [couponCode, cart]);
@@ -617,42 +656,63 @@ const POSPage: React.FC = () => {
                             return;
                         }
                     }
-                    // For a NEW order from booking, clear previous state first
-                    resetData();
-                    setSelectedTable(table);
-                    setTableNumber(table.tableNumber);
-                    setOrderType('dine_in');
+
+                    // Only reset and pre-select if it's not already the selected table
+                    // to avoid unnecessary state churn and menu refreshes
+                    if (selectedTable?._id !== table._id) {
+                        resetData();
+                        setSelectedTable(table);
+                        setOrderType('dine_in');
+
+                        // Handle Merged Table Numbers
+                        let displayTableNumber = table.tableNumber;
+                        if (table.isPrimary) {
+                            const linkedTables = tables.filter(t => t.mergedWith === table._id);
+                            if (linkedTables.length > 0) {
+                                displayTableNumber = `${table.tableNumber} + ${linkedTables.map(t => t.tableNumber).join(', ')}`;
+                            }
+                        } else if (table.mergedWith) {
+                            const primary = tables.find(t => t._id === table.mergedWith);
+                            const linkedTables = tables.filter(t => t.mergedWith === table.mergedWith && t._id !== table._id);
+                            if (primary) {
+                                displayTableNumber = `${primary.tableNumber} + ${table.tableNumber}${linkedTables.length > 0 ? ', ' + linkedTables.map(t => t.tableNumber).join(', ') : ''}`;
+                            }
+                        }
+                        setTableNumber(displayTableNumber);
+                    }
                 }
             }
         }
 
         // Always try to pick up customer info/guest count from URL if provided,
         // to support navigation from bookings even when an order already exists.
-        if (tables.length > 0 || isEditMode) {
-            const guests = searchParams.get("guestCount");
-            if (guests) {
-                const gCount = parseInt(guests);
+        if (tables.length > 0) {
+            const urlGuests = searchParams.get("guestCount");
+            const urlName = searchParams.get("customerName");
+            const urlPhone = searchParams.get("customerPhone");
+            const urlEmail = searchParams.get("customerEmail");
+
+            if (urlGuests) {
+                const gCount = parseInt(urlGuests);
                 if (!isNaN(gCount) && gCount > 0) setGuestCount(gCount);
             }
 
-            const cName = searchParams.get("customerName");
-            if (cName) setCustomerName(cName);
+            if (urlName) setCustomerName(urlName);
 
-            const cPhone = searchParams.get("customerPhone");
-            if (cPhone) {
-                const digits = cPhone.replace(/\D/g, '');
-                if (cPhone.startsWith('+')) {
-                    setCustomerDialCode(digits.slice(0, -10));
+            if (urlPhone) {
+                const digits = urlPhone.replace(/\D/g, '');
+                if (urlPhone.startsWith('+')) {
+                    setCustomerDialCode(digits.slice(0, -10) || settings?.restaurant?.dialCode || '1');
                     setCustomerPhone(digits.slice(-10));
                 } else {
                     setCustomerPhone(digits.slice(-10));
+                    // Keep existing dial code or use settings default
                 }
             }
 
-            const cEmail = searchParams.get("customerEmail");
-            if (cEmail) setCustomerEmail(cEmail);
+            if (urlEmail) setCustomerEmail(urlEmail);
         }
-    }, [isEditMode, existingOrderId, tables, searchParams, resetData]);
+    }, [isEditMode, existingOrderId, tables, searchParams, resetData, settings?.restaurant?.dialCode]);
 
     const loadExistingOrder = async (id: string) => {
         setCart([]); // Clear any previous items before loading new ones
@@ -667,29 +727,57 @@ const POSPage: React.FC = () => {
             const urlName = searchParams.get("customerName");
             const urlPhone = searchParams.get("customerPhone");
             const urlEmail = searchParams.get("customerEmail");
+            const urlGuestCount = searchParams.get("guestCount");
 
             setCustomerName(urlName || ord.customer?.name || '');
+            
             const rawPhone = urlPhone || ord.customer?.phone || '';
             const digits = rawPhone.replace(/\D/g, '');
             if (rawPhone.startsWith('+')) {
-                setCustomerDialCode(digits.slice(0, -10));
+                setCustomerDialCode(digits.slice(0, -10) || settings?.restaurant?.dialCode || '1');
                 setCustomerPhone(digits.slice(-10));
             } else {
                 setCustomerPhone(digits.slice(-10));
+                // Default dial code if not provided in phone string
+                if (!urlPhone && ord.customer?.phone && !ord.customer.phone.startsWith('+')) {
+                   // Keep current dial code or fallback to settings
+                }
             }
             setCustomerEmail(urlEmail || ord.customer?.email || '');
+            
+            if (urlGuestCount) {
+                const gCount = parseInt(urlGuestCount);
+                if (!isNaN(gCount) && gCount > 0) setGuestCount(gCount);
+            } else {
+                setGuestCount(ord.guestCount || 1);
+            }
+
             setDiscountPercent(ord.discountPercent || 0);
             setPaymentMethod(ord.paymentMethod || 'cash');
             setCardPrintReceipt(Boolean(ord.cardOptions?.printReceipt));
             setCardSignInForApiCall(Boolean(ord.cardOptions?.signInForApiCall));
 
             if (ord.orderType === "dine_in") {
-                const table = tables.find((t) => t.tableNumber === ord.tableNumber);
+                const table = tables.find((t) => t.tableNumber === ord.tableNumber || t._id === ord.table);
 
                 setSelectedTable(table || null);
-                setTableNumber(ord.tableNumber || "");
+
+                // Handle Merged Table Numbers from Order
+                let displayTableNumber = ord.tableNumber || "";
+                if (ord.mergedTables && ord.mergedTables.length > 0) {
+                    const linkedNumbers = ord.mergedTables.map((mt: any) => {
+                        const found = tables.find(t => t._id === (typeof mt === 'string' ? mt : mt._id));
+                        return found?.tableNumber;
+                    }).filter(Boolean);
+
+                    if (linkedNumbers.length > 0) {
+                        displayTableNumber = `${displayTableNumber} + ${linkedNumbers.join(', ')}`;
+                    }
+                }
+
+                setTableNumber(displayTableNumber);
                 setWaiterName(ord.waiterName || "");
-                setGuestCount(ord.guestCount || 1);
+                // guestCount already handled above with URL priority
             }
 
 
@@ -706,6 +794,32 @@ const POSPage: React.FC = () => {
 
         } catch (err) {
             toast.error("Failed to load order");
+        }
+    };
+
+    const handleUnmerge = async (table: any) => {
+        const primaryId = table.isPrimary ? table._id : table.mergedWith;
+        if (!primaryId) return;
+
+        try {
+            await tablesAPI.unmerge(primaryId);
+            toast.success('Tables unmerged successfully');
+
+            // Refresh tables WITHOUT reloading the menu
+            await fetchTables();
+
+            // After unmerge, find the table again from the updated state to sync selection
+            // fetchTables() updates the 'tables' state, so we can search it
+            const res = await tablesAPI.getAll(); // Fetch once more to get local data for immediate update
+            const refreshedTables = res.data;
+            const updatedTable = refreshedTables.find((t: any) => t._id === table._id);
+            if (updatedTable) {
+                setSelectedTable(updatedTable);
+                setTableNumber(updatedTable.tableNumber);
+            }
+        } catch (error) {
+            console.error('Error unmerging tables:', error);
+            toast.error('Failed to unmerge tables');
         }
     };
 
@@ -746,11 +860,14 @@ const POSPage: React.FC = () => {
     useEffect(() => {
         fetchAvailableCoupons();
 
-        // Re-validate applied coupon when cart changes
-        if (couponCode && couponDiscount > 0) {
+        // Re-validate the coupon whenever cart changes:
+        // - If there's already an applied discount, re-check it's still valid
+        // - If there's a code but no discount yet (min amount wasn't met before),
+        //   attempt validation again now that the cart total may have increased
+        if (couponCode) {
             handleValidateCoupon(true); // Silent re-validation
         }
-    }, [orderType, cart, couponCode, couponDiscount, handleValidateCoupon]);
+    }, [orderType, cart]);
 
     // Filtering menu items
     const filteredItems = useMemo(() => {
@@ -760,20 +877,32 @@ const POSPage: React.FC = () => {
         if (!Array.isArray(menuItems)) return [];
 
         return menuItems.filter((item) => {
+            // --- Search ---
             const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-            const matchesCategory =
-                selectedCategory === 'all' ||
-                (item.category && (item.category._id === selectedCategory || item.category === selectedCategory));
-            const matchesFoodType =
-                foodTypeFilter === 'all' || item.foodType === foodTypeFilter;
 
-            // In standard modes, show items that are specifically available for regular ordering
-            let isAvailableByMode = !!item.isAvailable && !!item.isActive;
+            // --- Category ---
+            // item.category can be a string ID or a populated { _id, name } object.
+            const rawCat = item.category;
+            const itemCatId: string = rawCat
+                ? (typeof rawCat === 'object' ? (rawCat._id ?? rawCat.id ?? '') : String(rawCat))
+                : '';
+            const matchesCategory = selectedCategory === 'all' || itemCatId === selectedCategory;
 
-            // Apply scheduling filters for regular items (if not using special catering interface)
+            // --- Food Type ---
+            const matchesFoodType = foodTypeFilter === 'all' || item.foodType === foodTypeFilter;
+
+            // --- Availability ---
+            // NOTE: item.isActive is NOT a field on IMenuItem returned by the backend.
+            // Using !!item.isActive would always be false and hide everything.
+            // We only gate on item.isAvailable which IS a real backend field.
+            let isAvailableByMode = !!item.isAvailable;
+
+            // Apply weekly-schedule restrictions only when explicitly enabled
             if (item.isWeeklyScheduleEnabled) {
                 // Check if today is one of the available days
-                const isDayAvailable = (item.availableDays || []).some((d: string) => d.toLowerCase() === currentDay);
+                const isDayAvailable = (item.availableDays || []).some(
+                    (d: string) => d.toLowerCase() === currentDay
+                );
 
                 // If it's "available_only" and today is NOT the day, hide it
                 if (item.availabilityType === 'available_only' && !isDayAvailable) {
@@ -848,7 +977,7 @@ const POSPage: React.FC = () => {
             try {
                 setIsCalculatingTax(true);
                 const restaurantSettings = settings?.restaurant || {};
-                
+
                 // Determine to_zip
                 let to_zip = '';
                 if (typeof deliveryAddress === 'object' && (deliveryAddress as any).zipCode) {
@@ -857,17 +986,17 @@ const POSPage: React.FC = () => {
                     const match = deliveryAddress.match(/\b\d{5}\b/);
                     if (match) to_zip = match[0];
                 }
-                
+
                 if (!to_zip) to_zip = restaurantSettings.zipCode || '30040';
 
                 const payload = {
                     to_zip,
-                    totalDiscount: discountAmount + couponDiscount,
+                    discount: discountAmount + couponDiscount,
                     line_items: cart.map(item => ({
                         itemId: item.originalMenuItemId || item._id,
                         quantity: item.quantity,
                         price: item.price,
-                        discount: 0, // Individual discounts handled by totalDiscount in this simplified version
+                        discount: 0,
                         name: item.name
                     }))
                 };
@@ -889,13 +1018,13 @@ const POSPage: React.FC = () => {
         return taxDetails?.taxAmount || 0;
     }, [taxDetails]);
 
-    const serviceChargeAmount = useMemo(() => 
-        (orderType === 'dine_in' && guestCount > 3) ? Math.round(cartTotal * 0.18) : 0, 
-    [orderType, guestCount, cartTotal]);
+    const serviceChargeAmount = useMemo(() =>
+        (orderType === 'dine_in' && guestCount > 3) ? Math.round(cartTotal * 0.18) : 0,
+        [orderType, guestCount, cartTotal]);
 
-    const finalTotal = useMemo(() => 
+    const finalTotal = useMemo(() =>
         cartTotal + taxAmount - discountAmount - couponDiscount + serviceChargeAmount + (Number(tip) || 0),
-    [cartTotal, taxAmount, discountAmount, couponDiscount, serviceChargeAmount, tip]);
+        [cartTotal, taxAmount, discountAmount, couponDiscount, serviceChargeAmount, tip]);
 
     const handlePlaceOrder = async () => {
         if (cart.length === 0) return;
@@ -1057,6 +1186,13 @@ const POSPage: React.FC = () => {
                 }
             }
 
+            // Calculate merged tables IDs
+            const mergedTableIdsArray = selectedTable?.isPrimary
+                ? tables.filter(t => t.mergedWith === selectedTable._id).map(t => t._id)
+                : selectedTable?.mergedWith
+                    ? [selectedTable.mergedWith, ...tables.filter(t => t.mergedWith === selectedTable.mergedWith && t._id !== selectedTable._id).map(t => t._id)]
+                    : [];
+
             const payload = {
                 items: cart.map((i) => ({
                     menuItem: i._id,
@@ -1075,7 +1211,8 @@ const POSPage: React.FC = () => {
                 discountPercent,
                 couponCode: couponCode || undefined,
                 orderType,
-                table: selectedTable?._id || undefined,
+                table: selectedTable?.isMerged ? selectedTable.mergedWith : selectedTable?._id,
+                mergedTables: mergedTableIdsArray,
                 paymentMethod: finalPaymentMethod,
                 paymentStatus: finalPaymentStatus,
                 paymentIntentId: finalPaymentIntentId,
@@ -1087,7 +1224,9 @@ const POSPage: React.FC = () => {
                 }),
 
                 ...(orderType === "dine_in" && {
-                    tableNumber: selectedTable?.tableNumber || tableNumber,
+                    tableNumber: selectedTable?.isMerged
+                        ? (tables.find(t => t._id === selectedTable.mergedWith)?.tableNumber || tableNumber.split(' + ')[0])
+                        : tableNumber.split(' + ')[0],
                     waiterName,
                     guestCount,
                 }),
@@ -1368,6 +1507,15 @@ const POSPage: React.FC = () => {
                     settings={settings}
                     user={user}
                     checkingDistance={checkingDistance}
+                    onOpenMerge={() => setMergeDialogOpen(true)}
+                    onUnmerge={handleUnmerge}
+                    discountPercent={discountPercent}
+                    setDiscountPercent={setDiscountPercent}
+                    couponCode={couponCode}
+                    setCouponCode={setCouponCode}
+                    onValidateCoupon={() => handleValidateCoupon(false)}
+                    availableCoupons={availableCoupons}
+                    cartTotal={cartTotal}
                 />
                 {/* Search & category tabs */}
                 <Box sx={{ mb: 2, display: 'flex', gap: 2 }}>
@@ -1946,7 +2094,7 @@ const POSPage: React.FC = () => {
 
                         {/* Load More Button */}
                         {nextCursor && (
-                             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4, mb: 2 }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4, mb: 2 }}>
                                 <Button
                                     variant="outlined"
                                     onClick={() => fetchMenu(nextCursor)}
@@ -2273,20 +2421,14 @@ const POSPage: React.FC = () => {
                     cartTotal={cartTotal}
                     taxAmount={taxAmount}
                     discountAmount={discountAmount}
+                    discountPercent={discountPercent}
                     couponDiscount={couponDiscount}
                     serviceChargeAmount={serviceChargeAmount}
                     tip={tip}
                     setTip={setTip}
                     finalTotal={finalTotal}
-                    discountPercent={discountPercent}
-                    setDiscountPercent={setDiscountPercent}
-                    couponCode={couponCode}
-                    setCouponCode={setCouponCode}
-                    onValidateCoupon={() => handleValidateCoupon(false)}
-                    availableCoupons={availableCoupons}
                     placingOrder={placingOrder}
                     handlePlaceOrder={handlePlaceOrder}
-                    user={user}
                 />
             </Paper>
 
@@ -2397,6 +2539,14 @@ const POSPage: React.FC = () => {
                     100% { transform: translateY(-20px); opacity: 0; }
                 }
             `}</style>
+            {/* Merge Tables Dialog */}
+            <MergeTablesDialog
+                open={mergeDialogOpen}
+                onClose={() => setMergeDialogOpen(false)}
+                tables={tables}
+                onSuccess={() => fetchTables()}
+                initialPrimaryTableId={selectedTable?._id}
+            />
         </Box>
     );
 };

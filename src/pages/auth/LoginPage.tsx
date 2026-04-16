@@ -33,15 +33,18 @@ import {
 } from '@mui/icons-material';
 
 import { useAuth } from '../../context/AuthContext';
-import { authAPI } from '../../services/api';
+import { authAPI, tenantAPI } from '../../services/api';
+import { useActiveTenant } from '../../hooks/useActiveTenant';
 import { toast } from 'react-hot-toast';
 import logo from '../../assets/images/icons/logo.jpeg';
+import { getTenantSlugFromHostname, getTenantUrl } from '../../utils/tenant.utils';
 
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { login } = useAuth();
+  const { isSubdomain } = useActiveTenant();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -57,6 +60,14 @@ const LoginPage: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [forgotPasswordView, setForgotPasswordView] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  
+  // Dynamic Tenant Branding
+  const [activeTenant, setActiveTenant] = useState<{
+    slug: string;
+    name: string;
+    logo?: string;
+  } | null>(null);
+  const [tenantLoading, setTenantLoading] = useState(false);
 
   // Multi-tenant switching support
   const searchParams = new URLSearchParams(location.search);
@@ -78,6 +89,32 @@ const LoginPage: React.FC = () => {
       setRememberMe(true);
     }
   }, [prefillEmail]);
+
+  // Load dynamic tenant branding
+  React.useEffect(() => {
+    const fetchTenantBranding = async () => {
+      const slug = getTenantSlugFromHostname();
+      if (slug) {
+        setTenantLoading(true);
+        try {
+          const response = await tenantAPI.getRestaurantStatus(slug);
+          if (response.data) {
+            setActiveTenant({
+              slug: response.data.slug,
+              name: response.data.name,
+              logo: response.data.logo
+            });
+          }
+        } catch (error) {
+          console.error('[LoginPage] Failed to fetch tenant branding:', error);
+        } finally {
+          setTenantLoading(false);
+        }
+      }
+    };
+
+    fetchTenantBranding();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -129,10 +166,13 @@ const LoginPage: React.FC = () => {
         localStorage.removeItem('rememberedPassword');
       }
 
-      // Pass tenantSlug if we are switching tenants
+      // Use detected slug if present, otherwise fallback to URL param
+      const slugToUse = activeTenant?.slug || targetTenant || undefined;
+
+      // Pass tenantSlug if we are switching tenants or on dynamic subdomain
       const result = await login({
         ...formData,
-        tenantSlug: targetTenant || undefined
+        tenantSlug: slugToUse
       });
 
       if (result.success) {
@@ -148,9 +188,19 @@ const LoginPage: React.FC = () => {
           if (from) {
             setTimeout(() => navigate(from, { replace: true }), 100);
           } else if (userRole === 'customer') {
-            setTimeout(() => navigate(`/${result.slug}/customer/order`, { replace: true }), 100);
+            if (isSubdomain) {
+              setTimeout(() => navigate('/customer/order', { replace: true }), 100);
+            } else {
+              // Redirect to subdomain if on main domain, passing token for handover
+              window.location.href = getTenantUrl(result.slug!, '/customer/order', result.token);
+            }
           } else {
-            setTimeout(() => navigate(`/${result.slug}/dashboard`, { replace: true }), 100);
+            if (isSubdomain) {
+              setTimeout(() => navigate('/dashboard', { replace: true }), 100);
+            } else {
+              // Redirect to subdomain if on main domain, passing token for handover
+              window.location.href = getTenantUrl(result.slug!, '/dashboard', result.token);
+            }
           }
         } else {
           console.error('LoginPage: No slug and not superadmin');
@@ -193,19 +243,21 @@ const LoginPage: React.FC = () => {
     setShowPassword(!showPassword);
   };
 
-  // const logoUrl = "https://www.divinecurry.us/storage/app/public/logos/njwVBA1lkQToTPB27hDpNcCund3gPSV8rdjp6bgh.webp";
-  const logoUrl = logo;
+  // Branding resolution
+  const displayLogo = activeTenant?.logo || logo;
+  const displayName = activeTenant?.name || "Restaurant POS";
 
   return (
-    <Grid container component="main" sx={{ height: '100vh', overflow: 'hidden' }}>
+    <Grid container component="main" sx={{ minHeight: '100vh', height: { xs: 'auto', sm: '100vh' }, overflow: { xs: 'auto', sm: 'hidden' } }}>
       {/* Animation Section (Left Side) */}
       <Grid
         item
         xs={12}
+        sm={5}
         md={6}
         sx={{
           background: 'linear-gradient(135deg, #1e1e2f 0%, #2d2d44 100%)',
-          display: { xs: 'none', md: 'flex' },
+          display: { xs: 'none', sm: 'flex', md: 'flex' },
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
@@ -233,8 +285,8 @@ const LoginPage: React.FC = () => {
         <Box
           sx={{
             position: 'relative',
-            width: 400,
-            height: 400,
+            width: { md: 280, lg: 400 },
+            height: { md: 280, lg: 400 },
             borderRadius: '50%',
             bgcolor: '#3f3f5f',
             boxShadow: '0 0 50px rgba(0,0,0,0.5)',
@@ -261,16 +313,16 @@ const LoginPage: React.FC = () => {
 
           {/* Food Items around the table */}
           {[
-            { icon: <LocalPizza sx={{ fontSize: 40, color: '#f44336' }} />, bg: '#fff3e0' },
-            { icon: <LunchDining sx={{ fontSize: 40, color: '#ff9800' }} />, bg: '#e8f5e9' },
-            { icon: <Restaurant sx={{ fontSize: 40, color: '#2196f3' }} />, bg: '#e3f2fd' },
-            { icon: <LocalCafe sx={{ fontSize: 40, color: '#795548' }} />, bg: '#efebe9' },
-            { icon: <Icecream sx={{ fontSize: 40, color: '#e91e63' }} />, bg: '#fce4ec' },
-            { icon: <LocalBar sx={{ fontSize: 40, color: '#9c27b0' }} />, bg: '#f3e5f5' },
+            { icon: <LocalPizza sx={{ fontSize: { sm: 22, md: 28, lg: 40 }, color: '#f44336' }} />, bg: '#fff3e0' },
+            { icon: <LunchDining sx={{ fontSize: { sm: 22, md: 28, lg: 40 }, color: '#ff9800' }} />, bg: '#e8f5e9' },
+            { icon: <Restaurant sx={{ fontSize: { sm: 22, md: 28, lg: 40 }, color: '#2196f3' }} />, bg: '#e3f2fd' },
+            { icon: <LocalCafe sx={{ fontSize: { sm: 22, md: 28, lg: 40 }, color: '#795548' }} />, bg: '#efebe9' },
+            { icon: <Icecream sx={{ fontSize: { sm: 22, md: 28, lg: 40 }, color: '#e91e63' }} />, bg: '#fce4ec' },
+            { icon: <LocalBar sx={{ fontSize: { sm: 22, md: 28, lg: 40 }, color: '#9c27b0' }} />, bg: '#f3e5f5' },
           ].map((item, index) => {
             const angle = (index * 60) * (Math.PI / 180);
-            const radius = 140; // distance from center
-            // Position adjustments to center the items on their orbital point
+            const radius = window.innerWidth < 1280 ? 100 : 140;
+
             const x = Math.cos(angle) * radius;
             const y = Math.sin(angle) * radius;
 
@@ -279,22 +331,21 @@ const LoginPage: React.FC = () => {
                 key={index}
                 sx={{
                   position: 'absolute',
-                  transform: `translate(${x}px, ${y}px) rotate(${-index * 60}deg)`, // Counter-rotate if we want icons upright, or keep with table
-                  // Actually, to keep icons upright relative to screen while table rotates:
-                  // animation: 'counter-rotate 20s linear infinite'
+                  transform: `translate(${x}px, ${y}px) rotate(${-index * 60}deg)`,
+
                 }}
               >
                 <Paper
                   elevation={4}
                   sx={{
-                    width: 70,
-                    height: 70,
+                    width: { sm: 46, md: 55, lg: 70 },
+                    height: { sm: 46, md: 55, lg: 70 },
                     borderRadius: '50%',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     bgcolor: item.bg,
-                    animation: 'counter-rotate-icons 20s linear infinite' // Keep items upright
+                    animation: 'counter-rotate-icons 20s linear infinite'
                   }}
                 >
                   {item.icon}
@@ -304,39 +355,35 @@ const LoginPage: React.FC = () => {
           })}
         </Box>
 
-        <Typography variant="h4" sx={{ mt: 5, color: '#fff', fontWeight: 'bold', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>
-          Welcome to a World of Great Taste
+        <Typography variant="h4" sx={{ mt: { sm: 3, md: 5 }, color: '#fff', fontWeight: 'bold', textShadow: '0 2px 4px rgba(0,0,0,0.5)', fontSize: { sm: '1.1rem', md: '1.6rem', lg: '2.125rem' }, textAlign: 'center', px: 2 }}>
+          {activeTenant ? `Welcome to ${displayName}` : 'Welcome to a World of Great Taste'}
         </Typography>
-        <Typography variant="subtitle1" sx={{ color: 'rgba(255,255,255,0.7)', mt: 1 }}>
-          Manage your orders with ease
+        <Typography variant="subtitle1" sx={{ color: 'rgba(255,255,255,0.7)', mt: 1, fontSize: { sm: '0.75rem', md: '0.9rem', lg: '1rem' }, textAlign: 'center', px: 2 }}>
+          {activeTenant ? 'Log in to manage your kitchen and orders' : 'Manage your orders with ease'}
         </Typography>
       </Grid>
 
       {/* Login Form Section (Right Side) */}
-      <Grid item xs={12} md={6} component={Paper} elevation={6} square>
+      <Grid item xs={12} sm={7} md={6} component={Paper} elevation={6} square sx={{ overflowY: 'auto', maxHeight: { xs: 'none', sm: '100vh' } }}>
         <Box
           sx={{
-            my: 8,
-            mx: 4,
+            my: { xs: 3, sm: 3, md: 4 },
+            mx: { xs: 2, sm: 3 },
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: 'center',
-            height: '100%'
+            justifyContent: { xs: 'flex-start', sm: 'center', md: 'center' },
+            minHeight: { xs: '100vh', sm: 'auto', md: '100%' },
+            pb: { xs: 4, sm: 0, md: 0 }
           }}
         >
           <Box
             component="img"
-            src={logoUrl}
-            alt="Restaurant POS"
-            sx={{
-              height: 150,
-              width: "auto",
-              objectFit: "contain",
-              mb: 2
-            }}
+            src={displayLogo}
+            alt={displayName}
+            sx={{ height: { xs: 90, sm: 110, md: 150 }, width: "auto", maxWidth: "100%", objectFit: "contain", mb: 2, borderRadius: activeTenant ? '8px' : '0' }}
           />
-          <Typography component="h1" variant="h4" fontWeight="bold">
+          <Typography component="h1" variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' } }}>
             {forgotPasswordView ? 'Reset Password' : 'Sign In'}
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 4, textAlign: 'center' }}>
@@ -494,9 +541,9 @@ const LoginPage: React.FC = () => {
                   {/* Space for additional links if needed */}
                 </Grid>
                 <Grid item>
-                  <Link 
-                    component={RouterLink} 
-                    to={targetTenant ? `/${targetTenant}/register` : "/register"} 
+                  <Link
+                    component={RouterLink}
+                    to={activeTenant?.slug ? `/${activeTenant.slug}/register` : (targetTenant ? `/${targetTenant}/register` : "/register")}
                     variant="body2"
                   >
                     {"Don't have an account? Sign Up"}

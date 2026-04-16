@@ -41,6 +41,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { feedbackAPI } from '../services/api';
 import { useSettings } from '../context/SettingsContext';
+import { useActiveTenant } from '../hooks/useActiveTenant';
 import { ordersAPI } from '../services/api';
 import {
     canAddItems,
@@ -170,7 +171,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
 
     const theme = useTheme();
     const navigate = useNavigate();
-    const { slug } = useParams();
+    const { slug, getRelativePath } = useActiveTenant();
     const [hasFeedback, setHasFeedback] = useState(false);
     const mountedRef = useRef(true);
 
@@ -744,7 +745,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                     onClick={(e) => {
                                         e.stopPropagation();
                                         const targetSlug = order?.restaurant?.slug || slug || '';
-                                        const url = `${window.location.origin}/${targetSlug}/feedback/${order._id}`;
+                                        const url = `${window.location.origin}${getRelativePath(`/feedback/${order._id}`)}`;
                                         try {
                                             window.open(url, '_blank', 'noopener');
                                         } catch (err) {
@@ -791,6 +792,31 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                     setIsProcessing(true);
                                     try {
                                         await ordersAPI.syncDoordashStatus(order._id);
+                                        toast.success('Sync complete');
+                                        if (onRefresh) onRefresh();
+                                    } catch (error) {
+                                        toast.error('Sync failed');
+                                    } finally {
+                                        setIsProcessing(false);
+                                    }
+                                }}
+                                disabled={isProcessing}
+                                sx={{ padding: '4px' }}
+                            >
+                                <SyncIcon />
+                            </IconButton>
+                        </Tooltip>
+                    )}
+                    {order.uberEatsDeliveryId && isOrderActive(order.status) && order.status !== 'delivered' && (
+                        <Tooltip title="Sync Uber Eats Status">
+                            <IconButton
+                                size="small"
+                                color="info"
+                                onClick={async (e) => {
+                                    e.stopPropagation();
+                                    setIsProcessing(true);
+                                    try {
+                                        await ordersAPI.syncUberEatsStatus(order._id);
                                         toast.success('Sync complete');
                                         if (onRefresh) onRefresh();
                                     } catch (error) {

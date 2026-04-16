@@ -17,8 +17,10 @@ import {
     FilterList as FilterListIcon,
     Terminal as TerminalIcon,
     Refresh as RefreshIcon,
-    Star as StarIcon
+    Star as StarIcon,
+    DeliveryDining as DeliveryDiningIcon
 } from '@mui/icons-material';
+import { useTheme } from '@mui/material/styles';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import {
     Alert,
@@ -54,7 +56,8 @@ import {
     DialogContent,
     DialogActions,
     Chip,
-    TablePagination
+    TablePagination,
+    useMediaQuery
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Grid from '@mui/material/Grid2';
@@ -187,6 +190,7 @@ const countries = [
         timezones: ['Asia/Tokyo']
     },
 ];
+
 
 const isValidMailHost = (host: string) => {
     const value = String(host || '').trim();
@@ -379,7 +383,9 @@ const createDefaultSettings = (): SettingsState => ({
                 customer: { orders: false, catering: false, inventory: false }
             },
             users: {}
-        }
+        },
+        sound: 'notification',
+        soundDuration: 6,
     },
     printer: {
         enabled: false,
@@ -399,6 +405,22 @@ const createDefaultSettings = (): SettingsState => ({
         minPointsToRedeem: 100,
         maxRedemptionPercentage: 100,
     },
+    delivery: {
+        doordash: {
+            enabled: false,
+            developerId: '',
+            keyId: '',
+            signingSecret: '',
+            isSandbox: true,
+        },
+        ubereats: {
+            enabled: false,
+            clientId: '',
+            clientSecret: '',
+            customerId: '',
+            isSandbox: true,
+        }
+    }
 });
 
 const mergeSettingsWithDefaults = (defaults: SettingsState, partial: Partial<SettingsState>): SettingsState => {
@@ -460,6 +482,8 @@ const mergeSettingsWithDefaults = (defaults: SettingsState, partial: Partial<Set
         notification: {
             ...defaults.notification,
             ...((partial.notification as Partial<NotificationSettings>) || {}),
+            sound: (partial.notification as Partial<NotificationSettings>)?.sound ?? defaults.notification.sound,
+            soundDuration: (partial.notification as Partial<NotificationSettings>)?.soundDuration ?? defaults.notification.soundDuration,
             sms: {
                 ...defaults.notification.sms,
                 ...((partial.notification as Partial<NotificationSettings>)?.sms || {}),
@@ -474,6 +498,16 @@ const mergeSettingsWithDefaults = (defaults: SettingsState, partial: Partial<Set
             ...defaults.rewards,
             ...(partial.rewards || {}),
         },
+        delivery: {
+            doordash: {
+                ...defaults.delivery!.doordash,
+                ...(partial.delivery?.doordash || {}),
+            },
+            ubereats: {
+                ...defaults.delivery!.ubereats,
+                ...(partial.delivery?.ubereats || {}),
+            }
+        }
     };
 };
 
@@ -481,6 +515,8 @@ const mergeSettingsWithDefaults = (defaults: SettingsState, partial: Partial<Set
 const SettingsPage: React.FC = () => {
     const { user } = useAuth();
     const { updateSettings: updateGlobalSettings } = useSettings();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [tabValue, setTabValue] = useState(0);
     const [loading, setLoading] = useState(false);
     const [settings, setSettings] = useState<SettingsState>(() => createDefaultSettings());
@@ -800,12 +836,24 @@ const SettingsPage: React.FC = () => {
                     ...createDefaultMailingSettings(),
                     ...(prev.restaurant.mailing || {}),
                     [section]: {
-                        ...createDefaultMailingSettings()[section],
                         ...((prev.restaurant.mailing || {})[section] || {}),
                         [field]: value,
                     },
                 },
             },
+        }));
+    };
+
+    const handleDeliveryChange = (provider: 'doordash' | 'ubereats', field: string, value: any) => {
+        setSettings(prev => ({
+            ...prev,
+            delivery: {
+                ...prev.delivery!,
+                [provider]: {
+                    ...prev.delivery![provider],
+                    [field]: value
+                }
+            }
         }));
     };
 
@@ -1142,7 +1190,8 @@ const SettingsPage: React.FC = () => {
                 },
                 // @ts-ignore
                 push: settings.notification.push,
-                sound: soundId
+                sound: soundId,
+                soundDuration: settings.notification.soundDuration || 6
             };
             await settingsAPI.update('notification', payload);
             updateGlobalSettings(updatedSettings);
@@ -1150,6 +1199,46 @@ const SettingsPage: React.FC = () => {
         } catch (error) {
             console.error('Error saving sound:', error);
             toast.error('Failed to save sound preference');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSoundDurationChange = async (duration: number) => {
+        setLoading(true);
+
+        // Optimistic local update
+        const updatedSettings = {
+            ...settings,
+            notification: {
+                ...settings.notification,
+                soundDuration: duration
+            }
+        };
+        setSettings(updatedSettings);
+
+        try {
+            const payload = {
+                sms: {
+                    enabled: settings.notification.sms.enabled,
+                    provider: 'twilio',
+                    twilio: {
+                        accountSid: settings.notification.sms.twilio.accountSid,
+                        authToken: settings.notification.sms.twilio.authToken,
+                        fromNumber: settings.notification.sms.twilio.fromNumber,
+                    },
+                },
+                // @ts-ignore
+                push: settings.notification.push,
+                sound: settings.notification.sound || 'notification',
+                soundDuration: duration
+            };
+            await settingsAPI.update('notification', payload);
+            updateGlobalSettings(updatedSettings);
+            toast.success('Notification duration saved globally');
+        } catch (error) {
+            console.error('Error saving duration:', error);
+            toast.error('Failed to save duration preference');
         } finally {
             setLoading(false);
         }
@@ -1211,6 +1300,11 @@ const SettingsPage: React.FC = () => {
                 updateGlobalSettings(settings); // Update global context
                 await fetchSettings();
                 successMessage = 'Rewards settings saved successfully';
+            } else if (category === 'delivery') {
+                await settingsAPI.update('delivery', settings.delivery);
+                updateGlobalSettings(settings);
+                await fetchSettings();
+                successMessage = 'Delivery providers configured successfully';
             }
 
 
@@ -1295,6 +1389,7 @@ const SettingsPage: React.FC = () => {
                     <Tab label="Printers" icon={<PrintIcon />} iconPosition="start" />
                     <Tab label="Audit Logs" icon={<CheckCircleIcon />} iconPosition="start" />
                     <Tab label="Loyalty / Rewards" icon={<StarIcon />} iconPosition="start" />
+                    <Tab label="Delivery" icon={<DeliveryDiningIcon />} iconPosition="start" />
                     <Tab label="Gallery" icon={<CollectionsIcon />} iconPosition="start" />
                 </Tabs>
                 <Divider />
@@ -1403,6 +1498,18 @@ const SettingsPage: React.FC = () => {
                                             startAdornment: <InputAdornment position="start">+</InputAdornment>,
                                         }}
                                         helperText="Default prefix for phone number fields across the app"
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12 }}>
+                                    <AddressAutocomplete
+                                        label="Restaurant Address *"
+                                        value={settings.restaurant.address || ''}
+                                        apiKey={settings.system.googleMapsApiKey}
+                                        onChange={(val) => handleInputChange('restaurant', 'address', val)}
+                                        onSelect={(addr) => {
+                                            handleInputChange('restaurant', 'address', addr.fullAddress);
+                                        }}
+                                        required
                                     />
                                 </Grid>
                             </Grid>
@@ -1836,8 +1943,8 @@ const SettingsPage: React.FC = () => {
                                             borderRadius: 3,
                                             display: 'flex',
                                             gap: { xs: 1, sm: 2 },
-                                            flexWrap: { sm: 'wrap', xs: 'nowrap' },
-                                            flexDirection: { sm: 'row', xs: 'column' },
+                                            flexWrap: 'wrap',
+                                            flexDirection: 'row',
                                             alignItems: { xs: 'flex-start', sm: 'center' },
                                             borderColor: dayConfig.isOpen ? 'success.light' : 'divider',
                                             bgcolor: dayConfig.isOpen ? alpha('#22c55e', 0.03) : 'transparent',
@@ -1846,7 +1953,7 @@ const SettingsPage: React.FC = () => {
                                     >
                                         {/* Day toggle */}
                                         <FormControlLabel
-                                            sx={{ minWidth: 130, m: 0 }}
+                                            sx={{ minWidth: { xs: '100%', sm: 130 }, m: 0 }}
                                             control={
                                                 <Switch
                                                     size="small"
@@ -1906,7 +2013,7 @@ const SettingsPage: React.FC = () => {
                                                     <Collapse in={isExpanded}>
                                                         <Box sx={{ mt: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                                                             {slots.map((slot, sIdx) => (
-                                                                <Box key={sIdx} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                                                <Box key={sIdx} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
                                                                     <TextField
                                                                         type="time"
                                                                         label="Opens"
@@ -1914,7 +2021,7 @@ const SettingsPage: React.FC = () => {
                                                                         value={slot.openTime}
                                                                         onChange={(e) => handleSlotChange(idx, sIdx, 'openTime', e.target.value)}
                                                                         inputProps={{ step: 300 }}
-                                                                        sx={{ width: 140 }}
+                                                                        sx={{ width: { xs: '100%', sm: 140 }, flex: { xs: 1, sm: 'none' } }}
                                                                     />
                                                                     <Typography variant="body2" color="text.secondary">to</Typography>
                                                                     <TextField
@@ -1924,7 +2031,8 @@ const SettingsPage: React.FC = () => {
                                                                         value={slot.closeTime}
                                                                         onChange={(e) => handleSlotChange(idx, sIdx, 'closeTime', e.target.value)}
                                                                         inputProps={{ step: 300 }}
-                                                                        sx={{ width: 140 }}
+                                                                        sx={{ width: { xs: '100%', sm: 140 }, flex: { xs: 1, sm: 'none' } }}
+
                                                                     />
                                                                     {slots.length > 1 && (
                                                                         <IconButton
@@ -2489,7 +2597,7 @@ const SettingsPage: React.FC = () => {
                                 Click <strong>▶ Preview</strong> to hear a sound before selecting it.
                             </Typography>
 
-                            <Stack direction="row" flexWrap="nowrap" gap={2}>
+                            <Stack direction="row" flexWrap="wrap" gap={2}>
                                 {NOTIFICATION_SOUNDS.map((sound) => {
                                     // @ts-ignore
                                     const isSelected =
@@ -2502,7 +2610,7 @@ const SettingsPage: React.FC = () => {
                                                 p: 2.5,
                                                 borderRadius: 3,
                                                 cursor: 'pointer',
-                                                minWidth: 0,
+                                                minWidth: { xs: 'calc(50% - 8px)', sm: 0 },
                                                 flex: '1 1 0px',
                                                 transition: 'all 0.2s ease',
                                                 bgcolor: isSelected ? alpha('#4F46E5', 0.08) : '#fff',
@@ -2568,12 +2676,32 @@ const SettingsPage: React.FC = () => {
                                 })}
                             </Stack>
 
+                            <Grid container spacing={3} sx={{ mt: 1 }}>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        select
+                                        fullWidth
+                                        label="Sound Duration"
+                                        value={settings.notification.soundDuration || 6}
+                                        onChange={(e) => handleSoundDurationChange(Number(e.target.value))}
+                                        helperText="Choose how long the alert sound plays for new notifications."
+                                        sx={{ mt: 2 }}
+                                    >
+                                        <MenuItem value={3}>3 Seconds</MenuItem>
+                                        <MenuItem value={6}>6 Seconds</MenuItem>
+                                        <MenuItem value={10}>10 Seconds</MenuItem>
+                                        <MenuItem value={15}>15 Seconds (Medium)</MenuItem>
+                                        <MenuItem value={30}>30 Seconds (Long)</MenuItem>
+                                        <MenuItem value={60}>60 Seconds (Looping)</MenuItem>
+                                    </TextField>
+                                </Grid>
+                            </Grid>
                         </Grid>
 
-
+{/* 
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 1 }} />
-                        </Grid>
+                        </Grid> */}
 
                         {/* 
                         <Grid size={{ xs: 12 }}>
@@ -2690,103 +2818,168 @@ const SettingsPage: React.FC = () => {
                                 &nbsp;
                             </Typography>
 
-                            <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3 }}>
-                                <Table size="small">
-                                    <TableHead sx={{ bgcolor: alpha('#94a3b8', 0.05) }}>
-                                        <TableRow>
-                                            <TableCell sx={{ fontWeight: 700 }}>Staff Name</TableCell>
-                                            <TableCell sx={{ fontWeight: 700 }}>System Role</TableCell>
-                                            <TableCell align="center" sx={{ fontWeight: 700 }}>Orders</TableCell>
-                                            <TableCell align="center" sx={{ fontWeight: 700 }}>Catering</TableCell>
-                                            <TableCell align="center" sx={{ fontWeight: 700 }}>Inventory</TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {usersList.map((u: any) => {
-                                            const userRole = Array.isArray(u.roles) ? u.roles[0] : 'cashier';
-                                            const config = settings.notification.push?.users?.[u._id] ||
-                                                settings.notification.push?.roles?.[userRole] ||
-                                                { orders: true, catering: true, inventory: true };
-                                            return (
-                                                <TableRow key={u._id} hover>
-                                                    <TableCell sx={{ fontWeight: 500 }}>
-                                                        {u.firstName && u.lastName ? `${u.firstName} ${u.lastName}` : u.firstName || u.email || 'Staff Member'}
-                                                    </TableCell>
-                                                    <TableCell sx={{ textTransform: 'capitalize', color: 'text.secondary', fontSize: '0.8rem' }}>
-                                                        {Array.isArray(u.roles) ? u.roles.map((r: string) => r.replace('_', ' ')).join(', ') : 'Staff'}
-                                                    </TableCell>
-                                                    <TableCell align="center">
-                                                        <Switch
-                                                            size="small"
-                                                            checked={Boolean(config.orders)}
-                                                            onChange={(e) => setSettings((prev: any) => ({
-                                                                ...prev,
-                                                                notification: {
-                                                                    ...prev.notification,
-                                                                    push: {
-                                                                        ...prev.notification.push,
-                                                                        users: {
-                                                                            ...prev.notification.push?.users,
-                                                                            [u._id]: {
-                                                                                ...prev.notification.push?.users?.[u._id] || config,
-                                                                                orders: e.target.checked
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }))}
-                                                        />
-                                                    </TableCell>
-                                                    <TableCell align="center">
-                                                        <Switch
-                                                            size="small"
-                                                            checked={Boolean(config.catering)}
-                                                            onChange={(e) => setSettings((prev: any) => ({
-                                                                ...prev,
-                                                                notification: {
-                                                                    ...prev.notification,
-                                                                    push: {
-                                                                        ...prev.notification.push,
-                                                                        users: {
-                                                                            ...prev.notification.push?.users,
-                                                                            [u._id]: {
-                                                                                ...prev.notification.push?.users?.[u._id] || config,
-                                                                                catering: e.target.checked
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }))}
-                                                        />
-                                                    </TableCell>
-                                                    <TableCell align="center">
-                                                        <Switch
-                                                            size="small"
-                                                            checked={Boolean(config.inventory)}
-                                                            onChange={(e) => setSettings((prev: any) => ({
-                                                                ...prev,
-                                                                notification: {
-                                                                    ...prev.notification,
-                                                                    push: {
-                                                                        ...prev.notification.push,
-                                                                        users: {
-                                                                            ...prev.notification.push?.users,
-                                                                            [u._id]: {
-                                                                                ...prev.notification.push?.users?.[u._id] || config,
-                                                                                inventory: e.target.checked
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }))}
-                                                        />
-                                                    </TableCell>
-                                                </TableRow>
-                                            );
-                                        })}
-                                    </TableBody>
-                                </Table>
-                            </TableContainer>
+                            {isMobile ? (
+    /* MOBILE CARD VIEW */
+    usersList.length === 0 ? (
+        <Box sx={{ textAlign: 'center', py: 6 }}>
+            <Typography variant="body2" color="text.secondary">No staff members found</Typography>
+        </Box>
+    ) : (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            {usersList.map((u: any) => {
+                const userRole = Array.isArray(u.roles) ? u.roles[0] : 'cashier';
+                const config = settings.notification.push?.users?.[u._id] ||
+                    settings.notification.push?.roles?.[userRole] ||
+                    { orders: true, catering: true, inventory: true };
+                return (
+                    <Paper key={u._id} variant="outlined" sx={{ borderRadius: 3, p: 2 }}>
+                        {/* Name + Role */}
+                        <Box sx={{ mb: 1.5 }}>
+                            <Typography fontWeight={600} variant="body2">
+                                {u.firstName && u.lastName ? `${u.firstName} ${u.lastName}` : u.firstName || u.email || 'Staff Member'}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'capitalize' }}>
+                                {Array.isArray(u.roles) ? u.roles.map((r: string) => r.replace('_', ' ')).join(', ') : 'Staff'}
+                            </Typography>
+                        </Box>
+
+                        {/* Toggles */}
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                            {[
+                                { label: 'Orders', key: 'orders' },
+                                { label: 'Catering', key: 'catering' },
+                                { label: 'Inventory', key: 'inventory' },
+                            ].map(({ label, key }) => (
+                                <Box key={key} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
+                                    <Typography variant="caption" color="text.secondary" fontWeight={700}>{label}</Typography>
+                                    <Switch
+                                        size="small"
+                                        checked={Boolean(config[key])}
+                                        onChange={(e) => setSettings((prev: any) => ({
+                                            ...prev,
+                                            notification: {
+                                                ...prev.notification,
+                                                push: {
+                                                    ...prev.notification.push,
+                                                    users: {
+                                                        ...prev.notification.push?.users,
+                                                        [u._id]: {
+                                                            ...prev.notification.push?.users?.[u._id] || config,
+                                                            [key]: e.target.checked
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }))}
+                                    />
+                                </Box>
+                            ))}
+                        </Box>
+                    </Paper>
+                );
+            })}
+        </Box>
+    )
+) : (
+    /* TABLET / DESKTOP — original table unchanged */
+    <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3 }}>
+        <Table size="small">
+            <TableHead sx={{ bgcolor: alpha('#94a3b8', 0.05) }}>
+                <TableRow>
+                    <TableCell sx={{ fontWeight: 700 }}>Staff Name</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>System Role</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 700 }}>Orders</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 700 }}>Catering</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 700 }}>Inventory</TableCell>
+                </TableRow>
+            </TableHead>
+            <TableBody>
+                {usersList.map((u: any) => {
+                    const userRole = Array.isArray(u.roles) ? u.roles[0] : 'cashier';
+                    const config = settings.notification.push?.users?.[u._id] ||
+                        settings.notification.push?.roles?.[userRole] ||
+                        { orders: true, catering: true, inventory: true };
+                    return (
+                        <TableRow key={u._id} hover>
+                            <TableCell sx={{ fontWeight: 500 }}>
+                                {u.firstName && u.lastName ? `${u.firstName} ${u.lastName}` : u.firstName || u.email || 'Staff Member'}
+                            </TableCell>
+                            <TableCell sx={{ textTransform: 'capitalize', color: 'text.secondary', fontSize: '0.8rem' }}>
+                                {Array.isArray(u.roles) ? u.roles.map((r: string) => r.replace('_', ' ')).join(', ') : 'Staff'}
+                            </TableCell>
+                            <TableCell align="center">
+                                <Switch
+                                    size="small"
+                                    checked={Boolean(config.orders)}
+                                    onChange={(e) => setSettings((prev: any) => ({
+                                        ...prev,
+                                        notification: {
+                                            ...prev.notification,
+                                            push: {
+                                                ...prev.notification.push,
+                                                users: {
+                                                    ...prev.notification.push?.users,
+                                                    [u._id]: {
+                                                        ...prev.notification.push?.users?.[u._id] || config,
+                                                        orders: e.target.checked
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }))}
+                                />
+                            </TableCell>
+                            <TableCell align="center">
+                                <Switch
+                                    size="small"
+                                    checked={Boolean(config.catering)}
+                                    onChange={(e) => setSettings((prev: any) => ({
+                                        ...prev,
+                                        notification: {
+                                            ...prev.notification,
+                                            push: {
+                                                ...prev.notification.push,
+                                                users: {
+                                                    ...prev.notification.push?.users,
+                                                    [u._id]: {
+                                                        ...prev.notification.push?.users?.[u._id] || config,
+                                                        catering: e.target.checked
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }))}
+                                />
+                            </TableCell>
+                            <TableCell align="center">
+                                <Switch
+                                    size="small"
+                                    checked={Boolean(config.inventory)}
+                                    onChange={(e) => setSettings((prev: any) => ({
+                                        ...prev,
+                                        notification: {
+                                            ...prev.notification,
+                                            push: {
+                                                ...prev.notification.push,
+                                                users: {
+                                                    ...prev.notification.push?.users,
+                                                    [u._id]: {
+                                                        ...prev.notification.push?.users?.[u._id] || config,
+                                                        inventory: e.target.checked
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }))}
+                                />
+                            </TableCell>
+                        </TableRow>
+                    );
+                })}
+            </TableBody>
+        </Table>
+    </TableContainer>
+)}
                             <TablePagination
                                 rowsPerPageOptions={[5, 10, 25, 50]}
                                 component="div"
@@ -2803,7 +2996,8 @@ const SettingsPage: React.FC = () => {
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 1 }} />
                         </Grid>
-                        <Grid size={{ xs: 12 }}>
+                        <Grid size={{ xs: 12 }} sx={{ display: 'flex', justifyContent: { xs: 'center', sm: 'flex-start' } }}>
+
                             <Button
                                 variant="contained"
                                 startIcon={<SaveIcon />}
@@ -3239,7 +3433,7 @@ const SettingsPage: React.FC = () => {
                         {/* Decentralized Print Agents (Electron) Section */}
                         <Grid size={{ xs: 12 }}>
                             <Box sx={{ p: 4, borderRadius: 4, border: '1px solid', borderColor: 'divider', bgcolor: alpha('#4f46e5', 0.02) }}>
-                                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
+                                <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} gap={{ xs: 2, sm: 0 }} sx={{ mb: 3 }}>
                                     <Box>
                                         <Typography variant="h6" fontWeight={800} sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                                             <TerminalIcon color="primary" /> Decentralized Print Agents
@@ -3252,7 +3446,7 @@ const SettingsPage: React.FC = () => {
                                         variant="contained"
                                         startIcon={<AddIcon />}
                                         onClick={handleCreateAgent}
-                                        sx={{ borderRadius: 2, px: 3 }}
+                                        sx={{ borderRadius: 2, px: 3, width: { xs: '100%', sm: 'auto' } }}
                                     >
                                         Pair New Agent
                                     </Button>
@@ -3266,78 +3460,144 @@ const SettingsPage: React.FC = () => {
                                     <Alert severity="info" sx={{ borderRadius: 2 }}>
                                         No print agents paired yet. Download the Electron app and use a pairing token to get started.
                                     </Alert>
-                                ) : (
-                                    <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden' }}>
-                                        <Table size="small">
-                                            <TableHead sx={{ bgcolor: 'action.hover' }}>
-                                                <TableRow>
-                                                    <TableCell sx={{ fontWeight: 700 }}>Agent Name</TableCell>
-                                                    <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
-                                                    <TableCell sx={{ fontWeight: 700 }}>Last Seen</TableCell>
-                                                    <TableCell align="right" sx={{ fontWeight: 700 }}>Actions</TableCell>
-                                                </TableRow>
-                                            </TableHead>
-                                            <TableBody>
-                                                {pairedAgents.map((agent: any) => (
-                                                    <TableRow key={agent._id} hover>
-                                                        <TableCell sx={{ py: 2 }}>
-                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                                                                <Avatar sx={{ width: 32, height: 32, bgcolor: alpha('#4f46e5', 0.1), color: '#4f46e5' }}>
-                                                                    <TerminalIcon sx={{ fontSize: 18 }} />
-                                                                </Avatar>
-                                                                <Typography variant="subtitle2" fontWeight={600}>
-                                                                    {agent.name}
-                                                                </Typography>
-                                                            </Box>
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            <Chip
-                                                                size="small"
-                                                                label={agent.status}
-                                                                color={agent.status === 'active' ? 'success' : 'default'}
-                                                                variant="filled"
-                                                                sx={{ fontWeight: 600, textTransform: 'uppercase', fontSize: '0.65rem' }}
-                                                            />
-                                                        </TableCell>
-                                                        <TableCell>
-                                                            <Typography variant="caption" color="text.secondary">
-                                                                {agent.lastSeenAt ? new Date(agent.lastSeenAt).toLocaleString() : 'Never'}
-                                                            </Typography>
-                                                        </TableCell>
-                                                        <TableCell align="right">
-                                                            <Tooltip title="Copy Token">
-                                                                <IconButton
-                                                                    size="small"
-                                                                    onClick={() => {
-                                                                        const token = agent.token || agent.pairingToken;
-                                                                        if (token) {
-                                                                            navigator.clipboard.writeText(token);
-                                                                            toast.success('Token copied to clipboard');
-                                                                        }
-                                                                    }}
-                                                                    disabled={!agent.token && !agent.pairingToken}
-                                                                    sx={{ color: 'primary.main' }}
-                                                                >
-                                                                    <ContentCopyIcon fontSize="small" />
-                                                                </IconButton>
-                                                            </Tooltip>
-                                                            <Tooltip title="Regenerate Token">
-                                                                <IconButton size="small" onClick={() => handleRegenerateAgentToken(agent._id)} sx={{ color: 'primary.main' }}>
-                                                                    <RefreshIcon fontSize="small" />
-                                                                </IconButton>
-                                                            </Tooltip>
-                                                            <Tooltip title="Revoke Agent">
-                                                                <IconButton size="small" onClick={() => handleRevokeAgent(agent._id)} sx={{ color: 'error.main' }}>
-                                                                    <DeleteIcon fontSize="small" />
-                                                                </IconButton>
-                                                            </Tooltip>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </TableContainer>
-                                )}
+                                ) : 
+                                    isMobile ? (
+    /* MOBILE CARD VIEW */
+    pairedAgents.length === 0 ? (
+        <Box sx={{ textAlign: 'center', py: 6 }}>
+            <Typography variant="body2" color="text.secondary">No agents paired yet</Typography>
+        </Box>
+    ) : (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            {pairedAgents.map((agent: any) => (
+                <Paper key={agent._id} variant="outlined" sx={{ borderRadius: 3, p: 2 }}>
+                    {/* Name + Status */}
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <Avatar sx={{ width: 32, height: 32, bgcolor: alpha('#4f46e5', 0.1), color: '#4f46e5' }}>
+                                <TerminalIcon sx={{ fontSize: 18 }} />
+                            </Avatar>
+                            <Typography variant="subtitle2" fontWeight={600}>{agent.name}</Typography>
+                        </Box>
+                        <Chip
+                            size="small"
+                            label={agent.status}
+                            color={agent.status === 'active' ? 'success' : 'default'}
+                            variant="filled"
+                            sx={{ fontWeight: 600, textTransform: 'uppercase', fontSize: '0.65rem' }}
+                        />
+                    </Box>
+
+                    {/* Last Seen */}
+                    <Typography variant="caption" color="text.secondary">
+                        Last seen: {agent.lastSeenAt ? new Date(agent.lastSeenAt).toLocaleString() : 'Never'}
+                    </Typography>
+
+                    {/* Actions */}
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5, mt: 1 }}>
+                        <Tooltip title="Copy Token">
+                            <IconButton
+                                size="small"
+                                onClick={() => {
+                                    const token = agent.token || agent.pairingToken;
+                                    if (token) {
+                                        navigator.clipboard.writeText(token);
+                                        toast.success('Token copied to clipboard');
+                                    }
+                                }}
+                                disabled={!agent.token && !agent.pairingToken}
+                                sx={{ color: 'primary.main' }}
+                            >
+                                <ContentCopyIcon fontSize="small" />
+                            </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Regenerate Token">
+                            <IconButton size="small" onClick={() => handleRegenerateAgentToken(agent._id)} sx={{ color: 'primary.main' }}>
+                                <RefreshIcon fontSize="small" />
+                            </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Revoke Agent">
+                            <IconButton size="small" onClick={() => handleRevokeAgent(agent._id)} sx={{ color: 'error.main' }}>
+                                <DeleteIcon fontSize="small" />
+                            </IconButton>
+                        </Tooltip>
+                    </Box>
+                </Paper>
+            ))}
+        </Box>
+    )
+) : (
+    /* TABLET / DESKTOP — original table unchanged */
+    <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3 }}>
+        <Table size="small">
+            <TableHead sx={{ bgcolor: 'action.hover' }}>
+                <TableRow>
+                    <TableCell sx={{ fontWeight: 700 }}>Agent Name</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Last Seen</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 700 }}>Actions</TableCell>
+                </TableRow>
+            </TableHead>
+            <TableBody>
+                {pairedAgents.map((agent: any) => (
+                    <TableRow key={agent._id} hover>
+                        <TableCell sx={{ py: 2 }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                <Avatar sx={{ width: 32, height: 32, bgcolor: alpha('#4f46e5', 0.1), color: '#4f46e5' }}>
+                                    <TerminalIcon sx={{ fontSize: 18 }} />
+                                </Avatar>
+                                <Typography variant="subtitle2" fontWeight={600}>{agent.name}</Typography>
+                            </Box>
+                        </TableCell>
+                        <TableCell>
+                            <Chip
+                                size="small"
+                                label={agent.status}
+                                color={agent.status === 'active' ? 'success' : 'default'}
+                                variant="filled"
+                                sx={{ fontWeight: 600, textTransform: 'uppercase', fontSize: '0.65rem' }}
+                            />
+                        </TableCell>
+                        <TableCell>
+                            <Typography variant="caption" color="text.secondary">
+                                {agent.lastSeenAt ? new Date(agent.lastSeenAt).toLocaleString() : 'Never'}
+                            </Typography>
+                        </TableCell>
+                        <TableCell align="right">
+                            <Tooltip title="Copy Token">
+                                <IconButton
+                                    size="small"
+                                    onClick={() => {
+                                        const token = agent.token || agent.pairingToken;
+                                        if (token) {
+                                            navigator.clipboard.writeText(token);
+                                            toast.success('Token copied to clipboard');
+                                        }
+                                    }}
+                                    disabled={!agent.token && !agent.pairingToken}
+                                    sx={{ color: 'primary.main' }}
+                                >
+                                    <ContentCopyIcon fontSize="small" />
+                                </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Regenerate Token">
+                                <IconButton size="small" onClick={() => handleRegenerateAgentToken(agent._id)} sx={{ color: 'primary.main' }}>
+                                    <RefreshIcon fontSize="small" />
+                                </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Revoke Agent">
+                                <IconButton size="small" onClick={() => handleRevokeAgent(agent._id)} sx={{ color: 'error.main' }}>
+                                    <DeleteIcon fontSize="small" />
+                                </IconButton>
+                            </Tooltip>
+                        </TableCell>
+                    </TableRow>
+                ))}
+            </TableBody>
+        </Table>
+    </TableContainer>
+)}
+                                )
                             </Box>
                         </Grid>
 
@@ -3574,6 +3834,147 @@ const SettingsPage: React.FC = () => {
                                 </Box>
                             )}
                         </Paper>
+                    </Box>
+                </TabPanel>
+
+                <TabPanel value={tabValue} index={8}>
+                    <Box sx={{ mb: 4 }}>
+                        <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <DeliveryDiningIcon color="primary" /> Delivery Integration
+                        </Typography>
+                        <Alert severity="info" sx={{ mb: 3 }}>
+                            Configure your DoorDash and Uber Eats accounts to enable automated delivery dispatch from your POS and Storefront.
+                        </Alert>
+
+                        <Grid container spacing={4}>
+                            {/* DoorDash Section */}
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <Paper variant="outlined" sx={{ p: 3, borderRadius: 4, height: '100%', borderColor: settings.delivery?.doordash?.enabled ? 'primary.main' : 'divider', bgcolor: settings.delivery?.doordash?.enabled ? alpha('#4F46E5', 0.02) : 'background.paper' }}>
+                                    <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                                        <Typography variant="h6" fontWeight="bold">DoorDash Drive</Typography>
+                                        <FormControlLabel
+                                            control={
+                                                <Switch
+                                                    checked={settings.delivery?.doordash?.enabled || false}
+                                                    onChange={(e) => handleDeliveryChange('doordash', 'enabled', e.target.checked)}
+                                                />
+                                            }
+                                            label={settings.delivery?.doordash?.enabled ? 'Enabled' : 'Disabled'}
+                                        />
+                                    </Stack>
+                                    <Divider sx={{ mb: 3 }} />
+                                    <Stack spacing={2.5}>
+                                        <TextField
+                                            fullWidth
+                                            label="Developer ID"
+                                            value={settings.delivery?.doordash?.developerId || ''}
+                                            onChange={(e) => handleDeliveryChange('doordash', 'developerId', e.target.value)}
+                                            placeholder="Your DoorDash Developer ID"
+                                        />
+                                        <TextField
+                                            fullWidth
+                                            label="Key ID"
+                                            value={settings.delivery?.doordash?.keyId || ''}
+                                            onChange={(e) => handleDeliveryChange('doordash', 'keyId', e.target.value)}
+                                            placeholder="DoorDash API Key ID"
+                                        />
+                                        <TextField
+                                            fullWidth
+                                            type="password"
+                                            label="Signing Secret"
+                                            value={settings.delivery?.doordash?.signingSecret || ''}
+                                            onChange={(e) => handleDeliveryChange('doordash', 'signingSecret', e.target.value)}
+                                            placeholder="DoorDash API Secret"
+                                        />
+                                        <Stack direction="row" spacing={2} alignItems="center">
+                                            <FormControlLabel
+                                                control={
+                                                    <Checkbox
+                                                        checked={settings.delivery?.doordash?.isSandbox || false}
+                                                        onChange={(e) => handleDeliveryChange('doordash', 'isSandbox', e.target.checked)}
+                                                    />
+                                                }
+                                                label="Use Sandbox Mode"
+                                            />
+                                        </Stack>
+                                    </Stack>
+                                    <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end' }}>
+                                        <Button
+                                            variant="contained"
+                                            startIcon={<SaveIcon />}
+                                            onClick={() => handleSave('delivery')}
+                                            disabled={loading}
+                                        >
+                                            Save DoorDash Settings
+                                        </Button>
+                                    </Box>
+                                </Paper>
+                            </Grid>
+
+                            {/* Uber Eats Section */}
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <Paper variant="outlined" sx={{ p: 3, borderRadius: 4, height: '100%', borderColor: settings.delivery?.ubereats?.enabled ? 'primary.main' : 'divider', bgcolor: settings.delivery?.ubereats?.enabled ? alpha('#4F46E5', 0.02) : 'background.paper' }}>
+                                    <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                                        <Typography variant="h6" fontWeight="bold">Uber Eats Direct</Typography>
+                                        <FormControlLabel
+                                            control={
+                                                <Switch
+                                                    checked={settings.delivery?.ubereats?.enabled || false}
+                                                    onChange={(e) => handleDeliveryChange('ubereats', 'enabled', e.target.checked)}
+                                                />
+                                            }
+                                            label={settings.delivery?.ubereats?.enabled ? 'Enabled' : 'Disabled'}
+                                        />
+                                    </Stack>
+                                    <Divider sx={{ mb: 3 }} />
+                                    <Stack spacing={2.5}>
+                                        <TextField
+                                            fullWidth
+                                            label="Client ID"
+                                            value={settings.delivery?.ubereats?.clientId || ''}
+                                            onChange={(e) => handleDeliveryChange('ubereats', 'clientId', e.target.value)}
+                                            placeholder="Uber Eats Client ID"
+                                        />
+                                        <TextField
+                                            fullWidth
+                                            type="password"
+                                            label="Client Secret"
+                                            value={settings.delivery?.ubereats?.clientSecret || ''}
+                                            onChange={(e) => handleDeliveryChange('ubereats', 'clientSecret', e.target.value)}
+                                            placeholder="Uber Eats Client Secret"
+                                        />
+                                        <TextField
+                                            fullWidth
+                                            label="Customer ID (Store ID)"
+                                            value={settings.delivery?.ubereats?.customerId || ''}
+                                            onChange={(e) => handleDeliveryChange('ubereats', 'customerId', e.target.value)}
+                                            placeholder="Uber Eats Customer ID"
+                                        />
+                                        <Stack direction="row" spacing={2} alignItems="center">
+                                            <FormControlLabel
+                                                control={
+                                                    <Checkbox
+                                                        checked={settings.delivery?.ubereats?.isSandbox || false}
+                                                        onChange={(e) => handleDeliveryChange('ubereats', 'isSandbox', e.target.checked)}
+                                                    />
+                                                }
+                                                label="Use Sandbox Mode"
+                                            />
+                                        </Stack>
+                                    </Stack>
+                                    <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end' }}>
+                                        <Button
+                                            variant="contained"
+                                            startIcon={<SaveIcon />}
+                                            onClick={() => handleSave('delivery')}
+                                            disabled={loading}
+                                        >
+                                            Save Uber Eats Settings
+                                        </Button>
+                                    </Box>
+                                </Paper>
+                            </Grid>
+                        </Grid>
                     </Box>
                 </TabPanel>
                 <TabPanel value={tabValue} index={8}>

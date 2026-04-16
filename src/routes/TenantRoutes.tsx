@@ -1,0 +1,138 @@
+import React from 'react';
+import { Route, Routes, Outlet } from 'react-router-dom';
+import CustomerLayout from '../components/CustomerLayout';
+import Layout from '../components/Layout';
+import { RequireFeature } from '../components/RequireFeature';
+import { RequireRole } from '../components/RequireRole';
+import CouponsAdminPage from '../pages/admin/CouponsAdminPage';
+import PromoCodePage from '../pages/admin/PromoCodePage';
+import AuditLogsPage from '../pages/admin/AuditLogsPage';
+import BookingsAdminPage from '../pages/admin/BookingsAdminPage';
+import CateringCommissionsPage from '../pages/admin/catering/CateringCommissionsPage';
+import CateringManagementPage from '../pages/admin/catering/CateringManagementPage';
+import CustomiseScreensPage from '../pages/admin/customise-screens/CustomiseScreensPage';
+import AttendancePage from '../pages/AttendancePage';
+import CateringPage from '../pages/catering/CateringPage';
+import CateringTrackPage from '../pages/customer/CateringTrackPage';
+import CustomersPage from '../pages/customers/CustomersPage';
+import KitchenInterface from '../pages/kitchen/KitchenInterface';
+import KitchenOrdersPage from '../pages/kitchen/KitchenOrdersPage';
+import MenuPage from '../pages/menu/MenuPage';
+import TraysPage from '../pages/menu/TraysPage';
+import OrdersPage from '../pages/orders/OrdersPage';
+import POSPage from '../pages/pos/POSPage';
+import ProfilePage from '../pages/profile/ProfilePage';
+import DashboardPage from '../pages/DashboardPage';
+import GuestPOSPage from '../pages/guest/GuestPOSPage';
+import InventoryPage from '../pages/inventory/InventoryPage';
+import WasteManagementPage from '../pages/inventory/WasteManagementPage';
+import InvoiceDetailPage from '../pages/invoices/InvoiceDetailPage';
+import InvoicesPage from '../pages/invoices/InvoicesPage';
+import RecipesPage from '../pages/recipes/RecipesPage';
+import CreateRecipePage from '../pages/recipes/CreateRecipePage';
+import ReportsPage from '../pages/reports/ReportsPage';
+import SettingsPage from '../pages/settings/SettingsPage';
+import SubscriptionPage from '../pages/subscription/SubscriptionPage';
+import SubscriptionSuccess from '../pages/subscription/SubscriptionSuccess';
+import SubscriptionCancel from '../pages/subscription/SubscriptionCancel';
+import AdminSupportPage from '../pages/support/AdminSupportPage';
+import CustomerSupportPage from '../pages/support/CustomerSupportPage';
+import TablesPage from '../pages/tables/TablesPage';
+import UsersPage from '../pages/users/UsersPage';
+import CustomerRegisterPage from '../pages/auth/CustomerRegisterPage';
+import FeedbackPage from '../pages/public/FeedbackPage';
+import CheckoutPage from '../pages/CheckoutPage';
+import TableBookingPage from '../pages/customer/TableBookingPage';
+import MyBookingsPage from '../pages/customer/MyBookingsPage';
+import CustomerOrderPage from '../pages/customer/CustomerOrderPage';
+import PurchaseOrdersPage from '../pages/purchase-orders/PurchaseOrdersPage';
+import CreatePOPage from '../pages/purchase-orders/CreatePOPage';
+import PurchaseOrderDetailPage from '../pages/purchase-orders/PurchaseOrderDetailPage';
+import VendorsPage from '../pages/vendors/VendorsPage';
+
+export const TenantRoutes = () => (
+    <>
+      <Route index element={<GuestPOSPage />} />
+      <Route path="register" element={<CustomerRegisterPage />} />
+      <Route path="feedback/:orderId" element={<FeedbackPage />} />
+
+      {/* ─── Customer Routes (No Sidebar, Single Page Layout) ─── */}
+      <Route element={<CustomerLayout />}>
+        <Route path="customer/order" element={<CustomerOrderPage />} />
+        <Route path="customer/checkout" element={<CheckoutPage />} />
+        <Route path="customer/book-table" element={<TableBookingPage />} />
+        <Route path="customer/bookings" element={<MyBookingsPage />} />
+        {/* Guest-accessible customer catering routes */}
+        <Route element={<RequireFeature feature="catering" guestAllowed />}>
+          <Route path="customer/catering" element={<CateringPage />} />
+          <Route path="customer/catering/track/:id" element={<CateringTrackPage />} />
+        </Route>
+      </Route>
+
+      {/* ─── Admin/Staff Routes (With Sidebar Layout) ─── */}
+      <Route element={<Layout />}>
+        <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="orders" element={<OrdersPage />} />
+        <Route path="pos" element={<POSPage />} />
+        <Route element={<RequireRole allowedRoles={['admin', 'manager']} />}>
+          <Route path="menu" element={<MenuPage />} />
+          <Route element={<RequireFeature feature="inventory" />}>
+            <Route path="inventory" element={<InventoryPage />} />
+          </Route>
+          <Route element={<RequireFeature feature="wastemanagement" />}>
+            <Route path="inventory/waste" element={<WasteManagementPage />} />
+          </Route>
+          <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
+          <Route path="purchase-orders/create" element={<CreatePOPage />} />
+          <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
+          <Route path="vendors" element={<VendorsPage />} />
+          <Route path="recipes" element={<RecipesPage />} />
+          <Route path="recipes/create" element={<CreateRecipePage />} />
+          <Route path="recipes/:id/edit" element={<CreateRecipePage />} />
+          <Route path="reports" element={<ReportsPage />} />
+          <Route path="users" element={<UsersPage />} />
+          <Route path="customers" element={<CustomersPage />} />
+          <Route path="settings" element={<SettingsPage />} />
+          <Route path="support" element={<AdminSupportPage />} />
+          <Route path="customer-support" element={<CustomerSupportPage />} />
+          <Route path="promocode" element={<PromoCodePage />} />
+          <Route path="coupons" element={< CouponsAdminPage />} />
+          <Route element={<RequireFeature feature="attendance" />}>
+            <Route path="attendance" element={<AttendancePage />} />
+          </Route>
+          <Route path="bookings" element={<BookingsAdminPage />} />
+          <Route path="customise-screens" element={<CustomiseScreensPage />} />
+          <Route path="audit-logs" element={<AuditLogsPage />} />
+        </Route>
+
+        <Route element={<RequireRole allowedRoles={['admin', 'superadmin']} />}>
+          <Route path="invoices" element={<InvoicesPage />} />
+          <Route path="invoices/:id" element={<InvoiceDetailPage />} />
+        </Route>
+
+        <Route element={<RequireRole allowedRoles={['admin']} />}>
+          <Route path="subscription" element={<SubscriptionPage />} />
+          <Route path="subscription/success" element={<SubscriptionSuccess />} />
+          <Route path="subscription/cancel" element={<SubscriptionCancel />} />
+        </Route>
+
+        <Route element={<RequireRole allowedRoles={['admin', 'manager', 'waiter', 'cashier']} />}>
+          <Route path="tables" element={<TablesPage />} />
+        </Route>
+
+        <Route path="profile" element={<ProfilePage />} />
+
+        {/* Kitchen Routes */}
+        <Route element={<RequireRole allowedRoles={['admin', 'manager', 'kitchen_staff']} />}>
+          <Route path="kitchen" element={<KitchenInterface />} />
+          <Route path="kot" element={<KitchenOrdersPage />} />
+        </Route>
+
+        {/* Protected admin catering routes */}
+        <Route element={<RequireFeature feature="catering" />}>
+          <Route path="catering-admin" element={<CateringManagementPage />} />
+          <Route path="catering-commissions" element={<CateringCommissionsPage />} />
+        </Route>
+      </Route>
+    </>
+  );

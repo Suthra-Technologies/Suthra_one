@@ -72,7 +72,7 @@ import { toast } from 'react-hot-toast';
 import AddressAutocomplete from '../../../components/AddressAutocomplete';
 import ActionHistoryList from '../../../components/common/ActionHistoryList';
 import { useSettings } from '../../../context/SettingsContext';
-import { cateringAPI, customersAPI, menuAPI, recipesAPI, usersAPI, traysAPI, settingsAPI } from '../../../services/api';
+import { cateringAPI, customersAPI, menuAPI, recipesAPI, usersAPI, traysAPI, settingsAPI, taxAPI } from '../../../services/api';
 import PhoneInput from 'src/components/PhoneInput';
 import { useAuth } from '../../../context/AuthContext';
 
@@ -96,6 +96,8 @@ const CateringManagementPage = () => {
     const [reqDialogOpen, setReqDialogOpen] = useState(false);
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
     const [menuItems, setMenuItems] = useState<any[]>([]);
+    const [taxDetails, setTaxDetails] = useState<any>(null);
+    const [isCalculatingTax, setIsCalculatingTax] = useState(false);
     const [newOrder, setNewOrder] = useState({
         customerName: '',
         customerPhone: '',
@@ -144,6 +146,52 @@ const CateringManagementPage = () => {
         }
     }, [user, getUserFullName, newOrder.processingPerson]);
 
+    // Debounced Tax Calculation for new/edit catering orders
+    useEffect(() => {
+        if (newOrder.items.length === 0) {
+            setTaxDetails(null);
+            return;
+        }
+
+        const timer = setTimeout(async () => {
+            try {
+                setIsCalculatingTax(true);
+                
+                let subtotal = newOrder.items.reduce((sum, item) => sum + (item.total || 0), 0);
+                let discountAmt = 0;
+                if (newOrder.discount.type === 'percentage') {
+                    discountAmt = (subtotal * (newOrder.discount.value || 0)) / 100;
+                } else {
+                    discountAmt = newOrder.discount.value || 0;
+                }
+
+                const payload = {
+                    to_zip: newOrder.zipCode || settings.restaurant?.zipCode || '30040',
+                    to_state: newOrder.state,
+                    to_city: newOrder.city,
+                    to_street: newOrder.address,
+                    discount: discountAmt,
+                    line_items: newOrder.items.map(item => ({
+                        itemId: item.menuItem,
+                        quantity: item.quantity,
+                        price: item.unitPrice,
+                        name: item.name
+                    }))
+                };
+
+                const res = await taxAPI.calculate(payload);
+                setTaxDetails(res.data);
+            } catch (err) {
+                console.error("[Catering Tax] Failed:", err);
+                setTaxDetails(null);
+            } finally {
+                setIsCalculatingTax(false);
+            }
+        }, 800);
+
+        return () => clearTimeout(timer);
+    }, [newOrder.items, newOrder.discount, newOrder.zipCode, newOrder.address, settings]);
+
     const [expanded, setExpanded] = useState<string | false>('customer');
     const [activeStep, setActiveStep] = useState(0);
     const [itemSelection, setItemSelection] = useState({
@@ -167,6 +215,10 @@ const CateringManagementPage = () => {
     const [dialogTab, setDialogTab] = useState(0);
     const [categories, setCategories] = useState<any[]>([]);
     const [customers, setCustomers] = useState<any[]>([]);
+
+    const [menuNextCursor, setMenuNextCursor] = useState<string | null>(null);
+    const [menuPrevCursors, setMenuPrevCursors] = useState<string[]>([]);
+    const [isMenuLoading, setIsMenuLoading] = useState(false);
 
     // Commission State
     const [users, setUsers] = useState<any[]>([]);
@@ -247,6 +299,46 @@ const CateringManagementPage = () => {
             setOccasionTouched(true);
             setCustomOccasion('');
             setAddCustomOccasionOpen(false);
+        }
+    };
+
+    const preventScientificNotation = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (['e', 'E', '.', '-', '+'].includes(e.key)) {
+            e.preventDefault();
+        }
+    };
+
+    const handleGuestCountChange = (
+        target: 'newOrder' | 'editData',
+        type: 'adults' | 'kids',
+        category: 'veg' | 'nonVeg',
+        value: string
+    ) => {
+        const num = parseInt(value);
+        const safeValue = isNaN(num) ? 0 : Math.max(0, Math.min(num, 9999));
+        
+        if (target === 'newOrder') {
+            setNewOrder(prev => ({
+                ...prev,
+                guests: {
+                    ...prev.guests,
+                    [type]: {
+                        ...prev.guests[type],
+                        [category]: safeValue
+                    }
+                }
+            }));
+        } else {
+            setEditData(prev => ({
+                ...prev,
+                guests: {
+                    ...prev.guests,
+                    [type]: {
+                        ...prev.guests[type],
+                        [category]: safeValue
+                    }
+                }
+            }));
         }
     };
 
@@ -489,11 +581,12 @@ const CateringManagementPage = () => {
         }
     };
 
-    const fetchMenu = async () => {
+    const fetchMenu = async (search: string = '', cursor: string = '') => {
         try {
+            setIsMenuLoading(true);
             // Fetch both menu, recipes and categories
             const [menuRes, recipeRes, catRes] = await Promise.all([
-                menuAPI.getAll(),
+                menuAPI.getAll({ search, cursor, limit: 50, isCateringAvailable: true }),
                 recipesAPI.getAll({ limit: 1000 }),
                 menuAPI.getAllCategories()
             ]);
@@ -501,11 +594,12 @@ const CateringManagementPage = () => {
             setCategories(Array.isArray(catRes.data) ? catRes.data : (catRes.data?.categories || catRes.data?.data || []));
 
             // Handle Menu Items
-            const items = Array.isArray(menuRes.data) ? menuRes.data : (menuRes.data?.items || []);
+            const menuData = menuRes.data;
+            const items = Array.isArray(menuData) ? menuData : (menuData?.items || []);
             setMenuItems(items);
+            setMenuNextCursor(menuData?.nextCursor || null);
 
-            // Handle Recipes (create a Set of menuItem IDs that have recipes)
-            // Backend returns { data: [...recipes], total: ... }
+            // Handle Recipes
             const recipeData = recipeRes.data;
             const recs = Array.isArray(recipeData) ? recipeData : (recipeData?.data || recipeData?.recipes || []);
 
@@ -513,7 +607,6 @@ const CateringManagementPage = () => {
             if (Array.isArray(recs)) {
                 recs.forEach((r: any) => {
                     const mid = typeof r.menuItem === 'object' ? r.menuItem?._id : r.menuItem;
-                    // Only consider valid recipes that have ingredients configured
                     if (mid && r.ingredients && r.ingredients.length > 0) {
                         ids.add(mid.toString());
                     }
@@ -522,7 +615,39 @@ const CateringManagementPage = () => {
             setRecipeMenuItemIds(ids);
         } catch (error) {
             console.error('Error fetching menu/recipes:', error);
+            toast.error('Failed to load menu items');
+        } finally {
+            setIsMenuLoading(false);
         }
+    };
+
+    // Debounced Search for Menu Items
+    useEffect(() => {
+        if (!createDialogOpen && !isEditing) return;
+        
+        const timer = setTimeout(() => {
+            setMenuPrevCursors([]); // Reset pagination on new search
+            fetchMenu(itemSearch);
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [itemSearch]);
+
+    const handleMenuNext = () => {
+        if (menuNextCursor) {
+            setMenuPrevCursors(prev => [...prev, '']); // Placeholder for back logic if backend doesn't support prev cursors
+            // Note: Since backend only gives nextCursor, true back navigation is hard without skip/limit.
+            // But we can store historical items or cursors.
+            // For now, let's just support Next.
+            fetchMenu(itemSearch, menuNextCursor);
+        }
+    };
+
+    const handleMenuPrev = () => {
+        // If we want real back navigation, we'd need to store the previous items.
+        // Simplified for now: just re-fetch first page if they go back.
+        setMenuPrevCursors([]);
+        fetchMenu(itemSearch, '');
     };
 
     useEffect(() => {
@@ -704,8 +829,8 @@ const CateringManagementPage = () => {
     };
 
     const renderItemSelector = () => {
-        // Filter items based on catering availability and search query
-        const filtered = menuItems.filter(i => i.isCateringAvailable && i.name.toLowerCase().includes(itemSearch.toLowerCase()));
+        // Items are now filtered on the server
+        const filtered = menuItems;
 
         // Group items: Category -> FoodType
         const groupedData: Record<string, { veg: any[], nonVeg: any[], others: any[] }> = {};
@@ -1022,6 +1147,31 @@ const CateringManagementPage = () => {
                     ))}
                 </Box>
 
+                {/* Pagination Controls */}
+                {(menuNextCursor || menuPrevCursors.length > 0) && (
+                    <Box display="flex" justifyContent="center" alignItems="center" gap={2} mt={2} pt={2} sx={{ borderTop: '1px solid', borderColor: 'divider' }}>
+                        <Button
+                            size="small"
+                            variant="outlined"
+                            disabled={isMenuLoading || menuPrevCursors.length === 0}
+                            onClick={handleMenuPrev}
+                        >
+                            Previous
+                        </Button>
+                        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                            {isMenuLoading ? 'Loading...' : 'Page results'}
+                        </Typography>
+                        <Button
+                            size="small"
+                            variant="outlined"
+                            disabled={isMenuLoading || !menuNextCursor}
+                            onClick={handleMenuNext}
+                        >
+                            Next
+                        </Button>
+                    </Box>
+                )}
+
                 {/* Confirm button at bottom */}
                 <Box display="flex" justifyContent="flex-end" mt={2}>
                     <Button
@@ -1082,31 +1232,27 @@ const CateringManagementPage = () => {
 
         setCreating(true);
         try {
-            const subtotal = newOrder.items.reduce((sum, item) => sum + item.total, 0);
-            const defaultTaxRate = settings.restaurant.taxRate || 0;
-
-            let discountAmt = 0;
+            const currentSubtotal = newOrder.items.reduce((sum, item) => sum + (item.total || 0), 0);
+            const defaultTaxRate = settings.restaurant?.taxRate || 0;
+            let currentDiscountAmt = 0;
             if (newOrder.discount.type === 'percentage') {
-                discountAmt = (subtotal * (newOrder.discount.value || 0)) / 100;
+                currentDiscountAmt = (currentSubtotal * (newOrder.discount.value || 0)) / 100;
             } else {
-                discountAmt = newOrder.discount.value || 0;
+                currentDiscountAmt = newOrder.discount.value || 0;
             }
-
-            const discountRatio = subtotal > 0 ? Math.max(0, subtotal - discountAmt) / subtotal : 1;
-            // Calculate tax per item — items with taxRate=0 contribute no tax
-            const taxAmount = newOrder.items.reduce((sum, item: any) => {
-                const itemTaxRate = (item.taxRate !== undefined && item.taxRate !== null) ? item.taxRate : defaultTaxRate;
-                return sum + (item.total * discountRatio * itemTaxRate / 100);
-            }, 0);
-            const taxableAmount = Math.max(0, subtotal - discountAmt);
-            const totalAmount = taxableAmount + taxAmount;
+            const currentTaxable = Math.max(0, currentSubtotal - currentDiscountAmt);
+            
+            // Use Dynamic Tax if available, otherwise fallback to static
+            const taxAmount = (taxDetails?.taxAmount ?? taxDetails?.amount_to_collect ?? taxDetails?.total_tax ?? (currentTaxable * defaultTaxRate / 100));
+            const totalAmount = currentTaxable + taxAmount;
 
             const payload = {
                 ...newOrder,
-                subtotal,
+                subtotal: currentSubtotal,
                 tax: {
-                    rate: defaultTaxRate,
-                    amount: taxAmount
+                    rate: taxDetails?.taxRate !== undefined ? (taxDetails.taxRate * 100) : defaultTaxRate,
+                    amount: taxAmount,
+                    breakdown: taxDetails?.details || taxDetails?.jurisdictions || null
                 },
                 totalAmount,
                 location: {
@@ -2265,12 +2411,9 @@ const CateringManagementPage = () => {
                             currentDiscountAmt = newOrder.discount.value || 0;
                         }
                         const currentTaxable = Math.max(0, currentSubtotal - currentDiscountAmt);
-                        const discountRatio = currentSubtotal > 0 ? currentTaxable / currentSubtotal : 1;
-                        // Per-item tax — items with taxRate=0 contribute no tax
-                        const currentTaxAmt = newOrder.items.reduce((sum, item: any) => {
-                            const itemTaxRate = (item.taxRate !== undefined && item.taxRate !== null) ? item.taxRate : defaultTaxRate;
-                            return sum + (item.total * discountRatio * itemTaxRate / 100);
-                        }, 0);
+                        
+                        // Use Dynamic Tax if available, otherwise fallback to static
+                        const currentTaxAmt = (taxDetails?.taxAmount ?? taxDetails?.amount_to_collect ?? taxDetails?.total_tax ?? (currentTaxable * defaultTaxRate / 100));
                         const currentFinalTotal = currentTaxable + currentTaxAmt;
                         const totalPaid = (newOrder.payments || []).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
                         const currentBalanceDue = Math.max(0, currentFinalTotal - totalPaid);
@@ -2511,7 +2654,11 @@ const CateringManagementPage = () => {
                                                             helperText={formSubmitted && !newOrder.occasionPersonName?.trim() ? "Name is required" : ""}
                                                             FormHelperTextProps={{ sx: { color: 'error.main' } }}
                                                             InputLabelProps={{ sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }}
-                                                            onChange={(e) => setNewOrder({ ...newOrder, occasionPersonName: e.target.value })}
+                                                            onChange={(e) => {
+                                                                if (/^[a-zA-Z\s]*$/.test(e.target.value)) {
+                                                                    setNewOrder({ ...newOrder, occasionPersonName: e.target.value })
+                                                                }
+                                                            }}
                                                         />
                                                     </Grid>
                                                 )}
@@ -2645,7 +2792,7 @@ const CateringManagementPage = () => {
                                                                 (Enter number of guests per category)
                                                             </Typography>
                                                         </Box>
-                                                        <TableContainer component={Paper} elevation={0} sx={{ overflow: 'hidden' }}>
+                                                        <TableContainer component={Paper} elevation={0} sx={{ overflow: 'auto' }}>
                                                             <Table size="small">
                                                                 <TableHead>
                                                                     <TableRow sx={{ bgcolor: '#f5f5f5' }}>
@@ -2666,10 +2813,26 @@ const CateringManagementPage = () => {
                                                                             <Typography variant="body2" fontWeight={600}>Adults</Typography>
                                                                         </TableCell>
                                                                         <TableCell align="center" sx={{ py: 1.5 }}>
-                                                                            <TextField size="small" type="number" value={newOrder.guests.adults.veg || ''} onChange={(e) => setNewOrder({ ...newOrder, guests: { ...newOrder.guests, adults: { ...newOrder.guests.adults, veg: parseInt(e.target.value) || 0 } } })} inputProps={{ min: 0 }} sx={{ width: 80, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} />
+                                                                            <TextField 
+                                                                                size="small" 
+                                                                                type="number" 
+                                                                                value={newOrder.guests.adults.veg || ''} 
+                                                                                onKeyDown={preventScientificNotation}
+                                                                                onChange={(e) => handleGuestCountChange('newOrder', 'adults', 'veg', e.target.value)} 
+                                                                                inputProps={{ min: 0, max: 9999 }} 
+                                                                                sx={{ width: { xs: 60, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} 
+                                                                            />
                                                                         </TableCell>
                                                                         <TableCell align="center" sx={{ py: 1.5 }}>
-                                                                            <TextField size="small" type="number" value={newOrder.guests.adults.nonVeg || ''} onChange={(e) => setNewOrder({ ...newOrder, guests: { ...newOrder.guests, adults: { ...newOrder.guests.adults, nonVeg: parseInt(e.target.value) || 0 } } })} inputProps={{ min: 0 }} sx={{ width: 80, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} />
+                                                                            <TextField 
+                                                                                size="small" 
+                                                                                type="number" 
+                                                                                value={newOrder.guests.adults.nonVeg || ''} 
+                                                                                onKeyDown={preventScientificNotation}
+                                                                                onChange={(e) => handleGuestCountChange('newOrder', 'adults', 'nonVeg', e.target.value)} 
+                                                                                inputProps={{ min: 0, max: 9999 }} 
+                                                                                sx={{ width: { xs: 60, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} 
+                                                                            />
                                                                         </TableCell>
                                                                     </TableRow>
                                                                     <TableRow>
@@ -2677,10 +2840,26 @@ const CateringManagementPage = () => {
                                                                             <Typography variant="body2" fontWeight={600}>Kids</Typography>
                                                                         </TableCell>
                                                                         <TableCell align="center" sx={{ py: 1.5 }}>
-                                                                            <TextField size="small" type="number" value={newOrder.guests.kids.veg || ''} onChange={(e) => setNewOrder({ ...newOrder, guests: { ...newOrder.guests, kids: { ...newOrder.guests.kids, veg: parseInt(e.target.value) || 0 } } })} inputProps={{ min: 0 }} sx={{ width: 80, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} />
+                                                                            <TextField 
+                                                                                size="small" 
+                                                                                type="number" 
+                                                                                value={newOrder.guests.kids.veg || ''} 
+                                                                                onKeyDown={preventScientificNotation}
+                                                                                onChange={(e) => handleGuestCountChange('newOrder', 'kids', 'veg', e.target.value)} 
+                                                                                inputProps={{ min: 0, max: 9999 }} 
+                                                                                sx={{ width: { xs: 60, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} 
+                                                                            />
                                                                         </TableCell>
                                                                         <TableCell align="center" sx={{ py: 1.5 }}>
-                                                                            <TextField size="small" type="number" value={newOrder.guests.kids.nonVeg || ''} onChange={(e) => setNewOrder({ ...newOrder, guests: { ...newOrder.guests, kids: { ...newOrder.guests.kids, nonVeg: parseInt(e.target.value) || 0 } } })} inputProps={{ min: 0 }} sx={{ width: 80, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} />
+                                                                            <TextField 
+                                                                                size="small" 
+                                                                                type="number" 
+                                                                                value={newOrder.guests.kids.nonVeg || ''} 
+                                                                                onKeyDown={preventScientificNotation}
+                                                                                onChange={(e) => handleGuestCountChange('newOrder', 'kids', 'nonVeg', e.target.value)} 
+                                                                                inputProps={{ min: 0, max: 9999 }} 
+                                                                                sx={{ width: { xs: 60, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} 
+                                                                            />
                                                                         </TableCell>
                                                                     </TableRow>
                                                                     <TableRow sx={{ bgcolor: '#f5f5f5', borderTop: '1px solid #e0e0e0' }}>
@@ -2703,112 +2882,6 @@ const CateringManagementPage = () => {
                                                         </TableContainer>
                                                     </Box>
                                                 </Grid>
-
-                                                {/* {(newOrder.serviceType === 'delivery_service' || newOrder.serviceType === 'delivery') && (
-                                                    <Grid item xs={12}>
-                                                        <AddressAutocomplete
-                                                            label="Delivery Address"
-                                                            value={newOrder.address}
-                                                            onChange={(val) => setNewOrder(prev => ({ ...prev, address: val }))}
-                                                            onSelect={(addr) => {
-                                                                const mapsLink = `https://www.google.com/maps?q=${addr.latitude},${addr.longitude}`;
-                                                                setNewOrder(prev => ({
-                                                                    ...prev,
-                                                                    address: addr.fullAddress, city: addr.city, state: addr.state, county: addr.county, country: addr.country, zipCode: addr.zipCode, latitude: addr.latitude, longitude: addr.longitude, googleMapsLink: mapsLink
-                                                                }));
-                                                            }}
-                                                            apiKey={import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
-                                                        />
-
-                                                        {newOrder.latitude && newOrder.longitude && !mapsAuthError && (
-                                                            <Box sx={{ position: 'relative', mt: 2 }}>
-                                                                <Box
-                                                                    component="iframe"
-                                                                    sx={{
-                                                                        width: '100%',
-                                                                        height: 150,
-                                                                        border: 0,
-                                                                        borderRadius: 1,
-                                                                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-                                                                    }}
-                                                                    loading="lazy"
-                                                                    allowFullScreen
-                                                                    src={`https://www.google.com/maps/embed/v1/place?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&q=${newOrder.latitude},${newOrder.longitude}&zoom=15`}
-                                                                />
-                                                                <IconButton
-                                                                    size="small"
-                                                                    sx={{
-                                                                        position: 'absolute',
-                                                                        top: 4,
-                                                                        right: 4,
-                                                                        bgcolor: 'rgba(255,255,255,0.7)',
-                                                                        '&:hover': { bgcolor: 'white' }
-                                                                    }}
-                                                                    onClick={() => setMapsAuthError(true)}
-                                                                >
-                                                                    <Close fontSize="small" />
-                                                                </IconButton>
-                                                            </Box>
-                                                        )}
-
-                                                        <Grid container spacing={2} sx={{ mt: 1 }}>
-                                                            <Grid item xs={12} sm={6}>
-                                                                <TextField
-                                                                    label="City"
-                                                                    fullWidth
-                                                                    size="small"
-                                                                    value={newOrder.city}
-                                                                    onChange={(e) => setNewOrder({ ...newOrder, city: e.target.value })}
-                                                                />
-                                                            </Grid>
-                                                            <Grid item xs={12} sm={6}>
-                                                                <TextField
-                                                                    label="State"
-                                                                    fullWidth
-                                                                    size="small"
-                                                                    value={newOrder.state}
-                                                                    onChange={(e) => setNewOrder({ ...newOrder, state: e.target.value })}
-                                                                />
-                                                            </Grid>
-                                                            <Grid item xs={12} sm={6}>
-                                                                <TextField
-                                                                    label="County"
-                                                                    fullWidth
-                                                                    size="small"
-                                                                    value={newOrder.county}
-                                                                    onChange={(e) => setNewOrder({ ...newOrder, county: e.target.value })}
-                                                                />
-                                                            </Grid>
-                                                            <Grid item xs={12} sm={6}>
-                                                                <TextField
-                                                                    label="Country"
-                                                                    fullWidth
-                                                                    size="small"
-                                                                    value={newOrder.country}
-                                                                    onChange={(e) => setNewOrder({ ...newOrder, country: e.target.value })}
-                                                                />
-                                                            </Grid>
-                                                            <Grid item xs={12} sm={6}>
-                                                                <TextField
-                                                                    label="Zip Code"
-                                                                    fullWidth
-                                                                    size="small"
-                                                                    value={newOrder.zipCode}
-                                                                    onChange={(e) => setNewOrder({ ...newOrder, zipCode: e.target.value })}
-                                                                />
-                                                            </Grid>
-                                                            <Grid item xs={12} sm={6}>
-                                                                <TextField
-                                                                    label="Google Maps Link"
-                                                                    fullWidth
-                                                                    size="small"
-                                                                    value={newOrder.googleMapsLink}
-                                                                    onChange={(e) => setNewOrder({ ...newOrder, googleMapsLink: e.target.value })}
-                                                                />
-                                                            </Grid>
-                                                        </Grid>
-                                                    </Grid>
-                                                )} */}
                                             </Grid>
                                             <Box display="flex" justifyContent="space-between" mt={3}>
                                                 <Button onClick={() => setActiveStep(0)} sx={{ px: 2 }}>Back</Button>
@@ -2955,8 +3028,11 @@ const CateringManagementPage = () => {
                                                         fullWidth
                                                         size="small"
                                                         disabled
-                                                        value={currentFinalTotal.toFixed(2)}
-                                                        InputProps={{ sx: { fontWeight: 'bold', bgcolor: alpha(theme.palette.success.main, 0.05) } }}
+                                                        value={isCalculatingTax ? 'Calculating...' : currentFinalTotal.toFixed(2)}
+                                                        InputProps={{ 
+                                                            sx: { fontWeight: 'bold', bgcolor: alpha(theme.palette.success.main, 0.05) },
+                                                            endAdornment: isCalculatingTax ? <CircularProgress size={20} /> : null
+                                                        }}
                                                     />
                                                 </Grid>
                                                 <Grid item xs={12}>
@@ -2966,63 +3042,67 @@ const CateringManagementPage = () => {
                                                             Add Payment
                                                         </Button>
                                                     </Box>
-                                                    <TableContainer component={Paper} variant="outlined">
+
+                                                    <TableContainer component={Paper} variant="outlined" sx={{ overflowX: 'hidden' }}>
                                                         <Table size="small">
                                                             <TableHead>
                                                                 <TableRow>
-                                                                    <TableCell>Amount</TableCell>
-                                                                    <TableCell>Method</TableCell>
-                                                                    <TableCell>Date</TableCell>
-                                                                    <TableCell>Notes</TableCell>
-                                                                    <TableCell align="center">Action</TableCell>
+                                                                    <TableCell sx={{ px: { xs: 0.5, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>Amount</TableCell>
+                                                                    <TableCell sx={{ px: { xs: 0.5, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>Method</TableCell>
+                                                                    <TableCell sx={{ px: { xs: 0.5, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>Date</TableCell>
+                                                                    <TableCell sx={{ px: { xs: 0.5, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>Notes</TableCell>
+                                                                    <TableCell align="center" sx={{ px: { xs: 0.5, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>Action</TableCell>
                                                                 </TableRow>
                                                             </TableHead>
                                                             <TableBody>
                                                                 {(newOrder.payments || []).map((payment: any, idx: number) => (
                                                                     <TableRow key={idx}>
-                                                                        <TableCell>
-                                                                            <TextField
-                                                                                type="number"
-                                                                                size="small"
-                                                                                inputProps={{ min: 0, step: "0.01" }}
-                                                                                value={payment.amount}
-                                                                                onChange={(e) => handleUpdatePaymentFromCreate(idx, 'amount', parseFloat(e.target.value) || 0)}
-                                                                                sx={{ width: 100 }}
-                                                                            />
-                                                                        </TableCell>
-                                                                        <TableCell>
-                                                                            <Select
-                                                                                size="small"
-                                                                                value={payment.method || 'cash'}
-                                                                                onChange={(e) => handleUpdatePaymentFromCreate(idx, 'method', e.target.value)}
-                                                                            >
-                                                                                {availablePaymentMethods.map(m => (
-                                                                                    <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
-                                                                                ))}
-                                                                            </Select>
-                                                                        </TableCell>
-                                                                        <TableCell>
-                                                                            <TextField
-                                                                                type="date"
-                                                                                size="small"
-                                                                                value={payment.timestamp ? new Date(payment.timestamp).toISOString().split('T')[0] : ''}
-                                                                                onChange={(e) => handleUpdatePaymentFromCreate(idx, 'timestamp', e.target.value)}
-                                                                            />
-                                                                        </TableCell>
-                                                                        <TableCell>
-                                                                            <TextField
-                                                                                size="small"
-                                                                                value={payment.notes || ''}
-                                                                                onChange={(e) => handleUpdatePaymentFromCreate(idx, 'notes', e.target.value)}
-                                                                                placeholder="Ref/Note"
-                                                                            />
-                                                                        </TableCell>
-                                                                        <TableCell align="center">
-                                                                            <IconButton color="error" size="small" onClick={() => handleRemovePaymentFromCreate(idx)}>
-                                                                                <Cancel fontSize="small" />
-                                                                            </IconButton>
-                                                                        </TableCell>
-                                                                    </TableRow>
+    <TableCell sx={{ px: { xs: 0.5, sm: 1 } }}>
+        <TextField
+            type="number"
+            size="small"
+            inputProps={{ min: 0, step: "0.01" }}
+            value={payment.amount}
+            onChange={(e) => handleUpdatePaymentFromCreate(idx, 'amount', parseFloat(e.target.value) || 0)}
+            sx={{ width: { xs: 60, sm: 100 } }}
+        />
+    </TableCell>
+    <TableCell sx={{ px: { xs: 0.5, sm: 1 } }}>
+        <Select
+            size="small"
+            value={payment.method || 'cash'}
+            onChange={(e) => handleUpdatePaymentFromCreate(idx, 'method', e.target.value)}
+            sx={{ width: { xs: 70, sm: 'auto' } }}
+        >
+            {availablePaymentMethods.map(m => (
+                <MenuItem key={m.value} value={m.value}>{m.label}</MenuItem>
+            ))}
+        </Select>
+    </TableCell>
+    <TableCell sx={{ px: { xs: 0.5, sm: 1 } }}>
+        <TextField
+            type="date"
+            size="small"
+            value={payment.timestamp ? new Date(payment.timestamp).toISOString().split('T')[0] : ''}
+            onChange={(e) => handleUpdatePaymentFromCreate(idx, 'timestamp', e.target.value)}
+            sx={{ width: { xs: 100, sm: 'auto' } }}
+        />
+    </TableCell>
+    <TableCell sx={{ px: { xs: 0.5, sm: 1 } }}>
+        <TextField
+            size="small"
+            value={payment.notes || ''}
+            onChange={(e) => handleUpdatePaymentFromCreate(idx, 'notes', e.target.value)}
+            placeholder="Ref/Note"
+            sx={{ width: { xs: 70, sm: 'auto' } }}
+        />
+    </TableCell>
+    <TableCell align="center" sx={{ px: { xs: 0.5, sm: 1 } }}>
+        <IconButton color="error" size="small" onClick={() => handleRemovePaymentFromCreate(idx)}>
+            <Cancel fontSize="small" />
+        </IconButton>
+    </TableCell>
+</TableRow>
                                                                 ))}
                                                                 {(!newOrder.payments || newOrder.payments.length === 0) && (
                                                                     <TableRow>
@@ -3280,9 +3360,9 @@ const CateringManagementPage = () => {
                                                     color="success"
                                                     onClick={handleCreateOrder}
                                                     sx={{ px: 3 }}
-                                                    disabled={creating}
+                                                    disabled={creating || isCalculatingTax}
                                                 >
-                                                    {creating ? 'Creating...' : '✓ Create Order'}
+                                                    {creating ? 'Creating...' : isCalculatingTax ? 'Calculating Tax...' : '✓ Create Order'}
                                                 </Button>
                                             </Box>
                                         </Box>

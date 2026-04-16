@@ -1,9 +1,11 @@
-import { Box, Button, CssBaseline, Paper, ThemeProvider, Typography, useMediaQuery } from '@mui/material';
+import { Box, Button, CircularProgress, CssBaseline, Paper, ThemeProvider, Typography, useMediaQuery } from '@mui/material';
 import React, { useMemo } from 'react';
-import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import { Navigate, Route, BrowserRouter as Router, Routes, useParams, useLocation } from 'react-router-dom';
 import CustomerLayout from './components/CustomerLayout';
 import Layout from './components/Layout';
 import PushNotificationInitializer from './components/PushNotificationInitializer';
+import { getTenantSlugFromHostname } from './utils/tenant.utils';
+import { TenantRoutes } from './routes/TenantRoutes';
 import { AuthProvider } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationProvider';
 import { SocketProvider } from './context/SocketContext';
@@ -60,6 +62,7 @@ import AuditLogsPage from './pages/admin/AuditLogsPage';
 import BookingsAdminPage from './pages/admin/BookingsAdminPage';
 import CateringCommissionsPage from './pages/admin/catering/CateringCommissionsPage';
 import CateringManagementPage from './pages/admin/catering/CateringManagementPage';
+import CustomiseScreensPage from './pages/admin/customise-screens/CustomiseScreensPage';
 import AttendancePage from './pages/AttendancePage';
 import CateringPage from './pages/catering/CateringPage';
 import CateringTrackPage from './pages/customer/CateringTrackPage';
@@ -127,118 +130,58 @@ const ThemedAppContent: React.FC = () => {
         <SocketProvider>
           <PushNotificationInitializer />
           <ErrorBoundary>
-            <Routes>
-              {/* Public routes (no layout, no slug) */}
-              <Route path="/" element={<HomePage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/reset-password" element={<ResetPasswordPage />} />
-              <Route path="/register" element={<RestaurantRegisterPage />} />
-
-              {/* ---- SUPERADMIN ROUTES ---- */}
-              <Route element={<RequireRole allowedRoles={["superadmin"]} />}>
-                <Route element={<SuperAdminLayout />}>
-                  <Route path="/superadmin" element={<SuperAdminPortal />} />
-                  <Route path="/superadmin/tenants" element={<TenantsPage />} />
-                  <Route path="/superadmin/plans" element={<PlansPage />} />
-                  <Route path="/superadmin/invoices" element={<InvoicesAdminPage />} />
-                  <Route path="/superadmin/tickets" element={<TicketsPage />} />
-                </Route>
-              </Route>
-
-              {/* ---- ADMIN‑ONLY ROUTES ---- */}
-              <Route element={<RequireRole allowedRoles={["admin"]} />}>
-                {/* Admin-only routes can be added here if needed */}
-              </Route>
-
-              {/* ---- TENANT ROUTES ---- */}
-              <Route path="/:slug">
-                <Route index element={<GuestPOSPage />} />
-                <Route path="register" element={<CustomerRegisterPage />} />
-                <Route path="feedback/:orderId" element={<FeedbackPage />} />
-
-                {/* ─── Customer Routes (No Sidebar, Single Page Layout) ─── */}
-                <Route element={<CustomerLayout />}>
-                  <Route path="customer/order" element={<CustomerOrderPage />} />
-                  <Route path="customer/checkout" element={<CheckoutPage />} />
-                  <Route path="customer/book-table" element={<TableBookingPage />} />
-                  <Route path="customer/bookings" element={<MyBookingsPage />} />
-                  {/* Guest-accessible customer catering routes */}
-                  <Route element={<RequireFeature feature="catering" guestAllowed />}>
-                    <Route path="customer/catering" element={<CateringPage />} />
-                    <Route path="customer/catering/track/:id" element={<CateringTrackPage />} />
-                  </Route>
-                </Route>
-
-                {/* ─── Admin/Staff Routes (With Sidebar Layout) ─── */}
-                <Route element={<Layout />}>
-                  <Route path="dashboard" element={<DashboardPage />} />
-                  <Route path="orders" element={<OrdersPage />} />
-                  <Route path="pos" element={<POSPage />} />
-                  <Route element={<RequireRole allowedRoles={['admin', 'manager']} />}>
-                    <Route path="menu" element={<MenuPage />} />
-                    <Route path="inventory" element={<InventoryPage />} />
-                    <Route path="inventory/waste" element={<WasteManagementPage />} />
-                    <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
-                    <Route path="purchase-orders/create" element={<CreatePOPage />} />
-                    <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
-                    <Route path="vendors" element={<VendorsPage />} />
-                    <Route path="recipes" element={<RecipesPage />} />
-                    <Route path="recipes/create" element={<CreateRecipePage />} />
-                    <Route path="recipes/:id/edit" element={<CreateRecipePage />} />
-                    <Route path="reports" element={<ReportsPage />} />
-                    <Route path="users" element={<UsersPage />} />
-                    <Route path="customers" element={<CustomersPage />} />
-                    <Route path="settings" element={<SettingsPage />} />
-                    <Route path="support" element={<AdminSupportPage />} />
-                    <Route path="customer-support" element={<CustomerSupportPage />} />
-                    <Route path="promocode" element={<PromoCodePage />} />
-                    <Route path="coupons" element={< CouponsAdminPage />} />
-                    <Route path="attendance" element={<AttendancePage />} />
-                    <Route path="bookings" element={<BookingsAdminPage />} />
-                    <Route path="audit-logs" element={<AuditLogsPage />} />
-                  </Route>
-
-                  <Route element={<RequireRole allowedRoles={['admin', 'superadmin']} />}>
-                    <Route path="invoices" element={<InvoicesPage />} />
-                    <Route path="invoices/:id" element={<InvoiceDetailPage />} />
-                  </Route>
-
-                  <Route element={<RequireRole allowedRoles={['admin']} />}>
-                    <Route path="subscription" element={<SubscriptionPage />} />
-                    <Route path="subscription/success" element={<SubscriptionSuccess />} />
-                    <Route path="subscription/cancel" element={<SubscriptionCancel />} />
-                  </Route>
-
-                  <Route element={<RequireRole allowedRoles={['admin', 'manager', 'waiter', 'cashier']} />}>
-                    <Route path="tables" element={<TablesPage />} />
-                  </Route>
-
-                  <Route path="profile" element={<ProfilePage />} />
-
-                  {/* Kitchen Routes */}
-                  <Route element={<RequireRole allowedRoles={['admin', 'manager', 'kitchen_staff']} />}>
-                    <Route path="kitchen" element={<KitchenInterface />} />
-                    <Route path="kot" element={<KitchenOrdersPage />} />
-                  </Route>
-
-                  {/* Protected admin catering routes */}
-                  <Route element={<RequireFeature feature="catering" />}>
-                    <Route path="catering-admin" element={<CateringManagementPage />} />
-                    <Route path="catering-commissions" element={<CateringCommissionsPage />} />
-                  </Route>
-                </Route>
-              </Route>
-
-              {/* Fallback for old routes without slug - redirect to login */}
-              <Route path="/dashboard" element={<Navigate to="/login" replace />} />
-              <Route path="/users" element={<Navigate to="/login" replace />} />
-              <Route path="/unauthorized" element={<Unauthorized />} />
-              <Route path="*" element={<Navigate to="/login" replace />} />
-            </Routes>
+            <AppRoutes />
           </ErrorBoundary>
         </SocketProvider>
       </NotificationProvider>
     </ThemeProvider>
+  );
+};
+
+const AppRoutes: React.FC = () => {
+  const hostnameSlug = getTenantSlugFromHostname();
+
+  return (
+    <Routes>
+      {/* Public routes (no layout, no slug) */}
+      <Route path="/" element={<HomePage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/reset-password" element={<ResetPasswordPage />} />
+      <Route path="/register" element={<RestaurantRegisterPage />} />
+
+      {/* ---- SUPERADMIN ROUTES ---- */}
+      <Route element={<RequireRole allowedRoles={["superadmin"]} />}>
+        <Route element={<SuperAdminLayout />}>
+          <Route path="/superadmin" element={<SuperAdminPortal />} />
+          <Route path="/superadmin/tenants" element={<TenantsPage />} />
+          <Route path="/superadmin/plans" element={<PlansPage />} />
+          <Route path="/superadmin/invoices" element={<InvoicesAdminPage />} />
+          <Route path="/superadmin/tickets" element={<TicketsPage />} />
+        </Route>
+      </Route>
+
+      {/* ---- SUBDOMAIN TENANT ROUTES (Root level) ---- */}
+      {hostnameSlug && (
+        <>
+          {TenantRoutes()}
+          {/* Redirect from /mythri/dashboard to /dashboard if on mythri.localhost */}
+          <Route path="/:slug/*" element={<SubdomainRedirect contextSlug={hostnameSlug} />} />
+        </>
+      )}
+
+      {/* ---- PATH-BASED TENANT ROUTES ---- */}
+      {!hostnameSlug && (
+        <Route path="/:slug">
+          {TenantRoutes()}
+        </Route>
+      )}
+
+      {/* Fallback for old routes without slug - redirect to login */}
+      <Route path="/dashboard" element={<Navigate to="/login" replace />} />
+      <Route path="/users" element={<Navigate to="/login" replace />} />
+      <Route path="/unauthorized" element={<Unauthorized />} />
+      <Route path="*" element={<Navigate to="/login" replace />} />
+    </Routes>
   );
 };
 
@@ -254,6 +197,43 @@ const App: React.FC = () => {
       </AuthProvider>
     </Router>
   );
+};
+
+/**
+ * Helper component to handle redirects when a slug is present in the path 
+ * but the user is already on a tenant subdomain.
+ * e.g. mythri.localhost/mythri/menu -> mythri.localhost/menu
+ */
+const SubdomainRedirect: React.FC<{ contextSlug: string }> = ({ contextSlug }) => {
+  const { slug } = useParams<{ slug: string }>();
+  const location = useLocation();
+
+  const redirectContent = (path: string) => (
+    <Box sx={{ 
+      display: 'flex', 
+      flexDirection: 'column', 
+      alignItems: 'center', 
+      justifyContent: 'center', 
+      height: '100vh', 
+      bgcolor: '#f8f9fa' 
+    }}>
+      <CircularProgress size={40} sx={{ mb: 2, color: '#4F46E5' }} />
+      <Typography variant="body2" color="text.secondary" fontWeight="medium">
+        Redirecting...
+      </Typography>
+      <Navigate to={path} replace />
+    </Box>
+  );
+
+  if (slug === contextSlug) {
+    // Remove the slug from the path but preserve query parameters
+    const newPath = (location.pathname.replace(`/${slug}`, '') || '/') + location.search;
+    return redirectContent(newPath);
+  }
+
+  // If the slug doesn't match the subdomain, fallback redirect
+  const fallbackPath = "/" + location.search;
+  return redirectContent(fallbackPath);
 };
 
 export default App;

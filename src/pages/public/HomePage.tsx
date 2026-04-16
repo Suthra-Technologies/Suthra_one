@@ -1042,7 +1042,7 @@ const HomePage: React.FC = () => {
               sx={{
                 fontFamily: "Unbounded, sans-serif",
                 fontWeight: 900,
-                fontSize: { xs: "2.2rem", md: "4rem" },
+                fontSize: { xs: "1.8rem", md: "3.2rem" },
                 color: "#222",
                 mb: 2,
                 lineHeight: 1.1,
@@ -1068,7 +1068,7 @@ const HomePage: React.FC = () => {
                 fontWeight: 400,
                 maxWidth: 800,
                 mx: "auto",
-                mb: 5,
+                mb: 3,
                 lineHeight: 1.6,
               }}
             >
@@ -1088,9 +1088,9 @@ const HomePage: React.FC = () => {
                 size="large"
                 sx={{
                   borderRadius: 50,
-                  px: 4,
-                  py: 1.5,
-                  fontSize: "1.1rem",
+                  px: 3,
+                  py: 1.2,
+                  fontSize: "1rem",
                   fontWeight: "bold",
                   color: "#FF914D",
                   borderColor: "#FF914D",
@@ -1112,9 +1112,9 @@ const HomePage: React.FC = () => {
                 startIcon={<PlayIcon />}
                 sx={{
                   borderRadius: 50,
-                  px: 4,
-                  py: 1.5,
-                  fontSize: "1.1rem",
+                  px: 3,
+                  py: 1.2,
+                  fontSize: "1rem",
                   fontWeight: "bold",
                   bgcolor: "#FF914D",
                   color: "#fff",

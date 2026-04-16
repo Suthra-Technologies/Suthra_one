@@ -94,6 +94,9 @@ export const authAPI = {
   getPublicMenu: () => api.get('/menu/public'),
   resetPasswordWithToken: (token: string, newPassword: string) => api.post('/auth/reset-password', { token, newPassword }),
   forgotPassword: (email: string) => api.post('/auth/forgot-password', { email }),
+  getCustomerCards: () => api.get('/auth/customer/cards'),
+  saveCustomerCard: (cardData: any) => api.post('/auth/customer/cards', cardData),
+  deleteCustomerCard: (index: number) => api.delete(`/auth/customer/cards/${index}`),
 };
 
 
@@ -194,6 +197,9 @@ export const ordersAPI = {
   confirmStripeCheckout: (orderId: string, sessionId: string) => api.post(`/orders/${orderId}/confirm-payment`, { sessionId }),
   updateLocation: (id: string, lat: number, lng: number) => api.patch(`/orders/${id}/location`, { lat, lng }),
   syncDoordashStatus: (orderId: string) => api.post(`/doordash/sync/${orderId}`),
+  syncUberEatsStatus: (orderId: string) => api.post(`/ubereats/sync/${orderId}`),
+  dispatchUberEatsDelivery: (orderId: string) => api.post(`/ubereats/dispatch/${orderId}`),
+  simulateUberEatsStatus: (orderId: string, status: string) => api.post(`/ubereats/simulate/${orderId}`, { status }),
 };
 
 // -------------------- Attendance API --------------------
@@ -211,7 +217,7 @@ export const attendanceAPI = {
 
 // -------------------- Menu API --------------------
 export const menuAPI = {
-  getAll: (params?: { search?: string; cursor?: string; limit?: number; category?: string; foodType?: string; isAvailable?: boolean }) => api.get('/menu', { params }),
+  getAll: (params?: { search?: string; cursor?: string; limit?: number; category?: string; foodType?: string; isAvailable?: boolean; isCateringAvailable?: boolean }) => api.get('/menu', { params }),
   getAllCategories: () => api.get('/menu/categories'),
   getAllSubcategories: (categoryId?: string) => api.get('/menu/subcategories', { params: categoryId ? { categoryId } : undefined }),
   getOne: (id: string) => api.get(`/menu/${id}`),
@@ -258,6 +264,8 @@ export const tablesAPI = {
   update: (id: string, tableData: any) => api.put(`/tables/${id}`, tableData),
   delete: (id: string) => api.delete(`/tables/${id}`),
   updateStatus: (id: string, status: string) => api.patch(`/tables/${id}/status`, { status }),
+  merge: (primaryId: string, secondaryIds: string[]) => api.post('/tables/merge', { primaryId, secondaryIds }),
+  unmerge: (primaryId: string) => api.post('/tables/unmerge', { primaryId }),
 };
 
 // -------------------- Inventory API --------------------
@@ -577,10 +585,15 @@ export const auditLogsAPI = {
 
 // -------------------- Maps API --------------------
 export const mapsAPI = {
-  getDirections: (origin: string, destination: string) =>
-    api.get('/maps/directions', { params: { origin, destination } }),
   getNearby: (location: string, radius: number, type: string) =>
     api.get('/maps/nearby', { params: { location, radius, type } }),
+};
+
+// -------------------- Homepage API --------------------
+export const homepageAPI = {
+  getContent: () => api.get('/homepage'),
+  updateContent: (htmlContent: string, sections?: any[]) => api.put('/homepage', { htmlContent, sections }),
+  getPublicContent: (tenantSlug: string) => api.get('/homepage/public', { params: { tenantSlug } }),
 };
 
 export default api;

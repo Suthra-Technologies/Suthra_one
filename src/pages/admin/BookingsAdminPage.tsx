@@ -176,6 +176,18 @@ const BookingsAdminPage: React.FC = () => {
         setPage(0);
     };
 
+    const preventScientificNotation = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (['e', 'E', '.', '-', '+'].includes(e.key)) {
+            e.preventDefault();
+        }
+    };
+
+    const handleGuestCountChange = (value: string) => {
+        const num = parseInt(value);
+        const safeValue = isNaN(num) ? 1 : Math.max(1, Math.min(num, 9999));
+        setNewBooking(prev => ({ ...prev, guests: safeValue }));
+    };
+
     const timeSlots = useMemo(() => {
         const slots = [];
         const startHour = 11; // 11 AM
@@ -673,101 +685,160 @@ const BookingsAdminPage: React.FC = () => {
 
                 {/* Timeline View */}
                 {tabValue === 1 && (
-                    <Paper sx={{ p: isMobile ? 1 : 2, overflowX: 'auto', maxWidth: '100%' }}>
-                        <Box sx={{ minWidth: 800 }}>
-                            {/* Time Header */}
-                            <Box sx={{ display: 'flex', ml: '150px', borderBottom: 1, borderColor: 'divider', pb: 1, mb: 2 }}>
-                                {Array.from({ length: totalHours + 1 }).map((_, i) => (
-                                    <Box key={i} sx={{ flex: 1, textAlign: 'left', borderLeft: 1, borderColor: 'divider', pl: 0.5 }}>
-                                        <Typography variant="caption" color="text.secondary">
-                                            {timelineStartHour + i}:00
-                                        </Typography>
-                                    </Box>
-                                ))}
-                            </Box>
-
-                            {/* Tables Rows */}
-                            {tables.length === 0 ? (
-                                <Box sx={{ textAlign: 'center', p: 4 }}>
-                                    <CircularProgress />
-                                </Box>
-                            ) : (
-                                tables.map(table => (
-                                    <Box key={table._id} sx={{ display: 'flex', mb: 2, alignItems: 'center', height: 50 }}>
-                                        {/* Table Label */}
-                                        <Box sx={{ width: '150px', pr: 2, borderRight: 1, borderColor: 'divider' }}>
-                                            <Typography variant="subtitle2" noWrap>
-                                                {table.tableName}
-                                            </Typography>
-                                            <Typography variant="caption" color="text.secondary">
-                                                Cap: {table.capacity} | {table.location || 'Hall'}
-                                            </Typography>
-                                        </Box>
-
-                                        {/* Timeline Track */}
-                                        <Box sx={{ flex: 1, position: 'relative', height: '100%', bgcolor: '#f5f5f5', borderRadius: 1 }}>
-                                            {/* Grid Lines */}
-                                            <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex' }}>
-                                                {Array.from({ length: totalHours + 1 }).map((_, i) => (
-                                                    <Box key={i} sx={{ flex: 1, borderLeft: '1px dashed #e0e0e0' }} />
-                                                ))}
-                                            </Box>
-
-                                            {/* Bookings */}
-                                            {dailyBookings
-                                                .filter(b => b.table?._id === table._id || b.table === table._id)
-                                                .map(booking => {
-                                                    const pos = getBookingPosition(booking);
-                                                    return (
-                                                        <Tooltip
-                                                            key={booking._id}
-                                                            title={`${booking.guestInfo?.firstName || booking.customer?.name || 'Guest'} (${booking.guests}p) - ${booking.timeSlot?.requested}`}
-                                                        >
+                    <Paper sx={{ p: isMobile ? 1 : 2, maxWidth: '100%' }}>
+                        {isMobile ? (
+                            <Box>
+                                {tables.length === 0 ? (
+                                    <Box sx={{ textAlign: 'center', p: 4 }}><CircularProgress /></Box>
+                                ) : (
+                                    tables.map(table => {
+                                        const tableBookings = dailyBookings.filter(
+                                            b => b.table?._id === table._id || b.table === table._id
+                                        );
+                                        return (
+                                            <Box key={table._id} sx={{ mb: 2, p: 2, borderRadius: 2, bgcolor: '#f5f5f5' }}>
+                                                <Typography variant="subtitle2" fontWeight={700}>{table.tableName}</Typography>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    Cap: {table.capacity} | {table.location || 'Hall'}
+                                                </Typography>
+                                                <Box sx={{ mt: 1 }}>
+                                                    {tableBookings.length === 0 ? (
+                                                        <Typography variant="caption" color="text.secondary">No bookings</Typography>
+                                                    ) : (
+                                                        tableBookings.map(booking => (
                                                             <Box
+                                                                key={booking._id}
                                                                 onClick={() => openDetailsDialog(booking)}
                                                                 sx={{
-                                                                    position: 'absolute',
-                                                                    left: pos.left,
-                                                                    width: pos.width,
-                                                                    top: 4,
-                                                                    bottom: 4,
+                                                                    p: 1.5, mb: 1, borderRadius: 2,
                                                                     bgcolor: booking.status === 'confirmed' ? 'success.light' : 'warning.light',
                                                                     border: 1,
                                                                     borderColor: booking.status === 'confirmed' ? 'success.main' : 'warning.main',
-                                                                    borderRadius: 1,
-                                                                    zIndex: 1,
-                                                                    cursor: 'pointer',
-                                                                    display: 'flex',
-                                                                    alignItems: 'center',
-                                                                    justifyContent: 'center',
-                                                                    overflow: 'hidden',
-                                                                    px: 0.5,
-                                                                    opacity: 0.9,
-                                                                    '&:hover': { opacity: 1, boxShadow: 2 }
+                                                                    cursor: 'pointer', '&:hover': { opacity: 0.85 }
                                                                 }}
                                                             >
-                                                                <Typography variant="caption" noWrap sx={{ fontSize: '0.7rem', color: '#000' }}>
+                                                                <Typography variant="body2" fontWeight={600} sx={{ color: '#000' }}>
                                                                     {booking.guestInfo?.firstName || booking.customer?.name || 'Guest'}
                                                                 </Typography>
+                                                                <Typography variant="caption" color="text.secondary">
+                                                                    {booking.timeSlot?.requested} · {booking.guests} guests
+                                                                </Typography>
                                                             </Box>
-                                                        </Tooltip>
-                                                    );
-                                                })}
-                                        </Box>
+                                                        ))
+                                                    )}
+                                                </Box>
+                                            </Box>
+                                        );
+                                    })
+                                )}
+                                <Box sx={{ mt: 2, display: 'flex', gap: 2, justifyContent: 'center' }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Box sx={{ width: 16, height: 16, bgcolor: 'warning.light', border: 1, borderColor: 'warning.main', borderRadius: 1 }} />
+                                        <Typography variant="caption">Pending</Typography>
                                     </Box>
-                                ))
-                            )}
-                            <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <Box sx={{ width: 16, height: 16, bgcolor: 'warning.light', border: 1, borderColor: 'warning.main', borderRadius: 1 }} />
-                                    <Typography variant="caption">Pending</Typography>
-                                </Box>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <Box sx={{ width: 16, height: 16, bgcolor: 'success.light', border: 1, borderColor: 'success.main', borderRadius: 1 }} />
-                                    <Typography variant="caption">Confirmed</Typography>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Box sx={{ width: 16, height: 16, bgcolor: 'success.light', border: 1, borderColor: 'success.main', borderRadius: 1 }} />
+                                        <Typography variant="caption">Confirmed</Typography>
+                                    </Box>
                                 </Box>
                             </Box>
-                        </Box>
+                        ) : (
+                            <Box sx={{ minWidth: 800 }}>
+
+                                {/* Time Header */}
+                                <Box sx={{ display: 'flex', ml: '150px', borderBottom: 1, borderColor: 'divider', pb: 1, mb: 2 }}>
+                                    {Array.from({ length: totalHours + 1 }).map((_, i) => (
+                                        <Box key={i} sx={{ flex: 1, textAlign: 'left', borderLeft: 1, borderColor: 'divider', pl: 0.5 }}>
+                                            <Typography variant="caption" color="text.secondary">
+                                                {timelineStartHour + i}:00
+                                            </Typography>
+                                        </Box>
+                                    ))}
+                                </Box>
+
+                                {/* Tables Rows */}
+                                {tables.length === 0 ? (
+                                    <Box sx={{ textAlign: 'center', p: 4 }}>
+                                        <CircularProgress />
+                                    </Box>
+                                ) : (
+                                    tables.map(table => (
+                                        <Box key={table._id} sx={{ display: 'flex', mb: 2, alignItems: 'center', height: 50 }}>
+                                            {/* Table Label */}
+                                            <Box sx={{ width: '150px', pr: 2, borderRight: 1, borderColor: 'divider' }}>
+                                                <Typography variant="subtitle2" noWrap>
+                                                    {table.tableName}
+                                                </Typography>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    Cap: {table.capacity} | {table.location || 'Hall'}
+                                                </Typography>
+                                            </Box>
+
+                                            {/* Timeline Track */}
+                                            <Box sx={{ flex: 1, position: 'relative', height: '100%', bgcolor: '#f5f5f5', borderRadius: 1 }}>
+                                                {/* Grid Lines */}
+                                                <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex' }}>
+                                                    {Array.from({ length: totalHours + 1 }).map((_, i) => (
+                                                        <Box key={i} sx={{ flex: 1, borderLeft: '1px dashed #e0e0e0' }} />
+                                                    ))}
+                                                </Box>
+
+                                                {/* Bookings */}
+                                                {dailyBookings
+                                                    .filter(b => b.table?._id === table._id || b.table === table._id)
+                                                    .map(booking => {
+                                                        const pos = getBookingPosition(booking);
+                                                        return (
+                                                            <Tooltip
+                                                                key={booking._id}
+                                                                title={`${booking.guestInfo?.firstName || booking.customer?.name || 'Guest'} (${booking.guests}p) - ${booking.timeSlot?.requested}`}
+                                                            >
+                                                                <Box
+                                                                    onClick={() => openDetailsDialog(booking)}
+                                                                    sx={{
+                                                                        position: 'absolute',
+                                                                        left: pos.left,
+                                                                        width: pos.width,
+                                                                        top: 4,
+                                                                        bottom: 4,
+                                                                        bgcolor: booking.status === 'confirmed' ? 'success.light' : 'warning.light',
+                                                                        border: 1,
+                                                                        borderColor: booking.status === 'confirmed' ? 'success.main' : 'warning.main',
+                                                                        borderRadius: 1,
+                                                                        zIndex: 1,
+                                                                        cursor: 'pointer',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center',
+                                                                        overflow: 'hidden',
+                                                                        px: 0.5,
+                                                                        opacity: 0.9,
+                                                                        '&:hover': { opacity: 1, boxShadow: 2 }
+                                                                    }}
+                                                                >
+                                                                    <Typography variant="caption" noWrap sx={{ fontSize: '0.7rem', color: '#000' }}>
+                                                                        {booking.guestInfo?.firstName || booking.customer?.name || 'Guest'}
+                                                                    </Typography>
+                                                                </Box>
+                                                            </Tooltip>
+                                                        );
+                                                    })}
+                                            </Box>
+                                        </Box>
+                                    ))
+                                )}
+                                <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Box sx={{ width: 16, height: 16, bgcolor: 'warning.light', border: 1, borderColor: 'warning.main', borderRadius: 1 }} />
+                                        <Typography variant="caption">Pending</Typography>
+                                    </Box>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                        <Box sx={{ width: 16, height: 16, bgcolor: 'success.light', border: 1, borderColor: 'success.main', borderRadius: 1 }} />
+                                        <Typography variant="caption">Confirmed</Typography>
+                                    </Box>
+                                </Box>
+                            </Box>
+                        )}
                     </Paper>
                 )}
 
@@ -823,7 +894,9 @@ const BookingsAdminPage: React.FC = () => {
                                         required
                                         InputLabelProps={{ sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }}
                                         value={newBooking.guests}
-                                        onChange={(e) => setNewBooking({ ...newBooking, guests: parseInt(e.target.value) || 1 })}
+                                        onKeyDown={preventScientificNotation}
+                                        onChange={(e) => handleGuestCountChange(e.target.value)}
+                                        inputProps={{ min: 1, max: 9999 }}
                                     />
                                 </Grid>
                             </Grid>

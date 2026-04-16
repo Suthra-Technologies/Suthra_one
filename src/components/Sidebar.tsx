@@ -49,10 +49,13 @@ import {
   ExpandMore,
   HeadsetMic,
   Forum,
+  Public as WebIcon,
+  DashboardCustomize,
 } from '@mui/icons-material';
 import { Collapse } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
+import { useActiveTenant } from '../hooks/useActiveTenant';
 interface SidebarProps {
   onItemClick?: () => void;
   collapsed?: boolean;
@@ -62,13 +65,13 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onToggleCollapse }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, tenantSlug, activeRole, switchRole } = useAuth();
+  const { user, activeRole, switchRole } = useAuth();
+  const { slug, getRelativePath } = useActiveTenant();
   const { settings } = useSettings();
   const restaurantSettings = settings?.restaurant || {};
 
   const handleNavigation = (path: string) => {
-    const fullPath = tenantSlug ? `/${tenantSlug}${path}` : path;
-    navigate(fullPath);
+    navigate(getRelativePath(path));
     if (onItemClick) onItemClick();
   };
 
@@ -106,6 +109,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
           label: 'Catering',
           icon: <Celebration />,
           roles: ['admin', 'manager'],
+          feature: 'catering',
           children: [
             { path: '/catering-admin', label: 'Catering Management', icon: <Assignment /> },
             { path: '/catering-commissions', label: 'Commissions', icon: <MonetizationOn /> },
@@ -115,7 +119,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
         { path: '/kitchen', label: 'Kitchen Orders', icon: <Kitchen />, roles: ['admin', 'manager', 'kitchen_staff'] },
         { path: '/customer/order', label: 'Order Online', icon: <PointOfSale />, roles: ['customer'] },
         { path: '/customer/book-table', label: 'Book Table', icon: <EventIcon />, roles: ['customer'] },
-        { path: '/customer/catering', label: 'Catering Service', icon: <Celebration />, roles: ['customer'] },
+        { path: '/customer/catering', label: 'Catering Service', icon: <Celebration />, roles: ['customer'], feature: 'catering' },
         { path: '/customer/bookings', label: 'My Activity', icon: <EventIcon />, roles: ['customer'] },
       ]
     },
@@ -123,8 +127,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
       title: 'MANAGEMENT',
       items: [
         { path: '/menu', label: 'Menu', icon: <Restaurant />, roles: ['admin', 'manager'] },
-        { path: '/inventory', label: 'Inventory', icon: <Inventory />, roles: ['admin', 'manager'] },
-        { path: '/inventory/waste', label: 'Wastage Management', icon: <DeleteSweep />, roles: ['admin', 'manager'] },
+        { path: '/inventory', label: 'Inventory', icon: <Inventory />, roles: ['admin', 'manager'], feature: 'inventory' },
+        { path: '/inventory/waste', label: 'Wastage Management', icon: <DeleteSweep />, roles: ['admin', 'manager'], feature: 'wastemanagement' },
         { path: '/purchase-orders', label: 'Purchase Orders', icon: <ShoppingBag />, roles: ['admin', 'manager'] },
         { path: '/vendors', label: 'Vendors', icon: <VendorIcon />, roles: ['admin', 'manager'] },
         // { path: '/recipes', label: 'Recipes', icon: <MenuBook />, roles: ['admin', 'manager'] },
@@ -132,7 +136,13 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
         { path: '/coupons', label: 'Coupons', icon: <ConfirmationNumber />, roles: ['admin', 'manager'] },
         { path: '/users', label: 'Users', icon: <People />, roles: ['admin', 'manager'] },
         { path: '/customers', label: 'Customers', icon: <AccountBox />, roles: ['admin', 'manager'] },
-        { path: '/attendance', label: 'Attendance', icon: <AccessTimeIcon />, roles: ['admin', 'manager'] },
+        { path: '/attendance', label: 'Attendance', icon: <AccessTimeIcon />, roles: ['admin', 'manager'], feature: 'attendance' },
+      ]
+    },
+    {
+      title: 'APPLICATION SETTINGS',
+      items: [
+        { path: '/customise-screens', label: 'Customise Screens', icon: <DashboardCustomize />, roles: ['admin', 'manager'] },
       ]
     },
     {
@@ -156,8 +166,22 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
   ];
 
   const isActiveRoute = (path: string) => {
-    const normalizedPath = location.pathname.replace(`/${tenantSlug}`, '');
-    return normalizedPath === path;
+    const normalizedPath = location.pathname.replace(`/${slug}`, '') || '/';
+    // If we are on subdomain, clean path is just location.pathname
+    // If we are on path-base, clean path is normalizedPath
+    const currentPath = slug && location.pathname.startsWith(`/${slug}`) ? normalizedPath : location.pathname;
+    return currentPath === path;
+  };
+
+  const tenantConfig: any = user?.tenant;
+  const currentFeatures = tenantConfig?.currentPlan?.features || [];
+  const hasSuperAdmin = activeRole === 'superadmin' || user?.roles?.includes('superadmin');
+  
+  const hasFeatureAccess = (feat?: string) => {
+    if (!feat) return true;
+    if (hasSuperAdmin) return true;
+    if (activeRole === 'customer') return true; // Let routing logic or backend handle customer if needed, but since we are modifying UI, maybe hide it. Customer does not have tenant context easily. Wait, user.tenant might be there. If not there, maybe we just hide? Actually customer bypasses RequireFeature. Let's return true for customer.
+    return currentFeatures.includes(feat);
   };
 
   return (
@@ -278,7 +302,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
             {!collapsed && (
               <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
                 <Typography variant="subtitle2" fontWeight="bold" noWrap>
-                  {user?.sub?.slice(0, 12) || user?.firstName || 'User'}
+                  {user?.fullName || user?.firstName || user?.name || user?.sub?.slice(0, 12) || 'User'}
                 </Typography>
                 <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'capitalize' }}>
                   {activeRole === 'admin' ? 'Administrator' : activeRole}
@@ -322,9 +346,11 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
 
       <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
         {navigationGroups.map((group, groupIndex) => {
-          const filteredItems = (group.items as any[]).filter(item =>
-            !item.roles || (activeRole && item.roles.includes(activeRole))
-          );
+          const filteredItems = (group.items as any[]).filter(item => {
+            const roleMatch = !item.roles || (activeRole && item.roles.includes(activeRole));
+            const featureMatch = hasFeatureAccess(item.feature);
+            return roleMatch && featureMatch;
+          });
 
           if (filteredItems.length === 0) return null;
 

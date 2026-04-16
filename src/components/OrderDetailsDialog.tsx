@@ -33,7 +33,10 @@ import {
     useTheme,
 } from '@mui/material';
 import React, { useState } from 'react';
+import { toast } from 'react-hot-toast';
 import { useSettings } from '../context/SettingsContext';
+import { ordersAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import {
     canAddItems,
     formatDateTime,
@@ -57,15 +60,36 @@ interface OrderDetailsDialogProps {
 
 const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, onClose, onUpdate }) => {
     const { formatCurrency } = useSettings();
+    const { user } = useAuth();
     const theme = useTheme();
     const [addItemsDialogOpen, setAddItemsDialogOpen] = useState(false);
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+    const [simulating, setSimulating] = useState(false);
 
     if (!order) return null;
 
     const canAddMoreItems = canAddItems(order.status, order.orderType, order);
     // Global Dine In orders have already paid - don't show collect payment
     const canCollectPayment = order.orderType === 'dine_in' && order.status === 'served' && !isGlobalDineIn(order);
+
+    const handleSimulate = async (status: string) => {
+        setSimulating(true);
+        try {
+            if (status === 'sync') {
+                await ordersAPI.syncUberEatsStatus(order._id);
+                toast.success('Sync successful');
+            } else {
+                await ordersAPI.simulateUberEatsStatus(order._id, status);
+                toast.success(`Successfully simulated ${status} status`);
+            }
+            if (onUpdate) onUpdate();
+        } catch (error: any) {
+            console.error('Simulation/Sync error:', error);
+            toast.error(error.response?.data?.message || 'Operation failed');
+        } finally {
+            setSimulating(false);
+        }
+    };
 
     const handleAddItemsSuccess = () => {
         setAddItemsDialogOpen(false);
@@ -240,13 +264,13 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                         })()
                     )}
 
-                    {/* Dasher Information Container */}
-                    {['delivery', 'online'].includes(order.orderType) && (order.driverName || order.driverPhone || order.dasherPickupPhone || order.dasherDropoffPhone || order.trackingUrl) && (
+                    {/* Delivery Information Container */}
+                    {(['delivery', 'online'].includes(order.orderType) || order.driverName || order.driverPhone || order.trackingUrl || order.uberEatsDeliveryId || order.doordashDeliveryId) && (
                         <>
                             <Divider sx={{ my: 2 }} />
                             <Box sx={{ mb: 3 }}>
                                 <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                                    Dasher Details
+                                    Delivery Details ({order.uberEatsDeliveryId ? 'Uber Eats' : 'DoorDash'})
                                 </Typography>
                                 <Stack spacing={1}>
                                     {order.driverName && (
@@ -273,6 +297,32 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                                         <Typography variant="body2">
                                             <strong>Tracking Link:</strong> <a href={order.trackingUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'none' }}>Track Delivery</a>
                                         </Typography>
+                                    )}
+                                    {(order.signatureImageUrl || order.verificationImageUrl) && (
+                                        <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
+                                            {order.signatureImageUrl && (
+                                                <Box>
+                                                    <Typography variant="body2" fontWeight="bold" gutterBottom>Signature</Typography>
+                                                    <Box 
+                                                        component="img" 
+                                                        src={order.signatureImageUrl} 
+                                                        alt="Delivery Signature"
+                                                        sx={{ height: 60, width: 'auto', border: '1px solid #ddd', borderRadius: 1, backgroundColor: '#f9f9f9', padding: 0.5 }}
+                                                    />
+                                                </Box>
+                                            )}
+                                            {order.verificationImageUrl && (
+                                                <Box>
+                                                    <Typography variant="body2" fontWeight="bold" gutterBottom>Dropoff Photo</Typography>
+                                                    <Box 
+                                                        component="img" 
+                                                        src={order.verificationImageUrl} 
+                                                        alt="Verification Photo"
+                                                        sx={{ height: 60, width: 'auto', border: '1px solid #ddd', borderRadius: 1, objectFit: 'cover' }}
+                                                    />
+                                                </Box>
+                                            )}
+                                        </Stack>
                                     )}
                                 </Stack>
                             </Box>
@@ -443,6 +493,92 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                             </Box>
                         </Stack>
                     </Box>
+                    <Divider sx={{ my: 2 }} />
+
+                    {/* Uber Eats Simulator (Sandbox) */}
+                    {order.uberEatsDeliveryId && (user?.role === 'admin' || user?.role === 'manager') && (
+                        <>
+                            <Box sx={{ mb: 3, p: 2, borderRadius: 2, bgcolor: alpha(theme.palette.info.main, 0.05), border: `1px dashed ${theme.palette.info.main}` }}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, display: 'flex', alignItems: 'center', color: theme.palette.info.main }}>
+                                    <Box component="span" sx={{ mr: 1 }}>🧪</Box> Uber Eats Delivery Simulator (Sandbox)
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+                                    Manually move this delivery through states to test webhooks and status transitions.
+                                </Typography>
+                                <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
+                                    <Button 
+                                        size="small" 
+                                        variant="outlined" 
+                                        color="primary"
+                                        component="a"
+                                        href={order.trackingUrl}
+                                        target="_blank"
+                                        startIcon={<Box component="span">🔗</Box>}
+                                    >
+                                        Open Tracking Page (Simulate Here)
+                                    </Button>
+                                    <Button 
+                                        size="small" 
+                                        variant="outlined" 
+                                        color="info" 
+                                        disabled={simulating || order.status === 'on_the_way'}
+                                        onClick={() => handleSimulate('pickup_completed')}
+                                    >
+                                        Picked Up
+                                    </Button>
+                                    <Button 
+                                        size="small" 
+                                        variant="outlined" 
+                                        color="success" 
+                                        disabled={simulating || order.status === 'delivered'}
+                                        onClick={() => handleSimulate('delivered')}
+                                    >
+                                        Delivered
+                                    </Button>
+                                    <Button 
+                                        size="small" 
+                                        variant="contained" 
+                                        color="warning"
+                                        disabled={simulating}
+                                        onClick={() => handleSimulate('pickup_completed')}
+                                        sx={{ fontWeight: 'bold' }}
+                                    >
+                                        🚀 Force: Picked Up
+                                    </Button>
+                                    <Button 
+                                        size="small" 
+                                        variant="contained" 
+                                        color="success"
+                                        disabled={simulating}
+                                        onClick={() => handleSimulate('delivered')}
+                                        sx={{ fontWeight: 'bold' }}
+                                    >
+                                        ✅ Force: Delivered
+                                    </Button>
+                                    <Button 
+                                        size="small" 
+                                        variant="outlined" 
+                                        color="secondary"
+                                        disabled={simulating}
+                                        onClick={() => handleSimulate('sync')}
+                                        startIcon={<Box component="span">🔄</Box>}
+                                    >
+                                        Sync Status
+                                    </Button>
+                                    <Button 
+                                        size="small" 
+                                        variant="outlined" 
+                                        color="error" 
+                                        disabled={simulating || order.status === 'cancelled'}
+                                        onClick={() => handleSimulate('canceled')}
+                                    >
+                                        Canceled
+                                    </Button>
+                                </Stack>
+                            </Box>
+                            <Divider sx={{ my: 2 }} />
+                        </>
+                    )}
 
                     {/* Status History */}
                     {order.statusHistory && order.statusHistory.length > 0 && (

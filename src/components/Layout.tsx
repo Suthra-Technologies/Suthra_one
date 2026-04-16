@@ -45,6 +45,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from 'src/context/AuthContext';
 import { useNotifications } from 'src/context/NotificationProvider';
 import { useSettings } from 'src/context/SettingsContext';
+import { useActiveTenant } from 'src/hooks/useActiveTenant';
 import { settingsAPI, tenantAPI } from 'src/services/api';
 import AddRestaurantDialog from './AddRestaurantDialog';
 import NotificationPanel from './NotificationPanel';
@@ -85,17 +86,17 @@ const RestaurantStatusToggle: React.FC = () => {
       const timezone = hoursRes.data?.timezone || 'America/New_York';
 
       let effectiveIsOpen = autoIsOpen;
-      
+
       if (lastStatusChangedAt) {
         try {
           const now = new Date();
           const tzNowStr = now.toLocaleString('en-US', { timeZone: timezone });
           const tzChangedStr = new Date(lastStatusChangedAt).toLocaleString('en-US', { timeZone: timezone });
-          
+
           if (tzNowStr.split(',')[0] === tzChangedStr.split(',')[0]) {
             effectiveIsOpen = manualIsOpen;
           }
-        } catch {}
+        } catch { }
       } else {
         effectiveIsOpen = autoIsOpen ? manualIsOpen : false;
       }
@@ -346,9 +347,9 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout, isLoading, availableTenants, switchTenant, tenantSlug: authTenantSlug, activeRole } = useAuth(); // Added availableTenants, switchTenant, tenantSlug
-  const { slug: urlSlug } = useParams<{ slug: string }>();
-  const tenantSlug = authTenantSlug || urlSlug;
+  const { user, logout, isLoading, availableTenants, switchTenant, activeRole } = useAuth(); // Added availableTenants, switchTenant, tenantSlug
+  const { slug, isSubdomain, getRelativePath } = useActiveTenant();
+  const tenantSlug = slug;
   const { notifications } = useNotifications();
   const { settings, updateSettings } = useSettings();
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -402,12 +403,12 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
 
   const handleProfile = () => {
     handleProfileMenuClose();
-    navigate('profile');
+    navigate(getRelativePath('/profile'));
   };
 
   const handleSettings = () => {
     handleProfileMenuClose();
-    navigate('settings');
+    navigate(getRelativePath('/settings'));
   };
   const handleNotificationToggle = () => {
     setNotificationOpen(!notificationOpen);
@@ -497,6 +498,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
           color: 'text.primary',
           boxShadow: '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24)',
           transition: 'width 0.3s ease, margin-left 0.3s ease',
+          pt: { xs: 'env(safe-area-inset-top)', md: 0 },
         }}
       >
         <Toolbar>
@@ -535,7 +537,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
             {getPageTitle()}
           </Typography> */}
           <Box sx={{ flexGrow: 1 }} />
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
             <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 0.5 }}>
               <ShiftManager />
               <SubscriptionStatus />
@@ -584,7 +586,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
               <Button
                 variant="contained"
                 size="small"
-                onClick={() => navigate(tenantSlug ? `/${tenantSlug}/register` : '/register', { state: { from: location.pathname } })}
+                onClick={() => navigate(getRelativePath('/register'), { state: { from: location.pathname } })}
                 sx={{
                   ml: 1,
                   borderRadius: '20px',
@@ -741,7 +743,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
           flexGrow: 1,
           p: { xs: 0.5, sm: 2, md: 3 },
           width: { md: `calc(100% - ${currentDrawerWidth}px)` },
-          mt: '64px',
+          mt: { xs: 'calc(64px + env(safe-area-inset-top))', md: '64px' },
           minHeight: 'calc(100vh - 64px)',
           backgroundColor: 'background.default',
           position: 'relative',

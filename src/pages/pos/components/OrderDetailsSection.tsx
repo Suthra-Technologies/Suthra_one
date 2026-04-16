@@ -25,20 +25,14 @@ interface OrderDetailsSectionProps {
     cartTotal: number;
     taxAmount: number;
     discountAmount: number;
+    discountPercent: number;
     couponDiscount: number;
     serviceChargeAmount: number;
     tip: number;
     setTip: (val: number) => void;
     finalTotal: number;
-    discountPercent: number;
-    setDiscountPercent: (val: number) => void;
-    couponCode: string;
-    setCouponCode: (val: string) => void;
-    onValidateCoupon: () => void;
-    availableCoupons: any[];
     placingOrder: boolean;
     handlePlaceOrder: () => void;
-    user: any;
 }
 
 const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
@@ -49,20 +43,14 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
     cartTotal,
     taxAmount,
     discountAmount,
+    discountPercent,
     couponDiscount,
     serviceChargeAmount,
     tip,
     setTip,
     finalTotal,
-    discountPercent,
-    setDiscountPercent,
-    couponCode,
-    setCouponCode,
-    onValidateCoupon,
-    availableCoupons,
     placingOrder,
     handlePlaceOrder,
-    user
 }) => {
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -116,33 +104,6 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
             </List>
 
             <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider', bgcolor: 'background.default' }}>
-                {/* GST / Discount (admin only) */}
-                <Box sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-                    {user?.role !== 'customer' && (
-                        <TextField
-                            label="Disc %"
-                            type="number"
-                            size="small"
-                            value={discountPercent}
-                            onChange={(e) => setDiscountPercent(Math.max(0, Number(e.target.value)))}
-                            sx={{ width: '80px' }}
-                            inputProps={{ min: 0 }}
-                        />
-                    )}
-                    <Box sx={{ display: 'flex', gap: 1, flexGrow: 1 }}>
-                        <TextField
-                            label="Coupon"
-                            size="small"
-                            value={couponCode}
-                            onChange={(e) => setCouponCode(e.target.value)}
-                            sx={{ flexGrow: 1 }}
-                        />
-                        <Button variant="outlined" onClick={onValidateCoupon} size="small">
-                            OK
-                        </Button>
-                    </Box>
-                </Box>
-
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                     <Typography variant="body2">Subtotal</Typography>
                     <Typography variant="body2">{formatSmartPrice(cartTotal)}</Typography>

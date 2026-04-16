@@ -86,6 +86,7 @@ const MenuPage: React.FC = () => {
     const [highlightedItemId, setHighlightedItemId] = useState<string | null>(null);
     const [nextCursor, setNextCursor] = useState<string | null>(null);
     const [isFetchingMore, setIsFetchingMore] = useState(false);
+    const [totalMenuCount, setTotalMenuCount] = useState(0);
     const PAGE_LIMIT = 24;
 
     // Dialogs State
@@ -135,11 +136,11 @@ const MenuPage: React.FC = () => {
         }
 
         const timeoutId = window.setTimeout(() => {
-            fetchMenuItems(searchQuery);
+            fetchMenuItems(searchQuery, selectedCategory, selectedSubcategory);
         }, 300);
 
         return () => window.clearTimeout(timeoutId);
-    }, [searchQuery]);
+    }, [searchQuery, selectedCategory, selectedSubcategory]);
 
     const getCategoryId = (category?: string | Category | null) =>
         category && typeof category === 'object' ? category._id : (category || '');
@@ -160,21 +161,29 @@ const MenuPage: React.FC = () => {
         Boolean(category?.parentCategory);
 
 
-    const fetchMenuItems = async (activeSearch = searchQuery) => {
+    const fetchMenuItems = async (activeSearch = searchQuery, category = selectedCategory, subcategory = selectedSubcategory) => {
         const requestId = latestMenuRequestRef.current + 1;
         latestMenuRequestRef.current = requestId;
 
         try {
             setSearchLoading(true);
-            const menuRes = await menuAPI.getAll(activeSearch.trim() ? { search: activeSearch.trim() } : { limit: PAGE_LIMIT });
+            const params: any = {
+                limit: PAGE_LIMIT,
+                search: activeSearch.trim() || undefined,
+                category: category !== 'all' ? category : undefined,
+                subcategory: subcategory !== 'all' ? subcategory : undefined,
+            };
+            const menuRes = await menuAPI.getAll(params);
             if (latestMenuRequestRef.current === requestId) {
                 const data = menuRes.data;
                 const newMenuItems = Array.isArray(data) ? data : (data?.items || []);
                 const newCursor = Array.isArray(data) ? null : data?.nextCursor;
+                const totalCount = Array.isArray(data) ? newMenuItems.length : (data?.totalCount || 0);
                 
-                console.log('[Frontend] fetchMenuItems: Received', newMenuItems.length, 'menu items');
+                console.log('[Frontend] fetchMenuItems: Received', newMenuItems.length, 'menu items, total:', totalCount);
                 setMenuItems(newMenuItems);
                 setNextCursor(newCursor);
+                setTotalMenuCount(totalCount);
             }
         } catch (error: any) {
             console.error('Error fetching menu items:', error);
@@ -200,13 +209,13 @@ const MenuPage: React.FC = () => {
 
             // Set a new timeout
             fetchTimeoutRef.current = setTimeout(() => {
-                fetchData(activeSearch);
+                fetchData(activeSearch, selectedCategory, selectedSubcategory);
                 fetchTimeoutRef.current = null;
             }, 500); // 500ms debounce delay
         };
-    }, []);
+    }, [selectedCategory, selectedSubcategory]);
 
-    const fetchData = async (activeSearch = searchQuery, retryCount = 0) => {
+    const fetchData = async (activeSearch = searchQuery, category = selectedCategory, subcategory = selectedSubcategory, retryCount = 0) => {
         const requestId = latestMenuRequestRef.current + 1;
         latestMenuRequestRef.current = requestId;
 
@@ -220,7 +229,11 @@ const MenuPage: React.FC = () => {
 
             // Fetch data with individual timeout handling
             const menuPromise = Promise.race([
-                menuAPI.getAll(activeSearch.trim() ? { search: activeSearch.trim() } : undefined),
+                menuAPI.getAll({
+                    search: activeSearch.trim() || undefined,
+                    category: category !== 'all' ? category : undefined,
+                    subcategory: subcategory !== 'all' ? subcategory : undefined,
+                }),
                 timeoutPromise(15000) // 15 second timeout for menu items
             ]);
 
@@ -252,10 +265,12 @@ const MenuPage: React.FC = () => {
             // Extract results, handling potential failures
             let newMenuItems = [];
             let newCursor = null;
+            let totalCount = 0;
             if (menuRes.status === 'fulfilled') {
                 const data = (menuRes as PromiseFulfilledResult<any>).value.data;
                 newMenuItems = Array.isArray(data) ? data : (data?.items || []);
                 newCursor = Array.isArray(data) ? null : data?.nextCursor;
+                totalCount = Array.isArray(data) ? newMenuItems.length : (data?.totalCount || 0);
             }
             const newCategories = categoriesRes.status === 'fulfilled'
                 ? (categoriesRes as PromiseFulfilledResult<any>).value.data
@@ -295,6 +310,7 @@ const MenuPage: React.FC = () => {
 
                 setMenuItems(newMenuItems);
                 setNextCursor(newCursor);
+                setTotalMenuCount(totalCount);
                 setCategories(newCategories);
                 setSubcategories(newSubcategories);
                 setTrays(newTrays);
@@ -310,7 +326,7 @@ const MenuPage: React.FC = () => {
                 // Retry logic for timeout errors
                 if (isTimeout && retryCount < 2) {
                     console.log(`[Frontend] Retrying fetch data due to timeout (attempt ${retryCount + 1})...`);
-                    setTimeout(() => fetchData(activeSearch, retryCount + 1), 3000); // 3 second retry delay
+                    setTimeout(() => fetchData(activeSearch, category, subcategory, retryCount + 1), 3000); // 3 second retry delay
                     return;
                 }
 
@@ -345,6 +361,8 @@ const MenuPage: React.FC = () => {
             setIsFetchingMore(true);
             const res = await menuAPI.getAll({
                 search: searchQuery.trim() || undefined,
+                category: selectedCategory !== 'all' ? selectedCategory : undefined,
+                subcategory: selectedSubcategory !== 'all' ? selectedSubcategory : undefined,
                 cursor: nextCursor,
                 limit: PAGE_LIMIT
             });
@@ -757,11 +775,9 @@ const MenuPage: React.FC = () => {
             // Simple search like POS page - search in item name primarily
             const matchesSearch = !normalizedQuery ||
                 item.name.toLowerCase().includes(normalizedQuery) ||
-                (item.description && item.description.toLowerCase().includes(normalizedQuery)) ||
-                (categoryId && categories.find(c => c._id === categoryId)?.name.toLowerCase().includes(normalizedQuery)) ||
-                (subcategoryId && subcategories.find(s => s._id === subcategoryId)?.name.toLowerCase().includes(normalizedQuery));
+                (item.description && item.description.toLowerCase().includes(normalizedQuery));
 
-            return matchesCategory && matchesSubcategory && matchesSearch;
+            return matchesSearch;
         });
 
         // Scroll to first result when searching
@@ -868,7 +884,7 @@ const MenuPage: React.FC = () => {
                                     label="Category"
                                 >
                                     <MenuItem value="all">All Categories</MenuItem>
-                                    {categoriesWithItems.map(cat => (
+                                    {categories.map(cat => (
                                         <MenuItem key={cat._id} value={cat._id}>
                                             {cat.name}
                                         </MenuItem>
@@ -907,7 +923,7 @@ const MenuPage: React.FC = () => {
                                     variant={selectedCategory === 'all' ? 'filled' : 'outlined'}
                                     size="small"
                                 />
-                                {categoriesWithItems.map(cat => (
+                                {categories.map(cat => (
                                     <Chip
                                         key={cat._id}
                                         label={cat.name}
@@ -920,7 +936,7 @@ const MenuPage: React.FC = () => {
                             </Box>
 
                             <Typography variant="body2" color="text.secondary">
-                                Showing {filteredMenuItems.length} of {menuItems.length} menu items
+                                Showing {filteredMenuItems.length} of {totalMenuCount} menu items
                             </Typography>
                         </Box>
                         <Box sx={{ display: 'flex', gap: 2, width: { xs: '100%', md: 'auto' } }}>
@@ -1552,7 +1568,7 @@ const MenuPage: React.FC = () => {
             <MenuItemDialog
                 open={menuItemDialogOpen}
                 onClose={() => setMenuItemDialogOpen(false)}
-                onSuccess={fetchData}
+                onSuccess={() => fetchData()}
                 editingMenuItem={editingMenuItem}
                 categories={categories}
                 subcategories={subcategories}
