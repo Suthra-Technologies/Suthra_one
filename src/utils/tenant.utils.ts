@@ -25,19 +25,20 @@ export const getTenantSlugFromHostname = (): string | null => {
 
   const parts = hostname.split('.');
   
-  // Basic logic: if we have more than 2 parts, the first one is the subdomain
-  // e.g., burger-king.nexzenpos.com -> burger-king
-  const ignoredSubdomains = ['www', 'app', 'dev', 'staging', 'admin'];
+  // Basic logic: skip all ignored system subdomains from the start
+  // e.g., test.restaurant.nexzenpos.com -> skips test and restaurant
+  const ignoredSubdomains = ['www', 'app', 'dev', 'staging', 'admin', 'test', 'restaurant'];
   
-  if (parts.length >= 3) {
-    const subdomain = parts[0];
-    if (ignoredSubdomains.includes(subdomain.toLowerCase())) {
-        if (parts.length >= 4) {
-            return parts[1];
-        }
-        return null;
+  // We need at least the base domain (2 parts e.g. nexzenpos.com) 
+  // plus the subdomain we are looking for (total 3+)
+  if (parts.length < 3) return null;
+
+  // Search for the first part that is not an ignored system subdomain
+  for (let i = 0; i < parts.length - 2; i++) {
+    const part = parts[i].toLowerCase();
+    if (!ignoredSubdomains.includes(part)) {
+      return parts[i];
     }
-    return subdomain;
   }
 
   return null;
@@ -87,14 +88,21 @@ export const getTenantUrl = (slug: string, path: string = '', token?: string): s
 
   // Handle production domains
   const parts = hostname.split('.');
-  const currentSlug = getTenantSlugFromHostname();
+  const ignoredSubdomains = ['www', 'app', 'dev', 'staging', 'admin', 'test', 'restaurant'];
   
   let baseParts = parts;
-  if (currentSlug && hostname.startsWith(`${currentSlug}.`)) {
-    baseParts = parts.slice(1);
+  
+  // Find where the slug is in the hostname and remove it to get the base domain
+  for (let i = 0; i < parts.length - 2; i++) {
+    const part = parts[i].toLowerCase();
+    if (!ignoredSubdomains.includes(part)) {
+      // This part is the tenant slug - remove it to get the system base host
+      baseParts = parts.slice(0, i).concat(parts.slice(i + 1));
+      break;
+    }
   }
   
-  // Strip www if present to avoid mythri.www.domain.com
+  // Also strip www if it's the very first part (safety check)
   if (baseParts[0] === 'www') {
     baseParts = baseParts.slice(1);
   }
