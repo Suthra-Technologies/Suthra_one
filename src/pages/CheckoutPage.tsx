@@ -50,6 +50,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { useActiveTenant } from '../hooks/useActiveTenant';
+import { useGuestCart } from '../context/GuestCartContext';
 import CustomerRegistration from '../components/auth/CustomerRegistration';
 import GooglePlacesAutocomplete from '../components/common/GooglePlacesAutocomplete';
 import { toast } from 'react-hot-toast';
@@ -87,7 +88,7 @@ const CheckoutPage: React.FC = () => {
   const [activeStep, setActiveStep] = useState<number>(0);
   const [authMethod, setAuthMethod] = useState<'register' | 'login' | 'guest'>('register');
   const [showAuthDialog, setShowAuthDialog] = useState<boolean>(false);
-  const [orderType, setOrderTypeState] = useState<'delivery' | 'takeaway'>('delivery');
+  const [orderType, setOrderTypeState] = useState<'delivery' | 'takeaway'>(cart.orderType || 'delivery');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'qr' | 'card'>('card');
   const [deliveryInfo, setDeliveryInfo] = useState<DeliveryInfo>({
     address: '',
@@ -225,6 +226,13 @@ const CheckoutPage: React.FC = () => {
       }
     }
   }, [selectedAddressMode, user?.savedAddresses]);
+
+  // Auto-switch to 'saved' mode if addresses become available (e.g. after background profile refresh)
+  useEffect(() => {
+    if (user?.savedAddresses?.length && selectedAddressMode === 'new' && !deliveryInfo.address) {
+      setSelectedAddressMode('saved');
+    }
+  }, [user?.savedAddresses, selectedAddressMode, deliveryInfo.address]);
 
   const generateTimeSlots = (dateString: string) => {
     if (!settings?.restaurant?.businessHours) return [];

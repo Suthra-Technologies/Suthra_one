@@ -73,9 +73,9 @@ interface AuthContextProps {
   switchRole: (role: string) => void;
   switchTenant: (slug: string) => Promise<void>;
   tenantSlug: string | null;
-  getUserFullName: () => string;
   isAuthenticated: boolean;
   updateUserData: (data: Partial<JwtPayload>) => void;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
@@ -262,6 +262,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
     localStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
+  const refreshProfile = async () => {
+    try {
+      const { authAPI } = await import('../services/api');
+      const response = await authAPI.getProfile();
+      const userData = response.data;
+      
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+      console.log('AuthContext: Profile refreshed');
+    } catch (err) {
+      console.error('AuthContext: refreshProfile failed', err);
+    }
+  };
+
   // Load persisted token on mount if not using initialUser
   useEffect(() => {
     if (initialUser) {
@@ -338,6 +352,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
         localStorage.removeItem('tenantSlug');
         localStorage.removeItem('user');
       }
+      
+      // Attempt to refresh profile to get full user data (savedAddresses, etc.)
+      refreshProfile();
     }
     setIsLoading(false);
   }, [initialUser]);
@@ -348,7 +365,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
         token, user, activeRole, availableTenants,
         login, logout, isLoading, hasPermission, hasRole,
         switchRole, switchTenant, tenantSlug, getUserFullName,
-        isAuthenticated: !!token, updateUserData
+        isAuthenticated: !!token, updateUserData, refreshProfile
       }}
     >
       {children}

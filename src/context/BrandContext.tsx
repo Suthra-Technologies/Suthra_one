@@ -12,7 +12,7 @@
  *   - /src/config/brandConfig.ts
  */
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import axios from 'axios';
+import { tenantAPI } from '../services/api';
 import { BRAND_CONFIG } from '../config/brandConfig';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -93,11 +93,7 @@ export const BrandProvider: React.FC<BrandProviderProps> = ({ children, tenantSl
 
     const fetchBranding = async () => {
       try {
-        const apiBase = BRAND_CONFIG.apiBaseUrl;
-        const { data } = await axios.get<BrandingData>(
-          `${apiBase}/tenants/${slug}/branding`,
-          { timeout: 5000 }
-        );
+        const { data } = await tenantAPI.getBranding(slug);
 
         if (data) {
           // Merge with defaults — server values take precedence
