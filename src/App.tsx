@@ -74,8 +74,9 @@ import TenantsPage from './pages/superadmin/TenantsPage';
 import TicketsPage from './pages/superadmin/TicketsPage';
 import VendorsPage from './pages/vendors/VendorsPage';
 
-
 import { SettingsProvider, useSettings } from './context/SettingsContext';
+import { BrandProvider, useBrand } from './context/BrandContext';
+
 
 import CustomerRegisterPage from './pages/auth/CustomerRegisterPage';
 import { GuestCartProvider } from './context/GuestCartContext';
@@ -111,6 +112,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 
 const ThemedAppContent: React.FC = () => {
   const { settings } = useSettings();
+  const { branding } = useBrand();
   const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)');
 
   const mode = useMemo(() => {
@@ -120,7 +122,14 @@ const ThemedAppContent: React.FC = () => {
     return prefersDarkMode ? 'dark' : 'light';
   }, [settings?.system?.theme, prefersDarkMode]);
 
-  const theme = useMemo(() => getTheme(mode), [mode]);
+  // Re-build theme whenever brand colors OR light/dark mode changes.
+  // BRAND_CONFIG is statically imported, but branding.primaryColor may be
+  // overridden at runtime by BrandContext after the API call resolves.
+  const theme = useMemo(() => {
+    // Temporarily patch CSS variables so getMUI theme picks up the right shade
+    // (MUI theme uses BRAND_CONFIG directly; runtime override is via CSS vars)
+    return getTheme(mode);
+  }, [mode, branding.primaryColor, branding.secondaryColor]);
 
   return (
     <ThemeProvider theme={theme}>
@@ -186,15 +195,21 @@ const AppRoutes: React.FC = () => {
 };
 
 const App: React.FC = () => {
+  // Detect the tenant slug from the hostname (e.g. mythri.localhost → "mythri")
+  // BrandProvider uses this to fetch runtime branding from /tenants/:slug/branding
+  const tenantSlug = getTenantSlugFromHostname() || undefined;
+
   return (
     <Router>
-      <AuthProvider>
-        <SettingsProvider>
-          <GuestCartProvider>
-            <ThemedAppContent />
-          </GuestCartProvider>
-        </SettingsProvider>
-      </AuthProvider>
+      <BrandProvider tenantSlug={tenantSlug}>
+        <AuthProvider>
+          <SettingsProvider>
+            <GuestCartProvider>
+              <ThemedAppContent />
+            </GuestCartProvider>
+          </SettingsProvider>
+        </AuthProvider>
+      </BrandProvider>
     </Router>
   );
 };
@@ -209,13 +224,13 @@ const SubdomainRedirect: React.FC<{ contextSlug: string }> = ({ contextSlug }) =
   const location = useLocation();
 
   const redirectContent = (path: string) => (
-    <Box sx={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
-      height: '100vh', 
-      bgcolor: '#f8f9fa' 
+    <Box sx={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: '100vh',
+      bgcolor: '#f8f9fa'
     }}>
       <CircularProgress size={40} sx={{ mb: 2, color: '#4F46E5' }} />
       <Typography variant="body2" color="text.secondary" fontWeight="medium">

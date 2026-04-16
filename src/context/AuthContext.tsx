@@ -248,9 +248,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
 
   const getUserFullName = () => {
     if (!user) return '';
+    if (user.fullName) return user.fullName;
     if (user.name) return user.name;
-    if (user.firstName && user.lastName) return `${user.firstName} ${user.lastName}`;
-    return user.sub?.slice(0, 8) || '';
+    if (user.firstName) return `${user.firstName} ${user.lastName || ''}`.trim();
+    if (user.email) return user.email.split('@')[0];
+    return user.sub?.slice(0, 8) || 'User';
   };
 
   const updateUserData = (data: Partial<JwtPayload>) => {
@@ -290,7 +292,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
         setToken(stored);
 
         let u: any = null;
-        if (storedUser) {
+        if (urlToken) {
+          u = jwtDecode<JwtPayload>(stored);
+          console.log('AuthContext: Decoded fresh user from urlToken during handover', u.email);
+        } else if (storedUser) {
           u = JSON.parse(storedUser);
         } else {
           u = jwtDecode<JwtPayload>(stored);

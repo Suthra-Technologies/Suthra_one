@@ -446,6 +446,18 @@ export const tenantAPI = {
   // Restaurant open/close status
   updateRestaurantStatus: (data: { isOpen: boolean; reopenAt?: string; closeReason?: string; customerMessage?: string }) => api.patch('/tenants/restaurant-status', data),
   getRestaurantStatus: (slug: string) => api.get(`/tenants/${slug}/status`),
+  // ── White-Label Branding ──────────────────────────────────────────────
+  /** Public — no auth required. Called by BrandContext at app startup. */
+  getBranding: (slug: string) => api.get(`/tenants/${slug}/branding`),
+  /** Admin — saves brand colors from the Settings page. */
+  updateBranding: (data: {
+    primaryColor?:   string;
+    secondaryColor?: string;
+    accentColor?:    string;
+    splashBg?:       string;
+    fontFamily?:     string;
+    appName?:        string;
+  }) => api.patch('/tenants/branding', data),
 };
 
 // -------------------- Purchase Orders API --------------------

@@ -1,0 +1,12 @@
+{
+  "appName": "Nexzen Restaurant POS",
+  "appId": "com.nexzen.pos",
+  "primaryColor": "#4F46E5",
+  "secondaryColor": "#EC4899",
+  "accentColor": "#10B981",
+  "apiBaseUrl": "http://localhost:5006",
+  "tenantSlug": "default",
+  "stripePublicKey": "pk_test_51QjCxvBF1TWn9AcgKLXsUkwgdJHl2DCqDgYWrW2kJ37suGGdfl1CCAMBgDtu9sdnjnVvBvz9YRsfFlPoNen3NsBh00OdWC0GZZ",
+  "fontFamily": "Inter",
+  "splashBg": "#0f172a"
+}
