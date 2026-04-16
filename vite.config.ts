@@ -15,6 +15,7 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    host: '127.0.0.1',
     allowedHosts: ['prissily-heterolecithal-jazmine.ngrok-free.dev'],
   },
 });

@@ -3977,7 +3977,7 @@ const SettingsPage: React.FC = () => {
                         </Grid>
                     </Box>
                 </TabPanel>
-                <TabPanel value={tabValue} index={8}>
+                <TabPanel value={tabValue} index={9}>
                     <GallerySettings />
                 </TabPanel>
             </Paper >
