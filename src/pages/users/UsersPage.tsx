@@ -47,11 +47,12 @@ import {
   PersonOff as DeactivateIcon,
   Person as CustomerIcon,
 } from '@mui/icons-material';
-import { settingsAPI, usersAPI } from '../../services/api';
+import { settingsAPI, usersAPI, supportAPI } from '../../services/api';
 import { validateEmail, validatePhone, validateName, validatePassword, validateRequired, getHelperText, hasError } from '../../utils/validation';
 import type { ValidationResult } from '../../utils/validation';
 import AddressAutocomplete from '../../components/AddressAutocomplete';
 import ActionHistoryList from '../../components/common/ActionHistoryList';
+import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import PhoneInput from '../../components/PhoneInput';
 
@@ -242,6 +243,7 @@ const extractUsersFromResponse = (payload: unknown): User[] => {
 
 const UsersPage = () => {
   const { settings } = useSettings();
+  const { activeRole, user: currentUser } = useAuth();
   const [tabValue, setTabValue] = useState(0);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
@@ -366,8 +368,8 @@ const UsersPage = () => {
 
       const extracted = extractUsersFromResponse(response.data);
       if (tabValue === 0) {
-        // Show everything including customers in "All Users"
-        setUsers(extracted);
+        // Show only staff in "All Staff"
+        setUsers(extracted.filter(u => !isCustomerUser(u)));
       } else {
         const showCustomers = tabValue === 3;
         setUsers(extracted.filter(u => showCustomers ? isCustomerUser(u) : !isCustomerUser(u)));
@@ -547,12 +549,31 @@ const UsersPage = () => {
     if (!deleteTarget) return;
 
     try {
-      await usersAPI.deleteUser(deleteTarget.id);
-      toast.success('User deleted successfully');
+      // 1. Check if we should delete directly or raise a ticket
+      // In theory, if the button was enabled, it depends on who is target and who is actor
+      const targetUser = users.find(u => u._id === deleteTarget.id);
+      const isSuperAdmin = activeRole === 'superadmin' || currentUser?.roles?.includes('superadmin');
+      const isAdmin = activeRole === 'admin' || currentUser?.roles?.includes('admin');
+      const targetIsAdmin = targetUser?.roles?.includes('admin') || targetUser?.role === 'admin';
+
+      if (isSuperAdmin || (isAdmin && !targetIsAdmin)) {
+        // DELETE DIRECTLY
+        await usersAPI.delete(deleteTarget.id);
+        toast.success(`User "${deleteTarget.name}" deleted successfully`);
+        await fetchUsers();
+      } else {
+        // RAISE TICKET (if an admin is trying to delete an admin, or other restricted case)
+        await supportAPI.create({
+          subject: `User Deletion Request: ${deleteTarget.name}`,
+          category: 'User Deletion',
+          priority: 'high',
+          message: `I would like to request the permanent deletion of user "${deleteTarget.name}" (ID: ${deleteTarget.id}) from the system. Please review and confirm the request.`
+        });
+        toast.success('Deletion request has been sent to the Super Admin');
+      }
       closeDeleteDialog();
-      await fetchUsers();
     } catch (err: any) {
-      toast.error('Failed to delete user: ' + (err.response?.data?.message || err.message));
+      toast.error('Deletion failed: ' + (err.response?.data?.message || err.message));
     }
   };
 
@@ -757,7 +778,7 @@ const UsersPage = () => {
           },
         }}
       >
-        <Tab label={`All Users (${counts.all})`} />
+        <Tab label={`All Staff (${counts.all})`} />
         <Tab label={`Management (${counts.management})`} />
         <Tab label={`Staff (${counts.staff})`} />
         <Tab label={`Customers (${counts.customers})`} />
@@ -786,7 +807,7 @@ const UsersPage = () => {
           mb: 3
         }}>
           <Typography variant="h6" fontWeight="medium" color="text.secondary">
-            {tabValue === 0 && 'All Users'}
+            {tabValue === 0 && 'All Staff Members'}
             {tabValue === 1 && 'Management Team'}
             {tabValue === 2 && 'Staff Members'}
             {tabValue === 3 && 'Customers'}
@@ -972,7 +993,23 @@ const UsersPage = () => {
                     >
                       {user.isActive ? <ActivateIcon /> : <DeactivateIcon />}
                     </IconButton>
-                    <IconButton onClick={() => handleDeleteUser(user)} title="Delete User">
+                    <IconButton
+                      onClick={() => handleDeleteUser(user)}
+                      title={
+                        (activeRole === 'superadmin' || currentUser?.roles?.includes('superadmin'))
+                          ? 'Delete User'
+                          : (user.roles?.includes('admin') || user.role === 'admin')
+                            ? 'Admin deletion requires support ticket'
+                            : 'Delete User'
+                      }
+                      disabled={
+                        // Keep enabled for admins even if target is admin, but logic will change in confirmDeleteUser
+                        // Actually, the requirement says "has to raise a ticket". 
+                        // If we disable it, they can't even raise the ticket via this button.
+                        // So let's keep it ENABLED for admins and superadmins.
+                        !(activeRole === 'admin' || activeRole === 'superadmin' || currentUser?.roles?.includes('admin') || currentUser?.roles?.includes('superadmin'))
+                      }
+                    >
                       <DeleteIcon />
                     </IconButton>
                   </CardActions>
@@ -1612,7 +1649,6 @@ const UsersPage = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog
         open={openDeleteDialog}
         onClose={closeDeleteDialog}
@@ -1620,34 +1656,50 @@ const UsersPage = () => {
           sx: { borderRadius: 2, p: 1 }
         }}
       >
-        <DialogTitle sx={{ textAlign: 'center', pb: 0 }}>
-          <Typography variant="h6" fontWeight="bold">Confirm Delete</Typography>
-        </DialogTitle>
-        <DialogContent sx={{ textAlign: 'center', py: 2 }}>
-          <Typography>
-            Are you sure you want to delete user <Box component="span" sx={{ fontWeight: 'bold' }}>{deleteTarget?.name}</Box>?
-          </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-            This action cannot be undone.
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ justifyContent: 'center', pb: 2, gap: 2 }}>
-          <Button
-            onClick={closeDeleteDialog}
-            variant="outlined"
-            sx={{ borderRadius: 2, minWidth: 100 }}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={confirmDeleteUser}
-            variant="contained"
-            color="error"
-            sx={{ borderRadius: 2, minWidth: 100 }}
-          >
-            Delete
-          </Button>
-        </DialogActions>
+        {(() => {
+          const targetUser = users.find(u => u._id === deleteTarget?.id);
+          const isSuperAdmin = activeRole === 'superadmin' || currentUser?.roles?.includes('superadmin');
+          const isAdmin = activeRole === 'admin' || currentUser?.roles?.includes('admin');
+          const targetIsAdmin = targetUser?.roles?.includes('admin') || targetUser?.role === 'admin';
+          const willDeleteDirectly = isSuperAdmin || (isAdmin && !targetIsAdmin);
+
+          return (
+            <>
+              <DialogTitle sx={{ textAlign: 'center', pb: 0 }}>
+                <Typography variant="h6" fontWeight="bold">
+                  {willDeleteDirectly ? 'Confirm User Deletion' : 'Request User Deletion'}
+                </Typography>
+              </DialogTitle>
+              <DialogContent sx={{ textAlign: 'center', py: 2 }}>
+                <Typography>
+                  Are you sure you want to {willDeleteDirectly ? 'delete' : 'request the deletion of'} <Box component="span" sx={{ fontWeight: 'bold' }}>{deleteTarget?.name}</Box>?
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                  {willDeleteDirectly
+                    ? 'This action is permanent and will remove the user from all system access immediately.'
+                    : 'This will raise a priority ticket to the Super Admin for confirmation and manual processing.'}
+                </Typography>
+              </DialogContent>
+              <DialogActions sx={{ justifyContent: 'center', pb: 2, gap: 2 }}>
+                <Button
+                  onClick={closeDeleteDialog}
+                  variant="outlined"
+                  sx={{ borderRadius: 2, minWidth: 100 }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={confirmDeleteUser}
+                  variant="contained"
+                  color={willDeleteDirectly ? 'error' : 'primary'}
+                  sx={{ borderRadius: 2, minWidth: 100 }}
+                >
+                  {willDeleteDirectly ? 'Delete Now' : 'Raise Request'}
+                </Button>
+              </DialogActions>
+            </>
+          );
+        })()}
       </Dialog>
       {/* Deactivate Confirmation Dialog */}
       <Dialog
