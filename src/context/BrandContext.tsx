@@ -49,7 +49,7 @@ const defaultBranding: BrandingData = {
 const BrandContext = createContext<BrandContextType>({
   branding: defaultBranding,
   brandLoaded: false,
-  applyBranding: () => {},
+  applyBranding: () => { },
 });
 
 export const useBrand = () => useContext(BrandContext);
@@ -58,12 +58,12 @@ export const useBrand = () => useContext(BrandContext);
 
 function applyCSSVariables(data: BrandingData) {
   const root = document.documentElement;
-  if (data.primaryColor)   root.style.setProperty('--brand-primary', data.primaryColor);
+  if (data.primaryColor) root.style.setProperty('--brand-primary', data.primaryColor);
   if (data.secondaryColor) root.style.setProperty('--brand-secondary', data.secondaryColor);
-  if (data.accentColor)    root.style.setProperty('--brand-accent', data.accentColor);
-  if (data.splashBg)       root.style.setProperty('--brand-splash-bg', data.splashBg);
-  if (data.appName)        root.style.setProperty('--brand-name', `"${data.appName}"`);
-  if (data.fontFamily)     root.style.setProperty('--brand-font', `"${data.fontFamily}"`);
+  if (data.accentColor) root.style.setProperty('--brand-accent', data.accentColor);
+  if (data.splashBg) root.style.setProperty('--brand-splash-bg', data.splashBg);
+  if (data.appName) root.style.setProperty('--brand-name', `"${data.appName}"`);
+  if (data.fontFamily) root.style.setProperty('--brand-font', `"${data.fontFamily}"`);
 }
 
 // ── Provider ───────────────────────────────────────────────────────────────
