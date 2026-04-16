@@ -93,9 +93,9 @@ export const BrandProvider: React.FC<BrandProviderProps> = ({ children, tenantSl
 
     const fetchBranding = async () => {
       try {
-        const apiBase = BRAND_CONFIG.apiBaseUrl;
+        const apiBase = BRAND_CONFIG.apiBaseUrl.replace(/\/api\/?$/, '');
         const { data } = await axios.get<BrandingData>(
-          `${apiBase}/tenants/${slug}/branding`,
+          `${apiBase}/api/tenants/${slug}/branding`,
           { timeout: 5000 }
         );
 

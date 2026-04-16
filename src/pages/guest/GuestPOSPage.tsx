@@ -40,6 +40,7 @@ import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
 import { useSettings } from '../../context/SettingsContext';
 import { useActiveTenant } from '../../hooks/useActiveTenant';
+import { menuAPI, ordersAPI } from '../../services/api';
 
 interface MenuItem {
     _id: string;
