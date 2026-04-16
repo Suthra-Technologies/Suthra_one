@@ -264,7 +264,9 @@ const CheckoutPage: React.FC = () => {
     }
     
     while (current < end) {
-      slots.push(current.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      const hours = String(current.getHours()).padStart(2, '0');
+      const minutes = String(current.getMinutes()).padStart(2, '0');
+      slots.push(`${hours}:${minutes}`);
       current.setMinutes(current.getMinutes() + 15);
     }
     
@@ -437,11 +439,18 @@ const CheckoutPage: React.FC = () => {
         paymentMethod,
         paymentStatus: isPaidMethod ? 'paid' : 'pending',
         status: isPaidMethod ? 'confirmed' : 'pending',
+
+        // Pre-order flags: only set when user selects 'Schedule Later'
+        isPreOrder: deliveryInfo.deliveryTime === 'later',
+        scheduledTime: deliveryInfo.deliveryTime === 'later' && scheduledDate && scheduledTime
+          ? new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString()
+          : null,
+
         deliveryAddress: orderType === 'delivery' ? {
             fullAddress: deliveryInfo.address,
             latitude: deliveryInfo.latitude,
             longitude: deliveryInfo.longitude,
-            city: '', // Extracting from address string if needed by backend, but backend buildUberAddr handles it
+            city: '',
             state: '',
             pincode: ''
         } : null,
@@ -457,7 +466,7 @@ const CheckoutPage: React.FC = () => {
           lastName: 'User',
           name: 'Guest User',
           phone: deliveryInfo.phone,
-          email: '', // guest email if available
+          email: '',
           notes: deliveryInfo.notes,
         },
         deliveryTime: deliveryInfo.deliveryTime === 'asap' ? 'ASAP' : `${scheduledDate} ${scheduledTime}`,
@@ -931,7 +940,7 @@ const CheckoutPage: React.FC = () => {
                                 })
                               }}
                             >
-                              {time}
+                              {new Date(`2000-01-01T${time}:00`).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                             </Button>
                           </Grid>
                         ))

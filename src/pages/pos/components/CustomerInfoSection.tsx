@@ -71,6 +71,12 @@ interface CustomerInfoSectionProps {
     onOpenMerge: () => void;
     onUnmerge: (table: any) => void;
     pendingMergeSecondaryIds?: string[];
+    isPreOrder: boolean;
+    setIsPreOrder: (val: boolean) => void;
+    scheduledDate: string;
+    setScheduledDate: (val: string) => void;
+    scheduledTime: string;
+    setScheduledTime: (val: string) => void;
 }
 
 const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
@@ -117,8 +123,52 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
     checkingDistance,
     onOpenMerge,
     onUnmerge,
-    pendingMergeSecondaryIds = []
+    pendingMergeSecondaryIds = [],
+    isPreOrder,
+    setIsPreOrder,
+    scheduledDate,
+    setScheduledDate,
+    scheduledTime,
+    setScheduledTime
 }) => {
+    const generateTimeSlots = (dateString: string) => {
+        if (!settings?.restaurant?.businessHours) return [];
+        
+        const date = new Date(dateString + 'T00:00:00');
+        const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+        const dayConfig = settings.restaurant.businessHours.find((bh: any) => bh.day === dayName);
+        
+        if (!dayConfig || !dayConfig.isOpen) return [];
+        
+        const openStr = dayConfig.slots?.[0]?.openTime || dayConfig.openTime || '09:00';
+        const closeStr = dayConfig.slots?.[0]?.closeTime || dayConfig.closeTime || '22:00';
+        
+        const slots: string[] = [];
+        let current = new Date(`${dateString}T${openStr}`);
+        const end = new Date(`${dateString}T${closeStr}`);
+        
+        const now = new Date();
+        // buffer
+        if (date.toDateString() === now.toDateString()) {
+           const earliest = new Date(now.getTime() + 15 * 60 * 1000);
+           if (current < earliest) current = earliest;
+           
+           const mins = current.getMinutes();
+           if (mins > 0 && mins <= 15) current.setMinutes(15);
+           else if (mins > 15 && mins <= 30) current.setMinutes(30);
+           else if (mins > 30 && mins <= 45) current.setMinutes(45);
+           else if (mins > 45) { current.setHours(current.getHours() + 1); current.setMinutes(0); }
+        }
+        
+        while (current < end) {
+            const hours = String(current.getHours()).padStart(2, '0');
+            const minutes = String(current.getMinutes()).padStart(2, '0');
+            slots.push(`${hours}:${minutes}`);
+            current.setMinutes(current.getMinutes() + 15);
+        }
+        
+        return slots;
+    };
     const mergedGroup = React.useMemo(() => {
         if (!selectedTable) {
             return null;
@@ -313,6 +363,83 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                         </FormControl>
                     )}
                 </Box>
+
+                <Box sx={{ mb: 2, display: 'flex', justifyContent: 'center' }}>
+                    <FormControlLabel
+                        control={
+                            <Radio
+                                size="small"
+                                checked={isPreOrder}
+                                onClick={() => setIsPreOrder(!isPreOrder)}
+                            />
+                        }
+                        label={
+                            <Typography variant="body2" fontWeight="bold" color={isPreOrder ? "primary" : "text.secondary"}>
+                                Schedule for Later
+                            </Typography>
+                        }
+                        sx={{ 
+                            border: '1px solid', 
+                            borderColor: isPreOrder ? 'primary.main' : 'divider', 
+                            borderRadius: 2, 
+                            px: 2, 
+                            py: 0.5, 
+                            bgcolor: isPreOrder ? alpha('#1976d2', 0.05) : 'transparent',
+                            transition: 'all 0.2s'
+                        }}
+                    />
+                </Box>
+
+                {isPreOrder && (
+                    <Box sx={{ mb: 2, p: 2, bgcolor: 'action.hover', borderRadius: 1, border: '1px dashed', borderColor: 'primary.main' }}>
+                        <Typography variant="caption" fontWeight="bold" display="block" sx={{ mb: 1, textTransform: 'uppercase', color: 'primary.main' }}>Select Date & Time</Typography>
+                        <Stack direction="row" spacing={1} sx={{ mb: 2, overflowX: 'auto', pb: 1 }}>
+                            {[0, 1, 2, 3, 4].map((offset) => {
+                                const date = new Date();
+                                date.setDate(date.getDate() + offset);
+                                const dateStr = date.toISOString().split('T')[0];
+                                const isSelected = scheduledDate === dateStr;
+                                return (
+                                    <Chip
+                                        key={dateStr}
+                                        label={offset === 0 ? 'Today' : offset === 1 ? 'Tomorrow' : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                        onClick={() => setScheduledDate(dateStr)}
+                                        color={isSelected ? 'primary' : 'default'}
+                                        variant={isSelected ? 'filled' : 'outlined'}
+                                        size="small"
+                                        sx={{ fontWeight: 'bold' }}
+                                    />
+                                );
+                            })}
+                        </Stack>
+                        <Grid container spacing={1}>
+                            {generateTimeSlots(scheduledDate).map((time) => (
+                                <Grid item xs={3} sm={2} key={time}>
+                                    <Button
+                                        variant={scheduledTime === time ? "contained" : "outlined"}
+                                        fullWidth
+                                        size="small"
+                                        onClick={() => setScheduledTime(time)}
+                                        sx={{
+                                            fontSize: '0.7rem',
+                                            py: 0.5,
+                                            borderRadius: 1,
+                                            fontWeight: 'bold',
+                                            ...(scheduledTime !== time && { borderColor: 'divider', color: 'text.primary', bgcolor: 'background.paper' })
+                                        }}
+                                    >
+                                        {new Date(`2000-01-01T${time}:00`).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                                    </Button>
+                                </Grid>
+                            ))}
+                            {generateTimeSlots(scheduledDate).length === 0 && (
+                                <Grid item xs={12}>
+                                    <Typography variant="caption" color="error">No available slots for this date.</Typography>
+                                </Grid>
+                            )}
+                        </Grid>
+                    </Box>
+                )}
 
                 {/* Dine-in specific — guests, table, waiter (shown between Order Type and Coupon) */}
                 {orderType === 'dine_in' && (
