@@ -721,12 +721,18 @@ const SettingsPage: React.FC = () => {
     };
 
     const handleInputChange = (category: 'restaurant' | 'system' | 'rewards', field: string, value: any) => {
+        // Prevent negative values for numeric inputs
+        let finalValue = value;
+        if (typeof value === 'number' && value < 0) {
+            finalValue = 0;
+        }
+
         setSettings(prev => {
             const newSettings = {
                 ...prev,
                 [category]: {
                     ...(prev[category] as any),
-                    [field]: value,
+                    [field]: finalValue,
                 },
             } as SettingsState;
 
@@ -809,6 +815,12 @@ const SettingsPage: React.FC = () => {
         field: keyof RestaurantGmailMailingSettings | keyof RestaurantSmtpMailingSettings,
         value: any,
     ) => {
+        // Prevent negative values for numeric inputs
+        let finalValue = value;
+        if (typeof value === 'number' && value < 0) {
+            finalValue = 0;
+        }
+
         setSettings(prev => ({
             ...prev,
             restaurant: {
@@ -818,7 +830,7 @@ const SettingsPage: React.FC = () => {
                     ...(prev.restaurant.mailing || {}),
                     [section]: {
                         ...((prev.restaurant.mailing || {})[section] || {}),
-                        [field]: value,
+                        [field]: finalValue,
                     },
                 },
             },
@@ -1689,13 +1701,14 @@ const SettingsPage: React.FC = () => {
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 6 }}>
-                            <TextField
-                                fullWidth
-                                type="number"
-                                label="Default Tax Rate (%)"
-                                value={settings.restaurant.taxRate ?? 5}
-                                onChange={(e) => handleInputChange('restaurant', 'taxRate', parseFloat(e.target.value))}
-                                helperText="Fallback tax rate if automatic lookup fails."
+                                <TextField
+                                    fullWidth
+                                    type="number"
+                                    label="Default Tax Rate (%)"
+                                    value={settings.restaurant.taxRate ?? 5}
+                                    onChange={(e) => handleInputChange('restaurant', 'taxRate', parseFloat(e.target.value))}
+                                    slotProps={{ htmlInput: { min: 0, step: "0.01" } }}
+                                    helperText="Fallback tax rate if automatic lookup fails."
                                 InputProps={{
                                     endAdornment: (
                                         <InputAdornment position="end">
@@ -1746,6 +1759,7 @@ const SettingsPage: React.FC = () => {
                                         fullWidth
                                         value={settings.restaurant.taxBreakdown?.country ?? 0}
                                         onChange={(e) => handleTaxBreakdownChange('country', e.target.value)}
+                                        slotProps={{ htmlInput: { min: 0, step: "0.01" } }}
                                     />
                                 </Grid>
                                 <Grid size={{ xs: 6, md: 3 }}>
@@ -1755,6 +1769,7 @@ const SettingsPage: React.FC = () => {
                                         fullWidth
                                         value={settings.restaurant.taxBreakdown?.state ?? 0}
                                         onChange={(e) => handleTaxBreakdownChange('state', e.target.value)}
+                                        slotProps={{ htmlInput: { min: 0, step: "0.01" } }}
                                     />
                                 </Grid>
                                 <Grid size={{ xs: 6, md: 3 }}>
@@ -1764,6 +1779,7 @@ const SettingsPage: React.FC = () => {
                                         fullWidth
                                         value={settings.restaurant.taxBreakdown?.city ?? 0}
                                         onChange={(e) => handleTaxBreakdownChange('city', e.target.value)}
+                                        slotProps={{ htmlInput: { min: 0, step: "0.01" } }}
                                     />
                                 </Grid>
                                 <Grid size={{ xs: 6, md: 3 }}>
@@ -1773,6 +1789,7 @@ const SettingsPage: React.FC = () => {
                                         fullWidth
                                         value={settings.restaurant.taxBreakdown?.county ?? 0}
                                         onChange={(e) => handleTaxBreakdownChange('county', e.target.value)}
+                                        slotProps={{ htmlInput: { min: 0, step: "0.01" } }}
                                     />
                                 </Grid>
                                 <Grid size={{ xs: 12 }}>
@@ -1882,6 +1899,7 @@ const SettingsPage: React.FC = () => {
                                         label="Delivery Radius (Miles)"
                                         value={settings.restaurant.deliveryRadius ?? 15}
                                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleInputChange('restaurant', 'deliveryRadius', parseFloat(e.target.value))}
+                                        slotProps={{ htmlInput: { min: 0 } }}
                                         helperText="Maximum distance from restaurant for delivery orders (default 15 miles)"
                                         InputProps={{
                                             endAdornment: <InputAdornment position="end">Miles</InputAdornment>,
@@ -2167,6 +2185,7 @@ const SettingsPage: React.FC = () => {
                                                 label="SMTP Port"
                                                 value={restaurantMailing.smtp.port}
                                                 onChange={(e) => handleRestaurantMailingNestedChange('smtp', 'port', Number(e.target.value))}
+                                                slotProps={{ htmlInput: { min: 1, max: 65535 } }}
                                             />
                                         </Grid>
                                         <Grid size={{ xs: 12, md: 3 }}>
@@ -3646,6 +3665,7 @@ const SettingsPage: React.FC = () => {
                                             label="Point Value ($)"
                                             value={settings.rewards?.pointValue ?? 0.05}
                                             onChange={(e) => handleInputChange('rewards', 'pointValue', Number(e.target.value))}
+                                            slotProps={{ htmlInput: { min: 0, step: "0.01" } }}
                                             helperText="Value of 1 point in dollars (e.g. 0.05 = $5 for 100 pts)"
                                         />
                                     </Grid>
@@ -3662,6 +3682,7 @@ const SettingsPage: React.FC = () => {
                                             label="Points per $1 Spent"
                                             value={settings.rewards?.earnRate ?? 1}
                                             onChange={(e) => handleInputChange('rewards', 'earnRate', Number(e.target.value))}
+                                            slotProps={{ htmlInput: { min: 0 } }}
                                         />
                                     </Grid>
                                     <Grid size={{ xs: 12, md: 4 }}>
@@ -3684,6 +3705,7 @@ const SettingsPage: React.FC = () => {
                                             label="Min Order to Earn"
                                             value={settings.rewards?.minOrderValueToEarn ?? 0}
                                             onChange={(e) => handleInputChange('rewards', 'minOrderValueToEarn', Number(e.target.value))}
+                                            slotProps={{ htmlInput: { min: 0 } }}
                                             InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
                                         />
                                     </Grid>
@@ -3700,6 +3722,7 @@ const SettingsPage: React.FC = () => {
                                             label="Welcome Bonus"
                                             value={settings.rewards?.welcomeBonus ?? 100}
                                             onChange={(e) => handleInputChange('rewards', 'welcomeBonus', Number(e.target.value))}
+                                            slotProps={{ htmlInput: { min: 0 } }}
                                             helperText="Points given on sign up"
                                         />
                                     </Grid>
@@ -3710,6 +3733,7 @@ const SettingsPage: React.FC = () => {
                                             label="First Order Bonus"
                                             value={settings.rewards?.firstOrderBonus ?? 0}
                                             onChange={(e) => handleInputChange('rewards', 'firstOrderBonus', Number(e.target.value))}
+                                            slotProps={{ htmlInput: { min: 0 } }}
                                         />
                                     </Grid>
 
@@ -3725,6 +3749,7 @@ const SettingsPage: React.FC = () => {
                                             label="Min Points to Redeem"
                                             value={settings.rewards?.minPointsToRedeem ?? 100}
                                             onChange={(e) => handleInputChange('rewards', 'minPointsToRedeem', Number(e.target.value))}
+                                            slotProps={{ htmlInput: { min: 0 } }}
                                         />
                                     </Grid>
                                     <Grid size={{ xs: 12, md: 6 }}>
@@ -3734,6 +3759,7 @@ const SettingsPage: React.FC = () => {
                                             label="Max Redemption % of Bill"
                                             value={settings.rewards?.maxRedemptionPercentage ?? 100}
                                             onChange={(e) => handleInputChange('rewards', 'maxRedemptionPercentage', Number(e.target.value))}
+                                            slotProps={{ htmlInput: { min: 0, max: 100 } }}
                                             InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
                                             helperText="Cap points usage to X% of the order total"
                                         />
