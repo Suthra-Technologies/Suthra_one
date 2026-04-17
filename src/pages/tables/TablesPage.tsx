@@ -126,6 +126,15 @@ const getTableImage = (capacity: number) => {
 
 const CAPACITY_OPTIONS = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20];
 
+const calculateEndTime = (startTimeStr: string | undefined, durationMin: number) => {
+    if (!startTimeStr) return '';
+    const [h, m] = startTimeStr.split(':').map(Number);
+    const totalMinutes = (h * 60) + m + (durationMin || 120);
+    const endH = Math.floor(totalMinutes / 60) % 24;
+    const endM = totalMinutes % 60;
+    return `${endH.toString().padStart(2, '0')}:${endM.toString().padStart(2, '0')}`;
+};
+
 const TablesPage: React.FC = () => {
     const { tenantSlug } = useAuth();
     const { settings } = useSettings();
@@ -592,17 +601,27 @@ const TablesPage: React.FC = () => {
     const totalHours = timelineEndHour - timelineStartHour;
 
     const getBookingPosition = (booking: any) => {
-        const date = new Date(booking.date);
-        const start = new Date(booking.timeSlot?.start || date);
-        if (isNaN(start.getTime())) return { left: '0%', width: '0%' };
+        let startHour = 0;
 
-        const startHour = start.getHours() + (start.getMinutes() / 60);
+        if (booking.timeSlot?.requested) {
+            const [h, m] = booking.timeSlot.requested.split(':').map(Number);
+            startHour = (h || 0) + ((m || 0) / 60);
+        } else {
+            const date = new Date(booking.date);
+            const start = new Date(booking.timeSlot?.start || date);
+            if (isNaN(start.getTime())) return { left: '0%', width: '0%' };
+            startHour = start.getHours() + (start.getMinutes() / 60);
+        }
+
         let relativeStart = startHour - timelineStartHour;
 
         const durationHours = (booking.duration || 120) / 60;
 
-        let leftPercent = (relativeStart / totalHours) * 100;
-        let widthPercent = (durationHours / totalHours) * 100;
+        // Since we render 'totalHours + 1' columns, the total visual width is 'totalHours + 1' hours.
+        const visualTotalHours = totalHours + 1;
+
+        let leftPercent = (relativeStart / visualTotalHours) * 100;
+        let widthPercent = (durationHours / visualTotalHours) * 100;
 
         if (leftPercent < 0) {
             widthPercent += leftPercent;
@@ -1247,8 +1266,8 @@ const TablesPage: React.FC = () => {
                             {/* Time Header */}
                             <Box sx={{ display: 'flex', ml: '150px', borderBottom: 1, borderColor: 'divider', pb: 1, mb: 2 }}>
                                 {Array.from({ length: totalHours + 1 }).map((_, i) => (
-                                    <Box key={i} sx={{ flex: 1, textAlign: 'left', borderLeft: 1, borderColor: 'divider', pl: 0.5 }}>
-                                        <Typography variant="caption" color="text.secondary">
+                                    <Box key={i} sx={{ flex: 1, position: 'relative', borderLeft: 1, borderColor: 'divider', minHeight: '20px' }}>
+                                        <Typography variant="caption" color="text.secondary" sx={{ position: 'absolute', top: 0, left: 0, transform: i === 0 ? 'translateX(4px)' : 'translateX(-50%)', bgcolor: 'background.paper', px: 0.5 }}>
                                             {timelineStartHour + i}:00
                                         </Typography>
                                     </Box>
@@ -1284,10 +1303,11 @@ const TablesPage: React.FC = () => {
                                                 b.status !== 'cancelled')
                                             .map(booking => {
                                                 const pos = getBookingPosition(booking);
+                                                const endTime = calculateEndTime(booking.timeSlot?.requested, booking.duration);
                                                 return (
                                                     <Tooltip
                                                         key={booking._id}
-                                                        title={`${booking.guestInfo?.firstName} - ${booking.timeSlot?.requested}`}
+                                                        title={`${booking.guestInfo?.firstName} - ${booking.timeSlot?.requested || '?'} to ${endTime || '?'}`}
                                                     >
                                                         <Box
                                                             sx={{
@@ -1312,7 +1332,7 @@ const TablesPage: React.FC = () => {
                                                             onClick={() => handleViewBooking(booking)}
                                                         >
                                                             <Typography variant="caption" noWrap sx={{ fontSize: '0.7rem', color: '#000' }}>
-                                                                {booking.guestInfo?.firstName}
+                                                                {booking.guestInfo?.firstName} ({booking.timeSlot?.requested} - {endTime})
                                                             </Typography>
                                                         </Box>
                                                     </Tooltip>
