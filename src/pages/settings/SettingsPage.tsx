@@ -86,9 +86,7 @@ import {
     type UnitConfig
 } from '../../context/SettingsContext';
 
-import { auditLogsAPI, paymentsAPI, printersAPI, settingsAPI, tenantAPI, usersAPI } from '../../services/api';
-import GallerySettings from './GallerySettings';
-import { Collections as CollectionsIcon } from '@mui/icons-material';
+import { paymentsAPI, printersAPI, settingsAPI, tenantAPI, usersAPI } from '../../services/api';
 
 import { NOTIFICATION_SOUNDS, previewSound } from '../../utils/notificationSounds';
 import type { ValidationResult } from '../../utils/validation';
@@ -533,10 +531,7 @@ const SettingsPage: React.FC = () => {
     const [userAlertsRowsPerPage, setUserAlertsRowsPerPage] = useState(10);
     const [totalUsers, setTotalUsers] = useState(0);
 
-    // Audit Logs state
-    const [auditLogs, setAuditLogs] = useState<any[]>([]);
-    const [auditLogsLoading, setAuditLogsLoading] = useState(false);
-    const [totalAuditLogs, setTotalAuditLogs] = useState(0);
+
 
     const fetchUsers = async (page: number, limit: number) => {
         try {
@@ -610,18 +605,7 @@ const SettingsPage: React.FC = () => {
 
 
 
-    const fetchLogs = async () => {
-        setAuditLogsLoading(true);
-        try {
-            const response = await auditLogsAPI.getAll({ limit: 100 }); // Show recent 100 
-            setAuditLogs(response.data.logs || []);
-            setTotalAuditLogs(response.data.total || 0);
-        } catch (error: any) {
-            console.error('Error fetching audit logs:', error);
-        } finally {
-            setAuditLogsLoading(false);
-        }
-    };
+
 
     const fetchSettings = async () => {
         try {
@@ -694,9 +678,6 @@ const SettingsPage: React.FC = () => {
     }, [userAlertsPage, userAlertsRowsPerPage]);
 
     useEffect(() => {
-        if (tabValue === 6) {
-            fetchLogs();
-        }
         if (tabValue === 5) {
             fetchAgents();
         }
@@ -1399,10 +1380,9 @@ const SettingsPage: React.FC = () => {
                     <Tab label="Notifications" icon={<SmsIcon />} iconPosition="start" />
                     <Tab label="Payment" icon={<CreditCardIcon />} iconPosition="start" />
                     <Tab label="Printers" icon={<PrintIcon />} iconPosition="start" />
-                    <Tab label="Audit Logs" icon={<CheckCircleIcon />} iconPosition="start" />
+
                     <Tab label="Loyalty / Rewards" icon={<StarIcon />} iconPosition="start" />
                     <Tab label="Delivery" icon={<DeliveryDiningIcon />} iconPosition="start" />
-                    <Tab label="Gallery" icon={<CollectionsIcon />} iconPosition="start" />
                 </Tabs>
                 <Divider />
 
@@ -1742,6 +1722,16 @@ const SettingsPage: React.FC = () => {
                                         </InputAdornment>
                                     )
                                 }}
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <TextField
+                                fullWidth
+                                type="number"
+                                label="Processing Fee (%)"
+                                value={settings.restaurant.processingFee ?? 3}
+                                onChange={(e) => handleInputChange('restaurant', 'processingFee', parseFloat(e.target.value))}
+                                helperText="Default processing fee"
                             />
                         </Grid>
 
@@ -3633,68 +3623,9 @@ const SettingsPage: React.FC = () => {
                     </Grid>
                 </TabPanel>
 
+
+
                 <TabPanel value={tabValue} index={6}>
-                    <Box sx={{ mb: 4 }}>
-                        <Typography variant="h6" gutterBottom>
-                            Audit Logs
-                        </Typography>
-                        <Divider sx={{ mb: 2 }} />
-
-                        {auditLogsLoading ? (
-                            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                                <CircularProgress size={32} />
-                            </Box>
-                        ) : (
-                            <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3 }}>
-                                <Table size="small">
-                                    <TableHead sx={{ bgcolor: alpha('#94a3b8', 0.05) }}>
-                                        <TableRow>
-                                            <TableCell sx={{ fontWeight: 700 }}>Timestamp</TableCell>
-                                            <TableCell sx={{ fontWeight: 700 }}>Module</TableCell>
-                                            <TableCell sx={{ fontWeight: 700 }}>Action</TableCell>
-                                            <TableCell sx={{ fontWeight: 700 }}>Performed By</TableCell>
-                                            <TableCell sx={{ fontWeight: 700 }}>Details</TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {auditLogs.map((log: any) => (
-                                            <TableRow key={log._id} hover>
-                                                <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                                                    {new Date(log.createdAt).toLocaleString()}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Chip label={log.module} size="small" variant="outlined" />
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Typography variant="body2" fontWeight={600}>
-                                                        {log.action}
-                                                    </Typography>
-                                                </TableCell>
-                                                <TableCell>
-                                                    {log.performedByName || 'System'}
-                                                </TableCell>
-                                                <TableCell sx={{ maxWidth: 300 }}>
-                                                    <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block' }}>
-                                                        {typeof log.details === 'object' ? JSON.stringify(log.details) : log.details}
-                                                    </Typography>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                        {auditLogs.length === 0 && (
-                                            <TableRow>
-                                                <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
-                                                    <Typography color="text.secondary">No logs found</Typography>
-                                                </TableCell>
-                                            </TableRow>
-                                        )}
-                                    </TableBody>
-                                </Table>
-                            </TableContainer>
-                        )}
-                    </Box>
-                </TabPanel>
-
-                <TabPanel value={tabValue} index={7}>
                     <Box sx={{ mb: 4, maxWidth: 800 }}>
                         <Typography variant="h6" gutterBottom>
                             Loyalty & Reward Points
@@ -3863,7 +3794,7 @@ const SettingsPage: React.FC = () => {
                     </Box>
                 </TabPanel>
 
-                <TabPanel value={tabValue} index={8}>
+                <TabPanel value={tabValue} index={7}>
                     <Box sx={{ mb: 4 }}>
                         <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <DeliveryDiningIcon color="primary" /> Delivery Integration
@@ -4002,9 +3933,6 @@ const SettingsPage: React.FC = () => {
                             </Grid>
                         </Grid>
                     </Box>
-                </TabPanel>
-                <TabPanel value={tabValue} index={9}>
-                    <GallerySettings />
                 </TabPanel>
             </Paper >
 

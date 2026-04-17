@@ -9,6 +9,7 @@ import {
     SearchOff,
 } from '@mui/icons-material';
 import {
+    Alert,
     Box,
     Button,
     Card,
@@ -248,6 +249,11 @@ const POSPage: React.FC = () => {
     const [customerPhoneError, setCustomerPhoneError] = useState('');
     const [customerEmailTouched, setCustomerEmailTouched] = useState(false);
     const [customerEmailError, setCustomerEmailError] = useState('');
+
+    // Pre-order state
+    const [isPreOrder, setIsPreOrder] = useState(false);
+    const [scheduledDate, setScheduledDate] = useState(new Date().toISOString().split('T')[0]);
+    const [scheduledTime, setScheduledTime] = useState('');
     const [orderType, setOrderType] = useState<'dine_in' | 'takeaway' | 'delivery' | 'online'>('takeaway');
     const [tableNumber, setTableNumber] = useState('');
     const [waiterName, setWaiterName] = useState('');
@@ -263,6 +269,8 @@ const POSPage: React.FC = () => {
     const [cardPrintReceipt, setCardPrintReceipt] = useState(false);
     const [cardSignInForApiCall, setCardSignInForApiCall] = useState(false);
     const [taxDetails, setTaxDetails] = useState<any>(null);
+    const [pendingMergeSecondaryIds, setPendingMergeSecondaryIds] = useState<string[]>([]);
+    const [pendingPrimaryTableId, setPendingPrimaryTableId] = useState<string>('');
     const [isCalculatingTax, setIsCalculatingTax] = useState(false);
     const [isCartVisible, setIsCartVisible] = useState(false);
     const cartSectionRef = useRef<HTMLDivElement | null>(null);
@@ -1187,11 +1195,14 @@ const POSPage: React.FC = () => {
             }
 
             // Calculate merged tables IDs
-            const mergedTableIdsArray = selectedTable?.isPrimary
-                ? tables.filter(t => t.mergedWith === selectedTable._id).map(t => t._id)
-                : selectedTable?.mergedWith
-                    ? [selectedTable.mergedWith, ...tables.filter(t => t.mergedWith === selectedTable.mergedWith && t._id !== selectedTable._id).map(t => t._id)]
-                    : [];
+            // Use pending merges if available, otherwise use existing merges from the table object
+            const mergedTableIdsArray = pendingMergeSecondaryIds.length > 0 
+                ? pendingMergeSecondaryIds
+                : (selectedTable?.isPrimary
+                    ? tables.filter(t => t.mergedWith === selectedTable._id).map(t => t._id)
+                    : selectedTable?.mergedWith
+                        ? [selectedTable.mergedWith, ...tables.filter(t => t.mergedWith === selectedTable.mergedWith && t._id !== selectedTable._id).map(t => t._id)]
+                        : []);
 
             const payload = {
                 items: cart.map((i) => ({
@@ -1236,9 +1247,14 @@ const POSPage: React.FC = () => {
                 customer: {
                     name: customerName || undefined,
                     phone: customerPhone ? `+${customerDialCode}${customerPhone}` : undefined,
-
                     email: customerEmail || undefined,
                 },
+
+                // Pre-order fields
+                isPreOrder,
+                scheduledTime: isPreOrder && scheduledDate && scheduledTime
+                    ? new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString()
+                    : null,
             };
 
             if (isEditMode && existingOrderId) {
@@ -1255,6 +1271,8 @@ const POSPage: React.FC = () => {
             // First clear URL and local state to exit edit/booking mode
             setSearchParams({}, { replace: true });
             resetData();
+            setPendingMergeSecondaryIds([]);
+            setPendingPrimaryTableId('');
 
             // Then handle table status update and refresh
             if (orderType === "dine_in" && selectedTable?._id) {
@@ -1509,14 +1527,32 @@ const POSPage: React.FC = () => {
                     checkingDistance={checkingDistance}
                     onOpenMerge={() => setMergeDialogOpen(true)}
                     onUnmerge={handleUnmerge}
-                    discountPercent={discountPercent}
-                    setDiscountPercent={setDiscountPercent}
-                    couponCode={couponCode}
-                    setCouponCode={setCouponCode}
-                    onValidateCoupon={() => handleValidateCoupon(false)}
-                    availableCoupons={availableCoupons}
-                    cartTotal={cartTotal}
+                    pendingMergeSecondaryIds={pendingMergeSecondaryIds}
+                    isPreOrder={isPreOrder}
+                    setIsPreOrder={setIsPreOrder}
+                    scheduledDate={scheduledDate}
+                    setScheduledDate={setScheduledDate}
+                    scheduledTime={scheduledTime}
+                    setScheduledTime={setScheduledTime}
                 />
+                {/* Table Group Actions (Clear Pending Merge) */}
+                {pendingMergeSecondaryIds.length > 0 && (
+                    <Box sx={{ mb: 2 }}>
+                        <Alert 
+                            severity="warning" 
+                            action={
+                                <Button color="inherit" size="small" onClick={() => {
+                                    setPendingMergeSecondaryIds([]);
+                                    setPendingPrimaryTableId('');
+                                }}>
+                                    Clear
+                                </Button>
+                            }
+                        >
+                            Pending merge: Table {tables.find(t => t._id === pendingPrimaryTableId)?.tableNumber} + {pendingMergeSecondaryIds.map(id => tables.find(t => t._id === id)?.tableNumber).join(', ')}
+                        </Alert>
+                    </Box>
+                )}
                 {/* Search & category tabs */}
                 <Box sx={{ mb: 2, display: 'flex', gap: 2 }}>
                     <Box sx={{ position: 'relative', flexGrow: 1 }}>
@@ -2544,7 +2580,16 @@ const POSPage: React.FC = () => {
                 open={mergeDialogOpen}
                 onClose={() => setMergeDialogOpen(false)}
                 tables={tables}
-                onSuccess={() => fetchTables()}
+                onSelect={(pid, sids) => {
+                    setPendingPrimaryTableId(pid);
+                    setPendingMergeSecondaryIds(sids);
+                    
+                    const primary = tables.find(t => t._id === pid);
+                    if (primary) {
+                        setSelectedTable(primary);
+                        setTableNumber(primary.tableNumber);
+                    }
+                }}
                 initialPrimaryTableId={selectedTable?._id}
             />
         </Box>

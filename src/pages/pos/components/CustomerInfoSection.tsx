@@ -70,14 +70,13 @@ interface CustomerInfoSectionProps {
     checkingDistance: boolean;
     onOpenMerge: () => void;
     onUnmerge: (table: any) => void;
-    // Discount & Coupon
-    discountPercent: number;
-    setDiscountPercent: (val: number) => void;
-    couponCode: string;
-    setCouponCode: (val: string) => void;
-    onValidateCoupon: () => void;
-    availableCoupons: any[];
-    cartTotal: number;
+    pendingMergeSecondaryIds?: string[];
+    isPreOrder: boolean;
+    setIsPreOrder: (val: boolean) => void;
+    scheduledDate: string;
+    setScheduledDate: (val: string) => void;
+    scheduledTime: string;
+    setScheduledTime: (val: string) => void;
 }
 
 const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
@@ -124,26 +123,92 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
     checkingDistance,
     onOpenMerge,
     onUnmerge,
-    discountPercent,
-    setDiscountPercent,
-    couponCode,
-    setCouponCode,
-    onValidateCoupon,
-    availableCoupons,
-    cartTotal,
+    pendingMergeSecondaryIds = [],
+    isPreOrder,
+    setIsPreOrder,
+    scheduledDate,
+    setScheduledDate,
+    scheduledTime,
+    setScheduledTime
 }) => {
+    const generateTimeSlots = (dateString: string) => {
+        if (!settings?.restaurant?.businessHours) return [];
+        
+        const date = new Date(dateString + 'T00:00:00');
+        const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+        const dayConfig = settings.restaurant.businessHours.find((bh: any) => bh.day === dayName);
+        
+        if (!dayConfig || !dayConfig.isOpen) return [];
+        
+        const openStr = dayConfig.slots?.[0]?.openTime || dayConfig.openTime || '09:00';
+        const closeStr = dayConfig.slots?.[0]?.closeTime || dayConfig.closeTime || '22:00';
+        
+        const slots: string[] = [];
+        let current = new Date(`${dateString}T${openStr}`);
+        const end = new Date(`${dateString}T${closeStr}`);
+        
+        const now = new Date();
+        // buffer
+        if (date.toDateString() === now.toDateString()) {
+           const earliest = new Date(now.getTime() + 15 * 60 * 1000);
+           if (current < earliest) current = earliest;
+           
+           const mins = current.getMinutes();
+           if (mins > 0 && mins <= 15) current.setMinutes(15);
+           else if (mins > 15 && mins <= 30) current.setMinutes(30);
+           else if (mins > 30 && mins <= 45) current.setMinutes(45);
+           else if (mins > 45) { current.setHours(current.getHours() + 1); current.setMinutes(0); }
+        }
+        
+        while (current < end) {
+            const hours = String(current.getHours()).padStart(2, '0');
+            const minutes = String(current.getMinutes()).padStart(2, '0');
+            slots.push(`${hours}:${minutes}`);
+            current.setMinutes(current.getMinutes() + 15);
+        }
+        
+        return slots;
+    };
     const mergedGroup = React.useMemo(() => {
-        if (!selectedTable || (!selectedTable.isPrimary && !selectedTable.mergedWith)) return null;
+        if (!selectedTable) {
+            return null;
+        }
 
-        const primaryId = selectedTable.isPrimary ? selectedTable._id : selectedTable.mergedWith;
-        const primary = tables.find(t => t._id === primaryId);
-        const secondaries = tables.filter(t => t.mergedWith === primaryId);
+        // 1. If we have pending merges from the POS UI
+        if (pendingMergeSecondaryIds.length > 0) {
+            const secondaries = pendingMergeSecondaryIds.map(id => tables.find(t => t._id === id)).filter(Boolean);
+            const combinedCapacity = (selectedTable.capacity || 0) + secondaries.reduce((sum, t) => sum + (t.capacity || 0), 0);
+            return {
+                primary: selectedTable,
+                secondaries,
+                combinedCapacity,
+                isPending: true
+            };
+        }
 
+        // 2. If the table is already merged in the DB
+        if (selectedTable.isPrimary || selectedTable.mergedWith) {
+            const primaryId = selectedTable.isPrimary ? selectedTable._id : selectedTable.mergedWith;
+            const primary = tables.find(t => t._id === primaryId);
+            const secondaries = tables.filter(t => t.mergedWith === primaryId);
+            const combinedCapacity = (primary?.capacity || 0) + secondaries.reduce((sum, t) => sum + (t.capacity || 0), 0);
+
+            return {
+                primary,
+                secondaries,
+                combinedCapacity,
+                isPending: false
+            };
+        }
+
+        // 3. Single table
         return {
-            primary,
-            secondaries
+            primary: selectedTable,
+            secondaries: [],
+            combinedCapacity: selectedTable?.capacity || 0,
+            isPending: false
         };
-    }, [selectedTable, tables]);
+    }, [selectedTable, tables, pendingMergeSecondaryIds]);
 
     return (
         <Box sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1, mb: 2 }}>
@@ -299,6 +364,83 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                     )}
                 </Box>
 
+                <Box sx={{ mb: 2, display: 'flex', justifyContent: 'center' }}>
+                    <FormControlLabel
+                        control={
+                            <Radio
+                                size="small"
+                                checked={isPreOrder}
+                                onClick={() => setIsPreOrder(!isPreOrder)}
+                            />
+                        }
+                        label={
+                            <Typography variant="body2" fontWeight="bold" color={isPreOrder ? "primary" : "text.secondary"}>
+                                Schedule for Later
+                            </Typography>
+                        }
+                        sx={{ 
+                            border: '1px solid', 
+                            borderColor: isPreOrder ? 'primary.main' : 'divider', 
+                            borderRadius: 2, 
+                            px: 2, 
+                            py: 0.5, 
+                            bgcolor: isPreOrder ? alpha('#1976d2', 0.05) : 'transparent',
+                            transition: 'all 0.2s'
+                        }}
+                    />
+                </Box>
+
+                {isPreOrder && (
+                    <Box sx={{ mb: 2, p: 2, bgcolor: 'action.hover', borderRadius: 1, border: '1px dashed', borderColor: 'primary.main' }}>
+                        <Typography variant="caption" fontWeight="bold" display="block" sx={{ mb: 1, textTransform: 'uppercase', color: 'primary.main' }}>Select Date & Time</Typography>
+                        <Stack direction="row" spacing={1} sx={{ mb: 2, overflowX: 'auto', pb: 1 }}>
+                            {[0, 1, 2, 3, 4].map((offset) => {
+                                const date = new Date();
+                                date.setDate(date.getDate() + offset);
+                                const dateStr = date.toISOString().split('T')[0];
+                                const isSelected = scheduledDate === dateStr;
+                                return (
+                                    <Chip
+                                        key={dateStr}
+                                        label={offset === 0 ? 'Today' : offset === 1 ? 'Tomorrow' : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                        onClick={() => setScheduledDate(dateStr)}
+                                        color={isSelected ? 'primary' : 'default'}
+                                        variant={isSelected ? 'filled' : 'outlined'}
+                                        size="small"
+                                        sx={{ fontWeight: 'bold' }}
+                                    />
+                                );
+                            })}
+                        </Stack>
+                        <Grid container spacing={1}>
+                            {generateTimeSlots(scheduledDate).map((time) => (
+                                <Grid item xs={3} sm={2} key={time}>
+                                    <Button
+                                        variant={scheduledTime === time ? "contained" : "outlined"}
+                                        fullWidth
+                                        size="small"
+                                        onClick={() => setScheduledTime(time)}
+                                        sx={{
+                                            fontSize: '0.7rem',
+                                            py: 0.5,
+                                            borderRadius: 1,
+                                            fontWeight: 'bold',
+                                            ...(scheduledTime !== time && { borderColor: 'divider', color: 'text.primary', bgcolor: 'background.paper' })
+                                        }}
+                                    >
+                                        {new Date(`2000-01-01T${time}:00`).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                                    </Button>
+                                </Grid>
+                            ))}
+                            {generateTimeSlots(scheduledDate).length === 0 && (
+                                <Grid item xs={12}>
+                                    <Typography variant="caption" color="error">No available slots for this date.</Typography>
+                                </Grid>
+                            )}
+                        </Grid>
+                    </Box>
+                )}
+
                 {/* Dine-in specific — guests, table, waiter (shown between Order Type and Coupon) */}
                 {orderType === 'dine_in' && (
                     <Box sx={{ mb: 2 }}>
@@ -375,19 +517,20 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                             </Box>
                         </Box>
 
-                        {mergedGroup && (
-                            <Box sx={{ mt: 1, p: 1, bgcolor: 'action.hover', borderRadius: 1 }}>
+                    {mergedGroup && (
+                        <Box sx={{ mt: 1 }}>
+                            <Box sx={{ p: 1, bgcolor: 'action.hover', borderRadius: 1 }}>
                                 <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                                     <GroupIcon fontSize="small" color="action" />
                                     <Typography variant="caption" fontWeight="bold" sx={{ mr: 1 }}>
-                                        Merged Group:
+                                        {mergedGroup.secondaries.length > 0 ? 'Merged Group:' : 'Selected Table:'}
                                     </Typography>
                                     {mergedGroup.primary && (
-                                        <Tooltip title="Primary Table">
+                                        <Tooltip title={mergedGroup.secondaries.length > 0 ? "Primary Table" : ""}>
                                             <Chip
                                                 label={`Table ${mergedGroup.primary.tableNumber}`}
                                                 size="small"
-                                                color="primary"
+                                                color={mergedGroup.isPending ? "warning" : "primary"}
                                                 variant="filled"
                                             />
                                         </Tooltip>
@@ -400,70 +543,21 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                             variant="outlined"
                                         />
                                     ))}
+                                    <Box sx={{ flexGrow: 1 }} />
+                                    <Typography variant="caption" sx={{ fontWeight: 700, color: guestCount > mergedGroup.combinedCapacity ? 'error.main' : 'success.main' }}>
+                                        Total Capacity: {mergedGroup.combinedCapacity} Guests {mergedGroup.isPending && '(Pending Merge)'}
+                                    </Typography>
                                 </Stack>
                             </Box>
-                        )}
-                    </Box>
-                )}
-
-                {/* Discount & Coupon — always below Order Type (and Tables if dine-in) */}
-                <Box sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center', flexWrap: 'wrap' }}>
-                    {user?.role !== 'customer' && (
-                        <TextField
-                            label="Disc %"
-                            type="number"
-                            size="small"
-                            value={discountPercent}
-                            onChange={(e) => setDiscountPercent(Math.max(0, Number(e.target.value)))}
-                            sx={{ width: '90px' }}
-                            inputProps={{ min: 0 }}
-                        />
-                    )}
-                    <Box sx={{ display: 'flex', gap: 1, flexGrow: 1 }}>
-                        <TextField
-                            label="Coupon Code"
-                            size="small"
-                            value={couponCode}
-                            onChange={(e) => setCouponCode(e.target.value)}
-                            sx={{ flexGrow: 1 }}
-                            onKeyDown={(e) => { if (e.key === 'Enter') onValidateCoupon(); }}
-                        />
-                        <Button
-                            variant="outlined"
-                            onClick={onValidateCoupon}
-                            size="small"
-                            sx={{ whiteSpace: 'nowrap', minWidth: 60 }}
-                        >
-                            Apply
-                        </Button>
-                    </Box>
-                </Box>
-
-                {/* Available coupon hints — only when cart total meets minimum */}
-                {(() => {
-                    const qualifiedCoupons = availableCoupons.filter(
-                        (c: any) => !c.minBillAmount || cartTotal >= c.minBillAmount
-                    );
-                    return qualifiedCoupons.length > 0 && !couponCode ? (
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, alignItems: 'center' }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>
-                                Available:
-                            </Typography>
-                            {qualifiedCoupons.slice(0, 4).map((c: any) => (
-                                <Chip
-                                    key={c._id}
-                                    label={c.code}
-                                    size="small"
-                                    variant="outlined"
-                                    color="primary"
-                                    onClick={() => setCouponCode(c.code)}
-                                    sx={{ fontSize: '0.7rem', cursor: 'pointer', fontWeight: 'bold' }}
-                                />
-                            ))}
+                            {guestCount > mergedGroup.combinedCapacity && (
+                                <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block', fontWeight: 'bold' }}>
+                                    ⚠️ Guest count exceeds combined table capacity!
+                                </Typography>
+                            )}
                         </Box>
-                    ) : null;
-                })()}
-            </Box>
+                    )}
+                </Box>
+            )}
 
             {/* Delivery address */}
             {orderType === 'delivery' && (
@@ -487,6 +581,7 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                     )}
                 </Box>
             )}
+            </Box>
         </Box>
     );
 };

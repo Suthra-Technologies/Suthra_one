@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import GallerySettings from '../../settings/GallerySettings';
 import Underline from '@tiptap/extension-underline';
 import Image from '@tiptap/extension-image';
 import Table from '@tiptap/extension-table';
@@ -370,6 +371,7 @@ const CustomiseScreensPage: React.FC = () => {
           sx={{ px: 2, pt: 1, borderBottom: '1px solid #e2e8f0' }}
         >
           <Tab label="Home Page" sx={{ fontWeight: 'bold', py: 2 }} />
+          <Tab label="Gallery" sx={{ fontWeight: 'bold', py: 2 }} />
         </Tabs>
 
         <TabPanel value={tabValue} index={0}>
@@ -422,6 +424,12 @@ const CustomiseScreensPage: React.FC = () => {
             <MenuItem onClick={() => addSection('rich-text')}>Rich Text / HTML</MenuItem>
           </Menu>
             </Box>
+          </Box>
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={1}>
+          <Box sx={{ p: { xs: 1, md: 3 } }}>
+            <GallerySettings />
           </Box>
         </TabPanel>
       </Paper>

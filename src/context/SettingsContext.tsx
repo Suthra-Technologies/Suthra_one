@@ -59,6 +59,7 @@ export interface RestaurantSettings {
     currency: string;
     currencySymbol: string;
     taxRate: number;
+    processingFee?: number;
     logo: string;
     stamp?: string;
     country: string;
@@ -193,6 +194,7 @@ const defaultSettings: SettingsState = {
         currency: 'USD',
         currencySymbol: '$',
         taxRate: 5,
+        processingFee: 3,
         city: '',
         state: '',
         zipCode: '',
