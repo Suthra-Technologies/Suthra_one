@@ -204,7 +204,12 @@ if (fs.existsSync(brandAssetsDir)) {
     }
 
     // Splash screen
-    const splashFileName = fs.readdirSync(brandAssetsDir).find(f => /^splash\.(png|jpg|jpeg|webp)$/i.test(f));
+    let splashFileName = fs.readdirSync(brandAssetsDir).find(f => /^splash\.(png|jpg|jpeg|webp)$/i.test(f));
+    if (!splashFileName) {
+        splashFileName = fs.readdirSync(brandAssetsDir).find(f => /^logo\.(png|jpg|jpeg|webp)$/i.test(f));
+        if (splashFileName) console.log(`   🔸 splash.png missing — using ${splashFileName} as splash screen fallback`);
+    }
+
     if (splashFileName) {
         const splashSrc  = path.join(brandAssetsDir, splashFileName);
         const splashDest = path.join(__dirname, 'android/app/src/main/res/drawable/splash.png');

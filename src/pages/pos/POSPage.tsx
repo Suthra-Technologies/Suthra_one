@@ -249,6 +249,11 @@ const POSPage: React.FC = () => {
     const [customerPhoneError, setCustomerPhoneError] = useState('');
     const [customerEmailTouched, setCustomerEmailTouched] = useState(false);
     const [customerEmailError, setCustomerEmailError] = useState('');
+
+    // Pre-order state
+    const [isPreOrder, setIsPreOrder] = useState(false);
+    const [scheduledDate, setScheduledDate] = useState(new Date().toISOString().split('T')[0]);
+    const [scheduledTime, setScheduledTime] = useState('');
     const [orderType, setOrderType] = useState<'dine_in' | 'takeaway' | 'delivery' | 'online'>('takeaway');
     const [tableNumber, setTableNumber] = useState('');
     const [waiterName, setWaiterName] = useState('');
@@ -1242,9 +1247,14 @@ const POSPage: React.FC = () => {
                 customer: {
                     name: customerName || undefined,
                     phone: customerPhone ? `+${customerDialCode}${customerPhone}` : undefined,
-
                     email: customerEmail || undefined,
                 },
+
+                // Pre-order fields
+                isPreOrder,
+                scheduledTime: isPreOrder && scheduledDate && scheduledTime
+                    ? new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString()
+                    : null,
             };
 
             if (isEditMode && existingOrderId) {
@@ -1518,6 +1528,12 @@ const POSPage: React.FC = () => {
                     onOpenMerge={() => setMergeDialogOpen(true)}
                     onUnmerge={handleUnmerge}
                     pendingMergeSecondaryIds={pendingMergeSecondaryIds}
+                    isPreOrder={isPreOrder}
+                    setIsPreOrder={setIsPreOrder}
+                    scheduledDate={scheduledDate}
+                    setScheduledDate={setScheduledDate}
+                    scheduledTime={scheduledTime}
+                    setScheduledTime={setScheduledTime}
                 />
                 {/* Table Group Actions (Clear Pending Merge) */}
                 {pendingMergeSecondaryIds.length > 0 && (
