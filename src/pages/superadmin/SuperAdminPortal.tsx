@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Typography, Grid, Card, CardContent, CardActionArea } from '@mui/material';
-import { People as PeopleIcon, SupportAgent as SupportIcon, Store as StoreIcon, CardMembership as CardMembershipIcon } from '@mui/icons-material';
+import { People as PeopleIcon, SupportAgent as SupportIcon, Store as StoreIcon, CardMembership as CardMembershipIcon, LocalShipping as DeliveryIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
 const SuperAdminPortal: React.FC = () => {
@@ -9,6 +9,7 @@ const SuperAdminPortal: React.FC = () => {
   const cards = [
     { title: 'Manage Tenants', icon: <StoreIcon fontSize="large" color="primary" />, path: '/superadmin/tenants', desc: 'View and manage restaurant subscriptions' },
     { title: 'Subscription Plans', icon: <CardMembershipIcon fontSize="large" color="success" />, path: '/superadmin/plans', desc: 'Manage pricing and features' },
+    { title: 'Delivery Reports', icon: <DeliveryIcon fontSize="large" sx={{ color: '#ef4444' }} />, path: '/superadmin/delivery-reports', desc: 'DoorDash & Uber Eats deliveries across all stores' },
     { title: 'Support Tickets', icon: <SupportIcon fontSize="large" color="secondary" />, path: '/superadmin/tickets', desc: 'Respond to customer support requests' },
   ];
 

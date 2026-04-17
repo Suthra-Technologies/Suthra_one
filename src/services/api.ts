@@ -316,6 +316,7 @@ export const reportsAPI = {
   getPromoSummary: (params?: any) => api.get('/reports/promo-summary', { params }),
   getPromoRedemptions: (params?: any) => api.get('/reports/promo-redemptions', { params }),
   getPromoCompensation: (params?: any) => api.get('/reports/promo-compensation', { params }),
+  getDeliveryReport: (params?: any) => api.get('/reports/delivery-report', { params }),
   exportExcel: (params?: any) => api.get('/reports/export/excel', { params, responseType: 'blob' }),
 };
 
