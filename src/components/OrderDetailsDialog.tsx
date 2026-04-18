@@ -495,7 +495,7 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                     </Box>
                     <Divider sx={{ my: 2 }} />
 
-                    {/* Uber Eats Simulator (Sandbox) */}
+                    {/* Uber Eats Simulator (Sandbox) - Commented for production
                     {order.uberEatsDeliveryId && (user?.role === 'admin' || user?.role === 'manager') && (
                         <>
                             <Box sx={{ mb: 3, p: 2, borderRadius: 2, bgcolor: alpha(theme.palette.info.main, 0.05), border: `1px dashed ${theme.palette.info.main}` }}>
@@ -579,6 +579,7 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                             <Divider sx={{ my: 2 }} />
                         </>
                     )}
+                    */}
 
                     {/* Status History */}
                     {order.statusHistory && order.statusHistory.length > 0 && (
