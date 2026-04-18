@@ -1,3 +1,5 @@
+import { Capacitor } from '@capacitor/core';
+
 /**
  * Extracts the tenant slug from the current window hostname.
  * Supports:
@@ -67,7 +69,13 @@ export const getTenantUrl = (slug: string, path: string = '', token?: string): s
   // Append token if provided for cross-domain session handover
   if (token) {
     const separator = cleanPath.includes('?') ? '&' : '?';
-    cleanPath = `${cleanPath}${separator}token=${token}`;
+    cleanPath = `${cleanPath}${separator}token=${encodeURIComponent(token)}`;
+  }
+
+  // Capacitor / native WebView serves the app from https://localhost (or similar).
+  // Subdomains like sample.localhost often fail or change origin — stay on same origin with path routing.
+  if (Capacitor.isNativePlatform()) {
+    return `${origin}/${slug}${cleanPath}`;
   }
 
   // If accessed by IP, subdomains won't work - use path-based routing

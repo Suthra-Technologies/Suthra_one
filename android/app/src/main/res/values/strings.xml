@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Nexzen Restaurant POS</string>
-    <string name="title_activity_main">Nexzen Restaurant POS</string>
+    <string name="app_name">mythri restaurant POS</string>
+    <string name="title_activity_main">mythri restaurant POS</string>
     <string name="package_name">com.restaurant.pos</string>
     <string name="custom_url_scheme">com.restaurant.pos</string>
 </resources>

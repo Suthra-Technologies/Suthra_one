@@ -2,11 +2,16 @@
 import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import { BRAND_CONFIG } from '../config/brandConfig';
+
+const envApiBase = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
+const brandApiBase = (BRAND_CONFIG.apiBaseUrl as string | undefined)?.trim();
 
 const rawApiBase =
-  import.meta.env.VITE_API_URL ||
+  brandApiBase ||
+  envApiBase ||
   (typeof window !== 'undefined' ? window.location.origin : '') ||
-  'http://localhost:5007';
+  'http://localhost:5006';
 
 // Ensure we append /api exactly once, even if env already includes /api
 const normalizedBase = rawApiBase

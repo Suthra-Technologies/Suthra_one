@@ -4,7 +4,7 @@
   "primaryColor": "#E31837",
   "secondaryColor": "#008C45",
   "accentColor": "#FFD700",
-  "apiBaseUrl": "https://api.aharuchullu.nexzenpos.com",
+  "apiBaseUrl": "https://atlantafence.net",
   "tenantSlug": "aha-ruchullu",
   "stripePublicKey": "pk_test_aharuchullu",
   "fontFamily": "Inter",

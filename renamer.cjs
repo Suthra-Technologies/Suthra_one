@@ -12,7 +12,8 @@
  *  5. Updates index.html <title>
  *  6. Updates .env (VITE_API_URL, VITE_TENANT_SLUG)
  *  7. Updates Android strings.xml and build.gradle if present
- *  8. Copies brand assets (icon, logo, splash) to native folders
+ *  8. Updates iOS bundle id (project.pbxproj) and display name (Info.plist)
+ *  9. Copies brand assets (icon, logo, splash) to Android + iOS native folders
  */
 const fs   = require('fs');
 const path = require('path');
@@ -143,18 +144,39 @@ if (fs.existsSync(appBuildGradlePath)) {
     console.log(`✅ Updated Android build.gradle → applicationId: ${config.appId}`);
 }
 
-// ── 8. Copy brand assets ──────────────────────────────────────────────────
+// ── 8. iOS native: bundle identifier + display name ─────────────────────
+const iosPbxprojPath = path.join(__dirname, 'ios', 'App', 'App.xcodeproj', 'project.pbxproj');
+if (fs.existsSync(iosPbxprojPath)) {
+    let pbx = fs.readFileSync(iosPbxprojPath, 'utf-8');
+    pbx = pbx.replace(/PRODUCT_BUNDLE_IDENTIFIER = [^;]+;/g, `PRODUCT_BUNDLE_IDENTIFIER = ${config.appId};`);
+    fs.writeFileSync(iosPbxprojPath, pbx);
+    console.log(`✅ Updated iOS project.pbxproj → PRODUCT_BUNDLE_IDENTIFIER: ${config.appId}`);
+} else {
+    console.log('ℹ️  ios/App/App.xcodeproj not found — skipping iOS bundle id update.');
+}
+
+const iosInfoPlistPath = path.join(__dirname, 'ios', 'App', 'App', 'Info.plist');
+if (fs.existsSync(iosInfoPlistPath)) {
+    let plist = fs.readFileSync(iosInfoPlistPath, 'utf-8');
+    const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    plist = plist.replace(
+        /(<key>CFBundleDisplayName<\/key>\s*<string>)[^<]*(<\/string>)/,
+        `$1${esc(config.appName)}$2`
+    );
+    fs.writeFileSync(iosInfoPlistPath, plist);
+    console.log(`✅ Updated iOS Info.plist → CFBundleDisplayName: ${config.appName}`);
+} else {
+    console.log('ℹ️  ios/App/App/Info.plist not found — skipping iOS display name update.');
+}
+
+// ── 9. Copy brand assets ──────────────────────────────────────────────────
 const brandAssetsDir = path.join(brandFolder, 'assets');
 
 if (fs.existsSync(brandAssetsDir)) {
     console.log(`\n📦 Copying assets for ${brand}...`);
 
-    // Icon: look for icon.png first, then fall back to logo.png
+    // Icon: use icon.png only (logo.png is usually too detailed for launcher icon)
     let iconFileName = fs.readdirSync(brandAssetsDir).find(f => /^icon\.(png|jpg|jpeg|webp)$/i.test(f));
-    if (!iconFileName) {
-        iconFileName = fs.readdirSync(brandAssetsDir).find(f => /^logo\.(png|jpg|jpeg|webp)$/i.test(f));
-        if (iconFileName) console.log(`   🔸 icon.png missing — using ${iconFileName} as app icon fallback`);
-    }
 
     if (iconFileName) {
         const iconSrcPath = path.join(brandAssetsDir, iconFileName);
@@ -176,6 +198,7 @@ if (fs.existsSync(brandAssetsDir)) {
             'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png',
             'android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png',
             'ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png',
+            'ios/App/App/Assets.xcassets/AppIcon.appiconset/AppIcon-512@2x.png',
         ];
 
         iconTargets.forEach(dest => {
@@ -190,6 +213,9 @@ if (fs.existsSync(brandAssetsDir)) {
             }
         });
         console.log('   ✅ Native app icons updated');
+    } else {
+        console.warn('   ⚠️  icon.png missing — launcher icons were not replaced.');
+        console.warn(`      Add brands/${brand}/assets/icon.png (square, 1024x1024 recommended).`);
     }
 
     // UI Logo (shown inside the React app)
@@ -218,6 +244,27 @@ if (fs.existsSync(brandAssetsDir)) {
             fs.copyFileSync(splashSrc, splashDest);
             console.log(`   ✅ Splash screen → Android drawable`);
         }
+
+        // iOS Launch / splash imageset (same image to all slots — good enough for white-label)
+        const iosSplashDir = path.join(__dirname, 'ios/App/App/Assets.xcassets/Splash.imageset');
+        const iosSplashNames = [
+            'Default@1x~universal~anyany.png',
+            'Default@2x~universal~anyany.png',
+            'Default@3x~universal~anyany.png',
+            'Default@1x~universal~anyany-dark.png',
+            'Default@2x~universal~anyany-dark.png',
+            'Default@3x~universal~anyany-dark.png',
+        ];
+        if (fs.existsSync(iosSplashDir)) {
+            iosSplashNames.forEach((name) => {
+                try {
+                    fs.copyFileSync(splashSrc, path.join(iosSplashDir, name));
+                } catch {
+                    console.warn(`   ⚠️  Failed to copy splash to ios/Splash.imageset/${name}`);
+                }
+            });
+            console.log('   ✅ Splash images → iOS Assets.xcassets/Splash.imageset');
+        }
     }
 } else {
     console.log(`ℹ️  No 'assets' folder in brands/${brand}/ — skipping icon/logo copy.`);
@@ -225,4 +272,4 @@ if (fs.existsSync(brandAssetsDir)) {
 }
 
 console.log(`\n🎉 White-label preparation complete for: ${config.appName}`);
-console.log(`   Next: npm run build:${brand}  or  npm run android:${brand}\n`);
+console.log(`   Next: npm run build:${brand}  |  npm run android:${brand}  |  npm run ios:${brand}\n`);

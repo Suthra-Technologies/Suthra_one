@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
-import axios from 'axios';
+import api from '../services/api';
 import { getTenantUrl } from '../utils/tenant.utils';
 
 // JWT payload shape
@@ -92,8 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
   const login = async (credentials: { email: string; password: string; tenantSlug?: string }): Promise<LoginResponse> => {
     try {
       console.log('AuthContext: Attempting login with', credentials.email, credentials.tenantSlug);
-      const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5006'}/api`;
-      const response = await axios.post(`${API_BASE}/auth/login`, credentials);
+      const response = await api.post('/auth/login', credentials);
       console.log('AuthContext: Login response received', response.data);
 
       if (response.data && response.data.token) {
@@ -192,10 +191,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
 
     try {
       setIsLoading(true);
-      const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5006'}/api`;
+     
+// const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5006'}/api`;
+
       // Use the current token to authorize the switch
-      const response = await axios.post(
-        `${API_BASE}/auth/switch-tenant`,
+      const response = await api.post(
+        '/auth/switch-tenant',
         { targetTenantSlug: slug },
         { headers: { Authorization: `Bearer ${token}` } }
       );

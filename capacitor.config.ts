@@ -1,8 +1,8 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-    appId: 'com.restaurant.pos',
-    appName: 'Nexzen Restaurant POS',
+    appId: 'com.mythri.pos',
+    appName: 'mythri restaurant POS',
     webDir: 'dist',
     server: {
         androidScheme: 'https',
