@@ -8,8 +8,8 @@ const envApiBase = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
 const brandApiBase = (BRAND_CONFIG.apiBaseUrl as string | undefined)?.trim();
 
 const rawApiBase =
+ envApiBase ||
   brandApiBase ||
-  envApiBase ||
   (typeof window !== 'undefined' ? window.location.origin : '') ||
   'http://localhost:5006';
 

@@ -12,6 +12,7 @@
  *   - /src/config/brandConfig.ts
  */
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import axios from 'axios';
 import { tenantAPI } from '../services/api';
 import { BRAND_CONFIG } from '../config/brandConfig';
 

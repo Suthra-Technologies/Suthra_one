@@ -4,7 +4,7 @@
     "primaryColor": "#9C27B0",
     "secondaryColor": "#E91E63",
     "accentColor": "#FF9800",
-    "apiBaseUrl": "https://atlantafence.net",
+    "apiBaseUrl": "https://nexzenpos.com",
     "tenantSlug": "mythri",
     "stripePublicKey": "pk_test_andhraspicefeast",
     "fontFamily": "Inter",
