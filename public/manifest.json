@@ -1,6 +1,6 @@
 {
-  "name": "Divine Curry POS",
-  "short_name": "DivinePOS",
+  "name": "Nexzen POS",
+  "short_name": "Nexzen",
   "description": "Restaurant Point of Sale System",
   "start_url": "/",
   "display": "standalone",
