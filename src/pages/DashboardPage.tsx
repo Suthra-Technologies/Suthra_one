@@ -27,8 +27,6 @@ import {
   ShoppingBag,
   Event as EventIcon,
   Assessment,
-  QrCodeScanner,
-  PhotoCamera,
 } from '@mui/icons-material';
 
 
@@ -40,8 +38,6 @@ import AssignmentLateOutlinedIcon from '@mui/icons-material/AssignmentLateOutlin
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined';
 import RestaurantMenuOutlinedIcon from '@mui/icons-material/RestaurantMenuOutlined';
 
-import { MobileHardwareService } from '../services/mobileHardware.service';
-import { Capacitor } from '@capacitor/core';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { reportsAPI, ordersAPI, billingAPI, tenantAPI, inventoryAPI, purchaseOrdersAPI, bookingsAPI } from '../services/api';
@@ -268,7 +264,7 @@ const DashboardPage: React.FC = () => {
   const { formatCurrency } = useSettings();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isNative = Capacitor.isNativePlatform();
+
 
   // ---------- Responsive Pie Settings ----------
   const isXs = useMediaQuery(theme.breakpoints.down("sm"));
@@ -405,20 +401,7 @@ const DashboardPage: React.FC = () => {
 
 
 
-  const handleQuickScan = async () => {
-    const result = await MobileHardwareService.startScan();
-    if (result) {
-      toast.success(`Scanned: ${result}`);
-      // TODO: Process scanned code (e.g. find order, product, etc.)
-    }
-  };
 
-  const handleCapturePhoto = async () => {
-    const photo = await MobileHardwareService.captureImage();
-    if (photo) {
-      toast.success('Photo captured!');
-    }
-  };
 
   const currentRevenue = dashboardData?.summary?.totalRevenue || 0;
   const previousRevenue = dashboardData?.summary?.previousRevenue || 0;
@@ -1060,50 +1043,7 @@ const DashboardPage: React.FC = () => {
 
       )}
 
-      {/* Mobile Floating Action Button for Hardware Features */}
-      {isMobile && isNative && (
-        <Box
-          sx={{
-            position: 'fixed',
-            bottom: { xs: 16, sm: 20, md: 24 },
-            right: { xs: 16, sm: 20, md: 24 },
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 2,
-            zIndex: 1000
-          }}
-        >
-          <Button
-            variant="contained"
-            color="secondary"
-            onClick={handleCapturePhoto}
-            sx={{
-              width: 56,
-              height: 56,
-              borderRadius: '50%',
-              minWidth: 0,
-              boxShadow: theme.shadows[8]
-            }}
-          >
-            <PhotoCamera />
-          </Button>
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={handleQuickScan}
-            sx={{
-              width: 56,
-              height: 56,
-              borderRadius: '50%',
-              minWidth: 0,
-              boxShadow: theme.shadows[8]
-            }}
-          >
-            <QrCodeScanner />
-          </Button>
-        </Box>
-      )
-      }
+
     </Box >
   );
 };
