@@ -21,8 +21,11 @@ import { Star as StarIcon } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import { feedbackAPI } from '../../services/api';
 
+import { getTenantSlugFromHostname } from '../../utils/tenant.utils';
+
 const FeedbackPage: React.FC = () => {
-    const { slug, orderId } = useParams<{ slug: string; orderId: string }>();
+    const { slug: pathSlug, orderId } = useParams<{ slug: string; orderId: string }>();
+    const slug = pathSlug || getTenantSlugFromHostname();
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [order, setOrder] = useState<any>(null);

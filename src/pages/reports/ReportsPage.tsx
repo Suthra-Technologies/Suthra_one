@@ -29,7 +29,7 @@ import {
     Tooltip as MuiTooltip,
     alpha,
 } from '@mui/material';
-import { ordersAPI, tablesAPI, bookingsAPI, feedbackAPI } from '../../services/api';
+import { ordersAPI, tablesAPI, bookingsAPI, feedbackAPI, reportsAPI } from '../../services/api';
 import {
     BarChart,
     Bar,
@@ -64,6 +64,11 @@ import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
 import LeaderboardIcon from '@mui/icons-material/Leaderboard';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import ReceiptIcon from '@mui/icons-material/Receipt';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import TwoWheelerIcon from '@mui/icons-material/TwoWheeler';
+import SavingsIcon from '@mui/icons-material/Savings';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import RequestQuoteIcon from '@mui/icons-material/RequestQuote';
 
 
 const COLORS = ["#3b82f6", "#22c55e", "#ef4444", "#f59e0b", "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16", "#f97316", "#6366f1"];
@@ -104,6 +109,10 @@ const ReportsPage: React.FC = () => {
     const [promoCompensation, setPromoCompensation] = useState<any[]>([]);
     const [promoType, setPromoType] = useState('all');
     const [promoSearch, setPromoSearch] = useState('');
+    const [deliveryReport, setDeliveryReport] = useState<any>(null);
+    const [deliveryProviderFilter, setDeliveryProviderFilter] = useState<string>('all');
+    const [deliveryReportPage, setDeliveryReportPage] = useState(0);
+    const [deliveryReportRowsPerPage, setDeliveryReportRowsPerPage] = useState(10);
     const [bestSellingPage, setBestSellingPage] = useState(0);
     const [bestSellingRowsPerPage, setBestSellingRowsPerPage] = useState(10);
     const [salesPage, setSalesPage] = useState(0);
@@ -158,6 +167,7 @@ const ReportsPage: React.FC = () => {
         setCancelledOrdersPage(0);
         setTopCancelledItemsPage(0);
         setTipsReportPage(0);
+        setDeliveryReportPage(0);
     }, [activeTab, period, startDate, endDate]);
 
     // Reset payment method filter when switching tabs
@@ -302,6 +312,9 @@ const ReportsPage: React.FC = () => {
                 case 19: // Promo Compensation
                     await fetchPromoCompensation(params);
                     break;
+                case 20: // Delivery Report
+                    await fetchDeliveryReport({ ...params, provider: deliveryProviderFilter });
+                    break;
             }
         } catch (error) {
             console.error('Error fetching report:', error);
@@ -433,11 +446,16 @@ const ReportsPage: React.FC = () => {
     };
 
     const fetchPromoCompensation = async (params: any) => {
-        const response = await axios.get(`${API_URL}/api/reports/promo-compensation`, { 
-            params: { ...params, promoType }, 
-            headers 
+        const response = await axios.get(`${API_URL}/api/reports/promo-compensation`, {
+            params: { ...params, promoType },
+            headers
         });
         setPromoCompensation(response.data);
+    };
+
+    const fetchDeliveryReport = async (params: any) => {
+        const response = await reportsAPI.getDeliveryReport(params);
+        setDeliveryReport(response.data);
     };
 
     const downloadExcel = async (reportType: string, customPaymentMethod?: string) => {
@@ -4879,14 +4897,199 @@ const ReportsPage: React.FC = () => {
         );
     };
 
+    const renderDeliveryReport = () => {
+        const summary = deliveryReport?.summary;
+        const orders: any[] = deliveryReport?.orders || [];
+        const paged = orders.slice(
+            deliveryReportPage * deliveryReportRowsPerPage,
+            deliveryReportPage * deliveryReportRowsPerPage + deliveryReportRowsPerPage,
+        );
+
+        const providerColor = (p: string) => {
+            if (p === 'doordash') return '#ef4444';
+            if (p === 'ubereats') return '#22c55e';
+            return '#6b7280';
+        };
+
+        const providerLabel = (p: string) => {
+            if (p === 'doordash') return 'DoorDash';
+            if (p === 'ubereats') return 'Uber Eats';
+            return p;
+        };
+
+        return (
+            <Paper sx={{ p: 3 }}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2} sx={{ mb: 3 }}>
+                    <Typography variant="h6" fontWeight="bold">Delivery Reports</Typography>
+                    <Stack direction="row" spacing={2} alignItems="center">
+                        <FormControl size="small" sx={{ minWidth: 150 }}>
+                            <InputLabel>Provider</InputLabel>
+                            <Select
+                                value={deliveryProviderFilter}
+                                label="Provider"
+                                onChange={(e) => {
+                                    setDeliveryProviderFilter(e.target.value);
+                                    fetchDeliveryReport({ period, startDate, endDate, provider: e.target.value });
+                                }}
+                            >
+                                <MenuItem value="all">All Providers</MenuItem>
+                                <MenuItem value="doordash">DoorDash</MenuItem>
+                                <MenuItem value="ubereats">Uber Eats</MenuItem>
+                            </Select>
+                        </FormControl>
+                        <Button
+                            variant="outlined"
+                            size="small"
+                            startIcon={<DownloadIcon />}
+                            onClick={() => downloadExcel('delivery-report')}
+                        >
+                            Export
+                        </Button>
+                    </Stack>
+                </Stack>
+
+                {/* Summary Cards */}
+                <Grid container spacing={2} sx={{ mb: 3 }}>
+                    {[
+                        { label: 'Total Orders', value: summary?.totalOrders ?? 0, isCurrency: false, icon: <ShoppingCartIcon />, color: '#6366f1' },
+                        { label: 'DoorDash Orders', value: summary?.doordashOrders ?? 0, isCurrency: false, icon: <LocalShippingIcon />, color: '#ef4444' },
+                        { label: 'Uber Eats Orders', value: summary?.uberEatsOrders ?? 0, isCurrency: false, icon: <TwoWheelerIcon />, color: '#22c55e' },
+                        { label: 'Total Revenue', value: summary?.totalRevenue ?? 0, isCurrency: true, icon: <TrendingUpIcon />, color: '#3b82f6' },
+                        { label: 'Delivery Charges', value: summary?.totalDeliveryCharges ?? 0, isCurrency: true, icon: <RequestQuoteIcon />, color: '#f59e0b' },
+                        { label: 'Total Tips', value: summary?.totalTips ?? 0, isCurrency: true, icon: <SavingsIcon />, color: '#06b6d4' },
+                        { label: 'Total Tax', value: summary?.totalTax ?? 0, isCurrency: true, icon: <AccountBalanceIcon />, color: '#8b5cf6' },
+                        { label: 'Processing Fees', value: summary?.totalProcessingFee ?? 0, isCurrency: true, icon: <ReceiptIcon />, color: '#ec4899' },
+                    ].map((card) => (
+                        <Grid item xs={6} sm={3} md={3} lg={3} key={card.label}>
+                            <Card variant="outlined" sx={{ height: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 3, borderColor: alpha(card.color, 0.3), bgcolor: alpha(card.color, 0.04) }}>
+                                <CardContent sx={{ p: '12px !important', textAlign: 'center', width: '100%' }}>
+                                    <Box sx={{ color: card.color, mb: 0.5, display: 'flex', justifyContent: 'center', '& svg': { fontSize: 28 } }}>
+                                        {card.icon}
+                                    </Box>
+                                    <Typography variant="caption" color="text.secondary" display="block" sx={{ lineHeight: 1.2, mb: 0.5 }}>
+                                        {card.label}
+                                    </Typography>
+                                    <Typography variant="h6" fontWeight="bold" sx={{ color: card.color, lineHeight: 1 }}>
+                                        {card.isCurrency ? formatCurrency(card.value) : card.value}
+                                    </Typography>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                    ))}
+                </Grid>
+
+                {/* Orders Table */}
+                <TableContainer>
+                    <Table size="small">
+                        <TableHead>
+                            <TableRow sx={{ bgcolor: 'grey.50' }}>
+                                <TableCell><strong>Order #</strong></TableCell>
+                                <TableCell><strong>Date</strong></TableCell>
+                                <TableCell><strong>Provider</strong></TableCell>
+                                <TableCell><strong>Customer</strong></TableCell>
+                                <TableCell><strong>Delivery Address</strong></TableCell>
+                                <TableCell align="right"><strong>Subtotal</strong></TableCell>
+                                <TableCell align="right"><strong>Delivery Charge</strong></TableCell>
+                                <TableCell align="right"><strong>Tip</strong></TableCell>
+                                <TableCell align="right"><strong>Tax</strong></TableCell>
+                                <TableCell align="right"><strong>Processing Fee</strong></TableCell>
+                                <TableCell align="right"><strong>Total</strong></TableCell>
+                                <TableCell><strong>Payment</strong></TableCell>
+                                <TableCell><strong>Status</strong></TableCell>
+                                <TableCell><strong>Tracking</strong></TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {paged.map((order: any, idx: number) => (
+                                <TableRow key={order.orderNumber || idx} hover>
+                                    <TableCell sx={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                                        {order.orderNumber}
+                                    </TableCell>
+                                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                                        {order.date ? new Date(order.date).toLocaleDateString() : '-'}
+                                        <Typography variant="caption" display="block" color="text.secondary">
+                                            {order.date ? new Date(order.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                                        </Typography>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Chip
+                                            label={providerLabel(order.provider)}
+                                            size="small"
+                                            sx={{ bgcolor: providerColor(order.provider), color: '#fff', fontWeight: 'bold' }}
+                                        />
+                                    </TableCell>
+                                    <TableCell>
+                                        <Typography variant="body2">{order.customerName}</Typography>
+                                        {order.customerPhone && (
+                                            <Typography variant="caption" color="text.secondary">{order.customerPhone}</Typography>
+                                        )}
+                                    </TableCell>
+                                    <TableCell sx={{ maxWidth: 160 }}>
+                                        <Typography variant="caption">{order.deliveryAddress || '-'}</Typography>
+                                    </TableCell>
+                                    <TableCell align="right">{formatCurrency(order.subtotal)}</TableCell>
+                                    <TableCell align="right">{formatCurrency(order.deliveryCharge)}</TableCell>
+                                    <TableCell align="right">{formatCurrency(order.tip)}</TableCell>
+                                    <TableCell align="right">{formatCurrency(order.tax)}</TableCell>
+                                    <TableCell align="right">{formatCurrency(order.processingFee)}</TableCell>
+                                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>{formatCurrency(order.totalAmount)}</TableCell>
+                                    <TableCell>
+                                        <Stack spacing={0.5}>
+                                            <Chip label={order.paymentMethod} size="small" variant="outlined" />
+                                            <Chip
+                                                label={order.paymentStatus}
+                                                size="small"
+                                                color={order.paymentStatus === 'paid' || order.paymentStatus === 'completed' ? 'success' : 'default'}
+                                            />
+                                        </Stack>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Chip
+                                            label={order.status}
+                                            size="small"
+                                            color={order.status === 'delivered' ? 'success' : order.status === 'cancelled' ? 'error' : 'warning'}
+                                        />
+                                    </TableCell>
+                                    <TableCell>
+                                        {(order.trackingUrl) ? (
+                                            <a href={order.trackingUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12 }}>
+                                                Track
+                                            </a>
+                                        ) : '-'}
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                            {orders.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={13} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                                        No delivery orders found for the selected period
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+                <TablePagination
+                    component="div"
+                    count={orders.length}
+                    page={deliveryReportPage}
+                    onPageChange={(_, p) => setDeliveryReportPage(p)}
+                    rowsPerPage={deliveryReportRowsPerPage}
+                    onRowsPerPageChange={(e) => { setDeliveryReportRowsPerPage(parseInt(e.target.value, 10)); setDeliveryReportPage(0); }}
+                    rowsPerPageOptions={[10, 25, 50]}
+                />
+            </Paper>
+        );
+    };
+
     return (
         <Container maxWidth="xl" sx={{ py: 4 }}>
             <Typography variant="h4" gutterBottom sx={{ textAlign: { xs: 'center', sm: 'left' } }}>
                 Reports & Analytics
             </Typography>
 
-            {/* Filters */}
-            <Paper sx={{ p: 2, mb: 3 }}>
+            {/* Filters — sticky just below the 64px fixed AppBar */}
+            <Paper sx={{ p: 2, mb: 3, position: 'sticky', top: 64, zIndex: 100, boxShadow: 2 }}>
                 <Grid container spacing={2} alignItems="center">
                     <Grid item xs={12} sm={6} md={3}>
                         <FormControl fullWidth>
@@ -4938,8 +5141,8 @@ const ReportsPage: React.FC = () => {
                 </Grid>
             </Paper>
 
-            {/* Tabs */}
-            <Paper sx={{ mb: 3 }}>
+            {/* Tabs — sticky below filter bar (64px AppBar + ~72px filter) */}
+            <Paper sx={{ mb: 3, position: 'sticky', top: 136, zIndex: 99, boxShadow: 2 }}>
                 <Tabs value={activeTab} onChange={(e, v) => setActiveTab(v)} variant="scrollable" scrollButtons="auto">
                     <Tab label="Dashboard" />
                     <Tab label="Best Selling Items" />
@@ -4961,38 +5164,42 @@ const ReportsPage: React.FC = () => {
                     <Tab label="Promo Summary" />
                     <Tab label="Promo Redemptions" />
                     <Tab label="Promo Compensation" />
+                    <Tab label="Delivery Reports" />
                 </Tabs>
             </Paper>
 
-            {/* Content */}
-            {loading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-                    <CircularProgress />
-                </Box>
-            ) : (
-                <>
-                    {activeTab === 0 && renderDashboard()}
-                    {activeTab === 1 && renderBestSellingItems()}
-                    {activeTab === 2 && renderOrdersByType()}
-                    {activeTab === 3 && renderWaiterPerformance()}
-                    {activeTab === 4 && renderMaterialUsage()}
-                    {activeTab === 5 && renderSalesReport()}
-                    {activeTab === 6 && renderPeakHours()}
-                    {activeTab === 7 && renderPaymentAnalytics()}
-                    {activeTab === 8 && renderCategoryPerformance()}
-                    {activeTab === 9 && renderCancellationAnalysis()}
-                    {activeTab === 10 && renderProfitLoss()}
-                    {activeTab === 11 && renderCustomerAnalytics()}
-                    {activeTab === 12 && renderInventoryStock()}
-                    {activeTab === 13 && renderCouponAnalytics()}
-                    {activeTab === 14 && renderTableStats()}
-                    {activeTab === 15 && renderCustomerFeedback()}
-                    {activeTab === 16 && renderTipsReport()}
-                    {activeTab === 17 && renderPromoSummary()}
-                    {activeTab === 18 && renderPromoRedemptions()}
-                    {activeTab === 19 && renderPromoCompensation()}
-                </>
-            )}
+            {/* Content — minHeight prevents layout shift when switching tabs */}
+            <Box sx={{ minHeight: 600 }}>
+                {loading ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+                        <CircularProgress />
+                    </Box>
+                ) : (
+                    <>
+                        {activeTab === 0 && renderDashboard()}
+                        {activeTab === 1 && renderBestSellingItems()}
+                        {activeTab === 2 && renderOrdersByType()}
+                        {activeTab === 3 && renderWaiterPerformance()}
+                        {activeTab === 4 && renderMaterialUsage()}
+                        {activeTab === 5 && renderSalesReport()}
+                        {activeTab === 6 && renderPeakHours()}
+                        {activeTab === 7 && renderPaymentAnalytics()}
+                        {activeTab === 8 && renderCategoryPerformance()}
+                        {activeTab === 9 && renderCancellationAnalysis()}
+                        {activeTab === 10 && renderProfitLoss()}
+                        {activeTab === 11 && renderCustomerAnalytics()}
+                        {activeTab === 12 && renderInventoryStock()}
+                        {activeTab === 13 && renderCouponAnalytics()}
+                        {activeTab === 14 && renderTableStats()}
+                        {activeTab === 15 && renderCustomerFeedback()}
+                        {activeTab === 16 && renderTipsReport()}
+                        {activeTab === 17 && renderPromoSummary()}
+                        {activeTab === 18 && renderPromoRedemptions()}
+                        {activeTab === 19 && renderPromoCompensation()}
+                        {activeTab === 20 && renderDeliveryReport()}
+                    </>
+                )}
+            </Box>
         </Container>
     );
 };

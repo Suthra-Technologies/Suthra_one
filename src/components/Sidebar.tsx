@@ -206,7 +206,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
   const tenantConfig: any = user?.tenant;
   const currentFeatures = tenantConfig?.currentPlan?.features || [];
   const hasSuperAdmin = activeRole === 'superadmin' || user?.roles?.includes('superadmin');
-  
+
   const hasFeatureAccess = (feat?: string) => {
     if (!feat) return true;
     if (hasSuperAdmin) return true;

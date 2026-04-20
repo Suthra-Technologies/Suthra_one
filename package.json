@@ -12,12 +12,25 @@
     "// ── White-Label APK Builds ──────────────────────────────────────────": "",
     "build:default": "node renamer.cjs default && vite build && npx cap sync",
     "build:aha-ruchullu": "node renamer.cjs aha-ruchullu && vite build && npx cap sync",
+    "build:sai": "node renamer.cjs sai && vite build && npx cap sync",
+    "build:sample": "node renamer.cjs sample && vite build && npx cap sync",
+    "build:mythri": "node renamer.cjs mythri && vite build && npx cap sync",
+
+
     "build:andhra-spicefeast": "node renamer.cjs andhra-spicefeast && vite build && npx cap sync",
     "// ── Open Android Studio after branding ──────────────────────────────": "",
     "android:aha-ruchullu": "node renamer.cjs aha-ruchullu && vite build && npx cap sync && npx cap open android",
+    "android:sample": "node renamer.cjs sample && vite build && npx cap sync && npx cap open android",
+    "android:mythri": "node renamer.cjs mythri && vite build && npx cap sync && npx cap open android",
+
+
     "android:andhra-spicefeast": "node renamer.cjs andhra-spicefeast && vite build && npx cap sync && npx cap open android",
-    "// ── iOS builds ──────────────────────────────────────────────────────": "",
+    "// ── Open Xcode after branding (macOS only) ─────────────────────────": "",
+    "ios:default": "node renamer.cjs default && vite build && npx cap sync && npx cap open ios",
     "ios:aha-ruchullu": "node renamer.cjs aha-ruchullu && vite build && npx cap sync && npx cap open ios",
+    "ios:sai": "node renamer.cjs sai && vite build && npx cap sync && npx cap open ios",
+    "ios:sample": "node renamer.cjs sample && vite build && npx cap sync && npx cap open ios",
+    "ios:mythri": "node renamer.cjs mythri && vite build && npx cap sync && npx cap open ios",
     "ios:andhra-spicefeast": "node renamer.cjs andhra-spicefeast && vite build && npx cap sync && npx cap open ios"
   },
   "devDependencies": {

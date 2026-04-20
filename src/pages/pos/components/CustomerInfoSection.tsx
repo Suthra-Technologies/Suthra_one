@@ -1,30 +1,30 @@
-import React from 'react';
+import {
+    TableRestaurant as GroupIcon,
+    Link as LinkIcon,
+    LinkOff as LinkOffIcon
+} from '@mui/icons-material';
 import {
     Box,
     Button,
-    Grid,
-    TextField,
-    Typography,
-    FormControl,
-    RadioGroup,
-    FormControlLabel,
-    Radio,
-    Select,
-    MenuItem,
-    InputLabel,
-    CircularProgress,
-    Tooltip,
-    IconButton,
     Chip,
-    Stack
+    CircularProgress,
+    FormControl,
+    FormControlLabel,
+    Grid,
+    IconButton,
+    InputLabel,
+    MenuItem,
+    Radio,
+    RadioGroup,
+    Select,
+    Stack,
+    TextField,
+    Tooltip,
+    Typography
 } from '@mui/material';
-import {
-    Link as LinkIcon,
-    LinkOff as LinkOffIcon,
-    TableRestaurant as GroupIcon
-} from '@mui/icons-material';
-import PhoneInput from '../../../components/PhoneInput';
+import React from 'react';
 import AddressAutocomplete from '../../../components/AddressAutocomplete';
+import PhoneInput from '../../../components/PhoneInput';
 
 interface CustomerInfoSectionProps {
     customerName: string;
@@ -71,6 +71,12 @@ interface CustomerInfoSectionProps {
     onOpenMerge: () => void;
     onUnmerge: (table: any) => void;
     pendingMergeSecondaryIds?: string[];
+    isPreOrder: boolean;
+    setIsPreOrder: (val: boolean) => void;
+    scheduledDate: string;
+    setScheduledDate: (val: string) => void;
+    scheduledTime: string;
+    setScheduledTime: (val: string) => void;
 }
 
 const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
@@ -117,8 +123,52 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
     checkingDistance,
     onOpenMerge,
     onUnmerge,
-    pendingMergeSecondaryIds = []
+    pendingMergeSecondaryIds = [],
+    isPreOrder,
+    setIsPreOrder,
+    scheduledDate,
+    setScheduledDate,
+    scheduledTime,
+    setScheduledTime
 }) => {
+    const generateTimeSlots = (dateString: string) => {
+        if (!settings?.restaurant?.businessHours) return [];
+
+        const date = new Date(dateString + 'T00:00:00');
+        const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+        const dayConfig = settings.restaurant.businessHours.find((bh: any) => bh.day === dayName);
+
+        if (!dayConfig || !dayConfig.isOpen) return [];
+
+        const openStr = dayConfig.slots?.[0]?.openTime || dayConfig.openTime || '09:00';
+        const closeStr = dayConfig.slots?.[0]?.closeTime || dayConfig.closeTime || '22:00';
+
+        const slots: string[] = [];
+        let current = new Date(`${dateString}T${openStr}`);
+        const end = new Date(`${dateString}T${closeStr}`);
+
+        const now = new Date();
+        // buffer
+        if (date.toDateString() === now.toDateString()) {
+            const earliest = new Date(now.getTime() + 15 * 60 * 1000);
+            if (current < earliest) current = earliest;
+
+            const mins = current.getMinutes();
+            if (mins > 0 && mins <= 15) current.setMinutes(15);
+            else if (mins > 15 && mins <= 30) current.setMinutes(30);
+            else if (mins > 30 && mins <= 45) current.setMinutes(45);
+            else if (mins > 45) { current.setHours(current.getHours() + 1); current.setMinutes(0); }
+        }
+
+        while (current < end) {
+            const hours = String(current.getHours()).padStart(2, '0');
+            const minutes = String(current.getMinutes()).padStart(2, '0');
+            slots.push(`${hours}:${minutes}`);
+            current.setMinutes(current.getMinutes() + 15);
+        }
+
+        return slots;
+    };
     const mergedGroup = React.useMemo(() => {
         if (!selectedTable) {
             return null;
@@ -314,6 +364,7 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                     )}
                 </Box>
 
+
                 {/* Dine-in specific — guests, table, waiter (shown between Order Type and Coupon) */}
                 {orderType === 'dine_in' && (
                     <Box sx={{ mb: 2 }}>
@@ -390,70 +441,70 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                             </Box>
                         </Box>
 
-                    {mergedGroup && (
-                        <Box sx={{ mt: 1 }}>
-                            <Box sx={{ p: 1, bgcolor: 'action.hover', borderRadius: 1 }}>
-                                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                                    <GroupIcon fontSize="small" color="action" />
-                                    <Typography variant="caption" fontWeight="bold" sx={{ mr: 1 }}>
-                                        {mergedGroup.secondaries.length > 0 ? 'Merged Group:' : 'Selected Table:'}
-                                    </Typography>
-                                    {mergedGroup.primary && (
-                                        <Tooltip title={mergedGroup.secondaries.length > 0 ? "Primary Table" : ""}>
+                        {mergedGroup && (
+                            <Box sx={{ mt: 1 }}>
+                                <Box sx={{ p: 1, bgcolor: 'action.hover', borderRadius: 1 }}>
+                                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                                        <GroupIcon fontSize="small" color="action" />
+                                        <Typography variant="caption" fontWeight="bold" sx={{ mr: 1 }}>
+                                            {mergedGroup.secondaries.length > 0 ? 'Merged Group:' : 'Selected Table:'}
+                                        </Typography>
+                                        {mergedGroup.primary && (
+                                            <Tooltip title={mergedGroup.secondaries.length > 0 ? "Primary Table" : ""}>
+                                                <Chip
+                                                    label={`Table ${mergedGroup.primary.tableNumber}`}
+                                                    size="small"
+                                                    color={mergedGroup.isPending ? "warning" : "primary"}
+                                                    variant="filled"
+                                                />
+                                            </Tooltip>
+                                        )}
+                                        {mergedGroup.secondaries.map(st => (
                                             <Chip
-                                                label={`Table ${mergedGroup.primary.tableNumber}`}
+                                                key={st._id}
+                                                label={`Table ${st.tableNumber}`}
                                                 size="small"
-                                                color={mergedGroup.isPending ? "warning" : "primary"}
-                                                variant="filled"
+                                                variant="outlined"
                                             />
-                                        </Tooltip>
-                                    )}
-                                    {mergedGroup.secondaries.map(st => (
-                                        <Chip
-                                            key={st._id}
-                                            label={`Table ${st.tableNumber}`}
-                                            size="small"
-                                            variant="outlined"
-                                        />
-                                    ))}
-                                    <Box sx={{ flexGrow: 1 }} />
-                                    <Typography variant="caption" sx={{ fontWeight: 700, color: guestCount > mergedGroup.combinedCapacity ? 'error.main' : 'success.main' }}>
-                                        Total Capacity: {mergedGroup.combinedCapacity} Guests {mergedGroup.isPending && '(Pending Merge)'}
+                                        ))}
+                                        <Box sx={{ flexGrow: 1 }} />
+                                        <Typography variant="caption" sx={{ fontWeight: 700, color: guestCount > mergedGroup.combinedCapacity ? 'error.main' : 'success.main' }}>
+                                            Total Capacity: {mergedGroup.combinedCapacity} Guests {mergedGroup.isPending && '(Pending Merge)'}
+                                        </Typography>
+                                    </Stack>
+                                </Box>
+                                {guestCount > mergedGroup.combinedCapacity && (
+                                    <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block', fontWeight: 'bold' }}>
+                                        ⚠️ Guest count exceeds combined table capacity!
                                     </Typography>
-                                </Stack>
+                                )}
                             </Box>
-                            {guestCount > mergedGroup.combinedCapacity && (
-                                <Typography variant="caption" color="error" sx={{ mt: 0.5, display: 'block', fontWeight: 'bold' }}>
-                                    ⚠️ Guest count exceeds combined table capacity!
-                                </Typography>
-                            )}
-                        </Box>
-                    )}
-                </Box>
-            )}
+                        )}
+                    </Box>
+                )}
 
-            {/* Delivery address */}
-            {orderType === 'delivery' && (
-                <Box sx={{ mb: 2 }}>
-                    <AddressAutocomplete
-                        label="Delivery Address"
-                        value={deliveryAddress.fullAddress || ''}
-                        onChange={(val) => setDeliveryAddress({ ...deliveryAddress, fullAddress: val })}
-                        onSelect={(addr: any) => setDeliveryAddress({
-                            ...deliveryAddress,
-                            ...addr,
-                            pincode: addr.zipCode
-                        })}
-                        apiKey={(import.meta.env as any).VITE_GOOGLE_MAPS_API_KEY}
-                    />
-                    {checkingDistance && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
-                            <CircularProgress size={16} />
-                            <Typography variant="caption" color="text.secondary">Checking delivery radius...</Typography>
-                        </Box>
-                    )}
-                </Box>
-            )}
+                {/* Delivery address */}
+                {orderType === 'delivery' && (
+                    <Box sx={{ mb: 2 }}>
+                        <AddressAutocomplete
+                            label="Delivery Address"
+                            value={deliveryAddress.fullAddress || ''}
+                            onChange={(val) => setDeliveryAddress({ ...deliveryAddress, fullAddress: val })}
+                            onSelect={(addr: any) => setDeliveryAddress({
+                                ...deliveryAddress,
+                                ...addr,
+                                pincode: addr.zipCode
+                            })}
+                            apiKey={(import.meta.env as any).VITE_GOOGLE_MAPS_API_KEY}
+                        />
+                        {checkingDistance && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 1 }}>
+                                <CircularProgress size={16} />
+                                <Typography variant="caption" color="text.secondary">Checking delivery radius...</Typography>
+                            </Box>
+                        )}
+                    </Box>
+                )}
             </Box>
         </Box>
     );

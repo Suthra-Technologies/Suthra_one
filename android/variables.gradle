@@ -1,7 +1,7 @@
 ext {
-    minSdkVersion = 23 // Android 6.0+ (Includes Android 10 API 29)
+    minSdkVersion = 24 // Android 7.0+ (Required by ioncamera)
     compileSdkVersion = 35
-    targetSdkVersion = 34
+    targetSdkVersion = 35
     androidxActivityVersion = '1.8.0'
     androidxAppCompatVersion = '1.6.1'
     androidxCoordinatorLayoutVersion = '1.2.0'

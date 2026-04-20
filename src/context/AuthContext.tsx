@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
-import axios from 'axios';
+import api from '../services/api';
 import { getTenantUrl } from '../utils/tenant.utils';
 
 // JWT payload shape
@@ -76,6 +76,7 @@ interface AuthContextProps {
   getUserFullName: () => string;
   isAuthenticated: boolean;
   updateUserData: (data: Partial<JwtPayload>) => void;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextProps | undefined>(undefined);
@@ -91,8 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
   const login = async (credentials: { email: string; password: string; tenantSlug?: string }): Promise<LoginResponse> => {
     try {
       console.log('AuthContext: Attempting login with', credentials.email, credentials.tenantSlug);
-      const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5006'}/api`;
-      const response = await axios.post(`${API_BASE}/auth/login`, credentials);
+      const response = await api.post('/auth/login', credentials);
       console.log('AuthContext: Login response received', response.data);
 
       if (response.data && response.data.token) {
@@ -191,10 +191,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
 
     try {
       setIsLoading(true);
-      const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5006'}/api`;
+     
+ const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5006'}/api`;
+
       // Use the current token to authorize the switch
-      const response = await axios.post(
-        `${API_BASE}/auth/switch-tenant`,
+      const response = await api.post(
+        '/auth/switch-tenant',
         { targetTenantSlug: slug },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -260,6 +262,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
     const updatedUser = { ...user, ...data };
     setUser(updatedUser);
     localStorage.setItem('user', JSON.stringify(updatedUser));
+  };
+
+  const refreshProfile = async () => {
+    try {
+      const { authAPI } = await import('../services/api');
+      const response = await authAPI.getProfile();
+      const userData = response.data;
+      
+      setUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+      console.log('AuthContext: Profile refreshed');
+    } catch (err) {
+      console.error('AuthContext: refreshProfile failed', err);
+    }
   };
 
   // Load persisted token on mount if not using initialUser
@@ -338,6 +354,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
         localStorage.removeItem('tenantSlug');
         localStorage.removeItem('user');
       }
+      
+      // Attempt to refresh profile to get full user data (savedAddresses, etc.)
+      refreshProfile();
     }
     setIsLoading(false);
   }, [initialUser]);
@@ -348,7 +367,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
         token, user, activeRole, availableTenants,
         login, logout, isLoading, hasPermission, hasRole,
         switchRole, switchTenant, tenantSlug, getUserFullName,
-        isAuthenticated: !!token, updateUserData
+        isAuthenticated: !!token, updateUserData, refreshProfile
       }}
     >
       {children}

@@ -4,11 +4,11 @@
    * OR overridden at runtime by BrandContext for the multi-tenant SaaS.
    * Components should use these variables for all brand-sensitive colors.
    * ──────────────────────────────────────────────────────────────── */
-  --brand-primary:   #4F46E5;
-  --brand-secondary: #EC4899;
-  --brand-accent:    #10B981;
-  --brand-splash-bg: #0f172a;
-  --brand-name:      "Nexzen Restaurant POS";
+  --brand-primary:   #9C27B0;
+  --brand-secondary: #E91E63;
+  --brand-accent:    #FF9800;
+  --brand-splash-bg: #1a0027;
+  --brand-name:      "Nexzen POS";
   --brand-font:      "Inter";
 
   font-family: var(--brand-font, "Inter"), system-ui, Avenir, Helvetica, Arial, sans-serif;

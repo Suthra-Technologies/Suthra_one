@@ -27,6 +27,7 @@ import {
     Dashboard as DashboardIcon,
     Receipt as ReceiptIcon,
     Menu as MenuIcon,
+    LocalShipping as DeliveryIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 
@@ -62,6 +63,7 @@ const SuperAdminLayout: React.FC = () => {
         { path: '/superadmin/tenants', label: 'Manage Tenants', icon: <StoreIcon /> },
         { path: '/superadmin/plans', label: 'Subscription Plans', icon: <PlansIcon /> },
         { path: '/superadmin/invoices', label: 'Invoices', icon: <ReceiptIcon /> },
+        { path: '/superadmin/delivery-reports', label: 'Delivery Reports', icon: <DeliveryIcon /> },
         { path: '/superadmin/tickets', label: 'Support Tickets', icon: <SupportIcon /> },
     ];
 

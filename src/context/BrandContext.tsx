@@ -13,6 +13,7 @@
  */
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import axios from 'axios';
+import { tenantAPI } from '../services/api';
 import { BRAND_CONFIG } from '../config/brandConfig';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -49,7 +50,7 @@ const defaultBranding: BrandingData = {
 const BrandContext = createContext<BrandContextType>({
   branding: defaultBranding,
   brandLoaded: false,
-  applyBranding: () => {},
+  applyBranding: () => { },
 });
 
 export const useBrand = () => useContext(BrandContext);
@@ -58,12 +59,12 @@ export const useBrand = () => useContext(BrandContext);
 
 function applyCSSVariables(data: BrandingData) {
   const root = document.documentElement;
-  if (data.primaryColor)   root.style.setProperty('--brand-primary', data.primaryColor);
+  if (data.primaryColor) root.style.setProperty('--brand-primary', data.primaryColor);
   if (data.secondaryColor) root.style.setProperty('--brand-secondary', data.secondaryColor);
-  if (data.accentColor)    root.style.setProperty('--brand-accent', data.accentColor);
-  if (data.splashBg)       root.style.setProperty('--brand-splash-bg', data.splashBg);
-  if (data.appName)        root.style.setProperty('--brand-name', `"${data.appName}"`);
-  if (data.fontFamily)     root.style.setProperty('--brand-font', `"${data.fontFamily}"`);
+  if (data.accentColor) root.style.setProperty('--brand-accent', data.accentColor);
+  if (data.splashBg) root.style.setProperty('--brand-splash-bg', data.splashBg);
+  if (data.appName) root.style.setProperty('--brand-name', `"${data.appName}"`);
+  if (data.fontFamily) root.style.setProperty('--brand-font', `"${data.fontFamily}"`);
 }
 
 // ── Provider ───────────────────────────────────────────────────────────────
@@ -93,9 +94,9 @@ export const BrandProvider: React.FC<BrandProviderProps> = ({ children, tenantSl
 
     const fetchBranding = async () => {
       try {
-        const apiBase = BRAND_CONFIG.apiBaseUrl;
+        const apiBase = BRAND_CONFIG.apiBaseUrl.replace(/\/api\/?$/, '');
         const { data } = await axios.get<BrandingData>(
-          `${apiBase}/tenants/${slug}/branding`,
+          `${apiBase}/api/tenants/${slug}/branding`,
           { timeout: 5000 }
         );
 
