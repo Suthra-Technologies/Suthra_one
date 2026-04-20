@@ -1327,7 +1327,7 @@ const HomePage: React.FC = () => {
                 outline: "none",
               }}
             >
-              <source src="/flow-video.mp4" type="video/mp4" />
+              <source src="https://s3.amazonaws.com/stage-eventcrux-images.com/uploads/1776670857839_pos.mp4" type="video/mp4" />
               Your browser does not support the video tag.
             </video>
           </Box>
