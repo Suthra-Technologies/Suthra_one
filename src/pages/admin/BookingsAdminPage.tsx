@@ -1,62 +1,60 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import {
+    CheckCircle as ApproveIcon,
+    Add as BookIcon,
+    Close,
+    Info as InfoIcon,
+    ViewList as ListIcon,
+    RestaurantMenu as OrderIcon,
+    Refresh as RefreshIcon,
+    Cancel as RejectIcon,
+    Timeline as TimelineIcon
+} from '@mui/icons-material';
 import {
     Box,
-    Typography,
+    Button,
+    Card,
+    CardActionArea,
+    CardContent,
+    Chip,
+    CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    Divider,
+    FormControl,
+    Grid,
+    IconButton,
+    InputLabel,
+    MenuItem,
     Paper,
+    Select,
+    Stack,
+    Tab,
     Table,
     TableBody,
     TableCell,
     TableContainer,
     TableHead,
+    TablePagination,
     TableRow,
-    Chip,
-    IconButton,
-    Tooltip,
-    CircularProgress,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    Button,
-    TextField,
     Tabs,
-    Tab,
-    Grid,
-    Select,
-    MenuItem,
-    FormControl,
-    InputLabel,
-    Alert,
-    useTheme,
+    TextField,
+    Tooltip,
+    Typography,
     useMediaQuery,
-    Card,
-    CardContent,
-    CardActionArea,
-    Divider,
-    Stack,
-    TablePagination
+    useTheme
 } from '@mui/material';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-    CheckCircle as ApproveIcon,
-    Cancel as RejectIcon,
-    Info as InfoIcon,
-    Refresh as RefreshIcon,
-    ViewList as ListIcon,
-    Timeline as TimelineIcon,
-    Event as EventIcon,
-    Add as BookIcon,
-    RestaurantMenu as OrderIcon,
-    Close
-} from '@mui/icons-material';
 
-import { bookingsAPI, tablesAPI } from '../../services/api';
+import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { toast } from 'react-hot-toast';
+import PhoneInput from 'src/components/PhoneInput';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
-import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import PhoneInput from 'src/components/PhoneInput';
+import { bookingsAPI, tablesAPI } from '../../services/api';
 
 const BookingsAdminPage: React.FC = () => {
     const navigate = useNavigate();

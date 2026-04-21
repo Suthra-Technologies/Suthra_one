@@ -106,12 +106,12 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color = 
         {icon}
       </Box>
 
-      <CardContent sx={{ position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+      <CardContent sx={{ position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
         <Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: { xs: 1, sm: 2 } }}>
             <Box
               sx={{
-                p: 1.5,
+                p: { xs: 1, sm: 1.5 },
                 borderRadius: '16px',
                 bgcolor: alpha(themeColor, 0.1),
                 color: themeColor,
@@ -133,7 +133,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color = 
             )}
           </Box>
 
-          <Typography variant="body2" fontWeight="600" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 1.2, mb: 1 }}>
+          <Typography variant="body2" fontWeight="600" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: { xs: 0.5, sm: 1.2 }, mb: { xs: 0.5, sm: 1 }, fontSize: { xs: '0.65rem', sm: '0.875rem' }, lineHeight: 1.2 }}>
             {title}
           </Typography>
 
@@ -144,7 +144,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color = 
               background: `linear-gradient(45deg, ${themeColor}, ${alpha(themeColor, 0.7)})`,
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
-              fontSize: { xs: '2rem', lg: '2.5rem' },
+              fontSize: { xs: '1.5rem', sm: '2rem', lg: '2.5rem' },
               mb: 1
             }}
           >
@@ -153,7 +153,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color = 
         </Box>
 
         {subtitle && (
-          <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: { xs: '0.65rem', sm: '0.875rem' }, mt: { xs: 0.5, sm: 0 } }}>
             {subtitle}
           </Typography>
         )}
@@ -600,7 +600,7 @@ const DashboardPage: React.FC = () => {
 
       {/* Main Stats Grid */}
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={4} lg={3} xl={3}>
+        <Grid item xs={6} sm={6} md={4} lg={3} xl={3}>
           {/* Today's / Week / Month Sales */}
           <StatCard
             title={
@@ -618,7 +618,7 @@ const DashboardPage: React.FC = () => {
 
         </Grid>
 
-        <Grid item xs={12} sm={6} md={4} lg={3} xl={3}>
+        <Grid item xs={6} sm={6} md={4} lg={3} xl={3}>
 
           <StatCard
             title="Total Orders"
@@ -630,7 +630,7 @@ const DashboardPage: React.FC = () => {
 
         </Grid>
 
-        <Grid item xs={12} sm={6} md={4} lg={3} xl={3}>
+        <Grid item xs={6} sm={6} md={4} lg={3} xl={3}>
           <StatCard
             title="Table Occupancy"
             value={`${dashboardData?.tables?.occupied || 0}/${dashboardData?.tables?.total || 0}`}
@@ -639,16 +639,10 @@ const DashboardPage: React.FC = () => {
             subtitle="Current status"
           />
         </Grid>
-      </Grid>
-
-      {/* Feature Status Grid */}
-      <Typography variant="h6" gutterBottom sx={{ mb: 2, fontWeight: 600, color: 'text.secondary' }}>
-        Operations Overview
-      </Typography>
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+        {/* The two grids have been merged to allow seamless wrapping */}
 
         {/* Inventory Status */}
-        <Grid item xs={12} sm={6} md={3} lg={3} xl={2.4}>
+        <Grid item xs={6} sm={6} md={3} lg={3} xl={2.4}>
           <StatCard
             title="Inventory Items"
             value={inventoryCount}
@@ -659,7 +653,7 @@ const DashboardPage: React.FC = () => {
         </Grid>
 
         {/* Purchase Orders */}
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3} sx={{ display: { xs: 'none', sm: 'block' } }}>
           <StatCard
             title="Pending POs"
             value={pendingPOs}
@@ -670,7 +664,7 @@ const DashboardPage: React.FC = () => {
         </Grid>
 
         {/* Bookings */}
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <StatCard
             title="Today's Bookings"
             value={activeBookings}
@@ -681,7 +675,7 @@ const DashboardPage: React.FC = () => {
         </Grid>
 
         {/* Kitchen Orders */}
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={6} sm={6} md={3}>
           <StatCard
             title="Kitchen Orders"
             value={dashboardData?.kitchenOrders || 0}

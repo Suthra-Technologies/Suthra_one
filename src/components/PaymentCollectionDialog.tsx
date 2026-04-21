@@ -2,13 +2,15 @@ import {
     CreditCard as CardIcon,
     AccountBalanceWallet as CashIcon,
     Close as CloseIcon,
-    Smartphone as SmartphoneIcon,
-    Delete as DeleteIcon
+    Delete as DeleteIcon,
+    Smartphone as SmartphoneIcon
 } from '@mui/icons-material';
 import {
     Alert,
     Box,
     Button,
+    Chip,
+    CircularProgress,
     Dialog,
     DialogActions,
     DialogContent,
@@ -18,21 +20,21 @@ import {
     FormControlLabel,
     FormLabel,
     IconButton,
+    List,
+    ListItem,
+    ListItemSecondaryAction,
+    ListItemText,
     Paper,
     Radio,
     RadioGroup,
-    Typography,
     Stack,
     TextField,
-    List,
-    ListItem,
-    ListItemText,
-    ListItemSecondaryAction
+    Typography
 } from '@mui/material';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { ordersAPI } from '../services/api';
 import { useSettings } from '../context/SettingsContext';
+import { ordersAPI, rewardsAPI } from '../services/api';
 import PaymentModal from './PaymentModal';
 
 interface PaymentCollectionDialogProps {
@@ -72,12 +74,18 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
     const [loading, setLoading] = useState(false);
     const [stripeModalOpen, setStripeModalOpen] = useState(false);
     const [tipPercent, setTipPercent] = useState<number>(0);
+
+    // Rewards state
+    const [rewardPointsInfo, setRewardPointsInfo] = useState<any>(null);
+    const [pointsToRedeem, setPointsToRedeem] = useState<number>(0);
+    const [isFetchingRewards, setIsFetchingRewards] = useState(false);
+    const [isApplyingRewards, setIsApplyingRewards] = useState(false);
     const totalAmount = order?.totalAmount || 0;
-    
+
     const totalPaid = (order?.payments || [])
         .filter((p: any) => p.status === 'success' || !p.status)
         .reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
-    
+
     const baseAmount = order ? (order.totalAmount - (order.tip || 0)) : 0;
     const targetTipAmount = (baseAmount * tipPercent) / 100;
     const pendingTipAmount = Math.max(0, targetTipAmount - (order?.tip || 0));
@@ -91,6 +99,28 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
         if (initialOrder && open) {
             setOrder(initialOrder);
             setTipPercent(0);
+
+            // Check for customer and fetch rewards
+            const fetchRewards = async () => {
+                const customer = initialOrder.customer;
+                const searchStr = customer?.phone || customer?.email;
+                if (searchStr) {
+                    try {
+                        setIsFetchingRewards(true);
+                        const res = await rewardsAPI.getCustomerInfo(searchStr);
+                        setRewardPointsInfo(res.data);
+                        // If order already has points used, pre-fill them
+                        if (initialOrder.loyaltyPoints?.pointsUsed) {
+                            setPointsToRedeem(initialOrder.loyaltyPoints.pointsUsed);
+                        }
+                    } catch (err) {
+                        console.error('Failed to fetch rewards:', err);
+                    } finally {
+                        setIsFetchingRewards(false);
+                    }
+                }
+            };
+            fetchRewards();
         }
     }, [initialOrder, open]);
 
@@ -111,7 +141,7 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
             toast.error('Invalid payment amount. Must not exceed remaining balance.');
             return;
         }
- const isFullyPaid = amt >= amountDue - 0.01;
+        const isFullyPaid = amt >= amountDue - 0.01;
         setLoading(true);
         try {
             const res = await ordersAPI.addPaymentSplit(order._id, {
@@ -157,6 +187,26 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
             toast.error('Failed to remove payment');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleApplyRewards = async () => {
+        if (!rewardPointsInfo) return;
+
+        setIsApplyingRewards(true);
+        try {
+            const res = await (ordersAPI as any).update(order._id, {
+                loyaltyPoints: {
+                    pointsUsed: pointsToRedeem
+                }
+            });
+            toast.success('Reward points applied!');
+            setOrder(res.data);
+        } catch (err: any) {
+            console.error('Failed to apply rewards:', err);
+            toast.error(err.response?.data?.message || 'Failed to apply rewards');
+        } finally {
+            setIsApplyingRewards(false);
         }
     };
 
@@ -285,6 +335,79 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
                                     </Typography>
                                 )}
                             </Box>
+
+                            {/* Reward Points Section */}
+                            {(rewardPointsInfo || isFetchingRewards) && (
+                                <Box sx={{
+                                    mb: 3,
+                                    p: 2,
+                                    bgcolor: 'rgba(25, 118, 210, 0.04)',
+                                    borderRadius: 2,
+                                    border: '1px dashed',
+                                    borderColor: 'primary.main'
+                                }}>
+                                    {isFetchingRewards ? (
+                                        <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">
+                                            <CircularProgress size={16} />
+                                            <Typography variant="body2">Fetching customer rewards...</Typography>
+                                        </Stack>
+                                    ) : (
+                                        <Box>
+                                            <Typography variant="subtitle2" fontWeight="bold" color="primary" gutterBottom>
+                                                Redeem Reward Points
+                                            </Typography>
+                                            <Stack direction="row" spacing={2} alignItems="flex-start">
+                                                <Box sx={{ flexGrow: 1 }}>
+                                                    <Typography variant="body2">
+                                                        Balance: <strong>{rewardPointsInfo.points || 0} pts</strong>
+                                                        <Chip
+                                                            label={`$${rewardPointsInfo.dollarValue || 0} Value`}
+                                                            size="small"
+                                                            color="success"
+                                                            variant="outlined"
+                                                            sx={{ height: 18, ml: 1, fontSize: '0.6rem' }}
+                                                        />
+                                                    </Typography>
+                                                    <TextField
+                                                        margin="dense"
+                                                        label="Points to Redeem"
+                                                        type="number"
+                                                        size="small"
+                                                        fullWidth
+                                                        value={pointsToRedeem || ''}
+                                                        onChange={(e) => setPointsToRedeem(Math.max(0, parseInt(e.target.value) || 0))}
+                                                        inputProps={{ min: 0, max: rewardPointsInfo.points }}
+                                                        disabled={rewardPointsInfo.points === 0 || (rewardPointsInfo.points < (rewardPointsInfo.settings?.minPointsToRedeem || 0))}
+                                                    />
+                                                    {rewardPointsInfo.settings?.minPointsToRedeem > 0 && (
+                                                        <Typography variant="caption" color="text.secondary">
+                                                            Min. {rewardPointsInfo.settings.minPointsToRedeem} pts required.
+                                                        </Typography>
+                                                    )}
+                                                </Box>
+                                                <Stack spacing={1}>
+                                                    <Button
+                                                        variant="outlined"
+                                                        size="small"
+                                                        onClick={() => setPointsToRedeem(rewardPointsInfo.points)}
+                                                        disabled={rewardPointsInfo.points === 0}
+                                                    >
+                                                        Max
+                                                    </Button>
+                                                    <Button
+                                                        variant="contained"
+                                                        size="small"
+                                                        onClick={handleApplyRewards}
+                                                        disabled={isApplyingRewards || pointsToRedeem < 0}
+                                                    >
+                                                        {isApplyingRewards ? '...' : 'Apply'}
+                                                    </Button>
+                                                </Stack>
+                                            </Stack>
+                                        </Box>
+                                    )}
+                                </Box>
+                            )}
 
                             <Box sx={{ mb: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
                                 <TextField

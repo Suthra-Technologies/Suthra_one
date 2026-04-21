@@ -1361,7 +1361,17 @@ const SettingsPage: React.FC = () => {
 
     return (
         <Box>
-            <Typography variant="h4" gutterBottom sx={{ mb: 3, textAlign: { xs: 'center', sm: 'left' } }}>
+            <Typography 
+                variant="h4" 
+                gutterBottom 
+                sx={{ 
+                    mb: { xs: 2, sm: 3 }, 
+                    textAlign: { xs: 'center', md: 'left' },
+                    fontSize: { xs: '1.45rem', sm: '2.125rem' },
+                    fontWeight: 'bold',
+                    color: { xs: '#000', sm: 'inherit' }
+                }}
+            >
                 Settings
             </Typography>
 
@@ -3715,7 +3725,7 @@ const SettingsPage: React.FC = () => {
                                         <Typography variant="subtitle2" sx={{ mb: 2 }}>Bonuses</Typography>
                                     </Grid>
 
-                                    <Grid size={{ xs: 12, md: 6 }}>
+                                    <Grid size={{ xs: 12, md: 4 }}>
                                         <TextField
                                             fullWidth
                                             type="number"
@@ -3726,7 +3736,7 @@ const SettingsPage: React.FC = () => {
                                             helperText="Points given on sign up"
                                         />
                                     </Grid>
-                                    <Grid size={{ xs: 12, md: 6 }}>
+                                    <Grid size={{ xs: 12, md: 4 }}>
                                         <TextField
                                             fullWidth
                                             type="number"
@@ -3734,6 +3744,17 @@ const SettingsPage: React.FC = () => {
                                             value={settings.rewards?.firstOrderBonus ?? 0}
                                             onChange={(e) => handleInputChange('rewards', 'firstOrderBonus', Number(e.target.value))}
                                             slotProps={{ htmlInput: { min: 0 } }}
+                                        />
+                                    </Grid>
+                                    <Grid size={{ xs: 12, md: 4 }}>
+                                        <TextField
+                                            fullWidth
+                                            type="number"
+                                            label="Feedback/Rating Bonus"
+                                            value={settings.rewards?.pointsPerRating ?? 0}
+                                            onChange={(e) => handleInputChange('rewards', 'pointsPerRating', Number(e.target.value))}
+                                            slotProps={{ htmlInput: { min: 0 } }}
+                                            helperText="Points per submitted rating"
                                         />
                                     </Grid>
 

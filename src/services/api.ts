@@ -201,10 +201,18 @@ export const ordersAPI = {
   createStripeCheckout: (orderId: string) => api.post(`/orders/${orderId}/checkout`),
   confirmStripeCheckout: (orderId: string, sessionId: string) => api.post(`/orders/${orderId}/confirm-payment`, { sessionId }),
   updateLocation: (id: string, lat: number, lng: number) => api.patch(`/orders/${id}/location`, { lat, lng }),
+  syncUberEatsStatus: (orderId: string) => api.post(`/ubereats/sync/${orderId}`),
+  confirmStripeCheckout: (orderId: string, sessionId: string) => api.post(`/orders/${orderId}/confirm-payment`, { sessionId }),
+  updateLocation: (id: string, lat: number, lng: number) => api.patch(`/orders/${id}/location`, { lat, lng }),
   syncDoordashStatus: (orderId: string) => api.post(`/doordash/sync/${orderId}`),
   syncUberEatsStatus: (orderId: string) => api.post(`/ubereats/sync/${orderId}`),
   dispatchUberEatsDelivery: (orderId: string) => api.post(`/ubereats/dispatch/${orderId}`),
   simulateUberEatsStatus: (orderId: string, status: string) => api.post(`/ubereats/simulate/${orderId}`, { status }),
+};
+
+// -------------------- Rewards API --------------------
+export const rewardsAPI = {
+  getCustomerInfo: (search: string) => api.get('/orders/rewards/customer-info', { params: { search } }),
 };
 
 // -------------------- Attendance API --------------------

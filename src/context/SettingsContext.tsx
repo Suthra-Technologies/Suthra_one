@@ -172,6 +172,7 @@ export interface RewardSettings {
     firstOrderBonus: number;
     minPointsToRedeem: number;
     maxRedemptionPercentage: number;
+    pointsPerRating: number;
 }
 
 export interface SettingsState {
@@ -303,6 +304,7 @@ const defaultSettings: SettingsState = {
         firstOrderBonus: 0,
         minPointsToRedeem: 100,
         maxRedemptionPercentage: 100,
+        pointsPerRating: 0,
     },
     delivery: {
         doordash: {

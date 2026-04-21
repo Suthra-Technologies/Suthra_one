@@ -637,13 +637,24 @@ const TablesPage: React.FC = () => {
 
     return (
         <Box>
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: 'center', mb: 3, gap: 2 }}>
-                <Typography variant="h4" sx={{ 
-                    fontSize: { xs: '1.25rem', sm: '2.125rem' }, 
-                    fontWeight: 800,
-                    width: { xs: '100%', sm: 'auto' },
-                    textAlign: { xs: 'center', sm: 'left' }
-                }}>
+            <Box sx={{ 
+                display: 'flex', 
+                flexDirection: { xs: 'column', sm: 'row' }, 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                mb: { xs: 2, sm: 3 }, 
+                gap: 2 
+            }}>
+                <Typography 
+                    variant="h4" 
+                    sx={{ 
+                        fontSize: { xs: '1.45rem', sm: '2.125rem' }, 
+                        fontWeight: 800,
+                        width: { xs: '100%', sm: 'auto' },
+                        textAlign: { xs: 'center', sm: 'left' },
+                        color: { xs: '#000', sm: 'inherit' }
+                    }}
+                >
                     Table Management
                 </Typography>
                 <Stack direction="row" spacing={1} sx={{ width: { xs: '100%', sm: 'auto' }, justifyContent: 'center' }}>
@@ -767,16 +778,23 @@ const TablesPage: React.FC = () => {
                         </Typography>
                     </Paper>
                 ) : (
-                    <Grid container spacing={3}>
+                    <Grid container spacing={{ xs: 1.5, sm: 3 }}>
                         {filteredTables.map((table) => (
-                            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={table._id}>
+                            <Grid size={{ xs: 6, sm: 6, md: 4, lg: 3 }} key={table._id}>
                                 <Card sx={{
                                     position: 'relative',
-                                    borderLeft: `4px solid`,
-                                    borderLeftColor: `${getStatusColor(table.status)}.main`,
+                                    borderRadius: { xs: 3, sm: 4 },
+                                    overflow: 'hidden',
+                                    boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                                    border: '1px solid',
+                                    borderColor: 'divider',
                                     outline: selectionMode && selectedTableIds.includes(table._id) ? `3px solid ${theme.palette.secondary.main}` : 'none',
                                     opacity: selectionMode && !selectedTableIds.includes(table._id) && selectedTableIds.length > 0 ? 0.8 : 1,
-                                    transition: 'all 0.2s ease',
+                                    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                                    '&:hover': {
+                                        transform: 'translateY(-4px)',
+                                        boxShadow: '0 12px 30px rgba(0,0,0,0.12)'
+                                    },
                                     ...(table.isMerged && {
                                         '&::after': {
                                             content: '""',
@@ -786,27 +804,36 @@ const TablesPage: React.FC = () => {
                                             width: 0,
                                             height: 0,
                                             borderStyle: 'solid',
-                                            borderWidth: '0 40px 40px 0',
+                                            borderWidth: '0 30px 30px 0',
                                             borderColor: `transparent ${theme.palette.warning.main} transparent transparent`,
                                             zIndex: 2,
                                         }
                                     })
                                 }}>
+                                    <Box 
+                                        sx={{ 
+                                            position: 'absolute', 
+                                            top: 0, 
+                                            left: 0, 
+                                            bottom: 0, 
+                                            width: 4, 
+                                            bgcolor: `${getStatusColor(table.status)}.main` 
+                                        }} 
+                                    />
                                     <CardActionArea onClick={() => selectionMode ? handleToggleSelection(table._id) : handleOpenBooking(table)}>
-                                        <CardContent sx={{ textAlign: 'center', p: 0, pb: { xs: 0.5, sm: 1 } }}>
-                                            <Box sx={{ mb: { xs: 0.5, sm: 2 }, position: 'relative', width: '100%', mx: 0 }}>
+                                        <CardContent sx={{ textAlign: 'center', p: 0, pb: { xs: 1, sm: 1.5 } }}>
+                                            <Box sx={{ mb: { xs: 1, sm: 2 }, position: 'relative', width: '100%', mx: 0 }}>
                                                 <Box
                                                     component="img"
                                                     src={getTableImage(table.capacity)}
                                                     alt={`Table for ${table.capacity}`}
                                                     sx={{
                                                         width: '100%',
-                                                        height: { xs: 100, sm: 180 },
+                                                        height: { xs: 90, sm: 180 },
                                                         objectFit: 'cover',
                                                         opacity: table.status === 'occupied' ? 0.7 : 1,
                                                         filter: table.status === 'occupied' ? 'grayscale(50%)' : 'none',
                                                         transition: 'all 0.3s ease',
-                                                        borderRadius: '4px 4px 0 0'
                                                     }}
                                                 />
                                                 <Chip
@@ -816,35 +843,47 @@ const TablesPage: React.FC = () => {
                                                     size="small"
                                                     sx={{ 
                                                         position: 'absolute', 
-                                                        top: { xs: 4, sm: 10 }, 
-                                                        right: { xs: 4, sm: 10 }, 
+                                                        top: { xs: 6, sm: 10 }, 
+                                                        right: { xs: 6, sm: 10 }, 
                                                         zIndex: 1, 
-                                                        boxShadow: 1, 
-                                                        bgcolor: 'rgba(255,255,255,0.9)',
-                                                        fontSize: { xs: '0.6rem', sm: '0.75rem' },
-                                                        height: { xs: 18, sm: 24 }
+                                                        boxShadow: '0 2px 8px rgba(0,0,0,0.15)', 
+                                                        bgcolor: 'rgba(255,255,255,0.92)',
+                                                        backdropFilter: 'blur(4px)',
+                                                        fontSize: { xs: '0.55rem', sm: '0.75rem' },
+                                                        height: { xs: 18, sm: 24 },
+                                                        fontWeight: 'bold'
                                                     }}
                                                 />
                                             </Box>
-                                            <Typography variant="h5" sx={{ fontSize: { xs: '0.95rem', sm: '1.5rem' }, fontWeight: 800 }} gutterBottom>
+                                            <Typography 
+                                                variant="h5" 
+                                                sx={{ 
+                                                    fontSize: { xs: '0.85rem', sm: '1.5rem' }, 
+                                                    fontWeight: 800,
+                                                    px: 1,
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    whiteSpace: 'nowrap'
+                                                }} 
+                                                gutterBottom
+                                            >
                                                 {table.tableName || `Table ${table.tableNumber}`}
                                             </Typography>
-                                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
+                                            <Typography 
+                                                variant="body2" 
+                                                color="text.secondary" 
+                                                sx={{ 
+                                                    fontSize: { xs: '0.7rem', sm: '0.875rem' },
+                                                    px: 1
+                                                }}
+                                            >
                                                 Cap: {table.capacity} | {table.location}
                                             </Typography>
-                                            {table.isMerged && (
-                                                <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, color: 'warning.main' }}>
-                                                    <LinkIcon fontSize="inherit" />
-                                                    <Typography variant="caption" fontWeight="bold">
-                                                        MERGED WITH TABLE {tables.find(t => t._id === table.mergedWith)?.tableNumber || '?'}
-                                                    </Typography>
-                                                </Box>
-                                            )}
-                                            {table.isPrimary && (
-                                                <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, color: 'primary.main' }}>
-                                                    <LinkIcon fontSize="inherit" />
-                                                    <Typography variant="caption" fontWeight="bold">
-                                                        PRIMARY (LINKED)
+                                            {(table.isMerged || table.isPrimary) && (
+                                                <Box sx={{ mt: 0.5, px: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
+                                                    <LinkIcon sx={{ fontSize: { xs: 12, sm: 16 } }} color="warning" />
+                                                    <Typography variant="caption" fontWeight="bold" sx={{ fontSize: { xs: '0.6rem', sm: '0.75rem' } }}>
+                                                        {table.isPrimary ? 'PRIMARY' : 'MERGED'}
                                                     </Typography>
                                                 </Box>
                                             )}
@@ -1383,46 +1422,64 @@ const TablesPage: React.FC = () => {
                 anchorEl={anchorEl}
                 open={Boolean(anchorEl)}
                 onClose={handleCloseMenu}
+                PaperProps={{
+                    sx: {
+                        borderRadius: 2,
+                        minWidth: { xs: 160, sm: 200 },
+                        boxShadow: '0 8px 30px rgba(0,0,0,0.12)'
+                    }
+                }}
             >
-                <MenuItem onClick={() => menuTable && handleOpenBooking(menuTable)}>
-                    <ListItemIcon><BookIcon fontSize="small" /></ListItemIcon>
-                    <ListItemText>Book Table</ListItemText>
+                <MenuItem 
+                    onClick={() => menuTable && handleOpenBooking(menuTable)}
+                    sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
+                >
+                    <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
+                        <BookIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
+                    </ListItemIcon>
+                    <ListItemText 
+                        primary="Book Table" 
+                        primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }} 
+                    />
                 </MenuItem>
-                <MenuItem onClick={() => menuTable && handleEditTable(menuTable)}>
-                    <ListItemIcon><EditIcon fontSize="small" /></ListItemIcon>
-                    <ListItemText>Edit Table</ListItemText>
+                <MenuItem 
+                    onClick={() => menuTable && handleEditTable(menuTable)}
+                    sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
+                >
+                    <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
+                        <EditIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
+                    </ListItemIcon>
+                    <ListItemText 
+                        primary="Edit Table" 
+                        primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }} 
+                    />
                 </MenuItem>
                 {(menuTable?.isMerged || menuTable?.isPrimary) && (
-                    <MenuItem onClick={() => menuTable && handleUnmerge(menuTable)}>
-                        <ListItemIcon><LinkOffIcon fontSize="small" color="error" /></ListItemIcon>
-                        <ListItemText sx={{ color: 'error.main' }}>Unmerge Table(s)</ListItemText>
+                    <MenuItem 
+                        onClick={() => menuTable && handleUnmerge(menuTable)}
+                        sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
+                    >
+                        <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
+                            <LinkOffIcon sx={{ fontSize: { xs: 16, sm: 20 } }} color="error" />
+                        </ListItemIcon>
+                        <ListItemText 
+                            primary="Unmerge Table(s)" 
+                            primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, color: 'error.main', my: 0 } }} 
+                        />
                     </MenuItem>
                 )}
-                <Divider />
-                {/* <MenuItem onClick={() => menuTable && handleQuickStatusChange(menuTable._id, 'available')}>
-                    <ListItemIcon><AvailableIcon fontSize="small" color="success" /></ListItemIcon>
-                    <ListItemText>Set Available</ListItemText>
-                </MenuItem>
-                <MenuItem onClick={() => menuTable && handleQuickStatusChange(menuTable._id, 'occupied')}>
-                    <ListItemIcon><OccupiedIcon fontSize="small" color="error" /></ListItemIcon>
-                    <ListItemText>Set Occupied</ListItemText>
-                </MenuItem> */}
-                {/* <MenuItem onClick={() => menuTable && handleQuickStatusChange(menuTable._id, 'reserved')}>
-                    <ListItemIcon><ReservedIcon fontSize="small" color="warning" /></ListItemIcon>
-                    <ListItemText>Set Reserved</ListItemText>
-                </MenuItem>
-                <MenuItem onClick={() => menuTable && handleQuickStatusChange(menuTable._id, 'cleaning')}>
-                    <ListItemIcon><CleaningIcon fontSize="small" color="info" /></ListItemIcon>
-                    <ListItemText>Set Cleaning</ListItemText>
-                </MenuItem>
-                <MenuItem onClick={() => menuTable && handleQuickStatusChange(menuTable._id, 'out_of_order')}>
-                    <ListItemIcon><OutOfOrderIcon fontSize="small" /></ListItemIcon>
-                    <ListItemText>Set Out of Order</ListItemText>
-                </MenuItem>
-                <Divider /> */}
-                <MenuItem onClick={() => menuTable && handleDeleteTable(menuTable)} sx={{ color: 'error.main' }}>
-                    <ListItemIcon><DeleteIcon fontSize="small" color="error" /></ListItemIcon>
-                    <ListItemText>Delete Table</ListItemText>
+                <Divider sx={{ my: { xs: 0.25, sm: 1 } }} />
+                <MenuItem 
+                    onClick={() => menuTable && handleDeleteTable(menuTable)}
+                    sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 }, color: 'error.main' }}
+                >
+                    <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
+                        <DeleteIcon sx={{ fontSize: { xs: 16, sm: 20 } }} color="error" />
+                    </ListItemIcon>
+                    <ListItemText 
+                        primary="Delete Table" 
+                        primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, color: 'error.main', my: 0 } }} 
+                    />
                 </MenuItem>
             </Menu>
 

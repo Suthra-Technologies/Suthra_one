@@ -31,6 +31,7 @@ interface OrderDetailsSectionProps {
     tip: number;
     setTip: (val: number) => void;
     finalTotal: number;
+    rewardDiscount?: number;
     placingOrder: boolean;
     handlePlaceOrder: () => void;
 }
@@ -49,6 +50,7 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
     tip,
     setTip,
     finalTotal,
+    rewardDiscount = 0,
     placingOrder,
     handlePlaceOrder,
 }) => {
@@ -118,6 +120,12 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, color: 'success.main' }}>
                         <Typography variant="body2">Coupon</Typography>
                         <Typography variant="body2">-{formatSmartPrice(couponDiscount)}</Typography>
+                    </Box>
+                )}
+                {rewardDiscount > 0 && (
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, color: 'primary.main' }}>
+                        <Typography variant="body2">Reward Points</Typography>
+                        <Typography variant="body2">-{formatSmartPrice(rewardDiscount)}</Typography>
                     </Box>
                 )}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
