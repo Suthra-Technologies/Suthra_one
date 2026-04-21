@@ -876,44 +876,46 @@ const MenuPage: React.FC = () => {
                                     ) : undefined,
                                 }}
                             />
-                            <FormControl size="small" sx={{ minWidth: 200, maxWidth: 250 }}>
-                                <InputLabel>Category</InputLabel>
-                                <Select
-                                    value={selectedCategory}
-                                    onChange={(e) => {
-                                        setSelectedCategory(e.target.value);
-                                        setSelectedSubcategory('all');
-                                    }}
-                                    label="Category"
-                                >
-                                    <MenuItem value="all">All Categories</MenuItem>
-                                    {categories.map(cat => (
-                                        <MenuItem key={cat._id} value={cat._id}>
-                                            {cat.name}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-
-                            {selectedCategory !== 'all' && subcategories.some((subcategory) => getSubcategoryParentId(subcategory) === selectedCategory) && (
-                                <FormControl size="small" sx={{ minWidth: 180, maxWidth: 200 }}>
-                                    <InputLabel>Subcategory</InputLabel>
+                            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 1.5, alignItems: { xs: 'stretch', md: 'center' } }}>
+                                <FormControl size="small" sx={{ minWidth: 200, maxWidth: { xs: '100%', md: 250 } }}>
+                                    <InputLabel>Category</InputLabel>
                                     <Select
-                                        value={selectedSubcategory}
-                                        onChange={(e) => setSelectedSubcategory(e.target.value)}
-                                        label="Subcategory"
+                                        value={selectedCategory}
+                                        onChange={(e) => {
+                                            setSelectedCategory(e.target.value);
+                                            setSelectedSubcategory('all');
+                                        }}
+                                        label="Category"
                                     >
-                                        <MenuItem value="all">All Subcategories</MenuItem>
-                                        {subcategories
-                                            .filter((subcategory) => getSubcategoryParentId(subcategory) === selectedCategory)
-                                            .map((subcategory) => (
-                                                <MenuItem key={subcategory._id} value={subcategory._id}>
-                                                    {subcategory.name}
-                                                </MenuItem>
-                                            ))}
+                                        <MenuItem value="all">All Categories</MenuItem>
+                                        {categories.map(cat => (
+                                            <MenuItem key={cat._id} value={cat._id}>
+                                                {cat.name}
+                                            </MenuItem>
+                                        ))}
                                     </Select>
                                 </FormControl>
-                            )}
+
+                                {selectedCategory !== 'all' && subcategories.some((subcategory) => getSubcategoryParentId(subcategory) === selectedCategory) && (
+                                    <FormControl size="small" sx={{ minWidth: 180, maxWidth: { xs: '100%', md: 200 } }}>
+                                        <InputLabel>Subcategory</InputLabel>
+                                        <Select
+                                            value={selectedSubcategory}
+                                            onChange={(e) => setSelectedSubcategory(e.target.value)}
+                                            label="Subcategory"
+                                        >
+                                            <MenuItem value="all">All Subcategories</MenuItem>
+                                            {subcategories
+                                                .filter((subcategory) => getSubcategoryParentId(subcategory) === selectedCategory)
+                                                .map((subcategory) => (
+                                                    <MenuItem key={subcategory._id} value={subcategory._id}>
+                                                        {subcategory.name}
+                                                    </MenuItem>
+                                                ))}
+                                        </Select>
+                                    </FormControl>
+                                )}
+                            </Box>
 
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', flex: 1 }}>
                                 <Chip
