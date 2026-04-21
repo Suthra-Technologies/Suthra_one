@@ -3715,7 +3715,7 @@ const SettingsPage: React.FC = () => {
                                         <Typography variant="subtitle2" sx={{ mb: 2 }}>Bonuses</Typography>
                                     </Grid>
 
-                                    <Grid size={{ xs: 12, md: 6 }}>
+                                    <Grid size={{ xs: 12, md: 4 }}>
                                         <TextField
                                             fullWidth
                                             type="number"
@@ -3726,7 +3726,7 @@ const SettingsPage: React.FC = () => {
                                             helperText="Points given on sign up"
                                         />
                                     </Grid>
-                                    <Grid size={{ xs: 12, md: 6 }}>
+                                    <Grid size={{ xs: 12, md: 4 }}>
                                         <TextField
                                             fullWidth
                                             type="number"
@@ -3734,6 +3734,17 @@ const SettingsPage: React.FC = () => {
                                             value={settings.rewards?.firstOrderBonus ?? 0}
                                             onChange={(e) => handleInputChange('rewards', 'firstOrderBonus', Number(e.target.value))}
                                             slotProps={{ htmlInput: { min: 0 } }}
+                                        />
+                                    </Grid>
+                                    <Grid size={{ xs: 12, md: 4 }}>
+                                        <TextField
+                                            fullWidth
+                                            type="number"
+                                            label="Feedback/Rating Bonus"
+                                            value={settings.rewards?.pointsPerRating ?? 0}
+                                            onChange={(e) => handleInputChange('rewards', 'pointsPerRating', Number(e.target.value))}
+                                            slotProps={{ htmlInput: { min: 0 } }}
+                                            helperText="Points per submitted rating"
                                         />
                                     </Grid>
 

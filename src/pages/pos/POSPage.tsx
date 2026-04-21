@@ -10,57 +10,45 @@ import {
 } from '@mui/icons-material';
 import {
     Alert,
+    alpha,
     Box,
     Button,
     Card,
     CardActionArea,
     CardContent,
     CardMedia,
-    Checkbox,
     Chip,
     CircularProgress,
     Dialog,
     Divider,
-    FormControl,
-    FormControlLabel,
-    FormGroup,
     Grid,
     IconButton,
     InputAdornment,
-    InputLabel,
-    List,
     ListItem,
     ListItemText,
     MenuItem,
     Modal,
     Paper,
-    Radio,
-    RadioGroup,
-    Select,
     Slider,
     Tab,
     Tabs,
     TextField,
-    Typography,
-    alpha,
+    Typography
 } from '@mui/material';
 import type { AxiosError } from 'axios';
 import { format } from 'date-fns';
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useSearchParams } from "react-router-dom";
 import theme from 'src/theme/theme';
-import AddressAutocomplete from '../../components/AddressAutocomplete';
 import PaymentModal from '../../components/PaymentModal';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
-import { couponsAPI, menuAPI, ordersAPI, settingsAPI, tablesAPI, usersAPI, traysAPI, taxAPI } from '../../services/api';
+import { couponsAPI, menuAPI, ordersAPI, rewardsAPI, settingsAPI, tablesAPI, taxAPI, traysAPI, usersAPI } from '../../services/api';
 import { isWithinDeliveryRadius, METERS_PER_MILE } from '../../services/googleMapsService';
-import type { Category, Subcategory, IMenuItem } from '../menu/types';
-import MenuItemDialog from '../menu/components/MenuItemDialog';
 import CustomerInfoSection from './components/CustomerInfoSection';
-import OrderDetailsSection from './components/OrderDetailsSection';
 import MergeTablesDialog from './components/MergeTablesDialog';
+import OrderDetailsSection from './components/OrderDetailsSection';
 
 
 type Variant = {
@@ -238,6 +226,10 @@ const POSPage: React.FC = () => {
     const [availableCoupons, setAvailableCoupons] = useState<any[]>([]);
     const [couponCode, setCouponCode] = useState('');
     const [couponDiscount, setCouponDiscount] = useState(0);
+    const [rewardPointsInfo, setRewardPointsInfo] = useState<any>(null);
+    const [pointsToRedeem, setPointsToRedeem] = useState(0);
+    const [rewardDiscount, setRewardDiscount] = useState(0);
+    const [isFetchingRewards, setIsFetchingRewards] = useState(false);
 
     // Customer / order details
     const [customerName, setCustomerName] = useState('');
@@ -608,6 +600,45 @@ const POSPage: React.FC = () => {
             }
         }
     }, [couponCode, cart]);
+
+    // Fetch Reward Points Info
+    useEffect(() => {
+        const fetchRewards = async () => {
+            const searchStr = customerPhone?.length === 10
+                ? `+${customerDialCode}${customerPhone}`
+                : (customerEmail?.includes('@') ? customerEmail : '');
+
+            if (searchStr) {
+                try {
+                    setIsFetchingRewards(true);
+                    const res = await (rewardsAPI as any).getCustomerInfo(searchStr);
+                    setRewardPointsInfo(res.data);
+                } catch (err) {
+                    console.error("Failed to fetch rewards info", err);
+                } finally {
+                    setIsFetchingRewards(false);
+                }
+            } else {
+                setRewardPointsInfo(null);
+                setPointsToRedeem(0);
+                setRewardDiscount(0);
+            }
+        };
+
+        const timer = setTimeout(fetchRewards, 800);
+        return () => clearTimeout(timer);
+    }, [customerPhone, customerEmail, customerDialCode]);
+
+    // Calculate Reward Discount
+    useEffect(() => {
+        if (pointsToRedeem > 0 && rewardPointsInfo?.settings) {
+            const pointValue = Number(rewardPointsInfo.settings.pointValue) || 0;
+            setRewardDiscount(Number((pointsToRedeem * pointValue).toFixed(2)));
+        } else {
+            setRewardDiscount(0);
+        }
+    }, [pointsToRedeem, rewardPointsInfo]);
+
     const [searchParams, setSearchParams] = useSearchParams();
     const mode = searchParams.get("mode");   // 'edit' | null
     const orderId = searchParams.get("orderId");
@@ -628,6 +659,9 @@ const POSPage: React.FC = () => {
         setTableNumber("");
         setGuestCount(1);
         setWaiterName("");
+        setRewardPointsInfo(null);
+        setPointsToRedeem(0);
+        setRewardDiscount(0);
 
         setSelectedTable(null);   // ✅ important
         setCardPrintReceipt(false);
@@ -738,7 +772,7 @@ const POSPage: React.FC = () => {
             const urlGuestCount = searchParams.get("guestCount");
 
             setCustomerName(urlName || ord.customer?.name || '');
-            
+
             const rawPhone = urlPhone || ord.customer?.phone || '';
             const digits = rawPhone.replace(/\D/g, '');
             if (rawPhone.startsWith('+')) {
@@ -748,11 +782,11 @@ const POSPage: React.FC = () => {
                 setCustomerPhone(digits.slice(-10));
                 // Default dial code if not provided in phone string
                 if (!urlPhone && ord.customer?.phone && !ord.customer.phone.startsWith('+')) {
-                   // Keep current dial code or fallback to settings
+                    // Keep current dial code or fallback to settings
                 }
             }
             setCustomerEmail(urlEmail || ord.customer?.email || '');
-            
+
             if (urlGuestCount) {
                 const gCount = parseInt(urlGuestCount);
                 if (!isNaN(gCount) && gCount > 0) setGuestCount(gCount);
@@ -1031,8 +1065,8 @@ const POSPage: React.FC = () => {
         [orderType, guestCount, cartTotal]);
 
     const finalTotal = useMemo(() =>
-        cartTotal + taxAmount - discountAmount - couponDiscount + serviceChargeAmount + (Number(tip) || 0),
-        [cartTotal, taxAmount, discountAmount, couponDiscount, serviceChargeAmount, tip]);
+        cartTotal + taxAmount - discountAmount - couponDiscount + serviceChargeAmount + (Number(tip) || 0) - rewardDiscount,
+        [cartTotal, taxAmount, discountAmount, couponDiscount, serviceChargeAmount, tip, rewardDiscount]);
 
     const handlePlaceOrder = async () => {
         if (cart.length === 0) return;
@@ -1196,7 +1230,7 @@ const POSPage: React.FC = () => {
 
             // Calculate merged tables IDs
             // Use pending merges if available, otherwise use existing merges from the table object
-            const mergedTableIdsArray = pendingMergeSecondaryIds.length > 0 
+            const mergedTableIdsArray = pendingMergeSecondaryIds.length > 0
                 ? pendingMergeSecondaryIds
                 : (selectedTable?.isPrimary
                     ? tables.filter(t => t.mergedWith === selectedTable._id).map(t => t._id)
@@ -1233,6 +1267,10 @@ const POSPage: React.FC = () => {
                         signInForApiCall: cardSignInForApiCall,
                     },
                 }),
+                loyaltyPoints: {
+                    pointsUsed: pointsToRedeem,
+                },
+                rewardDiscount: rewardDiscount,
 
                 ...(orderType === "dine_in" && {
                     tableNumber: selectedTable?.isMerged
@@ -1516,6 +1554,11 @@ const POSPage: React.FC = () => {
                     setCustomerEmailTouched={setCustomerEmailTouched}
                     customerEmailError={customerEmailError}
                     setCustomerEmailError={setCustomerEmailError}
+                    rewardPointsInfo={rewardPointsInfo}
+                    pointsToRedeem={pointsToRedeem}
+                    setPointsToRedeem={setPointsToRedeem}
+                    isFetchingRewards={isFetchingRewards}
+                    cartTotal={cartTotal}
                     tableError={tableError}
                     setTableError={setTableError}
                     selectedTable={selectedTable}
@@ -1538,8 +1581,8 @@ const POSPage: React.FC = () => {
                 {/* Table Group Actions (Clear Pending Merge) */}
                 {pendingMergeSecondaryIds.length > 0 && (
                     <Box sx={{ mb: 2 }}>
-                        <Alert 
-                            severity="warning" 
+                        <Alert
+                            severity="warning"
                             action={
                                 <Button color="inherit" size="small" onClick={() => {
                                     setPendingMergeSecondaryIds([]);
@@ -2463,6 +2506,7 @@ const POSPage: React.FC = () => {
                     tip={tip}
                     setTip={setTip}
                     finalTotal={finalTotal}
+                    rewardDiscount={rewardDiscount}
                     placingOrder={placingOrder}
                     handlePlaceOrder={handlePlaceOrder}
                 />
@@ -2583,7 +2627,7 @@ const POSPage: React.FC = () => {
                 onSelect={(pid, sids) => {
                     setPendingPrimaryTableId(pid);
                     setPendingMergeSecondaryIds(sids);
-                    
+
                     const primary = tables.find(t => t._id === pid);
                     if (primary) {
                         setSelectedTable(primary);

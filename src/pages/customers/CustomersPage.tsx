@@ -1,43 +1,42 @@
-import React, { useState, useEffect } from 'react';
+import {
+    Event as DateIcon,
+    DeliveryDining as DeliveryIcon,
+    Restaurant as DineIcon,
+    AttachMoney as MoneyIcon,
+    Devices as OnlineIcon,
+    Person as PersonIcon,
+    Phone as PhoneIcon,
+    Receipt as ReceiptIcon,
+    Search as SearchIcon,
+    ShoppingBag as TakeawayIcon
+} from '@mui/icons-material';
 import {
     Box,
-    Typography,
+    Card,
+    CardContent,
+    Chip,
+    InputAdornment,
     Paper,
+    Stack,
     Table,
     TableBody,
     TableCell,
     TableContainer,
     TableHead,
+    TablePagination,
     TableRow,
     TextField,
-    InputAdornment,
-    Chip,
-    TablePagination,
-    alpha,
-    useTheme,
-    useMediaQuery,
     Tooltip,
-    Card,
-    CardContent,
-    Stack
+    Typography,
+    alpha,
+    useMediaQuery,
+    useTheme
 } from '@mui/material';
-import {
-    Search as SearchIcon,
-    Person as PersonIcon,
-    Phone as PhoneIcon,
-    Email as EmailIcon,
-    Receipt as ReceiptIcon,
-    AttachMoney as MoneyIcon,
-    Event as DateIcon,
-    Restaurant as DineIcon,
-    ShoppingBag as TakeawayIcon,
-    DeliveryDining as DeliveryIcon,
-    Devices as OnlineIcon
-} from '@mui/icons-material';
-import { customersAPI } from '../../services/api';
-import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
+import React, { useEffect, useState } from 'react';
+import { toast } from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
+import { customersAPI } from '../../services/api';
 
 interface Customer {
     name?: string;
