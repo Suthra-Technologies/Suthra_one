@@ -154,7 +154,7 @@ const AppRoutes: React.FC = () => {
   return (
     <Routes>
       {/* Public routes (no layout, no slug) */}
-      <Route path="/" element={<HomePage />} />
+      <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/register" element={<RestaurantRegisterPage />} />

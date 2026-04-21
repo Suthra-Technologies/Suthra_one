@@ -52,13 +52,13 @@
     "vite": "^6.0.0"
   },
   "dependencies": {
-    "@capacitor-mlkit/barcode-scanning": "^8.0.0",
     "@capacitor/browser": "^6.0.0",
-    "@capacitor/camera": "^8.0.0",
+    "@capacitor/ios": "^6.2.1",
+    "@capacitor-mlkit/barcode-scanning": "^6.0.0",
+    "@capacitor/camera": "^6.0.0",
     "@capacitor/core": "^6.2.1",
-    "@capacitor/ios": "^8.0.2",
     "@capacitor/local-notifications": "^6.0.0",
-    "@capacitor/push-notifications": "^8.0.0",
+    "@capacitor/push-notifications": "^6.0.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^6.1.0",

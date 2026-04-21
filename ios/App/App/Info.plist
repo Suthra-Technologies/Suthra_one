@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-        <string>Nexzen POS</string>
+	<string>Nexzen POS</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -45,5 +45,17 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>We need access to the camera to scan product barcodes and capture receipt photos.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>We need access to your photo library to allow you to upload images for your profile and menu items.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>We need access to your photo library to save downloaded receipts or captures.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>We need access to your microphone in case you wish to record video or audio to attach to your receipts.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>We need access to your location to help you securely process localized transactions.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>
