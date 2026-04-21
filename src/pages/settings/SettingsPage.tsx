@@ -1361,7 +1361,17 @@ const SettingsPage: React.FC = () => {
 
     return (
         <Box>
-            <Typography variant="h4" gutterBottom sx={{ mb: 3, textAlign: { xs: 'center', sm: 'left' } }}>
+            <Typography 
+                variant="h4" 
+                gutterBottom 
+                sx={{ 
+                    mb: { xs: 2, sm: 3 }, 
+                    textAlign: { xs: 'center', md: 'left' },
+                    fontSize: { xs: '1.45rem', sm: '2.125rem' },
+                    fontWeight: 'bold',
+                    color: { xs: '#000', sm: 'inherit' }
+                }}
+            >
                 Settings
             </Typography>
 

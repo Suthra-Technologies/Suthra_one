@@ -23,6 +23,7 @@ import {
     alpha,
     useTheme,
     TablePagination,
+    useMediaQuery
 } from '@mui/material';
 import {
     Close as CloseIcon,
@@ -79,6 +80,7 @@ const fixS3Url = (url: string) => {
 
 const CustomerSupportPage: React.FC = () => {
     const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [tickets, setTickets] = useState<Ticket[]>([]);
     const [loading, setLoading] = useState(false);
     const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
@@ -222,12 +224,28 @@ const CustomerSupportPage: React.FC = () => {
     const paginatedTickets = tickets.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
     return (
-        <Container maxWidth="lg" sx={{ py: 4 }}>
-            <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="h4" fontWeight="900" color="primary">
+        <Container maxWidth="lg" sx={{ py: { xs: 2, md: 4 }, px: { xs: 1, sm: 2 } }}>
+            <Box sx={{ 
+                mb: { xs: 2, sm: 4 }, 
+                display: 'flex', 
+                flexDirection: { xs: 'column', sm: 'row' },
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                gap: { xs: 1.5, sm: 2 }
+            }}>
+                <Typography 
+                    variant="h4" 
+                    fontWeight="900" 
+                    sx={{ 
+                        color: { xs: '#000', sm: theme.palette.primary.main },
+                        fontSize: { xs: '1.45rem', sm: '2.125rem' },
+                        whiteSpace: { xs: 'nowrap', sm: 'normal' },
+                        textAlign: { xs: 'center', sm: 'left' }
+                    }}
+                >
                     Customer Support
                 </Typography>
-                <Button variant="outlined" onClick={loadTickets} disabled={loading}>
+                <Button variant="outlined" onClick={loadTickets} disabled={loading} size={isMobile ? "small" : "medium"}>
                     Refresh
                 </Button>
             </Box>
