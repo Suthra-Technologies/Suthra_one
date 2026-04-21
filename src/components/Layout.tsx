@@ -53,6 +53,21 @@ import ShiftManager from './ShiftManager';
 import Sidebar from './Sidebar';
 import SubscriptionBanner from './SubscriptionBanner';
 import SubscriptionStatus from './SubscriptionStatus';
+import { BRAND_CONFIG } from 'src/config/brandConfig';
+
+/**
+ * Ensures image URLs are absolute.
+ * On Capacitor native apps, relative URLs resolve against 'capacitor://localhost'
+ * instead of the real backend. This prepends the API base for relative paths.
+ */
+const resolveImageUrl = (url: string | undefined | null): string => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('blob:')) return url;
+  const raw = (BRAND_CONFIG.apiBaseUrl as string) || '';
+  const origin = raw.replace(/\/api\/?$/, '').replace(/\/$/, '');
+  if (!origin) return url;
+  return `${origin}${url.startsWith('/') ? '' : '/'}${url}`;
+};
 
 const DRAWER_WIDTH_EXPANDED = 280;
 const DRAWER_WIDTH_COLLAPSED = 72;
@@ -501,7 +516,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
           pt: { xs: 'env(safe-area-inset-top)', md: 0 },
         }}
       >
-        <Toolbar>
+        <Toolbar sx={{ minHeight: { xs: 56, sm: 64 }, px: { xs: 1, sm: 2 } }}>
           <IconButton
             color="inherit"
             aria-label="open drawer"
@@ -719,6 +734,8 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
             },
           }}
         >
+          {/* Spacer to push sidebar content below the AppBar + safe area */}
+          <Box sx={{ minHeight: { xs: 'calc(56px + env(safe-area-inset-top))', sm: 'calc(64px + env(safe-area-inset-top))' }, flexShrink: 0 }} />
           <Sidebar onItemClick={() => setMobileOpen(false)} />
         </Drawer>
         <Drawer
@@ -743,8 +760,8 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
           flexGrow: 1,
           p: { xs: 0.5, sm: 2, md: 3 },
           width: { md: `calc(100% - ${currentDrawerWidth}px)` },
-          mt: { xs: 'calc(64px + env(safe-area-inset-top))', md: '64px' },
-          minHeight: 'calc(100vh - 64px)',
+          mt: { xs: 'calc(56px + env(safe-area-inset-top))', sm: 'calc(64px + env(safe-area-inset-top))', md: '64px' },
+          minHeight: { xs: 'calc(100vh - 56px - env(safe-area-inset-top))', sm: 'calc(100vh - 64px - env(safe-area-inset-top))', md: 'calc(100vh - 64px)' },
           backgroundColor: 'background.default',
           position: 'relative',
           overflow: 'hidden',
@@ -773,7 +790,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
           {/* If you have a logo, uncomment and use it */}
           {settings.restaurant.logo ? (
             <img
-              src={settings.restaurant.logo}
+              src={resolveImageUrl(settings.restaurant.logo)}
               alt="watermark"
               style={{
                 width: 300,

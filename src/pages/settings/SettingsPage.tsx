@@ -3949,7 +3949,7 @@ const SettingsPage: React.FC = () => {
                 </DialogTitle>
                 <DialogContent>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                        Copy this code and paste it into the <strong>NexzenPOS Print Agent</strong> app on your computer.
+                        Copy this code and paste it into the <strong>NexZenPOS Print Agent</strong> app on your computer.
                         This code is your secure link between the restaurant and that computer.
                     </Typography>
 
