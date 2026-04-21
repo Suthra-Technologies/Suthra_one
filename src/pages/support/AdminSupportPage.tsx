@@ -27,6 +27,7 @@ import {
   useTheme,
   alpha,
   TablePagination,
+  useMediaQuery
 } from '@mui/material';
 import {
   AttachFile as AttachFileIcon,
@@ -66,6 +67,7 @@ const fixS3Url = (url: string) => {
 const AdminSupportPage: React.FC = () => {
   const { user } = useAuth();
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [subject, setSubject] = useState('');
   const [category, setCategory] = useState('technical');
   const [priority, setPriority] = useState('medium');
@@ -182,25 +184,36 @@ const AdminSupportPage: React.FC = () => {
   const paginatedTickets = safeTickets.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
   return (
-    <Container maxWidth="md" sx={{ py: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        Support
-      </Typography>
+    <Container maxWidth="md" sx={{ py: { xs: 2, md: 4 }, px: { xs: 1, sm: 2 } }}>
+      <Box sx={{ mb: { xs: 2, sm: 3 } }}>
+        <Typography 
+          variant="h4" 
+          sx={{ 
+            mb: { xs: 1, sm: 2 }, 
+            textAlign: { xs: 'center', md: 'left' },
+            fontSize: { xs: '1.45rem', sm: '2.125rem' },
+            fontWeight: 'bold',
+            color: 'text.primary'
+          }}
+        >
+          Support
+        </Typography>
+      </Box>
 
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
+      <Paper sx={{ p: { xs: 2, md: 3 }, mb: 3 }}>
+        <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>
           Create Ticket
         </Typography>
-        <Box sx={{ display: 'grid', gridTemplateColumns: { sm: '1fr 200px 200px' }, gap: 2 }}>
-          <TextField label={<Box component="span">Subject <Box component="span" sx={{ color: 'error.main' }}>*</Box></Box>} value={subject} onChange={(e) => setSubject(e.target.value)} fullWidth />
-          <TextField select label="Category" value={category} onChange={(e) => setCategory(e.target.value)}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 200px 200px' }, gap: { xs: 1.5, sm: 2 } }}>
+          <TextField label={<Box component="span">Subject <Box component="span" sx={{ color: 'error.main' }}>*</Box></Box>} value={subject} onChange={(e) => setSubject(e.target.value)} fullWidth size={isMobile ? "small" : "medium"} />
+          <TextField select label="Category" value={category} onChange={(e) => setCategory(e.target.value)} size={isMobile ? "small" : "medium"}>
             {['billing', 'technical', 'feature_request', 'account', 'other', 'order_issue', 'feedback', 'refund_issue'].map((c) => (
               <MenuItem key={c} value={c}>
                 {c.replace('_', ' ')}
               </MenuItem>
             ))}
           </TextField>
-          <TextField select label="Priority" value={priority} onChange={(e) => setPriority(e.target.value)}>
+          <TextField select label="Priority" value={priority} onChange={(e) => setPriority(e.target.value)} size={isMobile ? "small" : "medium"}>
             {['low', 'medium', 'high', 'urgent'].map((p) => (
               <MenuItem key={p} value={p}>
                 {p}
@@ -215,12 +228,13 @@ const AdminSupportPage: React.FC = () => {
           fullWidth
           multiline
           rows={3}
-          sx={{ mt: 2 }}
+          sx={{ mt: { xs: 1.5, sm: 2 } }}
+          size={isMobile ? "small" : "medium"}
         />
 
         {/* Image Upload Section */}
-        <Box sx={{ mt: 2 }}>
-          <Typography variant="subtitle2" gutterBottom>
+        <Box sx={{ mt: { xs: 1.5, sm: 2 } }}>
+          <Typography variant="subtitle2" gutterBottom sx={{ fontSize: '0.8rem' }}>
             Attach Screenshots
           </Typography>
           <Stack direction="row" spacing={2} alignItems="center">
@@ -229,6 +243,8 @@ const AdminSupportPage: React.FC = () => {
               component="label"
               startIcon={<ImageIcon />}
               disabled={uploading}
+              size="small"
+              sx={{ py: 1 }}
             >
               {uploading ? 'Uploading...' : 'Upload Image'}
               <input type="file" hidden accept="image/*" onChange={handleImageUpload} />
@@ -242,11 +258,11 @@ const AdminSupportPage: React.FC = () => {
 
           {/* Image Previews */}
           {attachments.length > 0 && (
-            <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid container spacing={1.5} sx={{ mt: 1 }}>
               {attachments.map((att, index) => (
-                <Grid item xs={6} sm={4} md={3} key={index}>
+                <Grid item xs={6} sm={4} key={index}>
                   <Card sx={{ position: 'relative' }}>
-                    <CardMedia component="img" height="120" image={fixS3Url(att.url)} alt={att.name} />
+                    <CardMedia component="img" height="100" image={fixS3Url(att.url)} alt={att.name} />
                     <IconButton
                       size="small"
                       sx={{
@@ -272,28 +288,28 @@ const AdminSupportPage: React.FC = () => {
           )}
         </Box>
 
-        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
-          <Button variant="contained" onClick={createTicket} disabled={uploading}>
+        <Box sx={{ mt: { xs: 2, sm: 2 }, display: 'flex', justifyContent: 'flex-end' }}>
+          <Button variant="contained" onClick={createTicket} disabled={uploading} sx={{ width: { xs: '100%', sm: 'auto' } }}>
             Submit
           </Button>
         </Box>
       </Paper>
 
-      <Paper sx={{ p: 3 }}>
-        <Typography variant="h6" gutterBottom>
+      <Paper sx={{ p: { xs: 2, md: 3 } }}>
+        <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>
           My Tickets
         </Typography>
-        <Divider sx={{ mb: 2 }} />
+        <Divider sx={{ mb: { xs: 1.5, md: 2 } }} />
         {loading ? (
           <Typography>Loading...</Typography>
         ) : (
-          <Stack spacing={2}>
+          <Stack spacing={{ xs: 1.5, md: 2 }}>
             {(Array.isArray(paginatedTickets) ? paginatedTickets : []).map((t) => (
               <Paper
                 key={t._id}
                 variant="outlined"
                 sx={{
-                  p: { xs: 2, md: 2.5 },
+                  p: { xs: 1.5, md: 2.5 },
                   borderRadius: 2,
                   transition: 'all 0.2s ease',
                   '&:hover': {

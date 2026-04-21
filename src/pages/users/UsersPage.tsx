@@ -29,6 +29,7 @@ import {
   Checkbox,
   Tooltip,
   Pagination,
+  CircularProgress,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -247,6 +248,7 @@ const UsersPage = () => {
   const [tabValue, setTabValue] = useState(0);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
@@ -436,6 +438,7 @@ const UsersPage = () => {
     }
 
     try {
+      setSubmitting(true);
       const convertedPermissions = userForm.permissions.reduce((acc: PermissionObj[], perm: string) => {
         const [module, action] = perm.split('.');
         const existingModule = acc.find(p => p.module === module);
@@ -498,6 +501,8 @@ const UsersPage = () => {
           .join(', ');
         toast.error(`Validation errors: ${validationErrors}`);
       }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -513,6 +518,7 @@ const UsersPage = () => {
     }
 
     try {
+      setSubmitting(true);
       await usersAPI.resetPassword(selectedUser._id, {
         newPassword: passwordForm.newPassword
       });
@@ -520,6 +526,8 @@ const UsersPage = () => {
       closePasswordDialog();
     } catch (err: any) {
       toast.error('Failed to reset password: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -736,10 +744,19 @@ const UsersPage = () => {
         flexDirection: { xs: 'column', sm: 'row' },
         justifyContent: 'space-between',
         alignItems: { xs: 'stretch', sm: 'center' },
-        gap: 2,
-        mb: 3
+        gap: { xs: 1.5, sm: 2 },
+        mb: { xs: 2, sm: 3 }
       }}>
-        <Typography variant="h4" fontWeight="bold" sx={{ textAlign: { xs: 'center', sm: 'left' } }}>
+        <Typography
+          variant="h4"
+          fontWeight="bold"
+          sx={{
+            textAlign: { xs: 'center', sm: 'left' },
+            fontSize: { xs: '1.45rem', sm: '2.125rem' },
+            color: { xs: '#000', sm: 'inherit' },
+            whiteSpace: { xs: 'nowrap', sm: 'normal' }
+          }}
+        >
           User Management
         </Typography>
         <Button
@@ -770,12 +787,17 @@ const UsersPage = () => {
         variant="scrollable"
         scrollButtons="auto"
         sx={{
-          mb: 3,
+          mb: { xs: 1.5, sm: 3 },
           borderBottom: 1,
           borderColor: 'divider',
           '& .MuiTabs-scrollButtons': {
             '&.Mui-disabled': { opacity: 0.3 },
           },
+          '& .MuiTab-root': {
+            fontSize: { xs: '0.75rem', sm: '0.875rem' },
+            minHeight: { xs: 40, sm: 48 },
+            px: { xs: 1.5, sm: 2 }
+          }
         }}
       >
         <Tab label={`All Staff (${counts.all})`} />
@@ -790,7 +812,6 @@ const UsersPage = () => {
           }
         />
       </Tabs>
-
       {/* Users Display */}
       <Box>
         {loading && (
@@ -818,19 +839,19 @@ const UsersPage = () => {
           {users.map((user) => {
             const primaryRole = tabValue === 3 ? 'customer' : getPrimaryRole(user);
             const roleInfo = getRoleInfo(primaryRole);
-            const RoleIcon = roleInfo.icon;
             const isPortalCustomer = Boolean(user.isPortalCustomer || user.source === 'customer_portal');
+            const RoleIcon = roleInfo.icon;
             return (
               <Grid size={{ xs: 12, sm: 6, md: 4 }} key={user._id}>
                 <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Box display="flex" alignItems="center" mb={2}>
+                  <CardContent sx={{ flexGrow: 1, p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
+                    <Box display="flex" alignItems="center" mb={1.5}>
                       <Avatar
                         sx={{
                           bgcolor: roleInfo.color,
                           mr: 2,
-                          width: 56,
-                          height: 56
+                          width: { xs: 44, sm: 56 },
+                          height: { xs: 44, sm: 56 }
                         }}
                       >
                         <RoleIcon />
@@ -1566,8 +1587,10 @@ const UsersPage = () => {
             onClick={handleUserSubmit}
             variant="contained"
             sx={{ flex: 1 }}
+            disabled={submitting}
+            startIcon={submitting && <CircularProgress size={20} color="inherit" />}
           >
-            {editingUser ? 'Update' : 'Create'}
+            {submitting ? (editingUser ? 'Updating...' : 'Creating...') : (editingUser ? 'Update' : 'Create')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -1643,8 +1666,10 @@ const UsersPage = () => {
             onClick={handlePasswordReset}
             variant="contained"
             sx={{ flex: 1 }}
+            disabled={submitting}
+            startIcon={submitting && <CircularProgress size={20} color="inherit" />}
           >
-            Reset Password
+            {submitting ? 'Resetting...' : 'Reset Password'}
           </Button>
         </DialogActions>
       </Dialog>

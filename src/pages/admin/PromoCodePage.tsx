@@ -48,7 +48,8 @@ import {
     TextField,
     Tooltip,
     Typography,
-    useTheme
+    useTheme,
+    useMediaQuery
 } from '@mui/material';
 import {
     ViewList as ViewListIcon,
@@ -91,12 +92,14 @@ const ORDER_TYPES = [
 
 const StatCard = ({ title, value, icon, color, trend }: any) => {
     const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    
     return (
         <Card sx={{
             height: '100%',
             overflow: 'hidden',
             position: 'relative',
-            borderRadius: 4,
+            borderRadius: { xs: 3, sm: 4 },
             transition: 'transform 0.3s ease, box-shadow 0.3s ease',
             '&:hover': {
                 transform: 'translateY(-5px)',
@@ -107,30 +110,46 @@ const StatCard = ({ title, value, icon, color, trend }: any) => {
                 position: 'absolute',
                 top: -10,
                 right: -10,
-                width: 80,
-                height: 80,
+                width: { xs: 50, sm: 80 },
+                height: { xs: 50, sm: 80 },
                 borderRadius: '50%',
                 background: alpha(color, 0.1),
                 zIndex: 0
             }} />
-            <CardContent sx={{ position: 'relative', zIndex: 1 }}>
-                <Stack direction="row" spacing={2} alignItems="center">
-                    <Avatar sx={{ bgcolor: alpha(color, 0.2), color: color }}>
-                        {icon}
+            <CardContent sx={{ 
+                position: 'relative', 
+                zIndex: 1, 
+                p: { xs: 1.25, sm: 2 }, 
+                '&:last-child': { pb: { xs: 1.25, sm: 2 } } 
+            }}>
+                <Stack direction={isMobile ? "column" : "row"} spacing={{ xs: 1, sm: 2 }} alignItems={isMobile ? "flex-start" : "center"}>
+                    <Avatar sx={{ 
+                        bgcolor: alpha(color, 0.2), 
+                        color: color, 
+                        width: { xs: 36, sm: 48 }, 
+                        height: { xs: 36, sm: 48 },
+                        borderRadius: { xs: '8px', sm: '12px' } 
+                    }}>
+                        {React.cloneElement(icon, { sx: { fontSize: { xs: 18, sm: 24 } } })}
                     </Avatar>
                     <Box>
-                        <Typography variant="caption" color="text.secondary" fontWeight={600} textTransform="uppercase">
+                        <Typography 
+                            variant="caption" 
+                            color="text.secondary" 
+                            fontWeight={600} 
+                            sx={{ fontSize: { xs: '0.6rem', sm: '0.75rem' }, textTransform: 'uppercase' }}
+                        >
                             {title}
                         </Typography>
-                        <Typography variant="h5" fontWeight={800}>
+                        <Typography variant="h5" fontWeight={800} sx={{ fontSize: { xs: '1.1rem', sm: '1.5rem' } }}>
                             {value}
                         </Typography>
                     </Box>
                 </Stack>
                 {trend && (
-                    <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <TrendingUpIcon sx={{ color: 'success.main', fontSize: 16 }} />
-                        <Typography variant="caption" color="success.main" fontWeight={700}>
+                    <Box sx={{ mt: { xs: 0.5, sm: 2 }, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <TrendingUpIcon sx={{ color: 'success.main', fontSize: { xs: 12, sm: 16 } }} />
+                        <Typography variant="caption" color="success.main" fontWeight={700} sx={{ fontSize: { xs: '0.6rem', sm: '0.75rem' } }}>
                             {trend}
                         </Typography>
                     </Box>
@@ -156,6 +175,7 @@ const Avatar = ({ children, sx, ...props }: any) => (
 
 const PromoCodePage: React.FC = () => {
     const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const { settings, formatCurrency } = useSettings();
     const [promos, setPromos] = useState<PromoCode[]>([]);
     const [loading, setLoading] = useState(true);
@@ -389,83 +409,91 @@ const PromoCodePage: React.FC = () => {
         <Box sx={{ p: { xs: 2, md: 4 }, minHeight: '100%' }}>
             {/* Header Section */}
             <Box sx={{ mb: 4, display: 'flex', flexWrap: 'wrap', gap: 2, justifyContent: 'space-between', alignItems: 'center' }}>
-                <Box>
+                <Box sx={{ width: { xs: '100%', sm: 'auto' }, textAlign: { xs: 'center', sm: 'left' } }}>
                     <Typography variant="h4" fontWeight={800} sx={{
-                        background: 'linear-gradient(45deg, #4F46E5 30%, #EC4899 90%)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
+                        color: { xs: '#000', sm: 'transparent' },
+                        background: { xs: 'none', sm: 'linear-gradient(45deg, #4F46E5 30%, #EC4899 90%)' },
+                        WebkitBackgroundClip: { xs: 'none', sm: 'text' },
+                        WebkitTextFillColor: { xs: 'initial', sm: 'transparent' },
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 1.5
+                        justifyContent: { xs: 'center', sm: 'flex-start' },
+                        gap: 1,
+                        fontSize: { xs: '1.45rem', sm: '2.125rem' },
+                        mb: { xs: 0.5, sm: 0 }
                     }}>
-                        <LocalOfferIcon sx={{ fontSize: 32, color: '#4F46E5' }} />
+                        <LocalOfferIcon sx={{ fontSize: { xs: 24, sm: 32 }, color: { xs: '#000', sm: '#4F46E5' } }} />
                         Promo Management
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                         Create and manage discount codes for your customers
                     </Typography>
                 </Box>
-                <Stack direction="row" spacing={2} sx={{ width: { xs: '100%', sm: 'auto' }, alignItems: 'center' }}>
-                    <Box sx={{ display: 'flex', bgcolor: 'background.paper', borderRadius: 3, p: 0.5, border: '1px solid', borderColor: 'divider' }}>
+                <Stack direction="row" spacing={{ xs: 1, sm: 2 }} sx={{ width: { xs: '100%', sm: 'auto' }, alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', bgcolor: 'background.paper', borderRadius: { xs: 2, sm: 3 }, p: 0.5, border: '1px solid', borderColor: 'divider' }}>
                         <IconButton 
                             size="small" 
                             onClick={() => setViewMode('list')}
                             color={viewMode === 'list' ? 'primary' : 'default'}
-                            sx={{ borderRadius: 2, bgcolor: viewMode === 'list' ? alpha(theme.palette.primary.main, 0.1) : 'transparent' }}
+                            sx={{ borderRadius: { xs: 1.5, sm: 2 }, bgcolor: viewMode === 'list' ? alpha(theme.palette.primary.main, 0.1) : 'transparent', p: { xs: 0.5, sm: 1 } }}
                         >
-                            <ViewListIcon fontSize="small" />
+                            <ViewListIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
                         </IconButton>
                         <IconButton 
                             size="small" 
                             onClick={() => setViewMode('grid')}
                             color={viewMode === 'grid' ? 'primary' : 'default'}
-                            sx={{ borderRadius: 2, bgcolor: viewMode === 'grid' ? alpha(theme.palette.primary.main, 0.1) : 'transparent' }}
+                            sx={{ borderRadius: { xs: 1.5, sm: 2 }, bgcolor: viewMode === 'grid' ? alpha(theme.palette.primary.main, 0.1) : 'transparent', p: { xs: 0.5, sm: 1 } }}
                         >
-                            <GridViewIcon fontSize="small" />
+                            <GridViewIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
                         </IconButton>
                     </Box>
                     <TextField
-                        placeholder="Search codes..."
+                        placeholder="Search..."
                         size="small"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         InputProps={{
                             startAdornment: (
                                 <InputAdornment position="start">
-                                    <SearchIcon sx={{ color: 'text.secondary' }} />
+                                    <SearchIcon sx={{ color: 'text.secondary', fontSize: { xs: 18, sm: 20 } }} />
                                 </InputAdornment>
                             ),
-                            sx: { borderRadius: 3, bgcolor: 'background.paper' }
+                            sx: { borderRadius: { xs: 2, sm: 3 }, bgcolor: 'background.paper', fontSize: { xs: '0.8rem', sm: '0.875rem' } }
                         }}
+                        sx={{ flexGrow: { xs: 1, sm: 0 }, width: { sm: 200 } }}
                     />
                     <Button
                         variant="contained"
-                        startIcon={<AddIcon />}
+                        startIcon={<AddIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
                         onClick={() => handleOpenDialog()}
                         sx={{
-                            borderRadius: 3,
-                            px: 3,
+                            borderRadius: { xs: 2, sm: 3 },
+                            minWidth: { xs: 'auto', sm: 140 },
+                            px: { xs: 1.5, sm: 3 },
+                            py: { xs: 0.8, sm: 1 },
                             boxShadow: '0 8px 16px rgba(79, 70, 229, 0.2)',
-                            background: 'linear-gradient(45deg, #4F46E5, #6366F1)'
+                            background: 'linear-gradient(45deg, #4F46E5, #6366F1)',
+                            fontSize: { xs: '0.75rem', sm: '0.875rem' }
                         }}
                     >
-                        New Promo
+                        {isMobile ? "Add" : "New Promo"}
                     </Button>
                 </Stack>
             </Box>
 
             {/* Quick Stats */}
-            <Grid container spacing={3} sx={{ mb: 4 }}>
-                <Grid item xs={12} sm={6} md={3}>
+            <Grid container spacing={{ xs: 1.5, sm: 3 }} sx={{ mb: { xs: 2.5, sm: 4 } }}>
+                <Grid item xs={6} sm={6} md={3}>
                     <StatCard title="Total Promos" value={stats.total} icon={<LocalOfferIcon />} color="#4F46E5" trend="+12% this month" />
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid item xs={6} sm={6} md={3}>
                     <StatCard title="Active Now" value={stats.active} icon={<CheckCircleIcon />} color="#10B981" />
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid item xs={6} sm={6} md={3}>
                     <StatCard title="Scheduled" value={stats.scheduled} icon={<EventIcon />} color="#F59E0B" />
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid item xs={6} sm={6} md={3}>
                     <StatCard title="Expired" value={stats.expired} icon={<CancelIcon />} color="#EF4444" />
                 </Grid>
             </Grid>
@@ -773,18 +801,32 @@ const PromoCodePage: React.FC = () => {
 
             {/* Empty State */}
             {!loading && filteredPromos.length === 0 && (
-                <Paper sx={{ p: 10, textAlign: 'center', borderRadius: 4, bgcolor: 'transparent', border: '1px dashed', borderColor: 'divider' }}>
-                    <LocalOfferIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-                    <Typography variant="h6" color="text.secondary">No Promo Codes Found</Typography>
-                    <Typography variant="body2" color="text.disabled" sx={{ mb: 3 }}>
+                <Paper sx={{ 
+                    p: { xs: 4, md: 10 }, 
+                    textAlign: 'center', 
+                    borderRadius: 4, 
+                    bgcolor: 'transparent', 
+                    border: '1px dashed', 
+                    borderColor: 'divider',
+                    mt: { xs: 2, md: 0 }
+                }}>
+                    <LocalOfferIcon sx={{ fontSize: { xs: 48, md: 64 }, color: 'text.disabled', mb: 1 }} />
+                    <Typography variant="h6" color="text.secondary" sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>
+                        No Promo Codes Found
+                    </Typography>
+                    <Typography variant="body2" color="text.disabled" sx={{ mb: 2, fontSize: { xs: '0.75rem', md: '0.875rem' } }}>
                         Ready to boost your sales? Create your first promotional code now!
                     </Typography>
-                    <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenDialog()} sx={{ borderRadius: 3 }}>
+                    <Button 
+                        variant="contained" 
+                        startIcon={<AddIcon />} 
+                        onClick={() => handleOpenDialog()} 
+                        sx={{ borderRadius: 3, fontSize: { xs: '0.75rem', md: '0.875rem' } }}
+                    >
                         Create My First Promo
                     </Button>
                 </Paper>
             )}
-
             {/* Create/Edit Dialog */}
             <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: 4 } }}>
                 <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid', borderColor: 'divider' }}>

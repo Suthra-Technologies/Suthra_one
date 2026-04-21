@@ -30,9 +30,11 @@ import { recipesAPI, menuAPI, inventoryAPI, traysAPI } from '../../services/api'
 import { toast } from 'react-hot-toast';
 import ActionHistoryList from '../../components/common/ActionHistoryList';
 import { useSettings } from '../../context/SettingsContext';
+import { useActiveTenant } from '../../hooks/useActiveTenant';
 
 const CreateRecipePage: React.FC = () => {
     const navigate = useNavigate();
+    const { getRelativePath } = useActiveTenant();
     const { id } = useParams();
     const location = useLocation();
     const isEditMode = !!id;
@@ -167,7 +169,7 @@ const CreateRecipePage: React.FC = () => {
             console.error('Error fetching recipe:', error);
             toast.error('Failed to load recipe');
             // Don't navigate away immediately so we can see the console
-            // navigate('/admin/recipes'); 
+            // navigate(getRelativePath('/recipes')); 
         }
     };
 
@@ -232,7 +234,7 @@ const CreateRecipePage: React.FC = () => {
                 await recipesAPI.create(payload);
                 toast.success('Recipe created successfully');
             }
-            navigate('/admin/recipes');
+            navigate(getRelativePath('/recipes'));
         } catch (error: any) {
             toast.error(error.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'create'} recipe`);
         } finally {
@@ -243,7 +245,7 @@ const CreateRecipePage: React.FC = () => {
     return (
         <Box sx={{ p: 3 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                <IconButton onClick={() => navigate('/admin/recipes')} sx={{ mr: 2 }}>
+                <IconButton onClick={() => navigate(getRelativePath('/recipes'))} sx={{ mr: 2 }}>
                     <BackIcon />
                 </IconButton>
                 <Typography variant="h4" fontWeight="bold">
@@ -500,7 +502,7 @@ const CreateRecipePage: React.FC = () => {
 
             {/* Actions */}
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-                <Button onClick={() => navigate('/admin/recipes')} disabled={loading}>
+                <Button onClick={() => navigate(getRelativePath('/recipes'))} disabled={loading}>
                     Cancel
                 </Button>
                 <Button variant="contained" onClick={handleSubmit} disabled={loading}>

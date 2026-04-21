@@ -17,6 +17,8 @@ import {
     Tooltip,
     Tabs,
     Tab,
+    useTheme,
+    useMediaQuery
 } from '@mui/material';
 import Grid from '@mui/material/Grid2';
 import {
@@ -61,6 +63,8 @@ const ProfilePage: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState(0);
     const [showPassword, setShowPassword] = useState(false);
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
     const [profileData, setProfileData] = useState({
         firstName: user?.firstName || '',
@@ -442,17 +446,39 @@ const ProfilePage: React.FC = () => {
     };
 
     return (
-        <Box>
-            <Typography variant="h4" gutterBottom sx={{ mb: 2, textAlign: { xs: 'center', md: 'left' } }}>
-                My Profile
-            </Typography>
+        <Box sx={{ p: { xs: 1, sm: 0 } }}>
+            <Box sx={{ mb: { xs: 1, sm: 3 } }}>
+                <Typography 
+                    variant="h4" 
+                    sx={{ 
+                        mb: { xs: 0.5, sm: 2 }, 
+                        textAlign: { xs: 'center', md: 'left' },
+                        fontSize: { xs: '1.45rem', sm: '2.125rem' },
+                        fontWeight: 'bold',
+                        color: { xs: '#000', sm: 'inherit' },
+                        whiteSpace: { xs: 'nowrap', sm: 'normal' }
+                    }}
+                >
+                    My Profile
+                </Typography>
+            </Box>
 
             {/* Tabs */}
-            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: { xs: 1, sm: 3 } }}>
                 <Tabs
                     value={activeTab}
                     onChange={(_, newVal) => setActiveTab(newVal)}
                     aria-label="profile tabs"
+                    variant={isMobile ? 'scrollable' : 'standard'}
+                    scrollButtons="auto"
+                    sx={{
+                        minHeight: { xs: 40, sm: 48 },
+                        '& .MuiTab-root': {
+                            fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                            minHeight: { xs: 40, sm: 48 },
+                            px: { xs: 1, sm: 2 }
+                        }
+                    }}
                 >
                     <Tab label="Profile" id="profile-tab-0" aria-controls="profile-tabpanel-0" />
                     {activeRole === 'customer' && (
@@ -467,25 +493,25 @@ const ProfilePage: React.FC = () => {
             {/* ── TAB 0: Profile ── */}
             <Box role="tabpanel" hidden={activeTab !== 0} id="profile-tabpanel-0" aria-labelledby="profile-tab-0">
                 {activeTab === 0 && (
-                    <Grid container spacing={3}>
+                    <Grid container spacing={{ xs: 1, md: 3 }}>
                         {/* Profile Information Card */}
                         <Grid size={{ xs: 12, md: 8 }}>
-                            <Paper sx={{ p: 3 }}>
-                                <Typography variant="h6" gutterBottom sx={{ textAlign: { xs: 'center', md: 'left' } }}>
+                            <Paper sx={{ p: { xs: 1.5, md: 3 } }}>
+                                <Typography variant="h6" gutterBottom sx={{ textAlign: { xs: 'center', md: 'left' }, fontSize: { xs: '1rem', md: '1.25rem' } }}>
                                     Profile Information
                                 </Typography>
-                                <Divider sx={{ mb: 3 }} />
+                                <Divider sx={{ mb: { xs: 1, md: 3 } }} />
 
-                                <Grid container spacing={3}>
-                                    <Grid size={{ xs: 12 }} sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                                <Grid container spacing={{ xs: 1.5, sm: 3 }}>
+                                    <Grid size={{ xs: 12 }} sx={{ display: 'flex', justifyContent: 'center', mb: { xs: 1, md: 2 } }}>
                                         <Box sx={{ position: 'relative' }}>
                                             <Avatar
                                                 src={profileData.profileImage}
                                                 sx={{
-                                                    width: 120,
-                                                    height: 120,
+                                                    width: { xs: 90, md: 120 },
+                                                    height: { xs: 90, md: 120 },
                                                     bgcolor: 'primary.main',
-                                                    fontSize: '3rem',
+                                                    fontSize: { xs: '2.2rem', md: '3rem' },
                                                 }}
                                             >
                                                 {profileData.firstName?.charAt(0)?.toUpperCase()}
@@ -513,8 +539,7 @@ const ProfilePage: React.FC = () => {
 
                                     <Grid size={{ xs: 12, sm: 6 }}>
                                         <TextField
-                                            fullWidth
-                                            label="First Name"
+                                            fullWidth label="First Name"
                                             value={profileData.firstName}
                                             onChange={(e) => handleProfileChange('firstName', e.target.value)}
                                             onBlur={() => handleProfileBlur('firstName')}
@@ -522,11 +547,9 @@ const ProfilePage: React.FC = () => {
                                             helperText={getHelperText(profileErrors.firstName)}
                                         />
                                     </Grid>
-
                                     <Grid size={{ xs: 12, sm: 6 }}>
                                         <TextField
-                                            fullWidth
-                                            label="Last Name"
+                                            fullWidth label="Last Name"
                                             value={profileData.lastName}
                                             onChange={(e) => handleProfileChange('lastName', e.target.value)}
                                             onBlur={() => handleProfileBlur('lastName')}
@@ -534,12 +557,9 @@ const ProfilePage: React.FC = () => {
                                             helperText={getHelperText(profileErrors.lastName)}
                                         />
                                     </Grid>
-
                                     <Grid size={{ xs: 12, sm: 6 }}>
                                         <TextField
-                                            fullWidth
-                                            label="Email"
-                                            type="email"
+                                            fullWidth label="Email" type="email"
                                             value={profileData.email}
                                             onChange={(e) => handleProfileChange('email', e.target.value)}
                                             onBlur={() => handleProfileBlur('email')}
@@ -547,7 +567,6 @@ const ProfilePage: React.FC = () => {
                                             helperText={getHelperText(profileErrors.email)}
                                         />
                                     </Grid>
-
                                     <Grid size={{ xs: 12, sm: 6 }}>
                                         <PhoneInput
                                             value={profileData.phone}
@@ -557,24 +576,18 @@ const ProfilePage: React.FC = () => {
                                             }}
                                             dialCode={profileData.dialCode || '1'}
                                             onDialCodeChange={(code) => handleProfileChange('dialCode', code)}
-                                            label="Phone"
-                                            fullWidth
+                                            label="Phone" fullWidth
                                             onBlur={() => handleProfileBlur('phone')}
                                             error={hasError(profileErrors.phone)}
                                             helperText={getHelperText(profileErrors.phone) || "10-digit mobile number"}
                                         />
                                     </Grid>
-
                                     <Grid size={{ xs: 12 }} sx={{ display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' } }}>
                                         <Button
-                                            variant="contained"
-                                            startIcon={<SaveIcon />}
-                                            onClick={handleProfileUpdate}
-                                            disabled={loading}
-                                            sx={{ width: { xs: '100%', sm: 'auto' } }}
-                                        >
-                                            Save Changes
-                                        </Button>
+                                            variant="contained" startIcon={<SaveIcon />}
+                                            onClick={handleProfileUpdate} disabled={loading}
+                                            sx={{ width: { xs: '100%', sm: 'auto' }, py: { xs: 1, sm: 1.5 } }}
+                                        > Save Changes </Button>
                                     </Grid>
                                 </Grid>
                             </Paper>
@@ -582,55 +595,35 @@ const ProfilePage: React.FC = () => {
 
                         {/* Account Details Card */}
                         <Grid size={{ xs: 12, md: 4 }}>
-                            <Card sx={{ mb: 3 }}>
-                                <CardContent>
-                                    <Typography variant="h6" gutterBottom>
+                            <Card sx={{ mb: { xs: 2, md: 3 } }}>
+                                <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
+                                    <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>
                                         Account Details
                                     </Typography>
-                                    <Divider sx={{ mb: 2 }} />
-                                    <Box sx={{ mb: 2 }}>
-                                        <Typography variant="subtitle2" color="text.secondary">
-                                            Role
-                                        </Typography>
-                                        <Chip
-                                            label={user?.role?.toUpperCase() || 'USER'}
-                                            color="primary"
-                                            size="small"
-                                            sx={{ mt: 0.5 }}
-                                        />
+                                    <Divider sx={{ mb: 1.5 }} />
+                                    <Box sx={{ mb: 1.5 }}>
+                                        <Typography variant="subtitle2" color="text.secondary" sx={{ fontSize: '0.75rem' }}> Role </Typography>
+                                        <Chip label={user?.role?.toUpperCase() || 'USER'} color="primary" size="small" sx={{ mt: 0.5, height: 24, fontSize: '0.7rem' }} />
                                     </Box>
-                                    <Box sx={{ mb: 2 }}>
-                                        <Typography variant="subtitle2" color="text.secondary">
-                                            Member Since
-                                        </Typography>
-                                        <Typography variant="body1">
-                                            {(profileData.hireDate || profileData.createdAt) ? new Date(profileData.hireDate || profileData.createdAt).toLocaleDateString('en-US', {
-                                                year: 'numeric',
-                                                month: '2-digit',
-                                                day: '2-digit'
-                                            }) : 'N/A'}
+                                    <Box sx={{ mb: 1.5 }}>
+                                        <Typography variant="subtitle2" color="text.secondary" sx={{ fontSize: '0.75rem' }}> Member Since </Typography>
+                                        <Typography variant="body1" sx={{ fontSize: '0.9rem' }}>
+                                            {(profileData.hireDate || profileData.createdAt) ? new Date(profileData.hireDate || profileData.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) : 'N/A'}
                                         </Typography>
                                     </Box>
                                     <Box>
-                                        <Typography variant="subtitle2" color="text.secondary">
-                                            Status
-                                        </Typography>
-                                        <Chip
-                                            label="Active"
-                                            color="success"
-                                            size="small"
-                                            sx={{ mt: 0.5 }}
-                                        />
+                                        <Typography variant="subtitle2" color="text.secondary" sx={{ fontSize: '0.75rem' }}> Status </Typography>
+                                        <Chip label="Active" color="success" size="small" sx={{ mt: 0.5, height: 24, fontSize: '0.7rem' }} />
                                     </Box>
                                 </CardContent>
                             </Card>
 
                             <Card>
-                                <CardContent>
-                                    <Typography variant="h6" gutterBottom sx={{ textAlign: { xs: 'center', md: 'left' } }}>
+                                <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
+                                    <Typography variant="h6" gutterBottom sx={{ textAlign: { xs: 'center', md: 'left' }, fontSize: { xs: '1rem', md: '1.25rem' } }}>
                                         Change Password
                                     </Typography>
-                                    <Divider sx={{ mb: 2 }} />
+                                    <Divider sx={{ mb: 1.5 }} />
 
                                     <Grid container spacing={2}>
                                         <Grid size={{ xs: 12 }}>
@@ -703,19 +696,27 @@ const ProfilePage: React.FC = () => {
             {activeRole === 'customer' && (
                 <Box role="tabpanel" hidden={activeTab !== 1} id="profile-tabpanel-1" aria-labelledby="profile-tab-1">
                     {activeTab === 1 && (
-                        <Paper sx={{ p: 3 }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                                <Typography variant="h6">Saved Addresses</Typography>
+                        <Paper sx={{ p: { xs: 2, md: 3 } }}>
+                            <Box sx={{ 
+                                display: 'flex', 
+                                flexDirection: { xs: 'column', sm: 'row' },
+                                justifyContent: 'space-between', 
+                                alignItems: { xs: 'center', sm: 'center' }, 
+                                gap: { xs: 1.5, sm: 0 },
+                                mb: 2 
+                            }}>
+                                <Typography variant="h6" sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>Saved Addresses</Typography>
                                 <Button
                                     startIcon={<AddIcon />}
                                     variant="outlined"
                                     onClick={() => handleOpenAddressDialog()}
                                     size="small"
+                                    sx={{ width: { xs: '100%', sm: 'auto' } }}
                                 >
                                     Add New
                                 </Button>
                             </Box>
-                            <Divider sx={{ mb: 3 }} />
+                            <Divider sx={{ mb: { xs: 2, md: 3 } }} />
 
                             {savedAddresses.length === 0 ? (
                                 <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
@@ -778,15 +779,21 @@ const ProfilePage: React.FC = () => {
             {activeRole === 'customer' && (
                 <Box role="tabpanel" hidden={activeTab !== 2} id="profile-tabpanel-2" aria-labelledby="profile-tab-2">
                     {activeTab === 2 && (
-                        <Paper sx={{ p: 3 }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                                <Typography variant="h6">Saved Cards</Typography>
-                                <Typography variant="caption" color="text.secondary">
+                        <Paper sx={{ p: { xs: 2, md: 3 } }}>
+                            <Box sx={{ 
+                                display: 'flex', 
+                                flexDirection: { xs: 'column', sm: 'row' },
+                                justifyContent: 'space-between', 
+                                alignItems: { xs: 'center', sm: 'center' }, 
+                                gap: { xs: 0.5, sm: 0 },
+                                mb: 2 
+                            }}>
+                                <Typography variant="h6" sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>Saved Cards</Typography>
+                                <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
                                     Cards are saved for faster checkout
                                 </Typography>
                             </Box>
-                            <Divider sx={{ mb: 3 }} />
-
+                            <Divider sx={{ mb: { xs: 2, md: 3 } }} />
                             {savedCards.length === 0 ? (
                                 <Box sx={{ textAlign: 'center', py: 6, color: 'text.secondary', bgcolor: 'grey.50', borderRadius: 2 }}>
                                     <CreditCardIcon sx={{ fontSize: 48, mb: 1, opacity: 0.5 }} />
