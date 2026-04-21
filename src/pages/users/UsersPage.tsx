@@ -29,6 +29,7 @@ import {
   Checkbox,
   Tooltip,
   Pagination,
+  CircularProgress,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -247,6 +248,7 @@ const UsersPage = () => {
   const [tabValue, setTabValue] = useState(0);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
@@ -436,6 +438,7 @@ const UsersPage = () => {
     }
 
     try {
+      setSubmitting(true);
       const convertedPermissions = userForm.permissions.reduce((acc: PermissionObj[], perm: string) => {
         const [module, action] = perm.split('.');
         const existingModule = acc.find(p => p.module === module);
@@ -498,6 +501,8 @@ const UsersPage = () => {
           .join(', ');
         toast.error(`Validation errors: ${validationErrors}`);
       }
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -513,6 +518,7 @@ const UsersPage = () => {
     }
 
     try {
+      setSubmitting(true);
       await usersAPI.resetPassword(selectedUser._id, {
         newPassword: passwordForm.newPassword
       });
@@ -520,6 +526,8 @@ const UsersPage = () => {
       closePasswordDialog();
     } catch (err: any) {
       toast.error('Failed to reset password: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -1579,8 +1587,10 @@ const UsersPage = () => {
             onClick={handleUserSubmit}
             variant="contained"
             sx={{ flex: 1 }}
+            disabled={submitting}
+            startIcon={submitting && <CircularProgress size={20} color="inherit" />}
           >
-            {editingUser ? 'Update' : 'Create'}
+            {submitting ? (editingUser ? 'Updating...' : 'Creating...') : (editingUser ? 'Update' : 'Create')}
           </Button>
         </DialogActions>
       </Dialog>
@@ -1656,8 +1666,10 @@ const UsersPage = () => {
             onClick={handlePasswordReset}
             variant="contained"
             sx={{ flex: 1 }}
+            disabled={submitting}
+            startIcon={submitting && <CircularProgress size={20} color="inherit" />}
           >
-            Reset Password
+            {submitting ? 'Resetting...' : 'Reset Password'}
           </Button>
         </DialogActions>
       </Dialog>
