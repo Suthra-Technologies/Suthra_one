@@ -771,7 +771,8 @@ const MenuPage: React.FC = () => {
         const filtered = menuItems.filter((item) => {
             const categoryId = getCategoryId(item.category);
             const subcategoryId = getSubcategoryId(item.subcategory);
-            const matchesCategory = selectedCategory === 'all' || categoryId === selectedCategory;
+            const itemCategories = Array.isArray(item.categories) ? item.categories.map(getCategoryId) : [];
+            const matchesCategory = selectedCategory === 'all' || categoryId === selectedCategory || itemCategories.includes(selectedCategory);
             const matchesSubcategory = selectedSubcategory === 'all' || subcategoryId === selectedSubcategory;
 
             // Simple search like POS page - search in item name primarily
@@ -779,7 +780,7 @@ const MenuPage: React.FC = () => {
                 item.name.toLowerCase().includes(normalizedQuery) ||
                 (item.description && item.description.toLowerCase().includes(normalizedQuery));
 
-            return matchesSearch;
+            return matchesSearch && matchesCategory && matchesSubcategory;
         });
 
         // Scroll to first result when searching
