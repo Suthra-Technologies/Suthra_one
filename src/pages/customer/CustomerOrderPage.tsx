@@ -156,7 +156,17 @@ const CustomerOrderPage: React.FC = () => {
         }
     };
 
-    const calculateTotal = () => cart.totalAmount;
+    const calculateTotal = () => {
+        const subtotal = cart.totalAmount;
+        const processingFeeRate = settings?.restaurant?.processingFee || 0;
+        const taxRate = settings?.restaurant?.taxRate || 0;
+        
+        const processingFeeAmount = (subtotal * processingFeeRate) / 100;
+        const taxAmount = (subtotal * taxRate) / 100;
+        
+        // Include processing fee and tax in the "Total Order" display
+        return subtotal + processingFeeAmount + taxAmount;
+    };
     const totalQuantity = cart.totalItems;
 
     const SpiceLevelDialog = () => {
