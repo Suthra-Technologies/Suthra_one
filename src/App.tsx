@@ -9,6 +9,7 @@ import { TenantRoutes } from './routes/TenantRoutes';
 import { AuthProvider } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationProvider';
 import { SocketProvider } from './context/SocketContext';
+import { Capacitor } from '@capacitor/core';
 import LoginPage from './pages/auth/LoginPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import CustomerOrderPage from './pages/customer/CustomerOrderPage';
@@ -150,11 +151,12 @@ const ThemedAppContent: React.FC = () => {
 
 const AppRoutes: React.FC = () => {
   const hostnameSlug = getTenantSlugFromHostname();
+  const isNative = Capacitor.isNativePlatform();
 
   return (
     <Routes>
       {/* Public routes (no layout, no slug) */}
-      <Route path="/" element={<Navigate to="/login" replace />} />
+      <Route path="/" element={isNative ? <Navigate to="/login" replace /> : <HomePage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/register" element={<RestaurantRegisterPage />} />

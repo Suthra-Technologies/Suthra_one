@@ -23,6 +23,7 @@ import {
     alpha,
     useTheme,
     TablePagination,
+    useMediaQuery
 } from '@mui/material';
 import {
     Close as CloseIcon,
@@ -79,6 +80,7 @@ const fixS3Url = (url: string) => {
 
 const CustomerSupportPage: React.FC = () => {
     const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [tickets, setTickets] = useState<Ticket[]>([]);
     const [loading, setLoading] = useState(false);
     const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
@@ -222,12 +224,28 @@ const CustomerSupportPage: React.FC = () => {
     const paginatedTickets = tickets.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
     return (
-        <Container maxWidth="lg" sx={{ py: 4 }}>
-            <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="h4" fontWeight="900" color="primary">
+        <Container maxWidth="lg" sx={{ py: { xs: 2, md: 4 }, px: { xs: 1, sm: 2 } }}>
+            <Box sx={{ 
+                mb: { xs: 2, sm: 4 }, 
+                display: 'flex', 
+                flexDirection: { xs: 'column', sm: 'row' },
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                gap: { xs: 1.5, sm: 2 }
+            }}>
+                <Typography 
+                    variant="h4" 
+                    fontWeight="900" 
+                    sx={{ 
+                        color: { xs: '#000', sm: theme.palette.primary.main },
+                        fontSize: { xs: '1.45rem', sm: '2.125rem' },
+                        whiteSpace: { xs: 'nowrap', sm: 'normal' },
+                        textAlign: { xs: 'center', sm: 'left' }
+                    }}
+                >
                     Customer Support
                 </Typography>
-                <Button variant="outlined" onClick={loadTickets} disabled={loading}>
+                <Button variant="outlined" onClick={loadTickets} disabled={loading} size={isMobile ? "small" : "medium"}>
                     Refresh
                 </Button>
             </Box>
@@ -324,8 +342,8 @@ const CustomerSupportPage: React.FC = () => {
             }}>
                 {selectedTicket && (
                     <>
-                        <DialogTitle sx={{ p: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: theme.palette.mode === 'dark' ? 'background.default' : 'grey.50' }}>
-                            <Box>
+                        <DialogTitle sx={{ p: { xs: 2, sm: 3 }, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', bgcolor: theme.palette.mode === 'dark' ? 'background.default' : 'grey.50' }}>
+                            <Box sx={{ pr: 2 }}>
                                 <Typography variant="h6" fontWeight="900">{selectedTicket.subject}</Typography>
                                 <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 1 }}>
                                     <Typography variant="caption" color="text.secondary">
@@ -357,14 +375,14 @@ const CustomerSupportPage: React.FC = () => {
                                     </Stack>
                                 </Box>
                             </Box>
-                            <IconButton onClick={() => setViewDialogOpen(false)} size="small" sx={{ bgcolor: 'background.paper' }}>
+                            <IconButton onClick={() => setViewDialogOpen(false)} size="small" sx={{ bgcolor: 'background.paper', flexShrink: 0, mt: -0.5, mr: -0.5 }}>
                                 <CloseIcon />
                             </IconButton>
                         </DialogTitle>
-                        <DialogContent dividers sx={{ p: 3, bgcolor: 'background.default', minHeight: 400 }}>
+                        <DialogContent dividers sx={{ p: { xs: 2, sm: 3 }, bgcolor: 'background.default', minHeight: 400 }}>
                             <Box sx={{ mb: 4 }}>
                                 <Typography variant="subtitle2" gutterBottom fontWeight="700">Status Management</Typography>
-                                <Stack direction="row" spacing={1}>
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                                     {['open', 'in_progress', 'resolved', 'closed'].map((s) => (
                                         <Chip
                                             key={s}
@@ -375,7 +393,7 @@ const CustomerSupportPage: React.FC = () => {
                                             sx={{ cursor: 'pointer', textTransform: 'capitalize' }}
                                         />
                                     ))}
-                                </Stack>
+                                </Box>
                             </Box>
 
                             {selectedTicket.orderSnapshot && (
@@ -446,9 +464,9 @@ const CustomerSupportPage: React.FC = () => {
                                         alignItems: msg.senderRole === 'customer' ? 'flex-start' : 'flex-end'
                                     }}>
                                         <Paper sx={{
-                                            p: 2,
+                                            p: { xs: 1.5, sm: 2 },
                                             borderRadius: 3,
-                                            maxWidth: '80%',
+                                            maxWidth: { xs: '95%', sm: '80%' },
                                             bgcolor: msg.senderRole === 'customer' ? 'background.paper' : alpha(theme.palette.primary.main, 0.05),
                                             border: '1px solid',
                                             borderColor: msg.senderRole === 'customer' ? 'divider' : alpha(theme.palette.primary.main, 0.1),
@@ -508,22 +526,22 @@ const CustomerSupportPage: React.FC = () => {
                                 )}
                             </Stack>
                         </DialogContent>
-                        <DialogActions sx={{ p: 2, bgcolor: theme.palette.mode === 'dark' ? 'background.default' : 'grey.50', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <DialogActions sx={{ p: { xs: 2, sm: 3 }, bgcolor: theme.palette.mode === 'dark' ? 'background.default' : 'grey.50', display: 'flex', flexDirection: 'column', gap: 2 }}>
                             {selectedTicket.status !== 'resolved' && selectedTicket.status !== 'closed' && (
-                                <Box sx={{ width: '100%', display: 'flex', justifyContent: 'flex-end', mb: 1 }}>
+                                <Box sx={{ width: '100%', display: 'flex', justifyContent: { xs: 'center', sm: 'flex-end' }, mb: 1 }}>
                                     <Button 
                                         variant="outlined" 
                                         color="success" 
                                         onClick={() => setResolveDialogOpen(true)}
-                                        sx={{ borderRadius: 3, fontWeight: '700' }}
+                                        sx={{ borderRadius: 3, fontWeight: '700', width: { xs: '100%', sm: 'auto' } }}
                                     >
                                         Resolve with Compensation
                                     </Button>
                                 </Box>
                             )}
-                            <Box sx={{ width: '100%', px: 1 }}>
+                            <Box sx={{ width: '100%', px: { xs: 0, sm: 1 } }}>
                                 <Grid container spacing={1} alignItems="flex-end">
-                                    <Grid item xs>
+                                    <Grid item xs={12} sm>
                                         <TextField
                                             fullWidth
                                             multiline
@@ -538,9 +556,9 @@ const CustomerSupportPage: React.FC = () => {
                                             }}
                                         />
                                     </Grid>
-                                    <Grid item>
-                                        <Stack direction="row" spacing={1}>
-                                            <IconButton component="label" sx={{ bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' }}>
+                                    <Grid item xs={12} sm="auto">
+                                        <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ mt: { xs: 1, sm: 0 } }}>
+                                            <IconButton component="label" sx={{ bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', height: 48, width: 48 }}>
                                                 <ImageIcon />
                                                 <input type="file" hidden accept="image/*" onChange={handleImageUpload} />
                                             </IconButton>
@@ -549,7 +567,7 @@ const CustomerSupportPage: React.FC = () => {
                                                 onClick={handleReply}
                                                 disabled={!replyMessage || replying || uploading}
                                                 startIcon={<SendIcon />}
-                                                sx={{ borderRadius: 3, px: 3, h: 56 }}
+                                                sx={{ borderRadius: 3, px: 3, height: 48, flexGrow: { xs: 1, sm: 0 } }}
                                             >
                                                 Reply
                                             </Button>

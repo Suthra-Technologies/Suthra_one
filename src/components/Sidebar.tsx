@@ -13,6 +13,7 @@ import {
   Menu,
   MenuItem,
   Tooltip,
+  useTheme,
   Typography
 } from '@mui/material';
 import {
@@ -56,6 +57,27 @@ import { Collapse } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { useActiveTenant } from '../hooks/useActiveTenant';
+import { BRAND_CONFIG } from '../config/brandConfig';
+
+/**
+ * Ensures image URLs are absolute.
+ * On Capacitor native apps, relative URLs (e.g. '/uploads/logo.png') resolve
+ * against 'capacitor://localhost' instead of the real backend server.
+ * This helper prepends the API base URL for any relative path.
+ */
+const resolveImageUrl = (url: string | undefined | null): string => {
+  if (!url) return '';
+  // Already absolute or data-URI → use as-is
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('blob:')) {
+    return url;
+  }
+  // Build server origin from BRAND_CONFIG / env
+  const raw = (BRAND_CONFIG.apiBaseUrl as string) || '';
+  const origin = raw.replace(/\/api\/?$/, '').replace(/\/$/, '');
+  if (!origin) return url;
+  return `${origin}${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
 interface SidebarProps {
   onItemClick?: () => void;
   collapsed?: boolean;
@@ -65,6 +87,7 @@ interface SidebarProps {
 const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onToggleCollapse }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const theme = useTheme();
   const { user, activeRole, switchRole, getUserFullName } = useAuth();
   const { slug, getRelativePath } = useActiveTenant();
   const { settings } = useSettings();
@@ -77,6 +100,34 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
 
   const [roleAnchorEl, setRoleAnchorEl] = React.useState<null | HTMLElement>(null);
   const [openGroups, setOpenGroups] = React.useState<{ [key: string]: boolean }>({});
+  const [collapsedAnchorEl, setCollapsedAnchorEl] = React.useState<null | HTMLElement>(null);
+  const [activeCollapsedItem, setActiveCollapsedItem] = React.useState<any>(null);
+  const timeoutRef = React.useRef<any>(null);
+
+  const handleCollapsedMenuOpen = (event: React.MouseEvent<HTMLElement>, item: any) => {
+    if (collapsed) {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      setCollapsedAnchorEl(event.currentTarget);
+      setActiveCollapsedItem(item);
+    }
+  };
+
+  const handleCollapsedMenuClose = () => {
+    timeoutRef.current = setTimeout(() => {
+      setCollapsedAnchorEl(null);
+      setActiveCollapsedItem(null);
+    }, 150);
+  };
+
+  const handleMenuEnter = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+  };
+
+  const handleRoleClick = (e: React.MouseEvent<HTMLElement>) => {
+    if (user?.roles && user.roles.length > 1) {
+      setRoleAnchorEl(e.currentTarget);
+    }
+  };
 
   const toggleGroup = (label: string) => {
     setOpenGroups(prev => ({
@@ -203,10 +254,10 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
         {(restaurantSettings.logo || (user?.tenant as any)?.logo) ? (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, width: '100%' }}>
             <Avatar
-              src={restaurantSettings.logo || (user?.tenant as any)?.logo}
+              src={resolveImageUrl(restaurantSettings.logo || (user?.tenant as any)?.logo)}
               alt={restaurantSettings.name || (user?.tenant as any)?.name || 'Restaurant Logo'}
               sx={{
-                mt: { xs: 3.5, sm: 5, md: 1 },
+                mt: { xs: 0.5, sm: 0.5, md: 1 },
                 width: collapsed ? 36 : { xs: 52, sm: 56, md: 68 },
                 height: collapsed ? 36 : { xs: 52, sm: 56, md: 68 },
                 boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
@@ -283,11 +334,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
             display: 'flex',
             justifyContent: 'center',
           }}
-          onClick={(e: React.MouseEvent<HTMLElement>) => {
-            if (user?.roles && user.roles.length > 1) {
-              setRoleAnchorEl(e.currentTarget);
-            }
-          }}
+          onClick={handleRoleClick}
         >
           <Box sx={{ display: 'flex', alignItems: 'center', gap: collapsed ? 0 : 1.5 }}>
             <Avatar sx={{
@@ -383,15 +430,25 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
                     return (
                       <ListItem disablePadding sx={{ mb: 0.5 }}>
                         <ListItemButton
-                          onClick={() => {
+                          onClick={(e) => {
                             if (navHasChildren) {
-                              toggleGroup(navItem.label);
+                              if (collapsed) {
+                                handleCollapsedMenuOpen(e, navItem);
+                              } else {
+                                toggleGroup(navItem.label);
+                              }
                             } else if (navItem.isAction && navItem.action) {
                               navItem.action();
                             } else if (navItem.path) {
                               handleNavigation(navItem.path);
                             }
                           }}
+                          onMouseEnter={(e) => {
+                            if (collapsed && navHasChildren) {
+                              handleCollapsedMenuOpen(e, navItem);
+                            }
+                          }}
+                          onMouseLeave={handleCollapsedMenuClose}
                           selected={navActive && !navItem.isAction}
                           sx={{
                             borderRadius: '12px',
@@ -485,6 +542,87 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
           </Typography>
         )}
       </Box>
+
+      {/* Submenu for Collapsed Sidebar */}
+      <Menu
+        anchorEl={collapsedAnchorEl}
+        open={Boolean(collapsedAnchorEl)}
+        onClose={handleCollapsedMenuClose}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'left',
+        }}
+        sx={{
+          pointerEvents: 'none',
+          '& .MuiPaper-root': {
+            pointerEvents: 'auto',
+            ml: 1.5,
+            minWidth: 200,
+            borderRadius: 3,
+            boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
+            border: '1px solid',
+            borderColor: 'divider',
+            background: alpha(theme.palette.background.paper, 0.95),
+            backdropFilter: 'blur(10px)',
+          }
+        }}
+        MenuListProps={{
+          onMouseEnter: handleMenuEnter, 
+          onMouseLeave: handleCollapsedMenuClose,
+          sx: { py: 0.5 }
+        }}
+        disableRestoreFocus
+        disableEnforceFocus
+        slotProps={{
+          backdrop: {
+            sx: { pointerEvents: 'none', backgroundColor: 'transparent' }
+          }
+        }}
+      >
+        <Box sx={{ px: 2, py: 1, borderBottom: '1px solid', borderColor: 'divider', bgcolor: alpha('#4F46E5', 0.05) }}>
+          <Typography variant="caption" fontWeight="bold" sx={{ color: 'primary.main', textTransform: 'uppercase', letterSpacing: 1 }}>
+            {activeCollapsedItem?.label}
+          </Typography>
+        </Box>
+        {activeCollapsedItem?.children?.map((child: any, idx: number) => {
+          const childActive = isActiveRoute(child.path || '');
+          return (
+            <MenuItem
+              key={idx}
+              onClick={() => {
+                handleNavigation(child.path);
+                handleCollapsedMenuClose();
+              }}
+              sx={{
+                py: 1,
+                borderRadius: 1,
+                mx: 1,
+                my: 0.5,
+                bgcolor: childActive ? alpha('#4F46E5', 0.1) : 'transparent',
+                color: childActive ? 'primary.main' : 'text.primary',
+                '&:hover': {
+                  bgcolor: alpha('#4F46E5', 0.15),
+                }
+              }}
+            >
+              <ListItemIcon sx={{ minWidth: 32, color: 'inherit' }}>
+                {child.icon}
+              </ListItemIcon>
+              <ListItemText 
+                primary={child.label} 
+                primaryTypographyProps={{ 
+                  variant: 'body2',
+                  fontWeight: childActive ? 600 : 500
+                }} 
+              />
+            </MenuItem>
+          );
+        })}
+      </Menu>
     </Box>
   );
 };

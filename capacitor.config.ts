@@ -2,7 +2,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
     appId: 'com.nexzen.pos',
-    appName: 'Nexzen POS',
+    appName: 'NexZen POS',
     webDir: 'dist',
     server: {
         androidScheme: 'https',

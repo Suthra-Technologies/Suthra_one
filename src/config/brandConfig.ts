@@ -17,7 +17,7 @@
 
 
 export const BRAND_CONFIG = {
-  appName: "Nexzen Restaurant POS",
+  appName: "NexZen Restaurant POS",
   appId: "com.nexzen.pos",
   primaryColor: "#4F46E5",
   secondaryColor: "#EC4899",
