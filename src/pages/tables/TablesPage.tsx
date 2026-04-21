@@ -637,34 +637,60 @@ const TablesPage: React.FC = () => {
 
     return (
         <Box>
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: 3, gap: 2 }}>
-                <Typography variant="h4">Table Management</Typography>
-                <Stack direction="row" spacing={2} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: 'center', mb: 3, gap: 2 }}>
+                <Typography variant="h4" sx={{ 
+                    fontSize: { xs: '1.25rem', sm: '2.125rem' }, 
+                    fontWeight: 800,
+                    width: { xs: '100%', sm: 'auto' },
+                    textAlign: { xs: 'center', sm: 'left' }
+                }}>
+                    Table Management
+                </Typography>
+                <Stack direction="row" spacing={1} sx={{ width: { xs: '100%', sm: 'auto' }, justifyContent: 'center' }}>
                     <Button
                         variant={selectionMode ? "contained" : "outlined"}
                         color={selectionMode ? "secondary" : "primary"}
-                        startIcon={<SelectionIcon />}
+                        startIcon={<SelectionIcon sx={{ fontSize: { xs: '1rem !important', sm: 'inherit' } }} />}
                         onClick={() => {
                             setSelectionMode(!selectionMode);
                             setSelectedTableIds([]);
                         }}
+                        size={isMobile ? "small" : "medium"}
+                        sx={{ 
+                            fontSize: { xs: '0.65rem', sm: '0.875rem' },
+                            px: { xs: 1, sm: 2 }
+                        }}
                     >
-                        {selectionMode ? "Exit Selection" : "Select Tables"}
+                        {selectionMode ? "Exit" : "Select Tables"}
                     </Button>
                     {selectionMode && selectedTableIds.length >= 2 && (
                         <Button
                             variant="contained"
                             color="warning"
-                            startIcon={<LinkIcon />}
+                            startIcon={<LinkIcon sx={{ fontSize: { xs: '1rem !important', sm: 'inherit' } }} />}
                             onClick={() => {
                                 setPrimaryTableId(selectedTableIds[0]);
                                 setMergeDialogOpen(true);
+                            }}
+                            size={isMobile ? "small" : "medium"}
+                            sx={{ 
+                                fontSize: { xs: '0.65rem', sm: '0.875rem' },
+                                px: { xs: 1, sm: 2 }
                             }}
                         >
                             Merge ({selectedTableIds.length})
                         </Button>
                     )}
-                    <Button variant="contained" startIcon={<AddIcon />} onClick={() => setAddDialogOpen(true)}>
+                    <Button 
+                        variant="contained" 
+                        startIcon={<AddIcon sx={{ fontSize: { xs: '1rem !important', sm: 'inherit' } }} />} 
+                        onClick={() => setAddDialogOpen(true)}
+                        size={isMobile ? "small" : "medium"}
+                        sx={{ 
+                            fontSize: { xs: '0.65rem', sm: '0.875rem' },
+                            px: { xs: 1, sm: 2 }
+                        }}
+                    >
                         Add Table
                     </Button>
                 </Stack>
@@ -691,46 +717,43 @@ const TablesPage: React.FC = () => {
             {/* Tab Panel: Tables */}
             <TabPanel value={tabValue} index={0}>
                 {/* Status Filter Chips */}
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 3 }}>
+                <Box sx={{ 
+                    display: 'flex', 
+                    overflowX: 'auto', 
+                    flexWrap: { xs: 'nowrap', sm: 'wrap' }, 
+                    gap: 1, 
+                    mb: 3,
+                    pb: { xs: 1, sm: 0 },
+                    '&::-webkit-scrollbar': { display: 'none' }
+                }}>
                     <Chip
                         label={`All (${statusCounts.all})`}
                         color={statusFilter === 'all' ? 'primary' : 'default'}
                         variant={statusFilter === 'all' ? 'filled' : 'outlined'}
                         onClick={() => setStatusFilter('all')}
+                        size={isMobile ? "small" : "medium"}
                     />
                     <Chip
-                        // icon={<AvailableIcon />}
                         label={`Available (${statusCounts.available})`}
                         color={statusFilter === 'available' ? 'primary' : 'default'}
                         variant={statusFilter === 'available' ? 'filled' : 'outlined'}
                         onClick={() => setStatusFilter('available')}
+                        size={isMobile ? "small" : "medium"}
                     />
                     <Chip
-                        // icon={<OccupiedIcon />}
                         label={`Occupied (${statusCounts.occupied})`}
                         color={statusFilter === 'occupied' ? 'primary' : 'default'}
                         variant={statusFilter === 'occupied' ? 'filled' : 'outlined'}
                         onClick={() => setStatusFilter('occupied')}
+                        size={isMobile ? "small" : "medium"}
                     />
-                    {/* <Chip
-                        icon={<PartialIcon />}
-                        label={`Partial (${statusCounts.partially_occupied})`}
-                        color={statusFilter === 'partially_occupied' ? 'error' : 'default'}
-                        onClick={() => setStatusFilter('partially_occupied')}
-                    /> */}
                     <Chip
-                        // icon={<ReservedIcon />}
                         label={`Reserved (${statusCounts.reserved})`}
                         color={statusFilter === 'reserved' ? 'primary' : 'default'}
                         variant={statusFilter === 'reserved' ? 'filled' : 'outlined'}
                         onClick={() => setStatusFilter('reserved')}
+                        size={isMobile ? "small" : "medium"}
                     />
-                    {/* <Chip
-                        icon={<CleaningIcon />}
-                        label={`Cleaning (${statusCounts.cleaning})`}
-                        color={statusFilter === 'cleaning' ? 'info' : 'default'}
-                        onClick={() => setStatusFilter('cleaning')}
-                    /> */}
                 </Box>
 
                 {loading ? (
@@ -770,15 +793,15 @@ const TablesPage: React.FC = () => {
                                     })
                                 }}>
                                     <CardActionArea onClick={() => selectionMode ? handleToggleSelection(table._id) : handleOpenBooking(table)}>
-                                        <CardContent sx={{ textAlign: 'center', p: 0, pb: 1 }}>
-                                            <Box sx={{ mb: 2, position: 'relative', width: '100%', mx: 0 }}>
+                                        <CardContent sx={{ textAlign: 'center', p: 0, pb: { xs: 0.5, sm: 1 } }}>
+                                            <Box sx={{ mb: { xs: 0.5, sm: 2 }, position: 'relative', width: '100%', mx: 0 }}>
                                                 <Box
                                                     component="img"
                                                     src={getTableImage(table.capacity)}
                                                     alt={`Table for ${table.capacity}`}
                                                     sx={{
                                                         width: '100%',
-                                                        height: 180,
+                                                        height: { xs: 100, sm: 180 },
                                                         objectFit: 'cover',
                                                         opacity: table.status === 'occupied' ? 0.7 : 1,
                                                         filter: table.status === 'occupied' ? 'grayscale(50%)' : 'none',
@@ -791,14 +814,23 @@ const TablesPage: React.FC = () => {
                                                     label={table.status.toUpperCase()}
                                                     color={getStatusColor(table.status) as any}
                                                     size="small"
-                                                    sx={{ position: 'absolute', top: 10, right: 10, zIndex: 1, boxShadow: 1, bgcolor: 'rgba(255,255,255,0.9)' }}
+                                                    sx={{ 
+                                                        position: 'absolute', 
+                                                        top: { xs: 4, sm: 10 }, 
+                                                        right: { xs: 4, sm: 10 }, 
+                                                        zIndex: 1, 
+                                                        boxShadow: 1, 
+                                                        bgcolor: 'rgba(255,255,255,0.9)',
+                                                        fontSize: { xs: '0.6rem', sm: '0.75rem' },
+                                                        height: { xs: 18, sm: 24 }
+                                                    }}
                                                 />
                                             </Box>
-                                            <Typography variant="h5" gutterBottom>
+                                            <Typography variant="h5" sx={{ fontSize: { xs: '0.95rem', sm: '1.5rem' }, fontWeight: 800 }} gutterBottom>
                                                 {table.tableName || `Table ${table.tableNumber}`}
                                             </Typography>
-                                            <Typography variant="body2" color="text.secondary">
-                                                Capacity: {table.capacity} | {table.location}
+                                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
+                                                Cap: {table.capacity} | {table.location}
                                             </Typography>
                                             {table.isMerged && (
                                                 <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, color: 'warning.main' }}>
@@ -1036,7 +1068,7 @@ const TablesPage: React.FC = () => {
                                             <Card key={booking._id}>
                                                 <CardContent>
                                                     <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-                                                        <Typography variant="subtitle1" fontFamily="monospace">
+                                                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                                                             {booking.bookingId}
                                                         </Typography>
                                                         <Chip
@@ -1118,7 +1150,7 @@ const TablesPage: React.FC = () => {
                                                         sx={{ cursor: (booking.status === 'completed' || booking.status === 'cancelled') ? 'default' : 'pointer' }}
                                                     >
                                                         <TableCell>
-                                                            <Typography variant="body2" fontFamily="monospace">
+                                                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
                                                                 {booking.bookingId}
                                                             </Typography>
                                                         </TableCell>

@@ -17,7 +17,8 @@ import {
     Menu,
     MenuItem,
     Typography,
-    useTheme
+    useTheme,
+    useMediaQuery
 } from '@mui/material';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
@@ -34,6 +35,7 @@ const KitchenOrdersPage: React.FC = () => {
     const { hasRole } = useAuth();
     const { formatCurrency } = useSettings();
     const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [orderTypeFilter, setOrderTypeFilter] = useState<string>('all');
     const [statusFilter, setStatusFilter] = useState<string>('all');
 
@@ -148,12 +150,16 @@ const KitchenOrdersPage: React.FC = () => {
                     variant="h4"
                     sx={{
                         fontWeight: 'bold',
-                        background: 'linear-gradient(45deg, #FF9800 30%, #FF5722 90%)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent'
+                        color: { xs: '#000', md: 'inherit' },
+                        background: { xs: 'none', md: 'linear-gradient(45deg, #FF9800 30%, #FF5722 90%)' },
+                        WebkitBackgroundClip: { xs: 'none', md: 'text' },
+                        WebkitTextFillColor: { xs: '#000', md: 'transparent' },
+                        width: { xs: '100%', md: 'auto' },
+                        textAlign: { xs: 'center', md: 'left' },
+                        fontSize: { xs: '1.2rem', md: '2.125rem' }
                     }}
                 >
-                    Kitchen Display System
+                    Kitchen Display
                 </Typography>
 
                 {/* RIGHT SIDE — STATUS + FILTERS */}
@@ -161,18 +167,19 @@ const KitchenOrdersPage: React.FC = () => {
                     sx={{
                         display: 'flex',
                         flexDirection: 'column',
-                        alignItems: 'flex-end',
-                        gap: 1.5
+                        alignItems: { xs: 'center', md: 'flex-end' },
+                        gap: 1,
+                        width: { xs: '100%', md: 'auto' }
                     }}
                 >
                     {/* STATUS ROW */}
                     <Box
                         sx={{
                             display: 'flex',
-                            flexWrap: 'wrap',
-                            gap: 1,
-                            justifyContent: { xs: 'flex-start', md: 'flex-end' },
-                            width: '100%'
+                            flexWrap: { xs: 'wrap', md: 'wrap' },
+                            gap: { xs: 0.5, md: 1 },
+                            justifyContent: 'center',
+                            width: '100%',
                         }}
                     >
 
@@ -195,20 +202,31 @@ const KitchenOrdersPage: React.FC = () => {
                                     label={`${count} ${item.label}`}
                                     onClick={() => setStatusFilter(item.value)}
                                     clickable
+                                    size="small"
                                     sx={{
                                         bgcolor: isActive ? item.color : 'transparent',
                                         color: isActive ? '#fff' : item.color,
                                         border: `1px solid ${item.color}`,
-                                        fontWeight: 600,
-                                        borderRadius: 2,
-                                        cursor: 'pointer'
+                                        fontWeight: 700,
+                                        borderRadius: 1.5,
+                                        cursor: 'pointer',
+                                        fontSize: { xs: '0.62rem', md: '0.8125rem' },
+                                        height: { xs: 24, md: 32 },
+                                        px: { xs: 0, md: 0.5 }
                                     }}
                                 />
                             );
                         })}
 
-                        <IconButton onClick={fetchOrders} sx={{ bgcolor: theme.palette.mode === 'light' ? '#f3f4f6' : alpha(theme.palette.background.paper, 0.5) }}>
-                            <RefreshIcon />
+                        <IconButton 
+                            onClick={fetchOrders} 
+                            size={isMobile ? "small" : "medium"}
+                            sx={{ 
+                                bgcolor: theme.palette.mode === 'light' ? '#f3f4f6' : alpha(theme.palette.background.paper, 0.5),
+                                p: { xs: 0.5, md: 1 }
+                            }}
+                        >
+                            <RefreshIcon fontSize={isMobile ? "small" : "medium"} />
                         </IconButton>
                     </Box>
 
@@ -295,30 +313,26 @@ const KitchenOrdersPage: React.FC = () => {
                                 }}
                             >
                                 <CardContent sx={{ flexGrow: 1 }}>
-                                    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: 2, gap: 1 }}>
-                                        <Box>
-                                            <Typography variant="h6" color="info.main" gutterBottom sx={{ fontWeight: 'bold' }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1.5 }}>
+                                            <Typography variant="h6" color="info.main" sx={{ fontWeight: 'bold', mb: 0 }}>
                                                 Token No: {order.dailyTokenNumber}
                                             </Typography>
-                                            {/* <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                                                Order #{order.orderNumber?.split('-').pop()}
-                                            </Typography> */}
-                                            {/* <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
-                                                Type: {getOrderTypeLabel(order.orderType, order)}
-                                            </Typography> */}
-                                            {(order.orderType === 'dine_in' && (order.tableNumber || order.table)) && (
-                                                <Typography variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
-                                                    Table: {order.tableNumber || order.table?.tableNumber || order.table?.number || order.table?.tableName || order.table?.name}
-                                                </Typography>
-                                            )}
+                                            <Chip
+                                                label={order.status?.replace(/_/g, ' ').toUpperCase()}
+                                                color={getStatusColor(order.status) as any}
+                                                size="small"
+                                                sx={{ fontWeight: 'bold' }}
+                                            />
                                         </Box>
-                                        <Chip
-                                            label={order.status?.replace(/_/g, ' ').toUpperCase()}
-                                            color={getStatusColor(order.status) as any}
-                                            size="small"
-                                            sx={{ fontWeight: 'bold', alignSelf: { xs: 'flex-start', sm: 'flex-start' } }}
-                                        />
                                     </Box>
+
+                                    {/* Table Information (if applicable) */}
+                                    {(order.orderType === 'dine_in' && (order.tableNumber || order.table)) && (
+                                        <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', mb: 2 }}>
+                                            Table: {order.tableNumber || order.table?.tableNumber || order.table?.number || order.table?.tableName || order.table?.name}
+                                        </Typography>
+                                    )}
 
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, color: 'text.secondary' }}>
                                         <Box sx={{ display: 'flex', alignItems: 'center' }}>

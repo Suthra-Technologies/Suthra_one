@@ -498,7 +498,10 @@ const CouponsAdminPage: React.FC = () => {
                     fontWeight="bold"
                     sx={{
                         textAlign: { xs: 'center', sm: 'left' },
-                        width: { xs: '100%', sm: 'auto' }
+                        width: { xs: '100%', sm: 'auto' },
+                        fontSize: { xs: '1.45rem', sm: '2.125rem' },
+                        color: { xs: '#000', sm: 'inherit' },
+                        whiteSpace: { xs: 'nowrap', sm: 'normal' }
                     }}
                 >
                     Discount Coupons Management
@@ -517,54 +520,54 @@ const CouponsAdminPage: React.FC = () => {
             </Stack>
 
             {/* Summary Cards */}
-            <Grid container spacing={3} mb={3}>
+            <Grid container spacing={{ xs: 1.5, sm: 3 }} mb={3}>
                 <Grid item xs={12} md={4}>
                     <Card>
-                        <CardContent>
+                        <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
                             <Stack direction="row" justifyContent="space-between" alignItems="center">
                                 <Box>
-                                    <Typography variant="subtitle2" color="text.secondary">
+                                    <Typography variant="subtitle2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                                         Total Coupons
                                     </Typography>
-                                    <Typography variant="h4" fontWeight="bold">
+                                    <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                                         {totalCoupons}
                                     </Typography>
                                 </Box>
-                                <EmailIcon sx={{ fontSize: 48, color: 'primary.main', opacity: 0.3 }} />
+                                <EmailIcon sx={{ fontSize: { xs: 32, sm: 48 }, color: 'primary.main', opacity: 0.3 }} />
                             </Stack>
                         </CardContent>
                     </Card>
                 </Grid>
                 <Grid item xs={12} md={4}>
                     <Card>
-                        <CardContent>
+                        <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
                             <Stack direction="row" justifyContent="space-between" alignItems="center">
                                 <Box>
-                                    <Typography variant="subtitle2" color="text.secondary">
+                                    <Typography variant="subtitle2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                                         Active Coupons
                                     </Typography>
-                                    <Typography variant="h4" fontWeight="bold" color="success.main">
+                                    <Typography variant="h4" fontWeight="bold" color="success.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                                         {(Array.isArray(coupons) ? coupons : []).filter(c => isCouponActive(c)).length}
                                     </Typography>
                                 </Box>
-                                <EmailIcon sx={{ fontSize: 48, color: 'success.main', opacity: 0.3 }} />
+                                <EmailIcon sx={{ fontSize: { xs: 32, sm: 48 }, color: 'success.main', opacity: 0.3 }} />
                             </Stack>
                         </CardContent>
                     </Card>
                 </Grid>
                 <Grid item xs={12} md={4}>
                     <Card>
-                        <CardContent>
+                        <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
                             <Stack direction="row" justifyContent="space-between" alignItems="center">
                                 <Box>
-                                    <Typography variant="subtitle2" color="text.secondary">
+                                    <Typography variant="subtitle2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
                                         Total Customers
                                     </Typography>
-                                    <Typography variant="h4" fontWeight="bold">
+                                    <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                                         {customers.length}
                                     </Typography>
                                 </Box>
-                                <PeopleIcon sx={{ fontSize: 48, color: 'info.main', opacity: 0.3 }} />
+                                <PeopleIcon sx={{ fontSize: { xs: 32, sm: 48 }, color: 'info.main', opacity: 0.3 }} />
                             </Stack>
                         </CardContent>
                     </Card>
@@ -578,12 +581,12 @@ const CouponsAdminPage: React.FC = () => {
                 </Box>
             ) : isMobile ? (
                 // Mobile Card View
-                <Stack spacing={2}>
+                <Stack spacing={1.5}>
                     {(Array.isArray(coupons) ? coupons : []).map((coupon) => (
-                        <Card key={coupon._id}>
-                            <CardContent>
-                                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-                                    <Chip label={coupon.code} color="primary" sx={{ fontWeight: 'bold' }} />
+                        <Card key={coupon._id} sx={{ borderRadius: 3 }}>
+                            <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1.5}>
+                                    <Chip label={coupon.code} color="primary" sx={{ fontWeight: 'bold', height: 24, fontSize: '0.75rem' }} />
                                     {(() => {
                                         const status = getCouponStatus(coupon);
                                         return (
@@ -591,39 +594,33 @@ const CouponsAdminPage: React.FC = () => {
                                                 label={status.label}
                                                 color={status.color}
                                                 size="small"
+                                                sx={{ height: 20, fontSize: '0.65rem' }}
                                             />
                                         );
                                     })()}
                                 </Stack>
 
-                                <Grid container spacing={1} mb={2}>
+                                <Grid container spacing={1} mb={1.5}>
                                     <Grid item xs={6}>
-                                        <Typography variant="caption" color="text.secondary">Discount</Typography>
-                                        <Typography fontWeight="bold">
+                                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>Discount</Typography>
+                                        <Typography fontWeight="bold" sx={{ fontSize: '0.85rem' }}>
                                             {coupon.discountValue}
                                             {coupon.discountType === 'percentage' ? '%' : settings.restaurant.currencySymbol} OFF
                                         </Typography>
                                     </Grid>
                                     <Grid item xs={6}>
-                                        <Typography variant="caption" color="text.secondary">Min Order</Typography>
-                                        <Typography>
+                                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>Min Order</Typography>
+                                        <Typography sx={{ fontSize: '0.85rem' }}>
                                             {formatCurrency((coupon as any).minBillAmount || coupon.minOrderAmount || 0)}
                                         </Typography>
                                     </Grid>
                                     <Grid item xs={12}>
-                                        <Typography variant="caption" color="text.secondary">Valid Period</Typography>
-                                        <Typography variant="body2">
+                                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>Valid Period</Typography>
+                                        <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
                                             {formatDate(coupon.validFrom)} - {formatDate(coupon.validTo)}
                                         </Typography>
                                     </Grid>
-                                    <Grid item xs={6}>
-                                        <Typography variant="caption" color="text.secondary">Max Uses</Typography>
-                                        <Typography variant="body2">
-                                            {coupon.maxTotalUses || 'Unlimited'}
-                                        </Typography>
-                                    </Grid>
                                 </Grid>
-
                                 <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ mt: 1, borderTop: 1, borderColor: 'divider', pt: 2 }}>
                                     <Tooltip title={isCouponActive(coupon) ? "Send Email to Customers" : "Coupon is not active or expired"}>
                                         <span>

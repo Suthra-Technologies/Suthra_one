@@ -345,16 +345,27 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                             <RadioGroup
                                 value={paymentMethod}
                                 onChange={(e) => setPaymentMethod(e.target.value as any)}
-                                sx={{ flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'center' }}
+                                sx={{ 
+                                    display: { xs: 'grid', sm: 'flex' },
+                                    gridTemplateColumns: { xs: '1fr 1fr', sm: 'none' },
+                                    flexDirection: { sm: 'row' },
+                                    justifyContent: 'center',
+                                    columnGap: { xs: 2, sm: 0 },
+                                    rowGap: { xs: 0, sm: 0 },
+                                    width: '100%',
+                                    '& .MuiFormControlLabel-root': {
+                                        mr: { xs: 0, sm: 2 }
+                                    }
+                                }}
                             >
                                 {(settings.system?.posPaymentMethods?.cash ?? true) && (
                                     <FormControlLabel value="cash" control={<Radio size="small" />} label="Cash" />
                                 )}
-                                {(settings.system?.posPaymentMethods?.card ?? true) && (
-                                    <FormControlLabel value="card" control={<Radio size="small" />} label="Card" />
-                                )}
                                 {(settings.system?.posPaymentMethods?.zelle ?? true) && (
                                     <FormControlLabel value="zelle" control={<Radio size="small" />} label="Zelle" />
+                                )}
+                                {(settings.system?.posPaymentMethods?.card ?? true) && (
+                                    <FormControlLabel value="card" control={<Radio size="small" />} label="Card" />
                                 )}
                                 {(settings.system?.posPaymentMethods?.venmo ?? true) && (
                                     <FormControlLabel value="venmo" control={<Radio size="small" />} label="Venmo" />

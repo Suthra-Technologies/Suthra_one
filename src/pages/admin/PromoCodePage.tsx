@@ -48,7 +48,8 @@ import {
     TextField,
     Tooltip,
     Typography,
-    useTheme
+    useTheme,
+    useMediaQuery
 } from '@mui/material';
 import {
     ViewList as ViewListIcon,
@@ -156,6 +157,7 @@ const Avatar = ({ children, sx, ...props }: any) => (
 
 const PromoCodePage: React.FC = () => {
     const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const { settings, formatCurrency } = useSettings();
     const [promos, setPromos] = useState<PromoCode[]>([]);
     const [loading, setLoading] = useState(true);
@@ -389,16 +391,20 @@ const PromoCodePage: React.FC = () => {
         <Box sx={{ p: { xs: 2, md: 4 }, minHeight: '100%' }}>
             {/* Header Section */}
             <Box sx={{ mb: 4, display: 'flex', flexWrap: 'wrap', gap: 2, justifyContent: 'space-between', alignItems: 'center' }}>
-                <Box>
+                <Box sx={{ width: { xs: '100%', sm: 'auto' }, textAlign: { xs: 'center', sm: 'left' } }}>
                     <Typography variant="h4" fontWeight={800} sx={{
-                        background: 'linear-gradient(45deg, #4F46E5 30%, #EC4899 90%)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
+                        color: { xs: '#000', sm: 'transparent' },
+                        background: { xs: 'none', sm: 'linear-gradient(45deg, #4F46E5 30%, #EC4899 90%)' },
+                        WebkitBackgroundClip: { xs: 'none', sm: 'text' },
+                        WebkitTextFillColor: { xs: 'initial', sm: 'transparent' },
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 1.5
+                        justifyContent: { xs: 'center', sm: 'flex-start' },
+                        gap: 1.5,
+                        fontSize: { xs: '1.45rem', sm: '2.125rem' },
+                        whiteSpace: { xs: 'nowrap', sm: 'normal' }
                     }}>
-                        <LocalOfferIcon sx={{ fontSize: 32, color: '#4F46E5' }} />
+                        <LocalOfferIcon sx={{ fontSize: { xs: 24, sm: 32 }, color: '#4F46E5' }} />
                         Promo Management
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
@@ -442,11 +448,13 @@ const PromoCodePage: React.FC = () => {
                         variant="contained"
                         startIcon={<AddIcon />}
                         onClick={() => handleOpenDialog()}
+                        fullWidth={isMobile}
                         sx={{
                             borderRadius: 3,
                             px: 3,
                             boxShadow: '0 8px 16px rgba(79, 70, 229, 0.2)',
-                            background: 'linear-gradient(45deg, #4F46E5, #6366F1)'
+                            background: 'linear-gradient(45deg, #4F46E5, #6366F1)',
+                            fontSize: { xs: '0.8rem', sm: '0.875rem' }
                         }}
                     >
                         New Promo
@@ -773,18 +781,32 @@ const PromoCodePage: React.FC = () => {
 
             {/* Empty State */}
             {!loading && filteredPromos.length === 0 && (
-                <Paper sx={{ p: 10, textAlign: 'center', borderRadius: 4, bgcolor: 'transparent', border: '1px dashed', borderColor: 'divider' }}>
-                    <LocalOfferIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-                    <Typography variant="h6" color="text.secondary">No Promo Codes Found</Typography>
-                    <Typography variant="body2" color="text.disabled" sx={{ mb: 3 }}>
+                <Paper sx={{ 
+                    p: { xs: 4, md: 10 }, 
+                    textAlign: 'center', 
+                    borderRadius: 4, 
+                    bgcolor: 'transparent', 
+                    border: '1px dashed', 
+                    borderColor: 'divider',
+                    mt: { xs: 2, md: 0 }
+                }}>
+                    <LocalOfferIcon sx={{ fontSize: { xs: 48, md: 64 }, color: 'text.disabled', mb: 1 }} />
+                    <Typography variant="h6" color="text.secondary" sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>
+                        No Promo Codes Found
+                    </Typography>
+                    <Typography variant="body2" color="text.disabled" sx={{ mb: 2, fontSize: { xs: '0.75rem', md: '0.875rem' } }}>
                         Ready to boost your sales? Create your first promotional code now!
                     </Typography>
-                    <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenDialog()} sx={{ borderRadius: 3 }}>
+                    <Button 
+                        variant="contained" 
+                        startIcon={<AddIcon />} 
+                        onClick={() => handleOpenDialog()} 
+                        sx={{ borderRadius: 3, fontSize: { xs: '0.75rem', md: '0.875rem' } }}
+                    >
                         Create My First Promo
                     </Button>
                 </Paper>
             )}
-
             {/* Create/Edit Dialog */}
             <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: 4 } }}>
                 <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid', borderColor: 'divider' }}>
