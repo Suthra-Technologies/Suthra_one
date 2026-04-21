@@ -60,12 +60,14 @@ import RecipesPage from '../recipes/RecipesPage';
 import type { Category, Subcategory, IMenuItem } from './types';
 import MenuItemDialog from './components/MenuItemDialog';
 import TaxCategorySelector from './components/TaxCategorySelector';
+import { useActiveTenant } from '../../hooks/useActiveTenant';
 
 
 const MenuPage: React.FC = () => {
     const theme = useTheme();
     const navigate = useNavigate();
     const { formatCurrency } = useSettings();
+    const { getRelativePath } = useActiveTenant();
     const [tabValue, setTabValue] = useState<number>(0);
     const [loading, setLoading] = useState(true);
 
@@ -1228,7 +1230,7 @@ const MenuPage: React.FC = () => {
                                                 {/* Action icons */}
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
                                                     <Tooltip title="Manage Recipe">
-                                                        <IconButton size="small" onClick={() => navigate(`/admin/recipes/create?menuItem=${item._id}`)}
+                                                        <IconButton size="small" onClick={() => navigate(getRelativePath(`/recipes/create?menuItem=${item._id}`))}
                                                             sx={{ color: theme.palette.secondary.main, '&:hover': { bgcolor: alpha(theme.palette.secondary.main, 0.1) } }}>
                                                             <MenuBookIcon sx={{ fontSize: 17 }} />
                                                         </IconButton>
