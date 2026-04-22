@@ -23,7 +23,8 @@ import {
 import { useParams, useNavigate } from 'react-router-dom';
 import { invoicesAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
-import { downloadFile } from '../../utils/fileDownload';
+import { downloadFromUrl } from '../../utils/fileDownload';
+import { apiBaseUrl } from '../../services/api';
 
 const InvoiceDetailPage = () => {
     const { id } = useParams<{ id: string }>();
@@ -53,8 +54,11 @@ const InvoiceDetailPage = () => {
 
     const handleDownload = async () => {
         try {
-            const response = await invoicesAPI.downloadPDF(id!);
-            await downloadFile(response.data, `Invoice-${invoice.invoiceNumber}.pdf`, 'application/pdf');
+            const token = localStorage.getItem('jwt');
+            const fullUrl = `${apiBaseUrl}/invoices/${id}/pdf`;
+            await downloadFromUrl(fullUrl, `Invoice-${invoice.invoiceNumber}.pdf`, {
+                Authorization: `Bearer ${token}`,
+            });
         } catch (error) {
             console.error('Error downloading PDF:', error);
             toast.error('Failed to download invoice');

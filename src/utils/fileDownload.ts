@@ -1,85 +1,150 @@
 import { Capacitor } from '@capacitor/core';
-import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
-import { Share } from '@capacitor/share';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 
 /**
  * Cross-platform file download utility.
  *
- * On **web** the standard blob-URL + hidden-anchor approach is used.
- * On **native** (iOS / Android via Capacitor) the blob is converted to a
- * base64 data-URI, written to the device cache directory via the Filesystem
- * plugin, and then handed to the native share-sheet so the user can save /
- * open it with any compatible app.
+ * - **Web**: standard blob-URL + hidden-anchor download.
+ * - **Android**: uses Capacitor Filesystem.downloadFile() to download via the
+ *   native HTTP stack directly to the device's Download folder.
+ * - **iOS**: uses Filesystem.downloadFile() → share-sheet so the user can
+ *   "Save to Files" or open in another app.
+ *
+ * IMPORTANT: On native, CapacitorHttp (enabled in this project) breaks
+ * `responseType: 'blob'` in axios — the blob arrives empty / corrupt.
+ * This utility sidesteps that entirely by using the native download API.
  */
-export async function downloadFile(
-    blob: Blob,
+
+/**
+ * Download a file by URL. On native this streams directly from the server
+ * via the native HTTP stack; on web it uses fetch + blob download.
+ *
+ * @param url       Full URL to the file (e.g. https://api.example.com/api/reports/export/excel?...)
+ * @param fileName  The name for the downloaded file (e.g. "report.xlsx")
+ * @param headers   Optional HTTP headers (e.g. { Authorization: 'Bearer ...' })
+ */
+export async function downloadFromUrl(
+    url: string,
     fileName: string,
-    mimeType?: string,
+    headers?: Record<string, string>,
 ): Promise<void> {
     if (Capacitor.isNativePlatform()) {
-        await downloadOnNative(blob, fileName, mimeType);
+        await downloadOnNative(url, fileName, headers);
     } else {
-        downloadOnWeb(blob, fileName);
+        await downloadOnWeb(url, fileName, headers);
     }
 }
 
 // ──────────────────────────────────────────
-// Web: classic blob-URL approach
+// Web: fetch blob then trigger browser download
 // ──────────────────────────────────────────
-function downloadOnWeb(blob: Blob, fileName: string): void {
-    const url = window.URL.createObjectURL(new Blob([blob]));
+async function downloadOnWeb(
+    url: string,
+    fileName: string,
+    headers?: Record<string, string>,
+): Promise<void> {
+    const response = await fetch(url, { headers });
+    if (!response.ok) throw new Error(`Download failed: ${response.status}`);
+    const blob = await response.blob();
+
+    const blobUrl = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = url;
+    link.href = blobUrl;
     link.setAttribute('download', fileName);
     document.body.appendChild(link);
     link.click();
     link.remove();
-    window.URL.revokeObjectURL(url);
+    window.URL.revokeObjectURL(blobUrl);
 }
 
 // ──────────────────────────────────────────
-// Native: write to cache → share-sheet
+// Native: use Filesystem.downloadFile()
 // ──────────────────────────────────────────
 async function downloadOnNative(
-    blob: Blob,
+    url: string,
     fileName: string,
-    mimeType?: string,
+    headers?: Record<string, string>,
 ): Promise<void> {
-    // Convert blob → base64
-    const base64 = await blobToBase64(blob);
+    const platform = Capacitor.getPlatform();
 
-    // Write to the app's cache directory
-    const result = await Filesystem.writeFile({
-        path: fileName,
-        data: base64,
-        directory: Directory.Cache,
-    });
-
-    // Resolve the full URI that native APIs can read
-    const fileUri = result.uri;
-
-    // Open the native share-sheet so the user can save / open / share
-    await Share.share({
-        title: fileName,
-        url: fileUri,
-        dialogTitle: `Save ${fileName}`,
-    });
+    if (platform === 'android') {
+        await downloadOnAndroid(url, fileName, headers);
+    } else {
+        await downloadOnIOS(url, fileName, headers);
+    }
 }
 
 // ──────────────────────────────────────────
-// Helpers
+// Android: download straight to Downloads folder
 // ──────────────────────────────────────────
-function blobToBase64(blob: Blob): Promise<string> {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            // reader.result is "data:<mime>;base64,XXXX…"
-            const dataUrl = reader.result as string;
-            // Strip the data-URL prefix – Filesystem expects raw base64
-            const base64 = dataUrl.split(',')[1];
-            resolve(base64);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
+async function downloadOnAndroid(
+    url: string,
+    fileName: string,
+    headers?: Record<string, string>,
+): Promise<void> {
+    // Try 1: public Download folder via ExternalStorage
+    try {
+        await Filesystem.downloadFile({
+            url,
+            path: `Download/${fileName}`,
+            directory: Directory.ExternalStorage,
+            headers,
+            recursive: true,
+        });
+        return;
+    } catch (_) { /* scoped-storage may block this on Android 11+ */ }
+
+    // Try 2: Documents directory (app-scoped but visible in Files app)
+    try {
+        await Filesystem.downloadFile({
+            url,
+            path: fileName,
+            directory: Directory.Documents,
+            headers,
+            recursive: true,
+        });
+        return;
+    } catch (_) { /* fallback */ }
+
+    // Try 3: cache dir → share sheet as last resort
+    const result = await Filesystem.downloadFile({
+        url,
+        path: fileName,
+        directory: Directory.Cache,
+        headers,
     });
+
+    if (result?.path) {
+        const { Share } = await import('@capacitor/share');
+        await Share.share({
+            title: fileName,
+            url: result.path,
+            dialogTitle: `Save ${fileName}`,
+        });
+    }
+}
+
+// ──────────────────────────────────────────
+// iOS: download to cache → share-sheet (standard iOS UX)
+// ──────────────────────────────────────────
+async function downloadOnIOS(
+    url: string,
+    fileName: string,
+    headers?: Record<string, string>,
+): Promise<void> {
+    const result = await Filesystem.downloadFile({
+        url,
+        path: fileName,
+        directory: Directory.Cache,
+        headers,
+    });
+
+    if (result?.path) {
+        const { Share } = await import('@capacitor/share');
+        await Share.share({
+            title: fileName,
+            url: result.path,
+            dialogTitle: `Save ${fileName}`,
+        });
+    }
 }

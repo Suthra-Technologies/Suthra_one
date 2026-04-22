@@ -18,7 +18,7 @@ const normalizedBase = rawApiBase
   .replace(/\/api\/?$/, '') // drop trailing /api
   .replace(/\/$/, '');      // drop trailing slash
 
-const apiBaseUrl = (() => {
+export const apiBaseUrl = (() => {
   try {
     const base = normalizedBase || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5006');
     return new URL('/api', base).toString().replace(/\/$/, '');
