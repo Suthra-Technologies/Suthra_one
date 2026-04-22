@@ -32,6 +32,8 @@ import POSPage from './pages/pos/POSPage';
 import ProfilePage from './pages/profile/ProfilePage';
 import FeedbackPage from './pages/public/FeedbackPage';
 import HomePage from './pages/public/HomePage';
+import PrivacyPolicyPage from './pages/public/PrivacyPolicyPage';
+import TermsConditionsPage from './pages/public/TermsConditionsPage';
 import CreatePOPage from './pages/purchase-orders/CreatePOPage';
 import PurchaseOrderDetailPage from './pages/purchase-orders/PurchaseOrderDetailPage';
 import PurchaseOrdersPage from './pages/purchase-orders/PurchaseOrdersPage';
@@ -157,6 +159,8 @@ const AppRoutes: React.FC = () => {
     <Routes>
       {/* Public routes (no layout, no slug) */}
       <Route path="/" element={isNative ? <Navigate to="/login" replace /> : <HomePage />} />
+      <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+      <Route path="/terms-and-conditions" element={<TermsConditionsPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/register" element={<RestaurantRegisterPage />} />
