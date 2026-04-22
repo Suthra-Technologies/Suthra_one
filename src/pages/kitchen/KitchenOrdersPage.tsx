@@ -218,10 +218,10 @@ const KitchenOrdersPage: React.FC = () => {
                             );
                         })}
 
-                        <IconButton 
-                            onClick={fetchOrders} 
+                        <IconButton
+                            onClick={fetchOrders}
                             size={isMobile ? "small" : "medium"}
-                            sx={{ 
+                            sx={{
                                 bgcolor: theme.palette.mode === 'light' ? '#f3f4f6' : alpha(theme.palette.background.paper, 0.5),
                                 p: { xs: 0.5, md: 1 }
                             }}
