@@ -5160,7 +5160,6 @@ const ReportsPage: React.FC = () => {
                     <Tab label="Promo Summary" />
                     <Tab label="Promo Redemptions" />
                     <Tab label="Promo Compensation" />
-                    <Tab label="Delivery Reports" />
                 </Tabs>
             </Paper>
 
@@ -5192,7 +5191,6 @@ const ReportsPage: React.FC = () => {
                         {activeTab === 17 && renderPromoSummary()}
                         {activeTab === 18 && renderPromoRedemptions()}
                         {activeTab === 19 && renderPromoCompensation()}
-                        {activeTab === 20 && renderDeliveryReport()}
                     </>
                 )}
             </Box>

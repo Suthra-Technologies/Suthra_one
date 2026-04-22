@@ -157,6 +157,7 @@ export interface DeliverySettings {
         clientId: string;
         clientSecret: string;
         customerId: string;
+        storeId: string;
         isSandbox: boolean;
     };
 }
@@ -319,6 +320,7 @@ const defaultSettings: SettingsState = {
             clientId: '',
             clientSecret: '',
             customerId: '',
+            storeId: '',
             isSandbox: true,
         }
     }
