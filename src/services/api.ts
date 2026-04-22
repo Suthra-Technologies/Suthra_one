@@ -202,10 +202,7 @@ export const ordersAPI = {
   confirmStripeCheckout: (orderId: string, sessionId: string) => api.post(`/orders/${orderId}/confirm-payment`, { sessionId }),
   updateLocation: (id: string, lat: number, lng: number) => api.patch(`/orders/${id}/location`, { lat, lng }),
   syncUberEatsStatus: (orderId: string) => api.post(`/ubereats/sync/${orderId}`),
-  confirmStripeCheckout: (orderId: string, sessionId: string) => api.post(`/orders/${orderId}/confirm-payment`, { sessionId }),
-  updateLocation: (id: string, lat: number, lng: number) => api.patch(`/orders/${id}/location`, { lat, lng }),
   syncDoordashStatus: (orderId: string) => api.post(`/doordash/sync/${orderId}`),
-  syncUberEatsStatus: (orderId: string) => api.post(`/ubereats/sync/${orderId}`),
   dispatchUberEatsDelivery: (orderId: string) => api.post(`/ubereats/dispatch/${orderId}`),
   simulateUberEatsStatus: (orderId: string, status: string) => api.post(`/ubereats/simulate/${orderId}`, { status }),
 };
@@ -620,6 +617,14 @@ export const homepageAPI = {
   getContent: () => api.get('/homepage'),
   updateContent: (htmlContent: string, sections?: any[]) => api.put('/homepage', { htmlContent, sections }),
   getPublicContent: (tenantSlug: string) => api.get('/homepage/public', { params: { tenantSlug } }),
+};
+
+// -------------------- SMS API --------------------
+export const smsAPI = {
+  getLogs: (params: { page: number; limit: number; type?: string; startDate?: string; endDate?: string }) =>
+    api.get('/sms/logs', { params }),
+  getSummary: () => api.get('/sms/summary'),
+  sendTest: (to: string, message: string) => api.post('/sms/test', { to, message }),
 };
 
 export default api;
