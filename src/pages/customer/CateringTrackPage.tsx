@@ -25,6 +25,7 @@ import { loadStripe } from '@stripe/stripe-js';
 import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js';
 import { cateringAPI, ordersAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
+import { downloadFile } from '../../utils/fileDownload';
 import { Assignment, Chat, Event, History, Receipt } from '@mui/icons-material';
 
 const SUCCESS_STATUSES = new Set(['succeeded']);
@@ -291,13 +292,7 @@ const CateringTrackPage = () => {
         if (!slug || !token) return;
         try {
             const response = await cateringAPI.downloadPublicPDF(slug, token);
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `Invoice-${order?.orderNumber || 'Catering'}.pdf`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
+            await downloadFile(response.data, `Invoice-${order?.orderNumber || 'Catering'}.pdf`, 'application/pdf');
         } catch (error) {
             toast.error('Failed to download PDF');
         }

@@ -15,15 +15,11 @@
     "build:sai": "node renamer.cjs sai && vite build && npx cap sync",
     "build:sample": "node renamer.cjs sample && vite build && npx cap sync",
     "build:mythri": "node renamer.cjs mythri && vite build && npx cap sync",
-
-
     "build:andhra-spicefeast": "node renamer.cjs andhra-spicefeast && vite build && npx cap sync",
     "// ── Open Android Studio after branding ──────────────────────────────": "",
     "android:aha-ruchullu": "node renamer.cjs aha-ruchullu && vite build && npx cap sync && npx cap open android",
     "android:sample": "node renamer.cjs sample && vite build && npx cap sync && npx cap open android",
     "android:mythri": "node renamer.cjs mythri && vite build && npx cap sync && npx cap open android",
-
-
     "android:andhra-spicefeast": "node renamer.cjs andhra-spicefeast && vite build && npx cap sync && npx cap open android",
     "// ── Open Xcode after branding (macOS only) ─────────────────────────": "",
     "ios:default": "node renamer.cjs default && vite build && npx cap sync && npx cap open ios",
@@ -52,13 +48,15 @@
     "vite": "^6.0.0"
   },
   "dependencies": {
-    "@capacitor/browser": "^6.0.0",
-    "@capacitor/ios": "^6.2.1",
     "@capacitor-mlkit/barcode-scanning": "^6.0.0",
+    "@capacitor/browser": "^6.0.0",
     "@capacitor/camera": "^6.0.0",
     "@capacitor/core": "^6.2.1",
+    "@capacitor/filesystem": "^6.0.0",
+    "@capacitor/ios": "^6.2.1",
     "@capacitor/local-notifications": "^6.0.0",
     "@capacitor/push-notifications": "^6.0.0",
+    "@capacitor/share": "^6.0.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^6.1.0",

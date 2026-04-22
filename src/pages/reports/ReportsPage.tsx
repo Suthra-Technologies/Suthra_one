@@ -56,6 +56,7 @@ import MoneyIcon from '@mui/icons-material/AttachMoney';
 import StarIcon from '@mui/icons-material/Star';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import { downloadFile } from '../../utils/fileDownload';
 import { useTheme, useMediaQuery } from '@mui/material';
 import { useSocket } from '../../context/SocketContext';
 import { useSettings } from '../../context/SettingsContext';
@@ -479,13 +480,8 @@ const ReportsPage: React.FC = () => {
                 responseType: 'blob',
             });
 
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `report-${reportType}-${period}-${Date.now()}.xlsx`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
+            const fileName = `report-${reportType}-${period}-${Date.now()}.xlsx`;
+            await downloadFile(response.data, fileName, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
             toast.success('Excel report downloaded!');
         } catch (error) {
             console.error('Error downloading Excel:', error);
