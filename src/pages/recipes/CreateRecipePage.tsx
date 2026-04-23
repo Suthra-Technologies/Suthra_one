@@ -17,6 +17,10 @@ import {
     FormControlLabel,
     Switch,
     Grid,
+    useTheme,
+    useMediaQuery,
+    alpha,
+    MenuItem,
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -34,6 +38,8 @@ import { useActiveTenant } from '../../hooks/useActiveTenant';
 
 const CreateRecipePage: React.FC = () => {
     const navigate = useNavigate();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const { getRelativePath } = useActiveTenant();
     const { id } = useParams();
     const location = useLocation();
@@ -119,31 +125,18 @@ const CreateRecipePage: React.FC = () => {
     const fetchRecipe = async (currentMenuItems: any[], currentInventoryItems: any[]) => {
         try {
             const response = await recipesAPI.getOne(id!);
-            // The API returns { statusCode: 200, data: { ...recipe } }
-            // So response.data is the wrapper, and response.data.data is the actual recipe.
             const recipe = response.data.data || response.data;
 
-
-            console.log('INIT DEBUG: Fetched Recipe Data:', recipe);
-            console.log('INIT DEBUG: Current Menu Items:', currentMenuItems.length);
-            console.log('INIT DEBUG: Current Inventory Items:', currentInventoryItems.length);
-
-            // Find matching menu item from the fetched list
             const menuItemId = typeof recipe.menuItem === 'object' ? recipe.menuItem?._id : recipe.menuItem;
             const matchedMenuItem = currentMenuItems.find(
                 item => item._id === menuItemId
             );
-            console.log('INIT DEBUG: Matched Menu Item:', matchedMenuItem);
 
             const ingredients = (recipe.ingredients || []).map((ing: any) => {
                 const ingId = typeof ing.inventoryItem === 'object' ? ing.inventoryItem?._id : ing.inventoryItem;
                 const matchedInventoryItem = currentInventoryItems.find(
                     item => item._id === ingId
                 );
-
-                if (!matchedInventoryItem) {
-                    console.warn('INIT DEBUG: No matching inventory item found for ID:', ingId);
-                }
 
                 return {
                     inventoryItem: matchedInventoryItem || ing.inventoryItem || null,
@@ -163,13 +156,11 @@ const CreateRecipePage: React.FC = () => {
                 actionHistory: recipe.actionHistory || [],
             };
 
-            console.log('INIT DEBUG: Final formData Update:', formDataUpdate);
             setFormData(formDataUpdate);
         } catch (error) {
             console.error('Error fetching recipe:', error);
             toast.error('Failed to load recipe');
-            // Don't navigate away immediately so we can see the console
-            // navigate(getRelativePath('/recipes')); 
+            navigate(getRelativePath('/recipes'));
         }
     };
 
@@ -243,23 +234,23 @@ const CreateRecipePage: React.FC = () => {
     };
 
     return (
-        <Box sx={{ p: 3 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                <IconButton onClick={() => navigate(getRelativePath('/recipes'))} sx={{ mr: 2 }}>
-                    <BackIcon />
+        <Box sx={{ p: { xs: 1.5, sm: 3 }, pt: { xs: 1, sm: 3 } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 1.5, sm: 3 } }}>
+                <IconButton onClick={() => navigate(getRelativePath('/recipes'))} sx={{ mr: { xs: 1, sm: 2 } }} size={isMobile ? "small" : "medium"}>
+                    <BackIcon fontSize={isMobile ? "small" : "medium"} />
                 </IconButton>
-                <Typography variant="h4" fontWeight="bold">
+                <Typography variant={isMobile ? "h6" : "h4"} fontWeight={800}>
                     {isEditMode ? 'Edit Recipe' : 'Create Recipe'}
                 </Typography>
             </Box>
 
             {/* Basic Info */}
-            <Paper sx={{ p: 3, mb: 3, '& .MuiFormLabel-asterisk': { color: 'red' } }}>
-                <Typography variant="h6" gutterBottom>
+            <Paper sx={{ p: { xs: 1.5, sm: 3 }, mb: { xs: 1.5, sm: 3 }, '& .MuiFormLabel-asterisk': { color: 'red' }, borderRadius: { xs: 2, sm: 3 }, boxShadow: theme.shadows[2] }}>
+                <Typography variant={isMobile ? "subtitle1" : "h6"} fontWeight="bold" gutterBottom sx={{ color: 'primary.main', mb: { xs: 1.5, sm: 2 } }}>
                     Basic Information
                 </Typography>
-                <Stack spacing={2}>
-                    <Stack direction={{ xs: 'column', md: 'row' }} spacing={2}>
+                <Stack spacing={isMobile ? 1.5 : 2}>
+                    <Stack direction={{ xs: 'column', md: 'row' }} spacing={isMobile ? 1.5 : 2}>
                         <Autocomplete
                             options={menuItems}
                             getOptionLabel={(option) => option.name || ''}
@@ -273,6 +264,7 @@ const CreateRecipePage: React.FC = () => {
                                 });
                             }}
                             fullWidth
+                            size={isMobile ? "small" : "medium"}
                             renderInput={(params) => (
                                 <TextField {...params} label="Menu Item" placeholder="Select menu item" required />
                             )}
@@ -283,15 +275,17 @@ const CreateRecipePage: React.FC = () => {
                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                             fullWidth
                             required
+                            size={isMobile ? "small" : "medium"}
                         />
                     </Stack>
-                    <Stack direction="row" spacing={2}>
+                    <Stack direction={isMobile ? "column" : "row"} spacing={isMobile ? 1.5 : 2}>
                         <TextField
                             label="Serving Size"
                             type="number"
                             value={formData.servingSize}
                             onChange={(e) => setFormData({ ...formData, servingSize: parseInt(e.target.value) || 1 })}
                             fullWidth
+                            size={isMobile ? "small" : "medium"}
                         />
                         <TextField
                             label="Preparation Time (minutes)"
@@ -299,55 +293,76 @@ const CreateRecipePage: React.FC = () => {
                             value={formData.preparationTime}
                             onChange={(e) => setFormData({ ...formData, preparationTime: parseInt(e.target.value) || 0 })}
                             fullWidth
+                            size={isMobile ? "small" : "medium"}
                         />
                     </Stack>
                     <FormControlLabel
                         control={
                             <Switch
+                                size={isMobile ? "small" : "medium"}
                                 checked={!!formData.isActive}
                                 onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
                             />
                         }
-                        label="Active"
+                        label={<Typography variant={isMobile ? "body2" : "body1"}>Active</Typography>}
                     />
                 </Stack>
             </Paper>
 
             {/* Ingredients */}
-            <Paper sx={{ p: 3, mb: 3 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                    <Typography variant="h6">Ingredients</Typography>
-                    <Button startIcon={<AddIcon />} onClick={addIngredient} variant="outlined" size="small">
-                        Add Ingredient
+            <Paper sx={{ p: { xs: 1.5, sm: 3 }, mb: { xs: 1.5, sm: 3 }, borderRadius: { xs: 2, sm: 3 }, boxShadow: theme.shadows[2] }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: 1.5, sm: 2 } }}>
+                    <Typography variant={isMobile ? "subtitle1" : "h6"} fontWeight="bold" sx={{ color: 'primary.main' }}>Ingredients</Typography>
+                    <Button 
+                        startIcon={<AddIcon />} 
+                        onClick={addIngredient} 
+                        variant="contained" 
+                        size={isMobile ? "small" : "medium"}
+                        sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 'bold' }}
+                    >
+                        {isMobile ? "Add" : "Add Ingredient"}
                     </Button>
                 </Box>
-                <TableContainer>
-                    <Table>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>Inventory Item <Box component="span" sx={{ color: 'error.main' }}>*</Box></TableCell>
-                                <TableCell width={150}>Quantity <Box component="span" sx={{ color: 'error.main' }}>*</Box></TableCell>
-                                <TableCell width={180}>Unit</TableCell>
-                                <TableCell width={50}></TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {formData.ingredients.map((ingredient, index) => (
-                                <TableRow key={index}>
-                                    <TableCell>
-                                        <Autocomplete
-                                            options={inventoryItems}
-                                            getOptionLabel={(option) => option.name || ''}
-                                            isOptionEqualToValue={(option, value) => option._id === value._id}
-                                            value={ingredient.inventoryItem || null}
-                                            onChange={(_, newValue) => handleIngredientChange(index, 'inventoryItem', newValue)}
-                                            renderInput={(params) => (
-                                                <TextField {...params} placeholder="Select inventory item" size="small" />
-                                            )}
-                                        />
-                                    </TableCell>
-                                    <TableCell>
+
+                {isMobile ? (
+                    <Stack spacing={2}>
+                        {formData.ingredients.map((ingredient, index) => (
+                            <Paper 
+                                variant="outlined" 
+                                key={index} 
+                                sx={{ 
+                                    p: 1.5, 
+                                    borderRadius: 2, 
+                                    bgcolor: alpha(theme.palette.background.default, 0.5),
+                                    position: 'relative',
+                                    border: `1px solid ${alpha(theme.palette.divider, 0.1)}`
+                                }}
+                            >
+                                <Stack spacing={1.5}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <Typography variant="caption" fontWeight="bold" color="text.secondary">Ingredient #{index + 1}</Typography>
+                                        {formData.ingredients.length > 1 && (
+                                            <IconButton size="small" color="error" onClick={() => removeIngredient(index)} sx={{ p: 0.5 }}>
+                                                <DeleteIcon fontSize="small" />
+                                            </IconButton>
+                                        )}
+                                    </Box>
+                                    
+                                    <Autocomplete
+                                        options={inventoryItems}
+                                        getOptionLabel={(option) => option.name || ''}
+                                        isOptionEqualToValue={(option, value) => option._id === value._id}
+                                        value={ingredient.inventoryItem || null}
+                                        onChange={(_, newValue) => handleIngredientChange(index, 'inventoryItem', newValue)}
+                                        size="small"
+                                        renderInput={(params) => (
+                                            <TextField {...params} label="Inventory Item" placeholder="Search..." required />
+                                        )}
+                                    />
+
+                                    <Stack direction="row" spacing={1.5}>
                                         <TextField
+                                            label="Quantity"
                                             type="number"
                                             value={ingredient.quantity}
                                             onChange={(e) => {
@@ -357,65 +372,126 @@ const CreateRecipePage: React.FC = () => {
                                             inputProps={{ min: 0 }}
                                             size="small"
                                             fullWidth
+                                            required
                                         />
-                                    </TableCell>
-                                    <TableCell>
                                         <TextField
                                             select
+                                            label="Unit"
                                             value={ingredient.unit}
                                             onChange={(e) => handleIngredientChange(index, 'unit', e.target.value)}
                                             size="small"
                                             fullWidth
-                                            SelectProps={{ native: true }}
+                                            
                                         >
                                             {units.map((u) => (
-                                                <option key={u.value} value={u.value}>
+                                                <MenuItem key={u.value} value={u.value}>
                                                     {u.label}
-                                                </option>
+                                                </MenuItem>
                                             ))}
                                         </TextField>
-                                    </TableCell>
-                                    <TableCell>
-                                        {formData.ingredients.length > 1 && (
-                                            <IconButton size="small" color="error" onClick={() => removeIngredient(index)}>
-                                                <DeleteIcon />
-                                            </IconButton>
-                                        )}
-                                    </TableCell>
+                                    </Stack>
+                                </Stack>
+                            </Paper>
+                        ))}
+                    </Stack>
+                ) : (
+                    <TableContainer>
+                        <Table>
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell>Inventory Item <Box component="span" sx={{ color: 'error.main' }}>*</Box></TableCell>
+                                    <TableCell width={150}>Quantity <Box component="span" sx={{ color: 'error.main' }}>*</Box></TableCell>
+                                    <TableCell width={180}>Unit</TableCell>
+                                    <TableCell width={50}></TableCell>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
+                            </TableHead>
+                            <TableBody>
+                                {formData.ingredients.map((ingredient, index) => (
+                                    <TableRow key={index} sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                                        <TableCell>
+                                            <Autocomplete
+                                                options={inventoryItems}
+                                                getOptionLabel={(option) => option.name || ''}
+                                                isOptionEqualToValue={(option, value) => option._id === value._id}
+                                                value={ingredient.inventoryItem || null}
+                                                onChange={(_, newValue) => handleIngredientChange(index, 'inventoryItem', newValue)}
+                                                renderInput={(params) => (
+                                                    <TextField {...params} placeholder="Select inventory item" size="small" />
+                                                )}
+                                            />
+                                        </TableCell>
+                                        <TableCell>
+                                            <TextField
+                                                type="number"
+                                                value={ingredient.quantity}
+                                                onChange={(e) => {
+                                                    const val = parseFloat(e.target.value);
+                                                    handleIngredientChange(index, 'quantity', Math.max(0, isNaN(val) ? 0 : val));
+                                                }}
+                                                inputProps={{ min: 0 }}
+                                                size="small"
+                                                fullWidth
+                                            />
+                                        </TableCell>
+                                        <TableCell>
+                                            <TextField
+                                                select
+                                                value={ingredient.unit}
+                                                onChange={(e) => handleIngredientChange(index, 'unit', e.target.value)}
+                                                size="small"
+                                                fullWidth
+                                                
+                                            >
+                                                {units.map((u) => (
+                                                    <MenuItem key={u.value} value={u.value}>
+                                                        {u.label}
+                                                    </MenuItem>
+                                                ))}
+                                            </TextField>
+                                        </TableCell>
+                                        <TableCell>
+                                            {formData.ingredients.length > 1 && (
+                                                <IconButton size="small" color="error" onClick={() => removeIngredient(index)}>
+                                                    <DeleteIcon />
+                                                </IconButton>
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                )}
             </Paper>
 
             {/* Tray Options Information Section */}
             {formData.menuItem && formData.menuItem.trayOptions && formData.menuItem.trayOptions.length > 0 && (
-                <Paper sx={{ p: 3, mb: 3 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                        <TrayIcon color="primary" />
-                        <Typography variant="h6">Configured Tray Options</Typography>
+                <Paper sx={{ p: { xs: 1.5, sm: 3 }, mb: { xs: 1.5, sm: 3 }, borderRadius: { xs: 2, sm: 3 }, boxShadow: theme.shadows[2] }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                        <TrayIcon color="primary" fontSize={isMobile ? "small" : "medium"} />
+                        <Typography variant={isMobile ? "subtitle1" : "h6"} fontWeight="bold">Configured Tray Options</Typography>
                     </Box>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ mb: 1.5, display: 'block' }}>
                         This item is available in following tray sizes for catering/bulk orders.
                     </Typography>
 
-                    <Grid container spacing={2}>
+                    <Grid container spacing={isMobile ? 1.5 : 2}>
                         {formData.menuItem.trayOptions.map((opt: any, idx: number) => {
                             const trayInfo = trays.find(t => t._id === opt.tray);
                             if (!trayInfo) return null;
 
                             return (
                                 <Grid item xs={12} sm={6} md={4} key={idx}>
-                                    <Paper variant="outlined" sx={{ p: 2, bgcolor: '#fbfbfb', borderRadius: 2 }}>
-                                        <Typography variant="subtitle2" fontWeight="bold" color="primary">
+                                    <Paper variant="outlined" sx={{ p: isMobile ? 1.5 : 2, bgcolor: alpha(theme.palette.background.default, 0.4), borderRadius: 2 }}>
+                                        <Typography variant="body2" fontWeight="bold" color="primary">
                                             {trayInfo.name}
                                         </Typography>
                                         <Stack spacing={0.5} sx={{ mt: 1 }}>
-                                            <Typography variant="body2">Serves: <strong>~{opt.servingSize || 1} people</strong></Typography>
-                                            <Typography variant="body2">Price: <strong>{formatCurrency(opt.price)}</strong></Typography>
-                                            <Typography variant="caption" color="text.secondary">
-                                                Dimensions: {trayInfo.width || '?'}" x {trayInfo.length || '?'}" x {trayInfo.depth || '?'}"
+                                            <Typography variant="caption" sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                <Typography component="span">Serves:</Typography> <Box component="span" sx={{ fontWeight: 'bold' }}>~{opt.servingSize || 1} people</Box>
+                                            </Typography>
+                                            <Typography variant="caption" sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                <Typography component="span">Price:</Typography> <Box component="span" sx={{ fontWeight: 'bold' }}>{formatCurrency(opt.price)}</Box>
                                             </Typography>
                                         </Stack>
                                     </Paper>
@@ -424,20 +500,20 @@ const CreateRecipePage: React.FC = () => {
                         })}
                     </Grid>
 
-                    <Box sx={{ mt: 3 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                            <CalculateIcon color="secondary" />
-                            <Typography variant="subtitle1" fontWeight="bold">Raw Material Requirement Preview</Typography>
+                    <Box sx={{ mt: isMobile ? 2 : 3 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                            <CalculateIcon color="secondary" fontSize={isMobile ? "small" : "medium"} />
+                            <Typography variant={isMobile ? "body2" : "subtitle1"} fontWeight="bold">Material Preview</Typography>
                         </Box>
-                        <TableContainer component={Paper} variant="outlined">
+                        <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, overflowX: 'auto' }}>
                             <Table size="small">
-                                <TableHead sx={{ bgcolor: '#eee' }}>
+                                <TableHead sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}>
                                     <TableRow>
-                                        <TableCell>Ingredient</TableCell>
-                                        <TableCell align="right">Base Qty ({formData.servingSize} serv)</TableCell>
+                                        <TableCell sx={{ fontWeight: 'bold', fontSize: isMobile ? '0.75rem' : 'inherit' }}>Ingredient</TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: isMobile ? '0.75rem' : 'inherit' }}>Base ({formData.servingSize})</TableCell>
                                         {formData.menuItem.trayOptions.map((opt: any, idx: number) => {
                                             const t = trays.find(tr => tr._id === opt.tray);
-                                            return t ? <TableCell key={idx} align="right">{t.name} <Typography component="span" variant="caption" sx={{ display: 'block' }}>({opt.servingSize || 1} serv)</Typography></TableCell> : null;
+                                            return t ? <TableCell key={idx} align="right" sx={{ fontWeight: 'bold', fontSize: isMobile ? '0.75rem' : 'inherit' }}>{t.name}</TableCell> : null;
                                         })}
                                     </TableRow>
                                 </TableHead>
@@ -446,8 +522,8 @@ const CreateRecipePage: React.FC = () => {
                                         if (!ing.inventoryItem) return null;
                                         return (
                                             <TableRow key={iIdx}>
-                                                <TableCell>{(ing.inventoryItem as any).name}</TableCell>
-                                                <TableCell align="right">{ing.quantity} {ing.unit}</TableCell>
+                                                <TableCell sx={{ fontSize: isMobile ? '0.7rem' : 'inherit' }}>{(ing.inventoryItem as any).name}</TableCell>
+                                                <TableCell align="right" sx={{ fontSize: isMobile ? '0.7rem' : 'inherit' }}>{ing.quantity} {ing.unit}</TableCell>
                                                 {formData.menuItem.trayOptions.map((opt: any, tIdx: number) => {
                                                     const t = trays.find(tr => tr._id === opt.tray);
                                                     if (!t) return null;
@@ -455,18 +531,11 @@ const CreateRecipePage: React.FC = () => {
                                                     const trayServings = opt.servingSize || 1;
                                                     const ratio = trayServings / recipeServings;
                                                     const scaledQty = (ing.quantity * ratio).toFixed(2);
-                                                    return <TableCell key={tIdx} align="right"><strong>{scaledQty}</strong> {ing.unit}</TableCell>;
+                                                    return <TableCell key={tIdx} align="right" sx={{ fontSize: isMobile ? '0.7rem' : 'inherit' }}><Box component="span" sx={{ fontWeight: 'bold' }}>{scaledQty}</Box> {ing.unit}</TableCell>;
                                                 })}
                                             </TableRow>
                                         );
                                     })}
-                                    {formData.ingredients.filter(i => i.inventoryItem).length === 0 && (
-                                        <TableRow>
-                                            <TableCell colSpan={formData.menuItem.trayOptions.length + 2} align="center" sx={{ py: 2 }}>
-                                                Add ingredients above to see scaling requirements
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
                                 </TableBody>
                             </Table>
                         </TableContainer>
@@ -475,8 +544,8 @@ const CreateRecipePage: React.FC = () => {
             )}
 
             {/* Instructions */}
-            <Paper sx={{ p: 3, mb: 3 }}>
-                <Typography variant="h6" gutterBottom>
+            <Paper sx={{ p: { xs: 1.5, sm: 3 }, mb: { xs: 1.5, sm: 3 }, borderRadius: { xs: 2, sm: 3 }, boxShadow: theme.shadows[2] }}>
+                <Typography variant={isMobile ? "subtitle1" : "h6"} fontWeight="bold" gutterBottom sx={{ color: 'primary.main', mb: isMobile ? 1.5 : 2 }}>
                     Instructions
                 </Typography>
                 <TextField
@@ -484,16 +553,17 @@ const CreateRecipePage: React.FC = () => {
                     value={formData.instructions}
                     onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
                     multiline
-                    rows={5}
+                    rows={isMobile ? 3 : 5}
                     fullWidth
+                    size={isMobile ? "small" : "medium"}
                     placeholder="Enter step-by-step preparation instructions..."
                 />
             </Paper>
 
             {/* History */}
             {isEditMode && (
-                <Paper sx={{ p: 3, mb: 3 }}>
-                    <Typography variant="h6" gutterBottom>
+                <Paper sx={{ p: { xs: 1.5, sm: 3 }, mb: { xs: 1.5, sm: 3 }, borderRadius: { xs: 2, sm: 3 }, boxShadow: theme.shadows[2] }}>
+                    <Typography variant={isMobile ? "subtitle1" : "h6"} fontWeight="bold" gutterBottom>
                         History
                     </Typography>
                     <ActionHistoryList history={formData.actionHistory || []} emptyMessage="No history for this recipe." />
@@ -501,14 +571,14 @@ const CreateRecipePage: React.FC = () => {
             )}
 
             {/* Actions */}
-            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-                <Button onClick={() => navigate(getRelativePath('/recipes'))} disabled={loading}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mt: 2, mb: 4 }}>
+                <Button fullWidth variant="outlined" onClick={() => navigate(getRelativePath('/recipes'))} disabled={loading} sx={{ borderRadius: 2, fontWeight: 'bold' }}>
                     Cancel
                 </Button>
-                <Button variant="contained" onClick={handleSubmit} disabled={loading}>
+                <Button fullWidth variant="contained" onClick={handleSubmit} disabled={loading} sx={{ borderRadius: 2, fontWeight: 'bold' }}>
                     {isEditMode ? 'Update Recipe' : 'Create Recipe'}
                 </Button>
-            </Box>
+            </Stack>
         </Box>
     );
 };
