@@ -77,6 +77,11 @@ interface CustomerInfoSectionProps {
     setScheduledDate: (val: string) => void;
     scheduledTime: string;
     setScheduledTime: (val: string) => void;
+    rewardPointsInfo: any;
+    pointsToRedeem: number;
+    setPointsToRedeem: (val: number) => void;
+    isFetchingRewards: boolean;
+    cartTotal: number;
 }
 
 const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
@@ -129,7 +134,12 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
     scheduledDate,
     setScheduledDate,
     scheduledTime,
-    setScheduledTime
+    setScheduledTime,
+    rewardPointsInfo,
+    pointsToRedeem,
+    setPointsToRedeem,
+    isFetchingRewards,
+    cartTotal
 }) => {
     const generateTimeSlots = (dateString: string) => {
         if (!settings?.restaurant?.businessHours) return [];
@@ -319,6 +329,78 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                     />
                 </Grid>
             </Grid>
+
+            {/* Rewards Section */}
+            {(rewardPointsInfo || isFetchingRewards) && (
+                <Box sx={{ 
+                    mb: 2, 
+                    p: 2, 
+                    bgcolor: isFetchingRewards ? 'transparent' : 'rgba(25, 118, 210, 0.04)', 
+                    borderRadius: 1, 
+                    border: '1px dashed', 
+                    borderColor: 'primary.main',
+                    transition: 'all 0.3s ease'
+                }}>
+                    {isFetchingRewards ? (
+                        <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">
+                            <CircularProgress size={16} />
+                            <Typography variant="body2" color="text.secondary">Syncing reward points...</Typography>
+                        </Stack>
+                    ) : (
+                        <Grid container spacing={2} alignItems="center">
+                            <Grid item xs={12} sm={7}>
+                                <Typography variant="subtitle2" color="primary.main" fontWeight="bold">
+                                    Customer Rewards
+                                </Typography>
+                                <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    Available Balance: <strong>{rewardPointsInfo.points || 0} pts</strong>
+                                    <Chip 
+                                        label={`$${rewardPointsInfo.dollarValue || 0} Value`} 
+                                        size="small" 
+                                        color="success" 
+                                        variant="outlined" 
+                                        sx={{ height: 20, fontSize: '0.65rem' }} 
+                                    />
+                                </Typography>
+                                {rewardPointsInfo.settings?.minPointsToRedeem > 0 && (
+                                    <Typography variant="caption" color="text.secondary">
+                                        Min. {rewardPointsInfo.settings.minPointsToRedeem} pts required to redeem.
+                                    </Typography>
+                                )}
+                            </Grid>
+                            <Grid item xs={12} sm={5}>
+                                <Stack direction="row" spacing={1} alignItems="center">
+                                    <TextField
+                                        label="Redeem Points"
+                                        type="number"
+                                        size="small"
+                                        value={pointsToRedeem || ''}
+                                        onChange={(e) => {
+                                            const val = parseInt(e.target.value) || 0;
+                                            const cappedVal = Math.min(rewardPointsInfo.points || 0, Math.max(0, val));
+                                            
+                                            // Optional: Basic validation here, but full validation happens in POSPage logic
+                                            setPointsToRedeem(cappedVal);
+                                        }}
+                                        inputProps={{ min: 0, max: rewardPointsInfo.points || 0 }}
+                                        fullWidth
+                                        disabled={!rewardPointsInfo.points || rewardPointsInfo.points < (rewardPointsInfo.settings?.minPointsToRedeem || 0)}
+                                    />
+                                    <Button 
+                                        variant="contained" 
+                                        size="small"
+                                        disableElevation
+                                        onClick={() => setPointsToRedeem(rewardPointsInfo.points)}
+                                        disabled={!rewardPointsInfo.points || rewardPointsInfo.points < (rewardPointsInfo.settings?.minPointsToRedeem || 0)}
+                                    >
+                                        MAX
+                                    </Button>
+                                </Stack>
+                            </Grid>
+                        </Grid>
+                    )}
+                </Box>
+            )}
             <Box sx={{ mb: 2 }}>
                 {/* Order Type & Payment Method */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mb: 2 }}>
@@ -345,16 +427,27 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                             <RadioGroup
                                 value={paymentMethod}
                                 onChange={(e) => setPaymentMethod(e.target.value as any)}
-                                sx={{ flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'center' }}
+                                sx={{ 
+                                    display: { xs: 'grid', sm: 'flex' },
+                                    gridTemplateColumns: { xs: '1fr 1fr', sm: 'none' },
+                                    flexDirection: { sm: 'row' },
+                                    justifyContent: 'center',
+                                    columnGap: { xs: 2, sm: 0 },
+                                    rowGap: { xs: 0, sm: 0 },
+                                    width: '100%',
+                                    '& .MuiFormControlLabel-root': {
+                                        mr: { xs: 0, sm: 2 }
+                                    }
+                                }}
                             >
                                 {(settings.system?.posPaymentMethods?.cash ?? true) && (
                                     <FormControlLabel value="cash" control={<Radio size="small" />} label="Cash" />
                                 )}
-                                {(settings.system?.posPaymentMethods?.card ?? true) && (
-                                    <FormControlLabel value="card" control={<Radio size="small" />} label="Card" />
-                                )}
                                 {(settings.system?.posPaymentMethods?.zelle ?? true) && (
                                     <FormControlLabel value="zelle" control={<Radio size="small" />} label="Zelle" />
+                                )}
+                                {(settings.system?.posPaymentMethods?.card ?? true) && (
+                                    <FormControlLabel value="card" control={<Radio size="small" />} label="Card" />
                                 )}
                                 {(settings.system?.posPaymentMethods?.venmo ?? true) && (
                                     <FormControlLabel value="venmo" control={<Radio size="small" />} label="Venmo" />

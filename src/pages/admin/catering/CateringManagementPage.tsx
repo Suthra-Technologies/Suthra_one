@@ -75,6 +75,8 @@ import { useSettings } from '../../../context/SettingsContext';
 import { cateringAPI, customersAPI, menuAPI, recipesAPI, usersAPI, traysAPI, settingsAPI, taxAPI } from '../../../services/api';
 import PhoneInput from 'src/components/PhoneInput';
 import { useAuth } from '../../../context/AuthContext';
+import { downloadFromUrl } from '../../../utils/fileDownload';
+import { apiBaseUrl } from '../../../services/api';
 
 const CateringManagementPage = () => {
     const { formatCurrency, settings, refreshSettings } = useSettings();
@@ -344,14 +346,11 @@ const CateringManagementPage = () => {
 
     const handleDownloadPDF = async (orderId: string, orderNumber: string) => {
         try {
-            const response = await cateringAPI.downloadPDF(orderId);
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `Invoice-${orderNumber}.pdf`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
+            const token = localStorage.getItem('jwt');
+            const fullUrl = `${apiBaseUrl}/catering/${orderId}/pdf`;
+            await downloadFromUrl(fullUrl, `Invoice-${orderNumber}.pdf`, {
+                Authorization: `Bearer ${token}`,
+            });
         } catch (error) {
             toast.error('Failed to download PDF');
         }

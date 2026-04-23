@@ -364,32 +364,67 @@ const LoginPage: React.FC = () => {
       </Grid>
 
       {/* Login Form Section (Right Side) */}
-      <Grid item xs={12} sm={7} md={6} component={Paper} elevation={6} square sx={{ overflowY: 'auto', maxHeight: { xs: 'none', sm: '100vh' } }}>
+      <Grid 
+        item 
+        xs={12} 
+        sm={7} 
+        md={6} 
+        component={Paper} 
+        elevation={0} 
+        square 
+        sx={{ 
+          overflowY: 'auto', 
+          maxHeight: { xs: 'none', sm: '100vh' },
+          bgcolor: { xs: '#f8f9fa', sm: '#fff' }, // Light grey on mobile for card contrast
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}
+      >
         <Box
           sx={{
-            my: { xs: 3, sm: 3, md: 4 },
+            my: { xs: 4, sm: 3, md: 4 },
             mx: { xs: 2, sm: 3 },
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            justifyContent: { xs: 'flex-start', sm: 'center', md: 'center' },
-            minHeight: { xs: '100vh', sm: 'auto', md: '100%' },
-            pb: { xs: 4, sm: 0, md: 0 }
+            width: '100%',
+            maxWidth: 450,
+            p: { xs: 3, sm: 0 },
+            bgcolor: { xs: '#fff', sm: 'transparent' },
+            borderRadius: { xs: 4, sm: 0 },
+            boxShadow: { xs: '0 8px 32px rgba(0,0,0,0.05)', sm: 'none' }
           }}
         >
           <Box
             component="img"
             src={displayLogo}
             alt={displayName}
-            sx={{ height: { xs: 90, sm: 110, md: 150 }, width: "auto", maxWidth: "100%", objectFit: "contain", mb: 2, borderRadius: activeTenant ? '8px' : '0' }}
+            sx={{ 
+              height: { xs: 80, sm: 110, md: 150 }, 
+              width: "auto", 
+              maxWidth: "100%", 
+              objectFit: "contain", 
+              mb: 2, 
+              borderRadius: activeTenant ? '12px' : '0' 
+            }}
           />
-          <Typography component="h1" variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' } }}>
+          <Typography 
+            component="h1" 
+            variant="h4" 
+            fontWeight="900" 
+            sx={{ 
+              fontSize: { xs: '1.4rem', sm: '1.75rem', md: '2.125rem' },
+              color: '#1a1a1a',
+              letterSpacing: '-0.5px'
+            }}
+          >
             {forgotPasswordView ? 'Reset Password' : 'Sign In'}
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 4, textAlign: 'center' }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 4, textAlign: 'center', px: 2 }}>
             {forgotPasswordView
               ? "Enter your email address and we'll send you a link to reset your password."
-              : 'Enter your credentials to access your account.'}
+              : 'Welcome back! Enter your details to continue.'}
           </Typography>
 
           {/* Error Alert */}
@@ -419,6 +454,12 @@ const LoginPage: React.FC = () => {
                   onChange={handleChange}
                   error={!!errors.email}
                   helperText={errors.email}
+                  sx={{ 
+                    mb: 2,
+                    '& .MuiOutlinedInput-root': {
+                      borderRadius: 3,
+                    }
+                  }}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -467,6 +508,12 @@ const LoginPage: React.FC = () => {
                 onChange={handleChange}
                 error={!!errors.email}
                 helperText={errors.email}
+                sx={{ 
+                  mb: 2,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 3,
+                  }
+                }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -488,6 +535,12 @@ const LoginPage: React.FC = () => {
                 onChange={handleChange}
                 error={!!errors.password}
                 helperText={errors.password}
+                sx={{ 
+                  mb: 2,
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 3,
+                  }
+                }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -532,7 +585,16 @@ const LoginPage: React.FC = () => {
                 fullWidth
                 variant="contained"
                 disabled={loading}
-                sx={{ mt: 3, mb: 2, py: 1.5, fontSize: '1.1rem' }}
+                sx={{ 
+                  mt: 3, 
+                  mb: 2, 
+                  py: { xs: 1.8, sm: 1.5 }, 
+                  fontSize: '1.1rem',
+                  borderRadius: 3,
+                  textTransform: 'none',
+                  fontWeight: 'bold',
+                  boxShadow: '0 4px 12px rgba(79, 70, 229, 0.2)'
+                }}
               >
                 {loading ? <CircularProgress size={24} color="inherit" /> : 'Log In'}
               </Button>

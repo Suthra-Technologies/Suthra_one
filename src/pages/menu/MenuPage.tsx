@@ -60,12 +60,14 @@ import RecipesPage from '../recipes/RecipesPage';
 import type { Category, Subcategory, IMenuItem } from './types';
 import MenuItemDialog from './components/MenuItemDialog';
 import TaxCategorySelector from './components/TaxCategorySelector';
+import { useActiveTenant } from '../../hooks/useActiveTenant';
 
 
 const MenuPage: React.FC = () => {
     const theme = useTheme();
     const navigate = useNavigate();
     const { formatCurrency } = useSettings();
+    const { getRelativePath } = useActiveTenant();
     const [tabValue, setTabValue] = useState<number>(0);
     const [loading, setLoading] = useState(true);
 
@@ -769,7 +771,8 @@ const MenuPage: React.FC = () => {
         const filtered = menuItems.filter((item) => {
             const categoryId = getCategoryId(item.category);
             const subcategoryId = getSubcategoryId(item.subcategory);
-            const matchesCategory = selectedCategory === 'all' || categoryId === selectedCategory;
+            const itemCategories = Array.isArray(item.categories) ? item.categories.map(getCategoryId) : [];
+            const matchesCategory = selectedCategory === 'all' || categoryId === selectedCategory || itemCategories.includes(selectedCategory);
             const matchesSubcategory = selectedSubcategory === 'all' || subcategoryId === selectedSubcategory;
 
             // Simple search like POS page - search in item name primarily
@@ -777,7 +780,7 @@ const MenuPage: React.FC = () => {
                 item.name.toLowerCase().includes(normalizedQuery) ||
                 (item.description && item.description.toLowerCase().includes(normalizedQuery));
 
-            return matchesSearch;
+            return matchesSearch && matchesCategory && matchesSubcategory;
         });
 
         // Scroll to first result when searching
@@ -873,44 +876,46 @@ const MenuPage: React.FC = () => {
                                     ) : undefined,
                                 }}
                             />
-                            <FormControl size="small" sx={{ minWidth: 200, maxWidth: 250 }}>
-                                <InputLabel>Category</InputLabel>
-                                <Select
-                                    value={selectedCategory}
-                                    onChange={(e) => {
-                                        setSelectedCategory(e.target.value);
-                                        setSelectedSubcategory('all');
-                                    }}
-                                    label="Category"
-                                >
-                                    <MenuItem value="all">All Categories</MenuItem>
-                                    {categories.map(cat => (
-                                        <MenuItem key={cat._id} value={cat._id}>
-                                            {cat.name}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-
-                            {selectedCategory !== 'all' && subcategories.some((subcategory) => getSubcategoryParentId(subcategory) === selectedCategory) && (
-                                <FormControl size="small" sx={{ minWidth: 180, maxWidth: 200 }}>
-                                    <InputLabel>Subcategory</InputLabel>
+                            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 1.5, alignItems: { xs: 'stretch', md: 'center' } }}>
+                                <FormControl size="small" sx={{ minWidth: 200, maxWidth: { xs: '100%', md: 250 } }}>
+                                    <InputLabel>Category</InputLabel>
                                     <Select
-                                        value={selectedSubcategory}
-                                        onChange={(e) => setSelectedSubcategory(e.target.value)}
-                                        label="Subcategory"
+                                        value={selectedCategory}
+                                        onChange={(e) => {
+                                            setSelectedCategory(e.target.value);
+                                            setSelectedSubcategory('all');
+                                        }}
+                                        label="Category"
                                     >
-                                        <MenuItem value="all">All Subcategories</MenuItem>
-                                        {subcategories
-                                            .filter((subcategory) => getSubcategoryParentId(subcategory) === selectedCategory)
-                                            .map((subcategory) => (
-                                                <MenuItem key={subcategory._id} value={subcategory._id}>
-                                                    {subcategory.name}
-                                                </MenuItem>
-                                            ))}
+                                        <MenuItem value="all">All Categories</MenuItem>
+                                        {categories.map(cat => (
+                                            <MenuItem key={cat._id} value={cat._id}>
+                                                {cat.name}
+                                            </MenuItem>
+                                        ))}
                                     </Select>
                                 </FormControl>
-                            )}
+
+                                {selectedCategory !== 'all' && subcategories.some((subcategory) => getSubcategoryParentId(subcategory) === selectedCategory) && (
+                                    <FormControl size="small" sx={{ minWidth: 180, maxWidth: { xs: '100%', md: 200 } }}>
+                                        <InputLabel>Subcategory</InputLabel>
+                                        <Select
+                                            value={selectedSubcategory}
+                                            onChange={(e) => setSelectedSubcategory(e.target.value)}
+                                            label="Subcategory"
+                                        >
+                                            <MenuItem value="all">All Subcategories</MenuItem>
+                                            {subcategories
+                                                .filter((subcategory) => getSubcategoryParentId(subcategory) === selectedCategory)
+                                                .map((subcategory) => (
+                                                    <MenuItem key={subcategory._id} value={subcategory._id}>
+                                                        {subcategory.name}
+                                                    </MenuItem>
+                                                ))}
+                                        </Select>
+                                    </FormControl>
+                                )}
+                            </Box>
 
                             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', flex: 1 }}>
                                 <Chip
@@ -1228,7 +1233,7 @@ const MenuPage: React.FC = () => {
                                                 {/* Action icons */}
                                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
                                                     <Tooltip title="Manage Recipe">
-                                                        <IconButton size="small" onClick={() => navigate(`/admin/recipes/create?menuItem=${item._id}`)}
+                                                        <IconButton size="small" onClick={() => navigate(getRelativePath(`/recipes/create?menuItem=${item._id}`))}
                                                             sx={{ color: theme.palette.secondary.main, '&:hover': { bgcolor: alpha(theme.palette.secondary.main, 0.1) } }}>
                                                             <MenuBookIcon sx={{ fontSize: 17 }} />
                                                         </IconButton>

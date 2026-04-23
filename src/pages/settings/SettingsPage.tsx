@@ -18,7 +18,8 @@ import {
     Terminal as TerminalIcon,
     Refresh as RefreshIcon,
     Star as StarIcon,
-    DeliveryDining as DeliveryDiningIcon
+    DeliveryDining as DeliveryDiningIcon,
+    ReceiptLong as ReceiptLongIcon
 } from '@mui/icons-material';
 import { useTheme } from '@mui/material/styles';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -86,7 +87,7 @@ import {
     type UnitConfig
 } from '../../context/SettingsContext';
 
-import { paymentsAPI, printersAPI, settingsAPI, tenantAPI, usersAPI } from '../../services/api';
+import { paymentsAPI, printersAPI, settingsAPI, tenantAPI, usersAPI, smsAPI } from '../../services/api';
 
 import { NOTIFICATION_SOUNDS, previewSound } from '../../utils/notificationSounds';
 import type { ValidationResult } from '../../utils/validation';
@@ -416,6 +417,7 @@ const createDefaultSettings = (): SettingsState => ({
             clientId: '',
             clientSecret: '',
             customerId: '',
+            storeId: '',
             isSandbox: true,
         }
     }
@@ -531,7 +533,12 @@ const SettingsPage: React.FC = () => {
     const [userAlertsRowsPerPage, setUserAlertsRowsPerPage] = useState(10);
     const [totalUsers, setTotalUsers] = useState(0);
 
-
+    const [smsLogs, setSmsLogs] = useState<any[]>([]);
+    const [smsPage, setSmsPage] = useState(0);
+    const [smsRowsPerPage, setSmsRowsPerPage] = useState(10);
+    const [smsTotal, setSmsTotal] = useState(0);
+    const [smsSummary, setSmsSummary] = useState<any[]>([]);
+    const [smsLoading, setSmsLoading] = useState(false);
 
     const fetchUsers = async (page: number, limit: number) => {
         try {
@@ -593,6 +600,31 @@ const SettingsPage: React.FC = () => {
         }
     };
 
+    const fetchSmsLogs = async (page: number, limit: number) => {
+        try {
+            setSmsLoading(true);
+            const res = await smsAPI.getLogs({
+                page: page + 1,
+                limit,
+            });
+            setSmsLogs(res.data.logs || []);
+            setSmsTotal(res.data.total || 0);
+        } catch (error) {
+            console.error('Error fetching SMS logs:', error);
+        } finally {
+            setSmsLoading(false);
+        }
+    };
+
+    const fetchSmsSummary = async () => {
+        try {
+            const res = await smsAPI.getSummary();
+            setSmsSummary(res.data || []);
+        } catch (error) {
+            console.error('Error fetching SMS summary:', error);
+        }
+    };
+
     const handlePrinterRootChange = (field: string, value: any) => {
         setSettings(prev => ({
             ...prev,
@@ -602,10 +634,6 @@ const SettingsPage: React.FC = () => {
             }
         }));
     };
-
-
-
-
 
     const fetchSettings = async () => {
         try {
@@ -618,41 +646,41 @@ const SettingsPage: React.FC = () => {
             const defaults = createDefaultSettings();
 
             if (Array.isArray(response.data)) {
-                const fetched = response.data.reduce((acc: Partial<SettingsState>, curr: any) => {
+                const fetched = response.data.reduce((acc, curr) => {
                     if (curr?.category && curr?.settings) {
-                        acc[curr.category as keyof SettingsState] = curr.settings;
+                        acc[curr.category] = curr.settings;
                     }
                     return acc;
                 }, {});
                 const merged = mergeSettingsWithDefaults(defaults, fetched);
-                if (!merged.restaurant.name) merged.restaurant.name = (user?.tenant as any)?.name || '';
-                if (!merged.restaurant.logo) merged.restaurant.logo = (user?.tenant as any)?.logo || '';
-                if (!merged.restaurant.email) merged.restaurant.email = (user?.tenant as any)?.contactEmail || user?.email || '';
+                if (!merged.restaurant.name) merged.restaurant.name = (user?.tenant)?.name || '';
+                if (!merged.restaurant.logo) merged.restaurant.logo = (user?.tenant)?.logo || '';
+                if (!merged.restaurant.email) merged.restaurant.email = (user?.tenant)?.contactEmail || user?.email || '';
                 if (!merged.restaurant.phone) {
-                    const phoneVal = (user?.tenant as any)?.contactPhone || user?.phone || '';
+                    const phoneVal = (user?.tenant)?.contactPhone || user?.phone || '';
                     merged.restaurant.phone = phoneVal.replace(/\D/g, '').slice(-10);
                 }
                 setSettings(merged);
                 setWebhookUrl(webhookResp.data?.url || '');
                 setStripeStatus(stripeStatusResp.data || {});
             } else if (response.data && typeof response.data === 'object') {
-                const fetched = response.data as Partial<SettingsState>;
+                const fetched = response.data;
                 const merged = mergeSettingsWithDefaults(defaults, fetched);
-                if (!merged.restaurant.name) merged.restaurant.name = (user?.tenant as any)?.name || '';
-                if (!merged.restaurant.logo) merged.restaurant.logo = (user?.tenant as any)?.logo || '';
-                if (!merged.restaurant.email) merged.restaurant.email = (user?.tenant as any)?.contactEmail || user?.email || '';
+                if (!merged.restaurant.name) merged.restaurant.name = (user?.tenant)?.name || '';
+                if (!merged.restaurant.logo) merged.restaurant.logo = (user?.tenant)?.logo || '';
+                if (!merged.restaurant.email) merged.restaurant.email = (user?.tenant)?.contactEmail || user?.email || '';
                 if (!merged.restaurant.phone) {
-                    const phoneVal = (user?.tenant as any)?.contactPhone || user?.phone || '';
+                    const phoneVal = (user?.tenant)?.contactPhone || user?.phone || '';
                     merged.restaurant.phone = phoneVal.replace(/\D/g, '').slice(-10);
                 }
                 setSettings(merged);
                 setWebhookUrl(webhookResp.data?.url || '');
                 setStripeStatus(stripeStatusResp.data || {});
             } else {
-                defaults.restaurant.name = (user?.tenant as any)?.name || '';
-                defaults.restaurant.logo = (user?.tenant as any)?.logo || '';
-                defaults.restaurant.email = (user?.tenant as any)?.contactEmail || user?.email || '';
-                const phoneVal = (user?.tenant as any)?.contactPhone || user?.phone || '';
+                defaults.restaurant.name = (user?.tenant)?.name || '';
+                defaults.restaurant.logo = (user?.tenant)?.logo || '';
+                defaults.restaurant.email = (user?.tenant)?.contactEmail || user?.email || '';
+                const phoneVal = (user?.tenant)?.contactPhone || user?.phone || '';
                 defaults.restaurant.phone = phoneVal.replace(/\D/g, '').slice(-10);
                 setSettings(defaults);
                 setWebhookUrl(webhookResp.data?.url || '');
@@ -660,7 +688,6 @@ const SettingsPage: React.FC = () => {
             }
         } catch (error) {
             console.error('Error fetching settings:', error);
-            // Don't show error toast here as it might be empty initially
         } finally {
             setLoading(false);
         }
@@ -671,8 +698,6 @@ const SettingsPage: React.FC = () => {
         fetchUsers(0, 10);
     }, []);
 
-
-
     useEffect(() => {
         fetchUsers(userAlertsPage, userAlertsRowsPerPage);
     }, [userAlertsPage, userAlertsRowsPerPage]);
@@ -681,14 +706,17 @@ const SettingsPage: React.FC = () => {
         if (tabValue === 5) {
             fetchAgents();
         }
-    }, [tabValue]);
+        if (tabValue === 8) {
+            fetchSmsLogs(smsPage, smsRowsPerPage);
+            fetchSmsSummary();
+        }
+    }, [tabValue, smsPage, smsRowsPerPage]);
 
     // Auto-fetch tax rate when zipCode changes
     useEffect(() => {
         const zipCode = settings.restaurant.zipCode;
         const state = settings.restaurant.state;
         if (zipCode && zipCode.length >= 5) {
-            // Debounce the API call
             const timer = setTimeout(async () => {
                 try {
                     setFetchingTax(true);
@@ -710,8 +738,7 @@ const SettingsPage: React.FC = () => {
                 } finally {
                     setFetchingTax(false);
                 }
-            }, 500); // 500ms debounce
-
+            }, 500);
             return () => clearTimeout(timer);
         }
     }, [settings.restaurant.zipCode, settings.restaurant.state]);
@@ -1361,7 +1388,17 @@ const SettingsPage: React.FC = () => {
 
     return (
         <Box>
-            <Typography variant="h4" gutterBottom sx={{ mb: 3, textAlign: { xs: 'center', sm: 'left' } }}>
+            <Typography 
+                variant="h4" 
+                gutterBottom 
+                sx={{ 
+                    mb: { xs: 2, sm: 3 }, 
+                    textAlign: { xs: 'center', md: 'left' },
+                    fontSize: { xs: '1.45rem', sm: '2.125rem' },
+                    fontWeight: 'bold',
+                    color: { xs: '#000', sm: 'inherit' }
+                }}
+            >
                 Settings
             </Typography>
 
@@ -3715,7 +3752,7 @@ const SettingsPage: React.FC = () => {
                                         <Typography variant="subtitle2" sx={{ mb: 2 }}>Bonuses</Typography>
                                     </Grid>
 
-                                    <Grid size={{ xs: 12, md: 6 }}>
+                                    <Grid size={{ xs: 12, md: 4 }}>
                                         <TextField
                                             fullWidth
                                             type="number"
@@ -3726,7 +3763,7 @@ const SettingsPage: React.FC = () => {
                                             helperText="Points given on sign up"
                                         />
                                     </Grid>
-                                    <Grid size={{ xs: 12, md: 6 }}>
+                                    <Grid size={{ xs: 12, md: 4 }}>
                                         <TextField
                                             fullWidth
                                             type="number"
@@ -3734,6 +3771,17 @@ const SettingsPage: React.FC = () => {
                                             value={settings.rewards?.firstOrderBonus ?? 0}
                                             onChange={(e) => handleInputChange('rewards', 'firstOrderBonus', Number(e.target.value))}
                                             slotProps={{ htmlInput: { min: 0 } }}
+                                        />
+                                    </Grid>
+                                    <Grid size={{ xs: 12, md: 4 }}>
+                                        <TextField
+                                            fullWidth
+                                            type="number"
+                                            label="Feedback/Rating Bonus"
+                                            value={settings.rewards?.pointsPerRating ?? 0}
+                                            onChange={(e) => handleInputChange('rewards', 'pointsPerRating', Number(e.target.value))}
+                                            slotProps={{ htmlInput: { min: 0 } }}
+                                            helperText="Points per submitted rating"
                                         />
                                     </Grid>
 
@@ -3902,10 +3950,17 @@ const SettingsPage: React.FC = () => {
                                         />
                                         <TextField
                                             fullWidth
-                                            label="Customer ID (Store ID)"
+                                            label="Customer ID"
                                             value={settings.delivery?.ubereats?.customerId || ''}
                                             onChange={(e) => handleDeliveryChange('ubereats', 'customerId', e.target.value)}
                                             placeholder="Uber Eats Customer ID"
+                                        />
+                                        <TextField
+                                            fullWidth
+                                            label="Store ID"
+                                            value={settings.delivery?.ubereats?.storeId || ''}
+                                            onChange={(e) => handleDeliveryChange('ubereats', 'storeId', e.target.value)}
+                                            placeholder="Uber Eats Store ID for this restaurant"
                                         />
                                         <Stack direction="row" spacing={2} alignItems="center">
                                             <FormControlLabel
@@ -3949,7 +4004,7 @@ const SettingsPage: React.FC = () => {
                 </DialogTitle>
                 <DialogContent>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                        Copy this code and paste it into the <strong>NexzenPOS Print Agent</strong> app on your computer.
+                        Copy this code and paste it into the <strong>NexZenPOS Print Agent</strong> app on your computer.
                         This code is your secure link between the restaurant and that computer.
                     </Typography>
 

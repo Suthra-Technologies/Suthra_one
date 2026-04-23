@@ -57,6 +57,27 @@ import { Collapse } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { useActiveTenant } from '../hooks/useActiveTenant';
+import { BRAND_CONFIG } from '../config/brandConfig';
+
+/**
+ * Ensures image URLs are absolute.
+ * On Capacitor native apps, relative URLs (e.g. '/uploads/logo.png') resolve
+ * against 'capacitor://localhost' instead of the real backend server.
+ * This helper prepends the API base URL for any relative path.
+ */
+const resolveImageUrl = (url: string | undefined | null): string => {
+  if (!url) return '';
+  // Already absolute or data-URI → use as-is
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:') || url.startsWith('blob:')) {
+    return url;
+  }
+  // Build server origin from BRAND_CONFIG / env
+  const raw = (BRAND_CONFIG.apiBaseUrl as string) || '';
+  const origin = raw.replace(/\/api\/?$/, '').replace(/\/$/, '');
+  if (!origin) return url;
+  return `${origin}${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
 interface SidebarProps {
   onItemClick?: () => void;
   collapsed?: boolean;
@@ -179,6 +200,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
       title: 'ANALYTICS',
       items: [
         { path: '/reports', label: 'Reports', icon: <Assessment />, roles: ['admin', 'manager'] },
+        { path: '/service-usage', label: 'Service Usage', icon: <WebIcon />, roles: ['admin', 'manager'] },
         { path: '/invoices', label: 'Invoices', icon: <Receipt />, roles: ['admin', 'superadmin'] },
       ]
     },
@@ -233,10 +255,10 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
         {(restaurantSettings.logo || (user?.tenant as any)?.logo) ? (
           <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, width: '100%' }}>
             <Avatar
-              src={restaurantSettings.logo || (user?.tenant as any)?.logo}
+              src={resolveImageUrl(restaurantSettings.logo || (user?.tenant as any)?.logo)}
               alt={restaurantSettings.name || (user?.tenant as any)?.name || 'Restaurant Logo'}
               sx={{
-                mt: { xs: 3.5, sm: 5, md: 1 },
+                mt: { xs: 0.5, sm: 0.5, md: 1 },
                 width: collapsed ? 36 : { xs: 52, sm: 56, md: 68 },
                 height: collapsed ? 36 : { xs: 52, sm: 56, md: 68 },
                 boxShadow: '0 4px 12px rgba(0,0,0,0.15)',

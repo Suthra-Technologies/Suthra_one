@@ -147,11 +147,17 @@ const SubscriptionPage: React.FC = () => {
 
     return (
         <Box sx={{ p: 3, color: 'text.primary' }}>
-            <Box sx={{ mb: 4, textAlign: 'center' }}>
-                <Typography variant="h4" gutterBottom fontWeight="bold" color="text.primary">
+            <Box sx={{ mb: { xs: 2, sm: 4 }, textAlign: 'center' }}>
+                <Typography 
+                    variant="h4" 
+                    gutterBottom 
+                    fontWeight="bold" 
+                    color="text.primary"
+                    sx={{ fontSize: { xs: '1.45rem', sm: '2.125rem' } }}
+                >
                     Subscription Plans
                 </Typography>
-                <Typography variant="body1" color="text.secondary">
+                <Typography variant="body1" color="text.secondary" sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}>
                     Choose the perfect plan for your restaurant
                 </Typography>
             </Box>
@@ -244,8 +250,14 @@ const SubscriptionPage: React.FC = () => {
                                 <CardHeader
                                     title={plan.name}
                                     subheader={plan.description}
-                                    titleTypographyProps={{ align: 'center', variant: 'h5', fontWeight: 'bold', color: 'text.primary' }}
-                                    subheaderTypographyProps={{ align: 'center', color: 'text.secondary' }}
+                                    titleTypographyProps={{ 
+                                        align: 'center', 
+                                        variant: 'h5', 
+                                        fontWeight: 'bold', 
+                                        color: 'text.primary',
+                                        sx: { fontSize: { xs: '1.2rem', sm: '1.5rem' } }
+                                    }}
+                                    subheaderTypographyProps={{ align: 'center', color: 'text.secondary', sx: { fontSize: { xs: '0.8rem', sm: '0.875rem' } } }}
                                     sx={{
                                         bgcolor: isCurrentPlan
                                             ? alpha('#4F46E5', theme.palette.mode === 'dark' ? 0.2 : 0.1)
