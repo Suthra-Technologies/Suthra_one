@@ -423,8 +423,8 @@ const CateringPage = () => {
             const trayId = opt.tray?._id || opt.tray || '';
             const qty = traySelections[trayId] || 0;
             if (qty > 0) {
-                const trayData = trays.find((t: any) => t._id === trayId);
-                addToCartDirect(trayDialogItem._id, trayDialogItem.name, qty, opt.price || trayDialogItem.price || 0, trayId, trayData?.name, trayDialogItem.taxRate, spiceToUse);
+                const trayData = trays.find((t: any) => t._id === trayId) || (typeof opt.tray === 'object' ? opt.tray : null);
+                addToCartDirect(trayDialogItem._id, trayDialogItem.name, qty, opt.price || trayDialogItem.price || 0, trayId, trayData?.name || 'Tray', trayDialogItem.taxRate, spiceToUse);
             }
         });
         setTrayDialogOpen(false);
@@ -596,11 +596,42 @@ const CateringPage = () => {
                                             <CardContent sx={{ p: 2 }}>
                                                 <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
                                                     <Typography variant="subtitle1" fontWeight={700}>{item.name}</Typography>
-                                                    {qty > 0 && <Chip label={`${qty} in cart`} size="small" color="primary" />}
                                                 </Box>
                                                 <Box display="flex" justifyContent="space-between" alignItems="center">
                                                     <Typography variant="h6" color="primary.main">{formatCurrency(item.price)}</Typography>
-                                                    <Button variant="contained" size="small" onClick={() => handleOpenAddItem(item)} startIcon={<Add />}>Add</Button>
+                                                    {qty === 0 ? (
+                                                        <Button variant="contained" size="small" onClick={() => handleOpenAddItem(item)} startIcon={<Add />}
+                                                            sx={{ borderRadius: 2, fontWeight: 700, textTransform: 'none' }}>
+                                                            Add
+                                                        </Button>
+                                                    ) : (
+                                                        <Box display="flex" alignItems="center" gap={0.5}
+                                                            sx={{ bgcolor: 'primary.main', borderRadius: 2, px: 0.5, py: 0.25 }}>
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={() => {
+                                                                    const cartItem = cart.find(i => i.menuItem === item._id);
+                                                                    if (cartItem) {
+                                                                        const k = cartItem.tray ? `${cartItem.menuItem}_${cartItem.tray}_${cartItem.spiceLevel || ''}` : `${cartItem.menuItem}_${cartItem.spiceLevel || ''}`;
+                                                                        updateQuantity(k, -1);
+                                                                    }
+                                                                }}
+                                                                sx={{ color: 'white', p: 0.5, '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' } }}
+                                                            >
+                                                                <Remove fontSize="small" />
+                                                            </IconButton>
+                                                            <Typography variant="body2" fontWeight={800} sx={{ color: 'white', minWidth: 20, textAlign: 'center' }}>
+                                                                {qty}
+                                                            </Typography>
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={() => handleOpenAddItem(item)}
+                                                                sx={{ color: 'white', p: 0.5, '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' } }}
+                                                            >
+                                                                <Add fontSize="small" />
+                                                            </IconButton>
+                                                        </Box>
+                                                    )}
                                                 </Box>
                                             </CardContent>
                                         </Card>
@@ -616,13 +647,13 @@ const CateringPage = () => {
                             <Typography variant="h6" fontWeight={700} mb={3}>Order Details</Typography>
                             <form onSubmit={handleSubmit}>
                                 <Stack spacing={2.5}>
-                                    <TextField label="Full Name" fullWidth value={formData.customerName} onChange={e => setFormData({ ...formData, customerName: e.target.value })} />
-                                    <TextField label="Phone Number" fullWidth value={formData.customerPhone} onChange={e => setFormData({ ...formData, customerPhone: e.target.value })} />
+                                    <TextField label="Full Name" fullWidth required value={formData.customerName} onChange={e => setFormData({ ...formData, customerName: e.target.value })} InputLabelProps={{ sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }} />
+                                    <TextField label="Phone Number" fullWidth required value={formData.customerPhone} onChange={e => setFormData({ ...formData, customerPhone: e.target.value })} InputLabelProps={{ sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }} />
                                     <TextField label="Email" fullWidth value={formData.customerEmail} onChange={e => setFormData({ ...formData, customerEmail: e.target.value })} />
 
                                     <Grid container spacing={2}>
                                         <Grid item xs={12} sm={6}>
-                                            <TextField select fullWidth label="Service Type" value={formData.serviceType} onChange={e => setFormData({ ...formData, serviceType: e.target.value })}>
+                                            <TextField select fullWidth required label="Service Type" value={formData.serviceType} onChange={e => setFormData({ ...formData, serviceType: e.target.value })} InputLabelProps={{ sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }}>
                                                 <MenuItem value="takeaway">Online Takeaway</MenuItem>
                                                 <MenuItem value="delivery">Delivery</MenuItem>
                                                 <MenuItem value="delivery_service">Delivery & Service</MenuItem>
@@ -644,6 +675,11 @@ const CateringPage = () => {
                                                         <TextField
                                                             {...params}
                                                             label="Occasion"
+                                                            required
+                                                            InputLabelProps={{
+                                                                ...params.InputLabelProps,
+                                                                sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } }
+                                                            }}
                                                             sx={{
                                                                 '& .MuiOutlinedInput-root': {
                                                                     borderTopRightRadius: 0,
@@ -675,10 +711,10 @@ const CateringPage = () => {
 
                                     <Grid container spacing={2}>
                                         <Grid item xs={12} sm={6}>
-                                            <TextField label="Occasion Date" type="date" fullWidth value={formData.occasionDate} onChange={e => setFormData({ ...formData, occasionDate: e.target.value })} InputLabelProps={{ shrink: true }} />
+                                            <TextField label="Occasion Date" type="date" fullWidth required value={formData.occasionDate} onChange={e => setFormData({ ...formData, occasionDate: e.target.value })} InputLabelProps={{ shrink: true, sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }} inputProps={{ min: new Date().toISOString().split('T')[0] }} />
                                         </Grid>
                                         <Grid item xs={12} sm={6}>
-                                            <TextField label=" Delivery Date & Time" type="datetime-local" fullWidth value={formData.requiredDate} onChange={e => setFormData({ ...formData, requiredDate: e.target.value })} InputLabelProps={{ shrink: true }} />
+                                            <TextField label=" Delivery Date & Time" type="datetime-local" fullWidth required value={formData.requiredDate} onChange={e => setFormData({ ...formData, requiredDate: e.target.value })} InputLabelProps={{ shrink: true, sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }} inputProps={{ min: new Date().toISOString().slice(0, 16) }} />
                                         </Grid>
                                         {isCelebratoryOccasion && (
                                             <Grid item xs={12}>
@@ -769,11 +805,20 @@ const CateringPage = () => {
 
                                     <Box sx={{ p: 2, bgcolor: alpha('#4F46E5', 0.05), borderRadius: 2 }}>
                                         <Box display="flex" justifyContent="space-between" mb={1}>
-                                            <Typography variant="body2">Subtotal</Typography>
+                                            <Typography variant="body2" color="text.secondary">Subtotal</Typography>
                                             <Typography variant="body2" fontWeight={700}>{formatCurrency(subtotal)}</Typography>
                                         </Box>
+                                        <Box display="flex" justifyContent="space-between" mb={1}>
+                                            <Typography variant="body2" color="text.secondary">
+                                                Tax {taxAmount > 0 && `(${(taxAmount / subtotal * 100).toFixed(1)}%)`}
+                                            </Typography>
+                                            <Typography variant="body2" fontWeight={700} color={taxAmount > 0 ? 'warning.dark' : 'text.secondary'}>
+                                                {formatCurrency(taxAmount)}
+                                            </Typography>
+                                        </Box>
+                                        <Divider sx={{ my: 1 }} />
                                         <Box display="flex" justifyContent="space-between">
-                                            <Typography variant="h6">Total</Typography>
+                                            <Typography variant="h6" fontWeight={800}>Total</Typography>
                                             <Typography variant="h6" fontWeight={800} color="primary.main">{formatCurrency(totalAmount)}</Typography>
                                         </Box>
                                     </Box>
@@ -828,7 +873,7 @@ const CateringPage = () => {
                                         <TableCell align="center">
                                             <Box display="flex" gap={1} justifyContent="center">
                                                 <Button size="small" variant="outlined" startIcon={<Visibility />} onClick={() => { setViewOrder(o); setViewDialogOpen(true); }}>View</Button>
-                                                <Button size="small" variant="contained" startIcon={<Chat />} onClick={() => navigate(`/${currentSlug}/customer/catering/track/${o.trackingToken}`)}>Track</Button>
+                                                <Button size="small" variant="contained" startIcon={<Chat />} onClick={() => navigate(`/${currentSlug}/customer/catering/track/${o.trackingToken || o._id}`)}>Track</Button>
                                             </Box>
                                         </TableCell>
                                     </TableRow>
@@ -855,7 +900,7 @@ const CateringPage = () => {
                         </Box>
                         {trayDialogItem?.trayOptions?.map((opt: any) => {
                             const tid = opt.tray?._id || opt.tray || '';
-                            const tdata = trays.find(t => t._id === tid);
+                            const tdata = trays.find(t => t._id === tid) || (typeof opt.tray === 'object' ? opt.tray : null);
                             return (
                                 <Box key={tid} sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <Box>
@@ -936,22 +981,46 @@ const CateringPage = () => {
             </Dialog>
 
             {/* View Order Dialog */}
-            <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="sm" fullWidth>
+            <Dialog 
+                open={viewDialogOpen} 
+                onClose={() => setViewDialogOpen(false)} 
+                maxWidth="sm" 
+                fullWidth 
+                sx={{ zIndex: { xs: 1050, md: 1300 } }}
+                PaperProps={{ sx: { mt: { xs: '80px', md: 'auto' }, mb: { xs: 2, md: 'auto' } } }}
+            >
                 <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Typography variant="h6" fontWeight="bold">Order: {viewOrder?.orderNumber}</Typography>
-                    <IconButton onClick={() => setViewDialogOpen(false)} size="small"><Close /></IconButton>
+                    <IconButton 
+                        onClick={() => setViewDialogOpen(false)} 
+                        size="small"
+                        sx={{ 
+                            bgcolor: 'error.main', 
+                            color: 'white', 
+                            '&:hover': { bgcolor: 'error.dark' }, 
+                            borderRadius: '50%',
+                            width: 24,
+                            height: 24,
+                            minWidth: 24
+                        }}
+                    >
+                        <Close sx={{ fontSize: 16 }} />
+                    </IconButton>
                 </DialogTitle>
                 <DialogContent dividers>
                     {viewOrder && (
                         <List disablePadding>
-                            <ListItem><ListItemText primary="Date" secondary={new Date(viewOrder.requiredDate).toLocaleString()} /></ListItem>
+                            <ListItem><ListItemText primary={viewOrder.serviceType === 'takeaway' || viewOrder.serviceType === 'online_takeaway' ? 'Delivery Date & Time' : 'Delivery Date & Time'} secondary={new Date(viewOrder.requiredDate).toLocaleString()} /></ListItem>
                             <ListItem><ListItemText primary="Service" secondary={viewOrder.serviceType?.toUpperCase()} /></ListItem>
                             <ListItem><ListItemText primary="Total" secondary={formatCurrency(viewOrder.totalAmount || 0)} /></ListItem>
                             <Divider sx={{ my: 1 }} />
                             <Box sx={{ px: 2, mb: 1 }}>
                                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>Occasion Details</Typography>
-                                <Typography variant="body2"><b>For:</b> {viewOrder.occasionPersonName || 'N/A'}</Typography>
-                                <Typography variant="body2"><b>Date:</b> {viewOrder.occasionDate ? new Date(viewOrder.occasionDate).toLocaleDateString() : 'N/A'}</Typography>
+                                <Typography variant="body2" sx={{ textTransform: 'capitalize' }}><b>Occasion:</b> {viewOrder.occasion || 'N/A'}</Typography>
+                                {viewOrder.occasionPersonName && (
+                                    <Typography variant="body2"><b>For:</b> {viewOrder.occasionPersonName}</Typography>
+                                )}
+                                <Typography variant="body2"><b>Occasion Date:</b> {viewOrder.occasionDate ? new Date(viewOrder.occasionDate).toLocaleDateString() : 'N/A'}</Typography>
 
                                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, mt: 1 }}>Guest Counts</Typography>
                                 <Typography variant="body2"><b>Adults:</b> {viewOrder.guests?.adults?.veg + viewOrder.guests?.adults?.nonVeg === 0 ? 'N/A' : `Veg: ${viewOrder.guests?.adults?.veg}, Non-Veg: ${viewOrder.guests?.adults?.nonVeg}`}</Typography>
@@ -997,7 +1066,7 @@ const CateringPage = () => {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setViewDialogOpen(false)}>Close</Button>
-                    <Button variant="contained" color="primary" startIcon={<Chat />} onClick={() => { setViewDialogOpen(false); navigate(`/${currentSlug}/customer/catering/track/${viewOrder?.trackingToken}`); }}>Track / Chat</Button>
+                    <Button variant="contained" color="primary" startIcon={<Chat />} onClick={() => { setViewDialogOpen(false); navigate(`/${currentSlug}/customer/catering/track/${viewOrder?.trackingToken || viewOrder?._id}`); }}>Track / Chat</Button>
                 </DialogActions>
             </Dialog>
 

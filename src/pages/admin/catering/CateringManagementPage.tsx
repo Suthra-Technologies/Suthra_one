@@ -788,7 +788,8 @@ const CateringManagementPage = () => {
                 let displayName = item.name;
                 let trayMultiplier = 1;
                 if (row.trayId) {
-                    const trayData = trays.find(t => t._id === row.trayId);
+                    const opt = item.trayOptions?.find((o: any) => (o.tray?._id || o.tray) === row.trayId);
+                    const trayData = trays.find(t => t._id === row.trayId) || (opt && typeof opt.tray === 'object' ? opt.tray : null);
                     displayName += ` [${trayData?.name || 'Tray'}]`;
                     trayMultiplier = 1;
                 }
@@ -985,9 +986,10 @@ const CateringManagementPage = () => {
                                                                                             </Box>
                                                                                         </MenuItem>
                                                                                         {item.trayOptions?.map((opt: any) => {
-                                                                                            const t = trays.find(t => t._id === (opt.tray?._id || opt.tray));
+                                                                                            const tid = opt.tray?._id || opt.tray;
+                                                                                            const t = trays.find(tr => tr._id === tid) || (typeof opt.tray === 'object' ? opt.tray : null);
                                                                                             return (
-                                                                                                <MenuItem key={t?._id} value={t?._id}>
+                                                                                                <MenuItem key={tid} value={tid}>
                                                                                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', gap: 2 }}>
                                                                                                         <Typography variant="body2">
                                                                                                             {t?.name} {opt.servingSize && opt.servingSize > 0 && <Typography component="span" variant="caption" sx={{ color: 'text.secondary' }}>(Serves ~{opt.servingSize})</Typography>}
@@ -1099,8 +1101,8 @@ const CateringManagementPage = () => {
                                                                     </Box>
                                                                 )}
 
-                                                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mt: 0.5 }}>
-                                                                    <FormControl size="small" sx={{ flexGrow: 1, maxWidth: { xs: '100%', sm: 300 } }}>
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 2, mt: 0.5 }}>
+                                                                    {/* <FormControl size="small" sx={{ flexGrow: 1, maxWidth: { xs: '100%', sm: 300 } }}>
                                                                         <InputLabel shrink>Cook</InputLabel>
                                                                         <Select
                                                                             value={config.cook}
@@ -1113,7 +1115,7 @@ const CateringManagementPage = () => {
                                                                             <MenuItem value=""><em>Select Cook</em></MenuItem>
                                                                             {cooks.map(c => <MenuItem key={c._id} value={c._id}>{c.firstName} {c.lastName}</MenuItem>)}
                                                                         </Select>
-                                                                    </FormControl>
+                                                                    </FormControl> */}
                                                                     {hasTrays && (
                                                                         <Button
                                                                             size="small"
@@ -2014,6 +2016,9 @@ const CateringManagementPage = () => {
                                                         type="date"
                                                         required
                                                         value={editData.occasionDate ? new Date(editData.occasionDate).toISOString().split('T')[0] : ''}
+                                                        inputProps={{
+                                                            min: new Date().toISOString().split('T')[0]
+                                                        }}
                                                         onChange={(e) => setEditData({ ...editData, occasionDate: e.target.value })}
                                                         margin="normal"
                                                         size="small"
@@ -2565,6 +2570,9 @@ const CateringManagementPage = () => {
                                                         required
                                                         InputLabelProps={{ shrink: true, sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }}
                                                         value={newOrder.requiredDate}
+                                                        inputProps={{
+                                                            min: new Date().toISOString().slice(0, 16)
+                                                        }}
                                                         helperText={formSubmitted && !newOrder.requiredDate ? "Date & Time is required" : ""}
                                                         FormHelperTextProps={{ sx: { color: 'error.main' } }}
                                                         onChange={(e) => setNewOrder({ ...newOrder, requiredDate: e.target.value })}
@@ -2579,6 +2587,9 @@ const CateringManagementPage = () => {
                                                         required
                                                         InputLabelProps={{ shrink: true, sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }}
                                                         value={newOrder.occasionDate}
+                                                        inputProps={{
+                                                            min: new Date().toISOString().split('T')[0]
+                                                        }}
                                                         error={formSubmitted && !newOrder.occasionDate}
                                                         helperText={formSubmitted && !newOrder.occasionDate ? "Occasion Date is required" : ""}
                                                         FormHelperTextProps={{ sx: { color: 'error.main' } }}

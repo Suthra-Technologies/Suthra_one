@@ -132,11 +132,13 @@ const MyBookingsPage: React.FC = () => {
 
     const filterBookingsByTab = (bookings: Booking[], tabIndex: number) => {
         switch (tabIndex) {
-            case 1: // Upcoming
-                return bookings.filter(b => b.status === 'confirmed');
-            case 2: // Past
+            case 1: // All Table Bookings
+                return bookings;
+            case 2: // Upcoming
+                return bookings.filter(b => b.status === 'confirmed' || b.status === 'pending');
+            case 3: // Past
                 return bookings.filter(b => b.status === 'completed');
-            case 3: // Cancelled
+            case 4: // Cancelled
                 return bookings.filter(b => b.status === 'cancelled');
             default:
                 return [];
@@ -304,11 +306,11 @@ const MyBookingsPage: React.FC = () => {
     };
 
     const renderBookingCard = (booking: Booking) => (
-        <Card 
-            key={booking.id} 
-            sx={{ 
-                mb: 2.5, borderRadius: 4, overflow: 'hidden', 
-                boxShadow: '0 2px 12px rgba(0,0,0,0.04)', 
+        <Card
+            key={booking.id}
+            sx={{
+                mb: 2.5, borderRadius: 4, overflow: 'hidden',
+                boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
                 border: '1px solid rgba(0,0,0,0.06)',
                 transition: 'all 0.3s ease',
                 '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 10px 25px rgba(0,0,0,0.08)' }
@@ -324,7 +326,7 @@ const MyBookingsPage: React.FC = () => {
                             ID: {booking.id.toUpperCase()}
                         </Typography>
                         <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, display: 'block', mt: 1 }}>
-                             {booking.location}
+                            {booking.location}
                         </Typography>
                     </Box>
                     <Chip
@@ -332,16 +334,16 @@ const MyBookingsPage: React.FC = () => {
                         label={booking.status.toUpperCase()}
                         color={getStatusColor(booking.status)}
                         size="medium"
-                        sx={{ 
-                            fontWeight: 800, 
-                            borderRadius: '12px', 
+                        sx={{
+                            fontWeight: 800,
+                            borderRadius: '12px',
                             px: 1.5,
                             height: 32,
                             boxShadow: booking.status === 'confirmed' ? '0 4px 12px rgba(16, 185, 129, 0.2)' : 'none',
                         }}
                     />
                 </Box>
-                
+
                 <Grid container spacing={2}>
                     <Grid item xs={12} sm={4}>
                         <Box sx={{ display: 'flex', alignItems: 'center', p: 1.5, bgcolor: 'rgba(0,0,0,0.02)', borderRadius: 2 }}>
@@ -438,7 +440,7 @@ const MyBookingsPage: React.FC = () => {
                 boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
             }}>
                 <Box sx={{ position: 'absolute', top: -100, right: -100, width: 300, height: 300, borderRadius: '50%', background: 'rgba(79,70,229,0.1)', filter: 'blur(80px)' }} />
-                
+
                 <Container maxWidth="lg">
                     <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 3 }}>
                         <Box>
@@ -454,12 +456,12 @@ const MyBookingsPage: React.FC = () => {
                                 Track your orders and manage upcoming table reservations.
                             </Typography>
                         </Box>
-                        <Button 
-                            variant="contained" 
+                        <Button
+                            variant="contained"
                             size="large"
-                            startIcon={<Add />} 
+                            startIcon={<Add />}
                             onClick={() => navigate(`/${tenantSlug}/customer/book-table`)}
-                            sx={{ 
+                            sx={{
                                 borderRadius: '16px', textTransform: 'none', fontWeight: 700, px: 4, py: 1.5,
                                 background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.2)',
                                 '&:hover': { background: 'rgba(255,255,255,0.2)' }
@@ -480,17 +482,17 @@ const MyBookingsPage: React.FC = () => {
                 ) : (
                     <>
                         <Box sx={{ mb: 4, bgcolor: 'white', p: 1, borderRadius: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
-                            <Tabs 
-                                value={tabValue} 
-                                onChange={(e, n) => setTabValue(n)} 
-                                variant="scrollable" 
+                            <Tabs
+                                value={tabValue}
+                                onChange={(e, n) => setTabValue(n)}
+                                variant="scrollable"
                                 scrollButtons="auto"
                                 sx={{
                                     '& .MuiTabs-indicator': { display: 'none' },
-                                    '& .MuiTab-root': { 
+                                    '& .MuiTab-root': {
                                         borderRadius: '14px', minHeight: 48, mx: 0.5, textTransform: 'none', fontWeight: 700,
-                                        '&.Mui-selected': { 
-                                            background: 'linear-gradient(135deg, #4F46E5, #7C3AED)', 
+                                        '&.Mui-selected': {
+                                            background: 'linear-gradient(135deg, #4F46E5, #7C3AED)',
                                             color: 'white !important',
                                             boxShadow: '0 4px 12px rgba(79,70,229,0.3)'
                                         }
@@ -498,152 +500,252 @@ const MyBookingsPage: React.FC = () => {
                                 }}
                             >
                                 <Tab icon={<Fastfood fontSize="small" />} iconPosition="start" label={`Orders (${orders.length})`} />
-                                <Tab icon={<EventSeat fontSize="small" />} iconPosition="start" label={`Upcoming (${filterBookingsByTab(bookings, 1).length})`} />
-                                <Tab icon={<HistoryIcon fontSize="small" />} iconPosition="start" label={`Past (${filterBookingsByTab(bookings, 2).length})`} />
-                                <Tab icon={<Cancel fontSize="small" />} iconPosition="start" label={`Cancelled (${filterBookingsByTab(bookings, 3).length})`} />
+                                <Tab icon={<EventSeat fontSize="small" />} iconPosition="start" label={`Table Bookings (${bookings.length})`} />
+                                <Tab icon={<CheckCircle fontSize="small" />} iconPosition="start" label={`Upcoming (${filterBookingsByTab(bookings, 2).length})`} />
+                                <Tab icon={<HistoryIcon fontSize="small" />} iconPosition="start" label={`Past (${filterBookingsByTab(bookings, 3).length})`} />
+                                <Tab icon={<Cancel fontSize="small" />} iconPosition="start" label={`Cancelled (${filterBookingsByTab(bookings, 4).length})`} />
                             </Tabs>
                         </Box>
 
-                    {tabValue === 0 ? (
-                        orders.length === 0 ? (
+                        {tabValue === 0 ? (
+                            orders.length === 0 ? (
+                                <Paper sx={{ p: 4, textAlign: 'center' }}>
+                                    <Fastfood sx={{ fontSize: 48, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
+                                    <Typography variant="h6">No Orders Yet</Typography>
+                                    <Typography color="text.secondary">Your recent food orders will appear here.</Typography>
+                                    <Button
+                                        variant="outlined"
+                                        sx={{ mt: 2 }}
+                                        onClick={() => navigate(`/${tenantSlug}/customer/order`)}
+                                    >
+                                        Order Food Now
+                                    </Button>
+                                </Paper>
+                            ) : (
+                                <>
+                                    {orders.slice((page - 1) * itemsPerPage, page * itemsPerPage).map(o => (
+                                        <Card
+                                            key={o._id}
+                                            sx={{
+                                                mb: 2.5, borderRadius: 4, overflow: 'hidden',
+                                                boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+                                                border: '1px solid rgba(0,0,0,0.06)',
+                                                transition: 'all 0.3s ease',
+                                                '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 10px 25px rgba(0,0,0,0.08)' }
+                                            }}
+                                        >
+                                            <CardContent sx={{ p: 3 }}>
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                                    <Box>
+                                                        <Typography variant="h6" fontWeight={800} color="primary.main">
+                                                            #{o.orderNumber || o._id.slice(-6).toUpperCase()}
+                                                        </Typography>
+                                                        <Typography variant="caption" fontWeight={600} color="text.secondary">
+                                                            {new Date(o.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at {new Date(o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </Typography>
+                                                    </Box>
+                                                    <Chip
+                                                        label={o.status.replace(/_/g, ' ').toUpperCase()}
+                                                        color={
+                                                            ['completed', 'delivered'].includes(o.status) ? 'success' :
+                                                                ['cancelled'].includes(o.status) ? 'error' :
+                                                                    ['pending'].includes(o.status) ? 'warning' : 'primary'
+                                                        }
+                                                        size="small"
+                                                        sx={{ fontWeight: 800, borderRadius: '8px' }}
+                                                    />
+                                                </Box>
+
+                                                <Box sx={{ p: 2, bgcolor: 'rgba(0,0,0,0.02)', borderRadius: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                                        <Avatar sx={{ bgcolor: 'white', border: '1px solid rgba(0,0,0,0.06)', color: 'text.secondary' }}>
+                                                            <Fastfood sx={{ fontSize: 20 }} />
+                                                        </Avatar>
+                                                        <Box>
+                                                            <Typography variant="body2" fontWeight={700} sx={{ textTransform: 'capitalize' }}>
+                                                                {o.orderType.replace(/_/g, ' ')}
+                                                            </Typography>
+                                                            <Typography variant="caption" color="text.secondary">
+                                                                {o.items?.length || 0} items
+                                                            </Typography>
+                                                        </Box>
+                                                    </Box>
+                                                    <Typography variant="h6" fontWeight={900}>
+                                                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(o.totalAmount)}
+                                                    </Typography>
+                                                </Box>
+
+                                                {o.status === 'cancelled' && (
+                                                    <Box sx={{ mt: 2.5, p: 1.75, bgcolor: 'rgba(0,0,0,0.025)', borderRadius: 2.5 }}>
+                                                        {o.paymentStatus === 'refunded' && getRefundAmount(o) > 0 ? (
+                                                            <>
+                                                                <Typography variant="body2" fontWeight={800}>
+                                                                    Refund sent: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(getRefundAmount(o))}
+                                                                </Typography>
+                                                                <Typography variant="caption" color="text.secondary">
+                                                                    Back to your original payment method{o.refunds?.[0]?.timestamp ? ` on ${formatRefundTime(o.refunds[0].timestamp)}` : ''}. Confirmation sent by email.
+                                                                </Typography>
+                                                            </>
+                                                        ) : o.paymentStatus === 'paid' ? (
+                                                            <>
+                                                                <Typography variant="body2" fontWeight={800}>
+                                                                    Refund in progress
+                                                                </Typography>
+                                                                <Typography variant="caption" color="text.secondary">
+                                                                    We&apos;ll send confirmation by email once it&apos;s processed.
+                                                                </Typography>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Typography variant="body2" fontWeight={800}>
+                                                                    Order cancelled
+                                                                </Typography>
+                                                                <Typography variant="caption" color="text.secondary">
+                                                                    No further action needed.
+                                                                </Typography>
+                                                            </>
+                                                        )}
+                                                    </Box>
+                                                )}
+
+                                                {o.canCancel && (
+                                                    <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid rgba(0,0,0,0.05)', pt: 2 }}>
+                                                        <Button
+                                                            variant="outlined"
+                                                            color="error"
+                                                            size="small"
+                                                            onClick={() => { setSelectedOrder(o); setShowOrderCancelDialog(true); }}
+                                                            sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700 }}
+                                                        >
+                                                            Cancel Order
+                                                        </Button>
+                                                    </Box>
+                                                )}
+
+                                                {o.orderType === 'delivery' && o.status === 'on_the_way' && (
+                                                    <Button
+                                                        fullWidth
+                                                        variant="contained"
+                                                        startIcon={<LocationOn />}
+                                                        sx={{
+                                                            mt: 2, borderRadius: 2, fontWeight: 700, textTransform: 'none',
+                                                            background: 'linear-gradient(135deg, #4F46E5, #7C3AED)',
+                                                            boxShadow: '0 4px 12px rgba(79,70,229,0.3)',
+                                                        }}
+                                                        onClick={() => {
+                                                            setTrackingOrder(o);
+                                                            setShowTracking(true);
+                                                        }}
+                                                    >
+                                                        Track Live Order
+                                                    </Button>
+                                                )}
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                    {orders.length > 0 && (
+                                        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3, mb: 2 }}>
+                                            <Pagination
+                                                count={Math.ceil(orders.length / itemsPerPage)}
+                                                page={page}
+                                                onChange={(_, value) => setPage(value)}
+                                                color="primary"
+                                            />
+                                        </Box>
+                                    )}
+                                </>
+                            )
+                        ) : tabValue === 1 ? (
+                            /* ── Table Bookings Tab ── */
+                            bookings.length === 0 ? (
+                                <Paper sx={{ p: 5, textAlign: 'center', borderRadius: 4 }}>
+                                    <EventSeat sx={{ fontSize: 56, color: 'text.disabled', mb: 2 }} />
+                                    <Typography variant="h6" fontWeight={700}>No Table Bookings Yet</Typography>
+                                    <Typography color="text.secondary" sx={{ mb: 3 }}>Your table reservations will appear here.</Typography>
+                                    <Button variant="contained" onClick={() => navigate(`/${tenantSlug}/customer/book-table`)} sx={{ borderRadius: 2, fontWeight: 700, textTransform: 'none', px: 4 }}>Book a Table</Button>
+                                </Paper>
+                            ) : (
+                                <Paper elevation={0} sx={{ borderRadius: 4, border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
+                                    {/* Table Header */}
+                                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 0.7fr', gap: 1, px: 3, py: 2, bgcolor: 'linear-gradient(135deg,#4F46E5,#7C3AED)', background: 'linear-gradient(135deg,#4F46E5,#7C3AED)', color: 'white' }}>
+                                        <Typography variant="caption" fontWeight={800} sx={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}>Booking ID</Typography>
+                                        <Typography variant="caption" fontWeight={800} sx={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}>Table</Typography>
+                                        <Typography variant="caption" fontWeight={800} sx={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}>Date & Time</Typography>
+                                        <Typography variant="caption" fontWeight={800} sx={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}>Guests</Typography>
+                                        <Typography variant="caption" fontWeight={800} sx={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}>Status</Typography>
+                                    </Box>
+                                    <Divider />
+                                    {bookings.slice((page - 1) * itemsPerPage, page * itemsPerPage).map((b, idx) => (
+                                        <Box
+                                            key={b.id}
+                                            sx={{
+                                                display: 'grid',
+                                                gridTemplateColumns: '1fr 1fr 1fr 1fr 0.7fr',
+                                                gap: 1,
+                                                px: 3,
+                                                py: 2.5,
+                                                bgcolor: idx % 2 === 0 ? 'white' : 'rgba(79,70,229,0.02)',
+                                                borderBottom: '1px solid',
+                                                borderColor: 'divider',
+                                                alignItems: 'center',
+                                                transition: 'background 0.2s',
+                                                '&:hover': { bgcolor: 'rgba(79,70,229,0.05)' },
+                                                '&:last-child': { borderBottom: 'none' }
+                                            }}
+                                        >
+                                            <Box>
+                                                <Typography variant="body2" fontWeight={700} color="primary.main" sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>
+                                                    #{b.id.slice(-8).toUpperCase()}
+                                                </Typography>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    {b.createdAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                </Typography>
+                                            </Box>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <EventSeat sx={{ fontSize: 16, color: 'primary.main' }} />
+                                                <Box>
+                                                    <Typography variant="body2" fontWeight={700}>Table {b.tableNumber}</Typography>
+                                                    <Typography variant="caption" color="text.secondary">{b.location}</Typography>
+                                                </Box>
+                                            </Box>
+                                            <Box>
+                                                <Typography variant="body2" fontWeight={600}>
+                                                    {b.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                </Typography>
+                                                <Typography variant="caption" color="text.secondary">{b.time}</Typography>
+                                            </Box>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                <People sx={{ fontSize: 15, color: 'text.secondary' }} />
+                                                <Typography variant="body2" fontWeight={600}>{b.guests} {b.guests === 1 ? 'person' : 'people'}</Typography>
+                                            </Box>
+                                            <Chip
+                                                label={b.status.toUpperCase()}
+                                                size="small"
+                                                color={getStatusColor(b.status)}
+                                                icon={getStatusIcon(b.status)}
+                                                sx={{ fontWeight: 800, borderRadius: '8px', fontSize: '0.65rem' }}
+                                            />
+                                        </Box>
+                                    ))}
+                                    {bookings.length > itemsPerPage && (
+                                        <Box sx={{ display: 'flex', justifyContent: 'center', py: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+                                            <Pagination count={Math.ceil(bookings.length / itemsPerPage)} page={page} onChange={(_, v) => setPage(v)} color="primary" />
+                                        </Box>
+                                    )}
+                                </Paper>
+                            )
+                        ) : filteredBookings.length === 0 ? (
                             <Paper sx={{ p: 4, textAlign: 'center' }}>
-                                <Fastfood sx={{ fontSize: 48, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
-                                <Typography variant="h6">No Orders Yet</Typography>
-                                <Typography color="text.secondary">Your recent food orders will appear here.</Typography>
-                                <Button
-                                    variant="outlined"
-                                    sx={{ mt: 2 }}
-                                    onClick={() => navigate(`/${tenantSlug}/customer/order`)}
-                                >
-                                    Order Food Now
-                                </Button>
+                                <Typography variant="h6">No Bookings Found</Typography>
+                                <Typography color="text.secondary">You don't have any bookings in this category.</Typography>
                             </Paper>
                         ) : (
                             <>
-                                {orders.slice((page - 1) * itemsPerPage, page * itemsPerPage).map(o => (
-                                    <Card 
-                                        key={o._id} 
-                                        sx={{ 
-                                            mb: 2.5, borderRadius: 4, overflow: 'hidden', 
-                                            boxShadow: '0 2px 12px rgba(0,0,0,0.04)', 
-                                            border: '1px solid rgba(0,0,0,0.06)',
-                                            transition: 'all 0.3s ease',
-                                            '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 10px 25px rgba(0,0,0,0.08)' }
-                                        }}
-                                    >
-                                        <CardContent sx={{ p: 3 }}>
-                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                                                <Box>
-                                                    <Typography variant="h6" fontWeight={800} color="primary.main">
-                                                        #{o.orderNumber || o._id.slice(-6).toUpperCase()}
-                                                    </Typography>
-                                                    <Typography variant="caption" fontWeight={600} color="text.secondary">
-                                                        {new Date(o.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at {new Date(o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                                    </Typography>
-                                                </Box>
-                                                <Chip
-                                                    label={o.status.replace(/_/g, ' ').toUpperCase()}
-                                                    color={
-                                                        ['completed', 'delivered'].includes(o.status) ? 'success' :
-                                                        ['cancelled'].includes(o.status) ? 'error' :
-                                                        ['pending'].includes(o.status) ? 'warning' : 'primary'
-                                                    }
-                                                    size="small"
-                                                    sx={{ fontWeight: 800, borderRadius: '8px' }}
-                                                />
-                                            </Box>
-                                            
-                                            <Box sx={{ p: 2, bgcolor: 'rgba(0,0,0,0.02)', borderRadius: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                                    <Avatar sx={{ bgcolor: 'white', border: '1px solid rgba(0,0,0,0.06)', color: 'text.secondary' }}>
-                                                        <Fastfood sx={{ fontSize: 20 }} />
-                                                    </Avatar>
-                                                    <Box>
-                                                        <Typography variant="body2" fontWeight={700} sx={{ textTransform: 'capitalize' }}>
-                                                            {o.orderType.replace(/_/g, ' ')}
-                                                        </Typography>
-                                                        <Typography variant="caption" color="text.secondary">
-                                                            {o.items?.length || 0} items
-                                                        </Typography>
-                                                    </Box>
-                                                </Box>
-                                                <Typography variant="h6" fontWeight={900}>
-                                                    {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(o.totalAmount)}
-                                                </Typography>
-                                            </Box>
-
-                                            {o.status === 'cancelled' && (
-                                                <Box sx={{ mt: 2.5, p: 1.75, bgcolor: 'rgba(0,0,0,0.025)', borderRadius: 2.5 }}>
-                                                    {o.paymentStatus === 'refunded' && getRefundAmount(o) > 0 ? (
-                                                        <>
-                                                            <Typography variant="body2" fontWeight={800}>
-                                                                Refund sent: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(getRefundAmount(o))}
-                                                            </Typography>
-                                                            <Typography variant="caption" color="text.secondary">
-                                                                Back to your original payment method{o.refunds?.[0]?.timestamp ? ` on ${formatRefundTime(o.refunds[0].timestamp)}` : ''}. Confirmation sent by email.
-                                                            </Typography>
-                                                        </>
-                                                    ) : o.paymentStatus === 'paid' ? (
-                                                        <>
-                                                            <Typography variant="body2" fontWeight={800}>
-                                                                Refund in progress
-                                                            </Typography>
-                                                            <Typography variant="caption" color="text.secondary">
-                                                                We&apos;ll send confirmation by email once it&apos;s processed.
-                                                            </Typography>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <Typography variant="body2" fontWeight={800}>
-                                                                Order cancelled
-                                                            </Typography>
-                                                            <Typography variant="caption" color="text.secondary">
-                                                                No further action needed.
-                                                            </Typography>
-                                                        </>
-                                                    )}
-                                                </Box>
-                                            )}
-
-                                            {o.canCancel && (
-                                                <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid rgba(0,0,0,0.05)', pt: 2 }}>
-                                                    <Button
-                                                        variant="outlined"
-                                                        color="error"
-                                                        size="small"
-                                                        onClick={() => { setSelectedOrder(o); setShowOrderCancelDialog(true); }}
-                                                        sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 700 }}
-                                                    >
-                                                        Cancel Order
-                                                    </Button>
-                                                </Box>
-                                            )}
-
-                                            {o.orderType === 'delivery' && o.status === 'on_the_way' && (
-                                                <Button
-                                                    fullWidth
-                                                    variant="contained"
-                                                    startIcon={<LocationOn />}
-                                                    sx={{ 
-                                                        mt: 2, borderRadius: 2, fontWeight: 700, textTransform: 'none',
-                                                        background: 'linear-gradient(135deg, #4F46E5, #7C3AED)',
-                                                        boxShadow: '0 4px 12px rgba(79,70,229,0.3)',
-                                                    }}
-                                                    onClick={() => {
-                                                        setTrackingOrder(o);
-                                                        setShowTracking(true);
-                                                    }}
-                                                >
-                                                    Track Live Order
-                                                </Button>
-                                            )}
-                                        </CardContent>
-                                    </Card>
-                                ))}
-                                {orders.length > 0 && (
+                                {filteredBookings.slice((page - 1) * itemsPerPage, page * itemsPerPage).map(b => renderBookingCard(b))}
+                                {filteredBookings.length > 0 && (
                                     <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3, mb: 2 }}>
                                         <Pagination
-                                            count={Math.ceil(orders.length / itemsPerPage)}
+                                            count={Math.ceil(filteredBookings.length / itemsPerPage)}
                                             page={page}
                                             onChange={(_, value) => setPage(value)}
                                             color="primary"
@@ -651,31 +753,11 @@ const MyBookingsPage: React.FC = () => {
                                     </Box>
                                 )}
                             </>
-                        )
-                    ) : filteredBookings.length === 0 ? (
-                        <Paper sx={{ p: 4, textAlign: 'center' }}>
-                            <Typography variant="h6">No Bookings Found</Typography>
-                            <Typography color="text.secondary">You don't have any bookings in this category.</Typography>
-                        </Paper>
-                    ) : (
-                        <>
-                            {filteredBookings.slice((page - 1) * itemsPerPage, page * itemsPerPage).map(b => renderBookingCard(b))}
-                            {filteredBookings.length > 0 && (
-                                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3, mb: 2 }}>
-                                    <Pagination
-                                        count={Math.ceil(filteredBookings.length / itemsPerPage)}
-                                        page={page}
-                                        onChange={(_, value) => setPage(value)}
-                                        color="primary"
-                                    />
-                                </Box>
-                            )}
-                        </>
-                    )}
-                </>
-            )}
+                        )}
+                    </>
+                )}
 
-            {/* <Dialog open={showDetails} onClose={() => setShowDetails(false)} maxWidth="sm" fullWidth>
+                {/* <Dialog open={showDetails} onClose={() => setShowDetails(false)} maxWidth="sm" fullWidth>
                 <DialogTitle>Booking Details</DialogTitle>
                 {selectedBooking && (
                     <DialogContent>
@@ -689,43 +771,43 @@ const MyBookingsPage: React.FC = () => {
                 <DialogActions><Button onClick={() => setShowDetails(false)}>Close</Button></DialogActions>
             </Dialog> */}
 
-            <Dialog open={showCancelDialog} onClose={() => setShowCancelDialog(false)} maxWidth="xs" fullWidth>
-                <DialogTitle>Cancel Booking</DialogTitle>
-                <DialogContent>
-                    <Typography sx={{ mb: selectedBooking?.reservationFee?.paid ? 1.25 : 0 }}>
-                        Cancel this reservation?
-                    </Typography>
-                    {selectedBooking?.reservationFee?.paid && selectedBooking?.reservationFee?.stripePaymentIntentId && (
-                        <Alert severity="info" sx={{ borderRadius: 2 }}>
-                            {`The ${formatCurrency(selectedBooking.reservationFee.amount || 0)} reservation fee will be refunded to your original payment method. A confirmation email will be sent.`}
-                        </Alert>
-                    )}
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setShowCancelDialog(false)}>Back</Button>
-                    <Button onClick={handleCancelBooking} color="error" variant="contained">Cancel Now</Button>
-                </DialogActions>
-            </Dialog>
+                <Dialog open={showCancelDialog} onClose={() => setShowCancelDialog(false)} maxWidth="xs" fullWidth>
+                    <DialogTitle>Cancel Booking</DialogTitle>
+                    <DialogContent>
+                        <Typography sx={{ mb: selectedBooking?.reservationFee?.paid ? 1.25 : 0 }}>
+                            Cancel this reservation?
+                        </Typography>
+                        {selectedBooking?.reservationFee?.paid && selectedBooking?.reservationFee?.stripePaymentIntentId && (
+                            <Alert severity="info" sx={{ borderRadius: 2 }}>
+                                {`The ${formatCurrency(selectedBooking.reservationFee.amount || 0)} reservation fee will be refunded to your original payment method. A confirmation email will be sent.`}
+                            </Alert>
+                        )}
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => setShowCancelDialog(false)}>Back</Button>
+                        <Button onClick={handleCancelBooking} color="error" variant="contained">Cancel Now</Button>
+                    </DialogActions>
+                </Dialog>
 
-            <Dialog open={showOrderCancelDialog} onClose={() => setShowOrderCancelDialog(false)} maxWidth="xs" fullWidth>
-                <DialogTitle>Cancel Order</DialogTitle>
-                <DialogContent>
-                    <Typography sx={{ mb: selectedOrder?.paymentStatus === 'paid' ? 1.25 : 0 }}>
-                        Cancel this order?
-                    </Typography>
-                    {selectedOrder?.paymentStatus === 'paid' && selectedOrder?.paymentIntentId && (
-                        <Alert severity="info" sx={{ borderRadius: 2 }}>
-                            {`The ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(selectedOrder.totalAmount || 0)} payment will be refunded to your original payment method. A confirmation email will be sent.`}
-                        </Alert>
-                    )}
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setShowOrderCancelDialog(false)}>Back</Button>
-                    <Button onClick={handleCancelOrder} color="error" variant="contained">Cancel Now</Button>
-                </DialogActions>
-            </Dialog>
+                <Dialog open={showOrderCancelDialog} onClose={() => setShowOrderCancelDialog(false)} maxWidth="xs" fullWidth>
+                    <DialogTitle>Cancel Order</DialogTitle>
+                    <DialogContent>
+                        <Typography sx={{ mb: selectedOrder?.paymentStatus === 'paid' ? 1.25 : 0 }}>
+                            Cancel this order?
+                        </Typography>
+                        {selectedOrder?.paymentStatus === 'paid' && selectedOrder?.paymentIntentId && (
+                            <Alert severity="info" sx={{ borderRadius: 2 }}>
+                                {`The ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(selectedOrder.totalAmount || 0)} payment will be refunded to your original payment method. A confirmation email will be sent.`}
+                            </Alert>
+                        )}
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => setShowOrderCancelDialog(false)}>Back</Button>
+                        <Button onClick={handleCancelOrder} color="error" variant="contained">Cancel Now</Button>
+                    </DialogActions>
+                </Dialog>
 
-            {/* <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
+                {/* <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
                  <MenuItem onClick={handleViewDetails}><Info sx={{ mr: 1 }} />View Details</MenuItem>
                  {selectedBooking?.canCancel && (
                      <MenuItem onClick={() => { setShowCancelDialog(true); handleMenuClose(); }} sx={{ color: 'error.main' }}>
@@ -734,13 +816,13 @@ const MyBookingsPage: React.FC = () => {
                  )}
              </Menu> */}
 
-            <OrderTrackingDialog
-                open={showTracking}
-                order={trackingOrder}
-                onClose={() => setShowTracking(false)}
-            />
-        </Container>
-    </Box>
+                <OrderTrackingDialog
+                    open={showTracking}
+                    order={trackingOrder}
+                    onClose={() => setShowTracking(false)}
+                />
+            </Container>
+        </Box>
     );
 };
 
