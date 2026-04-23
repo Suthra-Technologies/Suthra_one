@@ -56,6 +56,7 @@ import MoneyIcon from '@mui/icons-material/AttachMoney';
 import StarIcon from '@mui/icons-material/Star';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
+import { downloadFromUrl } from '../../utils/fileDownload';
 import { useTheme, useMediaQuery } from '@mui/material';
 import { useSocket } from '../../context/SocketContext';
 import { useSettings } from '../../context/SettingsContext';
@@ -473,19 +474,11 @@ const ReportsPage: React.FC = () => {
                 }
             }
 
-            const response = await axios.get(`${API_URL}/api/reports/export/excel`, {
-                params,
-                headers,
-                responseType: 'blob',
-            });
+            const queryString = new URLSearchParams(params).toString();
+            const fullUrl = `${API_URL}/api/reports/export/excel?${queryString}`;
+            const fileName = `report-${reportType}-${period}-${Date.now()}.xlsx`;
 
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `report-${reportType}-${period}-${Date.now()}.xlsx`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
+            await downloadFromUrl(fullUrl, fileName, headers);
             toast.success('Excel report downloaded!');
         } catch (error) {
             console.error('Error downloading Excel:', error);
@@ -5164,7 +5157,6 @@ const ReportsPage: React.FC = () => {
                     <Tab label="Promo Summary" />
                     <Tab label="Promo Redemptions" />
                     <Tab label="Promo Compensation" />
-                    <Tab label="Delivery Reports" />
                 </Tabs>
             </Paper>
 
@@ -5196,7 +5188,6 @@ const ReportsPage: React.FC = () => {
                         {activeTab === 17 && renderPromoSummary()}
                         {activeTab === 18 && renderPromoRedemptions()}
                         {activeTab === 19 && renderPromoCompensation()}
-                        {activeTab === 20 && renderDeliveryReport()}
                     </>
                 )}
             </Box>
