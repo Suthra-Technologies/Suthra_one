@@ -25,23 +25,24 @@ import {
   DialogTitle,
   Divider,
   Drawer,
+  FormControl,
   IconButton,
+  InputLabel,
   Menu,
   MenuItem,
+  Select,
+  TextField,
   Toolbar,
   Tooltip,
   Typography,
   useMediaQuery,
-  useTheme,
-  TextField,
-  Select,
-  FormControl,
-  InputLabel
+  useTheme
 } from '@mui/material';
 import type { MouseEvent, ReactNode } from 'react';
-import { toast } from 'react-hot-toast';
-import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import React, { useEffect, useState } from 'react';
+import { toast } from 'react-hot-toast';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { BRAND_CONFIG } from 'src/config/brandConfig';
 import { useAuth } from 'src/context/AuthContext';
 import { useNotifications } from 'src/context/NotificationProvider';
 import { useSettings } from 'src/context/SettingsContext';
@@ -53,7 +54,6 @@ import ShiftManager from './ShiftManager';
 import Sidebar from './Sidebar';
 import SubscriptionBanner from './SubscriptionBanner';
 import SubscriptionStatus from './SubscriptionStatus';
-import { BRAND_CONFIG } from 'src/config/brandConfig';
 
 /**
  * Ensures image URLs are absolute.
@@ -522,7 +522,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
             aria-label="open drawer"
             edge="start"
             onClick={handleDrawerToggle}
-            sx={{ mr: 2, display: { md: 'none' } }}
+            sx={{ ml: 1, mr: 2, display: { md: 'none' } }}
           >
             <MenuIcon />
           </IconButton>

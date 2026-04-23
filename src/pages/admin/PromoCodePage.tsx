@@ -8,10 +8,12 @@ import {
     Edit as EditIcon,
     Email as EmailIcon,
     EventAvailable as EventIcon,
+    GridView as GridViewIcon,
     Info as InfoIcon,
     LocalOffer as LocalOfferIcon,
     Search as SearchIcon,
     TrendingUp as TrendingUpIcon,
+    ViewList as ViewListIcon,
     AccountBalanceWallet as WalletIcon
 } from '@mui/icons-material';
 import {
@@ -48,13 +50,9 @@ import {
     TextField,
     Tooltip,
     Typography,
-    useTheme,
-    useMediaQuery
+    useMediaQuery,
+    useTheme
 } from '@mui/material';
-import {
-    ViewList as ViewListIcon,
-    GridView as GridViewIcon
-} from '@mui/icons-material';
 import { format } from 'date-fns';
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
@@ -87,13 +85,13 @@ const ORDER_TYPES = [
     { value: 'takeaway', label: 'Takeaway' },
     { value: 'delivery', label: 'Delivery' },
     { value: 'online_takeaway', label: 'Online' },
-    { value: 'global_dine_in', label: 'Global QR' }
+    // { value: 'global_dine_in', label: 'Global QR' }
 ];
 
 const StatCard = ({ title, value, icon, color, trend }: any) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-    
+
     return (
         <Card sx={{
             height: '100%',
@@ -116,27 +114,27 @@ const StatCard = ({ title, value, icon, color, trend }: any) => {
                 background: alpha(color, 0.1),
                 zIndex: 0
             }} />
-            <CardContent sx={{ 
-                position: 'relative', 
-                zIndex: 1, 
-                p: { xs: 1.25, sm: 2 }, 
-                '&:last-child': { pb: { xs: 1.25, sm: 2 } } 
+            <CardContent sx={{
+                position: 'relative',
+                zIndex: 1,
+                p: { xs: 1.25, sm: 2 },
+                '&:last-child': { pb: { xs: 1.25, sm: 2 } }
             }}>
                 <Stack direction={isMobile ? "column" : "row"} spacing={{ xs: 1, sm: 2 }} alignItems={isMobile ? "flex-start" : "center"}>
-                    <Avatar sx={{ 
-                        bgcolor: alpha(color, 0.2), 
-                        color: color, 
-                        width: { xs: 36, sm: 48 }, 
+                    <Avatar sx={{
+                        bgcolor: alpha(color, 0.2),
+                        color: color,
+                        width: { xs: 36, sm: 48 },
                         height: { xs: 36, sm: 48 },
-                        borderRadius: { xs: '8px', sm: '12px' } 
+                        borderRadius: { xs: '8px', sm: '12px' }
                     }}>
                         {React.cloneElement(icon, { sx: { fontSize: { xs: 18, sm: 24 } } })}
                     </Avatar>
                     <Box>
-                        <Typography 
-                            variant="caption" 
-                            color="text.secondary" 
-                            fontWeight={600} 
+                        <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            fontWeight={600}
                             sx={{ fontSize: { xs: '0.6rem', sm: '0.75rem' }, textTransform: 'uppercase' }}
                         >
                             {title}
@@ -431,16 +429,16 @@ const PromoCodePage: React.FC = () => {
                 </Box>
                 <Stack direction="row" spacing={{ xs: 1, sm: 2 }} sx={{ width: { xs: '100%', sm: 'auto' }, alignItems: 'center' }}>
                     <Box sx={{ display: 'flex', bgcolor: 'background.paper', borderRadius: { xs: 2, sm: 3 }, p: 0.5, border: '1px solid', borderColor: 'divider' }}>
-                        <IconButton 
-                            size="small" 
+                        <IconButton
+                            size="small"
                             onClick={() => setViewMode('list')}
                             color={viewMode === 'list' ? 'primary' : 'default'}
                             sx={{ borderRadius: { xs: 1.5, sm: 2 }, bgcolor: viewMode === 'list' ? alpha(theme.palette.primary.main, 0.1) : 'transparent', p: { xs: 0.5, sm: 1 } }}
                         >
                             <ViewListIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
                         </IconButton>
-                        <IconButton 
-                            size="small" 
+                        <IconButton
+                            size="small"
                             onClick={() => setViewMode('grid')}
                             color={viewMode === 'grid' ? 'primary' : 'default'}
                             sx={{ borderRadius: { xs: 1.5, sm: 2 }, bgcolor: viewMode === 'grid' ? alpha(theme.palette.primary.main, 0.1) : 'transparent', p: { xs: 0.5, sm: 1 } }}
@@ -682,13 +680,13 @@ const PromoCodePage: React.FC = () => {
                                 return (
                                     <TableRow key={promo._id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
                                         <TableCell>
-                                            <Box sx={{ 
-                                                display: 'inline-flex', 
-                                                alignItems: 'center', 
-                                                gap: 1, 
-                                                px: 1.5, 
-                                                py: 0.5, 
-                                                borderRadius: 1.5, 
+                                            <Box sx={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: 1,
+                                                px: 1.5,
+                                                py: 0.5,
+                                                borderRadius: 1.5,
                                                 bgcolor: alpha(theme.palette.primary.main, 0.05),
                                                 border: '1px dashed',
                                                 borderColor: alpha(theme.palette.primary.main, 0.3),
@@ -717,10 +715,10 @@ const PromoCodePage: React.FC = () => {
                                         <TableCell>
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                                 <Box sx={{ flexGrow: 1, width: 40, height: 4, bgcolor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
-                                                    <Box sx={{ 
-                                                        width: `${Math.min(100, ((promo.currentUses || 0) / (promo.maxTotalUses || 100)) * 100)}%`, 
-                                                        height: '100%', 
-                                                        bgcolor: 'primary.main' 
+                                                    <Box sx={{
+                                                        width: `${Math.min(100, ((promo.currentUses || 0) / (promo.maxTotalUses || 100)) * 100)}%`,
+                                                        height: '100%',
+                                                        bgcolor: 'primary.main'
                                                     }} />
                                                 </Box>
                                                 <Typography variant="caption" fontWeight={600}>
@@ -801,12 +799,12 @@ const PromoCodePage: React.FC = () => {
 
             {/* Empty State */}
             {!loading && filteredPromos.length === 0 && (
-                <Paper sx={{ 
-                    p: { xs: 4, md: 10 }, 
-                    textAlign: 'center', 
-                    borderRadius: 4, 
-                    bgcolor: 'transparent', 
-                    border: '1px dashed', 
+                <Paper sx={{
+                    p: { xs: 4, md: 10 },
+                    textAlign: 'center',
+                    borderRadius: 4,
+                    bgcolor: 'transparent',
+                    border: '1px dashed',
                     borderColor: 'divider',
                     mt: { xs: 2, md: 0 }
                 }}>
@@ -817,10 +815,10 @@ const PromoCodePage: React.FC = () => {
                     <Typography variant="body2" color="text.disabled" sx={{ mb: 2, fontSize: { xs: '0.75rem', md: '0.875rem' } }}>
                         Ready to boost your sales? Create your first promotional code now!
                     </Typography>
-                    <Button 
-                        variant="contained" 
-                        startIcon={<AddIcon />} 
-                        onClick={() => handleOpenDialog()} 
+                    <Button
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={() => handleOpenDialog()}
                         sx={{ borderRadius: 3, fontSize: { xs: '0.75rem', md: '0.875rem' } }}
                     >
                         Create My First Promo

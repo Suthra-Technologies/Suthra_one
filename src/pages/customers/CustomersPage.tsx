@@ -8,7 +8,14 @@ import {
     Phone as PhoneIcon,
     Receipt as ReceiptIcon,
     Search as SearchIcon,
-    ShoppingBag as TakeawayIcon
+    ShoppingBag as TakeawayIcon,
+    Close as CloseIcon,
+    Add as AddIcon,
+    History as HistoryIcon,
+    Star as StarIcon,
+    TrendingUp as EarnedIcon,
+    TrendingDown as RedeemedIcon,
+    Edit as EditIcon
 } from '@mui/icons-material';
 import {
     Box,
@@ -30,7 +37,22 @@ import {
     Typography,
     alpha,
     useMediaQuery,
-    useTheme
+    useTheme,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Button,
+    Tab,
+    Tabs,
+    Divider,
+    IconButton,
+    Grid,
+    Avatar,
+    List,
+    ListItem,
+    ListItemText,
+    CircularProgress
 } from '@mui/material';
 import { format } from 'date-fns';
 import React, { useEffect, useState } from 'react';
@@ -53,6 +75,8 @@ interface Customer {
     lastVisit: string;
     orderTypes: string[];
     sources: string[];
+    rewardPoints?: number;
+    _id?: string;
 }
 
 const CustomersPage: React.FC = () => {
@@ -67,6 +91,17 @@ const CustomersPage: React.FC = () => {
     const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
     const isTabletOrBelow = useMediaQuery(theme.breakpoints.down('lg'));
     const isTablet = isTabletOrBelow && !isMobile;
+
+    // Rewards States
+    const [rewardsDialogOpen, setRewardsDialogOpen] = useState(false);
+    const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+    const [rewardDetails, setRewardDetails] = useState<any>(null);
+    const [loadingRewards, setLoadingRewards] = useState(false);
+    const [rewardTab, setRewardTab] = useState(0);
+    const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
+    const [adjustAmount, setAdjustAmount] = useState('');
+    const [adjustReason, setAdjustReason] = useState('');
+    const [isAdjusting, setIsAdjusting] = useState(false);
 
 
     useEffect(() => {
@@ -99,6 +134,59 @@ const CustomersPage: React.FC = () => {
     const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
         setRowsPerPage(parseInt(event.target.value, 10));
         setPage(0);
+    };
+
+    const handleViewRewards = async (customer: Customer) => {
+        if (!customer._id) return;
+        setSelectedCustomer(customer);
+        setRewardsDialogOpen(true);
+        setRewardTab(0);
+        
+        try {
+            setLoadingRewards(true);
+            const res = await customersAPI.getRewardDetails(customer._id);
+            setRewardDetails(res.data);
+        } catch (error) {
+            console.error('Failed to fetch reward details:', error);
+            toast.error('Failed to load reward history');
+        } finally {
+            setLoadingRewards(false);
+        }
+    };
+
+    const handleAdjustPoints = async () => {
+        if (!selectedCustomer?._id || !adjustAmount || isAdjusting) return;
+        
+        const points = parseInt(adjustAmount);
+        if (isNaN(points)) {
+            toast.error('Please enter a valid number');
+            return;
+        }
+
+        try {
+            setIsAdjusting(true);
+            await customersAPI.adjustRewards(selectedCustomer._id, points, adjustReason);
+            toast.success('Reward points adjusted successfully');
+            setAdjustDialogOpen(false);
+            setAdjustAmount('');
+            setAdjustReason('');
+            
+            // Refresh details
+            const res = await customersAPI.getRewardDetails(selectedCustomer._id);
+            setRewardDetails(res.data);
+            
+            // Update in main list
+            setCustomers(prev => prev.map(c => 
+                c._id === selectedCustomer._id 
+                ? { ...c, rewardPoints: res.data.points } 
+                : c
+            ));
+        } catch (error) {
+            console.error('Failed to adjust points:', error);
+            toast.error('Failed to adjust reward points');
+        } finally {
+            setIsAdjusting(false);
+        }
     };
 
     const getOrderTypeIcon = (type: string) => {
@@ -221,6 +309,7 @@ const CustomersPage: React.FC = () => {
                                 <TableCell sx={{ fontWeight: 'bold' }}>Stats</TableCell>
                                 <TableCell sx={{ fontWeight: 'bold' }}>Last Visit</TableCell>
                                 <TableCell sx={{ fontWeight: 'bold' }}>Order Types</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Rewards</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -280,6 +369,21 @@ const CustomersPage: React.FC = () => {
                                                 {(!customer.orderTypes || customer.orderTypes.length === 0) && '-'}
                                             </Box>
                                         </TableCell>
+                                        <TableCell>
+                                            <Chip 
+                                                label={`${customer.rewardPoints || 0} pts`} 
+                                                size="small" 
+                                                color="primary" 
+                                                variant="outlined" 
+                                                icon={<MoneyIcon fontSize="small" />}
+                                                onClick={() => handleViewRewards(customer)}
+                                                sx={{ 
+                                                    cursor: 'pointer', 
+                                                    fontWeight: 'bold',
+                                                    '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.1) } 
+                                                }}
+                                            />
+                                        </TableCell>
                                     </TableRow>
                                 ))
                             )}
@@ -296,6 +400,171 @@ const CustomersPage: React.FC = () => {
                     />
                 </TableContainer>
             )}
+
+            {/* Reward Points Details Dialog */}
+            <Dialog open={rewardsDialogOpen} onClose={() => setRewardsDialogOpen(false)} maxWidth="md" fullWidth>
+                <DialogTitle sx={{ borderBottom: '1px solid', borderColor: 'divider', pb: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
+                            <StarIcon />
+                        </Avatar>
+                        <Box>
+                            <Typography variant="h6">{selectedCustomer?.name || 'Customer Rewards'}</Typography>
+                            <Typography variant="caption" color="text.secondary">{selectedCustomer?.phone}</Typography>
+                        </Box>
+                    </Box>
+                    <IconButton onClick={() => setRewardsDialogOpen(false)}>
+                        <CloseIcon />
+                    </IconButton>
+                </DialogTitle>
+                <DialogContent sx={{ p: 0 }}>
+                    <Tabs value={rewardTab} onChange={(_, v) => setRewardTab(v)} sx={{ borderBottom: '1px solid', borderColor: 'divider' }}>
+                        <Tab label="Summary" icon={<StarIcon fontSize="small" />} iconPosition="start" />
+                        <Tab label="Transaction History" icon={<HistoryIcon fontSize="small" />} iconPosition="start" />
+                    </Tabs>
+
+                    {loadingRewards ? (
+                        <Box sx={{ p: 4, textAlign: 'center' }}>
+                            <CircularProgress size={32} />
+                            <Typography variant="body2" sx={{ mt: 1 }}>Loading reward details...</Typography>
+                        </Box>
+                    ) : (
+                        <Box sx={{ p: 3 }}>
+                            {rewardTab === 0 ? (
+                                <Grid container spacing={3}>
+                                    <Grid item xs={12} sm={4}>
+                                        <Card variant="outlined" sx={{ bgcolor: alpha(theme.palette.primary.main, 0.03), borderColor: alpha(theme.palette.primary.main, 0.2) }}>
+                                            <CardContent sx={{ textAlign: 'center' }}>
+                                                <Typography color="text.secondary" variant="overline">Available Points</Typography>
+                                                <Typography variant="h4" color="primary.main" sx={{ fontWeight: 'bold' }}>{rewardDetails?.points || 0}</Typography>
+                                            </CardContent>
+                                        </Card>
+                                    </Grid>
+                                    <Grid item xs={12} sm={4}>
+                                        <Card variant="outlined" sx={{ bgcolor: alpha(theme.palette.success.main, 0.03), borderColor: alpha(theme.palette.success.main, 0.2) }}>
+                                            <CardContent sx={{ textAlign: 'center' }}>
+                                                <Typography color="text.secondary" variant="overline">Lifetime Earned</Typography>
+                                                <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'success.main' }}>
+                                                    <EarnedIcon fontSize="inherit" sx={{ mr: 0.5 }} />
+                                                    {rewardDetails?.totalEarned || 0}
+                                                </Typography>
+                                            </CardContent>
+                                        </Card>
+                                    </Grid>
+                                    <Grid item xs={12} sm={4}>
+                                        <Card variant="outlined" sx={{ bgcolor: alpha(theme.palette.error.main, 0.03), borderColor: alpha(theme.palette.error.main, 0.2) }}>
+                                            <CardContent sx={{ textAlign: 'center' }}>
+                                                <Typography color="text.secondary" variant="overline">Lifetime Redeemed</Typography>
+                                                <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'error.main' }}>
+                                                    <RedeemedIcon fontSize="inherit" sx={{ mr: 0.5 }} />
+                                                    {rewardDetails?.totalRedeemed || 0}
+                                                </Typography>
+                                            </CardContent>
+                                        </Card>
+                                    </Grid>
+                                    
+                                    <Grid item xs={12}>
+                                        <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
+                                            <Button 
+                                                variant="contained" 
+                                                startIcon={<EditIcon />} 
+                                                onClick={() => setAdjustDialogOpen(true)}
+                                            >
+                                                Adjust Points Balance
+                                            </Button>
+                                        </Box>
+                                    </Grid>
+                                </Grid>
+                            ) : (
+                                <TableContainer component={Paper} variant="outlined">
+                                    <Table size="small">
+                                        <TableHead>
+                                            <TableRow sx={{ bgcolor: 'action.hover' }}>
+                                                <TableCell sx={{ fontWeight: 'bold' }}>Date</TableCell>
+                                                <TableCell sx={{ fontWeight: 'bold' }}>Description</TableCell>
+                                                <TableCell sx={{ fontWeight: 'bold' }}>Source</TableCell>
+                                                <TableCell sx={{ fontWeight: 'bold' }} align="right">Amount</TableCell>
+                                                <TableCell sx={{ fontWeight: 'bold' }} align="right">Balance</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {rewardDetails?.history?.length === 0 ? (
+                                                <TableRow>
+                                                    <TableCell colSpan={5} align="center" sx={{ py: 3 }}>No history found</TableCell>
+                                                </TableRow>
+                                            ) : (
+                                                rewardDetails?.history?.map((entry: any, i: number) => (
+                                                    <TableRow key={i}>
+                                                        <TableCell variant="body2">{format(new Date(entry.date), 'MMM dd, yyyy HH:mm')}</TableCell>
+                                                        <TableCell>
+                                                            <Typography variant="body2">{entry.description}</Typography>
+                                                            {entry.orderId && <Typography variant="caption" color="text.secondary">Order: #{entry.orderId.slice(-6)}</Typography>}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Chip label={entry.source || 'ONLINE'} size="small" sx={{ fontSize: '0.65rem', height: 18 }} color={entry.source === 'POS' ? 'secondary' : (entry.source === 'ADMIN' ? 'primary' : 'default')} />
+                                                        </TableCell>
+                                                        <TableCell align="right">
+                                                            <Typography variant="body2" color={entry.points >= 0 ? 'success.main' : 'error.main'} sx={{ fontWeight: 'bold' }}>
+                                                                {entry.points >= 0 ? '+' : ''}{entry.points}
+                                                            </Typography>
+                                                        </TableCell>
+                                                        <TableCell align="right">{entry.balance}</TableCell>
+                                                    </TableRow>
+                                                ))
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            )}
+                        </Box>
+                    )}
+                </DialogContent>
+                <DialogActions sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+                    <Button onClick={() => setRewardsDialogOpen(false)}>Close</Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Adjust Points Dialog */}
+            <Dialog open={adjustDialogOpen} onClose={() => setAdjustDialogOpen(false)} maxWidth="xs" fullWidth>
+                <DialogTitle>Adjust Reward Points</DialogTitle>
+                <DialogContent>
+                    <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <Typography variant="body2" color="text.secondary">
+                            Customer: <strong>{selectedCustomer?.name}</strong><br />
+                            Current Balance: <strong>{rewardDetails?.points || 0} pts</strong>
+                        </Typography>
+                        <TextField
+                            label="Adjustment Amount"
+                            placeholder="e.g. 50 or -50"
+                            fullWidth
+                            type="number"
+                            value={adjustAmount}
+                            onChange={(e) => setAdjustAmount(e.target.value)}
+                            helperText="Use negative numbers to deduct points"
+                        />
+                        <TextField
+                            label="Reason"
+                            placeholder="e.g. Loyalty Correction"
+                            fullWidth
+                            multiline
+                            rows={2}
+                            value={adjustReason}
+                            onChange={(e) => setAdjustReason(e.target.value)}
+                        />
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setAdjustDialogOpen(false)}>Cancel</Button>
+                    <Button 
+                        onClick={handleAdjustPoints} 
+                        variant="contained" 
+                        disabled={!adjustAmount || !adjustReason || isAdjusting}
+                        startIcon={isAdjusting && <CircularProgress size={16} color="inherit" />}
+                    >
+                        Apply Adjustment
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };

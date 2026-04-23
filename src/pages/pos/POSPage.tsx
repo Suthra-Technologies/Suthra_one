@@ -227,9 +227,11 @@ const POSPage: React.FC = () => {
     const [couponCode, setCouponCode] = useState('');
     const [couponDiscount, setCouponDiscount] = useState(0);
     const [rewardPointsInfo, setRewardPointsInfo] = useState<any>(null);
-    const [pointsToRedeem, setPointsToRedeem] = useState(0);
-    const [rewardDiscount, setRewardDiscount] = useState(0);
+    const [pointsToRedeem, setPointsToRedeem] = useState<number>(0);
+    const [rewardDiscount, setRewardDiscount] = useState<number>(0);
     const [isFetchingRewards, setIsFetchingRewards] = useState(false);
+    const [suggestedPhone, setSuggestedPhone] = useState<string | null>(null);
+    const [customerConflict, setCustomerConflict] = useState<boolean>(false);
 
     // Customer / order details
     const [customerName, setCustomerName] = useState('');
@@ -494,16 +496,18 @@ const POSPage: React.FC = () => {
     };
 
     // Validate a manually entered coupon code
-    const handleValidateCoupon = React.useCallback(async (silent = false) => {
-        if (!couponCode) {
+    const handleValidateCoupon = React.useCallback(async (silent = false, explicitCode?: string) => {
+        const codeToUse = explicitCode !== undefined ? explicitCode : couponCode;
+
+        if (!codeToUse) {
             setCouponDiscount(0);
             return;
         }
         try {
             const cartTotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
-            console.log(`[Coupon] Validating "${couponCode}" | Cart Total: $${cartTotal} | Silent: ${silent}`);
+            console.log(`[Coupon] Validating "${codeToUse}" | Cart Total: $${cartTotal} | Silent: ${silent}`);
 
-            const res = await ordersAPI.validateCoupon(couponCode);
+            const res = await ordersAPI.validateCoupon(codeToUse);
             const coupon = res.data;
 
             console.log(`[Coupon] Min Required: $${coupon.minBillAmount || 0} | Discount: ${coupon.discountValue}${coupon.discountType === 'percentage' ? '%' : '$'}`);
@@ -603,16 +607,52 @@ const POSPage: React.FC = () => {
 
     // Fetch Reward Points Info
     useEffect(() => {
-        const fetchRewards = async () => {
-            const searchStr = customerPhone?.length === 10
-                ? `+${customerDialCode}${customerPhone}`
-                : (customerEmail?.includes('@') ? customerEmail : '');
+        // Reset points redemption whenever customer identity changes to prevent cross-customer point leak
+        setPointsToRedeem(0);
+        setRewardDiscount(0);
 
-            if (searchStr) {
+        const fetchRewards = async () => {
+            const email = customerEmail?.includes('@') ? customerEmail : '';
+            const phone = customerPhone?.length === 10 ? `+${customerDialCode}${customerPhone}` : '';
+
+            if (email || phone) {
                 try {
                     setIsFetchingRewards(true);
-                    const res = await (rewardsAPI as any).getCustomerInfo(searchStr);
-                    setRewardPointsInfo(res.data);
+                    const res = await (rewardsAPI as any).getCustomerInfo({ email, phone });
+                    const data = res.data;
+                    setRewardPointsInfo(data);
+                    
+                    if (data.customer) {
+                        // Conflict Check: If both are entered but match different profiles
+                        // The backend priorities phone, so if matchType is phone but email is different...
+                        if (email && phone) {
+                            if (data.matchType === 'phone' && data.customer.email && data.customer.email.toLowerCase() !== email.toLowerCase()) {
+                                setCustomerConflict(true);
+                            } else {
+                                setCustomerConflict(false);
+                            }
+                        } else {
+                            setCustomerConflict(false);
+                        }
+
+                        // Auto-fill logic
+                        if (data.matchType === 'phone') {
+                            if (!customerName) setCustomerName(data.customer.name);
+                            if (!customerEmail) setCustomerEmail(data.customer.email);
+                            setSuggestedPhone(null);
+                        } else if (data.matchType === 'email') {
+                            if (!customerName) setCustomerName(data.customer.name);
+                            // For email match, suggest the phone instead of forcing it
+                            if (!customerPhone && data.customer.phone) {
+                                setSuggestedPhone(data.customer.phone);
+                            } else {
+                                setSuggestedPhone(null);
+                            }
+                        }
+                    } else {
+                        setSuggestedPhone(null);
+                        setCustomerConflict(false);
+                    }
                 } catch (err) {
                     console.error("Failed to fetch rewards info", err);
                 } finally {
@@ -622,6 +662,8 @@ const POSPage: React.FC = () => {
                 setRewardPointsInfo(null);
                 setPointsToRedeem(0);
                 setRewardDiscount(0);
+                setSuggestedPhone(null);
+                setCustomerConflict(false);
             }
         };
 
@@ -1558,6 +1600,8 @@ const POSPage: React.FC = () => {
                     pointsToRedeem={pointsToRedeem}
                     setPointsToRedeem={setPointsToRedeem}
                     isFetchingRewards={isFetchingRewards}
+                    suggestedPhone={suggestedPhone}
+                    customerConflict={customerConflict}
                     cartTotal={cartTotal}
                     tableError={tableError}
                     setTableError={setTableError}
@@ -2502,6 +2546,10 @@ const POSPage: React.FC = () => {
                     discountAmount={discountAmount}
                     discountPercent={discountPercent}
                     couponDiscount={couponDiscount}
+                    couponCode={couponCode}
+                    setCouponCode={setCouponCode}
+                    handleValidateCoupon={handleValidateCoupon}
+                    availableCoupons={availableCoupons}
                     serviceChargeAmount={serviceChargeAmount}
                     tip={tip}
                     setTip={setTip}

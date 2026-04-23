@@ -103,11 +103,13 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
             // Check for customer and fetch rewards
             const fetchRewards = async () => {
                 const customer = initialOrder.customer;
-                const searchStr = customer?.phone || customer?.email;
-                if (searchStr) {
+                if (customer?.email || customer?.phone) {
                     try {
                         setIsFetchingRewards(true);
-                        const res = await rewardsAPI.getCustomerInfo(searchStr);
+                        const res = await rewardsAPI.getCustomerInfo({ 
+                            email: customer.email, 
+                            phone: customer.phone 
+                        });
                         setRewardPointsInfo(res.data);
                         // If order already has points used, pre-fill them
                         if (initialOrder.loyaltyPoints?.pointsUsed) {

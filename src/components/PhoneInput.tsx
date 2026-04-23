@@ -226,7 +226,7 @@ interface PhoneInputProps {
     label?: string;
     required?: boolean;
     error?: boolean;
-    helperText?: string | false | null;
+    helperText?: React.ReactNode;
     disabled?: boolean;
     size?: 'small' | 'medium';
     fullWidth?: boolean;
