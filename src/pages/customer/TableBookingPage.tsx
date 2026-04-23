@@ -538,12 +538,12 @@ const TableBookingPage = () => {
                                         }}>
                                             <TableIcon sx={{ fontSize: 60, color: 'text.disabled' }} />
                                         </Box>
-                                    <Typography variant="h6" color="text.secondary" fontWeight="600">
-                                        Searching for options...
-                                    </Typography>
-                                    <Typography variant="body2" color="text.secondary" align="center" sx={{ maxWidth: 300 }}>
-                                        Please provide your reservation details on the left to explore our available tables.
-                                    </Typography>
+                                        <Typography variant="h6" color="text.secondary" fontWeight="600">
+                                            Searching for options...
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary" align="center" sx={{ maxWidth: 300 }}>
+                                            Please provide your reservation details on the left to explore our available tables.
+                                        </Typography>
                                     </Box>
                                 ) : (
                                     <Grid container spacing={2}>
@@ -753,7 +753,7 @@ const TableBookingPage = () => {
                                         </Grid>
                                     </Grid>
                                 </Box>
-                                
+
                                 {occasion && (
                                     <Typography variant="body2" sx={{ mt: 2 }}>
                                         <strong>Occasion:</strong> {occasion}
@@ -853,7 +853,7 @@ const TableBookingPage = () => {
                             {loginDialogMode === 'login' ? 'Login Required' : 'Create Account'}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                            {loginDialogMode === 'login' 
+                            {loginDialogMode === 'login'
                                 ? 'Please login to confirm your table booking.'
                                 : 'Sign up to start booking tables and managing your orders.'}
                         </Typography>

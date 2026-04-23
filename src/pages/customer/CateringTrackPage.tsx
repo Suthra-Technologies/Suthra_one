@@ -27,6 +27,7 @@ import { cateringAPI, ordersAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { downloadFromUrl } from '../../utils/fileDownload';
 import { apiBaseUrl } from '../../services/api';
+import { getTenantSlugFromHostname } from '../../utils/tenant.utils';
 import { Assignment, Chat, Event, History, Receipt } from '@mui/icons-material';
 
 const SUCCESS_STATUSES = new Set(['succeeded']);
@@ -192,7 +193,8 @@ const CateringCardPaymentForm: React.FC<CateringCardPaymentFormProps> = ({
 };
 
 const CateringTrackPage = () => {
-    const { slug, id: token } = useParams<{ slug: string, id: string }>();
+    const { slug: pathSlug, id: token } = useParams<{ slug: string, id: string }>();
+    const slug = pathSlug || getTenantSlugFromHostname();
     const theme = useTheme();
     const [order, setOrder] = useState<any>(null);
     const [loading, setLoading] = useState(true);
