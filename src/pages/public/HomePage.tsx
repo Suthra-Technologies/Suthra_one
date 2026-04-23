@@ -15,7 +15,8 @@ import {
   QrCode as QrIcon,
   Smartphone as SmartphoneIcon,
   EventSeat as TableIcon,
-  DeleteSweep as WastageIcon
+  DeleteSweep as WastageIcon,
+  Email as EmailIcon
 } from "@mui/icons-material";
 import {
   AppBar,
@@ -35,7 +36,7 @@ import {
 } from "@mui/material";
 import { keyframes } from "@mui/system";
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import {
   Accordion,
@@ -766,6 +767,16 @@ const HomePage: React.FC = () => {
     setMounted(true);
   }, []);
 
+  // Fetch pricing plans from public API
+  const [plans, setPlans] = useState<any[]>([]);
+  useEffect(() => {
+    const apiUrl = (import.meta as any).env.VITE_API_URL || "http://localhost:5006";
+    fetch(`${apiUrl}/api/superadmin/plans/public`)
+      .then(res => res.json())
+      .then(data => { if (Array.isArray(data)) setPlans(data); })
+      .catch(() => {});
+  }, []);
+
   // Auto-rotate slideshows
   // Auto-rotate slideshows
   useEffect(() => {
@@ -811,25 +822,20 @@ const HomePage: React.FC = () => {
             disableGutters
             sx={{ justifyContent: "space-between", height: 80 }}
           >
-            <Stack direction="row" alignItems="center" spacing={1.5}>
+            <Stack direction="row" alignItems="center" spacing={1.5} sx={{ cursor: 'pointer' }} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
               <Box
-                sx={{
-                  p: 0.8,
-                  bgcolor: "primary.main",
-                  borderRadius: 1.5,
-                  color: "white",
-                  display: "flex",
-                }}
-              >
-                <MenuIcon fontSize="small" />
-              </Box>
+                component="img"
+                src="/logo.png"
+                alt="NexZen POS"
+                sx={{ height: 45, filter: 'brightness(0)' }}
+              />
               <Typography
                 variant="h6"
                 fontWeight="800"
                 sx={{ letterSpacing: -0.5, color: "black" }}
               >
-                Restaurant
-                <Box component="span" color="primary.light">
+                NexZen
+                <Box component="span" color="primary.light" sx={{ ml: 0.8 }}>
                   POS
                 </Box>
               </Typography>
@@ -909,14 +915,19 @@ const HomePage: React.FC = () => {
             >
               <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <Stack direction="row" alignItems="center" spacing={1.2}>
-                  <MenuIcon fontSize="small" />
+                  <Box
+                    component="img"
+                    src="/logo.png"
+                    alt="NexZen POS"
+                    sx={{ height: 32, filter: 'brightness(0)' }}
+                  />
                   <Typography
                     variant="h6"
                     fontWeight="800"
                     sx={{ letterSpacing: -0.5, color: 'black', fontSize: 17 }}
                   >
-                    Restaurant
-                    <Box component="span" color="primary.light" sx={{ ml: 0.5 }}>
+                    NexZen
+                    <Box component="span" color="primary.light" sx={{ ml: 0.8 }}>
                       POS
                     </Box>
                   </Typography>
@@ -1899,102 +1910,101 @@ const HomePage: React.FC = () => {
             </Typography>
           </Box>
 
-          <Grid container spacing={4}>
-            {[
-              {
-                name: "Starter",
-                price: "$49",
-                desc: "Perfect for single food stalls",
-                items: ["1 station", "Basic inventory", "Email support"],
-              },
-              {
-                name: "Professional",
-                price: "$99",
-                desc: "Perfect for single food stalls",
-                items: ["1 station", "Basic inventory", "Email support"],
-              },
-              {
-                name: "Enterprise",
-                price: "$149",
-                desc: "Perfect for single food stalls",
-                items: ["1 station", "Basic inventory", "Email support"],
-              },
-            ].map((plan, i) => (
-              <Grid item xs={12} md={4} key={i}>
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: 5,
-                    height: "100%",
-                    borderRadius: 3,
-                    bgcolor: "#f7f6f4",
-                    border: "1px solid #eee",
-                    display: "flex",
-                    flexDirection: "column",
-                  }}
-                >
-                  {/* PLAN NAME */}
-                  <Typography variant="h6" fontWeight={700} gutterBottom>
-                    {plan.name}
-                  </Typography>
-
-                  {/* PRICE */}
-                  <Typography variant="h3" fontWeight={900} mb={1}>
-                    {plan.price}
-                    <Box
-                      component="span"
-                      sx={{ fontSize: "1.2rem", fontWeight: 500 }}
-                    >
-                      /mo
-                    </Box>
-                  </Typography>
-
-                  {/* DESCRIPTION */}
-                  <Typography variant="body2" color="text.secondary" mb={4}>
-                    {plan.desc}
-                  </Typography>
-
-                  {/* FEATURES */}
-                  <Stack spacing={1.5} mb={6}>
-                    {plan.items.map((item, j) => (
-                      <Stack
-                        key={j}
-                        direction="row"
-                        spacing={1}
-                        alignItems="center"
-                      >
-                        <CheckIcon sx={{ fontSize: 18 }} />
-                        <Typography variant="body2">{item}</Typography>
-                      </Stack>
-                    ))}
-                  </Stack>
-
-                  {/* CTA */}
-                  <Button
-                    fullWidth
-                    variant="contained"
+          <Grid container spacing={4} justifyContent="center">
+            {(plans.length > 0 ? plans : [
+              { name: "Starter", price: 49, interval: "monthly", features: [], maxUsers: 5, maxTables: 5, maxOrders: 100 },
+              { name: "Professional", price: 99, interval: "monthly", features: ["catering", "inventory"], maxUsers: 10, maxTables: 15, maxOrders: 500 },
+              { name: "Enterprise", price: 149, interval: "monthly", features: ["catering", "inventory", "wastemanagement", "attendance"], maxUsers: 25, maxTables: 50, maxOrders: 2000 },
+            ]).map((plan: any, i: number) => {
+              const featureLabels: Record<string, string> = {
+                catering: "Catering Management",
+                inventory: "Inventory Management",
+                wastemanagement: "Waste Management",
+                attendance: "Staff Attendance",
+              };
+              const allItems = [
+                `Up to ${plan.maxUsers} Users`,
+                `Up to ${plan.maxTables} Tables`,
+                `Up to ${plan.maxOrders} Orders`,
+                ...(plan.features || []).map((f: string) => featureLabels[f] || f),
+              ];
+              return (
+                <Grid item xs={12} md={4} key={plan._id || i}>
+                  <Paper
+                    elevation={0}
                     sx={{
-                      mt: "auto",
-                      bgcolor: "#fff",
-                      color: "#000",
-                      border: "1px solid #ddd",
-                      borderRadius: 2,
-                      fontWeight: 600,
-                      boxShadow: "none",
-                      "&:hover": {
-                        bgcolor: "#f2f2f2",
-                        boxShadow: "none",
-                      },
-                    }}
-                    onClick={() => {
-                      document.getElementById("demo-form")?.scrollIntoView({ behavior: "smooth" });
+                      p: 5,
+                      height: "100%",
+                      borderRadius: 3,
+                      bgcolor: "#f7f6f4",
+                      border: "1px solid #eee",
+                      display: "flex",
+                      flexDirection: "column",
                     }}
                   >
-                    CHOOSE THIS PLAN
-                  </Button>
-                </Paper>
-              </Grid>
-            ))}
+                    {/* PLAN NAME */}
+                    <Typography variant="h6" fontWeight={700} gutterBottom>
+                      {plan.name}
+                    </Typography>
+
+                    {/* PRICE */}
+                    <Typography variant="h3" fontWeight={900} mb={1}>
+                      ${plan.price}
+                      <Box
+                        component="span"
+                        sx={{ fontSize: "1.2rem", fontWeight: 500 }}
+                      >
+                        /{plan.interval === "yearly" ? "yr" : "mo"}
+                      </Box>
+                    </Typography>
+
+                    {/* DESCRIPTION */}
+                    <Typography variant="body2" color="text.secondary" mb={4}>
+                      {plan.description || `Everything you need with the ${plan.name} plan.`}
+                    </Typography>
+
+                    {/* FEATURES */}
+                    <Stack spacing={1.5} mb={6}>
+                      {allItems.map((item: string, j: number) => (
+                        <Stack
+                          key={j}
+                          direction="row"
+                          spacing={1}
+                          alignItems="center"
+                        >
+                          <CheckIcon sx={{ fontSize: 18 }} />
+                          <Typography variant="body2">{item}</Typography>
+                        </Stack>
+                      ))}
+                    </Stack>
+
+                    {/* CTA */}
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      sx={{
+                        mt: "auto",
+                        bgcolor: "#fff",
+                        color: "#000",
+                        border: "1px solid #ddd",
+                        borderRadius: 2,
+                        fontWeight: 600,
+                        boxShadow: "none",
+                        "&:hover": {
+                          bgcolor: "#f2f2f2",
+                          boxShadow: "none",
+                        },
+                      }}
+                      onClick={() => {
+                        document.getElementById("demo-form")?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                    >
+                      CHOOSE THIS PLAN
+                    </Button>
+                  </Paper>
+                </Grid>
+              );
+            })}
           </Grid>
         </Container>
       </Box>
@@ -2025,7 +2035,7 @@ const HomePage: React.FC = () => {
             },
             {
               q: "Is the system cloud-based or local?",
-              a: "Restaurant POS is a hybrid system. You get the speed of local hardware with the security and accessibility of cloud-based reporting.",
+              a: "NexZen POS is a hybrid system. You get the speed of local hardware with the security and accessibility of cloud-based reporting.",
             },
             {
               q: "Can I use my existing hardware?",
@@ -2238,18 +2248,26 @@ const HomePage: React.FC = () => {
       </Box>
 
       {/* --- Premium Footer --- */}
-      <Box sx={{ bgcolor: "#0b0f19", color: "white", py: 10 }}>
+      <Box sx={{ bgcolor: "#0b0f19", color: "white", py: 6 }}>
         <Container maxWidth="lg">
           <Grid container spacing={4} justifyContent="space-between">
             {/* Section 1: Logo & About */}
             <Grid item xs={12} md={4}>
               <Box sx={{ pr: { md: 5 } }}>
-                <Typography variant="h5" fontWeight="900" sx={{ mb: 3 }}>
-                  Restaurant
-                  <Box component="span" color="primary.light">
-                    POS
-                  </Box>
-                </Typography>
+                <Stack direction="column" alignItems="center" spacing={1} sx={{ mb: 3, width: 'fit-content' }}>
+                  <Box
+                    component="img"
+                    src="/logo.png"
+                    alt="NexZen POS"
+                    sx={{ height: 55, filter: 'brightness(0) invert(1)' }}
+                  />
+                  <Typography variant="h5" fontWeight="900" sx={{ letterSpacing: -0.5 }}>
+                    NexZen
+                    <Box component="span" color="primary.light" sx={{ ml: 1 }}>
+                      POS
+                    </Box>
+                  </Typography>
+                </Stack>
                 <Typography
                   variant="body2"
                   sx={{ opacity: 0.6, lineHeight: 1.8 }}
@@ -2366,7 +2384,7 @@ const HomePage: React.FC = () => {
                   </Box>
                 </Stack>
 
-                <Stack direction="row" spacing={2} alignItems="center">
+                <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
                   <SmartphoneIcon
                     sx={{ color: "primary.main", fontSize: 20 }}
                   />
@@ -2383,6 +2401,25 @@ const HomePage: React.FC = () => {
                     }}
                   >
                     +1 908-313-8909
+                  </Typography>
+                </Stack>
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <EmailIcon
+                    sx={{ color: "primary.main", fontSize: 20 }}
+                  />
+                  <Typography
+                    variant="body2"
+                    component="a"
+                    href="mailto:contact@nexzenpos.com"
+                    sx={{
+                      opacity: 0.7,
+                      fontWeight: "bold",
+                      textDecoration: 'none',
+                      color: 'inherit',
+                      '&:hover': { opacity: 1, color: 'primary.light' }
+                    }}
+                  >
+                    contact@nexzenpos.com
                   </Typography>
                 </Stack>
               </Box>
@@ -2402,16 +2439,54 @@ const HomePage: React.FC = () => {
           </Grid>
           <Box
             sx={{
-              mt: 8,
-              pt: 8,
+              mt: 4,
+              pt: 4,
               borderTop: "1px solid rgba(255,255,255,0.1)",
               textAlign: "center",
             }}
           >
             <Typography variant="caption" sx={{ opacity: 0.4 }}>
-              © 2026 Restaurant POS. Premium Restaurant Solutions. Proudly
+              © 2026 NexZen POS. Premium Restaurant Solutions. Proudly
               powering dining worldwide.
             </Typography>
+            <Box sx={{ mt: 1, display: 'flex', justifyContent: 'center', gap: 2 }}>
+              <Typography
+                variant="caption"
+                component={Link}
+                to="/privacy-policy"
+                sx={{
+                  color: "inherit",
+                  textDecoration: "none",
+                  opacity: 0.6,
+                  fontWeight: 500,
+                  transition: "color 0.2s, opacity 0.2s",
+                  "&:hover": {
+                    opacity: 1,
+                    color: "primary.light",
+                  },
+                }}
+              >
+                Privacy Policy
+              </Typography>
+              <Typography
+                variant="caption"
+                component={Link}
+                to="/terms-and-conditions"
+                sx={{
+                  color: "inherit",
+                  textDecoration: "none",
+                  opacity: 0.6,
+                  fontWeight: 500,
+                  transition: "color 0.2s, opacity 0.2s",
+                  "&:hover": {
+                    opacity: 1,
+                    color: "primary.light",
+                  },
+                }}
+              >
+                Terms and Conditions
+              </Typography>
+            </Box>
           </Box>
         </Container>
       </Box>
