@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import Grid from '@mui/material/Grid2';
+import { alpha } from '@mui/material/styles';
 import {
+  useTheme,
+  useMediaQuery,
   Typography,
   Box,
   Card,
@@ -30,6 +33,7 @@ import {
   Tooltip,
   Pagination,
   CircularProgress,
+  Stack,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -47,6 +51,7 @@ import {
   PersonAddAlt1 as ActivateIcon,
   PersonOff as DeactivateIcon,
   Person as CustomerIcon,
+  Search as SearchIcon,
 } from '@mui/icons-material';
 import { settingsAPI, usersAPI, supportAPI } from '../../services/api';
 import { validateEmail, validatePhone, validateName, validatePassword, validateRequired, getHelperText, hasError } from '../../utils/validation';
@@ -243,6 +248,8 @@ const extractUsersFromResponse = (payload: unknown): User[] => {
 };
 
 const UsersPage = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { settings } = useSettings();
   const { activeRole, user: currentUser } = useAuth();
   const [tabValue, setTabValue] = useState(0);
@@ -738,27 +745,39 @@ const UsersPage = () => {
   };
 
   return (
-    <Box>
+    <Box sx={{ 
+      pb: { xs: 8, sm: 4 }, 
+      px: { xs: 0, sm: 3 },
+      pt: { xs: isMobile ? '20px' : 0, sm: 0 },
+      bgcolor: { xs: alpha(theme.palette.background.default, 0.4), sm: 'transparent' },
+      minHeight: '100vh'
+    }}>
       <Box sx={{
         display: 'flex',
         flexDirection: { xs: 'column', sm: 'row' },
         justifyContent: 'space-between',
-        alignItems: { xs: 'stretch', sm: 'center' },
-        gap: { xs: 1.5, sm: 2 },
-        mb: { xs: 2, sm: 3 }
+        alignItems: { xs: 'center', sm: 'center' },
+        gap: { xs: 2.5, sm: 2 },
+        mb: { xs: 2.5, sm: 4 },
+        px: { xs: 2, sm: 0 }
       }}>
-        <Typography
-          variant="h4"
-          fontWeight="bold"
-          sx={{
-            textAlign: { xs: 'center', sm: 'left' },
-            fontSize: { xs: '1.45rem', sm: '2.125rem' },
-            color: { xs: '#000', sm: 'inherit' },
-            whiteSpace: { xs: 'nowrap', sm: 'normal' }
-          }}
-        >
-          User Management
-        </Typography>
+        <Box sx={{ textAlign: { xs: 'center', sm: 'left' } }}>
+          <Typography
+            variant="h4"
+            sx={{
+              fontWeight: 800,
+              fontFamily: "'Outfit', sans-serif",
+              fontSize: { xs: '1.75rem', sm: '2.125rem' },
+              letterSpacing: '-0.02em',
+              mb: 0.5
+            }}
+          >
+            User Management
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+            Manage staff members and their permissions
+          </Typography>
+        </Box>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
@@ -773,7 +792,20 @@ const UsersPage = () => {
             }
             setUserDialog(true);
           }}
-          sx={{ width: { xs: '100%', sm: 'auto' } }}
+          sx={{ 
+            width: { xs: '100%', sm: 'auto' },
+            borderRadius: 3,
+            py: { xs: 0.8, sm: 1 },
+            px: { xs: 3, sm: 2.5 },
+            textTransform: 'none',
+            fontWeight: 800,
+            fontFamily: "'Outfit', sans-serif",
+            fontSize: { xs: '0.8rem', sm: '1rem' },
+            boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.25)}`,
+            '&:hover': {
+              boxShadow: `0 12px 20px ${alpha(theme.palette.primary.main, 0.35)}`,
+            }
+          }}
         >
           Add User
         </Button>
@@ -787,16 +819,24 @@ const UsersPage = () => {
         variant="scrollable"
         scrollButtons="auto"
         sx={{
-          mb: { xs: 1.5, sm: 3 },
+          mb: { xs: 2, sm: 3 },
+          mx: { xs: 2, sm: 0 },
           borderBottom: 1,
           borderColor: 'divider',
           '& .MuiTabs-scrollButtons': {
             '&.Mui-disabled': { opacity: 0.3 },
           },
           '& .MuiTab-root': {
-            fontSize: { xs: '0.75rem', sm: '0.875rem' },
-            minHeight: { xs: 40, sm: 48 },
-            px: { xs: 1.5, sm: 2 }
+            fontSize: { xs: '0.8rem', sm: '0.875rem' },
+            minHeight: { xs: 44, sm: 48 },
+            px: { xs: 2, sm: 2 },
+            textTransform: 'none',
+            fontWeight: 700,
+            fontFamily: "'Outfit', sans-serif",
+            color: 'text.secondary',
+            '&.Mui-selected': {
+              color: 'primary.main',
+            }
           }
         }}
       >
@@ -821,55 +861,127 @@ const UsersPage = () => {
         )}
         <Box sx={{
           display: 'flex',
-          flexDirection: { xs: 'column', sm: 'row' },
           justifyContent: 'space-between',
-          alignItems: { xs: 'flex-start', sm: 'center' },
-          gap: 1,
-          mb: 3
+          alignItems: 'center',
+          mb: { xs: 2.5, sm: 3 },
+          px: { xs: 2, sm: 0 }
         }}>
-          <Typography variant="h6" fontWeight="medium" color="text.secondary">
+          <Typography 
+            variant="h6" 
+            sx={{ 
+              fontWeight: 800, 
+              color: 'text.primary',
+              fontFamily: "'Outfit', sans-serif",
+              fontSize: { xs: '1.1rem', sm: '1.25rem' }
+            }}
+          >
             {tabValue === 0 && 'All Staff Members'}
             {tabValue === 1 && 'Management Team'}
             {tabValue === 2 && 'Staff Members'}
             {tabValue === 3 && 'Customers'}
             {tabValue === 4 && 'Inactive Users'}
           </Typography>
+          <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', bgcolor: alpha(theme.palette.divider, 0.1), px: 1, py: 0.5, borderRadius: 1.5 }}>
+            {users.length} Total
+          </Typography>
         </Box>
-        <Grid container spacing={3}>
+
+        <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ px: { xs: 2, sm: 0 } }}>
           {users.map((user) => {
             const primaryRole = tabValue === 3 ? 'customer' : getPrimaryRole(user);
             const roleInfo = getRoleInfo(primaryRole);
             const isPortalCustomer = Boolean(user.isPortalCustomer || user.source === 'customer_portal');
             const RoleIcon = roleInfo.icon;
+            const statusColor = getStatusColor(user);
+            const statusMain = theme.palette[statusColor as 'success' | 'error' | 'warning']?.main || theme.palette.grey[500];
+
             return (
               <Grid size={{ xs: 12, sm: 6, md: 4 }} key={user._id}>
-                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                  <CardContent sx={{ flexGrow: 1, p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
+                <Card sx={{ 
+                  height: '100%', 
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  borderRadius: 4,
+                  border: { xs: `1px solid ${alpha(theme.palette.divider, 0.08)}`, sm: 'none' },
+                  boxShadow: { xs: '0 4px 12px rgba(0,0,0,0.03)', sm: 1 },
+                  position: 'relative',
+                  overflow: 'hidden',
+                  '&:before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: 4,
+                    height: '100%',
+                    bgcolor: statusMain,
+                    opacity: 0.8
+                  }
+                }}>
+                  <CardContent sx={{ 
+                    flexGrow: 1, 
+                    p: { xs: 1.5, sm: 2.5 }, 
+                    '&:last-child': { pb: { xs: 1.5, sm: 2.5 } } 
+                  }}>
                     <Box display="flex" alignItems="center" mb={1.5}>
-                      <Avatar
+                      <Badge
+                        overlap="circular"
+                        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                        variant="dot"
                         sx={{
-                          bgcolor: roleInfo.color,
-                          mr: 2,
-                          width: { xs: 44, sm: 56 },
-                          height: { xs: 44, sm: 56 }
+                          '& .MuiBadge-badge': {
+                            backgroundColor: user.isActive ? '#44b700' : '#ff1744',
+                            color: user.isActive ? '#44b700' : '#ff1744',
+                            boxShadow: `0 0 0 2px ${theme.palette.background.paper}`,
+                            width: 10,
+                            height: 10,
+                            borderRadius: '50%',
+                          },
                         }}
                       >
-                        <RoleIcon />
-                      </Avatar>
-                      <Box flex={1}>
-                        <Typography variant="h6">
+                        <Avatar
+                          sx={{
+                            bgcolor: alpha(roleInfo.color, 0.1),
+                            color: roleInfo.color,
+                            width: { xs: 42, sm: 56 },
+                            height: { xs: 42, sm: 56 },
+                            border: `2px solid ${alpha(roleInfo.color, 0.2)}`
+                          }}
+                        >
+                          <RoleIcon sx={{ fontSize: { xs: '1.25rem', sm: '1.75rem' } }} />
+                        </Avatar>
+                      </Badge>
+                      <Box flex={1} ml={1.5}>
+                        <Typography 
+                          variant="subtitle1" 
+                          sx={{ 
+                            fontWeight: 800, 
+                            fontFamily: "'Outfit', sans-serif",
+                            fontSize: { xs: '0.9rem', sm: '1rem' },
+                            lineHeight: 1.2,
+                            color: 'text.primary'
+                          }}
+                        >
                           {getDisplayName(user)}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography 
+                          variant="caption" 
+                          sx={{ 
+                            fontWeight: 600, 
+                            color: 'text.secondary',
+                            display: 'block',
+                            fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                            mb: 0.25
+                          }}
+                        >
                           {user.email}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {user.phone}
+                        <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main', fontSize: { xs: '0.7rem', sm: '0.75rem' }, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <span style={{ opacity: 0.6 }}>{user.countryCode ? `+${user.countryCode}` : ''}</span> {user.phone}
                         </Typography>
                       </Box>
-                      {!user.isActive && <LockIcon color="error" />}
                     </Box>
-                    <Box mb={2} sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+
+                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1.5 }}>
                       {getRolesForUser(user).map(r => {
                         const rInfo = getRoleInfo(r);
                         return (
@@ -877,161 +989,134 @@ const UsersPage = () => {
                             key={r}
                             label={rInfo.label}
                             sx={{
-                              backgroundColor: rInfo.color + '20',
+                              backgroundColor: alpha(rInfo.color, 0.08),
                               color: rInfo.color,
-                              mb: 0.5
+                              fontWeight: 800,
+                              fontFamily: "'Outfit', sans-serif",
+                              fontSize: '0.65rem',
+                              height: 22,
+                              border: `1px solid ${alpha(rInfo.color, 0.15)}`
                             }}
                             size="small"
                           />
                         );
                       })}
-                      <Chip
-                        label={user.isActive ? 'Active' : 'Inactive'}
-                        color={getStatusColor(user)}
-                        size="small"
-                        sx={{ mb: 0.5 }}
-                      />
-                    </Box>
-                    {user.department && (
-                      <Typography variant="body2" color="text.secondary">
-                        Department: {user.department}
-                      </Typography>
-                    )}
-                    {isPortalCustomer && (
-                      <Typography variant="body2" color="text.secondary">
-                        Source: Customer portal
-                      </Typography>
-                    )}
+                    </Stack>
 
-                    {!isCustomerUser(user) && user.hireDate && (
-                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                        <strong>Hired:</strong> {getSafeDateString(user.hireDate)}
-                      </Typography>
-                    )}
+                    <Stack spacing={1}>
+                      {user.department && (
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.disabled', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Dept</Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.primary' }}>{user.department}</Typography>
+                        </Box>
+                      )}
+                      {!isCustomerUser(user) && user.hireDate && (
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.disabled', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Hired</Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.primary' }}>{getSafeDateString(user.hireDate)}</Typography>
+                        </Box>
+                      )}
+                      {user.salary && !isCustomerUser(user) && (
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.disabled', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Salary</Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 800, color: 'success.main' }}>
+                            {settings?.restaurant?.currencySymbol || '$'}{parseFloat(user.salary.toString()).toLocaleString()}
+                          </Typography>
+                        </Box>
+                      )}
+                    </Stack>
+
                     {user.actionHistory && user.actionHistory.length > 0 && (
-                      <>
-                        {(() => {
-                          const createdAction = user.actionHistory.find((action: any) => action.action === 'CREATED');
-                          if (createdAction) {
-                            return (
-                              <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mt: 1 }}>
-                                <Typography variant="body2" color="text.secondary" sx={{ flex: 1 }}>
-                                  Created by: <strong>{createdAction.performedByName || getUserName(createdAction.performedBy)}</strong>
-                                  <br />
-                                  <Box component="span" sx={{ color: 'text.disabled', fontSize: '0.75rem' }}>
-                                    {getSafeDateString(createdAction.timestamp, true)}
-                                  </Box>
-                                </Typography>
-                                <Tooltip
-                                  slotProps={{
-                                    popper: {
-                                      modifiers: [
-                                        {
-                                          name: 'preventOverflow',
-                                          options: {
-                                            boundary: 'viewport',
-                                            padding: 16,
-                                          },
-                                        },
-                                      ],
-                                    },
-                                    tooltip: {
-                                      sx: {
-                                        p: 0,
-                                        bgcolor: 'background.paper',
-                                        boxShadow: 3,
-                                        border: '1px solid',
-                                        borderColor: 'divider',
-                                        color: 'text.primary',
-                                        maxWidth: { xs: 220, sm: 260 }
-                                      }
-                                    }
-                                  }}
-                                  title={
-                                    <Box>
-                                      <Box sx={{ p: 1, borderBottom: '1px solid', borderColor: 'divider', bgcolor: 'action.hover' }}>
-                                        <Typography variant="caption" fontWeight="bold">
-                                          Action History
-                                        </Typography>
-                                      </Box>
-                                      <Box sx={{ maxHeight: { xs: 160, sm: 200 }, overflowY: 'auto', p: 1 }}>
-                                        {user.actionHistory?.slice().reverse().map((action: any, idx: number) => (
-                                          <Box key={idx} sx={{
-                                            mb: 1,
-                                            pb: 1,
-                                            borderBottom: idx < (user.actionHistory?.length || 0) - 1 ? '1px solid' : 'none',
-                                            borderColor: 'divider'
-                                          }}>
-                                            <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'primary.main', display: 'block', mb: 0.5 }}>
-                                              {action.action.replace(/_/g, ' ')}
-                                            </Typography>
-                                            <Typography variant="caption" display="block" sx={{ fontWeight: 500 }}>
-                                              By: {action.performedByName || getUserName(action.performedBy)}
-                                            </Typography>
-                                            <Typography variant="caption" display="block" color="text.secondary">
-                                              {getSafeDateString(action.timestamp, true)}
-                                            </Typography>
-                                            <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'text.primary' }}>
-                                              {action.details}
-                                            </Typography>
-                                          </Box>
-                                        ))}
-                                      </Box>
-                                    </Box>
-                                  }
-                                  arrow
-                                  placement="top"
-                                  enterTouchDelay={0}
-                                  leaveTouchDelay={5000}
-                                >
-                                  <IconButton size="small" color="primary">
-                                    <HistoryIcon fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
-                              </Box>
-                            );
-                          }
-                          return null;
-                        })()}
-                      </>
-                    )}
-                    {user.permissions && user.permissions.length > 0 && (
-                      <Typography variant="caption" color="text.secondary">
-                        Permissions: {user.permissions.length}
-                      </Typography>
+                      <Box sx={{ 
+                        mt: 2, 
+                        pt: 1.5, 
+                        borderTop: `1px dashed ${alpha(theme.palette.divider, 0.5)}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                      }}>
+                        <Box>
+                          <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mb: 0.25 }}>Created by</Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+                            {(() => {
+                              const createdAction = user.actionHistory.find((action: any) => action.action === 'CREATED');
+                              return createdAction ? (createdAction.performedByName || getUserName(createdAction.performedBy)) : 'System';
+                            })()}
+                          </Typography>
+                        </Box>
+
+                        <Tooltip
+                          title="View History"
+                          slotProps={{
+                            tooltip: {
+                              sx: { p: 0, bgcolor: 'background.paper', boxShadow: 3, border: `1px solid ${theme.palette.divider}`, color: 'text.primary', maxWidth: 260 }
+                            }
+                          }}
+                        >
+                          <IconButton 
+                            size="small" 
+                            sx={{ 
+                              bgcolor: alpha(theme.palette.primary.main, 0.05),
+                              color: 'primary.main',
+                              '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.1) }
+                            }}
+                          >
+                            <HistoryIcon sx={{ fontSize: '1.2rem' }} />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
                     )}
                   </CardContent>
-                  <CardActions>
-                    <IconButton onClick={() => openPasswordReset(user)} title="Reset Password" >
-                      <LockIcon />
-                    </IconButton>
-                    <IconButton onClick={() => openEditUser(user)} title="Edit User">
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton
-                      onClick={() => handleToggleStatus(user)}
-                      title={user.isActive ? 'Deactivate' : 'Activate'}
-                    >
-                      {user.isActive ? <ActivateIcon /> : <DeactivateIcon />}
-                    </IconButton>
-                    <IconButton
+
+                  <Divider sx={{ opacity: 0.5 }} />
+                  
+                  <CardActions sx={{ 
+                    bgcolor: alpha(theme.palette.background.default, 0.5), 
+                    px: 2, 
+                    py: 1, 
+                    justifyContent: 'space-between' 
+                  }}>
+                    <Stack direction="row" spacing={0.5}>
+                      <Tooltip title="Reset Password">
+                        <IconButton 
+                          size="small" 
+                          onClick={() => openPasswordReset(user)}
+                          sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main', bgcolor: alpha(theme.palette.primary.main, 0.08) } }}
+                        >
+                          <LockIcon sx={{ fontSize: '1.1rem' }} />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Edit Profile">
+                        <IconButton 
+                          size="small" 
+                          onClick={() => openEditUser(user)}
+                          sx={{ color: 'text.secondary', '&:hover': { color: 'info.main', bgcolor: alpha(theme.palette.info.main, 0.08) } }}
+                        >
+                          <EditIcon sx={{ fontSize: '1.1rem' }} />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title={user.isActive ? 'Deactivate' : 'Activate'}>
+                        <IconButton 
+                          size="small" 
+                          onClick={() => handleToggleStatus(user)}
+                          sx={{ 
+                            color: user.isActive ? 'success.main' : 'error.main',
+                            bgcolor: user.isActive ? alpha(theme.palette.success.main, 0.05) : alpha(theme.palette.error.main, 0.05),
+                            '&:hover': { bgcolor: user.isActive ? alpha(theme.palette.success.main, 0.1) : alpha(theme.palette.error.main, 0.1) }
+                          }}
+                        >
+                          {user.isActive ? <ActivateIcon sx={{ fontSize: '1.1rem' }} /> : <DeactivateIcon sx={{ fontSize: '1.1rem' }} />}
+                        </IconButton>
+                      </Tooltip>
+                    </Stack>
+
+                    <IconButton 
+                      size="small" 
                       onClick={() => handleDeleteUser(user)}
-                      title={
-                        (activeRole === 'superadmin' || currentUser?.roles?.includes('superadmin'))
-                          ? 'Delete User'
-                          : (user.roles?.includes('admin') || user.role === 'admin')
-                            ? 'Admin deletion requires support ticket'
-                            : 'Delete User'
-                      }
-                      disabled={
-                        // Keep enabled for admins even if target is admin, but logic will change in confirmDeleteUser
-                        // Actually, the requirement says "has to raise a ticket". 
-                        // If we disable it, they can't even raise the ticket via this button.
-                        // So let's keep it ENABLED for admins and superadmins.
-                        !(activeRole === 'admin' || activeRole === 'superadmin' || currentUser?.roles?.includes('admin') || currentUser?.roles?.includes('superadmin'))
-                      }
+                      sx={{ color: 'error.light', '&:hover': { color: 'error.main', bgcolor: alpha(theme.palette.error.main, 0.08) } }}
+                      disabled={!(activeRole === 'admin' || activeRole === 'superadmin' || currentUser?.roles?.includes('admin') || currentUser?.roles?.includes('superadmin'))}
                     >
-                      <DeleteIcon />
+                      <DeleteIcon sx={{ fontSize: '1.1rem' }} />
                     </IconButton>
                   </CardActions>
                 </Card>
@@ -1068,26 +1153,54 @@ const UsersPage = () => {
         )}
       </Box>
       {/* Add/Edit User Dialog */}
-      <Dialog open={userDialog} onClose={closeUserDialog} maxWidth="lg" fullWidth>
-        <DialogTitle sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h6" fontWeight="bold">
+      <Dialog 
+        open={userDialog} 
+        onClose={closeUserDialog} 
+        maxWidth="lg" 
+        fullWidth
+        fullScreen={isMobile}
+        PaperProps={{
+          sx: {
+            borderRadius: { xs: 0, sm: 4 },
+            bgcolor: 'background.paper',
+            backgroundImage: 'none'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          m: 0, 
+          p: { xs: 2, sm: 3 }, 
+          pt: { xs: isMobile ? '54px' : 2, sm: 3 },
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          borderBottom: isMobile ? 'none' : `1px solid ${theme.palette.divider}`,
+          bgcolor: isMobile ? 'primary.main' : 'transparent',
+          color: isMobile ? 'white' : 'text.primary'
+        }}>
+          <Typography 
+            variant="h6" 
+            sx={{ 
+              fontWeight: 800, 
+              fontFamily: "'Outfit', sans-serif",
+              fontSize: { xs: '1.25rem', sm: '1.5rem' }
+            }}
+          >
             {editingUser ? 'Edit User' : 'Add User'}
           </Typography>
           <IconButton
             onClick={closeUserDialog}
             size="small"
             sx={{
-              color: 'white',
-              bgcolor: 'error.main',
-              '&:hover': { bgcolor: 'error.dark' },
-              width: 24,
-              height: 24
+              color: isMobile ? 'white' : 'text.secondary',
+              bgcolor: isMobile ? alpha('#fff', 0.15) : 'transparent',
+              '&:hover': { bgcolor: isMobile ? alpha('#fff', 0.25) : alpha(theme.palette.divider, 0.1) }
             }}
           >
-            <CloseIcon sx={{ fontSize: '1.1rem' }} />
+            <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent sx={{ minHeight: 400 }}>
+        <DialogContent sx={{ p: { xs: 2, sm: 4 }, bgcolor: isMobile ? alpha(theme.palette.background.default, 0.8) : 'background.paper' }}>
           {editingUser && (
             <Tabs
               value={dialogTab}
@@ -1100,326 +1213,374 @@ const UsersPage = () => {
           )}
 
           {dialogTab === 0 && (
-            <Grid container spacing={2} sx={{ mt: 1 }}>
-              {/* Basic Information */}
+            <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mt: 1 }}>
+              {/* Basic Information Section */}
               <Grid size={{ xs: 12 }}>
-                <Typography variant="h6" gutterBottom>Basic Information</Typography>
-                <Divider sx={{ mb: 2 }} />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  fullWidth
-                  label="First Name"
-                  value={userForm.firstName}
-                  onChange={(e) => {
-                    setUserForm({ ...userForm, firstName: e.target.value });
-                    if (userErrors.firstName) setUserErrors(prev => ({ ...prev, firstName: { isValid: true } }));
-                  }}
-                  onBlur={() => {
-                    const validation = validateName(userForm.firstName, 'First name');
-                    setUserErrors(prev => ({ ...prev, firstName: validation }));
-                  }}
-                  error={hasError(userErrors.firstName)}
-                  helperText={getHelperText(userErrors.firstName)}
-                  margin="normal"
-                  required
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  fullWidth
-                  label="Last Name"
-                  value={userForm.lastName}
-                  onChange={(e) => {
-                    setUserForm({ ...userForm, lastName: e.target.value });
-                    if (userErrors.lastName) setUserErrors(prev => ({ ...prev, lastName: { isValid: true } }));
-                  }}
-                  onBlur={() => {
-                    const validation = validateName(userForm.lastName, 'Last name');
-                    setUserErrors(prev => ({ ...prev, lastName: validation }));
-                  }}
-                  error={hasError(userErrors.lastName)}
-                  helperText={getHelperText(userErrors.lastName)}
-                  margin="normal"
-                  required
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <TextField
-                  fullWidth
-                  label="Email"
-                  type="email"
-                  value={userForm.email}
-                  onChange={(e) => {
-                    setUserForm({ ...userForm, email: e.target.value });
-                    if (userErrors.email) setUserErrors(prev => ({ ...prev, email: { isValid: true } }));
-                  }}
-                  onBlur={() => {
-                    const validation = validateEmail(userForm.email);
-                    setUserErrors(prev => ({ ...prev, email: validation }));
-                  }}
-                  error={hasError(userErrors.email)}
-                  helperText={getHelperText(userErrors.email)}
-                  margin="normal"
-                  required
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <PhoneInput
-                  fullWidth
-                  label="Phone"
-                  value={userForm.phone}
-                  onChange={(val) => {
-                    const clean = val.replace(/\D/g, '').slice(0, 10);
-                    setUserForm({ ...userForm, phone: clean });
-                    if (userErrors.phone) setUserErrors(prev => ({ ...prev, phone: { isValid: true } }));
-                  }}
-                  dialCode={userForm.countryCode}
-                  onDialCodeChange={(code) => setUserForm(prev => ({ ...prev, countryCode: code }))}
-                  error={hasError(userErrors.phone)}
-                  helperText={getHelperText(userErrors.phone) || "10-digit mobile number"}
-                  required
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 6 }}>
-                <FormControl fullWidth margin="normal">
-                  <InputLabel>Roles</InputLabel>
-                  <Select
-                    multiple
-                    value={userForm.roles}
-                    onChange={(e) => {
-                      const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
-                      handleRolesChange(value as string[]);
-                    }}
-                    label="Roles"
-                    renderValue={(selected) => (
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {(selected as string[]).map((value) => {
-                          const roleInfo = getRoleInfo(value);
-                          return <Chip key={value} label={roleInfo.label} size="small" />;
-                        })}
-                      </Box>
-                    )}
-                  >
-                    {roles.map((role) => (
-                      <MenuItem key={role.value} value={role.value}>
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <role.icon fontSize="small" style={{ color: role.color }} />
-                          {role.label}
-                        </Box>
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <Card variant="outlined" sx={{ borderRadius: 3, border: `1px solid ${alpha(theme.palette.divider, 0.1)}`, bgcolor: 'background.paper' }}>
+                  <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+                    <Typography 
+                      variant="overline" 
+                      sx={{ 
+                        fontWeight: 800, 
+                        color: 'primary.main', 
+                        fontFamily: "'Outfit', sans-serif",
+                        letterSpacing: '0.1em',
+                        display: 'block',
+                        mb: 2
+                      }}
+                    >
+                      Basic Information
+                    </Typography>
+                    
+                    <Grid container spacing={2}>
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <TextField
+                          fullWidth
+                          label="First Name"
+                          value={userForm.firstName}
+                          onChange={(e) => {
+                            setUserForm({ ...userForm, firstName: e.target.value });
+                            if (userErrors.firstName) setUserErrors(prev => ({ ...prev, firstName: { isValid: true } }));
+                          }}
+                          onBlur={() => {
+                            const validation = validateName(userForm.firstName, 'First name');
+                            setUserErrors(prev => ({ ...prev, firstName: validation }));
+                          }}
+                          error={hasError(userErrors.firstName)}
+                          helperText={getHelperText(userErrors.firstName)}
+                          required
+                        />
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <TextField
+                          fullWidth
+                          label="Last Name"
+                          value={userForm.lastName}
+                          onChange={(e) => {
+                            setUserForm({ ...userForm, lastName: e.target.value });
+                            if (userErrors.lastName) setUserErrors(prev => ({ ...prev, lastName: { isValid: true } }));
+                          }}
+                          onBlur={() => {
+                            const validation = validateName(userForm.lastName, 'Last name');
+                            setUserErrors(prev => ({ ...prev, lastName: validation }));
+                          }}
+                          error={hasError(userErrors.lastName)}
+                          helperText={getHelperText(userErrors.lastName)}
+                          required
+                        />
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <TextField
+                          fullWidth
+                          label="Email Address"
+                          type="email"
+                          value={userForm.email}
+                          onChange={(e) => {
+                            setUserForm({ ...userForm, email: e.target.value });
+                            if (userErrors.email) setUserErrors(prev => ({ ...prev, email: { isValid: true } }));
+                          }}
+                          onBlur={() => {
+                            const validation = validateEmail(userForm.email);
+                            setUserErrors(prev => ({ ...prev, email: validation }));
+                          }}
+                          error={hasError(userErrors.email)}
+                          helperText={getHelperText(userErrors.email)}
+                          required
+                        />
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 6 }}>
+                        <PhoneInput
+                          fullWidth
+                          label="Phone Number"
+                          value={userForm.phone}
+                          onChange={(val) => {
+                            const clean = val.replace(/\D/g, '').slice(0, 10);
+                            setUserForm({ ...userForm, phone: clean });
+                            if (userErrors.phone) setUserErrors(prev => ({ ...prev, phone: { isValid: true } }));
+                          }}
+                          dialCode={userForm.countryCode}
+                          onDialCodeChange={(code) => setUserForm(prev => ({ ...prev, countryCode: code }))}
+                          error={hasError(userErrors.phone)}
+                          helperText={getHelperText(userErrors.phone) || "10-digit mobile number"}
+                          required
+                        />
+                      </Grid>
+                      <Grid size={{ xs: 12 }}>
+                        <FormControl fullWidth>
+                          <InputLabel>System Roles</InputLabel>
+                          <Select
+                            multiple
+                            value={userForm.roles}
+                            onChange={(e) => {
+                              const value = typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value;
+                              handleRolesChange(value as string[]);
+                            }}
+                            label="System Roles"
+                            renderValue={(selected) => (
+                              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                {(selected as string[]).map((value) => {
+                                  const roleInfo = getRoleInfo(value);
+                                  return (
+                                    <Chip 
+                                      key={value} 
+                                      label={roleInfo.label} 
+                                      size="small" 
+                                      sx={{ 
+                                        fontWeight: 700, 
+                                        fontFamily: "'Outfit', sans-serif",
+                                        bgcolor: alpha(roleInfo.color, 0.1),
+                                        color: roleInfo.color
+                                      }} 
+                                    />
+                                  );
+                                })}
+                              </Box>
+                            )}
+                          >
+                            {roles.map((role) => (
+                              <MenuItem key={role.value} value={role.value}>
+                                <Box display="flex" alignItems="center" gap={1.5}>
+                                  <role.icon fontSize="small" style={{ color: role.color }} />
+                                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{role.label}</Typography>
+                                </Box>
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                    </Grid>
+                  </CardContent>
+                </Card>
               </Grid>
               {!userForm.roles.includes('customer') && (
-                <>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <FormControl fullWidth margin="normal">
-                      <InputLabel id="department-label">Department</InputLabel>
-                      <Select
-                        labelId="department-label"
-                        value={userForm.department}
-                        label="Department"
-                        onChange={(e) => setUserForm({ ...userForm, department: e.target.value })}
+                <Grid size={{ xs: 12 }}>
+                  <Card variant="outlined" sx={{ borderRadius: 3, border: `1px solid ${alpha(theme.palette.divider, 0.1)}`, bgcolor: 'background.paper', mt: 1 }}>
+                    <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+                      <Typography 
+                        variant="overline" 
+                        sx={{ 
+                          fontWeight: 800, 
+                          color: 'primary.main', 
+                          fontFamily: "'Outfit', sans-serif",
+                          letterSpacing: '0.1em',
+                          display: 'block',
+                          mb: 2
+                        }}
                       >
-                        <MenuItem value="">
-                          <em>None</em>
-                        </MenuItem>
-                        {DEPARTMENT_OPTIONS.map((dept) => (
-                          <MenuItem key={dept} value={dept}>
-                            {dept}
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
-                  </Grid>
-                  {/* Employment Information */}
-                  <Grid size={{ xs: 12 }}>
-                    <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>Employment Information</Typography>
-                    <Divider sx={{ mb: 2 }} />
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <TextField
-                      fullWidth
-                      label="Salary"
-                      type="number"
-                      value={userForm.salary}
-                      onChange={(e) => {
-                        setUserForm({ ...userForm, salary: e.target.value });
-                        if (userErrors.salary) setUserErrors(prev => ({ ...prev, salary: { isValid: true } }));
-                      }}
-                      onBlur={() => {
-                        const isCustomer = userForm.roles.includes('customer');
-                        const validation = isCustomer
-                          ? { isValid: true }
-                          : (!userForm.salary || userForm.salary.trim() === ''
-                            ? { isValid: false, message: 'Salary is required' }
-                            : parseFloat(userForm.salary) <= 0
-                              ? { isValid: false, message: 'Salary must be greater than 0' }
-                              : { isValid: true });
-                        setUserErrors(prev => ({ ...prev, salary: validation }));
-                      }}
-                      error={hasError(userErrors.salary)}
-                      helperText={getHelperText(userErrors.salary)}
-                      margin="normal"
-                      required={!userForm.roles.includes('customer')}
-                    />
-                  </Grid>
-                  <Grid size={{ xs: 12, sm: 6 }}>
-                    <TextField
-                      fullWidth
-                      label="Hire Date"
-                      type="date"
-                      value={userForm.hireDate}
-                      onChange={(e) => {
-                        setUserForm({ ...userForm, hireDate: e.target.value });
-                        if (userErrors.hireDate) setUserErrors(prev => ({ ...prev, hireDate: { isValid: true } }));
-                      }}
-                      onBlur={() => {
-                        const isCustomer = userForm.roles.includes('customer');
-                        let hireDateValidation;
-                        if (isCustomer) {
-                          hireDateValidation = { isValid: true };
-                        } else if (!userForm.hireDate || userForm.hireDate.trim() === '') {
-                          hireDateValidation = { isValid: false, message: 'Hire date is required' };
-                        } else {
-                          hireDateValidation = { isValid: true };
-                        }
-                        setUserErrors(prev => ({ ...prev, hireDate: hireDateValidation }));
-                      }}
-                      error={hasError(userErrors.hireDate)}
-                      helperText={getHelperText(userErrors.hireDate)}
-                      margin="normal"
-                      InputLabelProps={{ shrink: true }}
-                      required={!userForm.roles.includes('customer')}
-                    />
-                  </Grid>
-                </>
+                        Employment Details
+                      </Typography>
+                      <Grid container spacing={2}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                          <FormControl fullWidth>
+                            <InputLabel id="department-label">Department</InputLabel>
+                            <Select
+                              labelId="department-label"
+                              value={userForm.department}
+                              label="Department"
+                              onChange={(e) => setUserForm({ ...userForm, department: e.target.value })}
+                            >
+                              <MenuItem value=""><Typography variant="body2" sx={{ color: 'text.disabled', fontStyle: 'italic' }}>No Department</Typography></MenuItem>
+                              {DEPARTMENT_OPTIONS.map((dept) => (
+                                <MenuItem key={dept} value={dept}>
+                                  <Typography variant="body2" sx={{ fontWeight: 500 }}>{dept}</Typography>
+                                </MenuItem>
+                              ))}
+                            </Select>
+                          </FormControl>
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                          <TextField
+                            fullWidth
+                            label={`Monthly Salary (${settings?.restaurant?.currencySymbol || '$'})`}
+                            type="number"
+                            value={userForm.salary}
+                            onChange={(e) => {
+                              setUserForm({ ...userForm, salary: e.target.value });
+                              if (userErrors.salary) setUserErrors(prev => ({ ...prev, salary: { isValid: true } }));
+                            }}
+                            onBlur={() => {
+                              const isCustomer = userForm.roles.includes('customer');
+                              const validation = isCustomer
+                                ? { isValid: true }
+                                : (!userForm.salary || userForm.salary.trim() === ''
+                                  ? { isValid: false, message: 'Salary is required' }
+                                  : parseFloat(userForm.salary) <= 0
+                                    ? { isValid: false, message: 'Salary must be greater than 0' }
+                                    : { isValid: true });
+                              setUserErrors(prev => ({ ...prev, salary: validation }));
+                            }}
+                            error={hasError(userErrors.salary)}
+                            helperText={getHelperText(userErrors.salary)}
+                            required
+                          />
+                        </Grid>
+                        <Grid size={{ xs: 12 }}>
+                          <TextField
+                            fullWidth
+                            label="Date of Hire"
+                            type="date"
+                            value={userForm.hireDate}
+                            onChange={(e) => {
+                              setUserForm({ ...userForm, hireDate: e.target.value });
+                              if (userErrors.hireDate) setUserErrors(prev => ({ ...prev, hireDate: { isValid: true } }));
+                            }}
+                            onBlur={() => {
+                              const isCustomer = userForm.roles.includes('customer');
+                              let hireDateValidation;
+                              if (isCustomer) {
+                                hireDateValidation = { isValid: true };
+                              } else if (!userForm.hireDate || userForm.hireDate.trim() === '') {
+                                hireDateValidation = { isValid: false, message: 'Hire date is required' };
+                              } else {
+                                hireDateValidation = { isValid: true };
+                              }
+                              setUserErrors(prev => ({ ...prev, hireDate: hireDateValidation }));
+                            }}
+                            error={hasError(userErrors.hireDate)}
+                            helperText={getHelperText(userErrors.hireDate)}
+                            InputLabelProps={{ shrink: true }}
+                            required
+                          />
+                        </Grid>
+                      </Grid>
+                    </CardContent>
+                  </Card>
+                </Grid>
               )}
-              {/* Address Information */}
+              {/* Address Information Section */}
               <Grid size={{ xs: 12 }}>
-                <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>Address {userForm.roles.includes('customer') && <span style={{ color: 'red' }}>*</span>}</Typography>
-                <Divider sx={{ mb: 2 }} />
-              </Grid>
-              <Grid size={{ xs: 12 }}>
-                <AddressAutocomplete
-                  label="Street Address"
-                  value={userForm.address.street}
-                  onChange={(val) => {
-                    setUserForm(prev => ({
-                      ...prev,
-                      address: { ...prev.address, street: val }
-                    }));
-                    if (userErrors.street) setUserErrors(prev => ({ ...prev, street: { isValid: true } }));
-                  }}
-                  onBlur={() => {
-                    const isCustomer = userForm.roles.includes('customer');
-                    if (isCustomer) {
-                      const validation = validateRequired(userForm.address.street, 'Street Address');
-                      setUserErrors(prev => ({ ...prev, street: validation }));
-                    }
-                  }}
-                  onSelect={(addr) => {
-                    setUserForm(prev => ({
-                      ...prev,
-                      address: {
-                        ...prev.address,
-                        street: addr.fullAddress,
-                        city: addr.city || '',
-                        state: addr.state || '',
-                        zipCode: addr.zipCode || ''
-                      }
-                    }));
-                    if (userErrors.street) setUserErrors(prev => ({ ...prev, street: { isValid: true } }));
-                    if (userErrors.city) setUserErrors(prev => ({ ...prev, city: { isValid: true } }));
-                    if (userErrors.state) setUserErrors(prev => ({ ...prev, state: { isValid: true } }));
-                    if (userErrors.zipCode) setUserErrors(prev => ({ ...prev, zipCode: { isValid: true } }));
-                  }}
-                  apiKey={googleMapsApiKey}
-                  error={hasError(userErrors.street)}
-                  helperText={getHelperText(userErrors.street)}
-                  required={userForm.roles.includes('customer')}
-                  sx={userForm.roles.includes('customer') ? { '& .MuiInputLabel-asterisk': { color: 'error.main' } } : {}}
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 4 }}>
-                <TextField
-                  fullWidth
-                  label="City"
-                  value={userForm.address.city}
-                  onChange={(e) => {
-                    setUserForm({
-                      ...userForm,
-                      address: { ...userForm.address, city: e.target.value }
-                    });
-                    if (userErrors.city) setUserErrors(prev => ({ ...prev, city: { isValid: true } }));
-                  }}
-                  onBlur={() => {
-                    const isCustomer = userForm.roles.includes('customer');
-                    if (isCustomer) {
-                      const validation = validateRequired(userForm.address.city, 'City');
-                      setUserErrors(prev => ({ ...prev, city: validation }));
-                    }
-                  }}
-                  error={hasError(userErrors.city)}
-                  helperText={getHelperText(userErrors.city)}
-                  margin="normal"
-                  required={userForm.roles.includes('customer')}
-                  sx={userForm.roles.includes('customer') ? { '& .MuiInputLabel-asterisk': { color: 'error.main' } } : {}}
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 4 }}>
-                <TextField
-                  fullWidth
-                  label="State"
-                  value={userForm.address.state}
-                  onChange={(e) => {
-                    setUserForm({
-                      ...userForm,
-                      address: { ...userForm.address, state: e.target.value }
-                    });
-                    if (userErrors.state) setUserErrors(prev => ({ ...prev, state: { isValid: true } }));
-                  }}
-                  onBlur={() => {
-                    const isCustomer = userForm.roles.includes('customer');
-                    if (isCustomer) {
-                      const validation = validateRequired(userForm.address.state, 'State');
-                      setUserErrors(prev => ({ ...prev, state: validation }));
-                    }
-                  }}
-                  error={hasError(userErrors.state)}
-                  helperText={getHelperText(userErrors.state)}
-                  margin="normal"
-                  required={userForm.roles.includes('customer')}
-                  sx={userForm.roles.includes('customer') ? { '& .MuiInputLabel-asterisk': { color: 'error.main' } } : {}}
-                />
-              </Grid>
-              <Grid size={{ xs: 12, sm: 4 }}>
-                <TextField
-                  fullWidth
-                  label="Zip Code"
-                  value={userForm.address.zipCode}
-                  onChange={(e) => {
-                    setUserForm({
-                      ...userForm,
-                      address: { ...userForm.address, zipCode: e.target.value }
-                    });
-                    if (userErrors.zipCode) setUserErrors(prev => ({ ...prev, zipCode: { isValid: true } }));
-                  }}
-                  onBlur={() => {
-                    const isCustomer = userForm.roles.includes('customer');
-                    if (isCustomer) {
-                      const validation = validateRequired(userForm.address.zipCode, 'Zip Code');
-                      setUserErrors(prev => ({ ...prev, zipCode: validation }));
-                    }
-                  }}
-                  error={hasError(userErrors.zipCode)}
-                  helperText={getHelperText(userErrors.zipCode)}
-                  margin="normal"
-                  required={userForm.roles.includes('customer')}
-                  sx={userForm.roles.includes('customer') ? { '& .MuiInputLabel-asterisk': { color: 'error.main' } } : {}}
-                />
+                <Card variant="outlined" sx={{ borderRadius: 3, border: `1px solid ${alpha(theme.palette.divider, 0.1)}`, bgcolor: 'background.paper', mt: 1 }}>
+                  <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+                    <Typography 
+                      variant="overline" 
+                      sx={{ 
+                        fontWeight: 800, 
+                        color: 'primary.main', 
+                        fontFamily: "'Outfit', sans-serif",
+                        letterSpacing: '0.1em',
+                        display: 'block',
+                        mb: 2
+                      }}
+                    >
+                      Residential Address {userForm.roles.includes('customer') && <span style={{ color: 'red' }}>*</span>}
+                    </Typography>
+                    
+                    <Grid container spacing={2}>
+                      <Grid size={{ xs: 12 }}>
+                        <AddressAutocomplete
+                          label="Full Street Address"
+                          value={userForm.address.street}
+                          onChange={(val) => {
+                            setUserForm(prev => ({
+                              ...prev,
+                              address: { ...prev.address, street: val }
+                            }));
+                            if (userErrors.street) setUserErrors(prev => ({ ...prev, street: { isValid: true } }));
+                          }}
+                          onBlur={() => {
+                            const isCustomer = userForm.roles.includes('customer');
+                            if (isCustomer) {
+                              const validation = validateRequired(userForm.address.street, 'Street Address');
+                              setUserErrors(prev => ({ ...prev, street: validation }));
+                            }
+                          }}
+                          onSelect={(addr) => {
+                            setUserForm(prev => ({
+                              ...prev,
+                              address: {
+                                ...prev.address,
+                                street: addr.fullAddress,
+                                city: addr.city || '',
+                                state: addr.state || '',
+                                zipCode: addr.zipCode || ''
+                              }
+                            }));
+                            if (userErrors.street) setUserErrors(prev => ({ ...prev, street: { isValid: true } }));
+                            if (userErrors.city) setUserErrors(prev => ({ ...prev, city: { isValid: true } }));
+                            if (userErrors.state) setUserErrors(prev => ({ ...prev, state: { isValid: true } }));
+                            if (userErrors.zipCode) setUserErrors(prev => ({ ...prev, zipCode: { isValid: true } }));
+                          }}
+                          apiKey={googleMapsApiKey}
+                          error={hasError(userErrors.street)}
+                          helperText={getHelperText(userErrors.street)}
+                          required={userForm.roles.includes('customer')}
+                        />
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 4 }}>
+                        <TextField
+                          fullWidth
+                          label="City"
+                          value={userForm.address.city}
+                          onChange={(e) => {
+                            setUserForm({
+                              ...userForm,
+                              address: { ...userForm.address, city: e.target.value }
+                            });
+                            if (userErrors.city) setUserErrors(prev => ({ ...prev, city: { isValid: true } }));
+                          }}
+                          onBlur={() => {
+                            const isCustomer = userForm.roles.includes('customer');
+                            if (isCustomer) {
+                              const validation = validateRequired(userForm.address.city, 'City');
+                              setUserErrors(prev => ({ ...prev, city: validation }));
+                            }
+                          }}
+                          error={hasError(userErrors.city)}
+                          helperText={getHelperText(userErrors.city)}
+                          required={userForm.roles.includes('customer')}
+                        />
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 4 }}>
+                        <TextField
+                          fullWidth
+                          label="State / Province"
+                          value={userForm.address.state}
+                          onChange={(e) => {
+                            setUserForm({
+                              ...userForm,
+                              address: { ...userForm.address, state: e.target.value }
+                            });
+                            if (userErrors.state) setUserErrors(prev => ({ ...prev, state: { isValid: true } }));
+                          }}
+                          onBlur={() => {
+                            const isCustomer = userForm.roles.includes('customer');
+                            if (isCustomer) {
+                              const validation = validateRequired(userForm.address.state, 'State / Province');
+                              setUserErrors(prev => ({ ...prev, state: validation }));
+                            }
+                          }}
+                          error={hasError(userErrors.state)}
+                          helperText={getHelperText(userErrors.state)}
+                          required={userForm.roles.includes('customer')}
+                        />
+                      </Grid>
+                      <Grid size={{ xs: 12, sm: 4 }}>
+                        <TextField
+                          fullWidth
+                          label="Zip Code"
+                          value={userForm.address.zipCode}
+                          onChange={(e) => {
+                            setUserForm({
+                              ...userForm,
+                              address: { ...userForm.address, zipCode: e.target.value }
+                            });
+                            if (userErrors.zipCode) setUserErrors(prev => ({ ...prev, zipCode: { isValid: true } }));
+                          }}
+                          onBlur={() => {
+                            const isCustomer = userForm.roles.includes('customer');
+                            if (isCustomer) {
+                              const validation = validateRequired(userForm.address.zipCode, 'Zip Code');
+                              setUserErrors(prev => ({ ...prev, zipCode: validation }));
+                            }
+                          }}
+                          error={hasError(userErrors.zipCode)}
+                          helperText={getHelperText(userErrors.zipCode)}
+                          required={userForm.roles.includes('customer')}
+                        />
+                      </Grid>
+                    </Grid>
+                  </CardContent>
+                </Card>
               </Grid>
               {!userForm.roles.includes('customer') && (
                 <>
@@ -1576,46 +1737,93 @@ const UsersPage = () => {
             </Box>
           )}
         </DialogContent>
-        <DialogActions sx={{ p: 2, gap: 1 }}>
+        <DialogActions sx={{ 
+          p: { xs: 2.5, sm: 3 }, 
+          pb: { xs: isMobile ? '32px' : 2.5, sm: 3 },
+          gap: 1.5,
+          borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+          bgcolor: 'background.paper'
+        }}>
           <Button
             onClick={closeUserDialog}
-            sx={{ flex: 1 }}
+            sx={{ 
+              flex: 1,
+              borderRadius: 2.5,
+              py: 1.25,
+              textTransform: 'none',
+              fontWeight: 700,
+              fontFamily: "'Outfit', sans-serif",
+              color: 'text.secondary',
+              bgcolor: alpha(theme.palette.divider, 0.05),
+              '&:hover': { bgcolor: alpha(theme.palette.divider, 0.1) }
+            }}
           >
             Cancel
           </Button>
           <Button
             onClick={handleUserSubmit}
             variant="contained"
-            sx={{ flex: 1 }}
+            sx={{ 
+              flex: 1,
+              borderRadius: 2.5,
+              py: 1.25,
+              textTransform: 'none',
+              fontWeight: 800,
+              fontFamily: "'Outfit', sans-serif",
+              boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.2)}`
+            }}
             disabled={submitting}
             startIcon={submitting && <CircularProgress size={20} color="inherit" />}
           >
-            {submitting ? (editingUser ? 'Updating...' : 'Creating...') : (editingUser ? 'Update' : 'Create')}
+            {submitting ? (editingUser ? 'Updating...' : 'Adding...') : (editingUser ? 'Update User' : 'Add User')}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Password Reset Dialog */}
-      <Dialog open={passwordDialog} onClose={closePasswordDialog} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h6" fontWeight="bold">
-            Reset Password - {getDisplayName(selectedUser)}
+      <Dialog 
+        open={passwordDialog} 
+        onClose={closePasswordDialog} 
+        maxWidth="sm" 
+        fullWidth
+        fullScreen={isMobile}
+        PaperProps={{
+          sx: { borderRadius: { xs: 0, sm: 4 } }
+        }}
+      >
+        <DialogTitle sx={{ 
+          m: 0, 
+          p: { xs: 2.5, sm: 2.5 }, 
+          pt: { xs: isMobile ? '54px' : 2.5, sm: 2.5 },
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          bgcolor: isMobile ? alpha(theme.palette.error.main, 1) : 'transparent',
+          color: isMobile ? 'white' : 'text.primary'
+        }}>
+          <Typography 
+            variant="h6" 
+            sx={{ 
+              fontWeight: 800, 
+              fontFamily: "'Outfit', sans-serif",
+              fontSize: { xs: '1.25rem', sm: '1.25rem' }
+            }}
+          >
+            Reset Password
           </Typography>
           <IconButton
             onClick={closePasswordDialog}
             size="small"
             sx={{
-              color: 'white',
-              bgcolor: 'error.main',
-              '&:hover': { bgcolor: 'error.dark' },
-              width: 24,
-              height: 24
+              color: isMobile ? 'white' : 'text.secondary',
+              bgcolor: isMobile ? alpha('#fff', 0.1) : 'transparent',
+              '&:hover': { bgcolor: isMobile ? alpha('#fff', 0.2) : alpha(theme.palette.divider, 0.1) }
             }}
           >
-            <CloseIcon sx={{ fontSize: '1.1rem' }} />
+            <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ p: { xs: 2.5, sm: 3 }, pt: { xs: 3, sm: 1 } }}>
           <TextField
             fullWidth
             label="New Password"
@@ -1655,30 +1863,53 @@ const UsersPage = () => {
             required
           />
         </DialogContent>
-        <DialogActions sx={{ p: 2, gap: 1 }}>
+        <DialogActions sx={{ 
+          p: { xs: 2.5, sm: 3 }, 
+          pb: { xs: isMobile ? '32px' : 2.5, sm: 3 },
+          gap: 1.5,
+          borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`
+        }}>
           <Button
             onClick={closePasswordDialog}
-            sx={{ flex: 1 }}
+            sx={{ 
+              flex: 1,
+              borderRadius: 2.5,
+              py: 1.25,
+              textTransform: 'none',
+              fontWeight: 700,
+              fontFamily: "'Outfit', sans-serif"
+            }}
           >
             Cancel
           </Button>
           <Button
             onClick={handlePasswordReset}
             variant="contained"
-            sx={{ flex: 1 }}
+            color="error"
+            sx={{ 
+              flex: 1,
+              borderRadius: 2.5,
+              py: 1.25,
+              textTransform: 'none',
+              fontWeight: 800,
+              fontFamily: "'Outfit', sans-serif",
+              boxShadow: `0 4px 12px ${alpha(theme.palette.error.main, 0.2)}`
+            }}
             disabled={submitting}
             startIcon={submitting && <CircularProgress size={20} color="inherit" />}
           >
-            {submitting ? 'Resetting...' : 'Reset Password'}
+            {submitting ? 'Resetting...' : 'Confirm Reset'}
           </Button>
         </DialogActions>
       </Dialog>
 
+      {/* Delete User Confirmation Dialog */}
       <Dialog
         open={openDeleteDialog}
         onClose={closeDeleteDialog}
+        fullScreen={isMobile}
         PaperProps={{
-          sx: { borderRadius: 2, p: 1 }
+          sx: { borderRadius: { xs: 0, sm: 4 }, backgroundImage: 'none' }
         }}
       >
         {(() => {
@@ -1690,36 +1921,102 @@ const UsersPage = () => {
 
           return (
             <>
-              <DialogTitle sx={{ textAlign: 'center', pb: 0 }}>
-                <Typography variant="h6" fontWeight="bold">
-                  {willDeleteDirectly ? 'Confirm User Deletion' : 'Request User Deletion'}
+              <DialogTitle sx={{ 
+                m: 0, 
+                p: { xs: 2.5, sm: 3 }, 
+                pt: { xs: isMobile ? '54px' : 2.5, sm: 3 },
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                bgcolor: isMobile ? 'error.main' : 'transparent',
+                color: isMobile ? 'white' : 'text.primary'
+              }}>
+                <Typography 
+                  variant="h6" 
+                  sx={{ 
+                    fontWeight: 800, 
+                    fontFamily: "'Outfit', sans-serif",
+                    fontSize: { xs: '1.25rem', sm: '1.25rem' }
+                  }}
+                >
+                  {willDeleteDirectly ? 'Delete Account' : 'Request Deletion'}
                 </Typography>
+                <IconButton
+                  onClick={closeDeleteDialog}
+                  size="small"
+                  sx={{
+                    color: isMobile ? 'white' : 'text.secondary',
+                    bgcolor: isMobile ? alpha('#fff', 0.1) : 'transparent',
+                    '&:hover': { bgcolor: isMobile ? alpha('#fff', 0.2) : alpha(theme.palette.divider, 0.1) }
+                  }}
+                >
+                  <CloseIcon />
+                </IconButton>
               </DialogTitle>
-              <DialogContent sx={{ textAlign: 'center', py: 2 }}>
-                <Typography>
-                  Are you sure you want to {willDeleteDirectly ? 'delete' : 'request the deletion of'} <Box component="span" sx={{ fontWeight: 'bold' }}>{deleteTarget?.name}</Box>?
+              <DialogContent sx={{ p: { xs: 3, sm: 4 }, textAlign: 'center' }}>
+                <Box sx={{ 
+                  width: 80, 
+                  height: 80, 
+                  borderRadius: '50%', 
+                  bgcolor: alpha(theme.palette.error.main, 0.1), 
+                  color: 'error.main',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  mx: 'auto',
+                  mb: 3
+                }}>
+                  <DeleteIcon sx={{ fontSize: 40 }} />
+                </Box>
+                <Typography variant="h5" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif", mb: 2 }}>
+                  Are you sure?
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                <Typography sx={{ color: 'text.secondary', fontWeight: 500, mb: 1 }}>
+                  You are about to {willDeleteDirectly ? 'permanently delete' : 'request the deletion of'} 
+                  <br />
+                  <Box component="span" sx={{ color: 'text.primary', fontWeight: 800 }}>{deleteTarget?.name}</Box>
+                </Typography>
+                <Typography variant="body2" color="text.disabled" sx={{ mt: 2, fontStyle: 'italic' }}>
                   {willDeleteDirectly
-                    ? 'This action is permanent and will remove the user from all system access immediately.'
-                    : 'This will raise a priority ticket to the Super Admin for confirmation and manual processing.'}
+                    ? 'This action cannot be undone and all data associated with this user will be purged.'
+                    : 'A formal request will be sent to the Super Administrator for secondary verification.'}
                 </Typography>
               </DialogContent>
-              <DialogActions sx={{ justifyContent: 'center', pb: 2, gap: 2 }}>
+              <DialogActions sx={{ 
+                p: { xs: 2.5, sm: 3 }, 
+                pb: { xs: isMobile ? '32px' : 2.5, sm: 3 },
+                gap: 1.5,
+                borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`
+              }}>
                 <Button
                   onClick={closeDeleteDialog}
-                  variant="outlined"
-                  sx={{ borderRadius: 2, minWidth: 100 }}
+                  sx={{ 
+                    flex: 1,
+                    borderRadius: 2.5,
+                    py: 1.25,
+                    textTransform: 'none',
+                    fontWeight: 700,
+                    fontFamily: "'Outfit', sans-serif",
+                    color: 'text.secondary'
+                  }}
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={confirmDeleteUser}
                   variant="contained"
-                  color={willDeleteDirectly ? 'error' : 'primary'}
-                  sx={{ borderRadius: 2, minWidth: 100 }}
+                  color="error"
+                  sx={{ 
+                    flex: 1,
+                    borderRadius: 2.5,
+                    py: 1.25,
+                    textTransform: 'none',
+                    fontWeight: 800,
+                    fontFamily: "'Outfit', sans-serif",
+                    boxShadow: `0 8px 16px ${alpha(theme.palette.error.main, 0.3)}`
+                  }}
                 >
-                  {willDeleteDirectly ? 'Delete Now' : 'Raise Request'}
+                  {willDeleteDirectly ? 'Delete Account' : 'Submit Request'}
                 </Button>
               </DialogActions>
             </>

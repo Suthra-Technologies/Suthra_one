@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
     appName: 'NexZen POS',
     webDir: 'dist',
     server: {
-        androidScheme: 'https',
+        url: "http://192.168.1.9:3000",
         cleartext: true
     },
     plugins: {

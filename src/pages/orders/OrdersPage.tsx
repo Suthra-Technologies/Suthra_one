@@ -286,8 +286,8 @@ const OrdersPage = () => {
   const renderOrdersContent = () => (
     <>
       {/* Filters */}
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Grid container spacing={2} alignItems="center">
+      <Paper sx={{ p: 2, mb: { xs: 1, sm: 3 } }}>
+        <Grid container spacing={{ xs: 1, sm: 3 }} alignItems="center">
           <Grid size={{ xs: 12, md: 3 }}>
             <TextField
               fullWidth
@@ -380,7 +380,7 @@ const OrdersPage = () => {
           )}
         </Paper>
       ) : (
-        <Grid container spacing={3}>
+        <Grid container spacing={{ xs: 2, sm: 3 }}>
           {orders.map((order) => (
             <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }} key={order._id}>
               {/* Pre-order accept/reject row for POS Pre Orders tab */}
@@ -536,42 +536,32 @@ const OrdersPage = () => {
   );
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 1.5, sm: 3 } }}>
       <Box sx={{
         display: 'flex',
-        flexDirection: 'row',
+        flexDirection: { xs: 'column', sm: 'row' },
         justifyContent: 'space-between',
         alignItems: 'center',
-        flexWrap: 'wrap',
-        mb: 3,
-        gap: 2
+        mb: { xs: 2, sm: 3 },
+        gap: { xs: 2, sm: 2 }
       }}>
-        <Typography variant="h4" sx={{ fontWeight: 'bold', color: theme.palette.primary.main, fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
-          {isCustomer ? 'My Orders & Bookings' : 'Orders Management'}
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-          {isCustomer && (
-            <>
-              <Button
-                variant="contained"
-                startIcon={<MenuIcon />}
-                onClick={() => {
-                  const path = tenantSlug ? `/${tenantSlug}/customer/order` : '/customer/order';
-                  navigate(path);
-                }}
-                size={isCustomer ? "small" : "medium"}
-              >
-                Order Now
-              </Button>
-              <Button
-                variant="outlined"
-                startIcon={<TableIcon />}
-                onClick={handleBookTable}
-              >
-                Book a Table
-              </Button>
-            </>
-          )}
+        {/* Centered Heading and Refresh for Mobile */}
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 1, 
+          justifyContent: { xs: 'center', sm: 'flex-start' }, 
+          width: { xs: '100%', sm: 'auto' } 
+        }}>
+          <Typography 
+            variant="h4" 
+            sx={{ 
+              fontWeight: 800,
+              fontSize: { xs: '1.35rem', sm: '1.75rem', md: '2.125rem' }
+            }}
+          >
+            {isCustomer ? 'My Orders & Bookings' : 'Orders Management'}
+          </Typography>
           <Tooltip title={isCustomer && activeTab === 1 ? "Refresh Bookings" : "Refresh Orders"}>
             <IconButton
               onClick={() => {
@@ -581,17 +571,53 @@ const OrdersPage = () => {
                   fetchOrders();
                 }
               }}
-              sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1) }}
+              sx={{ 
+                bgcolor: alpha(theme.palette.primary.main, 0.1),
+                p: 0.5 
+              }}
+              size="small"
             >
-              <RefreshIcon color="primary" />
+              <RefreshIcon color="primary" fontSize="small" />
             </IconButton>
           </Tooltip>
         </Box>
+
+        {isCustomer && (
+          <Box sx={{ 
+            display: 'flex', 
+            gap: 1.5, 
+            alignItems: 'center', 
+            justifyContent: { xs: 'center', sm: 'flex-end' }, 
+            width: { xs: '100%', sm: 'auto' } 
+          }}>
+            <Button
+              variant="contained"
+              startIcon={<MenuIcon />}
+              onClick={() => {
+                const path = tenantSlug ? `/${tenantSlug}/customer/order` : '/customer/order';
+                navigate(path);
+              }}
+              size="small"
+              sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 'bold' }}
+            >
+              Order Now
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<TableIcon />}
+              onClick={handleBookTable}
+              size="small"
+              sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 'bold' }}
+            >
+              Book a Table
+            </Button>
+          </Box>
+        )}
       </Box>
 
       {/* Customer Tabs */}
       {isCustomer && (
-        <Paper sx={{ mb: 3 }}>
+        <Paper sx={{ mb: { xs: 1.5, sm: 3 } }}>
           <Tabs value={activeTab} onChange={handleTabChange} variant="fullWidth">
             <Tab label="My Orders" icon={<MenuIcon />} iconPosition="start" />
             <Tab label="My Bookings" icon={<TableIcon />} iconPosition="start" />
@@ -601,7 +627,7 @@ const OrdersPage = () => {
 
       {/* POS Tabs */}
       {!isCustomer && (
-        <Paper sx={{ mb: 3 }}>
+        <Paper sx={{ mb: { xs: 1.5, sm: 3 } }}>
           <Tabs value={posActiveTab} onChange={(_, newVal) => setPosActiveTab(newVal)} variant="fullWidth">
             <Tab label="Current Orders" icon={<TimeIcon />} iconPosition="start" />
             <Tab label="Pre Orders" icon={<EventIcon />} iconPosition="start" />

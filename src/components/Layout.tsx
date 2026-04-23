@@ -232,11 +232,9 @@ const RestaurantStatusToggle: React.FC = () => {
           label={
             saving
               ? 'Saving...'
-              : isMobile
-                ? undefined
-                : isOverride
-                  ? (isOpen ? 'OPEN*' : 'CLOSED*')
-                  : (isOpen ? 'OPEN' : 'CLOSED')
+              : isOverride
+                ? (isOpen ? 'OPEN*' : 'CLOSED*')
+                : (isOpen ? 'OPEN' : 'CLOSED')
           }
           variant="outlined"
           size="small"
@@ -244,10 +242,11 @@ const RestaurantStatusToggle: React.FC = () => {
             borderColor: chipColor,
             color: textColor,
             fontWeight: 700,
-            fontSize: '0.7rem',
+            fontSize: isMobile ? '0.65rem' : '0.7rem',
             letterSpacing: '0.08em',
             cursor: saving ? 'default' : 'pointer',
-            minWidth: isMobile ? 36 : 90,
+            minWidth: isMobile ? 68 : 90,
+            px: isMobile ? 0.5 : 1,
             '&:hover': {
               bgcolor: saving
                 ? 'transparent'

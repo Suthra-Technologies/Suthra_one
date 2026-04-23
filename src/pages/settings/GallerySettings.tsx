@@ -89,10 +89,10 @@ const GallerySettings: React.FC = () => {
             setUploading(true);
             const res = await uploadAPI.uploadImage(file);
             setEditingItem(prev => ({ ...prev, imageUrl: res.data.url }));
-            toast.success('Image uploaded successfully');
+            toast.success('Image uploaded successfully', { position: 'top-center', style: { marginTop: '90px', fontFamily: "'Outfit', sans-serif", fontWeight: 700, background: '#333', color: '#fff' } });
         } catch (error) {
             console.error('Image upload failed:', error);
-            toast.error('Failed to upload image');
+            toast.error('Failed to upload image', { position: 'top-center', style: { marginTop: '90px', fontFamily: "'Outfit', sans-serif", fontWeight: 700 } });
         } finally {
             setUploading(false);
         }
@@ -107,10 +107,10 @@ const GallerySettings: React.FC = () => {
         try {
             if (editingItem._id) {
                 await galleryAPI.update(editingItem._id, editingItem);
-                toast.success('Gallery item updated');
+                toast.success('Gallery item updated', { position: 'top-center', style: { marginTop: '90px', fontFamily: "'Outfit', sans-serif", fontWeight: 700, background: '#333', color: '#fff' } });
             } else {
                 await galleryAPI.create(editingItem);
-                toast.success('Gallery item added');
+                toast.success('Gallery item added', { position: 'top-center', style: { marginTop: '90px', fontFamily: "'Outfit', sans-serif", fontWeight: 700, background: '#333', color: '#fff' } });
             }
             handleCloseDialog();
             fetchGallery();
@@ -156,16 +156,24 @@ const GallerySettings: React.FC = () => {
         <Box>
             <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
                 <Box>
-                    <Typography variant="h6">Restaurant Gallery</Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="h6" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>Restaurant Gallery</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, fontFamily: "'Outfit', sans-serif" }}>
                         Manage images displayed in the customer-facing app.
                     </Typography>
                 </Box>
                 <Button
                     variant="contained"
+                    size="small"
                     startIcon={<AddIcon />}
                     onClick={() => handleOpenDialog()}
-                    sx={{ borderRadius: 2 }}
+                    sx={{ 
+                        borderRadius: 2.5, 
+                        fontWeight: 800, 
+                        fontFamily: "'Outfit', sans-serif",
+                        px: 2,
+                        py: 0.8,
+                        fontSize: { xs: '0.75rem', md: '0.875rem' }
+                    }}
                 >
                     Add Image
                 </Button>
@@ -176,11 +184,18 @@ const GallerySettings: React.FC = () => {
                     <Typography color="text.secondary">No images in gallery yet.</Typography>
                     <Button
                         variant="outlined"
+                        size="small"
                         startIcon={<AddIcon />}
                         onClick={() => handleOpenDialog()}
-                        sx={{ mt: 2, borderRadius: 2 }}
+                        sx={{ 
+                            mt: 2, 
+                            borderRadius: 2.5,
+                            fontWeight: 700,
+                            fontFamily: "'Outfit', sans-serif",
+                            fontSize: '0.75rem'
+                        }}
                     >
-                        Upload Your First Image
+                        Upload First Image
                     </Button>
                 </Paper>
             ) : (
@@ -224,7 +239,7 @@ const GallerySettings: React.FC = () => {
                                     </Tooltip>
                                 </Box>
                                 <CardContent sx={{ pb: 1 }}>
-                                    <Typography variant="subtitle1" fontWeight={700} noWrap>
+                                    <Typography variant="subtitle1" noWrap sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
                                         {item.title || 'Untitled Image'}
                                     </Typography>
                                     <Typography variant="body2" color="text.secondary" sx={{
@@ -232,7 +247,8 @@ const GallerySettings: React.FC = () => {
                                         overflow: 'hidden',
                                         display: '-webkit-box',
                                         WebkitLineClamp: 2,
-                                        WebkitBoxOrient: 'vertical'
+                                        WebkitBoxOrient: 'vertical',
+                                        fontFamily: "'Outfit', sans-serif"
                                     }}>
                                         {item.description || 'No description'}
                                     </Typography>
@@ -337,12 +353,26 @@ const GallerySettings: React.FC = () => {
                         />
                     </Box>
                 </DialogContent>
-                <DialogActions sx={{ p: 3 }}>
-                    <Button onClick={handleCloseDialog}>Cancel</Button>
+                <DialogActions sx={{ p: { xs: 2, sm: 3 }, gap: 1 }}>
+                    <Button 
+                        size="small" 
+                        onClick={handleCloseDialog}
+                        sx={{ fontWeight: 700, fontFamily: "'Outfit', sans-serif" }}
+                    >
+                        Cancel
+                    </Button>
                     <Button
                         variant="contained"
+                        size="small"
                         onClick={handleSave}
                         disabled={uploading || !editingItem?.imageUrl}
+                        sx={{ 
+                            borderRadius: 2,
+                            fontWeight: 800,
+                            fontFamily: "'Outfit', sans-serif",
+                            px: 3,
+                            boxShadow: `0 4px 12px ${alpha('#4F46E5', 0.2)}`
+                        }}
                     >
                         {editingItem?._id ? 'Save Changes' : 'Add to Gallery'}
                     </Button>

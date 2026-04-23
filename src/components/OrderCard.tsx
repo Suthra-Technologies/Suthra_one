@@ -234,7 +234,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                 border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
             }}
         >
-            <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
+            <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } }, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
                 {/* Header Section */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
                     <Box>
@@ -447,7 +447,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                     </Box>
                 )}
 
-                <Divider sx={{ my: 2 }} />
+                <Divider sx={{ my: { xs: 1, sm: 2 } }} />
 
                 {/* Order Items */}
                 <Box sx={{ mb: 2 }}>
@@ -582,7 +582,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                     </Stack>
                 </Box>
 
-                <Divider sx={{ my: 2 }} />
+                <Divider sx={{ my: { xs: 1, sm: 2 } }} />
 
                 {/* Payment & Total Section */}
                 <Box

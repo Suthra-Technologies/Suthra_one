@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { alpha } from '@mui/material/styles';
 import {
     Box,
     Paper,
@@ -485,190 +486,288 @@ const CouponsAdminPage: React.FC = () => {
     const today = new Date().toISOString().split('T')[0];
 
     return (
-        <Box sx={{ p: 3 }}>
-            <Stack
-                direction={{ xs: 'column', sm: 'row' }}
-                justifyContent="space-between"
-                alignItems="center"
-                spacing={2}
-                mb={3}
-            >
-                <Typography
-                    variant="h4"
-                    fontWeight="bold"
-                    sx={{
-                        textAlign: { xs: 'center', sm: 'left' },
-                        width: { xs: '100%', sm: 'auto' },
-                        fontSize: { xs: '1.45rem', sm: '2.125rem' },
-                        color: { xs: '#000', sm: 'inherit' },
-                        whiteSpace: { xs: 'nowrap', sm: 'normal' }
-                    }}
-                >
-                    Discount Coupons Management
-                </Typography>
+        <Box sx={{ 
+            p: { xs: 2, md: 4 },
+            pt: isMobile ? '80px' : 4,
+            minHeight: '100%',
+            bgcolor: '#f8f9fa'
+        }}>
+            <Box sx={{ 
+                mb: isMobile ? 2 : 4, 
+                display: 'flex', 
+                flexDirection: { xs: 'column', sm: 'row' }, 
+                justifyContent: 'space-between', 
+                alignItems: { xs: 'center', sm: 'flex-start' },
+                textAlign: { xs: 'center', sm: 'left' },
+                gap: 1.5
+            }}>
+                <Box>
+                    <Typography
+                        variant="h4"
+                        fontWeight={800}
+                        sx={{
+                            fontFamily: '"Outfit", sans-serif',
+                            fontSize: { xs: '1.5rem', sm: '2.125rem' },
+                            background: 'linear-gradient(45deg, #4F46E5 30%, #6366F1 90%)',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            mb: 0.5
+                        }}
+                    >
+                        Coupon Management
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
+                        Create and distribute digital coupons to boost sales
+                    </Typography>
+                </Box>
                 <Button
                     variant="contained"
                     startIcon={<AddIcon />}
                     onClick={() => handleOpenDialog()}
                     sx={{
-                        width: { xs: '100%', sm: 'auto' },
-                        py: { xs: 1.5, sm: 1 }
+                        borderRadius: 3,
+                        px: 3,
+                        py: 1,
+                        textTransform: 'none',
+                        fontWeight: 'bold',
+                        boxShadow: '0 8px 16px rgba(79, 70, 229, 0.2)',
+                        background: 'linear-gradient(45deg, #4F46E5, #6366F1)',
+                        width: { xs: '100%', sm: 'auto' }
                     }}
                 >
-                    Create New Coupon
+                    {isMobile ? "Create Coupon" : "New Coupon"}
                 </Button>
-            </Stack>
+            </Box>
 
             {/* Summary Cards */}
-            <Grid container spacing={{ xs: 1.5, sm: 3 }} mb={3}>
-                <Grid item xs={12} md={4}>
-                    <Card>
-                        <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
-                            <Stack direction="row" justifyContent="space-between" alignItems="center">
+            <Grid container spacing={isMobile ? 1 : 3} sx={{ mb: isMobile ? 2 : 4 }}>
+                <Grid item xs={12} sm={4}>
+                    <Card sx={{ 
+                        borderRadius: 3, 
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                        border: '1px solid',
+                        borderColor: alpha(theme.palette.divider, 0.05)
+                    }}>
+                        <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                <Avatar sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), color: 'primary.main', borderRadius: 2 }}>
+                                    <PeopleIcon fontSize="small" />
+                                </Avatar>
                                 <Box>
-                                    <Typography variant="subtitle2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                                        Total Coupons
-                                    </Typography>
-                                    <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
-                                        {totalCoupons}
-                                    </Typography>
-                                </Box>
-                                <EmailIcon sx={{ fontSize: { xs: 32, sm: 48 }, color: 'primary.main', opacity: 0.3 }} />
-                            </Stack>
-                        </CardContent>
-                    </Card>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                    <Card>
-                        <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
-                            <Stack direction="row" justifyContent="space-between" alignItems="center">
-                                <Box>
-                                    <Typography variant="subtitle2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                                        Active Coupons
-                                    </Typography>
-                                    <Typography variant="h4" fontWeight="bold" color="success.main" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
-                                        {(Array.isArray(coupons) ? coupons : []).filter(c => isCouponActive(c)).length}
-                                    </Typography>
-                                </Box>
-                                <EmailIcon sx={{ fontSize: { xs: 32, sm: 48 }, color: 'success.main', opacity: 0.3 }} />
-                            </Stack>
-                        </CardContent>
-                    </Card>
-                </Grid>
-                <Grid item xs={12} md={4}>
-                    <Card>
-                        <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
-                            <Stack direction="row" justifyContent="space-between" alignItems="center">
-                                <Box>
-                                    <Typography variant="subtitle2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                                    <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase', fontSize: '0.65rem' }}>
                                         Total Customers
                                     </Typography>
-                                    <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
+                                    <Typography variant="h5" fontWeight={800} sx={{ fontFamily: '"Outfit", sans-serif' }}>
                                         {customers.length}
                                     </Typography>
                                 </Box>
-                                <PeopleIcon sx={{ fontSize: { xs: 32, sm: 48 }, color: 'info.main', opacity: 0.3 }} />
-                            </Stack>
+                            </Box>
+                        </CardContent>
+                    </Card>
+                </Grid>
+                <Grid item xs={6} sm={4}>
+                    <Card sx={{ 
+                        borderRadius: 3, 
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                        border: '1px solid',
+                        borderColor: alpha(theme.palette.divider, 0.05)
+                    }}>
+                        <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                <Avatar sx={{ bgcolor: alpha(theme.palette.success.main, 0.1), color: 'success.main', borderRadius: 2 }}>
+                                    <CheckCircleIcon fontSize="small" />
+                                </Avatar>
+                                <Box>
+                                    <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase', fontSize: '0.65rem' }}>
+                                        Active Codes
+                                    </Typography>
+                                    <Typography variant="h5" fontWeight={800} sx={{ fontFamily: '"Outfit", sans-serif', color: 'success.main' }}>
+                                        {(Array.isArray(coupons) ? coupons : []).filter(c => isCouponActive(c)).length}
+                                    </Typography>
+                                </Box>
+                            </Box>
+                        </CardContent>
+                    </Card>
+                </Grid>
+                <Grid item xs={6} sm={4}>
+                    <Card sx={{ 
+                        borderRadius: 3, 
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                        border: '1px solid',
+                        borderColor: alpha(theme.palette.divider, 0.05)
+                    }}>
+                        <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                <Avatar sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), color: 'primary.main', borderRadius: 2 }}>
+                                    <AddIcon fontSize="small" />
+                                </Avatar>
+                                <Box>
+                                    <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ textTransform: 'uppercase', fontSize: '0.65rem' }}>
+                                        Total Issued
+                                    </Typography>
+                                    <Typography variant="h5" fontWeight={800} sx={{ fontFamily: '"Outfit", sans-serif' }}>
+                                        {totalCoupons}
+                                    </Typography>
+                                </Box>
+                            </Box>
                         </CardContent>
                     </Card>
                 </Grid>
             </Grid>
 
-            {/* Coupons List */}
+            {/* Coupons List & Filters */}
+            <Box sx={{ mb: 2, display: 'flex', justifyContent: 'center' }}>
+                <TextField
+                    fullWidth
+                    size="small"
+                    placeholder="Search coupons..."
+                    sx={{ maxWidth: 500, bgcolor: 'white', borderRadius: 2, '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
+                    InputProps={{
+                        startAdornment: <SearchIcon sx={{ color: 'text.disabled', mr: 1, fontSize: 18 }} />
+                    }}
+                />
+            </Box>
+
             {loading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
                     <CircularProgress />
                 </Box>
             ) : isMobile ? (
                 // Mobile Card View
-                <Stack spacing={1.5}>
-                    {(Array.isArray(coupons) ? coupons : []).map((coupon) => (
-                        <Card key={coupon._id} sx={{ borderRadius: 3 }}>
-                            <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-                                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1.5}>
-                                    <Chip label={coupon.code} color="primary" sx={{ fontWeight: 'bold', height: 24, fontSize: '0.75rem' }} />
-                                    {(() => {
-                                        const status = getCouponStatus(coupon);
-                                        return (
+                <Grid container spacing={1.5}>
+                    {(Array.isArray(coupons) ? coupons : []).map((coupon) => {
+                        const status = getCouponStatus(coupon);
+                        return (
+                            <Grid item xs={12} key={coupon._id} sx={{ display: 'flex', justifyContent: 'center' }}>
+                                <Card sx={{ 
+                                    borderRadius: 3, 
+                                    width: '100%', 
+                                    maxWidth: 500,
+                                    border: '1px solid',
+                                    borderColor: alpha(theme.palette.divider, 0.05),
+                                    boxShadow: '0 2px 10px rgba(0,0,0,0.03)'
+                                }}>
+                                    <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
+                                        {/* Status Header */}
+                                        <Box sx={{ 
+                                            p: 1.5, 
+                                            display: 'flex', 
+                                            justifyContent: 'space-between', 
+                                            alignItems: 'center',
+                                            bgcolor: alpha(theme.palette.background.default, 0.5),
+                                            borderBottom: '1px solid',
+                                            borderColor: alpha(theme.palette.divider, 0.05)
+                                        }}>
+                                            <Chip 
+                                                label={coupon.code} 
+                                                color="primary" 
+                                                variant="filled"
+                                                sx={{ 
+                                                    fontWeight: 800, 
+                                                    height: 26, 
+                                                    fontFamily: 'monospace',
+                                                    fontSize: '0.8rem',
+                                                    borderRadius: 1.5,
+                                                    bgcolor: alpha(theme.palette.primary.main, 0.1),
+                                                    color: 'primary.main',
+                                                    border: '1px dashed',
+                                                    borderColor: alpha(theme.palette.primary.main, 0.3)
+                                                }} 
+                                            />
                                             <Chip
                                                 label={status.label}
                                                 color={status.color}
                                                 size="small"
-                                                sx={{ height: 20, fontSize: '0.65rem' }}
+                                                sx={{ 
+                                                    height: 18, 
+                                                    fontSize: '0.6rem', 
+                                                    fontWeight: 700,
+                                                    textTransform: 'uppercase'
+                                                }}
                                             />
-                                        );
-                                    })()}
-                                </Stack>
+                                        </Box>
 
-                                <Grid container spacing={1} mb={1.5}>
-                                    <Grid item xs={6}>
-                                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>Discount</Typography>
-                                        <Typography fontWeight="bold" sx={{ fontSize: '0.85rem' }}>
-                                            {coupon.discountValue}
-                                            {coupon.discountType === 'percentage' ? '%' : settings.restaurant.currencySymbol} OFF
-                                        </Typography>
-                                    </Grid>
-                                    <Grid item xs={6}>
-                                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>Min Order</Typography>
-                                        <Typography sx={{ fontSize: '0.85rem' }}>
-                                            {formatCurrency((coupon as any).minBillAmount || coupon.minOrderAmount || 0)}
-                                        </Typography>
-                                    </Grid>
-                                    <Grid item xs={12}>
-                                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>Valid Period</Typography>
-                                        <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
-                                            {formatDate(coupon.validFrom)} - {formatDate(coupon.validTo)}
-                                        </Typography>
-                                    </Grid>
-                                </Grid>
-                                <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ mt: 1, borderTop: 1, borderColor: 'divider', pt: 2 }}>
-                                    <Tooltip title={isCouponActive(coupon) ? "Send Email to Customers" : "Coupon is not active or expired"}>
-                                        <span>
+                                        <Box sx={{ p: 2 }}>
+                                            <Grid container spacing={2}>
+                                                <Grid item xs={6}>
+                                                    <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ display: 'block', textTransform: 'uppercase', fontSize: '0.6rem', mb: 0.5 }}>
+                                                        Offer Details
+                                                    </Typography>
+                                                    <Typography fontWeight={800} sx={{ fontSize: '1rem', color: 'primary.main', fontFamily: '"Outfit", sans-serif' }}>
+                                                        {coupon.discountValue}{coupon.discountType === 'percentage' ? '%' : settings.restaurant.currencySymbol} OFF
+                                                    </Typography>
+                                                    <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                                                        Min order {formatCurrency((coupon as any).minBillAmount || coupon.minOrderAmount || 0)}
+                                                    </Typography>
+                                                </Grid>
+                                                <Grid item xs={6}>
+                                                    <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ display: 'block', textTransform: 'uppercase', fontSize: '0.6rem', mb: 0.5 }}>
+                                                        Validity
+                                                    </Typography>
+                                                    <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                                                        Ends {formatDate(coupon.validTo)}
+                                                    </Typography>
+                                                    <Box sx={{ mt: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'text.disabled' }} />
+                                                        <Typography variant="caption" color="text.disabled">{coupon.maxTotalUses || '∞'} limit</Typography>
+                                                    </Box>
+                                                </Grid>
+                                            </Grid>
+                                        </Box>
+
+                                        {/* Action Bar */}
+                                        <Box sx={{ 
+                                            p: 1, 
+                                            display: 'flex', 
+                                            justifyContent: 'flex-end', 
+                                            gap: 0.5,
+                                            borderTop: '1px solid', 
+                                            borderColor: alpha(theme.palette.divider, 0.05),
+                                            bgcolor: 'white'
+                                        }}>
+                                            <Tooltip title="Send Message">
+                                                <IconButton
+                                                    size="small"
+                                                    color="info"
+                                                    onClick={() => handleOpenEmailDialog(coupon)}
+                                                    disabled={!isCouponActive(coupon)}
+                                                    sx={{ bgcolor: alpha(theme.palette.info.main, 0.05) }}
+                                                >
+                                                    <SendIcon sx={{ fontSize: 18 }} />
+                                                </IconButton>
+                                            </Tooltip>
                                             <IconButton
-                                                color="info"
-                                                onClick={() => handleOpenEmailDialog(coupon)}
-                                                disabled={!isCouponActive(coupon)}
                                                 size="small"
-                                            >
-                                                <SendIcon />
-                                            </IconButton>
-                                        </span>
-                                    </Tooltip>
-                                    <Tooltip title={isCouponActive(coupon) ? "Send SMS to Customers" : "Coupon is not active or expired"}>
-                                        <span>
-                                            <IconButton
                                                 color="success"
                                                 onClick={() => handleOpenSmsDialog(coupon)}
                                                 disabled={!isCouponActive(coupon)}
-                                                size="small"
+                                                sx={{ bgcolor: alpha(theme.palette.success.main, 0.05) }}
                                             >
-                                                <SmsIcon />
+                                                <SmsIcon sx={{ fontSize: 18 }} />
                                             </IconButton>
-                                        </span>
-                                    </Tooltip>
-                                    <Tooltip title="Edit">
-                                        <IconButton
-                                            color="primary"
-                                            onClick={() => handleOpenDialog(coupon)}
-                                            size="small"
-                                        >
-                                            <EditIcon />
-                                        </IconButton>
-                                    </Tooltip>
-                                    <Tooltip title="Delete">
-                                        <IconButton
-                                            color="error"
-                                            onClick={() => handleDeleteCoupon(coupon)}
-                                            size="small"
-                                        >
-                                            <DeleteIcon />
-                                        </IconButton>
-                                    </Tooltip>
-                                </Stack>
-                            </CardContent>
-                        </Card>
-                    ))}
-                </Stack>
+                                            <IconButton
+                                                size="small"
+                                                color="primary"
+                                                onClick={() => handleOpenDialog(coupon)}
+                                                sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}
+                                            >
+                                                <EditIcon sx={{ fontSize: 18 }} />
+                                            </IconButton>
+                                            <IconButton
+                                                size="small"
+                                                color="error"
+                                                onClick={() => handleDeleteCoupon(coupon)}
+                                                sx={{ bgcolor: alpha(theme.palette.error.main, 0.05) }}
+                                            >
+                                                <DeleteIcon sx={{ fontSize: 18 }} />
+                                            </IconButton>
+                                        </Box>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+                        );
+                    })}
+                </Grid>
             ) : (
                 // Desktop Table View
                 <Paper sx={{ width: '100%', overflow: 'hidden' }}>
@@ -783,353 +882,499 @@ const CouponsAdminPage: React.FC = () => {
             )}
 
             {/* Create/Edit Coupon Dialog */}
-            <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
-                <DialogTitle sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="h6" fontWeight="bold">
-                        {selectedCoupon ? 'Edit Coupon' : 'Create New Coupon'}
-                    </Typography>
-                    <IconButton
-                        onClick={handleCloseDialog}
-                        size="small"
-                        sx={{
-                            color: 'white',
-                            bgcolor: 'error.main',
-                            '&:hover': { bgcolor: 'error.dark' },
-                            width: 24,
-                            height: 24
+            <Dialog 
+                open={openDialog} 
+                onClose={handleCloseDialog} 
+                maxWidth="md" 
+                fullWidth 
+                fullScreen={isMobile}
+                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 4, bgcolor: '#f8f9fa' } }}
+            >
+                <DialogTitle sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    borderBottom: '1px solid', 
+                    borderColor: alpha(theme.palette.divider, 0.1),
+                    bgcolor: 'white',
+                    p: isMobile ? 2 : 2.5,
+                    pt: isMobile ? '60px' : 2.5
+                }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box sx={{ 
+                            p: 1, 
+                            borderRadius: 1.5, 
+                            bgcolor: alpha(theme.palette.primary.main, 0.1), 
+                            color: 'primary.main',
+                            display: 'flex'
+                        }}>
+                             <CheckCircleIcon fontSize={isMobile ? "small" : "medium"} />
+                        </Box>
+                        <Typography 
+                            variant={isMobile ? "subtitle1" : "h6"} 
+                            fontWeight={700}
+                            sx={{ fontFamily: '"Outfit", sans-serif', textTransform: 'uppercase', letterSpacing: '0.02em' }}
+                        >
+                            {selectedCoupon ? 'Edit Coupon' : 'Create New Coupon'}
+                        </Typography>
+                    </Box>
+                    <IconButton 
+                        onClick={handleCloseDialog} 
+                        size="small" 
+                        sx={{ 
+                            bgcolor: alpha(theme.palette.error.main, 0.1), 
+                            color: 'error.main', 
+                            '&:hover': { bgcolor: 'error.main', color: 'white' } 
                         }}
                     >
-                        <CloseIcon sx={{ fontSize: '1.1rem' }} />
+                        <CloseIcon fontSize="small" />
                     </IconButton>
                 </DialogTitle>
-                <DialogContent sx={{ '& .MuiFormLabel-asterisk': { color: 'red' } }}>
-                    <Grid container spacing={2} sx={{ mt: 1 }}>
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                fullWidth
-                                label="Coupon Code"
-                                value={formData.code}
-                                onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                                required
-                            />
+                <DialogContent sx={{ p: isMobile ? 1.5 : 3, bgcolor: '#f8f9fa' }}>
+                    <Grid container spacing={isMobile ? 1.5 : 3} sx={{ mt: 0.5 }}>
+                        {/* Coupon Identity */}
+                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center' }}>
+                            <Paper sx={{ 
+                                p: isMobile ? 2 : 3, 
+                                borderRadius: 3, 
+                                width: '100%', 
+                                maxWidth: 600,
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                                border: '1px solid',
+                                borderColor: alpha(theme.palette.divider, 0.05),
+                                bgcolor: 'white'
+                            }}>
+                                <Typography variant="caption" fontWeight={700} color="primary" sx={{ display: 'block', mb: 2, textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: '"Outfit", sans-serif' }}>
+                                    Coupon Identity
+                                </Typography>
+                                <Grid container spacing={2}>
+                                    <Grid item xs={12} sm={6}>
+                                        <TextField
+                                            fullWidth
+                                            label="Coupon Code"
+                                            required
+                                            size="small"
+                                            value={formData.code}
+                                            onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                                            placeholder="E.g. VIP2026"
+                                            InputProps={{ sx: { borderRadius: 2, fontWeight: 700, fontFamily: 'monospace' } }}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} sm={6}>
+                                        <TextField
+                                            fullWidth
+                                            label="Coupon Name"
+                                            required
+                                            size="small"
+                                            value={formData.name}
+                                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                            placeholder="E.g. VIP Customer Reward"
+                                            InputProps={{ sx: { borderRadius: 2 } }}
+                                        />
+                                    </Grid>
+                                </Grid>
+                            </Paper>
                         </Grid>
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                fullWidth
-                                label="Coupon Name"
-                                value={formData.name}
-                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                required
-                            />
+                        {/* Discount Logic */}
+                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center' }}>
+                            <Paper sx={{ 
+                                p: isMobile ? 2 : 3, 
+                                borderRadius: 3, 
+                                width: '100%', 
+                                maxWidth: 600,
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                                border: '1px solid',
+                                borderColor: alpha(theme.palette.divider, 0.05),
+                                bgcolor: 'white'
+                            }}>
+                                <Typography variant="caption" fontWeight={700} color="primary" sx={{ display: 'block', mb: 2, textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: '"Outfit", sans-serif' }}>
+                                    Discount Logic
+                                </Typography>
+                                <Grid container spacing={2}>
+                                    <Grid item xs={12} sm={6}>
+                                        <FormControl fullWidth size="small">
+                                            <InputLabel>Discount Type</InputLabel>
+                                            <Select
+                                                value={formData.discountType}
+                                                label="Discount Type"
+                                                onChange={(e) => setFormData({ ...formData, discountType: e.target.value as 'percentage' | 'fixed' })}
+                                                sx={{ borderRadius: 2 }}
+                                            >
+                                                <MenuItem value="percentage">Percentage (%)</MenuItem>
+                                                <MenuItem value="fixed">Fixed Amount ($)</MenuItem>
+                                            </Select>
+                                        </FormControl>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6}>
+                                        <FormControl fullWidth size="small">
+                                            <InputLabel>Offer Scope</InputLabel>
+                                            <Select
+                                                value={formData.offerType}
+                                                label="Offer Scope"
+                                                onChange={(e) => setFormData({ ...formData, offerType: e.target.value as any })}
+                                                sx={{ borderRadius: 2 }}
+                                            >
+                                                <MenuItem value="cart_total">Entire Order</MenuItem>
+                                                <MenuItem value="menu_item">Specific Items</MenuItem>
+                                                <MenuItem value="combo">Combo Offer</MenuItem>
+                                            </Select>
+                                        </FormControl>
+                                    </Grid>
+                                    {formData.offerType !== 'cart_total' && (
+                                        <Grid item xs={12}>
+                                            <FormControl fullWidth size="small">
+                                                <InputLabel>Applicable Items</InputLabel>
+                                                <Select
+                                                    multiple
+                                                    value={formData.applicableItems}
+                                                    label="Applicable Items"
+                                                    onChange={(e) => setFormData({ ...formData, applicableItems: e.target.value as string[] })}
+                                                    renderValue={(selected) => (
+                                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                                            {(selected as string[]).map((value) => {
+                                                                const item = menuItems.find(i => i._id === value);
+                                                                return <Chip key={value} label={item?.name || value} size="small" sx={{ height: 20, fontSize: '0.65rem' }} />;
+                                                            })}
+                                                        </Box>
+                                                    )}
+                                                    sx={{ borderRadius: 2 }}
+                                                >
+                                                    {menuItems.map((item) => (
+                                                        <MenuItem key={item._id} value={item._id}>
+                                                            {item.name}
+                                                        </MenuItem>
+                                                    ))}
+                                                </Select>
+                                            </FormControl>
+                                        </Grid>
+                                    )}
+                                    <Grid item xs={6}>
+                                        <TextField
+                                            fullWidth
+                                            size="small"
+                                            type="number"
+                                            label="Value"
+                                            value={formData.discountValue}
+                                            onChange={(e) => setFormData({ ...formData, discountValue: Number(e.target.value) })}
+                                            InputProps={{ sx: { borderRadius: 2, fontWeight: 700 } }}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={6}>
+                                        <TextField
+                                            fullWidth
+                                            size="small"
+                                            type="number"
+                                            label="Min Bill"
+                                            value={formData.minBillAmount}
+                                            onChange={(e) => setFormData({ ...formData, minBillAmount: Number(e.target.value) })}
+                                            InputProps={{ sx: { borderRadius: 2 } }}
+                                        />
+                                    </Grid>
+                                </Grid>
+                            </Paper>
                         </Grid>
-                        <Grid item xs={12} md={6}>
-                            <FormControl fullWidth>
-                                <InputLabel>Discount Type</InputLabel>
-                                <Select
-                                    value={formData.discountType}
-                                    label="Discount Type"
-                                    onChange={(e) => setFormData({ ...formData, discountType: e.target.value as 'percentage' | 'fixed' })}
-                                >
-                                    <MenuItem value="percentage">Percentage</MenuItem>
-                                    <MenuItem value="fixed">Fixed Amount</MenuItem>
-                                </Select>
-                            </FormControl>
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <FormControl fullWidth>
-                                <InputLabel>Offer Scope</InputLabel>
-                                <Select
-                                    value={formData.offerType}
-                                    label="Offer Scope"
-                                    onChange={(e) => setFormData({ ...formData, offerType: e.target.value as any })}
-                                >
-                                    <MenuItem value="cart_total">Entire Order (Total Bill)</MenuItem>
-                                    <MenuItem value="menu_item">Specific Item(s)</MenuItem>
-                                    <MenuItem value="combo">Combo (All items required)</MenuItem>
-                                </Select>
-                            </FormControl>
-                        </Grid>
-
-                        {formData.offerType !== 'cart_total' && (
-                            <Grid item xs={12}>
-                                <FormControl fullWidth>
-                                    <InputLabel>Select Items</InputLabel>
-                                    <Select
-                                        multiple
-                                        value={formData.applicableItems}
-                                        label="Select Items"
-                                        onChange={(e) => setFormData({ ...formData, applicableItems: e.target.value as string[] })}
-                                        renderValue={(selected) => (
-                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                                {(selected as string[]).map((value) => {
-                                                    const item = menuItems.find(i => i._id === value);
-                                                    return <Chip key={value} label={item?.name || value} size="small" />;
-                                                })}
-                                            </Box>
-                                        )}
-                                        MenuProps={{ PaperProps: { sx: { maxHeight: 300 } } }}
-                                    >
-                                        {menuItems.map((item) => (
-                                            <MenuItem key={item._id} value={item._id}>
-                                                {item.name} ({formatCurrency(item.price)})
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-                        )}
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                fullWidth
-                                type="number"
-                                label="Discount Value"
-                                value={formData.discountValue}
-                                onChange={(e) => {
-                                    const val = Number(e.target.value);
-                                    if (val < 0) return;
-                                    setFormData({ ...formData, discountValue: val });
-                                }}
-                                inputProps={{ min: 0, step: formData.discountType === 'percentage' ? 1 : 0.01 }}
-                                required
-                            />
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                fullWidth
-                                type="number"
-                                label="Min Bill Amount"
-                                value={formData.minBillAmount}
-                                onChange={(e) => {
-                                    const val = Number(e.target.value);
-                                    if (val < 0) return;
-                                    setFormData({ ...formData, minBillAmount: val });
-                                }}
-                                inputProps={{ min: 0 }}
-                                required
-                            />
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                fullWidth
-                                type="date"
-                                label="Valid From"
-                                InputLabelProps={{ shrink: true }}
-                                inputProps={{ min: today }}
-                                value={formData.validFrom}
-                                onChange={(e) => setFormData({ ...formData, validFrom: e.target.value })}
-                                required
-                            />
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                fullWidth
-                                type="date"
-                                label="Valid To"
-                                InputLabelProps={{ shrink: true }}
-                                inputProps={{ min: formData.validFrom || today }}
-                                value={formData.validTo}
-                                onChange={(e) => setFormData({ ...formData, validTo: e.target.value })}
-                                required
-                            />
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                fullWidth
-                                type="number"
-                                label="Max Total Uses (0 = Unlimited)"
-                                value={formData.maxTotalUses}
-                                onChange={(e) => {
-                                    const val = Number(e.target.value);
-                                    if (val < 0) return;
-                                    setFormData({ ...formData, maxTotalUses: val });
-                                }}
-                                inputProps={{ min: 0 }}
-                                required
-                            />
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                fullWidth
-                                type="number"
-                                label="Max Uses Per Customer"
-                                value={formData.maxUsesPerCustomer}
-                                onChange={(e) => {
-                                    const val = Number(e.target.value);
-                                    if (val < 0) return;
-                                    setFormData({ ...formData, maxUsesPerCustomer: val });
-                                }}
-                                inputProps={{ min: 0 }}
-                                required
-                            />
-                        </Grid>
-                        <Grid item xs={12}>
-                            <FormControl fullWidth>
-                                <InputLabel>Applicable Order Types</InputLabel>
-                                <Select
-                                    multiple
-                                    value={formData.applicableOrderTypes}
-                                    label="Applicable Order Types"
-                                    onChange={(e) => setFormData({ ...formData, applicableOrderTypes: e.target.value as string[] })}
-                                    renderValue={(selected) => (
-                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                            {(selected as string[]).map((value) => (
-                                                <Chip key={value} label={value.replace('_', ' ').toUpperCase()} size="small" />
+                        {/* Validity & Constraints */}
+                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center' }}>
+                            <Paper sx={{ 
+                                p: isMobile ? 2 : 3, 
+                                borderRadius: 3, 
+                                width: '100%', 
+                                maxWidth: 600,
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                                border: '1px solid',
+                                borderColor: alpha(theme.palette.divider, 0.05),
+                                bgcolor: 'white'
+                            }}>
+                                <Typography variant="caption" fontWeight={700} color="primary" sx={{ display: 'block', mb: 2, textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: '"Outfit", sans-serif' }}>
+                                    Validity & Constraints
+                                </Typography>
+                                <Grid container spacing={2}>
+                                    <Grid item xs={6}>
+                                        <TextField
+                                            fullWidth
+                                            label="Starts"
+                                            type="date"
+                                            size="small"
+                                            required
+                                            value={formData.validFrom}
+                                            onChange={(e) => setFormData({ ...formData, validFrom: e.target.value })}
+                                            InputLabelProps={{ shrink: true }}
+                                            InputProps={{ sx: { borderRadius: 2 } }}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={6}>
+                                        <TextField
+                                            fullWidth
+                                            label="Ends"
+                                            type="date"
+                                            size="small"
+                                            required
+                                            value={formData.validTo}
+                                            onChange={(e) => setFormData({ ...formData, validTo: e.target.value })}
+                                            InputLabelProps={{ shrink: true }}
+                                            InputProps={{ sx: { borderRadius: 2 } }}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={6}>
+                                        <TextField
+                                            fullWidth
+                                            label="Max Uses"
+                                            type="number"
+                                            size="small"
+                                            value={formData.maxTotalUses}
+                                            onChange={(e) => setFormData({ ...formData, maxTotalUses: Number(e.target.value) })}
+                                            InputProps={{ sx: { borderRadius: 2 } }}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={6}>
+                                        <TextField
+                                            fullWidth
+                                            label="Per User"
+                                            type="number"
+                                            size="small"
+                                            value={formData.maxUsesPerCustomer}
+                                            onChange={(e) => setFormData({ ...formData, maxUsesPerCustomer: Number(e.target.value) })}
+                                            InputProps={{ sx: { borderRadius: 2 } }}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12}>
+                                        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, display: 'block', mb: 1 }}>Order Types</Typography>
+                                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                                            {['dine_in', 'takeaway', 'delivery', 'online_takeaway'].map((type) => (
+                                                <Chip
+                                                    key={type}
+                                                    label={type.replace('_', ' ').toUpperCase()}
+                                                    size="small"
+                                                    onClick={() => {
+                                                        const current = [...formData.applicableOrderTypes];
+                                                        const index = current.indexOf(type);
+                                                        if (index > -1) current.splice(index, 1);
+                                                        else current.push(type);
+                                                        setFormData({ ...formData, applicableOrderTypes: current });
+                                                    }}
+                                                    color={formData.applicableOrderTypes.includes(type) ? 'primary' : 'default'}
+                                                    variant={formData.applicableOrderTypes.includes(type) ? 'filled' : 'outlined'}
+                                                    sx={{ borderRadius: 1.5, fontSize: '0.65rem', height: 24 }}
+                                                />
                                             ))}
                                         </Box>
-                                    )}
-                                >
-                                    <MenuItem value="dine_in">Dine In</MenuItem>
-                                    <MenuItem value="takeaway">Takeaway</MenuItem>
-                                    <MenuItem value="delivery">Delivery</MenuItem>
-                                    <MenuItem value="online_takeaway">Online Takeaway</MenuItem>
-                                </Select>
-                            </FormControl>
-                        </Grid>
-                        <Grid item xs={12}>
-                            <TextField
-                                fullWidth
-                                multiline
-                                rows={3}
-                                label="Description"
-                                value={formData.description}
-                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                            />
-                        </Grid>
-                        <Grid item xs={12}>
-                            <FormControlLabel
-                                control={
-                                    <Checkbox
-                                        checked={formData.active}
-                                        onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-                                    />
-                                }
-                                label="Active"
-                            />
+                                    </Grid>
+                                </Grid>
+                            </Paper>
                         </Grid>
                     </Grid>
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={handleCloseDialog}>Cancel</Button>
-                    <Button onClick={handleSaveCoupon} variant="contained">
-                        {selectedCoupon ? 'Update' : 'Create'}
+                <DialogActions sx={{ p: isMobile ? 2 : 3, bgcolor: 'white', borderTop: '1px solid', borderColor: alpha(theme.palette.divider, 0.1), gap: 1.5 }}>
+                    <Button 
+                        onClick={handleCloseDialog} 
+                        sx={{ 
+                            textTransform: 'none', 
+                            fontWeight: 'bold',
+                            color: 'text.secondary'
+                        }}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="contained"
+                        onClick={handleSaveCoupon}
+                        sx={{ 
+                            borderRadius: 2, 
+                            px: 4, 
+                            textTransform: 'none', 
+                            fontWeight: 'bold',
+                            boxShadow: '0 4px 12px rgba(79, 70, 229, 0.2)',
+                            background: 'linear-gradient(45deg, #4F46E5, #6366F1)'
+                        }}
+                    >
+                        {selectedCoupon ? 'Update Coupon' : 'Create Coupon'}
                     </Button>
                 </DialogActions>
             </Dialog>
 
             {/* Bulk Email Dialog */}
-            <Dialog open={openEmailDialog} onClose={handleCloseEmailDialog} maxWidth="md" fullWidth>
-                <DialogTitle sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="h6" fontWeight="bold">
-                        Send Coupon to Customers
-                    </Typography>
-                    <IconButton
-                        onClick={handleCloseEmailDialog}
-                        size="small"
-                        sx={{
-                            color: 'white',
-                            bgcolor: 'error.main',
-                            '&:hover': { bgcolor: 'error.dark' },
-                            width: 24,
-                            height: 24
+            <Dialog 
+                open={openEmailDialog} 
+                onClose={handleCloseEmailDialog} 
+                maxWidth="md" 
+                fullWidth
+                fullScreen={isMobile}
+                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 4, bgcolor: '#f8f9fa' } }}
+            >
+                <DialogTitle sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    borderBottom: '1px solid', 
+                    borderColor: alpha(theme.palette.divider, 0.1),
+                    bgcolor: 'white',
+                    p: isMobile ? 2 : 2.5,
+                    pt: isMobile ? '60px' : 2.5
+                }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box sx={{ 
+                            p: 1, 
+                            borderRadius: 1.5, 
+                            bgcolor: alpha(theme.palette.info.main, 0.1), 
+                            color: 'info.main',
+                            display: 'flex'
+                        }}>
+                             <EmailIcon fontSize={isMobile ? "small" : "medium"} />
+                        </Box>
+                        <Typography 
+                            variant={isMobile ? "subtitle1" : "h6"} 
+                            fontWeight={700}
+                            sx={{ fontFamily: '"Outfit", sans-serif', textTransform: 'uppercase' }}
+                        >
+                            Email Promotion
+                        </Typography>
+                    </Box>
+                    <IconButton 
+                        onClick={handleCloseEmailDialog} 
+                        size="small" 
+                        sx={{ 
+                            bgcolor: alpha(theme.palette.error.main, 0.1), 
+                            color: 'error.main', 
+                            '&:hover': { bgcolor: 'error.main', color: 'white' } 
                         }}
                     >
-                        <CloseIcon sx={{ fontSize: '1.1rem' }} />
+                        <CloseIcon fontSize="small" />
                     </IconButton>
                 </DialogTitle>
-                <DialogContent sx={{ '& .MuiFormLabel-asterisk': { color: 'red' } }}>
-                    <Grid container spacing={2} sx={{ mt: 1 }}>
-                        <Grid item xs={12}>
-                            <TextField
-                                fullWidth
-                                label="Email Subject"
-                                value={emailData.subject}
-                                onChange={(e) => setEmailData({ ...emailData, subject: e.target.value })}
-                                required
-                            />
+                <DialogContent sx={{ p: isMobile ? 1.5 : 3, bgcolor: '#f8f9fa' }}>
+                    <Grid container spacing={isMobile ? 1.5 : 3} sx={{ mt: 0.5 }}>
+                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center' }}>
+                            <Paper sx={{ p: isMobile ? 2 : 3, borderRadius: 3, width: '100%', maxWidth: 600, bgcolor: 'white' }}>
+                                <Typography variant="caption" fontWeight={700} color="primary" sx={{ display: 'block', mb: 2, textTransform: 'uppercase', fontFamily: '"Outfit", sans-serif' }}>
+                                    Message Content
+                                </Typography>
+                                <TextField
+                                    fullWidth
+                                    label="Subject"
+                                    size="small"
+                                    value={emailData.subject}
+                                    onChange={(e) => setEmailData({ ...emailData, subject: e.target.value })}
+                                    sx={{ mb: 2 }}
+                                    InputProps={{ sx: { borderRadius: 2 } }}
+                                />
+                                <TextField
+                                    fullWidth
+                                    multiline
+                                    rows={isMobile ? 4 : 8}
+                                    label="Message Body"
+                                    size="small"
+                                    value={emailData.message}
+                                    onChange={(e) => setEmailData({ ...emailData, message: e.target.value })}
+                                    InputProps={{ sx: { borderRadius: 2 } }}
+                                />
+                            </Paper>
                         </Grid>
-                        <Grid item xs={12}>
-                            <TextField
-                                fullWidth
-                                multiline
-                                rows={8}
-                                label="Email Message"
-                                value={emailData.message}
-                                onChange={(e) => setEmailData({ ...emailData, message: e.target.value })}
-                                required
-                            />
+                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center' }}>
+                            <Paper sx={{ p: isMobile ? 2 : 3, borderRadius: 3, width: '100%', maxWidth: 600, bgcolor: 'white' }}>
+                                <Typography variant="caption" fontWeight={700} color="primary" sx={{ display: 'block', mb: 2, textTransform: 'uppercase', fontFamily: '"Outfit", sans-serif' }}>
+                                    Recipients ({emailData.selectedCustomers.length})
+                                </Typography>
+                                <FormControlLabel
+                                    control={
+                                        <Checkbox
+                                            size="small"
+                                            checked={emailData.selectAll}
+                                            onChange={(e) => handleSelectAllCustomers(e.target.checked)}
+                                        />
+                                    }
+                                    label={<Typography variant="body2" fontWeight={600}>Select All Customers</Typography>}
+                                />
+                                <Box sx={{ maxHeight: 250, overflow: 'auto', mt: 1, border: '1px solid', borderColor: 'divider', borderRadius: 2, p: 1 }}>
+                                    {customers.map((customer) => (
+                                        <FormControlLabel
+                                            key={customer.email}
+                                            control={
+                                                <Checkbox
+                                                    size="small"
+                                                    checked={emailData.selectedCustomers.includes(customer.email)}
+                                                    onChange={(e) => handleSelectCustomer(customer.email, e.target.checked)}
+                                                />
+                                            }
+                                            label={
+                                                <Box>
+                                                    <Typography variant="body2" fontWeight={600}>{customer.name || 'Guest'}</Typography>
+                                                    <Typography variant="caption" color="text.secondary">{customer.email}</Typography>
+                                                </Box>
+                                            }
+                                            sx={{ display: 'flex', mb: 0.5, alignItems: 'flex-start' }}
+                                        />
+                                    ))}
+                                </Box>
+                            </Paper>
                         </Grid>
-                        <Grid item xs={12}>
-                            <Typography variant="subtitle2" gutterBottom>
-                                Select Recipients ({emailData.selectedCustomers.length} selected)
-                            </Typography>
-                            <FormControlLabel
-                                control={
-                                    <Checkbox
-                                        checked={emailData.selectAll}
-                                        onChange={(e) => handleSelectAllCustomers(e.target.checked)}
-                                    />
-                                }
-                                label={`Select All (${customers.length} customers)`}
-                            />
-                        </Grid>
-                        <Grid item xs={12}>
-                            <Box sx={{ maxHeight: 300, overflow: 'auto', border: '1px solid #ddd', borderRadius: 1, p: 2 }}>
-                                {customers.map((customer) => (
-                                    <FormControlLabel
-                                        key={customer.email}
-                                        control={
-                                            <Checkbox
-                                                checked={emailData.selectedCustomers.includes(customer.email)}
-                                                onChange={(e) => handleSelectCustomer(customer.email, e.target.checked)}
-                                            />
-                                        }
-                                        label={
-                                            <Box>
-                                                <Typography variant="body2">
-                                                    {customer.name || 'Guest'} - {customer.email}
-                                                </Typography>
-                                                <Typography variant="caption" color="text.secondary">
-                                                    {customer.totalOrders} orders | {formatCurrency(customer.totalSpent || 0)} spent
-                                                </Typography>
-                                            </Box>
-                                        }
-                                        sx={{ display: 'block', mb: 1 }}
-                                    />
-                                ))}
-                            </Box>
-                        </Grid>
-
                     </Grid>
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={handleCloseEmailDialog} disabled={emailLoading}>
-                        Cancel
-                    </Button>
+                <DialogActions sx={{ p: isMobile ? 2 : 3, bgcolor: 'white', borderTop: '1px solid', borderColor: alpha(theme.palette.divider, 0.1), gap: 1.5 }}>
+                    <Button onClick={handleCloseEmailDialog} sx={{ fontWeight: 'bold', color: 'text.secondary' }}>Cancel</Button>
                     <Button
-                        onClick={handleSendBulkEmail}
                         variant="contained"
-                        startIcon={emailLoading ? <CircularProgress size={20} /> : <SendIcon />}
+                        onClick={handleSendBulkEmail}
                         disabled={emailLoading}
+                        sx={{ 
+                            borderRadius: 2, 
+                            px: 3, 
+                            fontWeight: 'bold',
+                            background: 'linear-gradient(45deg, #4F46E5, #6366F1)'
+                        }}
                     >
-                        {emailLoading ? 'Sending...' : `Send to ${emailData.selectedCustomers.length} Customers`}
+                        {emailLoading ? <CircularProgress size={20} color="inherit" /> : `Send to ${emailData.selectedCustomers.length}`}
                     </Button>
                 </DialogActions>
             </Dialog>
 
-            {/* ═══════════════ PREMIUM SMS DIALOG ═══════════════ */}
-            <Dialog
-                open={openSmsDialog}
-                onClose={handleCloseSmsDialog}
-                maxWidth="sm"
+            {/* SMS Broadcast Dialog */}
+            <Dialog 
+                open={openSmsDialog} 
+                onClose={handleCloseSmsDialog} 
+                maxWidth="sm" 
                 fullWidth
-                PaperProps={{
-                    sx: {
-                        borderRadius: 3,
-                        overflow: 'hidden',
-                        boxShadow: '0 24px 60px rgba(0,0,0,0.18)',
-                    }
-                }}
+                fullScreen={isMobile}
+                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 4, bgcolor: '#f8f9fa' } }}
             >
+                <DialogTitle sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    borderBottom: '1px solid', 
+                    borderColor: alpha(theme.palette.divider, 0.1),
+                    bgcolor: 'white',
+                    p: isMobile ? 2 : 2.5,
+                    pt: isMobile ? '80px' : 2.5
+                }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box sx={{ 
+                            p: 1, 
+                            borderRadius: 1.5, 
+                            bgcolor: alpha(theme.palette.success.main, 0.1), 
+                            color: 'success.main',
+                            display: 'flex'
+                        }}>
+                             <SmsIcon fontSize={isMobile ? "small" : "medium"} />
+                        </Box>
+                        <Typography 
+                            variant={isMobile ? "subtitle1" : "h6"} 
+                            fontWeight={700}
+                            sx={{ fontFamily: '"Outfit", sans-serif', textTransform: 'uppercase' }}
+                        >
+                            SMS Broadcast
+                        </Typography>
+                    </Box>
+                    <IconButton 
+                        onClick={handleCloseSmsDialog} 
+                        size="small" 
+                        sx={{ 
+                            bgcolor: alpha(theme.palette.error.main, 0.1), 
+                            color: 'error.main', 
+                        }}
+                    >
+                        <CloseIcon fontSize="small" />
+                    </IconButton>
+                </DialogTitle>
 
 
                 {/* ── Header ── */}
