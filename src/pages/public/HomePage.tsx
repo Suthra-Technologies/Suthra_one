@@ -671,7 +671,6 @@ const HomePage: React.FC = () => {
   );
 
   const [formData, setFormData] = useState({
-    deployment: "cloud",
     businessName: "",
     email: "",
     phonePrefix: "+91",
@@ -735,7 +734,6 @@ const HomePage: React.FC = () => {
             "Thank you for your interest. Our team will contact you shortly to schedule your personalized demo.",
         });
         setFormData({
-          deployment: "cloud",
           businessName: "",
           email: "",
           phonePrefix: "+91",

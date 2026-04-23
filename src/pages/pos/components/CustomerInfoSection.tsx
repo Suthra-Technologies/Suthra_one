@@ -20,7 +20,8 @@ import {
     Stack,
     TextField,
     Tooltip,
-    Typography
+    Typography,
+    Alert
 } from '@mui/material';
 import React from 'react';
 import AddressAutocomplete from '../../../components/AddressAutocomplete';
@@ -82,6 +83,8 @@ interface CustomerInfoSectionProps {
     setPointsToRedeem: (val: number) => void;
     isFetchingRewards: boolean;
     cartTotal: number;
+    suggestedPhone: string | null;
+    customerConflict: boolean;
 }
 
 const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
@@ -139,7 +142,9 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
     pointsToRedeem,
     setPointsToRedeem,
     isFetchingRewards,
-    cartTotal
+    cartTotal,
+    suggestedPhone,
+    customerConflict
 }) => {
     const generateTimeSlots = (dateString: string) => {
         if (!settings?.restaurant?.businessHours) return [];
@@ -225,6 +230,13 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
             <Typography variant="subtitle1" gutterBottom>
                 Customer & Order Details
             </Typography>
+
+            {customerConflict && (
+                <Alert severity="warning" sx={{ mb: 2, borderRadius: 2 }}>
+                    ⚠️ This email is linked to another account. Using points from the <strong>Phone</strong> account.
+                </Alert>
+            )}
+
             <Grid container spacing={2} sx={{ mb: 2 }}>
                 <Grid item xs={12} sm={4}>
                     <TextField
@@ -288,7 +300,22 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                             }
                         }}
                         error={customerPhoneTouched && !!customerPhoneError}
-                        helperText={customerPhoneTouched && customerPhoneError}
+                        helperText={suggestedPhone ? (
+                            <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
+                                <Typography variant="caption" color="primary">Suggested: {suggestedPhone}</Typography>
+                                <Button 
+                                    size="small" 
+                                    variant="outlined" 
+                                    sx={{ height: 20, px: 1, minWidth: 0, textTransform: 'none', fontSize: '0.65rem' }}
+                                    onClick={() => {
+                                        const clean = suggestedPhone.replace(/\D/g, '').slice(-10);
+                                        setCustomerPhone(clean);
+                                    }}
+                                >
+                                    Use this
+                                </Button>
+                            </Box>
+                        ) : (customerPhoneTouched && customerPhoneError)}
                         disabled={user?.role === 'customer'}
                         required
                         dialCode={customerDialCode}
