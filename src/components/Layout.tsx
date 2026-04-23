@@ -55,7 +55,7 @@ import Sidebar from './Sidebar';
 import SubscriptionBanner from './SubscriptionBanner';
 import SubscriptionStatus from './SubscriptionStatus';
 import { Capacitor } from '@capacitor/core';
-import { BRAND_CONFIG } from 'src/config/brandConfig';
+
 
 /**
  * Ensures image URLs are absolute.
