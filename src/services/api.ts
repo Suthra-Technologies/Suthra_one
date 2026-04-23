@@ -109,6 +109,7 @@ export const authAPI = {
   getCustomerCards: () => api.get('/auth/customer/cards'),
   saveCustomerCard: (cardData: any) => api.post('/auth/customer/cards', cardData),
   deleteCustomerCard: (index: number) => api.delete(`/auth/customer/cards/${index}`),
+  deleteAccount: () => api.delete('/auth/delete-account'),
 };
 
 

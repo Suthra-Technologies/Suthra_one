@@ -54,6 +54,8 @@ import ShiftManager from './ShiftManager';
 import Sidebar from './Sidebar';
 import SubscriptionBanner from './SubscriptionBanner';
 import SubscriptionStatus from './SubscriptionStatus';
+import { Capacitor } from '@capacitor/core';
+import { BRAND_CONFIG } from 'src/config/brandConfig';
 
 /**
  * Ensures image URLs are absolute.
@@ -554,7 +556,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
             <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 0.5 }}>
               <ShiftManager />
-              <SubscriptionStatus />
+              {Capacitor.getPlatform() !== 'ios' && <SubscriptionStatus />}
             </Box>
             <RestaurantStatusToggle />
             <Tooltip title="Notifications">
@@ -829,7 +831,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
         </Box>
 
         <Box sx={{ position: 'relative', zIndex: 1 }}>
-          <SubscriptionBanner />
+          {Capacitor.getPlatform() !== 'ios' && <SubscriptionBanner />}
           {children || <Outlet />}
         </Box>
       </Box>

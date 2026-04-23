@@ -4,12 +4,12 @@
    * OR overridden at runtime by BrandContext for the multi-tenant SaaS.
    * Components should use these variables for all brand-sensitive colors.
    * ──────────────────────────────────────────────────────────────── */
-  --brand-primary:   #9C27B0;
+  --brand-primary: #9C27B0;
   --brand-secondary: #E91E63;
-  --brand-accent:    #FF9800;
+  --brand-accent: #FF9800;
   --brand-splash-bg: #1a0027;
-  --brand-name:      "Nexzen POS";
-  --brand-font:      "Inter";
+  --brand-name: "Nexzen POS";
+  --brand-font: "Inter";
 
   font-family: var(--brand-font, "Inter"), system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -124,14 +124,14 @@ body.scanner-active .scanner-ui {
 }
 
 /* Hide Google Maps internal error overlays and containers */
-.gm-err-container, 
+.gm-err-container,
 .gm-err-content,
 .gm-err-icon,
 .gm-err-title,
 .gm-err-message,
 .gm-err-autocomplete,
 #gm-err-autocomplete {
-    display: none !important;
+  display: none !important;
 }
 
 /* Hide the overlay that shows 'This page can't load Google Maps correctly' */

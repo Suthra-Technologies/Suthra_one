@@ -221,9 +221,10 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ open, onClose, no
       anchor="right"
       open={open}
       onClose={onClose}
+      sx={{ zIndex: (theme) => theme.zIndex.drawer + 2 }}
       PaperProps={{ sx: { width: 400, maxWidth: '90vw' } }}
     >
-      <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <Box sx={{ p: 2, pt: 'calc(16px + env(safe-area-inset-top))', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Typography variant="h6" fontWeight="bold">
           Notifications
         </Typography>

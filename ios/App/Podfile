@@ -12,8 +12,6 @@ def capacitor_pods
   pod 'Capacitor', :path => '../../node_modules/@capacitor/ios'
   pod 'CapacitorCordova', :path => '../../node_modules/@capacitor/ios'
   pod 'CapacitorBrowser', :path => '../../node_modules/@capacitor/browser'
-  pod 'CapacitorMlkitBarcodeScanning', :path => '../../node_modules/@capacitor-mlkit/barcode-scanning'
-  pod 'CapacitorCamera', :path => '../../node_modules/@capacitor/camera'
   pod 'CapacitorLocalNotifications', :path => '../../node_modules/@capacitor/local-notifications'
   pod 'CapacitorPushNotifications', :path => '../../node_modules/@capacitor/push-notifications'
 end
@@ -25,17 +23,4 @@ end
 
 post_install do |installer|
   assertDeploymentTarget(installer)
-  
-  installer.pods_project.build_configurations.each do |config|
-    config.build_settings["EXCLUDED_ARCHS[sdk=iphonesimulator*]"] = "arm64"
-  end
-
-  installer.pods_project.targets.each do |target|
-    target.build_configurations.each do |config|
-      config.build_settings["EXCLUDED_ARCHS[sdk=iphonesimulator*]"] = "arm64"
-    end
-  end
-
-  # Direct patch for stubborn MLKit/Plugin xcconfig files
-  system("find . -name \"*.xcconfig\" -type f -exec sed -i '' 's/EXCLUDED_ARCHS\\[sdk=iphonesimulator\\*\\].*/EXCLUDED_ARCHS[sdk=iphonesimulator*] = arm64/g' {} +")
 end

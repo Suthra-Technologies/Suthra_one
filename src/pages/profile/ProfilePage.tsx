@@ -12,6 +12,7 @@ import {
     Chip,
     IconButton,
     InputAdornment,
+    alpha,
     Alert,
     CircularProgress,
     Tooltip,
@@ -90,6 +91,8 @@ const ProfilePage: React.FC = () => {
         open: false,
         index: null,
     });
+    const [deleteAccountDialogOpen, setDeleteAccountDialogOpen] = useState(false);
+    const [deleteConfirmText, setDeleteConfirmText] = useState('');
     const [addressForm, setAddressForm] = useState({
         label: 'Home',
         street: '',
@@ -445,6 +448,29 @@ const ProfilePage: React.FC = () => {
         }
     };
 
+    const handleDeleteAccount = async () => {
+        if (deleteConfirmText !== 'DELETE') {
+            toast.error('Please type DELETE to confirm');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            await authAPI.deleteAccount();
+            toast.success('Your account has been deleted successfully');
+            // Log out user
+            localStorage.removeItem('jwt');
+            localStorage.removeItem('user');
+            window.location.href = '/login';
+        } catch (error: any) {
+            console.error('Error deleting account:', error);
+            toast.error(error.response?.data?.message || 'Failed to delete account');
+        } finally {
+            setLoading(false);
+            setDeleteAccountDialogOpen(false);
+        }
+    };
+
     return (
         <Box sx={{ p: { xs: 1, sm: 0 } }}>
             <Box sx={{ mb: { xs: 1, sm: 3 } }}>
@@ -688,9 +714,84 @@ const ProfilePage: React.FC = () => {
                                 </CardContent>
                             </Card>
                         </Grid>
+
+                        {/* Danger Zone */}
+                        <Grid size={{ xs: 12 }}>
+                            <Card sx={{ mt: 3, borderColor: 'error.main', borderWidth: 1, borderStyle: 'solid', bgcolor: alpha(theme.palette.error.main, 0.02) }}>
+                                <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1, color: 'error.main' }}>
+                                        <DeleteIcon />
+                                        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                                            Danger Zone
+                                        </Typography>
+                                    </Box>
+                                    <Divider sx={{ mb: 2 }} />
+                                    <Grid container spacing={2} alignItems="center">
+                                        <Grid size={{ xs: 12, md: 8 }}>
+                                            <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                                                Delete Account
+                                            </Typography>
+                                            <Typography variant="body2" color="text.secondary">
+                                                Once you delete your account, there is no going back. All your personal data, saved addresses, and preferences will be permanently removed.
+                                            </Typography>
+                                        </Grid>
+                                        <Grid size={{ xs: 12, md: 4 }} sx={{ display: 'flex', justifyContent: { xs: 'flex-start', md: 'flex-end' } }}>
+                                            <Button 
+                                                variant="contained" 
+                                                color="error" 
+                                                onClick={() => setDeleteAccountDialogOpen(true)}
+                                                sx={{ px: 4 }}
+                                            >
+                                                Delete My Account
+                                            </Button>
+                                        </Grid>
+                                    </Grid>
+                                </CardContent>
+                            </Card>
+                        </Grid>
                     </Grid>
                 )}
             </Box>
+
+            {/* Account Deletion Confirmation Dialog */}
+            <Dialog 
+                open={deleteAccountDialogOpen} 
+                onClose={() => !loading && setDeleteAccountDialogOpen(false)}
+                maxWidth="xs"
+                fullWidth
+            >
+                <DialogTitle sx={{ color: 'error.main', fontWeight: 'bold' }}>
+                    Delete Account Permanently?
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" sx={{ mb: 2 }}>
+                        This action **cannot be undone**. This will permanently delete your profile, saved addresses, and all associated data.
+                    </Typography>
+                    <Typography variant="body2" sx={{ mb: 2, fontWeight: 'bold' }}>
+                        To confirm, please type "DELETE" in the box below:
+                    </Typography>
+                    <TextField
+                        fullWidth
+                        size="small"
+                        placeholder="DELETE"
+                        value={deleteConfirmText}
+                        onChange={(e) => setDeleteConfirmText(e.target.value.toUpperCase())}
+                    />
+                </DialogContent>
+                <DialogActions sx={{ px: 3, pb: 2 }}>
+                    <Button onClick={() => setDeleteAccountDialogOpen(false)} disabled={loading}>
+                        Cancel
+                    </Button>
+                    <Button 
+                        onClick={handleDeleteAccount} 
+                        color="error" 
+                        variant="contained"
+                        disabled={loading || deleteConfirmText !== 'DELETE'}
+                    >
+                        {loading ? <CircularProgress size={24} /> : 'Permanently Delete Account'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
             {/* ── TAB 1: Saved Addresses (customer only) ── */}
             {activeRole === 'customer' && (
