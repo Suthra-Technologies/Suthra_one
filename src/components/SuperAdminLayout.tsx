@@ -28,6 +28,7 @@ import {
     Receipt as ReceiptIcon,
     Menu as MenuIcon,
     LocalShipping as DeliveryIcon,
+    ContactPage as DemoIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 
@@ -64,6 +65,8 @@ const SuperAdminLayout: React.FC = () => {
         { path: '/superadmin/plans', label: 'Subscription Plans', icon: <PlansIcon /> },
         { path: '/superadmin/invoices', label: 'Invoices', icon: <ReceiptIcon /> },
         { path: '/superadmin/delivery-reports', label: 'Delivery Reports', icon: <DeliveryIcon /> },
+        { path: '/superadmin/demo-requests', label: 'Demo Requests', icon: <DemoIcon /> },
+        { path: '/superadmin/sms-logs', label: 'SMS Logs', icon: <ReceiptIcon /> },
         { path: '/superadmin/tickets', label: 'Support Tickets', icon: <SupportIcon /> },
     ];
 

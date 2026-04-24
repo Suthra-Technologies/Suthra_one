@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { alpha } from '@mui/material/styles';
 import {
     Box,
     Typography,
@@ -13,7 +14,6 @@ import {
     TablePagination,
     Chip,
     CircularProgress,
-    alpha,
     useTheme,
     Tabs,
     Tab,
@@ -163,7 +163,7 @@ const ServiceUsagePage: React.FC = () => {
                     onClick={() => setTestSmsOpen(true)}
                     sx={{ borderRadius: 2 }}
                 >
-                    Send Test SMS
+                    Send Test Message
                 </Button>
             </Box>
             <Grid container spacing={3} sx={{ mb: 4 }}>
@@ -204,6 +204,7 @@ const ServiceUsagePage: React.FC = () => {
                                 <TableCell sx={{ fontWeight: 700 }}>Recipient</TableCell>
                                 <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
                                 <TableCell sx={{ fontWeight: 700 }} align="right">Cost</TableCell>
+                                <TableCell sx={{ fontWeight: 700 }}>Message</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -229,6 +230,13 @@ const ServiceUsagePage: React.FC = () => {
                                     </TableCell>
                                     <TableCell align="right" sx={{ fontWeight: 700, color: 'primary.main' }}>
                                         ${log.cost?.toFixed(4) || '0.0000'}
+                                    </TableCell>
+                                    <TableCell sx={{ maxWidth: 200 }}>
+                                        <Tooltip title={log.body || ''}>
+                                            <Typography variant="caption" sx={{ display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                                {log.body}
+                                            </Typography>
+                                        </Tooltip>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -428,7 +436,7 @@ const ServiceUsagePage: React.FC = () => {
                     '& .Mui-selected': { bgcolor: alpha(theme.palette.primary.main, 0.1) }
                 }}
             >
-                <Tab icon={<ReceiptLongIcon />} iconPosition="start" label="SMS Usage" />
+                <Tab icon={<ReceiptLongIcon />} iconPosition="start" label="Messages" />
                 <Tab icon={<LocalShippingIcon />} iconPosition="start" label="Delivery Reports" />
             </Tabs>
 
@@ -437,7 +445,7 @@ const ServiceUsagePage: React.FC = () => {
 
             {/* Test SMS Dialog */}
             <Dialog open={testSmsOpen} onClose={() => setTestSmsOpen(false)} maxWidth="xs" fullWidth>
-                <DialogTitle sx={{ fontWeight: 800 }}>Send Test SMS</DialogTitle>
+                <DialogTitle sx={{ fontWeight: 800 }}>Send Test Message</DialogTitle>
                 <DialogContent>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                         Verify your Twilio integration by sending a manual message.
@@ -461,7 +469,7 @@ const ServiceUsagePage: React.FC = () => {
                 </DialogContent>
                 <DialogActions sx={{ px: 3, pb: 3 }}>
                     <Button onClick={() => setTestSmsOpen(false)}>Cancel</Button>
-                    <Button variant="contained" startIcon={<SendIcon />} onClick={handleSendTestSms}>Send SMS</Button>
+                    <Button variant="contained" startIcon={<SendIcon />} onClick={handleSendTestSms}>Send Message</Button>
                 </DialogActions>
             </Dialog>
         </Box>

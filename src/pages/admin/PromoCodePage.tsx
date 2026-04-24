@@ -8,14 +8,16 @@ import {
     Edit as EditIcon,
     Email as EmailIcon,
     EventAvailable as EventIcon,
+    GridView as GridViewIcon,
     Info as InfoIcon,
     LocalOffer as LocalOfferIcon,
     Search as SearchIcon,
     TrendingUp as TrendingUpIcon,
+    ViewList as ViewListIcon,
     AccountBalanceWallet as WalletIcon
 } from '@mui/icons-material';
+import { alpha } from '@mui/material/styles';
 import {
-    alpha,
     Box,
     Button,
     Card,
@@ -48,13 +50,9 @@ import {
     TextField,
     Tooltip,
     Typography,
-    useTheme,
-    useMediaQuery
+    useMediaQuery,
+    useTheme
 } from '@mui/material';
-import {
-    ViewList as ViewListIcon,
-    GridView as GridViewIcon
-} from '@mui/icons-material';
 import { format } from 'date-fns';
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
@@ -87,13 +85,13 @@ const ORDER_TYPES = [
     { value: 'takeaway', label: 'Takeaway' },
     { value: 'delivery', label: 'Delivery' },
     { value: 'online_takeaway', label: 'Online' },
-    { value: 'global_dine_in', label: 'Global QR' }
+    // { value: 'global_dine_in', label: 'Global QR' }
 ];
 
 const StatCard = ({ title, value, icon, color, trend }: any) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-    
+
     return (
         <Card sx={{
             height: '100%',
@@ -116,27 +114,27 @@ const StatCard = ({ title, value, icon, color, trend }: any) => {
                 background: alpha(color, 0.1),
                 zIndex: 0
             }} />
-            <CardContent sx={{ 
-                position: 'relative', 
-                zIndex: 1, 
-                p: { xs: 1.25, sm: 2 }, 
-                '&:last-child': { pb: { xs: 1.25, sm: 2 } } 
+            <CardContent sx={{
+                position: 'relative',
+                zIndex: 1,
+                p: { xs: 1.25, sm: 2 },
+                '&:last-child': { pb: { xs: 1.25, sm: 2 } }
             }}>
                 <Stack direction={isMobile ? "column" : "row"} spacing={{ xs: 1, sm: 2 }} alignItems={isMobile ? "flex-start" : "center"}>
-                    <Avatar sx={{ 
-                        bgcolor: alpha(color, 0.2), 
-                        color: color, 
-                        width: { xs: 36, sm: 48 }, 
+                    <Avatar sx={{
+                        bgcolor: alpha(color, 0.2),
+                        color: color,
+                        width: { xs: 36, sm: 48 },
                         height: { xs: 36, sm: 48 },
-                        borderRadius: { xs: '8px', sm: '12px' } 
+                        borderRadius: { xs: '8px', sm: '12px' }
                     }}>
                         {React.cloneElement(icon, { sx: { fontSize: { xs: 18, sm: 24 } } })}
                     </Avatar>
                     <Box>
-                        <Typography 
-                            variant="caption" 
-                            color="text.secondary" 
-                            fontWeight={600} 
+                        <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            fontWeight={600}
                             sx={{ fontSize: { xs: '0.6rem', sm: '0.75rem' }, textTransform: 'uppercase' }}
                         >
                             {title}
@@ -422,7 +420,6 @@ const PromoCodePage: React.FC = () => {
                         fontSize: { xs: '1.45rem', sm: '2.125rem' },
                         mb: { xs: 0.5, sm: 0 }
                     }}>
-                        <LocalOfferIcon sx={{ fontSize: { xs: 24, sm: 32 }, color: { xs: '#000', sm: '#4F46E5' } }} />
                         Promo Management
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
@@ -431,16 +428,16 @@ const PromoCodePage: React.FC = () => {
                 </Box>
                 <Stack direction="row" spacing={{ xs: 1, sm: 2 }} sx={{ width: { xs: '100%', sm: 'auto' }, alignItems: 'center' }}>
                     <Box sx={{ display: 'flex', bgcolor: 'background.paper', borderRadius: { xs: 2, sm: 3 }, p: 0.5, border: '1px solid', borderColor: 'divider' }}>
-                        <IconButton 
-                            size="small" 
+                        <IconButton
+                            size="small"
                             onClick={() => setViewMode('list')}
                             color={viewMode === 'list' ? 'primary' : 'default'}
                             sx={{ borderRadius: { xs: 1.5, sm: 2 }, bgcolor: viewMode === 'list' ? alpha(theme.palette.primary.main, 0.1) : 'transparent', p: { xs: 0.5, sm: 1 } }}
                         >
                             <ViewListIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />
                         </IconButton>
-                        <IconButton 
-                            size="small" 
+                        <IconButton
+                            size="small"
                             onClick={() => setViewMode('grid')}
                             color={viewMode === 'grid' ? 'primary' : 'default'}
                             sx={{ borderRadius: { xs: 1.5, sm: 2 }, bgcolor: viewMode === 'grid' ? alpha(theme.palette.primary.main, 0.1) : 'transparent', p: { xs: 0.5, sm: 1 } }}
@@ -485,7 +482,7 @@ const PromoCodePage: React.FC = () => {
             {/* Quick Stats */}
             <Grid container spacing={{ xs: 1.5, sm: 3 }} sx={{ mb: { xs: 2.5, sm: 4 } }}>
                 <Grid item xs={6} sm={6} md={3}>
-                    <StatCard title="Total Promos" value={stats.total} icon={<LocalOfferIcon />} color="#4F46E5" trend="+12% this month" />
+                    <StatCard title="Total Promos" value={stats.total} icon={<LocalOfferIcon />} color="#4F46E5" />
                 </Grid>
                 <Grid item xs={6} sm={6} md={3}>
                     <StatCard title="Active Now" value={stats.active} icon={<CheckCircleIcon />} color="#10B981" />
@@ -682,13 +679,13 @@ const PromoCodePage: React.FC = () => {
                                 return (
                                     <TableRow key={promo._id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
                                         <TableCell>
-                                            <Box sx={{ 
-                                                display: 'inline-flex', 
-                                                alignItems: 'center', 
-                                                gap: 1, 
-                                                px: 1.5, 
-                                                py: 0.5, 
-                                                borderRadius: 1.5, 
+                                            <Box sx={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: 1,
+                                                px: 1.5,
+                                                py: 0.5,
+                                                borderRadius: 1.5,
                                                 bgcolor: alpha(theme.palette.primary.main, 0.05),
                                                 border: '1px dashed',
                                                 borderColor: alpha(theme.palette.primary.main, 0.3),
@@ -717,10 +714,10 @@ const PromoCodePage: React.FC = () => {
                                         <TableCell>
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                                 <Box sx={{ flexGrow: 1, width: 40, height: 4, bgcolor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
-                                                    <Box sx={{ 
-                                                        width: `${Math.min(100, ((promo.currentUses || 0) / (promo.maxTotalUses || 100)) * 100)}%`, 
-                                                        height: '100%', 
-                                                        bgcolor: 'primary.main' 
+                                                    <Box sx={{
+                                                        width: `${Math.min(100, ((promo.currentUses || 0) / (promo.maxTotalUses || 100)) * 100)}%`,
+                                                        height: '100%',
+                                                        bgcolor: 'primary.main'
                                                     }} />
                                                 </Box>
                                                 <Typography variant="caption" fontWeight={600}>
@@ -801,26 +798,25 @@ const PromoCodePage: React.FC = () => {
 
             {/* Empty State */}
             {!loading && filteredPromos.length === 0 && (
-                <Paper sx={{ 
-                    p: { xs: 4, md: 10 }, 
-                    textAlign: 'center', 
-                    borderRadius: 4, 
-                    bgcolor: 'transparent', 
-                    border: '1px dashed', 
+                <Paper sx={{
+                    p: { xs: 4, md: 10 },
+                    textAlign: 'center',
+                    borderRadius: 4,
+                    bgcolor: 'transparent',
+                    border: '1px dashed',
                     borderColor: 'divider',
                     mt: { xs: 2, md: 0 }
                 }}>
-                    <LocalOfferIcon sx={{ fontSize: { xs: 48, md: 64 }, color: 'text.disabled', mb: 1 }} />
                     <Typography variant="h6" color="text.secondary" sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>
                         No Promo Codes Found
                     </Typography>
                     <Typography variant="body2" color="text.disabled" sx={{ mb: 2, fontSize: { xs: '0.75rem', md: '0.875rem' } }}>
                         Ready to boost your sales? Create your first promotional code now!
                     </Typography>
-                    <Button 
-                        variant="contained" 
-                        startIcon={<AddIcon />} 
-                        onClick={() => handleOpenDialog()} 
+                    <Button
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={() => handleOpenDialog()}
                         sx={{ borderRadius: 3, fontSize: { xs: '0.75rem', md: '0.875rem' } }}
                     >
                         Create My First Promo
@@ -828,184 +824,363 @@ const PromoCodePage: React.FC = () => {
                 </Paper>
             )}
             {/* Create/Edit Dialog */}
-            <Dialog open={openDialog} onClose={() => setOpenDialog(false)} maxWidth="md" fullWidth PaperProps={{ sx: { borderRadius: 4 } }}>
-                <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid', borderColor: 'divider' }}>
-                    <Typography variant="h6" fontWeight={700}>
-                        {editingPromo ? 'Edit Promo Code' : 'Create New Promo'}
-                    </Typography>
-                    <IconButton onClick={() => setOpenDialog(false)} size="small" sx={{ bgcolor: 'error.light', color: 'error.main', '&:hover': { bgcolor: 'error.main', color: 'white' } }}>
-                        <CloseIcon />
+            <Dialog 
+                open={openDialog} 
+                onClose={() => setOpenDialog(false)} 
+                maxWidth="md" 
+                fullWidth 
+                fullScreen={isMobile}
+                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 4, bgcolor: '#f8f9fa' } }}
+            >
+                <DialogTitle sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    borderBottom: '1px solid', 
+                    borderColor: alpha(theme.palette.divider, 0.1),
+                    bgcolor: 'white',
+                    p: isMobile ? 2 : 2.5,
+                    pt: isMobile ? '60px' : 2.5
+                }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box sx={{ 
+                            p: 1, 
+                            borderRadius: 1.5, 
+                            bgcolor: alpha(theme.palette.primary.main, 0.1), 
+                            color: 'primary.main',
+                            display: 'flex'
+                        }}>
+                             <LocalOfferIcon fontSize={isMobile ? "small" : "medium"} />
+                        </Box>
+                        <Typography 
+                            variant={isMobile ? "subtitle1" : "h6"} 
+                            fontWeight={700}
+                            sx={{ fontFamily: '"Outfit", sans-serif', textTransform: 'uppercase', letterSpacing: '0.02em' }}
+                        >
+                            {editingPromo ? 'Edit Promo Code' : 'Create New Promo'}
+                        </Typography>
+                    </Box>
+                    <IconButton 
+                        onClick={() => setOpenDialog(false)} 
+                        size="small" 
+                        sx={{ 
+                            bgcolor: alpha(theme.palette.error.main, 0.1), 
+                            color: 'error.main', 
+                            '&:hover': { bgcolor: 'error.main', color: 'white' } 
+                        }}
+                    >
+                        <CloseIcon fontSize="small" />
                     </IconButton>
                 </DialogTitle>
-                <DialogContent sx={{ p: 4 }}>
-                    <Grid container spacing={3} sx={{ mt: 0.5 }}>
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                fullWidth
-                                label="Promo Code"
-                                required
-                                value={formData.code}
-                                onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                                placeholder="E.g. SUMMER2026"
-                                helperText="This is what customers will enter"
-                                InputProps={{ sx: { borderRadius: 3 } }}
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                fullWidth
-                                label="Internal Name"
-                                required
-                                value={formData.name}
-                                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                placeholder="E.g. Summer Festival Offer"
-                                InputProps={{ sx: { borderRadius: 3 } }}
-                            />
-                        </Grid>
-                        <Grid item xs={12}>
-                            <TextField
-                                fullWidth
-                                label="Description"
-                                multiline
-                                rows={2}
-                                value={formData.description}
-                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                placeholder="Short description for customers..."
-                                InputProps={{ sx: { borderRadius: 3 } }}
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={4}>
-                            <FormControl fullWidth>
-                                <InputLabel>Discount Type</InputLabel>
-                                <Select
-                                    value={formData.discountType}
-                                    label="Discount Type"
-                                    onChange={(e) => setFormData({ ...formData, discountType: e.target.value as any })}
-                                    sx={{ borderRadius: 3 }}
+                <DialogContent sx={{ p: isMobile ? 1.5 : 3, bgcolor: '#f8f9fa' }}>
+                    <Grid container spacing={isMobile ? 1.5 : 3} sx={{ mt: 0.5 }}>
+                        {/* Basic Info */}
+                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center' }}>
+                            <Paper sx={{ 
+                                p: isMobile ? 2 : 3, 
+                                borderRadius: 3, 
+                                width: '100%', 
+                                maxWidth: 600,
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                                border: '1px solid',
+                                borderColor: alpha(theme.palette.divider, 0.05),
+                                bgcolor: 'white'
+                            }}>
+                                <Typography 
+                                    variant="caption" 
+                                    fontWeight={700} 
+                                    color="primary" 
+                                    sx={{ 
+                                        display: 'block', 
+                                        mb: 2, 
+                                        textTransform: 'uppercase', 
+                                        letterSpacing: '0.05em',
+                                        fontFamily: '"Outfit", sans-serif'
+                                    }}
                                 >
-                                    <MenuItem value="percentage">Percentage (%)</MenuItem>
-                                    <MenuItem value="fixed">Fixed Amount ($)</MenuItem>
-                                </Select>
-                            </FormControl>
+                                    Basic Information
+                                </Typography>
+                                <Grid container spacing={2}>
+                                    <Grid item xs={12} sm={6}>
+                                        <TextField
+                                            fullWidth
+                                            label="Promo Code"
+                                            required
+                                            size="small"
+                                            value={formData.code}
+                                            onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                                            placeholder="E.g. SUMMER2026"
+                                            helperText={isMobile ? "" : "This is what customers will enter"}
+                                            InputProps={{ sx: { borderRadius: 2, fontWeight: 700, fontFamily: 'monospace' } }}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} sm={6}>
+                                        <TextField
+                                            fullWidth
+                                            label="Internal Name"
+                                            required
+                                            size="small"
+                                            value={formData.name}
+                                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                            placeholder="E.g. Summer Festival Offer"
+                                            InputProps={{ sx: { borderRadius: 2 } }}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12}>
+                                        <TextField
+                                            fullWidth
+                                            label="Description"
+                                            multiline
+                                            rows={isMobile ? 2 : 1}
+                                            size="small"
+                                            value={formData.description}
+                                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                            placeholder="Short description for customers..."
+                                            InputProps={{ sx: { borderRadius: 2 } }}
+                                        />
+                                    </Grid>
+                                </Grid>
+                            </Paper>
                         </Grid>
-                        <Grid item xs={12} sm={4}>
-                            <TextField
-                                fullWidth
-                                label="Discount Value"
-                                type="number"
-                                required
-                                value={formData.discountValue}
-                                onChange={(e) => setFormData({ ...formData, discountValue: Number(e.target.value) })}
-                                InputProps={{
-                                    endAdornment: <InputAdornment position="end">{formData.discountType === 'percentage' ? '%' : '$'}</InputAdornment>,
-                                    sx: { borderRadius: 3 }
-                                }}
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={4}>
-                            <TextField
-                                fullWidth
-                                label="Min Bill Amount"
-                                type="number"
-                                value={formData.minBillAmount}
-                                onChange={(e) => setFormData({ ...formData, minBillAmount: Number(e.target.value) })}
-                                InputProps={{
-                                    startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                                    sx: { borderRadius: 3 }
-                                }}
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                fullWidth
-                                label="Valid From"
-                                type="date"
-                                required
-                                value={formData.validFrom}
-                                onChange={(e) => setFormData({ ...formData, validFrom: e.target.value })}
-                                InputLabelProps={{ shrink: true }}
-                                InputProps={{ sx: { borderRadius: 3 } }}
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                fullWidth
-                                label="Valid To"
-                                type="date"
-                                required
-                                value={formData.validTo}
-                                onChange={(e) => setFormData({ ...formData, validTo: e.target.value })}
-                                InputLabelProps={{ shrink: true }}
-                                InputProps={{ sx: { borderRadius: 3 } }}
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={3}>
-                            <TextField
-                                fullWidth
-                                label="Total Uses"
-                                type="number"
-                                value={formData.maxTotalUses}
-                                onChange={(e) => setFormData({ ...formData, maxTotalUses: Number(e.target.value) })}
-                                InputProps={{ sx: { borderRadius: 3 } }}
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={3}>
-                            <TextField
-                                fullWidth
-                                label="Uses Per Customer"
-                                type="number"
-                                value={formData.maxUsesPerCustomer}
-                                onChange={(e) => setFormData({ ...formData, maxUsesPerCustomer: Number(e.target.value) })}
-                                InputProps={{ sx: { borderRadius: 3 } }}
-                            />
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                            <FormControl fullWidth>
-                                <InputLabel>Offer Type</InputLabel>
-                                <Select
-                                    value={formData.offerType}
-                                    label="Offer Type"
-                                    onChange={(e) => setFormData({ ...formData, offerType: e.target.value as any })}
-                                    sx={{ borderRadius: 3 }}
+                        {/* Discount Rules */}
+                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center' }}>
+                            <Paper sx={{ 
+                                p: isMobile ? 2 : 3, 
+                                borderRadius: 3, 
+                                width: '100%', 
+                                maxWidth: 600,
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                                border: '1px solid',
+                                borderColor: alpha(theme.palette.divider, 0.05),
+                                bgcolor: 'white'
+                            }}>
+                                <Typography 
+                                    variant="caption" 
+                                    fontWeight={700} 
+                                    color="primary" 
+                                    sx={{ 
+                                        display: 'block', 
+                                        mb: 2, 
+                                        textTransform: 'uppercase', 
+                                        letterSpacing: '0.05em',
+                                        fontFamily: '"Outfit", sans-serif'
+                                    }}
                                 >
-                                    <MenuItem value="cart_total">Entire Cart</MenuItem>
-                                    <MenuItem value="menu_item">Specific Item</MenuItem>
-                                    <MenuItem value="combo">Combo Offer</MenuItem>
-                                </Select>
-                            </FormControl>
+                                    Discount Rules
+                                </Typography>
+                                <Grid container spacing={2}>
+                                    <Grid item xs={12} sm={4}>
+                                        <FormControl fullWidth size="small">
+                                            <InputLabel>Discount Type</InputLabel>
+                                            <Select
+                                                value={formData.discountType}
+                                                label="Discount Type"
+                                                onChange={(e) => setFormData({ ...formData, discountType: e.target.value as any })}
+                                                sx={{ borderRadius: 2 }}
+                                            >
+                                                <MenuItem value="percentage">Percentage (%)</MenuItem>
+                                                <MenuItem value="fixed">Fixed Amount ($)</MenuItem>
+                                            </Select>
+                                        </FormControl>
+                                    </Grid>
+                                    <Grid item xs={12} sm={4}>
+                                        <TextField
+                                            fullWidth
+                                            label="Value"
+                                            type="number"
+                                            size="small"
+                                            required
+                                            value={formData.discountValue}
+                                            onChange={(e) => setFormData({ ...formData, discountValue: Number(e.target.value) })}
+                                            InputProps={{
+                                                endAdornment: <InputAdornment position="end" sx={{ opacity: 0.5 }}>{formData.discountType === 'percentage' ? '%' : '$'}</InputAdornment>,
+                                                sx: { borderRadius: 2, fontWeight: 700 }
+                                            }}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} sm={4}>
+                                        <TextField
+                                            fullWidth
+                                            label="Min Order"
+                                            type="number"
+                                            size="small"
+                                            value={formData.minBillAmount}
+                                            onChange={(e) => setFormData({ ...formData, minBillAmount: Number(e.target.value) })}
+                                            InputProps={{
+                                                startAdornment: <InputAdornment position="start" sx={{ opacity: 0.5 }}>$</InputAdornment>,
+                                                sx: { borderRadius: 2 }
+                                            }}
+                                        />
+                                    </Grid>
+                                </Grid>
+                            </Paper>
                         </Grid>
-                        <Grid item xs={12}>
-                            <Typography variant="subtitle2" gutterBottom fontWeight={700}>Applicable Order Types</Typography>
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                                {ORDER_TYPES.map((type) => (
-                                    <Chip
-                                        key={type.value}
-                                        label={type.label}
-                                        onClick={() => {
-                                            const current = [...formData.applicableOrderTypes];
-                                            const index = current.indexOf(type.value);
-                                            if (index > -1) current.splice(index, 1);
-                                            else current.push(type.value);
-                                            setFormData({ ...formData, applicableOrderTypes: current });
-                                        }}
-                                        color={formData.applicableOrderTypes.includes(type.value) ? 'primary' : 'default'}
-                                        variant={formData.applicableOrderTypes.includes(type.value) ? 'filled' : 'outlined'}
+                        {/* Validity & Limits */}
+                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center' }}>
+                            <Paper sx={{ 
+                                p: isMobile ? 2 : 3, 
+                                borderRadius: 3, 
+                                width: '100%', 
+                                maxWidth: 600,
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                                border: '1px solid',
+                                borderColor: alpha(theme.palette.divider, 0.05),
+                                bgcolor: 'white'
+                            }}>
+                                <Typography 
+                                    variant="caption" 
+                                    fontWeight={700} 
+                                    color="primary" 
+                                    sx={{ 
+                                        display: 'block', 
+                                        mb: 2, 
+                                        textTransform: 'uppercase', 
+                                        letterSpacing: '0.05em',
+                                        fontFamily: '"Outfit", sans-serif'
+                                    }}
+                                >
+                                    Validity & Usage Limits
+                                </Typography>
+                                <Grid container spacing={2}>
+                                    <Grid item xs={6}>
+                                        <TextField
+                                            fullWidth
+                                            label="Valid From"
+                                            type="date"
+                                            size="small"
+                                            required
+                                            value={formData.validFrom}
+                                            onChange={(e) => setFormData({ ...formData, validFrom: e.target.value })}
+                                            InputLabelProps={{ shrink: true }}
+                                            InputProps={{ sx: { borderRadius: 2 } }}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={6}>
+                                        <TextField
+                                            fullWidth
+                                            label="Valid To"
+                                            type="date"
+                                            size="small"
+                                            required
+                                            value={formData.validTo}
+                                            onChange={(e) => setFormData({ ...formData, validTo: e.target.value })}
+                                            InputLabelProps={{ shrink: true }}
+                                            InputProps={{ sx: { borderRadius: 2 } }}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={6}>
+                                        <TextField
+                                            fullWidth
+                                            label="Total Limit"
+                                            type="number"
+                                            size="small"
+                                            value={formData.maxTotalUses}
+                                            onChange={(e) => setFormData({ ...formData, maxTotalUses: Number(e.target.value) })}
+                                            InputProps={{ sx: { borderRadius: 2 } }}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={6}>
+                                        <TextField
+                                            fullWidth
+                                            label="Per User"
+                                            type="number"
+                                            size="small"
+                                            value={formData.maxUsesPerCustomer}
+                                            onChange={(e) => setFormData({ ...formData, maxUsesPerCustomer: Number(e.target.value) })}
+                                            InputProps={{ sx: { borderRadius: 2 } }}
+                                        />
+                                    </Grid>
+                                </Grid>
+                            </Paper>
+                        </Grid>
+
+                        {/* Availability */}
+                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center' }}>
+                            <Paper sx={{ 
+                                p: isMobile ? 2 : 3, 
+                                borderRadius: 3, 
+                                width: '100%', 
+                                maxWidth: 600,
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                                border: '1px solid',
+                                borderColor: alpha(theme.palette.divider, 0.05),
+                                bgcolor: 'white'
+                            }}>
+                                <Typography 
+                                    variant="caption" 
+                                    fontWeight={700} 
+                                    color="primary" 
+                                    sx={{ 
+                                        display: 'block', 
+                                        mb: 1.5, 
+                                        textTransform: 'uppercase', 
+                                        letterSpacing: '0.05em',
+                                        fontFamily: '"Outfit", sans-serif'
+                                    }}
+                                >
+                                    Service Availability
+                                </Typography>
+                                <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+                                    <InputLabel>Offer Scope</InputLabel>
+                                    <Select
+                                        value={formData.offerType}
+                                        label="Offer Scope"
+                                        onChange={(e) => setFormData({ ...formData, offerType: e.target.value as any })}
                                         sx={{ borderRadius: 2 }}
-                                    />
-                                ))}
-                            </Box>
+                                    >
+                                        <MenuItem value="cart_total">Entire Cart</MenuItem>
+                                        <MenuItem value="menu_item">Specific Item</MenuItem>
+                                        <MenuItem value="combo">Combo Offer</MenuItem>
+                                    </Select>
+                                </FormControl>
+                                <Typography variant="caption" sx={{ display: 'block', mb: 1, color: 'text.secondary', fontWeight: 600 }}>Applicable Order Types</Typography>
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                                    {ORDER_TYPES.map((type) => (
+                                        <Chip
+                                            key={type.value}
+                                            label={type.label}
+                                            size="small"
+                                            onClick={() => {
+                                                const current = [...formData.applicableOrderTypes];
+                                                const index = current.indexOf(type.value);
+                                                if (index > -1) current.splice(index, 1);
+                                                else current.push(type.value);
+                                                setFormData({ ...formData, applicableOrderTypes: current });
+                                            }}
+                                            color={formData.applicableOrderTypes.includes(type.value) ? 'primary' : 'default'}
+                                            variant={formData.applicableOrderTypes.includes(type.value) ? 'filled' : 'outlined'}
+                                            sx={{ borderRadius: 1.5, fontSize: '0.7rem', height: 26 }}
+                                        />
+                                    ))}
+                                </Box>
+                            </Paper>
                         </Grid>
                     </Grid>
                 </DialogContent>
-                <DialogActions sx={{ p: 3, borderTop: '1px solid', borderColor: 'divider' }}>
-                    <Button onClick={() => setOpenDialog(false)} sx={{ borderRadius: 3, px: 3 }}>Cancel</Button>
+                <DialogActions sx={{ p: isMobile ? 2 : 3, bgcolor: 'white', borderTop: '1px solid', borderColor: 'divider', gap: 1.5 }}>
+                    <Button 
+                        onClick={() => setOpenDialog(false)} 
+                        sx={{ 
+                            textTransform: 'none', 
+                            fontWeight: 'bold',
+                            color: 'text.secondary'
+                        }}
+                    >
+                        Cancel
+                    </Button>
                     <Button
                         variant="contained"
                         onClick={handleSave}
                         disabled={formLoading}
-                        sx={{ borderRadius: 3, px: 4, minWidth: 120 }}
+                        sx={{ 
+                            borderRadius: 2, 
+                            px: 4, 
+                            textTransform: 'none', 
+                            fontWeight: 'bold',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                        }}
                     >
-                        {formLoading ? <CircularProgress size={24} color="inherit" /> : editingPromo ? 'Update' : 'Create'}
+                        {formLoading ? <CircularProgress size={24} color="inherit" /> : editingPromo ? 'Update Promo' : 'Create Promo'}
                     </Button>
                 </DialogActions>
             </Dialog>

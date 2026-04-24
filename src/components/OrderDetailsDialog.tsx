@@ -13,6 +13,7 @@ import {
     Box,
     Button,
     Chip,
+    CircularProgress,
     Dialog,
     DialogActions,
     DialogContent,
@@ -27,6 +28,7 @@ import {
     TableContainer,
     TableHead,
     TableRow,
+    TextField,
     Tooltip,
     Typography,
     alpha,
@@ -35,7 +37,7 @@ import {
 import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '../context/SettingsContext';
-import { ordersAPI } from '../services/api';
+import { ordersAPI, ubereatsAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import {
     canAddItems,
@@ -65,6 +67,17 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
     const [addItemsDialogOpen, setAddItemsDialogOpen] = useState(false);
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
     const [simulating, setSimulating] = useState(false);
+    const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+    const [podDialogOpen, setPodDialogOpen] = useState(false);
+    const [podImage, setPodImage] = useState<string | null>(null);
+    const [podLoading, setPodLoading] = useState(false);
+    const [refundLoading, setRefundLoading] = useState(false);
+    const [refundForm, setRefundForm] = useState({
+        requester_email_id: '',
+        notes: '',
+        items_missing: '',
+        refund_amount: '',
+    });
 
     if (!order) return null;
 
@@ -100,8 +113,45 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
 
     const handlePaymentSuccess = () => {
         setPaymentDialogOpen(false);
-        if (onUpdate) {
-            onUpdate();
+        if (onUpdate) onUpdate();
+    };
+
+    const handleViewProof = async () => {
+        if (!order.uberEatsDeliveryId) return;
+        setPodLoading(true);
+        setPodDialogOpen(true);
+        try {
+            const res = await ubereatsAPI.getProofOfDelivery(order.uberEatsDeliveryId);
+            setPodImage(res.data?.document || null);
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || 'Failed to load proof of delivery');
+            setPodDialogOpen(false);
+        } finally {
+            setPodLoading(false);
+        }
+    };
+
+    const handleSubmitRefund = async () => {
+        if (!order.uberEatsDeliveryId) return;
+        setRefundLoading(true);
+        try {
+            await ubereatsAPI.submitRefund({
+                delivery_id: order.uberEatsDeliveryId,
+                requester_email_id: refundForm.requester_email_id,
+                notes: refundForm.notes,
+                items_missing: refundForm.items_missing ? refundForm.items_missing.split(',').map((s: string) => s.trim()) : [],
+                total_refund_amount: {
+                    amount: Math.round(parseFloat(refundForm.refund_amount) * 100),
+                    currency_code: 'USD',
+                },
+            });
+            toast.success('Refund request submitted successfully');
+            setRefundDialogOpen(false);
+            setRefundForm({ requester_email_id: '', notes: '', items_missing: '', refund_amount: '' });
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || 'Failed to submit refund');
+        } finally {
+            setRefundLoading(false);
         }
     };
 
@@ -298,6 +348,20 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                                             <strong>Tracking Link:</strong> <a href={order.trackingUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'none' }}>Track Delivery</a>
                                         </Typography>
                                     )}
+                                    {order.uberEatsDeliveryId && (user?.role === 'admin' || user?.role === 'manager') && (
+                                        <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap">
+                                            {order.status === 'delivered' && (
+                                                <Button size="small" variant="outlined" onClick={handleViewProof}>
+                                                    View Proof of Delivery
+                                                </Button>
+                                            )}
+                                            {order.status === 'delivered' && (
+                                                <Button size="small" variant="outlined" color="error" onClick={() => setRefundDialogOpen(true)}>
+                                                    Request Refund
+                                                </Button>
+                                            )}
+                                        </Stack>
+                                    )}
                                     {(order.signatureImageUrl || order.verificationImageUrl) && (
                                         <Stack direction="row" spacing={2} sx={{ mt: 1 }}>
                                             {order.signatureImageUrl && (
@@ -428,7 +492,7 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                             </Box>
                             {order.tax?.amount > 0 && (
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <Typography variant="body2">Tax ({order.tax.rate}%):</Typography>
+                                    <Typography variant="body2">Tax </Typography>
                                     <Typography variant="body2">{formatCurrency(order.tax.amount)}</Typography>
                                 </Box>
                             )}
@@ -685,6 +749,80 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                 onClose={() => setPaymentDialogOpen(false)}
                 onSuccess={handlePaymentSuccess}
             />
+
+            {/* Proof of Delivery Dialog */}
+            <Dialog open={podDialogOpen} onClose={() => { setPodDialogOpen(false); setPodImage(null); }} maxWidth="sm" fullWidth>
+                <DialogTitle>Proof of Delivery</DialogTitle>
+                <DialogContent>
+                    {podLoading ? (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                            <CircularProgress />
+                        </Box>
+                    ) : podImage ? (
+                        <Box component="img"
+                            src={`data:image/png;base64,${podImage}`}
+                            alt="Proof of Delivery"
+                            sx={{ width: '100%', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}
+                        />
+                    ) : (
+                        <Typography color="text.secondary" sx={{ py: 2 }}>No proof of delivery available.</Typography>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => { setPodDialogOpen(false); setPodImage(null); }}>Close</Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Refund Request Dialog */}
+            <Dialog open={refundDialogOpen} onClose={() => setRefundDialogOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>Request Refund</DialogTitle>
+                <DialogContent>
+                    <Stack spacing={2.5} sx={{ mt: 1 }}>
+                        <TextField
+                            fullWidth
+                            label="Your Email"
+                            value={refundForm.requester_email_id}
+                            onChange={(e) => setRefundForm(f => ({ ...f, requester_email_id: e.target.value }))}
+                            placeholder="email@example.com"
+                        />
+                        <TextField
+                            fullWidth
+                            label="Missing Items (comma separated)"
+                            value={refundForm.items_missing}
+                            onChange={(e) => setRefundForm(f => ({ ...f, items_missing: e.target.value }))}
+                            placeholder="Large Pizza, Soft Drink"
+                        />
+                        <TextField
+                            fullWidth
+                            label="Refund Amount (USD)"
+                            type="number"
+                            value={refundForm.refund_amount}
+                            onChange={(e) => setRefundForm(f => ({ ...f, refund_amount: e.target.value }))}
+                            placeholder="10.00"
+                        />
+                        <TextField
+                            fullWidth
+                            multiline
+                            rows={3}
+                            label="Notes"
+                            value={refundForm.notes}
+                            onChange={(e) => setRefundForm(f => ({ ...f, notes: e.target.value }))}
+                            placeholder="Describe the issue..."
+                        />
+                    </Stack>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setRefundDialogOpen(false)}>Cancel</Button>
+                    <Button
+                        variant="contained"
+                        color="error"
+                        disabled={refundLoading || !refundForm.requester_email_id || !refundForm.refund_amount}
+                        onClick={handleSubmitRefund}
+                    >
+                        {refundLoading ? <CircularProgress size={18} /> : 'Submit Refund'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </>
     );
 };

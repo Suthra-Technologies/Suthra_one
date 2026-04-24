@@ -7,10 +7,10 @@ import {
   Restaurant as DineInIcon,
   DoneAll as DoneAllIcon,
   PlayArrow as PlayArrowIcon,
+  Print as PrintIcon,
   Refresh as RefreshIcon,
   TakeoutDining as TakeawayIcon,
-  LocalFireDepartment as UrgentIcon,
-  Print as PrintIcon
+  LocalFireDepartment as UrgentIcon
 } from '@mui/icons-material';
 import {
   alpha,
@@ -794,26 +794,27 @@ const KitchenInterface: React.FC = () => {
                   </CardContent>
 
                   {/* Action Buttons */}
-                  <CardActions sx={{ 
-                    px: 2, 
-                    pb: 1.5, 
+                  <CardActions sx={{
+                    px: 2,
+                    pb: 1.5,
                     pt: 1,
-                    flexDirection: { xs: 'row', sm: 'column' }, 
-                    gap: 1,
+                    flexDirection: 'row',
+                    flexWrap: { xs: 'nowrap', sm: 'wrap' }, // wrap at sm+ to allow 2-row layout
+                    gap: 0.75,
                     '& .MuiButton-root': {
-                      flex: { xs: 1, sm: 'none' },
-                      fontSize: { xs: '0.62rem', sm: '0.8125rem' },
-                      px: { xs: 0.5, sm: 2 },
+                      minWidth: 0,
                       whiteSpace: 'nowrap',
-                      minWidth: 0
+                      fontSize: { xs: '0.65rem', sm: '0.78rem' },
                     }
                   }}>
+                    {/* Row 1 at sm+: Print KOT + All Ready side by side */}
                     <Button
                       variant="outlined"
                       color="primary"
                       size="small"
                       onClick={() => handlePrintKOT(order)}
-                      startIcon={<PrintIcon sx={{ display: { xs: 'none', tiny: 'inline-flex' } }} />}
+                      startIcon={<PrintIcon sx={{ fontSize: '1rem' }} />}
+                      sx={{ flex: 1 }}
                     >
                       Print KOT
                     </Button>
@@ -823,19 +824,24 @@ const KitchenInterface: React.FC = () => {
                         color="success"
                         size="small"
                         onClick={() => handleMarkAllReady(order._id)}
-                        startIcon={<DoneAllIcon sx={{ display: { xs: 'none', tiny: 'inline-flex' } }} />}
+                        startIcon={<DoneAllIcon sx={{ fontSize: '1rem' }} />}
+                        sx={{ flex: 1 }}
                       >
                         All Ready
                       </Button>
                     )}
 
+                    {/* Row 2 at sm+: Confirm / Start / Ready — full width */}
                     {!(order.status === 'ready' || order.status === 'ready_to_takeaway' || order.status === 'ready_to_pickup') && (
                       <Button
                         variant="contained"
                         color={isAllReady ? "success" : (getStatusColor(order.status) as any)}
                         onClick={() => handleOrderStatusUpdate(order._id, order.status, order.orderType)}
-                        startIcon={isAllReady ? <CheckCircleIcon sx={{ display: { xs: 'none', tiny: 'inline-flex' } }} /> : <PlayArrowIcon sx={{ display: { xs: 'none', tiny: 'inline-flex' } }} />}
+                        startIcon={isAllReady ? <CheckCircleIcon sx={{ fontSize: '1rem' }} /> : <PlayArrowIcon sx={{ fontSize: '1rem' }} />}
                         disabled={(!isAllReady && order.status === 'preparing')}
+                        sx={{
+                          flex: { xs: 1, sm: '1 0 100%' }, // full width row at sm+, equal share at xs
+                        }}
                       >
                         {order.status === 'pending' ? 'Confirm' :
                           order.status === 'confirmed' ? 'Start' :

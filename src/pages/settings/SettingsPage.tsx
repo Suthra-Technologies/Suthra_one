@@ -87,7 +87,7 @@ import {
     type UnitConfig
 } from '../../context/SettingsContext';
 
-import { paymentsAPI, printersAPI, settingsAPI, tenantAPI, usersAPI, smsAPI } from '../../services/api';
+import { paymentsAPI, printersAPI, settingsAPI, tenantAPI, usersAPI, smsAPI, ubereatsAPI } from '../../services/api';
 
 import { NOTIFICATION_SOUNDS, previewSound } from '../../utils/notificationSounds';
 import type { ValidationResult } from '../../utils/validation';
@@ -538,6 +538,22 @@ const SettingsPage: React.FC = () => {
     const [smsRowsPerPage, setSmsRowsPerPage] = useState(10);
     const [smsTotal, setSmsTotal] = useState(0);
     const [smsSummary, setSmsSummary] = useState<any[]>([]);
+
+    // Uber Direct state
+    const [uberOrg, setUberOrg] = useState<any>(null);
+    const [uberOrgLoading, setUberOrgLoading] = useState(false);
+    const [uberLocations, setUberLocations] = useState<any[]>([]);
+    const [uberLocationsLoading, setUberLocationsLoading] = useState(false);
+    const [editLocationDialog, setEditLocationDialog] = useState<any>(null);
+    const [inviteDialog, setInviteDialog] = useState(false);
+    const [inviteForm, setInviteForm] = useState({ first_name: '', last_name: '', email: '', phone: '' });
+    const [inviteLoading, setInviteLoading] = useState(false);
+    const [createOrgDialog, setCreateOrgDialog] = useState(false);
+    const [createOrgLoading, setCreateOrgLoading] = useState(false);
+    const [createOrgForm, setCreateOrgForm] = useState({
+        name: '', email: '', first_name: '', last_name: '', phone: '',
+        street1: '', city: '', state: '', zipcode: '', country_iso2: 'US',
+    });
     const [smsLoading, setSmsLoading] = useState(false);
 
     const fetchUsers = async (page: number, limit: number) => {
@@ -875,6 +891,107 @@ const SettingsPage: React.FC = () => {
                 }
             }
         }));
+    };
+
+    const loadUberOrg = async () => {
+        const customerId = settings.delivery?.ubereats?.customerId;
+        if (!customerId) return;
+        setUberOrgLoading(true);
+        try {
+            const res = await ubereatsAPI.getOrganization(customerId);
+            setUberOrg(res.data);
+        } catch {
+            toast.error('Failed to load organization details');
+        } finally {
+            setUberOrgLoading(false);
+        }
+    };
+
+    const loadUberLocations = async () => {
+        const customerId = settings.delivery?.ubereats?.customerId;
+        if (!customerId) return;
+        setUberLocationsLoading(true);
+        try {
+            const res = await ubereatsAPI.getBusinessLocations(customerId);
+            setUberLocations(res.data?.business_locations || []);
+        } catch {
+            toast.error('Failed to load business locations');
+        } finally {
+            setUberLocationsLoading(false);
+        }
+    };
+
+    const handleUpdateLocation = async () => {
+        const customerId = settings.delivery?.ubereats?.customerId;
+        if (!customerId || !editLocationDialog) return;
+        try {
+            await ubereatsAPI.updateBusinessLocation(customerId, editLocationDialog.business_location_id, {
+                name: editLocationDialog.name,
+                phone_number: editLocationDialog.phone_number,
+                detailed_address: editLocationDialog.detailed_address,
+                external_business_location_id: editLocationDialog.external_business_location_id,
+            });
+            toast.success('Location updated');
+            setEditLocationDialog(null);
+            loadUberLocations();
+        } catch {
+            toast.error('Failed to update location');
+        }
+    };
+
+    const handleInviteMember = async () => {
+        const customerId = settings.delivery?.ubereats?.customerId;
+        if (!customerId) return;
+        setInviteLoading(true);
+        try {
+            await ubereatsAPI.inviteMember(customerId, {
+                user_details: {
+                    email: inviteForm.email,
+                    first_name: inviteForm.first_name,
+                    last_name: inviteForm.last_name,
+                    phone_details: { phone_number: inviteForm.phone, country_code: '1', subscriber_number: inviteForm.phone.slice(-10) },
+                },
+                roles: ['ROLE_ADMIN'],
+            });
+            toast.success('Invitation sent');
+            setInviteDialog(false);
+            setInviteForm({ first_name: '', last_name: '', email: '', phone: '' });
+        } catch {
+            toast.error('Failed to send invitation');
+        } finally {
+            setInviteLoading(false);
+        }
+    };
+
+    const handleCreateOrg = async () => {
+        setCreateOrgLoading(true);
+        try {
+            const customerId = settings.delivery?.ubereats?.customerId;
+            const res = await ubereatsAPI.createOrganization({
+                info: {
+                    name: createOrgForm.name,
+                    billing_type: 'BILLING_TYPE_DECENTRALIZED',
+                    merchant_type: 'MERCHANT_TYPE_RESTAURANT',
+                    point_of_contact: {
+                        email: createOrgForm.email,
+                        first_name: createOrgForm.first_name,
+                        last_name: createOrgForm.last_name,
+                        phone_details: { phone_number: createOrgForm.phone, country_code: '1', subscriber_number: createOrgForm.phone.slice(-10) },
+                    },
+                    contract_type: 'CONTRACT_TYPE_PARENT',
+                    address: { street1: createOrgForm.street1, city: createOrgForm.city, state: createOrgForm.state, zipcode: createOrgForm.zipcode, country_iso2: createOrgForm.country_iso2 },
+                },
+                hierarchy_info: { parent_organization_id: customerId },
+                options: { onboarding_invite_type: 'ONBOARDING_INVITE_TYPE_INVALID' },
+            });
+            toast.success(`Organization created: ${res.data?.organization_id}`);
+            setCreateOrgDialog(false);
+            loadUberOrg();
+        } catch {
+            toast.error('Failed to create organization');
+        } finally {
+            setCreateOrgLoading(false);
+        }
     };
 
     const handlePrinterChange = (role: 'billing' | 'kitchen', field: keyof PrinterConfig, value: any) => {
@@ -1392,11 +1509,11 @@ const SettingsPage: React.FC = () => {
                 variant="h4" 
                 gutterBottom 
                 sx={{ 
-                    mb: { xs: 2, sm: 3 }, 
+                    mb: { xs: 2.5, sm: 3 }, 
                     textAlign: { xs: 'center', md: 'left' },
-                    fontSize: { xs: '1.45rem', sm: '2.125rem' },
-                    fontWeight: 'bold',
-                    color: { xs: '#000', sm: 'inherit' }
+                    fontWeight: 800,
+                    fontFamily: "'Outfit', sans-serif",
+                    fontSize: { xs: '1.5rem', md: '2.125rem' }
                 }}
             >
                 Settings
@@ -1410,6 +1527,14 @@ const SettingsPage: React.FC = () => {
                     textColor="primary"
                     variant="scrollable"
                     scrollButtons="auto"
+                    sx={{
+                        '& .MuiTab-root': {
+                            fontWeight: 800,
+                            fontFamily: "'Outfit', sans-serif",
+                            fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                            minHeight: { xs: 48, sm: 64 }
+                        }
+                    }}
                 >
                     <Tab label="Restaurant Profile" />
                     <Tab label="System Preferences" />
@@ -1417,13 +1542,20 @@ const SettingsPage: React.FC = () => {
                     <Tab label="Notifications" icon={<SmsIcon />} iconPosition="start" />
                     <Tab label="Payment" icon={<CreditCardIcon />} iconPosition="start" />
                     <Tab label="Printers" icon={<PrintIcon />} iconPosition="start" />
-
                     <Tab label="Loyalty / Rewards" icon={<StarIcon />} iconPosition="start" />
                     <Tab label="Delivery" icon={<DeliveryDiningIcon />} iconPosition="start" />
                 </Tabs>
                 <Divider />
 
                 <TabPanel value={tabValue} index={0}>
+                    <Box sx={{ mb: 3 }}>
+                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
+                            Restaurant Profile
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, fontFamily: "'Outfit', sans-serif" }}>
+                            Manage your restaurant's public information, location, and contact details.
+                        </Typography>
+                    </Box>
                     <Grid container spacing={4}>
                         <Grid size={{ xs: 12, md: 8 }}>
                             <Grid container spacing={3}>
@@ -2273,12 +2405,22 @@ const SettingsPage: React.FC = () => {
                             </Grid>
                         </Grid>
 
-                        <Grid size={{ xs: 12 }}>
+                        <Grid size={{ xs: 12 }} sx={{ display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' }, mt: { xs: 2.5, md: 0 } }}>
                             <Button
                                 variant="contained"
+                                size="medium"
                                 startIcon={<SaveIcon />}
                                 onClick={() => handleSave('restaurant')}
                                 disabled={loading}
+                                sx={{ 
+                                    borderRadius: 2.5,
+                                    px: { xs: 3, sm: 4 },
+                                    fontWeight: 800,
+                                    fontFamily: "'Outfit', sans-serif",
+                                    width: { xs: 'auto', sm: 'auto' },
+                                    minWidth: { xs: '140px', sm: 'auto' },
+                                    boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.2)}`
+                                }}
                             >
                                 Save Changes
                             </Button>
@@ -2287,6 +2429,14 @@ const SettingsPage: React.FC = () => {
                 </TabPanel>
 
                 <TabPanel value={tabValue} index={1}>
+                    <Box sx={{ mb: 3 }}>
+                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
+                            System Preferences
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, fontFamily: "'Outfit', sans-serif" }}>
+                            Configure global application settings, themes, and automated behavior.
+                        </Typography>
+                    </Box>
                     <Grid container spacing={3}>
                         <Grid size={{ xs: 12, md: 6 }}>
                             <TextField
@@ -2324,19 +2474,29 @@ const SettingsPage: React.FC = () => {
                                 label="Auto-print receipts after payment"
                             />
                         </Grid>
-                        <Grid size={{ xs: 12 }}>
+                        <Grid size={{ xs: 12 }} sx={{ display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' }, mt: { xs: 2.5, md: 0 } }}>
                             <Button
                                 variant="contained"
+                                size="medium"
                                 startIcon={<SaveIcon />}
                                 onClick={() => handleSave('system')}
                                 disabled={loading}
+                                sx={{ 
+                                    borderRadius: 2.5,
+                                    px: { xs: 3, sm: 4 },
+                                    fontWeight: 800,
+                                    fontFamily: "'Outfit', sans-serif",
+                                    width: { xs: 'auto', sm: 'auto' },
+                                    minWidth: { xs: '140px', sm: 'auto' },
+                                    boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.2)}`
+                                }}
                             >
                                 Save Preferences
                             </Button>
                         </Grid>
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 2 }} />
-                            <Typography variant="h6" gutterBottom>
+                            <Typography variant="h6" gutterBottom sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
                                 External Integrations
                             </Typography>
                             <TextField
@@ -2355,12 +2515,12 @@ const SettingsPage: React.FC = () => {
 
                 {/* Inventory Settings Tab */}
                 <TabPanel value={tabValue} index={2}>
-                    <Typography variant="h6" gutterBottom>
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
                         Measurement Units
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                        Customize the units available for inventory management. These units will be available across the entire application.
-                    </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 3, fontWeight: 500, fontFamily: "'Outfit', sans-serif" }}>
+                            Customize the units available for inventory management. These units will be available across the entire application.
+                        </Typography>
 
                     {/* Current Units Display */}
                     <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
@@ -2501,9 +2661,16 @@ const SettingsPage: React.FC = () => {
                     </Paper>
 
                     {/* Reset to Defaults */}
-                    <Stack direction="row" spacing={2}>
+                    <Stack 
+                        direction={{ xs: 'column', sm: 'row' }} 
+                        spacing={2} 
+                        alignItems="center"
+                        justifyContent={{ xs: 'center', md: 'flex-start' }}
+                        sx={{ mt: 2 }}
+                    >
                         <Button
                             variant="outlined"
+                            size="medium"
                             onClick={() => {
                                 const defaultUnits = getUnitSystem(settings.restaurant.country) === 'imperial'
                                     ? IMPERIAL_UNITS.map(u => ({ ...u, type: 'weight' as const }))
@@ -2517,14 +2684,33 @@ const SettingsPage: React.FC = () => {
                                 }));
                                 toast.success('Units reset to country defaults');
                             }}
+                            sx={{ 
+                                borderRadius: 2,
+                                textTransform: 'none',
+                                fontWeight: 700,
+                                fontFamily: "'Outfit', sans-serif",
+                                width: { xs: 'auto', sm: 'auto' },
+                                px: { xs: 3, sm: 4 },
+                                minWidth: { xs: '120px', sm: 'auto' }
+                            }}
                         >
                             Reset to Defaults
                         </Button>
                         <Button
                             variant="contained"
+                            size="medium"
                             startIcon={<SaveIcon />}
                             onClick={() => handleSave('restaurant')}
                             disabled={loading}
+                            sx={{ 
+                                borderRadius: 2.5,
+                                px: { xs: 3, sm: 4 },
+                                fontWeight: 800,
+                                fontFamily: "'Outfit', sans-serif",
+                                width: { xs: 'auto', sm: 'auto' },
+                                minWidth: { xs: '120px', sm: 'auto' },
+                                boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.2)}`
+                            }}
                         >
                             Save Units
                         </Button>
@@ -2563,10 +2749,10 @@ const SettingsPage: React.FC = () => {
                             </Paper>
                         </Grid>
                         <Grid size={{ xs: 12 }}>
-                            <Typography variant="h6" gutterBottom>
+                            <Typography variant="h6" gutterBottom sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
                                 SMS Settings
                             </Typography>
-                            <Typography color="text.secondary">
+                            <Typography color="text.secondary" sx={{ fontWeight: 500, fontFamily: "'Outfit', sans-serif" }}>
                                 Customer-facing SMS for this restaurant will use these Twilio credentials. Stored credentials are never shown back in the UI.
                             </Typography>
                         </Grid>
@@ -3042,13 +3228,22 @@ const SettingsPage: React.FC = () => {
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 1 }} />
                         </Grid>
-                        <Grid size={{ xs: 12 }} sx={{ display: 'flex', justifyContent: { xs: 'center', sm: 'flex-start' } }}>
-
+                        <Grid size={{ xs: 12 }} sx={{ display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' }, mt: { xs: 2.5, md: 0 } }}>
                             <Button
                                 variant="contained"
+                                size="medium"
                                 startIcon={<SaveIcon />}
                                 onClick={() => handleSave('notification')}
                                 disabled={loading}
+                                sx={{ 
+                                    borderRadius: 2.5,
+                                    px: { xs: 3, sm: 4 },
+                                    fontWeight: 800,
+                                    fontFamily: "'Outfit', sans-serif",
+                                    width: { xs: 'auto', sm: 'auto' },
+                                    minWidth: { xs: '140px', sm: 'auto' },
+                                    boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.2)}`
+                                }}
                             >
                                 Save Notification Settings
                             </Button>
@@ -3058,10 +3253,10 @@ const SettingsPage: React.FC = () => {
 
                 <TabPanel value={tabValue} index={4}>
                     <Box sx={{ mb: 4 }}>
-                        <Typography variant="h6" sx={{ mb: 1 }}>
+                        <Typography variant="h6" sx={{ mb: 1, fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
                             Point of Sale Payment Methods
                         </Typography>
-                        <Typography color="text.secondary" sx={{ mb: 3 }}>
+                        <Typography color="text.secondary" sx={{ mb: 3, fontWeight: 500, fontFamily: "'Outfit', sans-serif" }}>
                             Enable or disable payment methods that will be available at the Point of Sale interface.
                         </Typography>
 
@@ -3098,14 +3293,26 @@ const SettingsPage: React.FC = () => {
                             </Grid>
                         </Paper>
 
-                        <Button
-                            variant="contained"
-                            startIcon={<SaveIcon />}
-                            onClick={() => handleSave('system')}
-                            disabled={loading}
-                        >
-                            Save POS Methods
-                        </Button>
+                        <Box sx={{ mt: 4, display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' } }}>
+                            <Button
+                                variant="contained"
+                                size={isMobile ? "medium" : "large"}
+                                startIcon={<SaveIcon />}
+                                onClick={() => handleSave('system')}
+                                disabled={loading}
+                                sx={{ 
+                                    borderRadius: 2.5,
+                                    px: 4,
+                                    fontWeight: 800,
+                                    fontFamily: "'Outfit', sans-serif",
+                                    width: { xs: '100%', sm: 'auto' },
+                                    maxWidth: { xs: '320px', sm: 'none' },
+                                    boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.25)}`
+                                }}
+                            >
+                                Save POS Methods
+                            </Button>
+                        </Box>
                     </Box>
 
                     <Divider sx={{ my: 4 }} />
@@ -3138,10 +3345,10 @@ const SettingsPage: React.FC = () => {
                         </Stack>
                         {(stripeStatus?.hasPublishableKey && stripeStatus?.hasSecretKey) ? <CheckCircleIcon sx={{ color: '#16a34a' }} /> : null}
                     </Paper>
-                    <Typography variant="h6" sx={{ mb: 1 }}>
+                    <Typography variant="h6" sx={{ mb: 1, fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
                         Stripe Payments
                     </Typography>
-                    <Typography color="text.secondary" sx={{ mb: 3 }}>
+                    <Typography color="text.secondary" sx={{ mb: 3, fontWeight: 500, fontFamily: "'Outfit', sans-serif" }}>
                         Configure your restaurant’s Stripe keys. These are tenant-specific and used for in-restaurant transactions.
                     </Typography>
                     <Grid container spacing={3}>
@@ -3289,7 +3496,18 @@ const SettingsPage: React.FC = () => {
                                         setLoading(false);
                                     }
                                 }}
+                                size="medium"
                                 disabled={loading}
+                                sx={{ 
+                                    borderRadius: 2.5,
+                                    px: { xs: 3, sm: 4 },
+                                    fontWeight: 800,
+                                    fontFamily: "'Outfit', sans-serif",
+                                    width: { xs: 'auto', sm: 'auto' },
+                                    minWidth: { xs: '140px', sm: 'auto' },
+                                    boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.2)}`,
+                                    mt: { xs: 2, md: 0 }
+                                }}
                             >
                                 Save Stripe Settings
                             </Button>
@@ -3299,13 +3517,13 @@ const SettingsPage: React.FC = () => {
 
                 {/* Printers Tab */}
                 <TabPanel value={tabValue} index={5}>
-                    <Typography variant="h6" gutterBottom>
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
                         Printers Settings
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                        Configure automated billing and kitchen printing for this restaurant.
-                        Enable the "Print Automation" switch to start auto-printing when an order is created.
-                    </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 3, fontWeight: 500, fontFamily: "'Outfit', sans-serif" }}>
+                            Configure automated billing and kitchen printing for this restaurant.
+                            Enable the "Print Automation" switch to start auto-printing when an order is created.
+                        </Typography>
 
                     <Grid container spacing={4}>
                         <Grid size={{ xs: 12 }}>
@@ -3647,12 +3865,22 @@ const SettingsPage: React.FC = () => {
                             </Box>
                         </Grid>
 
-                        <Grid size={{ xs: 12 }}>
+                        <Grid size={{ xs: 12 }} sx={{ display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' }, mt: { xs: 2.5, md: 0 } }}>
                             <Button
                                 variant="contained"
+                                size="medium"
                                 startIcon={<SaveIcon />}
                                 onClick={() => handleSave('printer')}
                                 disabled={loading}
+                                sx={{ 
+                                    borderRadius: 2.5,
+                                    px: { xs: 3, sm: 4 },
+                                    fontWeight: 800,
+                                    fontFamily: "'Outfit', sans-serif",
+                                    width: { xs: 'auto', sm: 'auto' },
+                                    minWidth: { xs: '140px', sm: 'auto' },
+                                    boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.2)}`
+                                }}
                             >
                                 Save Printer Settings
                             </Button>
@@ -3664,10 +3892,10 @@ const SettingsPage: React.FC = () => {
 
                 <TabPanel value={tabValue} index={6}>
                     <Box sx={{ mb: 4, maxWidth: 800 }}>
-                        <Typography variant="h6" gutterBottom>
+                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
                             Loyalty & Reward Points
                         </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 3, fontWeight: 500, fontFamily: "'Outfit', sans-serif" }}>
                             Configure how customers earn and redeem points.
                         </Typography>
 
@@ -3813,12 +4041,22 @@ const SettingsPage: React.FC = () => {
                                         />
                                     </Grid>
 
-                                    <Grid size={{ xs: 12 }}>
+                                    <Grid size={{ xs: 12 }} sx={{ display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' }, mt: { xs: 2, md: 0 } }}>
                                         <Button
                                             variant="contained"
+                                            size={isMobile ? "medium" : "large"}
                                             startIcon={<SaveIcon />}
                                             onClick={() => handleSave('rewards')}
                                             disabled={loading}
+                                            sx={{ 
+                                                borderRadius: 2.5,
+                                                px: 4,
+                                                fontWeight: 800,
+                                                fontFamily: "'Outfit', sans-serif",
+                                                width: { xs: '100%', sm: 'auto' },
+                                                maxWidth: { xs: '320px', sm: 'none' },
+                                                boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.25)}`
+                                            }}
                                         >
                                             Save Loyalty Rules
                                         </Button>
@@ -3827,12 +4065,22 @@ const SettingsPage: React.FC = () => {
                             </Collapse>
 
                             {!(settings.rewards?.isEnabled ?? true) && (
-                                <Box sx={{ mt: 2 }}>
+                                <Box sx={{ mt: 2, display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' } }}>
                                     <Button
                                         variant="contained"
+                                        size="medium"
                                         startIcon={<SaveIcon />}
                                         onClick={() => handleSave('rewards')}
                                         disabled={loading}
+                                        sx={{ 
+                                            borderRadius: 2.5,
+                                            px: { xs: 3, sm: 4 },
+                                            fontWeight: 800,
+                                            fontFamily: "'Outfit', sans-serif",
+                                            width: { xs: 'auto', sm: 'auto' },
+                                            minWidth: { xs: '140px', sm: 'auto' },
+                                            boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.2)}`
+                                        }}
                                     >
                                         Save Loyalty Status
                                     </Button>
@@ -3844,7 +4092,7 @@ const SettingsPage: React.FC = () => {
 
                 <TabPanel value={tabValue} index={7}>
                     <Box sx={{ mb: 4 }}>
-                        <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif", display: 'flex', alignItems: 'center', gap: 1 }}>
                             <DeliveryDiningIcon color="primary" /> Delivery Integration
                         </Typography>
                         <Alert severity="info" sx={{ mb: 3 }}>
@@ -3903,12 +4151,22 @@ const SettingsPage: React.FC = () => {
                                             />
                                         </Stack>
                                     </Stack>
-                                    <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end' }}>
+                                    <Box sx={{ mt: 4, display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' } }}>
                                         <Button
                                             variant="contained"
+                                            size={isMobile ? "medium" : "large"}
                                             startIcon={<SaveIcon />}
                                             onClick={() => handleSave('delivery')}
                                             disabled={loading}
+                                            sx={{ 
+                                                borderRadius: 2.5,
+                                                px: 4,
+                                                fontWeight: 800,
+                                                fontFamily: "'Outfit', sans-serif",
+                                                width: { xs: '100%', sm: 'auto' },
+                                                maxWidth: { xs: '320px', sm: 'none' },
+                                                boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.25)}`
+                                            }}
                                         >
                                             Save DoorDash Settings
                                         </Button>
@@ -3974,12 +4232,22 @@ const SettingsPage: React.FC = () => {
                                             />
                                         </Stack>
                                     </Stack>
-                                    <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end' }}>
+                                    <Box sx={{ mt: 4, display: 'flex', justifyContent: { xs: 'center', md: 'flex-end' } }}>
                                         <Button
                                             variant="contained"
+                                            size={isMobile ? "medium" : "large"}
                                             startIcon={<SaveIcon />}
                                             onClick={() => handleSave('delivery')}
                                             disabled={loading}
+                                            sx={{ 
+                                                borderRadius: 2.5,
+                                                px: 4,
+                                                fontWeight: 800,
+                                                fontFamily: "'Outfit', sans-serif",
+                                                width: { xs: '100%', sm: 'auto' },
+                                                maxWidth: { xs: '320px', sm: 'none' },
+                                                boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.25)}`
+                                            }}
                                         >
                                             Save Uber Eats Settings
                                         </Button>
@@ -3987,9 +4255,154 @@ const SettingsPage: React.FC = () => {
                                 </Paper>
                             </Grid>
                         </Grid>
+
+                        {/* Uber Direct Management */}
+                        {settings.delivery?.ubereats?.enabled && settings.delivery?.ubereats?.customerId && (
+                            <Box sx={{ mt: 4 }}>
+                                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                                    <Typography variant="h6" fontWeight="bold">Uber Direct Management</Typography>
+                                    <Stack direction="row" spacing={1}>
+                                        <Button size="small" variant="outlined" startIcon={uberOrgLoading ? <CircularProgress size={14} /> : <RefreshIcon />} onClick={loadUberOrg} disabled={uberOrgLoading}>
+                                            Load Org
+                                        </Button>
+                                        <Button size="small" variant="outlined" onClick={() => setCreateOrgDialog(true)}>
+                                            Create Sub-Org
+                                        </Button>
+                                        <Button size="small" variant="outlined" onClick={() => { loadUberLocations(); }} startIcon={uberLocationsLoading ? <CircularProgress size={14} /> : <RefreshIcon />} disabled={uberLocationsLoading}>
+                                            Load Locations
+                                        </Button>
+                                        <Button size="small" variant="contained" onClick={() => setInviteDialog(true)}>
+                                            Invite Member
+                                        </Button>
+                                    </Stack>
+                                </Stack>
+
+                                {/* Org Info */}
+                                {uberOrg && (
+                                    <Paper variant="outlined" sx={{ p: 2, mb: 3, borderRadius: 3 }}>
+                                        <Typography variant="subtitle2" fontWeight="bold" gutterBottom>Organization Details</Typography>
+                                        <Stack spacing={0.5}>
+                                            <Typography variant="body2"><strong>ID:</strong> {uberOrg.organization_id}</Typography>
+                                            <Typography variant="body2"><strong>Name:</strong> {uberOrg.info?.name}</Typography>
+                                            <Typography variant="body2"><strong>Billing Type:</strong> {uberOrg.info?.billing_type}</Typography>
+                                            <Typography variant="body2"><strong>Billing Status:</strong> {uberOrg.billing_info?.billing_status || '—'}</Typography>
+                                            <Typography variant="body2"><strong>Contact:</strong> {uberOrg.info?.point_of_contact?.email}</Typography>
+                                        </Stack>
+                                    </Paper>
+                                )}
+
+                                {/* Business Locations */}
+                                {uberLocations.length > 0 && (
+                                    <Paper variant="outlined" sx={{ p: 2, borderRadius: 3 }}>
+                                        <Typography variant="subtitle2" fontWeight="bold" gutterBottom>Business Locations</Typography>
+                                        <TableContainer>
+                                            <Table size="small">
+                                                <TableHead>
+                                                    <TableRow>
+                                                        <TableCell><strong>Name</strong></TableCell>
+                                                        <TableCell><strong>Address</strong></TableCell>
+                                                        <TableCell><strong>Phone</strong></TableCell>
+                                                        <TableCell><strong>External ID</strong></TableCell>
+                                                        <TableCell align="right"><strong>Actions</strong></TableCell>
+                                                    </TableRow>
+                                                </TableHead>
+                                                <TableBody>
+                                                    {uberLocations.map((loc: any) => (
+                                                        <TableRow key={loc.business_location_id}>
+                                                            <TableCell>{loc.name}</TableCell>
+                                                            <TableCell>{loc.address}</TableCell>
+                                                            <TableCell>{loc.phone_number}</TableCell>
+                                                            <TableCell>{loc.external_business_location_id}</TableCell>
+                                                            <TableCell align="right">
+                                                                <IconButton size="small" onClick={() => setEditLocationDialog({ ...loc })}>
+                                                                    <EditIcon fontSize="small" />
+                                                                </IconButton>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </TableContainer>
+                                    </Paper>
+                                )}
+                            </Box>
+                        )}
                     </Box>
                 </TabPanel>
             </Paper >
+
+            {/* Create Sub-Org Dialog */}
+            <Dialog open={createOrgDialog} onClose={() => setCreateOrgDialog(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>Create Sub-Organization</DialogTitle>
+                <DialogContent>
+                    <Stack spacing={2.5} sx={{ mt: 1 }}>
+                        <TextField fullWidth label="Organization Name" value={createOrgForm.name} onChange={(e) => setCreateOrgForm(f => ({ ...f, name: e.target.value }))} />
+                        <TextField fullWidth label="Contact Email" value={createOrgForm.email} onChange={(e) => setCreateOrgForm(f => ({ ...f, email: e.target.value }))} />
+                        <Stack direction="row" spacing={2}>
+                            <TextField fullWidth label="First Name" value={createOrgForm.first_name} onChange={(e) => setCreateOrgForm(f => ({ ...f, first_name: e.target.value }))} />
+                            <TextField fullWidth label="Last Name" value={createOrgForm.last_name} onChange={(e) => setCreateOrgForm(f => ({ ...f, last_name: e.target.value }))} />
+                        </Stack>
+                        <TextField fullWidth label="Phone" value={createOrgForm.phone} onChange={(e) => setCreateOrgForm(f => ({ ...f, phone: e.target.value }))} />
+                        <TextField fullWidth label="Street Address" value={createOrgForm.street1} onChange={(e) => setCreateOrgForm(f => ({ ...f, street1: e.target.value }))} />
+                        <Stack direction="row" spacing={2}>
+                            <TextField fullWidth label="City" value={createOrgForm.city} onChange={(e) => setCreateOrgForm(f => ({ ...f, city: e.target.value }))} />
+                            <TextField fullWidth label="State" value={createOrgForm.state} onChange={(e) => setCreateOrgForm(f => ({ ...f, state: e.target.value }))} />
+                            <TextField fullWidth label="Zip" value={createOrgForm.zipcode} onChange={(e) => setCreateOrgForm(f => ({ ...f, zipcode: e.target.value }))} />
+                        </Stack>
+                    </Stack>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setCreateOrgDialog(false)}>Cancel</Button>
+                    <Button variant="contained" disabled={createOrgLoading || !createOrgForm.name} onClick={handleCreateOrg}>
+                        {createOrgLoading ? <CircularProgress size={18} /> : 'Create'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Invite Member Dialog */}
+            <Dialog open={inviteDialog} onClose={() => setInviteDialog(false)} maxWidth="xs" fullWidth>
+                <DialogTitle>Invite Member</DialogTitle>
+                <DialogContent>
+                    <Stack spacing={2.5} sx={{ mt: 1 }}>
+                        <Stack direction="row" spacing={2}>
+                            <TextField fullWidth label="First Name" value={inviteForm.first_name} onChange={(e) => setInviteForm(f => ({ ...f, first_name: e.target.value }))} />
+                            <TextField fullWidth label="Last Name" value={inviteForm.last_name} onChange={(e) => setInviteForm(f => ({ ...f, last_name: e.target.value }))} />
+                        </Stack>
+                        <TextField fullWidth label="Email" value={inviteForm.email} onChange={(e) => setInviteForm(f => ({ ...f, email: e.target.value }))} />
+                        <TextField fullWidth label="Phone" value={inviteForm.phone} onChange={(e) => setInviteForm(f => ({ ...f, phone: e.target.value }))} />
+                    </Stack>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setInviteDialog(false)}>Cancel</Button>
+                    <Button variant="contained" disabled={inviteLoading || !inviteForm.email} onClick={handleInviteMember}>
+                        {inviteLoading ? <CircularProgress size={18} /> : 'Send Invite'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Edit Business Location Dialog */}
+            <Dialog open={!!editLocationDialog} onClose={() => setEditLocationDialog(null)} maxWidth="sm" fullWidth>
+                <DialogTitle>Edit Business Location</DialogTitle>
+                <DialogContent>
+                    {editLocationDialog && (
+                        <Stack spacing={2.5} sx={{ mt: 1 }}>
+                            <TextField fullWidth label="Name" value={editLocationDialog.name || ''} onChange={(e) => setEditLocationDialog((l: any) => ({ ...l, name: e.target.value }))} />
+                            <TextField fullWidth label="Phone" value={editLocationDialog.phone_number || ''} onChange={(e) => setEditLocationDialog((l: any) => ({ ...l, phone_number: e.target.value }))} />
+                            <TextField fullWidth label="External Store ID" value={editLocationDialog.external_business_location_id || ''} onChange={(e) => setEditLocationDialog((l: any) => ({ ...l, external_business_location_id: e.target.value }))} />
+                            <TextField fullWidth label="Street" value={editLocationDialog.detailed_address?.street_address_1 || ''} onChange={(e) => setEditLocationDialog((l: any) => ({ ...l, detailed_address: { ...l.detailed_address, street_address_1: e.target.value } }))} />
+                            <Stack direction="row" spacing={2}>
+                                <TextField fullWidth label="City" value={editLocationDialog.detailed_address?.city || ''} onChange={(e) => setEditLocationDialog((l: any) => ({ ...l, detailed_address: { ...l.detailed_address, city: e.target.value } }))} />
+                                <TextField fullWidth label="State" value={editLocationDialog.detailed_address?.state || ''} onChange={(e) => setEditLocationDialog((l: any) => ({ ...l, detailed_address: { ...l.detailed_address, state: e.target.value } }))} />
+                                <TextField fullWidth label="Zip" value={editLocationDialog.detailed_address?.zip_code || ''} onChange={(e) => setEditLocationDialog((l: any) => ({ ...l, detailed_address: { ...l.detailed_address, zip_code: e.target.value } }))} />
+                            </Stack>
+                        </Stack>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setEditLocationDialog(null)}>Cancel</Button>
+                    <Button variant="contained" onClick={handleUpdateLocation}>Save</Button>
+                </DialogActions>
+            </Dialog>
 
             {/* Print Agent Pairing Token Modal */}
             <Dialog

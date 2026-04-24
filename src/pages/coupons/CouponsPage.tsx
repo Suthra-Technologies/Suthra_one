@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
     Box,
     Typography,
@@ -46,7 +46,9 @@ import {
     Add as AddIcon,
     ContentCopy as CopyIcon,
     Close as CloseIcon,
+    Search as SearchIcon,
 } from '@mui/icons-material';
+import InputAdornment from '@mui/material/InputAdornment';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
 import { couponsAPI } from '../../services/api';
@@ -72,6 +74,10 @@ const CouponsPage: React.FC = () => {
     const [coupons, setCoupons] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [dialogOpen, setDialogOpen] = useState(false);
+
+    // Search
+    const [searchQuery, setSearchQuery] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
 
     // Pagination
     const [page, setPage] = useState(0);
@@ -274,16 +280,19 @@ const CouponsPage: React.FC = () => {
         return !hasError;
     };
 
-    const fetchCoupons = async () => {
+    const fetchCoupons = useCallback(async () => {
         try {
             setLoading(true);
-            const response = await couponsAPI.getAll({ page: page + 1, limit: rowsPerPage });
+            const response = await couponsAPI.getAll({
+                page: page + 1,
+                limit: rowsPerPage,
+                search: debouncedSearch.trim() || undefined,
+            });
             if (response.data.coupons) {
                 setCoupons(response.data.coupons);
                 setTotalCoupons(response.data.total);
             } else {
                 setCoupons(response.data);
-                // If backend doesn't support pagination yet, consider client-side or defaults
                 setTotalCoupons(response.data.length);
             }
         } catch (error) {
@@ -292,11 +301,20 @@ const CouponsPage: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [page, rowsPerPage, debouncedSearch]);
+
+    // Debounce: wait 400ms after user stops typing before fetching
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchQuery);
+            setPage(0); // reset to first page on new search
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
 
     useEffect(() => {
         fetchCoupons();
-    }, [page, rowsPerPage]);
+    }, [fetchCoupons]);
 
     const handleOpenDialog = (coupon?: any) => {
         if (coupon) {
@@ -456,9 +474,21 @@ const CouponsPage: React.FC = () => {
         return `$${coupon.discountValue} OFF`;
     };
 
+    // Client-side filtered list
+    const filteredCoupons = searchQuery.trim()
+        ? coupons.filter((c) => {
+            const q = searchQuery.toLowerCase();
+            return (
+                c.code?.toLowerCase().includes(q) ||
+                c.name?.toLowerCase().includes(q) ||
+                c.description?.toLowerCase().includes(q)
+            );
+        })
+        : coupons;
+
     const renderMobileView = () => (
         <Stack spacing={2}>
-            {coupons.map((coupon) => {
+            {filteredCoupons.map((coupon) => {
                 let isCurrentlyActive = !!coupon.active;
                 try {
                     const now = new Date();
@@ -569,21 +599,55 @@ const CouponsPage: React.FC = () => {
                 </Button>
             </Box>
 
+            {/* Search Bar */}
+            <Box sx={{ mb: 2 }}>
+                <TextField
+                    size="small"
+                    placeholder="Search by code..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    fullWidth
+                    InputProps={{
+                        startAdornment: (
+                            <InputAdornment position="start">
+                                <SearchIcon fontSize="small" />
+                            </InputAdornment>
+                        ),
+                        endAdornment: searchQuery ? (
+                            <InputAdornment position="end">
+                                <IconButton size="small" onClick={() => setSearchQuery('')}>
+                                    <CloseIcon fontSize="small" />
+                                </IconButton>
+                            </InputAdornment>
+                        ) : undefined,
+                    }}
+                    sx={{ maxWidth: { xs: '100%', sm: 360 } }}
+                />
+            </Box>
+
             {loading ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
                     <CircularProgress />
                 </Box>
-            ) : coupons.length === 0 ? (
+            ) : filteredCoupons.length === 0 ? (
                 <Paper sx={{ p: 5, textAlign: 'center' }}>
                     <Typography variant="h6" color="text.secondary" gutterBottom>
-                        No coupons found
+                        {searchQuery ? 'No coupons match your search' : 'No coupons found'}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                        Create your first discount coupon for customers
-                    </Typography>
-                    <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenDialog()}>
-                        Create First Coupon
-                    </Button>
+                    {searchQuery ? (
+                        <Button variant="outlined" onClick={() => setSearchQuery('')} sx={{ mt: 1 }}>
+                            Clear Search
+                        </Button>
+                    ) : (
+                        <>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                Create your first discount coupon for customers
+                            </Typography>
+                            <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenDialog()}>
+                                Create First Coupon
+                            </Button>
+                        </>
+                    )}
                 </Paper>
             ) : isMobile ? renderMobileView() : (
                 <TableContainer component={Paper}>
@@ -602,7 +666,7 @@ const CouponsPage: React.FC = () => {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {coupons.map((coupon) => {
+                            {filteredCoupons.map((coupon) => {
                                 let status: 'Active' | 'Expired' | 'Not Yet Valid' | 'Inactive' = 'Active';
                                 if (!coupon.active) {
                                     status = 'Inactive';

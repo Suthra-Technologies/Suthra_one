@@ -671,7 +671,6 @@ const HomePage: React.FC = () => {
   );
 
   const [formData, setFormData] = useState({
-    deployment: "cloud",
     businessName: "",
     email: "",
     phonePrefix: "+91",
@@ -735,7 +734,6 @@ const HomePage: React.FC = () => {
             "Thank you for your interest. Our team will contact you shortly to schedule your personalized demo.",
         });
         setFormData({
-          deployment: "cloud",
           businessName: "",
           email: "",
           phonePrefix: "+91",
@@ -1962,7 +1960,7 @@ const HomePage: React.FC = () => {
 
                     {/* DESCRIPTION */}
                     <Typography variant="body2" color="text.secondary" mb={4}>
-                      {plan.description || `Everything you need with the ${plan.name} plan.`}
+                      {plan.description || `Everything you will get with the ${plan.name} plan.`}
                     </Typography>
 
                     {/* FEATURES */}

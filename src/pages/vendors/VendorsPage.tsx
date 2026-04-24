@@ -32,6 +32,7 @@ import {
     Divider,
     TablePagination,
     CircularProgress,
+    useMediaQuery,
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -89,6 +90,7 @@ const VendorsPage: React.FC = () => {
     const { settings } = useSettings();
     const theme = useTheme();
     const navigate = useNavigate();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [vendors, setVendors] = useState<Vendor[]>([]);
     const [loading, setLoading] = useState(true);
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -402,12 +404,31 @@ const VendorsPage: React.FC = () => {
     };
 
     return (
-        <Box sx={{ p: 3 }}>
+        <Box sx={{ 
+            p: isMobile ? 2 : 4, 
+            pt: isMobile ? '20px' : 4, // Minimize top gap on phones only
+            maxWidth: 1600, 
+            mx: 'auto' 
+        }}>
             {/* Header */}
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-               <VendorIcon sx={{ fontSize: { xs: 24, sm: 32 }, color: 'primary.main' }} />
-                    <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.4rem', sm: '2.125rem' } }}>
+            <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                mb: isMobile ? 3 : 5,
+                gap: 2
+            }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <Box sx={{ 
+                        p: isMobile ? 1 : 1.5, 
+                        borderRadius: 2, 
+                        bgcolor: alpha(theme.palette.primary.main, 0.1), 
+                        color: 'primary.main',
+                        display: 'flex'
+                    }}>
+                        <VendorIcon fontSize={isMobile ? "small" : "medium"} />
+                    </Box>
+                    <Typography variant="h4" fontWeight={900} sx={{ fontSize: { xs: '1.25rem', md: '2.125rem' }, letterSpacing: '-0.04em' }}>
                         Vendors
                     </Typography>
                 </Box>
@@ -415,15 +436,30 @@ const VendorsPage: React.FC = () => {
                     variant="contained"
                     startIcon={<AddIcon />}
                     onClick={() => handleOpenDialog()}
-                    sx={{ borderRadius: 2, whiteSpace: 'nowrap', fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1.5, sm: 2 } }}
+                    sx={{ 
+                        borderRadius: 2, 
+                        whiteSpace: 'nowrap', 
+                        fontSize: { xs: '0.75rem', sm: '0.875rem' }, 
+                        px: { xs: 2.5, sm: 3 },
+                        py: isMobile ? 0.75 : 1,
+                        textTransform: 'none',
+                        fontWeight: 'bold',
+                        boxShadow: '0 4px 14px 0 rgba(0,0,0,0.1)'
+                    }}
                 >
-                    Add Vendor
+                    Add {isMobile ? '' : 'New'} Vendor
                 </Button>
             </Box>
 
             {/* Filters */}
-            <Paper sx={{ p: 2, mb: 3, borderRadius: 2 }}>
-                <Grid container spacing={2} alignItems="center">
+            <Paper sx={{ 
+                p: isMobile ? 1.5 : 2, 
+                mb: isMobile ? 2 : 4, 
+                borderRadius: isMobile ? 3 : 2,
+                boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.05)' : alpha(theme.palette.divider, 0.1),
+                border: isMobile ? `1px solid ${alpha(theme.palette.divider, 0.1)}` : 'none'
+            }}>
+                <Grid container spacing={2} alignItems="center" justifyContent="center">
                     <Grid item xs={12} md={6}>
                         <TextField
                             fullWidth
@@ -433,22 +469,24 @@ const VendorsPage: React.FC = () => {
                             InputProps={{
                                 startAdornment: (
                                     <InputAdornment position="start">
-                                        <SearchIcon />
+                                        <SearchIcon fontSize="small" />
                                     </InputAdornment>
                                 ),
+                                sx: { borderRadius: 2 }
                             }}
                             size="small"
                         />
                     </Grid>
                     <Grid item xs={12} md={3}>
                         <FormControl fullWidth size="small">
-                            <InputLabel>Status</InputLabel>
+                            <InputLabel sx={{ fontSize: '0.875rem' }}>Status</InputLabel>
                             <Select
                                 value={statusFilter}
                                 label="Status"
                                 onChange={(e) => setStatusFilter(e.target.value)}
+                                sx={{ borderRadius: 2, fontSize: '0.875rem' }}
                             >
-                                <MenuItem value="">All</MenuItem>
+                                <MenuItem value="">All Statuses</MenuItem>
                                 <MenuItem value="active">Active</MenuItem>
                                 <MenuItem value="inactive">Inactive</MenuItem>
                             </Select>
@@ -458,42 +496,98 @@ const VendorsPage: React.FC = () => {
             </Paper>
 
             {/* Vendors Table */}
-           {/* Mobile Cards */}
-<Box sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', gap: 2 }}>
-  {loading ? (
-    <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress /></Box>
-  ) : vendors.length === 0 ? (
-    <Box sx={{ textAlign: 'center', py: 4 }}>
-      <Typography color="text.secondary">No vendors found</Typography>
-      <Button variant="outlined" startIcon={<AddIcon />} onClick={() => handleOpenDialog()} sx={{ mt: 2 }}>Add First Vendor</Button>
-    </Box>
-  ) : vendors.map((vendor) => (
-    <Paper key={vendor._id} sx={{ p: 2, borderRadius: 2 }} elevation={2}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <Box>
-          <Typography fontWeight="bold">{vendor.name}</Typography>
-          {vendor.shopName && <Typography variant="body2" color="text.secondary">{vendor.shopName}</Typography>}
-          {vendor.address && <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}><AddressIcon fontSize="inherit" />{vendor.address}</Typography>}
-        </Box>
-        <Box>
-          <IconButton onClick={() => handleOpenDialog(vendor)} size="small"><EditIcon fontSize="small" /></IconButton>
-          <IconButton onClick={() => { setSelectedVendor(vendor); setDeleteDialogOpen(true); }} size="small" color="error"><DeleteIcon fontSize="small" /></IconButton>
-        </Box>
-      </Box>
-      {vendor.contact && <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 1 }}><PhoneIcon fontSize="small" color="action" /><Typography variant="body2">{vendor.contact}</Typography></Box>}
-      {vendor.email && <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}><EmailIcon fontSize="small" color="action" /><Typography variant="body2" sx={{ wordBreak: 'break-all' }}>{vendor.email}</Typography></Box>}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1.5, flexWrap: 'wrap', gap: 1 }}>
-        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-          {vendor.categories?.slice(0, 2).map((cat) => (
-            <Chip key={cat} label={CATEGORIES.find(c => c.value === cat)?.label || cat} size="small" variant="outlined" />
-          ))}
-          {vendor.categories?.length > 2 && <Chip label={`+${vendor.categories.length - 2}`} size="small" />}
-        </Box>
-        <Chip label={vendor.status} color={vendor.status === 'active' ? 'success' : 'default'} size="small" onClick={() => handleToggleStatus(vendor)} sx={{ cursor: 'pointer', textTransform: 'capitalize' }} />
-      </Box>
-    </Paper>
-  ))}
-</Box>
+            {/* Mobile Cards */}
+            <Box sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', gap: 2, alignItems: 'center' }}>
+                {loading ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress thickness={2} size={50} /></Box>
+                ) : vendors.length === 0 ? (
+                    <Paper sx={{ p: 10, textAlign: 'center', borderRadius: 4, border: '2px dashed', borderColor: 'divider', bgcolor: 'transparent', width: '100%', maxWidth: 500 }}>
+                        <Typography color="text.secondary" fontWeight={900}>No vendors found</Typography>
+                        <Button variant="outlined" startIcon={<AddIcon />} onClick={() => handleOpenDialog()} sx={{ mt: 2, borderRadius: 2 }}>Add First Vendor</Button>
+                    </Paper>
+                ) : (
+                    <Grid container spacing={isMobile ? 0 : 2} justifyContent="center" sx={{ width: '100%', m: 0 }}>
+                        {vendors.map((vendor) => (
+                            <Grid item xs={12} key={vendor._id} sx={{ display: 'flex', justifyContent: 'center' }}>
+                                <Paper 
+                                    sx={{ 
+                                        p: 2, 
+                                        borderRadius: 3, 
+                                        width: '100%', 
+                                        maxWidth: 500,
+                                        position: 'relative',
+                                        border: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
+                                        boxShadow: '0 2px 12px rgba(0,0,0,0.04)'
+                                    }}
+                                >
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+                                        <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
+                                            <Box sx={{ p: 1, borderRadius: 1.5, bgcolor: alpha(theme.palette.primary.main, 0.05), color: 'primary.main' }}>
+                                                <VendorIcon fontSize="small" />
+                                            </Box>
+                                            <Box>
+                                                <Typography fontWeight={900} sx={{ fontSize: '1rem', letterSpacing: '-0.02em' }}>{vendor.name}</Typography>
+                                                {vendor.shopName && <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>{vendor.shopName}</Typography>}
+                                            </Box>
+                                        </Box>
+                                        <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                            <IconButton onClick={() => handleOpenDialog(vendor)} size="small" sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05), color: 'primary.main' }}><EditIcon fontSize="small" /></IconButton>
+                                            <IconButton onClick={() => { setSelectedVendor(vendor); setDeleteDialogOpen(true); }} size="small" sx={{ bgcolor: alpha(theme.palette.error.main, 0.05), color: 'error.main' }}><DeleteIcon fontSize="small" /></IconButton>
+                                        </Box>
+                                    </Box>
+
+                                    <Divider sx={{ my: 1.5, borderStyle: 'dashed', opacity: 0.5 }} />
+
+                                    <Grid container spacing={1.5}>
+                                        <Grid item xs={12}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <PhoneIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                                                <Typography variant="body2" fontWeight={500}>{vendor.contact}</Typography>
+                                            </Box>
+                                        </Grid>
+                                        <Grid item xs={12}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <EmailIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                                                <Typography variant="body2" sx={{ wordBreak: 'break-all', opacity: 0.8 }}>{vendor.email}</Typography>
+                                            </Box>
+                                        </Grid>
+                                        {vendor.address && (
+                                            <Grid item xs={12}>
+                                                <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                                                    <AddressIcon sx={{ fontSize: 16, color: 'text.secondary', mt: 0.2 }} />
+                                                    <Typography variant="caption" sx={{ opacity: 0.7 }}>{vendor.address}</Typography>
+                                                </Box>
+                                            </Grid>
+                                        )}
+                                    </Grid>
+
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
+                                        <Box sx={{ display: 'flex', gap: 0.5 }}>
+                                            {vendor.categories?.slice(0, 2).map((cat) => (
+                                                <Chip 
+                                                    key={cat} 
+                                                    label={CATEGORIES.find(c => c.value === cat)?.label || cat} 
+                                                    size="small" 
+                                                    variant="outlined" 
+                                                    sx={{ fontSize: '0.65rem', height: 20, fontWeight: 700 }} 
+                                                />
+                                            ))}
+                                            {vendor.categories?.length > 2 && <Chip label={`+${vendor.categories.length - 2}`} size="small" sx={{ height: 20, fontSize: '0.65rem' }} />}
+                                        </Box>
+                                        <Chip 
+                                            label={vendor.status} 
+                                            color={vendor.status === 'active' ? 'success' : 'default'} 
+                                            size="small" 
+                                            onClick={() => handleToggleStatus(vendor)} 
+                                            sx={{ fontWeight: 900, fontSize: '0.65rem', height: 24, textTransform: 'uppercase' }} 
+                                        />
+                                    </Box>
+                                </Paper>
+                            </Grid>
+                        ))}
+                    </Grid>
+                )}
+            </Box>
 
 {/* Desktop Table */}
 <TableContainer component={Paper} sx={{ borderRadius: 2, display: { xs: 'none', md: 'block' } }}>
@@ -630,207 +724,374 @@ const VendorsPage: React.FC = () => {
             />
 
             {/* Add/Edit Dialog */}
-            <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="md" fullWidth>
-                <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 'bold' }}>
-                    {selectedVendor ? 'Edit Vendor' : 'Add New Vendor'}
+            <Dialog 
+                open={dialogOpen} 
+                onClose={handleCloseDialog} 
+                maxWidth="md" 
+                fullWidth
+                fullScreen={isMobile}
+                PaperProps={{
+                    sx: {
+                        borderRadius: isMobile ? 0 : 4,
+                        bgcolor: '#f9fafb'
+                    }
+                }}
+            >
+                <DialogTitle sx={{ 
+                    p: isMobile ? 2 : 2.5,
+                    pt: isMobile ? '60px' : 2.5, // More space for mobile notches
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    bgcolor: 'white',
+                    borderBottom: '1px solid',
+                    borderColor: alpha(theme.palette.divider, 0.1)
+                }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box sx={{ 
+                            p: 1, 
+                            borderRadius: 1.5, 
+                            bgcolor: alpha(theme.palette.primary.main, 0.1), 
+                            color: 'primary.main',
+                            display: 'flex'
+                        }}>
+                             <VendorIcon fontSize={isMobile ? "small" : "medium"} />
+                        </Box>
+                        <Typography 
+                            variant={isMobile ? "subtitle1" : "h6"} 
+                            fontWeight={700} 
+                            sx={{ 
+                                letterSpacing: '-0.01em', 
+                                textTransform: 'uppercase',
+                                fontFamily: '"Outfit", sans-serif',
+                                fontSize: isMobile ? '0.95rem' : '1.25rem'
+                            }}
+                        >
+                            {selectedVendor ? 'Edit Vendor' : 'Add New Vendor'}
+                        </Typography>
+                    </Box>
                     <IconButton
                         onClick={handleCloseDialog}
                         size="small"
                         sx={{
-                            color: 'white',
-                            bgcolor: 'error.main',
-                            '&:hover': {
-                                bgcolor: 'error.dark',
-                            },
-                            width: 24,
-                            height: 24
+                            color: 'text.secondary',
+                            bgcolor: alpha(theme.palette.divider, 0.1),
+                            '&:hover': { bgcolor: alpha(theme.palette.divider, 0.2) }
                         }}
                     >
-                        <CloseIcon sx={{ fontSize: '1.1rem' }} />
+                        <CloseIcon fontSize="small" />
                     </IconButton>
                 </DialogTitle>
-                <DialogContent dividers sx={{ '& .MuiFormLabel-asterisk': { color: 'red' } }}>
-                    <Grid container spacing={3}>
+                <DialogContent sx={{ 
+                    p: isMobile ? 1.5 : 3,
+                    bgcolor: '#f8f9fa',
+                    '& .MuiFormLabel-asterisk': { color: 'red' } 
+                }}>
+                    <Grid container spacing={isMobile ? 1.5 : 3}>
                         {/* Basic Info */}
-                        <Grid item xs={12}>
-                            <Typography variant="subtitle2" color="primary" gutterBottom>
-                                Basic Information
-                            </Typography>
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                fullWidth
-                                label="Vendor Name"
-                                value={formData.name}
-                                onChange={(e) => {
-                                    setFormData({ ...formData, name: e.target.value });
-                                    if (errors.name) validateField('name', e.target.value);
-                                }}
-                                onBlur={(e) => validateField('name', e.target.value)}
-                                error={!!errors.name}
-                                helperText={errors.name}
-                                required
-                            />
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                fullWidth
-                                label="Shop Name"
-                                value={formData.shopName}
-                                onChange={(e) => setFormData({ ...formData, shopName: e.target.value })}
-                            />
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <PhoneInput
-                                value={formData.contact}
-                                onChange={(val) => {
-                                    const clean = val.replace(/\D/g, '').slice(0, 10);
-                                    setFormData({ ...formData, contact: clean });
-                                    if (errors.contact) validateField('contact', clean);
-                                }}
-                                dialCode={formData.dialCode || '1'}
-                                onDialCodeChange={(code) => setFormData({ ...formData, dialCode: code })}
-                                label="Contact Number"
-                                required
-                                fullWidth
-                                onBlur={() => validateField('contact', formData.contact)}
-                                error={!!errors.contact}
-                                helperText={errors.contact}
-                            />
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                fullWidth
-                                label="Email"
-                                type="email"
-                                value={formData.email}
-                                onChange={(e) => {
-                                    setFormData({ ...formData, email: e.target.value });
-                                    if (errors.email) validateField('email', e.target.value);
-                                }}
-                                onBlur={(e) => validateField('email', e.target.value)}
-                                error={!!errors.email}
-                                helperText={errors.email}
-                                required
-                                InputProps={{
-                                    startAdornment: <InputAdornment position="start"><EmailIcon /></InputAdornment>,
-                                }}
-                            />
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                fullWidth
-                                label="Address"
-                                value={formData.address}
-                                onChange={(e) => {
-                                    setFormData({ ...formData, address: e.target.value });
-                                    if (errors.address) validateField('address', e.target.value);
-                                }}
-                                onBlur={(e) => validateField('address', e.target.value)}
-                                error={!!errors.address}
-                                helperText={errors.address}
-                                required
-                                InputProps={{
-                                    startAdornment: <InputAdornment position="start"><AddressIcon /></InputAdornment>,
-                                }}
-                            />
+                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center' }}>
+                            <Paper sx={{ 
+                                p: isMobile ? 2 : 3, 
+                                borderRadius: 3, 
+                                width: '100%', 
+                                maxWidth: 500,
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                                border: '1px solid',
+                                borderColor: alpha(theme.palette.divider, 0.05),
+                                bgcolor: 'white'
+                            }}>
+                                <Typography 
+                                    variant="caption" 
+                                    fontWeight={700} 
+                                    color="primary" 
+                                    sx={{ 
+                                        display: 'block', 
+                                        mb: 2, 
+                                        textTransform: 'uppercase', 
+                                        letterSpacing: '0.05em',
+                                        fontFamily: '"Outfit", sans-serif'
+                                    }}
+                                >
+                                    Basic Information
+                                </Typography>
+                                <Grid container spacing={isMobile ? 1.5 : 2.5}>
+                                    <Grid item xs={12} md={6}>
+                                        <TextField
+                                            fullWidth
+                                            label="Vendor Name"
+                                            value={formData.name}
+                                            onChange={(e) => {
+                                                setFormData({ ...formData, name: e.target.value });
+                                                if (errors.name) validateField('name', e.target.value);
+                                            }}
+                                            onBlur={(e) => validateField('name', e.target.value)}
+                                            error={!!errors.name}
+                                            helperText={errors.name}
+                                            required
+                                            size={isMobile ? "small" : "medium"}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} md={6}>
+                                        <TextField
+                                            fullWidth
+                                            label="Shop Name"
+                                            value={formData.shopName}
+                                            onChange={(e) => setFormData({ ...formData, shopName: e.target.value })}
+                                            size={isMobile ? "small" : "medium"}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} md={6}>
+                                        <PhoneInput
+                                            value={formData.contact}
+                                            onChange={(val) => {
+                                                const clean = val.replace(/\D/g, '').slice(0, 10);
+                                                setFormData({ ...formData, contact: clean });
+                                                if (errors.contact) validateField('contact', clean);
+                                            }}
+                                            dialCode={formData.dialCode || '1'}
+                                            onDialCodeChange={(code) => setFormData({ ...formData, dialCode: code })}
+                                            label="Contact Number"
+                                            required
+                                            fullWidth
+                                            onBlur={() => validateField('contact', formData.contact)}
+                                            error={!!errors.contact}
+                                            helperText={errors.contact}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} md={6}>
+                                        <TextField
+                                            fullWidth
+                                            label="Email"
+                                            type="email"
+                                            value={formData.email}
+                                            onChange={(e) => {
+                                                setFormData({ ...formData, email: e.target.value });
+                                                if (errors.email) validateField('email', e.target.value);
+                                            }}
+                                            onBlur={(e) => validateField('email', e.target.value)}
+                                            error={!!errors.email}
+                                            helperText={errors.email}
+                                            required
+                                            size={isMobile ? "small" : "medium"}
+                                            InputProps={{
+                                                startAdornment: <InputAdornment position="start"><EmailIcon fontSize="small" /></InputAdornment>,
+                                            }}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12}>
+                                        <TextField
+                                            fullWidth
+                                            label="Address"
+                                            value={formData.address}
+                                            onChange={(e) => {
+                                                setFormData({ ...formData, address: e.target.value });
+                                                if (errors.address) validateField('address', e.target.value);
+                                            }}
+                                            onBlur={(e) => validateField('address', e.target.value)}
+                                            error={!!errors.address}
+                                            helperText={errors.address}
+                                            required
+                                            size={isMobile ? "small" : "medium"}
+                                            multiline rows={isMobile ? 2 : 1}
+                                            InputProps={{
+                                                startAdornment: <InputAdornment position="start" sx={{ mt: isMobile ? -3 : 0 }}><AddressIcon fontSize="small" /></InputAdornment>,
+                                            }}
+                                        />
+                                    </Grid>
+                                </Grid>
+                            </Paper>
                         </Grid>
 
 
 
                         {/* Categories */}
-                        <Grid item xs={12}>
-                            <Divider sx={{ my: 1 }} />
-                            <Typography variant="subtitle2" color="primary" gutterBottom>
-                                Categories
-                            </Typography>
-                            <FormGroup row>
-                                {CATEGORIES.map((cat) => (
-                                    <FormControlLabel
-                                        key={cat.value}
-                                        control={
-                                            <Checkbox
-                                                checked={formData.categories.includes(cat.value)}
-                                                onChange={() => handleCategoryChange(cat.value)}
-                                            />
-                                        }
-                                        label={cat.label}
-                                    />
-                                ))}
-                            </FormGroup>
+                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center' }}>
+                            <Paper sx={{ 
+                                p: isMobile ? 2 : 3, 
+                                borderRadius: 3, 
+                                width: '100%', 
+                                maxWidth: 500,
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                                border: '1px solid',
+                                borderColor: alpha(theme.palette.divider, 0.05),
+                                bgcolor: 'white'
+                            }}>
+                                <Typography 
+                                    variant="caption" 
+                                    fontWeight={700} 
+                                    color="primary" 
+                                    sx={{ 
+                                        display: 'block', 
+                                        mb: 1, 
+                                        textTransform: 'uppercase', 
+                                        letterSpacing: '0.05em',
+                                        fontFamily: '"Outfit", sans-serif'
+                                    }}
+                                >
+                                    Service Categories
+                                </Typography>
+                                <FormGroup row={!isMobile}>
+                                    {CATEGORIES.map((cat) => (
+                                        <FormControlLabel
+                                            key={cat.value}
+                                            control={
+                                                <Checkbox
+                                                    size="small"
+                                                    checked={formData.categories.includes(cat.value)}
+                                                    onChange={() => handleCategoryChange(cat.value)}
+                                                />
+                                            }
+                                            label={<Typography variant="body2">{cat.label}</Typography>}
+                                        />
+                                    ))}
+                                </FormGroup>
+                            </Paper>
                         </Grid>
 
                         {/* Bank Details */}
-                        <Grid item xs={12}>
-                            <Divider sx={{ my: 1 }} />
-                            <Typography variant="subtitle2" color="primary" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <BankIcon fontSize="small" />
-                                Bank Details (Optional)
-                            </Typography>
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                fullWidth
-                                label="Account Holder Name"
-                                value={formData.bankDetails.accountName}
-                                onChange={(e) => setFormData({
-                                    ...formData,
-                                    bankDetails: { ...formData.bankDetails, accountName: e.target.value }
-                                })}
-                            />
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                fullWidth
-                                label="Account Number"
-                                value={formData.bankDetails.accountNumber}
-                                onChange={(e) => setFormData({
-                                    ...formData,
-                                    bankDetails: { ...formData.bankDetails, accountNumber: e.target.value }
-                                })}
-                            />
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                fullWidth
-                                label="Bank Name"
-                                value={formData.bankDetails.bankName}
-                                onChange={(e) => setFormData({
-                                    ...formData,
-                                    bankDetails: { ...formData.bankDetails, bankName: e.target.value }
-                                })}
-                            />
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                            <TextField
-                                fullWidth
-                                label="Bank Code"
-                                value={formData.bankDetails.ifscCode}
-                                onChange={(e) => setFormData({
-                                    ...formData,
-                                    bankDetails: { ...formData.bankDetails, ifscCode: e.target.value.toUpperCase() }
-                                })}
-                            />
+                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center' }}>
+                            <Paper sx={{ 
+                                p: isMobile ? 2 : 3, 
+                                borderRadius: 3, 
+                                width: '100%', 
+                                maxWidth: 500,
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                                border: '1px solid',
+                                borderColor: alpha(theme.palette.divider, 0.05),
+                                bgcolor: 'white'
+                            }}>
+                                <Typography 
+                                    variant="caption" 
+                                    fontWeight={700} 
+                                    color="primary" 
+                                    sx={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        gap: 1, 
+                                        mb: 2, 
+                                        textTransform: 'uppercase', 
+                                        letterSpacing: '0.05em',
+                                        fontFamily: '"Outfit", sans-serif'
+                                    }}
+                                >
+                                    <BankIcon fontSize="inherit" />
+                                    Bank Settlement Info
+                                </Typography>
+                                <Grid container spacing={2}>
+                                    <Grid item xs={12} md={6}>
+                                        <TextField
+                                            fullWidth
+                                            label="Account Holder"
+                                            size="small"
+                                            value={formData.bankDetails.accountName}
+                                            onChange={(e) => setFormData({
+                                                ...formData,
+                                                bankDetails: { ...formData.bankDetails, accountName: e.target.value }
+                                            })}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} md={6}>
+                                        <TextField
+                                            fullWidth
+                                            label="Account Number"
+                                            size="small"
+                                            value={formData.bankDetails.accountNumber}
+                                            onChange={(e) => setFormData({
+                                                ...formData,
+                                                bankDetails: { ...formData.bankDetails, accountNumber: e.target.value }
+                                            })}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} md={6}>
+                                        <TextField
+                                            fullWidth
+                                            label="Bank Name"
+                                            size="small"
+                                            value={formData.bankDetails.bankName}
+                                            onChange={(e) => setFormData({
+                                                ...formData,
+                                                bankDetails: { ...formData.bankDetails, bankName: e.target.value }
+                                            })}
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} md={6}>
+                                        <TextField
+                                            fullWidth
+                                            label="IFSC Code"
+                                            size="small"
+                                            value={formData.bankDetails.ifscCode}
+                                            onChange={(e) => setFormData({
+                                                ...formData,
+                                                bankDetails: { ...formData.bankDetails, ifscCode: e.target.value.toUpperCase() }
+                                            })}
+                                        />
+                                    </Grid>
+                                </Grid>
+                            </Paper>
                         </Grid>
 
                         {/* Notes */}
-                        <Grid item xs={12}>
-                            <Divider sx={{ my: 1 }} />
-                            <TextField
-                                fullWidth
-                                label="Notes"
-                                multiline
-                                rows={2}
-                                value={formData.notes}
-                                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                            />
+                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center' }}>
+                            <Paper sx={{ 
+                                p: isMobile ? 2 : 3, 
+                                borderRadius: 3, 
+                                width: '100%', 
+                                maxWidth: 500,
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                                border: '1px solid',
+                                borderColor: alpha(theme.palette.divider, 0.05),
+                                bgcolor: 'white'
+                            }}>
+                                <Typography 
+                                    variant="caption" 
+                                    fontWeight={700} 
+                                    color="primary" 
+                                    sx={{ 
+                                        display: 'block', 
+                                        mb: 2, 
+                                        textTransform: 'uppercase', 
+                                        letterSpacing: '0.05em',
+                                        fontFamily: '"Outfit", sans-serif'
+                                    }}
+                                >
+                                    Internal Notes
+                                </Typography>
+                                <TextField
+                                    fullWidth
+                                    label="Notes"
+                                    multiline
+                                    rows={isMobile ? 3 : 2}
+                                    value={formData.notes}
+                                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                                    size="small"
+                                />
+                            </Paper>
                         </Grid>
                     </Grid>
                 </DialogContent>
-                <DialogActions sx={{ p: 2 }}>
-                    <Button onClick={handleCloseDialog}>Cancel</Button>
-                    <Button variant="contained" onClick={handleSubmit}>
-                        {selectedVendor ? 'Update' : 'Create'}
+                <DialogActions sx={{ p: isMobile ? 2 : 3, bgcolor: 'white', borderTop: '1px solid', borderColor: 'divider', gap: 1.5 }}>
+                    <Button 
+                        onClick={handleCloseDialog} 
+                        sx={{ 
+                            textTransform: 'none', 
+                            fontWeight: 'bold',
+                            color: 'text.secondary'
+                        }}
+                    >
+                        Cancel
+                    </Button>
+                    <Button 
+                        variant="contained" 
+                        onClick={handleSubmit}
+                        sx={{ 
+                            borderRadius: 2, 
+                            px: 4, 
+                            textTransform: 'none', 
+                            fontWeight: 'bold',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                        }}
+                    >
+                        {selectedVendor ? 'Update Vendor' : 'Create Vendor'}
                     </Button>
                 </DialogActions>
             </Dialog>

@@ -283,16 +283,11 @@ const CreatePOPage: React.FC = () => {
             formDataUpload.append('file', file);
             const response = await purchaseOrdersAPI.extractInvoice(formDataUpload);
 
-            console.log('=== AI FULL RESPONSE ===', JSON.stringify(response.data, null, 2));
+            console.log('--- AI Extraction Processed ---');
 
             const responseData = response.data?.data || response.data;
             const extractionData = responseData.extraction || responseData;
             const verificationData = responseData.verification || {};
-
-            console.log('=== EXTRACTION KEYS ===', Object.keys(extractionData));
-            console.log('=== EXTRACTION DATA ===', JSON.stringify(extractionData, null, 2));
-            console.log('=== VERIFICATION KEYS ===', Object.keys(verificationData));
-            console.log('=== VERIFICATION DATA ===', JSON.stringify(verificationData, null, 2));
 
             // Helper: recursively find an object with certain keys
             const findNested = (obj: any, ...keys: string[]): any => {
@@ -589,28 +584,41 @@ const CreatePOPage: React.FC = () => {
 
     const SectionHeader = ({ icon, title, centeredOnMobile, sx }: { icon: React.ReactNode, title: string, centeredOnMobile?: boolean, sx?: any }) => (
         <Stack
-            direction={{ xs: centeredOnMobile ? 'column' : 'row', md: 'row' }}
-            spacing={2}
+            direction="row"
+            spacing={isMobile ? 1.25 : 2}
             alignItems="center"
-            justifyContent={{ xs: centeredOnMobile ? 'center' : 'flex-start', md: 'flex-start' }}
             sx={{
-                mb: 3,
+                mb: isMobile ? 1.5 : 3,
                 width: '100%',
-                textAlign: { xs: centeredOnMobile ? 'center' : 'left', md: 'left' },
                 ...sx
             }}
         >
             <Box sx={{
-                p: 1.5,
-                borderRadius: 2.5,
-                bgcolor: alpha(theme.palette.primary.main, 0.1),
+                p: isMobile ? 0.75 : 1.25,
+                borderRadius: isMobile ? 1.5 : 2.5,
+                bgcolor: alpha(theme.palette.primary.main, 0.08),
                 color: 'primary.main',
                 display: 'flex',
-                boxShadow: `0 4px 10px ${alpha(theme.palette.primary.main, 0.05)}`
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: `inset 0 0 0 1px ${alpha(theme.palette.primary.main, 0.1)}`,
+                '& .MuiSvgIcon-root': { fontSize: isMobile ? 18 : 24 }
             }}>
                 {icon}
             </Box>
-            <Typography variant="h6" fontWeight="bold" sx={{ fontSize: { xs: '1.2rem', md: '1.25rem' } }}>{title}</Typography>
+            <Typography 
+                variant="body1" 
+                fontWeight={900} 
+                sx={{ 
+                    fontSize: { xs: '0.9rem', md: '1.25rem' },
+                    letterSpacing: '-0.02em',
+                    color: 'text.primary',
+                    textTransform: 'uppercase',
+                    opacity: 0.9
+                }}
+            >
+                {title}
+            </Typography>
         </Stack>
     );
 
@@ -620,20 +628,27 @@ const CreatePOPage: React.FC = () => {
     const isInventory = formData.category === 'raw_materials';
 
     return (
-        <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 1400, mx: 'auto' }}>
+        <Box sx={{ 
+            p: { xs: 1.5, md: 4 }, 
+            maxWidth: 1400, 
+            mx: 'auto',
+            minHeight: '100vh',
+            bgcolor: '#f9fafb',
+            overflowX: 'hidden'
+        }}>
             <Stack
-                direction={{ xs: 'column', sm: 'row' }}
-                alignItems={{ xs: 'flex-start', sm: 'center' }}
-                spacing={2}
-                mb={4}
+                direction={isMobile ? "column" : "row"}
+                alignItems="center"
+                spacing={isMobile ? 1.5 : 2}
+                mb={isMobile ? 3 : 5}
+                sx={{ textAlign: 'center', width: '100%' }}
             >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, width: { xs: '100%', sm: 'auto' } }}>
-                    <IconButton onClick={() => navigate('../purchase-orders')} sx={{ border: '1px solid', borderColor: 'divider' }}>
-                        <BackIcon />
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2 }, width: { xs: '100%', sm: 'auto' }, justifyContent: 'center' }}>
+                    <IconButton size={isMobile ? "small" : "medium"} onClick={() => navigate('../purchase-orders')} sx={{ border: '1px solid', borderColor: 'divider', p: isMobile ? 1 : 1.25, bgcolor: 'white' }}>
+                        <BackIcon fontSize={isMobile ? "small" : "medium"} />
                     </IconButton>
                     <Box>
-                        <Typography variant="h4" fontWeight="900" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>Create Purchase Order</Typography>
-                        <Typography variant="body2" color="text.secondary">Detailed financial logging for {formData.category.split('_').join(' ')}</Typography>
+                        <Typography variant="h4" fontWeight={900} sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' }, letterSpacing: '-0.04em' }}>Create Entry</Typography>
                     </Box>
                 </Box>
                 <Box sx={{ flexGrow: 1, display: { xs: 'none', sm: 'block' } }} />
@@ -643,102 +658,90 @@ const CreatePOPage: React.FC = () => {
                     variant="outlined"
                     sx={{
                         fontWeight: 'bold',
-                        fontSize: { xs: '0.875rem', sm: '1rem' },
-                        px: 1,
-                        alignSelf: { xs: 'flex-start', sm: 'center' },
-                        ml: { xs: 7, sm: 0 } // Align with text on mobile
+                        fontSize: { xs: '0.75rem', sm: '1rem' },
+                        height: isMobile ? 24 : 32,
+                        px: 0.5,
                     }}
                 />
             </Stack>
 
-            <Grid container spacing={4}>
+            <Grid container spacing={isMobile ? 0 : 4} justifyContent="center" sx={{ width: '100%', m: 0 }}>
                 {/* Left Column - Main Form */}
                 <Grid item xs={12} md={12}>
-                    <Stack spacing={4}>
+                    <Stack spacing={isMobile ? 2 : 4} alignItems={isMobile ? "center" : "stretch"}>
                         {/* 1. Transaction Type & Category */}
-                        <Paper sx={{ p: 4, borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
-                                <SectionHeader icon={<DetailsIcon />} title="Category & Type" sx={{ mb: 0 }} />
+                        <Paper sx={{ 
+                            p: { xs: 2.5, md: 4 }, 
+                            borderRadius: { xs: 4, md: 5 }, 
+                            boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+                            maxWidth: { xs: 500, md: 'none' },
+                            mx: { xs: 'auto', md: 0 },
+                            width: '100%'
+                        }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: isMobile ? 1.5 : 3, flexWrap: 'nowrap', gap: 1 }}>
+                                <SectionHeader icon={<DetailsIcon />} title="Category" sx={{ mb: 0 }} />
 
                                 <Button
                                     component="label"
                                     variant="contained"
                                     color="secondary"
                                     disabled={extracting}
-                                    startIcon={extracting ? <CircularProgress size={20} color="inherit" /> : <AutoAwesomeIcon />}
+                                    startIcon={extracting ? <CircularProgress size={16} color="inherit" /> : <AutoAwesomeIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />}
                                     sx={{
-                                        borderRadius: 3,
-                                        px: { xs: 2, sm: 3 },
-                                        py: { xs: 0.75, sm: 1 },
-                                        fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                                        minWidth: { xs: 'auto', sm: 'unset' },
+                                        borderRadius: 2,
+                                        px: { xs: 1.5, sm: 3 },
+                                        py: { xs: 0.5, sm: 1 },
+                                        fontSize: { xs: '0.7rem', sm: '0.875rem' },
+                                        minWidth: 'auto',
                                         whiteSpace: 'nowrap',
                                         background: 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)',
-                                        boxShadow: '0 4px 14px 0 rgba(139,92,246,0.39)',
-                                        '&:hover': {
-                                            background: 'linear-gradient(135deg, #7C3AED 0%, #5B21B6 100%)',
-                                        }
+                                        boxShadow: '0 4px 14px 0 rgba(139,92,246,0.2)',
+                                        textTransform: 'none',
+                                        height: { xs: 32, md: 40 }
                                     }}
                                 >
-                                    {extracting ? 'Extracting...' : 'Extract Invoice AI'}
+                                    {extracting ? '...' : (isMobile ? 'AI Extract' : 'AI Invoice Extraction')}
                                     <input type="file" hidden accept="image/*,application/pdf,.doc,.docx" onChange={handleExtractInvoice} />
                                 </Button>
                             </Box>
-                            <Grid container spacing={3}>
-                                {/* <Grid item xs={12}>
-                                    <ToggleButtonGroup
-                                        value={formData.type}
-                                        exclusive
-                                        onChange={(_, newType) => newType && setFormData({ ...formData, type: newType })}
-                                        fullWidth
-                                        sx={{ bgcolor: alpha(theme.palette.divider, 0.2), p: 0.5, borderRadius: 4 }}
-                                    >
-                                        <ToggleButton value="purchase_order" sx={{ borderRadius: 3 }}>🛒 Inventory PO</ToggleButton>
-                                        // <ToggleButton value="expense" sx={{ borderRadius: 3 }}>💸 Generic Expense</ToggleButton>
-                                    </ToggleButtonGroup>
-                                </Grid> */}
+                            <Grid container spacing={isMobile ? 1.5 : 3}>
                                 <Grid item xs={12}>
                                     <TextField
                                         select
                                         fullWidth
+                                        size={isMobile ? "small" : "medium"}
                                         label="Primary Category"
                                         value={formData.category}
                                         onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                                        SelectProps={{ MenuProps: { PaperProps: { sx: { borderRadius: 3 } } } }}
-                                    >
-                                        <MenuItem value="raw_materials">🥩 Raw Materials</MenuItem>
-                                        <MenuItem value="salaries">👥 Salaries / Labor</MenuItem>
-                                        <MenuItem value="rent">🏠 Rent / Property</MenuItem>
-                                        <MenuItem value="utilities">⚡ Utilities (Eng/Water)</MenuItem>
-                                        <MenuItem value="maintenance">🔧 Maintenance</MenuItem>
-                                        <MenuItem value="supplies">🧼 Supplies</MenuItem>
-                                        <MenuItem value="other">❓ Other</MenuItem>
-                                    </TextField>
-                                </Grid>
-                                <Grid item xs={12} sm={6}>
-                                    {/* <TextField
-                                        fullWidth
-                                        label="External Reference #"
-                                        placeholder="Invoice or Bill number"
-                                        value={formData.referenceNumber}
-                                        onChange={(e) => setFormData({ ...formData, referenceNumber: e.target.value })}
-                                    /> */}
+                                        SelectProps={{ 
+                                            MenuProps: { PaperProps: { sx: { borderRadius: 3 } } },
+                                            sx: { fontSize: isMobile ? '0.875rem' : '1rem' }
+                                        }}
+                                    />
                                 </Grid>
                             </Grid>
                         </Paper>
 
                         {/* 2. Specialized Entity Selection */}
-                        <Paper sx={{ p: 4, borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+                        <Paper sx={{ 
+                            p: { xs: 2.5, md: 4 }, 
+                            borderRadius: { xs: 4, md: 5 }, 
+                            boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+                            maxWidth: { xs: 500, md: 'none' },
+                            mx: { xs: 'auto', md: 0 },
+                            width: '100%'
+                        }}>
                             <SectionHeader
                                 icon={<VendorIcon />}
-                                title={isSalary ? 'Employee Information' : isUtility ? 'Service Provider' : 'Vendor / Payee Details'}
+                                title={isSalary ? 'Staff' : isUtility ? 'Provider' : 'Vendor Details'}
                             />
-                            <Grid container spacing={3}>
+                            <Grid container spacing={isMobile ? 1.5 : 3}>
                                 {isSalary ? (
                                     <Grid item xs={12} sm={6}>
                                         <FormControl fullWidth>
                                             <Autocomplete
                                                 options={users}
+                                                size={isMobile ? "small" : "medium"}
                                                 getOptionLabel={(option) => `${option.firstName} ${option.lastName} (${option.roles?.[0]})`}
                                                 onChange={(_, newValue) => {
                                                     if (newValue) {
@@ -754,15 +757,16 @@ const CreatePOPage: React.FC = () => {
                                                         }));
                                                     }
                                                 }}
-                                                renderInput={(params) => <TextField {...params} label="Select Staff Member *" />}
+                                                renderInput={(params) => <TextField {...params} label="Select Staff Member *" sx={{ '& .MuiInputLabel-root': { fontSize: isMobile ? '0.8rem' : '1rem' } }} />}
                                             />
                                         </FormControl>
                                     </Grid>
                                 ) : (
                                     <Grid item xs={12} sm={6}>
-                                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'flex-start' }}>
+                                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                                             <Autocomplete
                                                 options={vendors}
+                                                size={isMobile ? "small" : "medium"}
                                                 value={selectedVendor}
                                                 getOptionLabel={(option) => typeof option === 'string' ? option : (option.name || '')}
                                                 onChange={(_, newValue) => {
@@ -784,9 +788,9 @@ const CreatePOPage: React.FC = () => {
                                                 freeSolo
                                                 sx={{ flex: 1 }}
                                                 renderOption={(props, option) => (
-                                                    <Box component="li" {...props}>
+                                                    <Box component="li" {...props} sx={{ fontSize: '0.875rem' }}>
                                                         <Box>
-                                                            <Typography fontWeight="medium">{option.name}</Typography>
+                                                            <Typography fontWeight="bold" variant="body2">{option.name}</Typography>
                                                             {option.contact && (
                                                                 <Typography variant="caption" color="text.secondary">
                                                                     {option.contact} {option.email && `• ${option.email}`}
@@ -798,63 +802,52 @@ const CreatePOPage: React.FC = () => {
                                                 renderInput={(params) => (
                                                     <TextField
                                                         {...params}
-                                                        label={<span>{isUtility ? "Select Provider" : "Select Vendor"} <span style={{ color: 'red' }}>*</span></span>}
+                                                        label={isUtility ? "Provider *" : "Vendor *"}
                                                         error={!!errors.name}
+                                                        sx={{ '& .MuiInputLabel-root': { fontSize: isMobile ? '0.8rem' : '1rem' } }}
                                                     />
                                                 )}
                                                 noOptionsText={
                                                     formData.vendor.name ? (
                                                         <Box sx={{ textAlign: 'center', py: 1 }}>
-                                                            <Typography variant="body2" color="text.secondary" gutterBottom>
+                                                            <Typography variant="caption" color="text.secondary" gutterBottom sx={{ display: 'block' }}>
                                                                 "{formData.vendor.name}" not found
                                                             </Typography>
                                                             <Button
                                                                 size="small"
                                                                 variant="contained"
-                                                                startIcon={<AddIcon />}
+                                                                startIcon={<AddIcon sx={{ fontSize: 14 }} />}
                                                                 onClick={handleCreateVendor}
                                                                 sx={{
                                                                     textTransform: 'none',
-                                                                    borderRadius: 2,
+                                                                    borderRadius: 1.5,
+                                                                    fontSize: '0.7rem',
                                                                     background: 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)',
                                                                 }}
                                                             >
-                                                                Create "{formData.vendor.name}"
+                                                                Create
                                                             </Button>
                                                         </Box>
                                                     ) : (
-                                                        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 1 }}>
-                                                            Type a vendor name...
+                                                        <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center', display: 'block', py: 1 }}>
+                                                            Type to search...
                                                         </Typography>
                                                     )
                                                 }
                                             />
                                             {formData.vendor.name && !selectedVendor && (
-                                                <Tooltip title={`Create "${formData.vendor.name}" as a new vendor`}>
-                                                    <Button
-                                                        variant="contained"
-                                                        onClick={(e) => {
-                                                            e.preventDefault();
-                                                            e.stopPropagation();
-                                                            handleCreateVendor();
-                                                        }}
-                                                        sx={{
-                                                            minWidth: 'auto',
-                                                            px: 2,
-                                                            py: 1.8,
-                                                            borderRadius: 2,
-                                                            textTransform: 'none',
-                                                            fontWeight: 'bold',
-                                                            fontSize: '0.85rem',
-                                                            background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
-                                                            '&:hover': { background: 'linear-gradient(135deg, #D97706 0%, #B45309 100%)' },
-                                                            boxShadow: '0 4px 10px rgba(245,158,11,0.3)',
-                                                            whiteSpace: 'nowrap'
-                                                        }}
-                                                    >
-                                                        + Create New
-                                                    </Button>
-                                                </Tooltip>
+                                                <IconButton 
+                                                    onClick={handleCreateVendor}
+                                                    size="small"
+                                                    sx={{ 
+                                                        bgcolor: alpha(theme.palette.warning.main, 0.1), 
+                                                        color: theme.palette.warning.dark,
+                                                        borderRadius: 1.5,
+                                                        p: 1
+                                                    }}
+                                                >
+                                                    <AddIcon fontSize="small" />
+                                                </IconButton>
                                             )}
                                         </Box>
                                     </Grid>
@@ -865,10 +858,12 @@ const CreatePOPage: React.FC = () => {
                                         <TextField
                                             fullWidth
                                             type="month"
+                                            size={isMobile ? "small" : "medium"}
                                             label="Salary Month"
                                             value={formData.metadata.payMonth || ''}
                                             onChange={(e) => handleMetadataChange('payMonth', e.target.value)}
-                                            InputLabelProps={{ shrink: true }}
+                                            InputLabelProps={{ shrink: true, sx: { fontSize: isMobile ? '0.8rem' : '1rem' } }}
+                                            sx={{ '& .MuiInputBase-input': { fontSize: isMobile ? '0.875rem' : '1rem' } }}
                                         />
                                     </Grid>
                                 )}
@@ -877,340 +872,348 @@ const CreatePOPage: React.FC = () => {
                                     <Grid item xs={12} sm={6}>
                                         <TextField
                                             fullWidth
-                                            label="Meter Reading (Optional)"
+                                            size={isMobile ? "small" : "medium"}
+                                            label="Meter Reading"
                                             value={formData.metadata.meterReading || ''}
                                             onChange={(e) => handleMetadataChange('meterReading', e.target.value)}
+                                            sx={{ '& .MuiInputLabel-root': { fontSize: isMobile ? '0.8rem' : '1rem' } }}
                                         />
                                     </Grid>
                                 )}
 
                                 {!isSalary && (
                                     <>
-                                        <Grid item xs={12} sm={4}>
+                                        <Grid item xs={isMobile ? 6 : 4} sm={4}>
                                             <TextField
                                                 fullWidth
+                                                size={isMobile ? "small" : "medium"}
                                                 label="Contact"
                                                 value={formData.vendor.contact}
                                                 onChange={(e) => handleVendorChange('contact', e.target.value)}
+                                                sx={{ '& .MuiInputLabel-root': { fontSize: isMobile ? '0.8rem' : '1rem' } }}
                                             />
                                         </Grid>
-                                        <Grid item xs={12} sm={4}>
+                                        <Grid item xs={isMobile ? 6 : 4} sm={4}>
                                             <TextField
                                                 fullWidth
-                                                label="Email"
-                                                value={formData.vendor.email}
-                                                onChange={(e) => handleVendorChange('email', e.target.value)}
-                                            />
-                                        </Grid>
-                                        <Grid item xs={12} sm={4}>
-                                            <TextField
-                                                fullWidth
-                                                label="Invoice / Reference #"
+                                                size={isMobile ? "small" : "medium"}
+                                                label="Invoice #"
                                                 value={formData.referenceNumber}
                                                 onChange={(e) => setFormData({ ...formData, referenceNumber: e.target.value })}
                                                 placeholder="INV-001"
+                                                sx={{ '& .MuiInputLabel-root': { fontSize: isMobile ? '0.8rem' : '1rem' } }}
                                             />
                                         </Grid>
-                                        <Grid item xs={12}>
+                                        <Grid item xs={12} sm={4}>
                                             <TextField
                                                 fullWidth
-                                                label="Address / Branch"
-                                                multiline rows={1}
-                                                value={formData.vendor.address}
-                                                onChange={(e) => handleVendorChange('address', e.target.value)}
+                                                size={isMobile ? "small" : "medium"}
+                                                label="Email"
+                                                value={formData.vendor.email}
+                                                onChange={(e) => handleVendorChange('email', e.target.value)}
+                                                sx={{ 
+                                                    display: { xs: isMobile ? 'none' : 'block', sm: 'block' },
+                                                    '& .MuiInputLabel-root': { fontSize: isMobile ? '0.8rem' : '1rem' } 
+                                                }}
                                             />
+                                            {isMobile && (
+                                                 <TextField
+                                                 fullWidth
+                                                 size="small"
+                                                 label="Address"
+                                                 value={formData.vendor.address}
+                                                 onChange={(e) => handleVendorChange('address', e.target.value)}
+                                                 sx={{ '& .MuiInputLabel-root': { fontSize: '0.8rem' } }}
+                                             />
+                                            )}
                                         </Grid>
+                                        {!isMobile && (
+                                            <Grid item xs={12}>
+                                                <TextField
+                                                    fullWidth
+                                                    label="Address / Branch"
+                                                    multiline rows={1}
+                                                    value={formData.vendor.address}
+                                                    onChange={(e) => handleVendorChange('address', e.target.value)}
+                                                />
+                                            </Grid>
+                                        )}
                                     </>
                                 )}
                             </Grid>
-                        </Paper>
-
-                        {/* 3. Dynamic Items Table */}
-                        <Paper sx={{ p: 4, borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, gap: 2 }}>
+                        </Paper>                        {/* 3. Dynamic Items Table */}
+                        <Paper sx={{ 
+                            p: { xs: 2, md: 4 }, 
+                            borderRadius: { xs: 4, md: 5 }, 
+                            boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+                            maxWidth: { xs: 500, md: 'none' },
+                            mx: { xs: 'auto', md: 0 },
+                            width: '100%'
+                        }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: isMobile ? 1.5 : 3, gap: 1 }}>
                                 <SectionHeader
                                     icon={<ItemsIcon />}
-                                    title={isSalary ? 'Salary Breakdown' : isUtility ? 'Bill Units' : 'Order Items'}
+                                    title={isSalary ? 'Pay' : 'Items'}
                                     sx={{ mb: 0, width: 'auto' }}
                                 />
                                 <Box sx={{ display: 'flex', gap: 1 }}>
                                     {isInventory && formData.items.some(i => i.inventoryItem && i.inventoryItem !== 'verified') && (
                                         <Button
-                                            startIcon={<RestockIcon />}
+                                            size="small"
+                                            startIcon={<RestockIcon sx={{ fontSize: 16 }} />}
                                             onClick={handleRestockAll}
                                             variant="contained"
                                             sx={{
-                                                borderRadius: 2,
+                                                borderRadius: 1.5,
                                                 whiteSpace: 'nowrap',
                                                 textTransform: 'none',
+                                                fontSize: '0.7rem',
+                                                px: 1,
                                                 background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-                                                boxShadow: '0 4px 14px 0 rgba(16,185,129,0.39)',
-                                                '&:hover': { background: 'linear-gradient(135deg, #059669 0%, #047857 100%)' }
                                             }}
                                         >
-                                            Restock All Verified
+                                            Restock
                                         </Button>
                                     )}
                                     <Button
-                                        startIcon={<AddIcon />}
+                                        size="small"
+                                        startIcon={<AddIcon sx={{ fontSize: 16 }} />}
                                         onClick={addItem}
                                         variant="outlined"
                                         sx={{
-                                            borderRadius: 2,
+                                            borderRadius: 1.5,
                                             width: 'auto',
-                                            whiteSpace: 'nowrap'
+                                            whiteSpace: 'nowrap',
+                                            fontSize: '0.7rem',
+                                            px: 1
                                         }}
                                     >
-                                        Add Row
+                                        Add
                                     </Button>
                                 </Box>
                             </Box>
 
                             <TableContainer sx={{
-    overflowX: 'auto',
-    maxHeight: { xs: 'none', sm: 500 },
-    '&::-webkit-scrollbar': { width: '8px', height: '8px' },
-    '&::-webkit-scrollbar-track': { bgcolor: alpha(theme.palette.divider, 0.1), borderRadius: '4px' },
-    '&::-webkit-scrollbar-thumb': {
-        bgcolor: alpha(theme.palette.primary.main, 0.2),
-        borderRadius: '4px',
-        '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.4) }
-    }
-}}>
-    {/* MOBILE CARD VIEW */}
-    {isMobile ? (
-        formData.items.length === 0 ? (
-            <Box sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
-                <Typography variant="body2">No items available</Typography>
-            </Box>
-        ) : (
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, p: 1 }}>
-                {formData.items.map((item, index) => (
-                    <Box key={index} sx={{
-                        border: `1px solid ${alpha(theme.palette.divider, 0.3)}`,
-                        borderRadius: 2,
-                        p: 2,
-                        bgcolor: alpha(theme.palette.background.paper, 0.8),
-                        boxShadow: `0 1px 4px ${alpha(theme.palette.common.black, 0.06)}`
-                    }}>
-                        {/* Description / Pay Component */}
-                        <Box sx={{ mb: 1.5 }}>
-                            <Typography variant="caption" color="text.secondary" fontWeight="bold">
-                                {isSalary ? 'PAY COMPONENT' : isInventory ? 'INVENTORY ITEM' : 'DESCRIPTION'}
-                            </Typography>
-                            <Box sx={{ mt: 0.5 }}>
-                                {isInventory ? (
-                                    <Autocomplete
-                                        options={inventoryItems}
-                                        getOptionLabel={(o) => o.name || o}
-                                        value={item.description}
-                                        onInputChange={(_, val) => handleItemChange(index, 'description', val)}
-                                        onChange={(_, val: any) => val && handleItemChange(index, 'inventoryItem', val._id)}
-                                        renderInput={(p) => <TextField {...p} size="small" fullWidth placeholder="Find material..." />}
-                                    />
-                                ) : isSalary ? (
-                                    <TextField
-                                        select fullWidth size="small"
-                                        value={item.description}
-                                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                                    >
-                                        <MenuItem value="Basic Salary">Basic Salary</MenuItem>
-                                    </TextField>
-                                ) : (
-                                    <TextField
-                                        fullWidth size="small" placeholder="Line detail..."
-                                        value={item.description}
-                                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                                    />
-                                )}
-                            </Box>
-                        </Box>
-
-                        {/* QTY / Amount row */}
-                        <Box sx={{ display: 'flex', gap: 1.5, mb: 1.5, flexWrap: 'wrap' }}>
-                            <Box sx={{ flex: 1, minWidth: 80 }}>
-                                <Typography variant="caption" color="text.secondary" fontWeight="bold">
-                                    {isSalary ? 'AMOUNT' : 'QTY'}
-                                </Typography>
-                                <TextField
-                                    type="number" size="small" fullWidth sx={{ mt: 0.5 }}
-                                    value={isSalary ? item.unitPrice : item.quantity}
-                                    onChange={(e) => {
-                                        const val = parseFloat(e.target.value);
-                                        handleItemChange(index, isSalary ? 'unitPrice' : 'quantity', val >= 0 ? val : 0);
-                                    }}
-                                    InputProps={{ inputProps: { min: 0 } }}
-                                />
-                            </Box>
-
-                            {!isSalary && (
-                                <Box sx={{ flex: 1, minWidth: 140 }}>
-                                    <Typography variant="caption" color="text.secondary" fontWeight="bold">WEIGHT</Typography>
-                                    <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center', mt: 0.5 }}>
-                                        <TextField
-                                            type="number"
-                                            value={item.weightValue || ''}
-                                            onChange={(e) => handleItemChange(index, 'weightValue', e.target.value)}
-                                            size="small" placeholder="0"
-                                            sx={{ width: 65 }}
-                                            InputProps={{ inputProps: { min: 0, step: 0.1 } }}
-                                        />
-                                        <TextField
-                                            select
-                                            value={item.weightUnit || 'lb'}
-                                            onChange={(e) => handleItemChange(index, 'weightUnit', e.target.value)}
-                                            size="small" sx={{ width: 75 }}
-                                        >
-                                            <MenuItem value="lb">lb</MenuItem>
-                                            <MenuItem value="kg">kg</MenuItem>
-                                            <MenuItem value="oz">oz</MenuItem>
-                                            <MenuItem value="g">g</MenuItem>
-                                            <MenuItem value="l">L</MenuItem>
-                                            <MenuItem value="ml">mL</MenuItem>
-                                            <MenuItem value="pieces">pcs</MenuItem>
-                                            <MenuItem value="boxes">box</MenuItem>
-                                            <MenuItem value="each">ea</MenuItem>
-                                        </TextField>
-                                    </Box>
-                                </Box>
-                            )}
-
-                            {!isSalary && (
-                                <Box sx={{ flex: 1, minWidth: 100 }}>
-                                    <Typography variant="caption" color="text.secondary" fontWeight="bold">PRICE</Typography>
-                                    <TextField
-                                        type="number" size="small" fullWidth sx={{ mt: 0.5 }}
-                                        value={item.unitPrice}
-                                        onChange={(e) => {
-                                            const val = parseFloat(e.target.value);
-                                            handleItemChange(index, 'unitPrice', val >= 0 ? val : 0);
-                                        }}
-                                        InputProps={{
-                                            startAdornment: <InputAdornment position="start">$</InputAdornment>,
-                                            inputProps: { min: 0 }
-                                        }}
-                                    />
-                                </Box>
-                            )}
-                        </Box>
-
-                        {/* Footer: Total + Status + Delete */}
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
-                            <Box>
-                                <Typography variant="caption" color="text.secondary" fontWeight="bold">
-                                    {isSalary ? 'TOTAL' : 'SUM'}
-                                </Typography>
-                                <Typography fontWeight="900" fontSize="1rem">
-                                    ${(isSalary ? item.unitPrice : item.total || 0).toFixed(2)}
-                                </Typography>
-                            </Box>
-
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                {isInventory && (
-                                    item.inventoryItem ? (
-                                        <Chip
-                                            icon={<CheckCircleIcon />}
-                                            label="Exists"
-                                            size="small"
-                                            color="success"
-                                            variant="outlined"
-                                            sx={{ fontWeight: 'bold', borderRadius: 2 }}
-                                        />
-                                    ) : item.description ? (
-                                        <Tooltip title={`Create "${item.description}" in inventory`}>
-                                            <Button
-                                                size="small" variant="contained"
-                                                startIcon={<AddCircleIcon />}
-                                                onClick={() => handleCreateInventoryItem(index)}
-                                                sx={{
-                                                    borderRadius: 2, textTransform: 'none',
-                                                    fontSize: '0.7rem', py: 0.5, px: 1,
-                                                    background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
-                                                    '&:hover': { background: 'linear-gradient(135deg, #D97706 0%, #B45309 100%)' }
-                                                }}
-                                            >
-                                                Add to Inventory
-                                            </Button>
-                                        </Tooltip>
+                                overflowX: 'auto',
+                                maxHeight: { xs: 'none', sm: 500 },
+                                '&::-webkit-scrollbar': { width: '8px', height: '8px' },
+                            }}>
+                                {/* MOBILE CARD VIEW */}
+                                {isMobile ? (
+                                    formData.items.length === 0 ? (
+                                        <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
+                                            <Typography variant="caption">No items available</Typography>
+                                        </Box>
                                     ) : (
-                                        <Typography variant="caption" color="text.secondary">—</Typography>
-                                    )
-                                )}
+                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                                            {formData.items.map((item, index) => (
+                                                <Box key={index} sx={{
+                                                    width: '100%',
+                                                    maxWidth: 500,
+                                                    mx: 'auto',
+                                                    border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                                                    borderRadius: 2,
+                                                    p: 1.5,
+                                                    bgcolor: alpha(theme.palette.background.default, 0.3),
+                                                }}>
+                                                    {/* Description / Pay Component */}
+                                                    <Box sx={{ mb: 1 }}>
+                                                        {isInventory ? (
+                                                            <Autocomplete
+                                                                options={inventoryItems}
+                                                                size="small"
+                                                                freeSolo
+                                                                getOptionLabel={(o) => typeof o === 'string' ? o : (o.name || '')}
+                                                                value={item.description}
+                                                                onInputChange={(_, val) => handleItemChange(index, 'description', val)}
+                                                                onChange={(_, val: any) => {
+                                                                    if (val && typeof val !== 'string') {
+                                                                        handleItemChange(index, 'inventoryItem', val._id);
+                                                                    }
+                                                                }}
+                                                                renderInput={(p) => <TextField {...p} fullWidth placeholder="Search material..." sx={{ '& .MuiInputBase-input': { fontSize: '0.875rem' } }} />}
+                                                            />
+                                                        ) : (
+                                                            <TextField
+                                                                fullWidth size="small" placeholder="Item description..."
+                                                                value={item.description}
+                                                                onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                                                                sx={{ '& .MuiInputBase-input': { fontSize: '0.875rem' } }}
+                                                            />
+                                                        )}
+                                                    </Box>
 
-                                <IconButton
-                                    size="small" color="error"
-                                    onClick={() => removeItem(index)}
-                                    disabled={formData.items.length === 1}
-                                    sx={{ bgcolor: alpha(theme.palette.error.main, 0.05), '&:hover': { bgcolor: alpha(theme.palette.error.main, 0.1) } }}
-                                >
-                                    <DeleteIcon fontSize="small" />
-                                </IconButton>
-                            </Box>
-                        </Box>
-                    </Box>
-                ))}
-            </Box>
-        )
-    ) : (
-        /* DESKTOP/TABLET TABLE VIEW — your original table, unchanged */
-        formData.items.length === 0 ? (
-            <Box sx={{ textAlign: 'center', py: 6, color: 'text.secondary' }}>
-                <Typography variant="body2">No items available</Typography>
-            </Box>
-        ) : (
-            <Table sx={{ minWidth: { xs: 700, sm: 800 } }}>
-                {/* ...your entire original TableHead + TableBody here, untouched... */}
-            </Table>
-        )
-    )}
-</TableContainer>
+                                                    {/* QTY / Amount row */}
+                                                    <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+                                                        <TextField
+                                                            type="number" size="small" label={isSalary ? "Amount" : "Qty"}
+                                                            value={isSalary ? item.unitPrice : item.quantity}
+                                                            onChange={(e) => {
+                                                                const val = parseFloat(e.target.value);
+                                                                handleItemChange(index, isSalary ? 'unitPrice' : 'quantity', val >= 0 ? val : 0);
+                                                            }}
+                                                            sx={{ flex: 1, '& .MuiInputLabel-root': { fontSize: '0.75rem' } }}
+                                                        />
+
+                                                        {!isSalary && (
+                                                            <TextField
+                                                                type="number" size="small" label="Price"
+                                                                value={item.unitPrice}
+                                                                onChange={(e) => {
+                                                                    const val = parseFloat(e.target.value);
+                                                                    handleItemChange(index, 'unitPrice', val >= 0 ? val : 0);
+                                                                }}
+                                                                sx={{ flex: 1, '& .MuiInputLabel-root': { fontSize: '0.75rem' } }}
+                                                                InputProps={{ startAdornment: <InputAdornment position="start" sx={{ '& p': { fontSize: '0.75rem' } }}>$</InputAdornment> }}
+                                                            />
+                                                        )}
+                                                    </Box>
+
+                                                    {/* Footer: Sum + Status + Delete */}
+                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                            <Typography variant="caption" fontWeight={900} sx={{ color: 'primary.main', fontSize: '0.9rem' }}>
+                                                                ${(isSalary ? item.unitPrice : item.total || 0).toFixed(2)}
+                                                            </Typography>
+                                                            {isInventory && item.inventoryItem && (
+                                                                <Chip label="MATCHED" size="small" color="success" variant="outlined" sx={{ fontSize: '0.6rem', height: 16, fontWeight: 800 }} />
+                                                            )}
+                                                            {isInventory && !item.inventoryItem && item.description && (
+                                                                <Button 
+                                                                    size="small" 
+                                                                    onClick={() => handleCreateInventoryItem(index)}
+                                                                    sx={{ fontSize: '0.6rem', height: 20, p: 0, textTransform: 'none', minWidth: 'auto', color: 'orange' }}
+                                                                >
+                                                                    + INVENTORY
+                                                                </Button>
+                                                            )}
+                                                        </Box>
+
+                                                        <IconButton
+                                                            size="small" color="error"
+                                                            onClick={() => removeItem(index)}
+                                                            disabled={formData.items.length === 1}
+                                                            sx={{ p: 0.5 }}
+                                                        >
+                                                            <DeleteIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Box>
+                                                </Box>
+                                            ))}
+                                        </Box>
+                                    )
+                                ) : (
+                                    /* DESKTOP TABLE VIEW - Simplified for better grep matching */
+                                    <Box>
+                                        <Table sx={{ minWidth: 800 }}>
+                                            <TableHead>
+                                                <TableRow>
+                                                    <TableCell sx={{ fontWeight: 'bold' }}>{isSalary ? 'Pay Component' : isInventory ? 'Inventory Item' : 'Description'}</TableCell>
+                                                    {!isSalary && <TableCell align="right" sx={{ fontWeight: 'bold' }}>Quantity</TableCell>}
+                                                    {!isSalary && <TableCell align="right" sx={{ fontWeight: 'bold' }}>Unit Price</TableCell>}
+                                                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>{isSalary ? 'Amount' : 'Total'}</TableCell>
+                                                    {!isSalary && <TableCell width={50}></TableCell>}
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {formData.items.map((item, index) => (
+                                                    <TableRow key={index}>
+                                                        <TableCell>
+                                                            {isInventory ? (
+                                                                <Autocomplete
+                                                                    options={inventoryItems}
+                                                                    size="small"
+                                                                    freeSolo
+                                                                    getOptionLabel={(o) => typeof o === 'string' ? o : (o.name || '')}
+                                                                    value={item.description}
+                                                                    onInputChange={(_, val) => handleItemChange(index, 'description', val)}
+                                                                    onChange={(_, val: any) => {
+                                                                        if (val && typeof val !== 'string') {
+                                                                            handleItemChange(index, 'inventoryItem', val._id);
+                                                                        }
+                                                                    }}
+                                                                    renderInput={(p) => <TextField {...p} size="small" fullWidth placeholder="Search..." />}
+                                                                />
+                                                            ) : (
+                                                                <TextField fullWidth size="small" value={item.description} onChange={(e) => handleItemChange(index, 'description', e.target.value)} />
+                                                            )}
+                                                        </TableCell>
+                                                        {!isSalary && (
+                                                            <TableCell align="right">
+                                                                <TextField type="number" size="small" value={item.quantity} onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value))} />
+                                                            </TableCell>
+                                                        )}
+                                                        {!isSalary && (
+                                                            <TableCell align="right">
+                                                                <TextField type="number" size="small" value={item.unitPrice} onChange={(e) => handleItemChange(index, 'unitPrice', parseFloat(e.target.value))} />
+                                                            </TableCell>
+                                                        )}
+                                                        <TableCell align="right">${(isSalary ? item.unitPrice : item.total || 0).toFixed(2)}</TableCell>
+                                                        {!isSalary && (
+                                                            <TableCell>
+                                                                <IconButton onClick={() => removeItem(index)} disabled={formData.items.length === 1} size="small" color="error"><DeleteIcon /></IconButton>
+                                                            </TableCell>
+                                                        )}
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </Box>
+                                )}
+                            </TableContainer>
                         </Paper>
 
                         {/* 4. Financial Summary + Settlement */}
-                        <Grid container spacing={{ xs: 2, md: 4 }}>
-                            <Grid item xs={12} md={8}>
-                                <Paper sx={{ p: 4, borderRadius: 5, bgcolor: '#111827', color: 'white', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', height: '100%' }}>
-                                    <Typography variant="h5" fontWeight="900" gutterBottom>Financial Goal</Typography>
-                                    <Divider sx={{ my: 2, bgcolor: alpha('#fff', 0.1) }} />
-                                    <Stack spacing={2}>
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <Typography color="rgba(255,255,255,0.6)">Payment</Typography>
-                                            <Chip label={formData.paymentMethod.toUpperCase()} size="small" sx={{ bgcolor: alpha('#fff', 0.1), color: 'white', fontWeight: 'bold' }} />
+                        <Grid container spacing={isMobile ? 0 : 4} justifyContent="center" sx={{ width: '100%', m: 0 }}>
+                            <Grid item xs={12} md={8} sx={{ display: 'flex', justifyContent: 'center' }}>
+                                <Paper sx={{ 
+                                    p: { xs: 2.5, md: 4 }, 
+                                    borderRadius: { xs: 4, md: 5 }, 
+                                    bgcolor: '#111827', 
+                                    color: 'white', 
+                                    boxShadow: '0 12px 40px rgba(0,0,0,0.15)', 
+                                    height: '100%',
+                                    maxWidth: { xs: 500, md: 'none' },
+                                    mx: { xs: 'auto', md: 0 },
+                                    width: '100%'
+                                }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                                        <Typography variant={isMobile ? "subtitle1" : "h5"} fontWeight={900}>Goal</Typography>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <Typography variant="caption" sx={{ opacity: 0.6 }}>Method:</Typography>
+                                            <Chip label={formData.paymentMethod.toUpperCase()} size="small" sx={{ bgcolor: alpha('#fff', 0.1), color: 'white', fontWeight: 800, fontSize: '0.65rem' }} />
                                         </Box>
+                                    </Box>
+                                    <Divider sx={{ mb: 2, bgcolor: alpha('#fff', 0.1) }} />
+                                    <Stack spacing={isMobile ? 1.5 : 2}>
                                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <Typography color="rgba(255,255,255,0.6)">Due Date</Typography>
+                                            <Typography variant="caption" sx={{ opacity: 0.6 }}>Estimated Delivery / Due</Typography>
                                             <TextField
                                                 type="date" size="small"
                                                 value={formData.dueDate}
                                                 onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
                                                 sx={{
-                                                    '& input': { color: 'white', py: 0.5, px: 1, fontSize: '0.875rem' },
-                                                    '& .MuiOutlinedInput-notchedOutline': { borderColor: alpha('#fff', 0.2) },
-                                                    '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: 'primary.main' },
+                                                    '& input': { color: 'white', py: 0.2, px: 1, fontSize: '0.8rem' },
+                                                    '& .MuiOutlinedInput-notchedOutline': { borderColor: alpha('#fff', 0.1) },
                                                     '& input::-webkit-calendar-picker-indicator': { filter: 'invert(1)', cursor: 'pointer' }
                                                 }}
                                             />
                                         </Box>
-                                        <Divider sx={{ bgcolor: alpha('#fff', 0.1) }} />
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <Typography color="rgba(255,255,255,0.6)">Amount</Typography>
-                                            <Typography variant="h6" fontWeight="bold">${calculateSubtotal().toFixed(2)}</Typography>
-                                        </Box>
-                                        <Box sx={{ p: 2, borderRadius: 3, bgcolor: alpha(theme.palette.primary.main, 0.15), border: '1px solid', borderColor: 'primary.main' }}>
-                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                                                <Typography variant="subtitle1" fontWeight="bold">Grand Net</Typography>
-                                                <Typography variant="h4" fontWeight="900" color="primary.main">
+                                        <Box sx={{ p: isMobile ? 1.5 : 2, borderRadius: isMobile ? 2 : 3, bgcolor: alpha(theme.palette.primary.main, 0.15), border: '1px solid', borderColor: alpha(theme.palette.primary.main, 0.3) }}>
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <Typography variant="body2" fontWeight="bold">Grand Net</Typography>
+                                                <Typography variant={isMobile ? "h5" : "h4"} fontWeight={900} color="primary.main">
                                                     ${calculateTotal().toFixed(2)}
                                                 </Typography>
                                             </Box>
                                         </Box>
                                     </Stack>
-                                    <Box sx={{ mt: 3 }}>
-                                        <Grid container spacing={2}>
+                                    <Box sx={{ mt: isMobile ? 2 : 3 }}>
+                                        <Grid container spacing={isMobile ? 1.5 : 2}>
                                             <Grid item xs={6}>
                                                 <Button fullWidth variant="outlined"
                                                     onClick={() => handleSubmit('draft')}
-                                                    sx={{ borderRadius: 3, py: 1.5, color: 'white', borderColor: 'rgba(255,255,255,0.2)', '&:hover': { borderColor: 'white', bgcolor: alpha('#fff', 0.05) } }}
+                                                    sx={{ borderRadius: 2, py: isMobile ? 1 : 1.5, color: 'white', fontSize: isMobile ? '0.8rem' : '1rem', borderColor: 'rgba(255,255,255,0.2)' }}
                                                 >
                                                     Draft
                                                 </Button>
@@ -1218,37 +1221,49 @@ const CreatePOPage: React.FC = () => {
                                             <Grid item xs={6}>
                                                 <Button fullWidth variant="contained"
                                                     onClick={() => handleSubmit('pending')}
-                                                    sx={{ borderRadius: 3, py: 1.5, fontWeight: 'bold', boxShadow: '0 4px 14px 0 rgba(0,118,255,0.39)' }}
+                                                    sx={{ borderRadius: 2, py: isMobile ? 1 : 1.5, fontWeight: 'bold', fontSize: isMobile ? '0.8rem' : '1rem' }}
                                                     disabled={loading}
                                                 >
-                                                    {loading ? <CircularProgress size={24} color="inherit" /> : 'Process'}
+                                                    {loading ? <CircularProgress size={20} color="inherit" /> : 'Process'}
                                                 </Button>
                                             </Grid>
                                         </Grid>
                                     </Box>
                                 </Paper>
                             </Grid>
-                            <Grid item xs={12} md={4}>
-                                <Paper sx={{ p: 4, borderRadius: 5, border: '1px solid', borderColor: 'divider', height: '100%' }}>
+                            <Grid item xs={12} md={4} sx={{ display: 'flex', justifyContent: 'center' }}>
+                                <Paper sx={{ 
+                                    p: { xs: 2.5, md: 4 }, 
+                                    borderRadius: { xs: 4, md: 5 }, 
+                                    border: '1px solid', 
+                                    borderColor: 'divider', 
+                                    height: '100%',
+                                    boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+                                    maxWidth: { xs: 500, md: 'none' },
+                                    mx: { xs: 'auto', md: 0 },
+                                    width: '100%'
+                                }}>
                                     <SectionHeader icon={<BankIcon />} title="Settlement" />
-                                    <Stack spacing={2.5}>
+                                    <Stack spacing={isMobile ? 1.5 : 2.5}>
                                         <TextField
                                             select fullWidth label="Payment Method" size="small"
                                             value={formData.paymentMethod}
                                             onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
+                                            SelectProps={{ sx: { fontSize: '0.875rem' } }}
                                         >
-                                            <MenuItem value="cash">💵 Cash</MenuItem>
-                                            <MenuItem value="bank_transfer">🏛️ Bank Transfer</MenuItem>
-                                            <MenuItem value="upi">📱 UPI / Online</MenuItem>
-                                            <MenuItem value="card">💳 Card</MenuItem>
+                                            <MenuItem value="cash" sx={{ fontSize: '0.875rem' }}>💵 Cash</MenuItem>
+                                            <MenuItem value="bank_transfer" sx={{ fontSize: '0.875rem' }}>🏛️ Bank Transfer</MenuItem>
+                                            <MenuItem value="upi" sx={{ fontSize: '0.875rem' }}>📱 UPI / Online</MenuItem>
+                                            <MenuItem value="card" sx={{ fontSize: '0.875rem' }}>💳 Card</MenuItem>
                                         </TextField>
                                         <TextField
-                                            select fullWidth label="Source" size="small"
+                                            select fullWidth label="Settlement Source" size="small"
                                             value={formData.paymentSource}
                                             onChange={(e) => setFormData({ ...formData, paymentSource: e.target.value })}
+                                            SelectProps={{ sx: { fontSize: '0.875rem' } }}
                                         >
-                                            <MenuItem value="bank_account">Bank Account</MenuItem>
-                                            <MenuItem value="petty_cash">Drawer (Petty Cash)</MenuItem>
+                                            <MenuItem value="bank_account" sx={{ fontSize: '0.875rem' }}>Bank Account</MenuItem>
+                                            <MenuItem value="petty_cash" sx={{ fontSize: '0.875rem' }}>Petty Cash</MenuItem>
                                         </TextField>
                                     </Stack>
                                 </Paper>
@@ -1256,33 +1271,35 @@ const CreatePOPage: React.FC = () => {
                         </Grid>
 
                         {/* 5. Evidence & Notes */}
-                        <Grid container spacing={{ xs: 2, md: 4 }}>
-                            <Grid item xs={12} sm={6}>
+                                                <Grid container spacing={isMobile ? 0 : 4} justifyContent="center" sx={{ width: '100%', m: 0 }}>
+
+                            <Grid item xs={12} sm={6} sx={{ display: 'flex', justifyContent: 'center' }}>
                                 <Paper sx={{
-                                    p: { xs: 3, md: 4 },
-                                    borderRadius: 5,
+                                    p: { xs: 2.5, md: 4 },
+                                    borderRadius: { xs: 4, md: 5 },
                                     height: '100%',
                                     boxShadow: '0 8px 32px rgba(0,0,0,0.05)',
                                     border: '1px solid',
-                                    borderColor: alpha(theme.palette.divider, 0.08),
+                                    borderColor: alpha(theme.palette.divider, 0.1),
                                     display: 'flex',
                                     flexDirection: 'column',
-                                    alignItems: { xs: 'center', md: 'flex-start' }
+                                    maxWidth: { xs: 500, md: 'none' },
+                                    mx: { xs: 'auto', md: 0 },
+                                    width: '100%'
                                 }}>
-                                    <SectionHeader icon={<AttachmentIcon />} title="Evidence / Bill Photos" centeredOnMobile />
+                                    <SectionHeader icon={<AttachmentIcon />} title="Photos" />
                                     <Stack
                                         direction="row"
                                         flexWrap="wrap"
-                                        gap={2}
-                                        mb={3}
-                                        sx={{ justifyContent: { xs: 'center', md: 'flex-start' } }}
+                                        gap={isMobile ? 1 : 2}
+                                        mb={isMobile ? 1.5 : 3}
                                     >
                                         {formData.attachments.map((att, idx) => (
-                                            <Card key={idx} sx={{ width: 80, height: 80, position: 'relative', borderRadius: 1, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
-                                                <CardMedia component="img" height="80" image={att.url} sx={{ objectFit: 'cover' }} />
+                                            <Card key={idx} sx={{ width: isMobile ? 60 : 80, height: isMobile ? 60 : 80, position: 'relative', borderRadius: 1.5, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
+                                                <CardMedia component="img" height={isMobile ? "60" : "80"} image={att.url} sx={{ objectFit: 'cover' }} />
                                                 <IconButton
                                                     size="small"
-                                                    sx={{ position: 'absolute', top: 2, right: 2, bgcolor: 'error.main', color: 'white', '&:hover': { bgcolor: 'error.dark' }, width: 16, height: 16 }}
+                                                    sx={{ position: 'absolute', top: 2, right: 2, bgcolor: alpha('red', 0.8), color: 'white', '&:hover': { bgcolor: 'red' }, width: 14, height: 14, p: 0 }}
                                                     onClick={() => removeAttachment(idx)}
                                                 >
                                                     <DeleteIcon sx={{ fontSize: 10 }} />
@@ -1292,9 +1309,9 @@ const CreatePOPage: React.FC = () => {
                                         <Button
                                             component="label"
                                             sx={{
-                                                width: { xs: 100, sm: 80 },
-                                                height: { xs: 100, sm: 80 },
-                                                borderRadius: 1,
+                                                width: isMobile ? 60 : 80,
+                                                height: isMobile ? 60 : 80,
+                                                borderRadius: 1.5,
                                                 border: '2px dashed',
                                                 borderColor: 'divider',
                                                 display: 'flex',
@@ -1309,11 +1326,11 @@ const CreatePOPage: React.FC = () => {
                                             disabled={uploading}
                                         >
                                             {uploading ? (
-                                                <CircularProgress size={24} />
+                                                <CircularProgress size={16} />
                                             ) : (
                                                 <>
-                                                    <UploadIcon sx={{ fontSize: { xs: 28, sm: 20 } }} />
-                                                    <Typography variant="caption" sx={{ mt: 0.5, fontWeight: 'bold', fontSize: { xs: '0.75rem', sm: '0.7rem' } }}>Add</Typography>
+                                                    <UploadIcon sx={{ fontSize: isMobile ? 20 : 24 }} />
+                                                    <Typography variant="caption" sx={{ mt: 0.2, fontWeight: 800, fontSize: '0.6rem' }}>ADD</Typography>
                                                 </>
                                             )}
                                             <input type="file" hidden accept="image/*" onChange={handleFileUpload} />
@@ -1322,39 +1339,38 @@ const CreatePOPage: React.FC = () => {
                                     <Typography
                                         variant="caption"
                                         color="text.secondary"
-                                        sx={{
-                                            display: 'block',
-                                            textAlign: { xs: 'center', md: 'left' }
-                                        }}
+                                        sx={{ opacity: 0.7, fontSize: '0.65rem' }}
                                     >
-                                        Upload photos of physical bills or delivery receipts for auditing.
+                                        Upload bills or receipts for auditing.
                                     </Typography>
                                 </Paper>
                             </Grid>
-                            <Grid item xs={12} sm={6}>
+                            <Grid item xs={12} sm={6} sx={{ display: 'flex', justifyContent: 'center' }}>
                                 <Paper sx={{
-                                    p: { xs: 3, md: 4 },
-                                    borderRadius: 5,
+                                    p: { xs: 2.5, md: 4 },
+                                    borderRadius: { xs: 4, md: 5 },
                                     height: '100%',
                                     boxShadow: '0 8px 32px rgba(0,0,0,0.05)',
                                     display: 'flex',
                                     flexDirection: 'column',
-                                    alignItems: { xs: 'center', md: 'flex-start' }
+                                    maxWidth: { xs: 500, md: 'none' },
+                                    mx: { xs: 'auto', md: 0 },
+                                    width: '100%'
                                 }}>
                                     <SectionHeader
                                         icon={<BackIcon sx={{ transform: 'rotate(-90deg)' }} />}
-                                        title="Reason / Notes"
-                                        centeredOnMobile
+                                        title="Notes"
                                     />
                                     <TextField
-                                        fullWidth multiline rows={3}
-                                        placeholder="Internal reasoning for this entry..."
+                                        fullWidth multiline rows={isMobile ? 2 : 3}
+                                        placeholder="Internal reasoning..."
                                         value={formData.notes}
                                         onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                                         variant="outlined"
                                         sx={{
                                             '& .MuiOutlinedInput-root': {
-                                                borderRadius: 1,
+                                                borderRadius: 1.5,
+                                                fontSize: '0.875rem',
                                                 bgcolor: alpha(theme.palette.divider, 0.04),
                                                 '& fieldset': { borderColor: alpha(theme.palette.divider, 0.1) }
                                             }

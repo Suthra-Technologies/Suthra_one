@@ -207,9 +207,44 @@ export const ordersAPI = {
   simulateUberEatsStatus: (orderId: string, status: string) => api.post(`/ubereats/simulate/${orderId}`, { status }),
 };
 
+// -------------------- Uber Direct API --------------------
+export const ubereatsAPI = {
+  // Deliveries
+  createDelivery: (payload: any) => api.post('/ubereats/deliveries', payload),
+  listDeliveries: (params?: any) => api.get('/ubereats/deliveries', { params }),
+  getDelivery: (deliveryId: string) => api.get(`/ubereats/deliveries/${deliveryId}`),
+  updateDelivery: (deliveryId: string, payload: any) => api.post(`/ubereats/deliveries/${deliveryId}`, payload),
+  cancelDelivery: (deliveryId: string, payload?: any) => api.post(`/ubereats/deliveries/${deliveryId}/cancel`, payload),
+  getProofOfDelivery: (deliveryId: string) => api.get(`/ubereats/deliveries/${deliveryId}/proof-of-delivery`),
+
+  // Quotes
+  createQuote: (payload: any) => api.post('/ubereats/quotes', payload),
+
+  // Stores
+  findStores: (latitude: number, longitude: number) => api.get('/ubereats/stores', { params: { latitude, longitude } }),
+
+  // Organizations
+  createOrganization: (payload: any) => api.post('/ubereats/organizations', payload),
+  getOrganization: (organizationId: string) => api.get(`/ubereats/organizations/${organizationId}`),
+  inviteMember: (organizationId: string, payload: any) => api.post(`/ubereats/organizations/${organizationId}/memberships/invite`, payload),
+
+  // Business Locations
+  getBusinessLocations: (organizationId: string) => api.get(`/ubereats/organizations/${organizationId}/business-locations`),
+  getBusinessLocation: (organizationId: string, businessLocationId: string) => api.get(`/ubereats/organizations/${organizationId}/business-locations/${businessLocationId}`),
+  updateBusinessLocation: (organizationId: string, businessLocationId: string, payload: any) => api.patch(`/ubereats/organizations/${organizationId}/business-locations/${businessLocationId}`, payload),
+
+  // Refunds
+  submitRefund: (payload: any) => api.post('/ubereats/refund', payload),
+
+  // Webhooks
+  listWebhooks: () => api.get('/ubereats/webhooks'),
+  registerWebhook: (url: string) => api.post('/ubereats/webhooks/register', { url }),
+  deleteWebhook: (webhookId: string) => api.delete(`/ubereats/webhooks/${webhookId}`),
+};
+
 // -------------------- Rewards API --------------------
 export const rewardsAPI = {
-  getCustomerInfo: (search: string) => api.get('/orders/rewards/customer-info', { params: { search } }),
+  getCustomerInfo: (params: { search?: string; email?: string; phone?: string }) => api.get('/orders/rewards/customer-info', { params }),
 };
 
 // -------------------- Attendance API --------------------
@@ -367,7 +402,7 @@ export const subscriptionAPI = {
 
 // -------------------- Coupons API --------------------
 export const couponsAPI = {
-  getAll: (params?: { page: number; limit: number }) => api.get('/coupons', { params }),
+  getAll: (params?: { page: number; limit: number; search?: string }) => api.get('/coupons', { params }),
   getActive: (orderType?: string, billAmount?: number) =>
     api.get('/coupons/active', { params: { orderType, billAmount } }),
   validate: (code: string, orderType: string, billAmount: number, customerId?: string) =>
@@ -449,6 +484,11 @@ export const superAPI = {
   createPlan: (data: any) => api.post('/superadmin/plans', data),
   updatePlan: (id: string, data: any) => api.patch(`/superadmin/plans/${id}`, data),
   deletePlan: (id: string) => api.delete(`/superadmin/plans/${id}`),
+
+  // Demo requests management
+  listDemoRequests: (params?: any) => api.get('/superadmin/demo-requests', { params }),
+  updateDemoRequest: (id: string, data: any) => api.patch(`/superadmin/demo-requests/${id}`, data),
+  deleteDemoRequest: (id: string) => api.delete(`/superadmin/demo-requests/${id}`),
 };
 
 export const superAdminAPI = superAPI; // alias for compatibility
@@ -598,6 +638,8 @@ export const wasteAPI = {
 // -------------------- Customers API --------------------
 export const customersAPI = {
   getAll: (params?: { page: number; limit: number; search?: string }) => api.get('/customers', { params }),
+  getRewardDetails: (id: string) => api.get(`/customers/${id}/rewards`),
+  adjustRewards: (id: string, points: number, reason: string) => api.put(`/customers/${id}/rewards/adjust`, { points, reason }),
 };
 
 // -------------------- Audit Logs API --------------------

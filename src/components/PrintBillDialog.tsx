@@ -479,7 +479,7 @@ const PrintBillDialog: React.FC<PrintBillDialogProps> = ({ open, order, onClose 
                                     {((billData.tax?.amount || 0) + (billData.processingFee || 0)) > 0 && (
                                         <TableRow>
                                             <TableCell colSpan={3} sx={{ borderBottom: 'none', py: 0.25 }}>
-                                                <Typography variant="body2">Tax ({billData.tax?.rate || 0}%) & Processing Fee:</Typography>
+                                                <Typography variant="body2">Tax & Processing Fee:</Typography>
                                             </TableCell>
                                             <TableCell align="right" sx={{ borderBottom: 'none', py: 0.25 }}>
                                                 <Typography variant="body2">{formatCurrency((billData.tax?.amount || 0) + (billData.processingFee || 0))}</Typography>

@@ -11,15 +11,24 @@ import {
   Divider,
   Paper,
   Switch,
-  FormControlLabel
+  FormControlLabel,
+  useTheme,
+  alpha,
+  Tooltip
 } from '@mui/material';
 import { 
   Delete, 
   AddPhotoAlternate, 
   Add, 
   ArrowUpward, 
-  ArrowDownward 
+  ArrowDownward,
+  CalendarMonth,
+  Celebration,
+  ShoppingBag as ShoppingBagIcon,
+  Star,
+  CelebrationOutlined,
 } from '@mui/icons-material';
+import { Select, MenuItem as MuiMenuItem, FormControl, InputLabel } from '@mui/material';
 import { EditorContent } from '@tiptap/react';
 
 export type SectionType = 
@@ -288,6 +297,7 @@ export const HospitalitySectionEditor: React.FC<SectionEditorProps> = ({ section
 };
 
 export const ServicesSectionEditor: React.FC<SectionEditorProps> = ({ section, onUpdate }) => {
+  const theme = useTheme();
   const data = section.data as ServicesSectionData;
 
   const updateItem = (idx: number, itemData: Partial<ServiceItem>) => {
@@ -311,15 +321,30 @@ export const ServicesSectionEditor: React.FC<SectionEditorProps> = ({ section, o
         {data.items.map((item, idx) => (
           <Paper key={idx} variant="outlined" sx={{ p: 2 }}>
             <Stack direction="row" spacing={2} alignItems="start">
-              <Box sx={{ width: 100 }}>
-                <TextField 
-                  label="Icon" 
-                  fullWidth 
-                  size="small" 
-                  value={item.icon} 
-                  onChange={(e) => updateItem(idx, { icon: e.target.value })}
-                  helperText="Lucide icon name"
-                />
+              <Box sx={{ width: { xs: 'auto', sm: 'auto' }, mb: { xs: 1, sm: 0 } }}>
+                <Tooltip title="Click to cycle icons">
+                  <IconButton
+                    size="large"
+                    onClick={() => {
+                      const options = ['CalendarRange', 'PartyPopper', 'ShoppingBag'];
+                      const currentIndex = options.indexOf(item.icon);
+                      const nextIndex = (currentIndex + 1) % options.length;
+                      updateItem(idx, { icon: options[nextIndex] });
+                    }}
+                    sx={{ 
+                      borderRadius: 3,
+                      bgcolor: alpha(theme.palette.primary.main, 0.08),
+                      color: 'primary.main',
+                      p: 2,
+                      '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.12) }
+                    }}
+                  >
+                    {item.icon === 'CalendarRange' && <CalendarMonth />}
+                    {item.icon === 'PartyPopper' && <Celebration />}
+                    {item.icon === 'ShoppingBag' && <ShoppingBagIcon />}
+                    {!['CalendarRange', 'PartyPopper', 'ShoppingBag'].includes(item.icon) && <Star />}
+                  </IconButton>
+                </Tooltip>
               </Box>
               <Stack spacing={1} flex={1}>
                 <TextField label="Title" fullWidth size="small" value={item.title} inputProps={{ maxLength: 25 }} helperText={`${(item.title || '').length}/25`} onChange={(e) => updateItem(idx, { title: e.target.value })} />
