@@ -12,7 +12,8 @@ import {
     WarningAmber as WarningIcon,
     Straighten as StraightenIcon,
     MenuBook as MenuBookIcon,
-    Today as TodayIcon
+    Today as TodayIcon,
+    Menu as MenuIcon
 } from '@mui/icons-material';
 import {
     Box,
@@ -47,6 +48,8 @@ import {
     alpha,
     InputAdornment,
     useTheme,
+    useMediaQuery,
+    Divider
 } from '@mui/material';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -65,6 +68,7 @@ import { useActiveTenant } from '../../hooks/useActiveTenant';
 
 const MenuPage: React.FC = () => {
     const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const navigate = useNavigate();
     const { formatCurrency } = useSettings();
     const { getRelativePath } = useActiveTenant();
@@ -802,24 +806,23 @@ const MenuPage: React.FC = () => {
     }, [menuItems, searchQuery, selectedCategory, selectedSubcategory, categories, subcategories]);
 
     return (
-        <Box sx={{ p: { xs: 2, md: 3 } }}>
+        <Box sx={{ p: { xs: 1.5, md: 3 }, pt: { xs: 1, md: 3 } }}>
             {/* Header */}
-            <Box sx={{
-                display: 'flex',
-                flexDirection: { xs: 'column', sm: 'row' },
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                mb: 3,
-                gap: 2
+            <Box sx={{ 
+                display: 'flex', 
+                flexDirection: { xs: 'column', sm: 'row' }, 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                mb: { xs: 1, sm: 4 }, 
+                gap: { xs: 1, sm: 2 },
+                px: { xs: 1, sm: 0 },
+                mt: { xs: 0.5, sm: 0 }
             }}>
-                <Typography
-                    variant="h4"
-                    sx={{
-                        fontWeight: 'bold',
-                        background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        fontSize: { xs: '1.75rem', sm: '2.125rem' },
+                <Typography 
+                    variant="h4" 
+                    sx={{ 
+                        fontWeight: 800,
+                        fontSize: { xs: '1.35rem', sm: '1.75rem', md: '2.125rem' },
                         textAlign: { xs: 'center', sm: 'left' },
                         width: { xs: '100%', sm: 'auto' }
                     }}
@@ -829,142 +832,123 @@ const MenuPage: React.FC = () => {
             </Box>
 
             {/* Tabs */}
-            <Paper sx={{ mb: 3 }}>
-                <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile>
-                    <Tab label="Menu Items" icon={<RestaurantIcon />} iconPosition="start" />
-                    <Tab label="Categories" icon={<CategoryIcon />} iconPosition="start" />
-                    <Tab label="Tray Management" icon={<StraightenIcon />} iconPosition="start" />
-                    <Tab label="Recipes" icon={<MenuBookIcon />} iconPosition="start" />
-                </Tabs>
-            </Paper>
+            <Tabs 
+                value={tabValue} 
+                onChange={(_, newValue) => setTabValue(newValue)} 
+                variant={isMobile ? "fullWidth" : "scrollable"} 
+                scrollButtons={false}
+                sx={{ 
+                    mb: { xs: 1, sm: 3 },
+                    borderBottom: 1, 
+                    borderColor: 'divider',
+                    '& .MuiTabs-indicator': { height: 3, borderRadius: '3px 3px 0 0' }
+                }}
+            >
+                <Tab label="Items" icon={<RestaurantIcon />} iconPosition="start" sx={{ fontWeight: 'bold', textTransform: 'none' }} />
+                <Tab label="Categories" icon={<CategoryIcon />} iconPosition="start" sx={{ fontWeight: 'bold', textTransform: 'none' }} />
+                <Tab label="Trays" icon={<StraightenIcon />} iconPosition="start" sx={{ fontWeight: 'bold', textTransform: 'none' }} />
+                <Tab label="Recipes" icon={<MenuBookIcon />} iconPosition="start" sx={{ fontWeight: 'bold', textTransform: 'none' }} />
+            </Tabs>
 
             {/* Menu Items Tab */}
             {tabValue === 0 && (
                 <Box>
                     {/* Actions Bar */}
-                    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', md: 'center' }, mb: 3, gap: 2 }}>
-                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
-                            <TextField
-                                placeholder="Search menu items by name..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 2 }}>
+                        <TextField
+                            placeholder="Search menu items..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            size="small"
+                            fullWidth
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', bgcolor: 'background.paper' } }}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <SearchIcon color="action" fontSize="small" />
+                                    </InputAdornment>
+                                ),
+                                endAdornment: searchQuery ? (
+                                    <InputAdornment position="end">
+                                        <IconButton size="small" onClick={() => setSearchQuery('')}>
+                                            <CloseIcon fontSize="small" />
+                                        </IconButton>
+                                    </InputAdornment>
+                                ) : null
+                            }}
+                        />
+                        
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                            <Chip
+                                label="All"
+                                onClick={() => setSelectedCategory('all')}
+                                color={selectedCategory === 'all' ? 'primary' : 'default'}
+                                variant={selectedCategory === 'all' ? 'filled' : 'outlined'}
                                 size="small"
-                                fullWidth
-                                sx={{ maxWidth: { xs: '100%', md: 520 } }}
-                                InputProps={{
-                                    startAdornment: (
-                                        <InputAdornment position="start">
-                                            <SearchIcon color="action" fontSize="small" />
-                                        </InputAdornment>
-                                    ),
-                                    endAdornment: (searchLoading || searchQuery) ? (
-                                        <InputAdornment position="end">
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                                {searchLoading && <CircularProgress size={16} thickness={5} />}
-                                                {searchQuery ? (
-                                                    <IconButton
-                                                        aria-label="Clear menu search"
-                                                        edge="end"
-                                                        size="small"
-                                                        onClick={() => setSearchQuery('')}
-                                                    >
-                                                        <CloseIcon fontSize="small" />
-                                                    </IconButton>
-                                                ) : null}
-                                            </Box>
-                                        </InputAdornment>
-                                    ) : undefined,
-                                }}
+                                sx={{ fontWeight: 600 }}
                             />
-                            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 1.5, alignItems: { xs: 'stretch', md: 'center' } }}>
-                                <FormControl size="small" sx={{ minWidth: 200, maxWidth: { xs: '100%', md: 250 } }}>
-                                    <InputLabel>Category</InputLabel>
-                                    <Select
-                                        value={selectedCategory}
-                                        onChange={(e) => {
-                                            setSelectedCategory(e.target.value);
-                                            setSelectedSubcategory('all');
-                                        }}
-                                        label="Category"
-                                    >
-                                        <MenuItem value="all">All Categories</MenuItem>
-                                        {categories.map(cat => (
-                                            <MenuItem key={cat._id} value={cat._id}>
-                                                {cat.name}
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
-
-                                {selectedCategory !== 'all' && subcategories.some((subcategory) => getSubcategoryParentId(subcategory) === selectedCategory) && (
-                                    <FormControl size="small" sx={{ minWidth: 180, maxWidth: { xs: '100%', md: 200 } }}>
-                                        <InputLabel>Subcategory</InputLabel>
-                                        <Select
-                                            value={selectedSubcategory}
-                                            onChange={(e) => setSelectedSubcategory(e.target.value)}
-                                            label="Subcategory"
-                                        >
-                                            <MenuItem value="all">All Subcategories</MenuItem>
-                                            {subcategories
-                                                .filter((subcategory) => getSubcategoryParentId(subcategory) === selectedCategory)
-                                                .map((subcategory) => (
-                                                    <MenuItem key={subcategory._id} value={subcategory._id}>
-                                                        {subcategory.name}
-                                                    </MenuItem>
-                                                ))}
-                                        </Select>
-                                    </FormControl>
-                                )}
-                            </Box>
-
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', flex: 1 }}>
+                            {categories.map(cat => (
                                 <Chip
-                                    label="All Categories"
-                                    onClick={() => {
-                                        setSelectedCategory('all');
-                                        setSelectedSubcategory('all');
-                                    }}
-                                    color={selectedCategory === 'all' ? 'primary' : 'default'}
-                                    variant={selectedCategory === 'all' ? 'filled' : 'outlined'}
+                                    key={cat._id}
+                                    label={cat.name}
+                                    onClick={() => setSelectedCategory(cat._id)}
+                                    color={selectedCategory === cat._id ? 'primary' : 'default'}
+                                    variant={selectedCategory === cat._id ? 'filled' : 'outlined'}
                                     size="small"
+                                    sx={{ fontWeight: 600 }}
                                 />
-                                {categories.map(cat => (
-                                    <Chip
-                                        key={cat._id}
-                                        label={cat.name}
-                                        onClick={() => setSelectedCategory(cat._id)}
-                                        color={selectedCategory === cat._id ? 'primary' : 'default'}
-                                        variant={selectedCategory === cat._id ? 'filled' : 'outlined'}
-                                        size="small"
-                                    />
-                                ))}
-                            </Box>
-
-                            <Typography variant="body2" color="text.secondary">
-                                Showing {filteredMenuItems.length} of {totalMenuCount} menu items
-                            </Typography>
+                            ))}
                         </Box>
-                        <Box sx={{ display: 'flex', gap: 2, width: { xs: '100%', md: 'auto' } }}>
-                            <Button
-                                variant="outlined"
-                                startIcon={<CloudUploadIcon />}
-                                onClick={() => setBulkDialogOpen(true)}
-                                fullWidth={false}
-                                sx={{ width: { xs: '100%', md: 'auto' } }}
-                            >
-                                Bulk Upload
-                            </Button>
-                            <Button
-                                variant="contained"
-                                startIcon={<AddIcon />}
-                                onClick={() => handleOpenMenuItemDialog()}
-                                fullWidth={false}
-                                sx={{ width: { xs: '100%', md: 'auto' } }}
-                            >
-                                Add Menu Item
-                            </Button>
+                        
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                                {filteredMenuItems.length} Items Found
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                                <IconButton 
+                                    size="small" 
+                                    color="primary" 
+                                    onClick={() => handleOpenMenuItemDialog()} 
+                                    sx={{ 
+                                        bgcolor: alpha(theme.palette.primary.main, 0.1),
+                                        p: isMobile ? 0.5 : 1
+                                    }}
+                                >
+                                    <AddIcon sx={{ fontSize: isMobile ? '1rem' : '1.25rem' }} />
+                                </IconButton>
+                                <Button
+                                    variant="outlined"
+                                    size={isMobile ? "small" : "medium"}
+                                    startIcon={<CloudUploadIcon sx={{ fontSize: isMobile ? '0.9rem !important' : 'inherit' }} />}
+                                    onClick={() => setBulkDialogOpen(true)}
+                                    sx={{ 
+                                        width: 'auto',
+                                        fontSize: isMobile ? '0.7rem' : '0.85rem',
+                                        px: isMobile ? 1.5 : 2,
+                                        fontWeight: 700,
+                                        whiteSpace: 'nowrap'
+                                    }}
+                                >
+                                    Bulk Upload
+                                </Button>
+                                <Button
+                                    variant="contained"
+                                    size={isMobile ? "small" : "medium"}
+                                    startIcon={<AddIcon sx={{ fontSize: isMobile ? '0.9rem !important' : 'inherit' }} />}
+                                    onClick={() => handleOpenMenuItemDialog()}
+                                    sx={{ 
+                                        width: 'auto',
+                                        fontSize: isMobile ? '0.7rem' : '0.85rem',
+                                        px: isMobile ? 1.5 : 2,
+                                        fontWeight: 700,
+                                        whiteSpace: 'nowrap'
+                                    }}
+                                >
+                                    Add Menu Item
+                                </Button>
                         </Box>
                     </Box>
+                </Box>
 
                     {/* Menu Items Grid */}
                     {loading ? (
@@ -1059,34 +1043,31 @@ const MenuPage: React.FC = () => {
                         </Box>
                     ) : (
                         <Box ref={menuItemsRef}>
-                            <Grid container spacing={3}>
+                            <Grid container spacing={{ xs: 1.5, sm: 3 }}>
                                 {filteredMenuItems.map(item => (
-                                    <Grid item xs={12} sm={6} md={4} lg={3} key={item._id}>
+                                    <Grid item xs={6} sm={6} md={4} lg={3} key={item._id}>
                                         <Card
                                             id={`menu-item-${item._id}`}
                                             sx={{
                                                 height: '100%',
                                                 display: 'flex',
                                                 flexDirection: 'column',
-                                                borderRadius: '16px',
+                                                borderRadius: { xs: '12px', sm: '16px' },
                                                 overflow: 'hidden',
-                                                border: highlightedItemId === item._id ? '3px solid' : 'none',
+                                                border: highlightedItemId === item._id ? '2px solid' : 'none',
                                                 borderColor: highlightedItemId === item._id ? 'primary.main' : 'transparent',
                                                 boxShadow: highlightedItemId === item._id
-                                                    ? '0 8px 32px rgba(25, 118, 210, 0.3)'
-                                                    : '0 2px 12px rgba(0,0,0,0.06)',
-                                                transition: 'all 0.28s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                    ? '0 4px 16px rgba(25, 118, 210, 0.2)'
+                                                    : '0 2px 8px rgba(0,0,0,0.04)',
+                                                transition: 'all 0.2s ease',
                                                 '&:hover': {
-                                                    transform: 'translateY(-5px)',
-                                                    boxShadow: highlightedItemId === item._id
-                                                        ? '0 20px 40px rgba(25, 118, 210, 0.4)'
-                                                        : '0 16px 36px rgba(0,0,0,0.12)',
-                                                    '& .card-image-inner': { transform: 'scale(1.06)' },
+                                                    transform: isMobile ? 'none' : 'translateY(-5px)',
+                                                    boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
                                                 },
                                             }}
                                         >
-                                            {/* ── Clean image area — nothing on top of it ── */}
-                                            <Box sx={{ position: 'relative', height: 185, overflow: 'hidden', flexShrink: 0, bgcolor: alpha(theme.palette.primary.main, 0.05) }}>
+                                            {/* ── Compact image area ── */}
+                                            <Box sx={{ position: 'relative', height: { xs: 100, sm: 185 }, overflow: 'hidden', flexShrink: 0, bgcolor: alpha(theme.palette.primary.main, 0.05) }}>
                                                 <Box
                                                     className="card-image-inner"
                                                     sx={{
@@ -1095,9 +1076,6 @@ const MenuPage: React.FC = () => {
                                                         backgroundImage: item.image ? `url(${item.image})` : 'none',
                                                         backgroundSize: 'cover',
                                                         backgroundPosition: 'center',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center',
                                                         transition: 'transform 0.45s ease',
                                                         ...(!item.image && {
                                                             background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.08)} 0%, ${alpha(theme.palette.secondary.main, 0.08)} 100%)`,
@@ -1105,183 +1083,111 @@ const MenuPage: React.FC = () => {
                                                     }}
                                                 >
                                                     {!item.image && (
-                                                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
-                                                            <ImageIcon sx={{ fontSize: 48, color: alpha(theme.palette.primary.main, 0.3) }} />
-                                                            <Typography sx={{ fontSize: '0.63rem', fontWeight: 700, letterSpacing: 1.8, textTransform: 'uppercase', color: alpha(theme.palette.primary.main, 0.35) }}>
-                                                                No Image
-                                                            </Typography>
-                                                        </Box>
+                                                        <ImageIcon sx={{ fontSize: { xs: 32, sm: 48 }, color: alpha(theme.palette.primary.main, 0.2) }} />
                                                     )}
                                                 </Box>
                                             </Box>
 
-                                            {/* ── Info + actions below the image ── */}
-                                            <CardContent sx={{ flexGrow: 1, px: 2, pt: 1.4, pb: 0, display: 'flex', flexDirection: 'column', gap: 0 }}>
-
-                                                {/* Row 1: badges row — availability + catering + veg dot */}
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 1, flexWrap: 'wrap' }}>
-                                                    {/* Availability badge */}
-                                                    <Box sx={{
-                                                        display: 'flex', alignItems: 'center', gap: 0.5,
-                                                        px: 1, py: 0.3, borderRadius: '20px',
-                                                        bgcolor: item.isAvailable ? alpha('#16a34a', 0.1) : alpha(theme.palette.text.secondary, 0.08),
+                                            {/* ── Content Area ── */}
+                                            <CardContent sx={{ flexGrow: 1, px: { xs: 1.25, sm: 2 }, pt: { xs: 1, sm: 1.4 }, pb: 0, display: 'flex', flexDirection: 'column', gap: 0 }}>
+                                                {/* Header Row: Veg/Non-veg dot at top right for mobile density */}
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                                                    <Typography sx={{
+                                                        fontSize: { xs: '0.55rem', sm: '0.66rem' }, fontWeight: 700, letterSpacing: 0.5,
+                                                        textTransform: 'uppercase', color: theme.palette.primary.main, lineHeight: 1,
+                                                        display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden'
                                                     }}>
-                                                        <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: item.isAvailable ? '#16a34a' : theme.palette.text.disabled }} />
-                                                        <Typography sx={{ fontSize: '0.63rem', fontWeight: 700, color: item.isAvailable ? '#16a34a' : 'text.disabled', lineHeight: 1 }}>
-                                                            {item.isAvailable ? 'Available' : 'Unavailable'}
-                                                        </Typography>
-                                                    </Box>
-
-                                                    {/* Catering badge */}
-                                                    {item.isCateringAvailable && (
-                                                        <Box sx={{
-                                                            px: 1, py: 0.3, borderRadius: '20px',
-                                                            bgcolor: alpha(theme.palette.primary.main, 0.1),
-                                                        }}>
-                                                            <Typography sx={{ fontSize: '0.63rem', fontWeight: 700, color: theme.palette.primary.main, lineHeight: 1 }}>
-                                                                🍽 Catering
-                                                            </Typography>
-                                                        </Box>
-                                                    )}
-
-                                                    {/* Weekly schedule badge */}
-                                                    {(item as any).isWeeklyScheduleEnabled && (
-                                                        <Box sx={{
-                                                            px: 1, py: 0.3, borderRadius: '20px',
-                                                            bgcolor: alpha(theme.palette.warning.main, 0.1),
-                                                        }}>
-                                                            <Typography sx={{ fontSize: '0.63rem', fontWeight: 700, color: theme.palette.warning.dark, lineHeight: 1 }}>
-                                                                📅 {(item as any).displayOption === 'todays_special' ? "Today's Special" : (item as any).displayOption === 'weekly_special' ? 'Weekly Special' : 'Scheduled'}
-                                                            </Typography>
-                                                        </Box>
-                                                    )}
-
-                                                    {/* Veg / Non-veg dot — pushed to the right */}
+                                                        {typeof item.category === 'object' ? item.category.name : 'Menu'}
+                                                    </Typography>
+                                                    
                                                     {(item as any).foodType && (
-                                                        <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center' }}>
-                                                            <Box sx={{
-                                                                width: 20, height: 20,
-                                                                border: `2px solid ${(item as any).foodType === 'veg' ? '#22c55e' : '#ef4444'}`,
-                                                                borderRadius: '3px',
-                                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                bgcolor: 'background.paper',
-                                                            }}>
-                                                                {(item as any).foodType === 'veg' ? (
-                                                                    <Box sx={{ width: 9, height: 9, borderRadius: '50%', bgcolor: '#22c55e' }} />
-                                                                ) : (
-                                                                    <Box sx={{ width: 0, height: 0, borderLeft: '4px solid transparent', borderRight: '4px solid transparent', borderBottom: '8px solid #ef4444' }} />
-                                                                )}
-                                                            </Box>
+                                                        <Box sx={{
+                                                            width: 14, height: 14,
+                                                            border: `1.5px solid ${(item as any).foodType === 'veg' ? '#22c55e' : '#ef4444'}`,
+                                                            borderRadius: '2px',
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                            bgcolor: 'background.paper',
+                                                        }}>
+                                                            {(item as any).foodType === 'veg' ? (
+                                                                <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#22c55e' }} />
+                                                            ) : (
+                                                                <Box sx={{ width: 0, height: 0, borderLeft: '3px solid transparent', borderRight: '3px solid transparent', borderBottom: '6px solid #ef4444' }} />
+                                                            )}
                                                         </Box>
                                                     )}
                                                 </Box>
 
-                                                <Typography sx={{
-                                                    fontSize: '0.66rem', fontWeight: 700, letterSpacing: 0.9,
-                                                    textTransform: 'uppercase', color: theme.palette.primary.main, lineHeight: 1, mb: 0.45,
+                                                {/* Item name */}
+                                                <Typography fontWeight={800} sx={{ 
+                                                    fontSize: { xs: '0.85rem', sm: '1rem' }, 
+                                                    lineHeight: 1.2, 
+                                                    mb: 0.5,
+                                                    display: '-webkit-box',
+                                                    WebkitLineClamp: 2,
+                                                    WebkitBoxOrient: 'vertical',
+                                                    overflow: 'hidden',
+                                                    minHeight: { xs: '2rem', sm: 'auto' }
                                                 }}>
-                                                    {typeof item.category === 'object' ? item.category.name : 'Uncategorized'}
-                                                    {item.subcategory && (
-                                                        <Box component="span" sx={{ color: 'text.secondary', fontWeight: 600, ml: 0.75 }}>
-                                                            / {typeof item.subcategory === 'object' ? item.subcategory.name : 'Subcategory'}
-                                                        </Box>
-                                                    )}
-                                                </Typography>
-
-                                                {/* Row 3: Item name */}
-                                                <Typography fontWeight={700} noWrap title={item.name} sx={{ fontSize: '1rem', lineHeight: 1.35, mb: 0.6 }}>
                                                     {item.name}
                                                 </Typography>
 
-                                                {/* Row 4: Variants (compact pills) */}
-                                                {item.variants && item.variants.length > 0 && (
-                                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 0.6 }}>
-                                                        {item.variants.slice(0, 3).map((v, i) => (
-                                                            <Box key={i} sx={{
-                                                                px: 0.9, py: 0.25, borderRadius: '6px',
-                                                                bgcolor: alpha(theme.palette.primary.main, 0.06),
-                                                            }}>
-                                                                <Typography sx={{ fontSize: '0.65rem', fontWeight: 600, color: 'text.secondary' }}>
-                                                                    {v.name} · {formatCurrency(v.price)}
-                                                                </Typography>
-                                                            </Box>
-                                                        ))}
-                                                        {item.variants.length > 3 && (
-                                                            <Box sx={{ px: 0.8, py: 0.25, borderRadius: '6px', bgcolor: alpha(theme.palette.text.secondary, 0.06) }}>
-                                                                <Typography sx={{ fontSize: '0.65rem', fontWeight: 600, color: 'text.disabled' }}>
-                                                                    +{item.variants.length - 3}
-                                                                </Typography>
-                                                            </Box>
-                                                        )}
-                                                    </Box>
-                                                )}
-
-
-                                            </CardContent>
-
-                                            {/* ── Footer: price on left, action buttons on right ── */}
-                                            <Box sx={{
-                                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                                                px: 2, py: 1.2,
-                                                mt: 'auto',
-                                            }}>
                                                 {/* Price */}
-                                                <Typography sx={{ fontWeight: 800, fontSize: '1.1rem', color: theme.palette.primary.main }}>
+                                                <Typography sx={{ fontWeight: 900, fontSize: { xs: '0.95rem', sm: '1.1rem' }, color: theme.palette.primary.main, mb: 1 }}>
                                                     {formatCurrency(item.price)}
                                                 </Typography>
+                                            </CardContent>
 
-                                                {/* Action icons */}
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25 }}>
-                                                    <Tooltip title="Manage Recipe">
-                                                        <IconButton size="small" onClick={() => navigate(getRelativePath(`/recipes/create?menuItem=${item._id}`))}
-                                                            sx={{ color: theme.palette.secondary.main, '&:hover': { bgcolor: alpha(theme.palette.secondary.main, 0.1) } }}>
-                                                            <MenuBookIcon sx={{ fontSize: 17 }} />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                    <Tooltip title="Edit Item">
-                                                        <IconButton size="small" onClick={() => handleOpenMenuItemDialog(item)}
-                                                            sx={{ color: theme.palette.primary.main, '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.1) } }}>
-                                                            <EditIcon sx={{ fontSize: 17 }} />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                    <Tooltip title="Delete Item">
-                                                        <IconButton size="small" onClick={() => handleDeleteMenuItem(item)}
-                                                            sx={{ color: theme.palette.error.main, '&:hover': { bgcolor: alpha(theme.palette.error.main, 0.1) } }}>
-                                                            <DeleteIcon sx={{ fontSize: 17 }} />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                </Box>
+                                            {/* ── Footer Actions ── */}
+                                            <Divider sx={{ opacity: 0.6 }} />
+                                            <Box sx={{
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                px: 1, py: { xs: 0.5, sm: 1 },
+                                                mt: 'auto',
+                                                gap: 0.5
+                                            }}>
+                                                <IconButton size="small" onClick={() => navigate(getRelativePath(`/recipes/create?menuItem=${item._id}`))}
+                                                    sx={{ color: theme.palette.secondary.main, p: 0.5 }}>
+                                                    <MenuBookIcon sx={{ fontSize: { xs: 16, sm: 18 } }} />
+                                                </IconButton>
+                                                <IconButton size="small" onClick={() => handleOpenMenuItemDialog(item)}
+                                                    sx={{ color: theme.palette.primary.main, p: 0.5 }}>
+                                                    <EditIcon sx={{ fontSize: { xs: 16, sm: 18 } }} />
+                                                </IconButton>
+                                                <IconButton size="small" onClick={() => handleDeleteMenuItem(item)}
+                                                    sx={{ color: theme.palette.error.main, p: 0.5 }}>
+                                                    <DeleteIcon sx={{ fontSize: { xs: 16, sm: 18 } }} />
+                                                </IconButton>
                                             </Box>
                                         </Card>
                                     </Grid>
                                 ))}
-                             </Grid>
-                             
-                             {/* Pagination footer */}
-                             {nextCursor && (
-                                 <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
-                                     <Button
-                                         variant="outlined"
-                                         onClick={handleLoadMore}
-                                         disabled={isFetchingMore}
-                                         startIcon={isFetchingMore ? <CircularProgress size={20} /> : null}
-                                         sx={{ 
-                                             borderRadius: '20px', 
-                                             px: 4, 
-                                             minWidth: 160,
-                                             borderColor: 'primary.main',
-                                             '&:disabled': {
-                                                 borderColor: 'divider'
-                                             }
-                                         }}
-                                     >
-                                         {isFetchingMore ? 'Loading...' : 'Load More Items'}
-                                     </Button>
-                                 </Box>
-                             )}
-                         </Box>
-                     )}
-                 </Box>
+                            </Grid>
+
+                            {/* Pagination footer */}
+                            {nextCursor && (
+                                <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+                                    <Button
+                                        variant="outlined"
+                                        onClick={handleLoadMore}
+                                        disabled={isFetchingMore}
+                                        startIcon={isFetchingMore ? <CircularProgress size={20} /> : null}
+                                        sx={{ 
+                                            borderRadius: '20px', 
+                                            px: 4, 
+                                            minWidth: 160,
+                                            borderColor: 'primary.main',
+                                            '&:disabled': {
+                                                borderColor: 'divider'
+                                            }
+                                        }}
+                                    >
+                                        {isFetchingMore ? 'Loading...' : 'Load More Items'}
+                                    </Button>
+                                </Box>
+                            )}
+                        </Box>
+                    )}
+                </Box>
             )}
 
             {/* Categories Tab */}

@@ -7,8 +7,11 @@ import {
     RestaurantMenu as OrderIcon,
     Refresh as RefreshIcon,
     Cancel as RejectIcon,
-    Timeline as TimelineIcon
+    Timeline as TimelineIcon,
+    AccessTime as TimeIcon,
+    Today as TodayIcon
 } from '@mui/icons-material';
+import { alpha } from '@mui/material/styles';
 import {
     Box,
     Button,
@@ -43,7 +46,7 @@ import {
     Tooltip,
     Typography,
     useMediaQuery,
-    useTheme
+    useTheme,
 } from '@mui/material';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -382,29 +385,49 @@ const BookingsAdminPage: React.FC = () => {
 
     return (
         <LocalizationProvider dateAdapter={AdapterDateFns}>
-            <Box sx={{ p: 3 }}>
-                <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', mb: 3, gap: 2 }}>
-                    <Typography
-                        variant="h4"
-                        sx={{
-                            fontWeight: 'bold',
-                            width: isMobile ? '100%' : 'auto',
-                            textAlign: isMobile ? 'center' : 'left',
-                            whiteSpace: isMobile ? 'nowrap' : 'normal',
-                            fontSize: { xs: 'clamp(1.5rem, 6vw, 2rem)', md: '2.125rem' },
-                            overflow: isMobile ? 'hidden' : 'visible',
-                            textOverflow: isMobile ? 'ellipsis' : 'clip'
+            <Box sx={{ px: { xs: 2, sm: 3 }, py: { xs: 2, sm: 3 } }}>
+                <Box sx={{ 
+                    display: 'flex', 
+                    flexDirection: { xs: 'column', sm: 'row' }, 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    mb: { xs: 2, sm: 3 }, 
+                    gap: 2,
+                    mt: { xs: 1.5, sm: 0 }
+                }}>
+                    <Typography 
+                        variant="h4" 
+                        sx={{ 
+                            fontWeight: 800,
+                            width: { xs: '100%', sm: 'auto' },
+                            textAlign: { xs: 'center', sm: 'left' },
+                            fontSize: { xs: '1.35rem', sm: '1.75rem', md: '2.125rem' }
                         }}
                     >
                         Bookings Management
                     </Typography>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>
+                    <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: 1.5, 
+                        width: { xs: '100%', sm: 'auto' },
+                        justifyContent: { xs: 'center', sm: 'flex-end' }
+                    }}>
                         {tabValue === 1 && (
                             <DatePicker
                                 label="Filter Date"
                                 value={selectedDate}
                                 onChange={(newValue) => newValue && setSelectedDate(newValue)}
-                                slotProps={{ textField: { size: 'small', sx: { bgcolor: 'background.paper', width: isMobile ? '100%' : 180 } } }}
+                                slotProps={{ 
+                                    textField: { 
+                                        size: 'small', 
+                                        sx: { 
+                                            bgcolor: 'background.paper', 
+                                            width: { xs: 140, sm: 180 },
+                                            '& .MuiInputBase-root': { borderRadius: 2 }
+                                        } 
+                                    } 
+                                }}
                             />
                         )}
                         <Button
@@ -414,22 +437,41 @@ const BookingsAdminPage: React.FC = () => {
                                 setBookingStep(1);
                                 setCreateDialogOpen(true);
                             }}
-                            sx={{ flex: isMobile ? 1 : 'initial' }}
+                            sx={{ 
+                                borderRadius: 2,
+                                textTransform: 'none',
+                                fontWeight: 'bold',
+                                px: 2
+                            }}
                         >
                             New Booking
                         </Button>
-                        <IconButton onClick={fetchData} color="primary" sx={{ bgcolor: 'background.paper', boxShadow: 1 }}>
+                        <IconButton 
+                            onClick={fetchData} 
+                            color="primary" 
+                            sx={{ 
+                                bgcolor: 'background.paper', 
+                                boxShadow: 1,
+                                borderRadius: 2
+                            }}
+                        >
                             <RefreshIcon />
                         </IconButton>
                     </Box>
                 </Box>
 
-                <Paper sx={{ mb: 3 }}>
-                    <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)} variant={isMobile ? "fullWidth" : "standard"}>
-                        <Tab icon={<ListIcon />} iconPosition="start" label="List View" />
-                        <Tab icon={<TimelineIcon />} iconPosition="start" label="Timeline View" />
-                    </Tabs>
-                </Paper>
+                <Tabs 
+                    value={tabValue} 
+                    onChange={(_, v) => setTabValue(v)} 
+                    variant={isMobile ? "fullWidth" : "standard"}
+                    sx={{ 
+                        mb: { xs: 1.5, sm: 3 },
+                        '& .MuiTabs-indicator': { height: 3, borderRadius: '3px 3px 0 0' }
+                    }}
+                >
+                    <Tab icon={<ListIcon />} iconPosition="start" label="List View" sx={{ fontWeight: 'bold', textTransform: 'none' }} />
+                    <Tab icon={<TimelineIcon />} iconPosition="start" label="Timeline View" sx={{ fontWeight: 'bold', textTransform: 'none' }} />
+                </Tabs>
 
                 {/* List View */}
                 {tabValue === 0 && (
@@ -440,114 +482,136 @@ const BookingsAdminPage: React.FC = () => {
                             <Box textAlign="center" p={4}><Typography color="text.secondary">No bookings found</Typography></Box>
                         ) : isMobile ? (
                             // Mobile Card View
-                            <Stack spacing={2}>
-                                {bookings.map((booking) => (
-                                    <Card key={booking._id} sx={{ cursor: 'pointer' }}>
-                                        <CardActionArea onClick={() => handleCreateOrder(booking)}>
-                                            <CardContent>
-                                                <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={2}>
-                                                    <Typography variant="subtitle1" fontWeight="bold">
-                                                        ID: {booking.bookingId}
-                                                    </Typography>
-                                                    <Chip
-                                                        label={booking.status.toUpperCase()}
-                                                        color={getStatusColor(booking.status) as any}
-                                                        size="small"
-                                                    />
-                                                </Stack>
+                            <Stack spacing={1.5}>
+                                {bookings.map((booking) => {
+                                    const statusColor = getStatusColor(booking.status);
+                                    const mainColor = theme.palette[statusColor as 'primary' | 'success' | 'warning' | 'error' | 'info']?.main || theme.palette.grey[500];
+                                    return (
+                                        <Card 
+                                            key={booking._id} 
+                                            sx={{ 
+                                                borderRadius: 2,
+                                                overflow: 'hidden',
+                                                boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+                                                borderLeft: `4px solid ${mainColor}`,
+                                                position: 'relative',
+                                            }}
+                                        >
+                                            <CardActionArea onClick={() => handleCreateOrder(booking)}>
+                                                <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.25 }}>
+                                                        <Box>
+                                                            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, fontSize: '0.6rem' }}>
+                                                                ID: {booking.bookingId}
+                                                            </Typography>
+                                                            <Typography variant="subtitle1" sx={{ fontWeight: 800, mt: -0.5, fontSize: '0.95rem' }}>
+                                                                {booking.customer?.name || booking.guestInfo?.firstName || 'Guest'}
+                                                            </Typography>
+                                                        </Box>
+                                                        <Chip
+                                                            label={booking.status.toUpperCase()}
+                                                            size="small"
+                                                            sx={{ 
+                                                                fontWeight: 'bold', 
+                                                                fontSize: '0.6rem',
+                                                                height: 20,
+                                                                bgcolor: alpha(mainColor, 0.1),
+                                                                color: mainColor,
+                                                                border: `1px solid ${alpha(mainColor, 0.2)}`
+                                                            }}
+                                                        />
+                                                    </Box>
 
-                                                <Grid container spacing={1} mb={2}>
-                                                    <Grid item xs={12}>
-                                                        <Typography variant="subtitle2" fontWeight="bold">
-                                                            {booking.customer?.name || booking.guestInfo?.firstName || 'Guest'}
-                                                        </Typography>
-                                                        <Typography variant="caption" color="text.secondary">
-                                                            {booking.customer?.phone || booking.guestInfo?.phone}
-                                                        </Typography>
+                                                    <Grid container spacing={1} mb={1.25}>
+                                                        <Grid item xs={6}>
+                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                                                                <TodayIcon sx={{ fontSize: 16, color: 'primary.main' }} />
+                                                                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>
+                                                                    {new Date(booking.date).toLocaleDateString()}
+                                                                </Typography>
+                                                            </Box>
+                                                        </Grid>
+                                                        <Grid item xs={6}>
+                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                                                                <TimeIcon sx={{ fontSize: 16, color: 'primary.main' }} />
+                                                                <Typography variant="body2" sx={{ fontWeight: 700, fontSize: '0.8rem', color: 'primary.main' }}>
+                                                                    {booking.timeSlot?.requested}
+                                                                </Typography>
+                                                            </Box>
+                                                        </Grid>
+                                                        <Grid item xs={6}>
+                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                                                                <Typography variant="caption" sx={{ fontWeight: 700, bgcolor: alpha(theme.palette.primary.main, 0.1), color: 'primary.main', px: 0.5, borderRadius: 0.5, fontSize: '0.6rem' }}>T</Typography>
+                                                                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem' }} noWrap>
+                                                                    {booking.table?.tableName || booking.table?.tableNumber || 'N/A'}
+                                                                </Typography>
+                                                            </Box>
+                                                        </Grid>
+                                                        <Grid item xs={6}>
+                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                                                                <Typography variant="caption" sx={{ fontWeight: 700, bgcolor: alpha(theme.palette.primary.main, 0.1), color: 'primary.main', px: 0.5, borderRadius: 0.5, fontSize: '0.6rem' }}>G</Typography>
+                                                                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>
+                                                                    {booking.guests} People
+                                                                </Typography>
+                                                            </Box>
+                                                        </Grid>
                                                     </Grid>
-                                                    <Grid item xs={6}>
-                                                        <Typography variant="caption" color="text.secondary" display="block">Date & Time</Typography>
-                                                        <Typography variant="body2">
-                                                            {new Date(booking.date).toLocaleDateString()}
-                                                        </Typography>
-                                                        <Typography variant="caption">
-                                                            {booking.timeSlot?.requested}
-                                                        </Typography>
-                                                    </Grid>
-                                                    <Grid item xs={6}>
-                                                        <Typography variant="caption" color="text.secondary" display="block">Table</Typography>
-                                                        <Typography variant="body2">
-                                                            {booking.table?.tableName || booking.table?.tableNumber || 'N/A'}
-                                                        </Typography>
-                                                    </Grid>
-                                                    <Grid item xs={12}>
-                                                        <Typography variant="caption" color="text.secondary">Guests: </Typography>
-                                                        <Typography component="span" variant="body2">{booking.guests}</Typography>
-                                                    </Grid>
-                                                </Grid>
-                                            </CardContent>
-                                        </CardActionArea>
-                                        <Divider />
-                                        <CardContent sx={{ pt: 1, pb: '16px !important' }}>
-                                            <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                                </CardContent>
+                                            </CardActionArea>
+                                            <Divider sx={{ borderStyle: 'dashed' }} />
+                                            <Box sx={{ p: 1, display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
                                                 <Tooltip title="View Details">
-                                                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); openDetailsDialog(booking); }}>
-                                                        <InfoIcon />
+                                                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); openDetailsDialog(booking); }} sx={{ bgcolor: alpha(theme.palette.info.main, 0.05) }}>
+                                                        <InfoIcon fontSize="small" />
                                                     </IconButton>
                                                 </Tooltip>
                                                 {booking.status === 'confirmed' && !booking.checkedIn && (
-                                                    <Tooltip title="Order Food">
-                                                        <IconButton
-                                                            size="small"
-                                                            color="primary"
-                                                            onClick={(e) => { e.stopPropagation(); handleCreateOrder(booking); }}
-                                                        >
-                                                            <OrderIcon />
-                                                        </IconButton>
-                                                    </Tooltip>
+                                                    <Button
+                                                        size="small"
+                                                        variant="contained"
+                                                        startIcon={<OrderIcon sx={{ fontSize: '1rem !important' }} />}
+                                                        onClick={(e) => { e.stopPropagation(); handleCreateOrder(booking); }}
+                                                        sx={{ py: 0, height: 32, borderRadius: 1.5, textTransform: 'none', fontWeight: 'bold', fontSize: '0.75rem' }}
+                                                    >
+                                                        POS
+                                                    </Button>
                                                 )}
                                                 {booking.checkedIn && booking.status !== 'completed' && (
-                                                    <Tooltip title={booking.table?.currentOrder ? "Complete the order" : "Finalize booking"}>
-                                                        <span onClick={(e) => e.stopPropagation()}>
-                                                            <Button
-                                                                size="small"
-                                                                variant="contained"
-                                                                color="warning"
-                                                                onClick={(e) => { e.stopPropagation(); handleCheckout(booking._id); }}
-                                                                disabled={!!booking.table?.currentOrder}
-                                                                sx={{ fontWeight: 'bold' }}
-                                                            >
-                                                                Checkout
-                                                            </Button>
-                                                        </span>
-                                                    </Tooltip>
+                                                    <Button
+                                                        size="small"
+                                                        variant="contained"
+                                                        color="warning"
+                                                        onClick={(e) => { e.stopPropagation(); handleCheckout(booking._id); }}
+                                                        disabled={!!booking.table?.currentOrder}
+                                                        sx={{ py: 0, height: 32, borderRadius: 1.5, textTransform: 'none', fontWeight: 'bold', fontSize: '0.75rem' }}
+                                                    >
+                                                        Checkout
+                                                    </Button>
                                                 )}
                                                 {booking.status === 'pending' && !booking.checkedIn && (
-                                                    <>
-                                                        <Tooltip title="Approve">
-                                                            <IconButton
-                                                                size="small"
-                                                                color="success"
-                                                                onClick={(e) => { e.stopPropagation(); openActionDialog(booking, 'approve'); }}
-                                                            >
-                                                                <ApproveIcon />
-                                                            </IconButton>
-                                                        </Tooltip>
-                                                        <Tooltip title="Reject">
-                                                            <IconButton
-                                                                size="small"
-                                                                color="error"
-                                                                onClick={(e) => { e.stopPropagation(); openActionDialog(booking, 'reject'); }}
-                                                            >
-                                                                <RejectIcon />
-                                                            </IconButton>
-                                                        </Tooltip>
-                                                    </>
+                                                    <Stack direction="row" spacing={1}>
+                                                        <IconButton
+                                                            size="small"
+                                                            color="success"
+                                                            onClick={(e) => { e.stopPropagation(); openActionDialog(booking, 'approve'); }}
+                                                            sx={{ bgcolor: alpha(theme.palette.success.main, 0.1) }}
+                                                        >
+                                                            <ApproveIcon fontSize="small" />
+                                                        </IconButton>
+                                                        <IconButton
+                                                            size="small"
+                                                            color="error"
+                                                            onClick={(e) => { e.stopPropagation(); openActionDialog(booking, 'reject'); }}
+                                                            sx={{ bgcolor: alpha(theme.palette.error.main, 0.1) }}
+                                                        >
+                                                            <RejectIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Stack>
                                                 )}
-                                            </Stack>
-                                        </CardContent>
-                                    </Card>
-                                ))}
+                                            </Box>
+                                        </Card>
+                                    );
+                                })}
                             </Stack>
                         ) : (
                             // Desktop Table View
@@ -685,61 +749,85 @@ const BookingsAdminPage: React.FC = () => {
                 {tabValue === 1 && (
                     <Paper sx={{ p: isMobile ? 1 : 2, maxWidth: '100%' }}>
                         {isMobile ? (
-                            <Box>
+                            <Stack spacing={2.5}>
                                 {tables.length === 0 ? (
-                                    <Box sx={{ textAlign: 'center', p: 4 }}><CircularProgress /></Box>
+                                    <Box sx={{ textAlign: 'center', p: 4, bgcolor: alpha(theme.palette.background.paper, 0.5), borderRadius: 3, border: '1px dashed', borderColor: 'divider' }}>
+                                        <CircularProgress size={24} sx={{ mb: 1.5 }} />
+                                        <Typography variant="body2" color="text.secondary">Loading tables...</Typography>
+                                    </Box>
                                 ) : (
                                     tables.map(table => {
                                         const tableBookings = dailyBookings.filter(
                                             b => b.table?._id === table._id || b.table === table._id
                                         );
                                         return (
-                                            <Box key={table._id} sx={{ mb: 2, p: 2, borderRadius: 2, bgcolor: '#f5f5f5' }}>
-                                                <Typography variant="subtitle2" fontWeight={700}>{table.tableName}</Typography>
-                                                <Typography variant="caption" color="text.secondary">
-                                                    Cap: {table.capacity} | {table.location || 'Hall'}
-                                                </Typography>
+                                            <Paper key={table._id} sx={{ p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: alpha(theme.palette.background.paper, 0.5) }}>
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                                                    <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'primary.main' }}>
+                                                        {table.tableName || `Table ${table.tableNumber}`}
+                                                    </Typography>
+                                                    <Chip label={`Cap: ${table.capacity}`} size="small" variant="outlined" sx={{ fontWeight: 600, height: 20, fontSize: '0.65rem' }} />
+                                                </Box>
+                                                
                                                 <Box sx={{ mt: 1 }}>
                                                     {tableBookings.length === 0 ? (
-                                                        <Typography variant="caption" color="text.secondary">No bookings</Typography>
+                                                        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', fontSize: '0.8rem', textAlign: 'center', py: 1.5, bgcolor: alpha(theme.palette.grey[500], 0.05), borderRadius: 2 }}>
+                                                            No bookings today
+                                                        </Typography>
                                                     ) : (
-                                                        tableBookings.map(booking => (
-                                                            <Box
-                                                                key={booking._id}
-                                                                onClick={() => openDetailsDialog(booking)}
-                                                                sx={{
-                                                                    p: 1.5, mb: 1, borderRadius: 2,
-                                                                    bgcolor: booking.status === 'confirmed' ? 'success.light' : 'warning.light',
-                                                                    border: 1,
-                                                                    borderColor: booking.status === 'confirmed' ? 'success.main' : 'warning.main',
-                                                                    cursor: 'pointer', '&:hover': { opacity: 0.85 }
-                                                                }}
-                                                            >
-                                                                <Typography variant="body2" fontWeight={600} sx={{ color: '#000' }}>
-                                                                    {booking.guestInfo?.firstName || booking.customer?.name || 'Guest'}
-                                                                </Typography>
-                                                                <Typography variant="caption" color="text.secondary">
-                                                                    {booking.timeSlot?.requested} · {booking.guests} guests
-                                                                </Typography>
-                                                            </Box>
-                                                        ))
+                                                        <Stack spacing={1}>
+                                                            {tableBookings.sort((a,b) => (a.timeSlot?.requested || '').localeCompare(b.timeSlot?.requested || '')).map(booking => {
+                                                                const statusColor = getStatusColor(booking.status);
+                                                                const mainColor = theme.palette[statusColor as 'primary' | 'success' | 'warning' | 'error' | 'info']?.main || theme.palette.grey[500];
+                                                                
+                                                                return (
+                                                                    <Card
+                                                                        key={booking._id}
+                                                                        variant="outlined"
+                                                                        onClick={() => openDetailsDialog(booking)}
+                                                                        sx={{
+                                                                            borderRadius: 2,
+                                                                            bgcolor: alpha(mainColor, 0.04),
+                                                                            borderColor: alpha(mainColor, 0.2),
+                                                                            cursor: 'pointer',
+                                                                            transition: 'all 0.2s',
+                                                                            '&:active': { transform: 'scale(0.98)' }
+                                                                        }}
+                                                                    >
+                                                                        <CardContent sx={{ p: 1.25, '&:last-child': { pb: 1.25 } }}>
+                                                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                                    <TimeIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                                                                                    <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                                                                                        {booking.timeSlot?.requested}
+                                                                                    </Typography>
+                                                                                </Box>
+                                                                                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                                                                    {booking.guestInfo?.firstName || booking.customer?.name || 'Guest'}
+                                                                                </Typography>
+                                                                            </Box>
+                                                                        </CardContent>
+                                                                    </Card>
+                                                                );
+                                                            })}
+                                                        </Stack>
                                                     )}
                                                 </Box>
-                                            </Box>
+                                            </Paper>
                                         );
                                     })
                                 )}
-                                <Box sx={{ mt: 2, display: 'flex', gap: 2, justifyContent: 'center' }}>
+                                <Box sx={{ mt: 1, display: 'flex', gap: 3, justifyContent: 'center', p: 1.5, bgcolor: alpha(theme.palette.background.paper, 0.5), borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <Box sx={{ width: 16, height: 16, bgcolor: 'warning.light', border: 1, borderColor: 'warning.main', borderRadius: 1 }} />
-                                        <Typography variant="caption">Pending</Typography>
+                                        <Box sx={{ width: 12, height: 12, bgcolor: 'warning.light', border: 1, borderColor: 'warning.main', borderRadius: '50%' }} />
+                                        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Pending</Typography>
                                     </Box>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <Box sx={{ width: 16, height: 16, bgcolor: 'success.light', border: 1, borderColor: 'success.main', borderRadius: 1 }} />
-                                        <Typography variant="caption">Confirmed</Typography>
+                                        <Box sx={{ width: 12, height: 12, bgcolor: 'success.light', border: 1, borderColor: 'success.main', borderRadius: '50%' }} />
+                                        <Typography variant="caption" sx={{ fontWeight: 'bold' }}>Confirmed</Typography>
                                     </Box>
                                 </Box>
-                            </Box>
+                            </Stack>
                         ) : (
                             <Box sx={{ minWidth: 800 }}>
 

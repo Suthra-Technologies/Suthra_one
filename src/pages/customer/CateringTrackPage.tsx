@@ -25,6 +25,9 @@ import { loadStripe } from '@stripe/stripe-js';
 import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js';
 import { cateringAPI, ordersAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
+import { downloadFromUrl } from '../../utils/fileDownload';
+import { apiBaseUrl } from '../../services/api';
+import { getTenantSlugFromHostname } from '../../utils/tenant.utils';
 import { Assignment, Chat, Event, History, Receipt } from '@mui/icons-material';
 
 const SUCCESS_STATUSES = new Set(['succeeded']);
@@ -190,7 +193,8 @@ const CateringCardPaymentForm: React.FC<CateringCardPaymentFormProps> = ({
 };
 
 const CateringTrackPage = () => {
-    const { slug, id: token } = useParams<{ slug: string, id: string }>();
+    const { slug: pathSlug, id: token } = useParams<{ slug: string, id: string }>();
+    const slug = pathSlug || getTenantSlugFromHostname();
     const theme = useTheme();
     const [order, setOrder] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -290,14 +294,8 @@ const CateringTrackPage = () => {
     const handleDownloadPDF = async () => {
         if (!slug || !token) return;
         try {
-            const response = await cateringAPI.downloadPublicPDF(slug, token);
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', `Invoice-${order?.orderNumber || 'Catering'}.pdf`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
+            const fullUrl = `${apiBaseUrl}/catering/public/track/${slug}/${token}/pdf`;
+            await downloadFromUrl(fullUrl, `Invoice-${order?.orderNumber || 'Catering'}.pdf`);
         } catch (error) {
             toast.error('Failed to download PDF');
         }

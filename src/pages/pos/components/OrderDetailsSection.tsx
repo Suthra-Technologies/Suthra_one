@@ -1,21 +1,26 @@
-import React from 'react';
+import {
+    Add as AddIcon,
+    ShoppingCart as CartIcon,
+    Delete as DeleteIcon,
+    LocalOffer as CouponIcon,
+    Remove as RemoveIcon,
+} from '@mui/icons-material';
 import {
     Box,
-    Typography,
+    Button,
+    Chip,
+    Divider,
+    IconButton,
+    InputAdornment,
     List,
     ListItem,
     ListItemText,
-    IconButton,
-    Divider,
+    Stack,
     TextField,
-    Button,
+    Tooltip,
+    Typography
 } from '@mui/material';
-import {
-    Delete as DeleteIcon,
-    Remove as RemoveIcon,
-    Add as AddIcon,
-    ShoppingCart as CartIcon,
-} from '@mui/icons-material';
+import React from 'react';
 
 interface OrderDetailsSectionProps {
     cart: any[];
@@ -27,6 +32,10 @@ interface OrderDetailsSectionProps {
     discountAmount: number;
     discountPercent: number;
     couponDiscount: number;
+    couponCode: string;
+    setCouponCode: (val: string) => void;
+    handleValidateCoupon: (silent?: boolean, explicitCode?: string) => void;
+    availableCoupons?: any[];
     serviceChargeAmount: number;
     tip: number;
     setTip: (val: number) => void;
@@ -46,6 +55,10 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
     discountAmount,
     discountPercent,
     couponDiscount,
+    couponCode,
+    setCouponCode,
+    handleValidateCoupon,
+    availableCoupons = [],
     serviceChargeAmount,
     tip,
     setTip,
@@ -59,7 +72,7 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
             <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
                 <Typography variant="h6">Current Order</Typography>
             </Box>
-            
+
             <List sx={{
                 flexGrow: 1,
                 overflowY: 'auto',
@@ -105,6 +118,72 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
                 )}
             </List>
 
+            {/* Coupon Input */}
+            <Box sx={{ px: 2, pt: 2, pb: 1, borderTop: 1, borderColor: 'divider' }}>
+                <Stack direction="row" spacing={1}>
+                    <TextField
+                        size="small"
+                        fullWidth
+                        placeholder="Coupon code"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleValidateCoupon(false); }}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <CouponIcon fontSize="small" color={couponDiscount > 0 ? 'success' : 'action'} />
+                                </InputAdornment>
+                            ),
+                        }}
+                        sx={{
+                            '& .MuiOutlinedInput-root': {
+                                bgcolor: couponDiscount > 0 ? 'rgba(46,125,50,0.05)' : undefined,
+                                '& fieldset': { borderColor: couponDiscount > 0 ? 'success.main' : undefined },
+                            }
+                        }}
+                    />
+                    <Button
+                        variant={couponDiscount > 0 ? 'outlined' : 'contained'}
+                        color={couponDiscount > 0 ? 'error' : 'primary'}
+                        size="small"
+                        disableElevation
+                        sx={{ whiteSpace: 'nowrap', minWidth: 64 }}
+                        onClick={() => {
+                            if (couponDiscount > 0) {
+                                setCouponCode('');
+                                handleValidateCoupon(false);
+                            } else {
+                                handleValidateCoupon(false);
+                            }
+                        }}
+                    >
+                        {couponDiscount > 0 ? 'Remove' : 'Apply'}
+                    </Button>
+                </Stack>
+
+                {/* Quick-pick available coupons */}
+                {availableCoupons.length > 0 && couponDiscount === 0 && (
+                    <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {availableCoupons.slice(0, 5).map((c: any) => (
+                            <Tooltip key={c._id} title={`${c.discountType === 'percentage' ? c.discountValue + '% off' : '$' + c.discountValue + ' off'}${c.minBillAmount ? ` (min $${c.minBillAmount})` : ''}`}>
+                                <Chip
+                                    label={c.code}
+                                    size="small"
+                                    variant="outlined"
+                                    color="primary"
+                                    icon={<CouponIcon />}
+                                    onClick={() => {
+                                        setCouponCode(c.code);
+                                        handleValidateCoupon(false, c.code);
+                                    }}
+                                    sx={{ cursor: 'pointer', fontSize: '0.65rem' }}
+                                />
+                            </Tooltip>
+                        ))}
+                    </Box>
+                )}
+            </Box>
+
             <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider', bgcolor: 'background.default' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                     <Typography variant="body2">Subtotal</Typography>
@@ -138,7 +217,7 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
                         <Typography variant="body2">{formatSmartPrice(serviceChargeAmount)}</Typography>
                     </Box>
                 )}
-                
+
                 <Divider sx={{ my: 1 }} />
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                     <Typography variant="h6">Total</Typography>

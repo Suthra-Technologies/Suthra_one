@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { alpha } from '@mui/material/styles';
 import {
     Box,
     Typography,
@@ -13,7 +14,6 @@ import {
     TablePagination,
     Chip,
     CircularProgress,
-    alpha,
     useTheme,
     Tabs,
     Tab,

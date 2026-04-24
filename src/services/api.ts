@@ -18,7 +18,7 @@ const normalizedBase = rawApiBase
   .replace(/\/api\/?$/, '') // drop trailing /api
   .replace(/\/$/, '');      // drop trailing slash
 
-const apiBaseUrl = (() => {
+export const apiBaseUrl = (() => {
   try {
     const base = normalizedBase || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5006');
     return new URL('/api', base).toString().replace(/\/$/, '');
@@ -244,7 +244,7 @@ export const ubereatsAPI = {
 
 // -------------------- Rewards API --------------------
 export const rewardsAPI = {
-  getCustomerInfo: (search: string) => api.get('/orders/rewards/customer-info', { params: { search } }),
+  getCustomerInfo: (params: { search?: string; email?: string; phone?: string }) => api.get('/orders/rewards/customer-info', { params }),
 };
 
 // -------------------- Attendance API --------------------
@@ -484,6 +484,11 @@ export const superAPI = {
   createPlan: (data: any) => api.post('/superadmin/plans', data),
   updatePlan: (id: string, data: any) => api.patch(`/superadmin/plans/${id}`, data),
   deletePlan: (id: string) => api.delete(`/superadmin/plans/${id}`),
+
+  // Demo requests management
+  listDemoRequests: (params?: any) => api.get('/superadmin/demo-requests', { params }),
+  updateDemoRequest: (id: string, data: any) => api.patch(`/superadmin/demo-requests/${id}`, data),
+  deleteDemoRequest: (id: string) => api.delete(`/superadmin/demo-requests/${id}`),
 };
 
 export const superAdminAPI = superAPI; // alias for compatibility
@@ -633,6 +638,8 @@ export const wasteAPI = {
 // -------------------- Customers API --------------------
 export const customersAPI = {
   getAll: (params?: { page: number; limit: number; search?: string }) => api.get('/customers', { params }),
+  getRewardDetails: (id: string) => api.get(`/customers/${id}/rewards`),
+  adjustRewards: (id: string, points: number, reason: string) => api.put(`/customers/${id}/rewards/adjust`, { points, reason }),
 };
 
 // -------------------- Audit Logs API --------------------
