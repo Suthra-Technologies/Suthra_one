@@ -76,6 +76,8 @@ import SuperAdminPortal from './pages/superadmin/SuperAdminPortal';
 import TenantsPage from './pages/superadmin/TenantsPage';
 import TicketsPage from './pages/superadmin/TicketsPage';
 import DeliveryReportsPage from './pages/superadmin/DeliveryReportsPage';
+import SmsOverviewPage from './pages/superadmin/SmsOverviewPage';
+import SmsLogsDetailPage from './pages/superadmin/SmsLogsDetailPage';
 import VendorsPage from './pages/vendors/VendorsPage';
 
 import { SettingsProvider, useSettings } from './context/SettingsContext';
@@ -174,6 +176,8 @@ const AppRoutes: React.FC = () => {
           <Route path="/superadmin/invoices" element={<InvoicesAdminPage />} />
           <Route path="/superadmin/tickets" element={<TicketsPage />} />
           <Route path="/superadmin/delivery-reports" element={<DeliveryReportsPage />} />
+          <Route path="/superadmin/sms-logs" element={<SmsOverviewPage />} />
+          <Route path="/superadmin/sms-logs/:tenantId" element={<SmsLogsDetailPage />} />
         </Route>
       </Route>
 

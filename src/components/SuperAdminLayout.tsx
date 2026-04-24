@@ -64,6 +64,7 @@ const SuperAdminLayout: React.FC = () => {
         { path: '/superadmin/plans', label: 'Subscription Plans', icon: <PlansIcon /> },
         { path: '/superadmin/invoices', label: 'Invoices', icon: <ReceiptIcon /> },
         { path: '/superadmin/delivery-reports', label: 'Delivery Reports', icon: <DeliveryIcon /> },
+        { path: '/superadmin/sms-logs', label: 'SMS Logs', icon: <ReceiptIcon /> },
         { path: '/superadmin/tickets', label: 'Support Tickets', icon: <SupportIcon /> },
     ];
 
