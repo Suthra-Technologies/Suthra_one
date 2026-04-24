@@ -559,6 +559,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
         )}
       </Box> */}
 
+
       {/* Submenu for Collapsed Sidebar */}
       <Menu
         anchorEl={collapsedAnchorEl}
