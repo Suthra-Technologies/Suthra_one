@@ -654,7 +654,7 @@ const UsersPage = () => {
     setSelectedUser(null);
   };
 
-  const openEditUser = (user: User) => {
+  const openEditUser = (user: User, initialTab: number = 0) => {
     const resolvedRoles = getRolesForUser(user);
     const convertedPermissions = getPermissionStrings(user.permissions);
 
@@ -683,7 +683,7 @@ const UsersPage = () => {
       department: user.department || ''
     });
     setEditingUser(user);
-    setDialogTab(0);
+    setDialogTab(initialTab);
     setUserErrors({});
     setShowPermissions(false);
     setUserDialog(true);
@@ -1055,6 +1055,7 @@ const UsersPage = () => {
                         >
                           <IconButton 
                             size="small" 
+                            onClick={() => openEditUser(user, 1)}
                             sx={{ 
                               bgcolor: alpha(theme.palette.primary.main, 0.05),
                               color: 'primary.main',
@@ -1200,7 +1201,11 @@ const UsersPage = () => {
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent sx={{ p: { xs: 2, sm: 4 }, bgcolor: isMobile ? alpha(theme.palette.background.default, 0.8) : 'background.paper' }}>
+        <DialogContent sx={{ 
+          p: { xs: 2, sm: 4 }, 
+          bgcolor: isMobile ? alpha(theme.palette.background.default, 0.8) : 'background.paper',
+          '& .MuiFormLabel-asterisk': { color: 'red !important' }
+        }}>
           {editingUser && (
             <Tabs
               value={dialogTab}
@@ -1823,7 +1828,11 @@ const UsersPage = () => {
             <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent sx={{ p: { xs: 2.5, sm: 3 }, pt: { xs: 3, sm: 1 } }}>
+        <DialogContent sx={{ 
+          p: { xs: 2.5, sm: 3 }, 
+          pt: { xs: 3, sm: 1 },
+          '& .MuiFormLabel-asterisk': { color: 'red !important' }
+        }}>
           <TextField
             fullWidth
             label="New Password"

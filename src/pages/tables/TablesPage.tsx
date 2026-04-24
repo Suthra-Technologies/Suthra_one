@@ -660,7 +660,7 @@ const TablesPage: React.FC = () => {
                     Table Management
                 </Typography>
                 <Stack direction="row" spacing={1} sx={{ width: { xs: '100%', sm: 'auto' }, justifyContent: 'center' }}>
-                    <Button
+                    {/* <Button
                         variant={selectionMode ? "contained" : "outlined"}
                         color={selectionMode ? "secondary" : "primary"}
                         startIcon={<SelectionIcon sx={{ fontSize: { xs: '1rem !important', sm: 'inherit' } }} />}
@@ -678,7 +678,7 @@ const TablesPage: React.FC = () => {
                         }}
                     >
                         {selectionMode ? "Exit" : "Select Tables"}
-                    </Button>
+                    </Button> */}
                     {selectionMode && selectedTableIds.length >= 2 && (
                         <Button
                             variant="contained"

@@ -104,6 +104,10 @@ const CouponsAdminPage: React.FC = () => {
     const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<{ id: string; code: string } | null>(null);
 
+    // Search
+    const [searchQuery, setSearchQuery] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+
     const [menuItems, setMenuItems] = useState<any[]>([]);
 
     // Form state
@@ -136,7 +140,11 @@ const CouponsAdminPage: React.FC = () => {
     const fetchCoupons = async () => {
         try {
             setLoading(true);
-            const response = await couponsAPI.getAll({ page: page + 1, limit: rowsPerPage });
+            const response = await couponsAPI.getAll({
+                page: page + 1,
+                limit: rowsPerPage,
+                search: debouncedSearch.trim() || undefined
+            });
             const data = response.data.coupons || response.data;
             const safeCoupons = Array.isArray(data) ? data : [];
             setCoupons(safeCoupons);
@@ -149,9 +157,18 @@ const CouponsAdminPage: React.FC = () => {
         }
     };
 
+    // Debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchQuery);
+            setPage(0);
+        }, 400);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
     useEffect(() => {
         fetchCoupons();
-    }, [page, rowsPerPage]);
+    }, [page, rowsPerPage, debouncedSearch]);
 
 
 
@@ -486,17 +503,17 @@ const CouponsAdminPage: React.FC = () => {
     const today = new Date().toISOString().split('T')[0];
 
     return (
-        <Box sx={{ 
+        <Box sx={{
             p: { xs: 2, md: 4 },
             pt: isMobile ? '20px' : 4,
             minHeight: '100%',
             bgcolor: '#f8f9fa'
         }}>
-            <Box sx={{ 
-                mb: isMobile ? 2 : 4, 
-                display: 'flex', 
-                flexDirection: { xs: 'column', sm: 'row' }, 
-                justifyContent: 'space-between', 
+            <Box sx={{
+                mb: isMobile ? 2 : 4,
+                display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
+                justifyContent: 'space-between',
                 alignItems: { xs: 'center', sm: 'flex-start' },
                 textAlign: { xs: 'center', sm: 'left' },
                 gap: 1.5
@@ -543,8 +560,8 @@ const CouponsAdminPage: React.FC = () => {
             {/* Summary Cards */}
             <Grid container spacing={isMobile ? 1 : 3} sx={{ mb: isMobile ? 2 : 4 }}>
                 <Grid item xs={12} sm={4}>
-                    <Card sx={{ 
-                        borderRadius: 3, 
+                    <Card sx={{
+                        borderRadius: 3,
                         boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                         border: '1px solid',
                         borderColor: alpha(theme.palette.divider, 0.05)
@@ -567,8 +584,8 @@ const CouponsAdminPage: React.FC = () => {
                     </Card>
                 </Grid>
                 <Grid item xs={6} sm={4}>
-                    <Card sx={{ 
-                        borderRadius: 3, 
+                    <Card sx={{
+                        borderRadius: 3,
                         boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                         border: '1px solid',
                         borderColor: alpha(theme.palette.divider, 0.05)
@@ -591,8 +608,8 @@ const CouponsAdminPage: React.FC = () => {
                     </Card>
                 </Grid>
                 <Grid item xs={6} sm={4}>
-                    <Card sx={{ 
-                        borderRadius: 3, 
+                    <Card sx={{
+                        borderRadius: 3,
                         boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                         border: '1px solid',
                         borderColor: alpha(theme.palette.divider, 0.05)
@@ -621,10 +638,19 @@ const CouponsAdminPage: React.FC = () => {
                 <TextField
                     fullWidth
                     size="small"
-                    placeholder="Search coupons..."
+                    placeholder="Search by code ..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                     sx={{ maxWidth: 500, bgcolor: 'white', borderRadius: 2, '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
                     InputProps={{
-                        startAdornment: <SearchIcon sx={{ color: 'text.disabled', mr: 1, fontSize: 18 }} />
+                        startAdornment: <SearchIcon sx={{ color: 'text.disabled', mr: 1, fontSize: 18 }} />,
+                        endAdornment: searchQuery && (
+                            <InputAdornment position="end">
+                                <IconButton size="small" onClick={() => setSearchQuery('')}>
+                                    <CloseIcon fontSize="small" />
+                                </IconButton>
+                            </InputAdornment>
+                        )
                     }}
                 />
             </Box>
@@ -640,9 +666,9 @@ const CouponsAdminPage: React.FC = () => {
                         const status = getCouponStatus(coupon);
                         return (
                             <Grid item xs={12} key={coupon._id} sx={{ display: 'flex', justifyContent: 'center' }}>
-                                <Card sx={{ 
-                                    borderRadius: 3, 
-                                    width: '100%', 
+                                <Card sx={{
+                                    borderRadius: 3,
+                                    width: '100%',
                                     maxWidth: 500,
                                     border: '1px solid',
                                     borderColor: alpha(theme.palette.divider, 0.05),
@@ -650,22 +676,22 @@ const CouponsAdminPage: React.FC = () => {
                                 }}>
                                     <CardContent sx={{ p: 0, '&:last-child': { pb: 0 } }}>
                                         {/* Status Header */}
-                                        <Box sx={{ 
-                                            p: 1.5, 
-                                            display: 'flex', 
-                                            justifyContent: 'space-between', 
+                                        <Box sx={{
+                                            p: 1.5,
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
                                             alignItems: 'center',
                                             bgcolor: alpha(theme.palette.background.default, 0.5),
                                             borderBottom: '1px solid',
                                             borderColor: alpha(theme.palette.divider, 0.05)
                                         }}>
-                                            <Chip 
-                                                label={coupon.code} 
-                                                color="primary" 
+                                            <Chip
+                                                label={coupon.code}
+                                                color="primary"
                                                 variant="filled"
-                                                sx={{ 
-                                                    fontWeight: 800, 
-                                                    height: 26, 
+                                                sx={{
+                                                    fontWeight: 800,
+                                                    height: 26,
                                                     fontFamily: 'monospace',
                                                     fontSize: '0.8rem',
                                                     borderRadius: 1.5,
@@ -673,23 +699,23 @@ const CouponsAdminPage: React.FC = () => {
                                                     color: 'primary.main',
                                                     border: '1px dashed',
                                                     borderColor: alpha(theme.palette.primary.main, 0.3)
-                                                }} 
+                                                }}
                                             />
                                             <Chip
                                                 label={status.label}
                                                 color={status.color}
                                                 size="small"
-                                                sx={{ 
-                                                    height: 18, 
-                                                    fontSize: '0.6rem', 
+                                                sx={{
+                                                    height: 18,
+                                                    fontSize: '0.6rem',
                                                     fontWeight: 700,
                                                     textTransform: 'uppercase'
                                                 }}
                                             />
                                         </Box>
 
-                                        <Box sx={{ p: 2 }}>
-                                            <Grid container spacing={2}>
+                                        <Box sx={{ p: 1.5 }}>
+                                            <Grid container spacing={1.5}>
                                                 <Grid item xs={6}>
                                                     <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ display: 'block', textTransform: 'uppercase', fontSize: '0.6rem', mb: 0.5 }}>
                                                         Offer Details
@@ -717,12 +743,12 @@ const CouponsAdminPage: React.FC = () => {
                                         </Box>
 
                                         {/* Action Bar */}
-                                        <Box sx={{ 
-                                            p: 1, 
-                                            display: 'flex', 
-                                            justifyContent: 'flex-end', 
+                                        <Box sx={{
+                                            p: 0.75,
+                                            display: 'flex',
+                                            justifyContent: 'flex-end',
                                             gap: 0.5,
-                                            borderTop: '1px solid', 
+                                            borderTop: '1px solid',
                                             borderColor: alpha(theme.palette.divider, 0.05),
                                             bgcolor: 'white'
                                         }}>
@@ -883,72 +909,72 @@ const CouponsAdminPage: React.FC = () => {
             )}
 
             {/* Create/Edit Coupon Dialog */}
-            <Dialog 
-                open={openDialog} 
-                onClose={handleCloseDialog} 
-                maxWidth="md" 
-                fullWidth 
+            <Dialog
+                open={openDialog}
+                onClose={handleCloseDialog}
+                maxWidth="md"
+                fullWidth
                 fullScreen={isMobile}
                 PaperProps={{ sx: { borderRadius: isMobile ? 0 : 4, bgcolor: '#f8f9fa' } }}
             >
-                <DialogTitle sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center', 
-                    borderBottom: '1px solid', 
+                <DialogTitle sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    borderBottom: '1px solid',
                     borderColor: alpha(theme.palette.divider, 0.1),
                     bgcolor: 'white',
-                    p: isMobile ? 2 : 2.5,
-                    pt: isMobile ? '60px' : 2.5
+                    p: isMobile ? 1.5 : 2,
+                    pt: isMobile ? 2 : 2
                 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Box sx={{ 
-                            p: 1, 
-                            borderRadius: 1.5, 
-                            bgcolor: alpha(theme.palette.primary.main, 0.1), 
+                        <Box sx={{
+                            p: 1,
+                            borderRadius: 1.5,
+                            bgcolor: alpha(theme.palette.primary.main, 0.1),
                             color: 'primary.main',
                             display: 'flex'
                         }}>
-                             <CheckCircleIcon fontSize={isMobile ? "small" : "medium"} />
+                            <CheckCircleIcon fontSize={isMobile ? "small" : "medium"} />
                         </Box>
-                        <Typography 
-                            variant={isMobile ? "subtitle1" : "h6"} 
+                        <Typography
+                            variant={isMobile ? "subtitle1" : "h6"}
                             fontWeight={700}
                             sx={{ fontFamily: '"Outfit", sans-serif', textTransform: 'uppercase', letterSpacing: '0.02em' }}
                         >
                             {selectedCoupon ? 'Edit Coupon' : 'Create New Coupon'}
                         </Typography>
                     </Box>
-                    <IconButton 
-                        onClick={handleCloseDialog} 
-                        size="small" 
-                        sx={{ 
-                            bgcolor: alpha(theme.palette.error.main, 0.1), 
-                            color: 'error.main', 
-                            '&:hover': { bgcolor: 'error.main', color: 'white' } 
+                    <IconButton
+                        onClick={handleCloseDialog}
+                        size="small"
+                        sx={{
+                            bgcolor: alpha(theme.palette.error.main, 0.1),
+                            color: 'error.main',
+                            '&:hover': { bgcolor: 'error.main', color: 'white' }
                         }}
                     >
                         <CloseIcon fontSize="small" />
                     </IconButton>
                 </DialogTitle>
-                <DialogContent sx={{ p: isMobile ? 1.5 : 3, bgcolor: '#f8f9fa' }}>
-                    <Grid container spacing={isMobile ? 1.5 : 3} sx={{ mt: 0.5 }}>
+                <DialogContent sx={{ p: isMobile ? 1 : 2, bgcolor: '#f8f9fa' }}>
+                    <Grid container spacing={isMobile ? 1 : 2} sx={{ mt: 0 }}>
                         {/* Coupon Identity */}
                         <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center' }}>
-                            <Paper sx={{ 
-                                p: isMobile ? 2 : 3, 
-                                borderRadius: 3, 
-                                width: '100%', 
-                                maxWidth: 600,
+                            <Paper sx={{
+                                p: 2,
+                                borderRadius: 3,
+                                width: '100%',
+                                maxWidth: 800,
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                                 border: '1px solid',
                                 borderColor: alpha(theme.palette.divider, 0.05),
                                 bgcolor: 'white'
                             }}>
-                                <Typography variant="caption" fontWeight={700} color="primary" sx={{ display: 'block', mb: 2, textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: '"Outfit", sans-serif' }}>
+                                <Typography variant="caption" fontWeight={700} color="primary" sx={{ display: 'block', mb: 1, textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: '"Outfit", sans-serif' }}>
                                     Coupon Identity
                                 </Typography>
-                                <Grid container spacing={2}>
+                                <Grid container spacing={1.5}>
                                     <Grid item xs={12} sm={6}>
                                         <TextField
                                             fullWidth
@@ -978,20 +1004,20 @@ const CouponsAdminPage: React.FC = () => {
                         </Grid>
                         {/* Discount Logic */}
                         <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center' }}>
-                            <Paper sx={{ 
-                                p: isMobile ? 2 : 3, 
-                                borderRadius: 3, 
-                                width: '100%', 
-                                maxWidth: 600,
+                            <Paper sx={{
+                                p: 2,
+                                borderRadius: 3,
+                                width: '100%',
+                                maxWidth: 800,
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                                 border: '1px solid',
                                 borderColor: alpha(theme.palette.divider, 0.05),
                                 bgcolor: 'white'
                             }}>
-                                <Typography variant="caption" fontWeight={700} color="primary" sx={{ display: 'block', mb: 2, textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: '"Outfit", sans-serif' }}>
+                                <Typography variant="caption" fontWeight={700} color="primary" sx={{ display: 'block', mb: 1, textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: '"Outfit", sans-serif' }}>
                                     Discount Logic
                                 </Typography>
-                                <Grid container spacing={2}>
+                                <Grid container spacing={1.5}>
                                     <Grid item xs={12} sm={6}>
                                         <FormControl fullWidth size="small">
                                             <InputLabel>Discount Type</InputLabel>
@@ -1057,6 +1083,7 @@ const CouponsAdminPage: React.FC = () => {
                                             label="Value"
                                             value={formData.discountValue}
                                             onChange={(e) => setFormData({ ...formData, discountValue: Number(e.target.value) })}
+                                            onFocus={(e) => e.target.select()}
                                             InputProps={{ sx: { borderRadius: 2, fontWeight: 700 } }}
                                         />
                                     </Grid>
@@ -1068,6 +1095,7 @@ const CouponsAdminPage: React.FC = () => {
                                             label="Min Bill"
                                             value={formData.minBillAmount}
                                             onChange={(e) => setFormData({ ...formData, minBillAmount: Number(e.target.value) })}
+                                            onFocus={(e) => e.target.select()}
                                             InputProps={{ sx: { borderRadius: 2 } }}
                                         />
                                     </Grid>
@@ -1076,20 +1104,20 @@ const CouponsAdminPage: React.FC = () => {
                         </Grid>
                         {/* Validity & Constraints */}
                         <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center' }}>
-                            <Paper sx={{ 
-                                p: isMobile ? 2 : 3, 
-                                borderRadius: 3, 
-                                width: '100%', 
-                                maxWidth: 600,
+                            <Paper sx={{
+                                p: 2,
+                                borderRadius: 3,
+                                width: '100%',
+                                maxWidth: 800,
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                                 border: '1px solid',
                                 borderColor: alpha(theme.palette.divider, 0.05),
                                 bgcolor: 'white'
                             }}>
-                                <Typography variant="caption" fontWeight={700} color="primary" sx={{ display: 'block', mb: 2, textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: '"Outfit", sans-serif' }}>
+                                <Typography variant="caption" fontWeight={700} color="primary" sx={{ display: 'block', mb: 1, textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: '"Outfit", sans-serif' }}>
                                     Validity & Constraints
                                 </Typography>
-                                <Grid container spacing={2}>
+                                <Grid container spacing={1}>
                                     <Grid item xs={6}>
                                         <TextField
                                             fullWidth
@@ -1101,6 +1129,7 @@ const CouponsAdminPage: React.FC = () => {
                                             onChange={(e) => setFormData({ ...formData, validFrom: e.target.value })}
                                             InputLabelProps={{ shrink: true }}
                                             InputProps={{ sx: { borderRadius: 2 } }}
+                                            inputProps={{ min: today }}
                                         />
                                     </Grid>
                                     <Grid item xs={6}>
@@ -1114,6 +1143,7 @@ const CouponsAdminPage: React.FC = () => {
                                             onChange={(e) => setFormData({ ...formData, validTo: e.target.value })}
                                             InputLabelProps={{ shrink: true }}
                                             InputProps={{ sx: { borderRadius: 2 } }}
+                                            inputProps={{ min: formData.validFrom || today }}
                                         />
                                     </Grid>
                                     <Grid item xs={6}>
@@ -1124,6 +1154,7 @@ const CouponsAdminPage: React.FC = () => {
                                             size="small"
                                             value={formData.maxTotalUses}
                                             onChange={(e) => setFormData({ ...formData, maxTotalUses: Number(e.target.value) })}
+                                            onFocus={(e) => e.target.select()}
                                             InputProps={{ sx: { borderRadius: 2 } }}
                                         />
                                     </Grid>
@@ -1135,6 +1166,7 @@ const CouponsAdminPage: React.FC = () => {
                                             size="small"
                                             value={formData.maxUsesPerCustomer}
                                             onChange={(e) => setFormData({ ...formData, maxUsesPerCustomer: Number(e.target.value) })}
+                                            onFocus={(e) => e.target.select()}
                                             InputProps={{ sx: { borderRadius: 2 } }}
                                         />
                                     </Grid>
@@ -1165,11 +1197,11 @@ const CouponsAdminPage: React.FC = () => {
                         </Grid>
                     </Grid>
                 </DialogContent>
-                <DialogActions sx={{ p: isMobile ? 2 : 3, bgcolor: 'white', borderTop: '1px solid', borderColor: alpha(theme.palette.divider, 0.1), gap: 1.5 }}>
-                    <Button 
-                        onClick={handleCloseDialog} 
-                        sx={{ 
-                            textTransform: 'none', 
+                <DialogActions sx={{ p: isMobile ? 1.5 : 2, bgcolor: 'white', borderTop: '1px solid', borderColor: alpha(theme.palette.divider, 0.1), gap: 1 }}>
+                    <Button
+                        onClick={handleCloseDialog}
+                        sx={{
+                            textTransform: 'none',
                             fontWeight: 'bold',
                             color: 'text.secondary'
                         }}
@@ -1179,10 +1211,10 @@ const CouponsAdminPage: React.FC = () => {
                     <Button
                         variant="contained"
                         onClick={handleSaveCoupon}
-                        sx={{ 
-                            borderRadius: 2, 
-                            px: 4, 
-                            textTransform: 'none', 
+                        sx={{
+                            borderRadius: 2,
+                            px: 4,
+                            textTransform: 'none',
                             fontWeight: 'bold',
                             boxShadow: '0 4px 12px rgba(79, 70, 229, 0.2)',
                             background: 'linear-gradient(45deg, #4F46E5, #6366F1)'
@@ -1194,49 +1226,49 @@ const CouponsAdminPage: React.FC = () => {
             </Dialog>
 
             {/* Bulk Email Dialog */}
-            <Dialog 
-                open={openEmailDialog} 
-                onClose={handleCloseEmailDialog} 
-                maxWidth="md" 
+            <Dialog
+                open={openEmailDialog}
+                onClose={handleCloseEmailDialog}
+                maxWidth="md"
                 fullWidth
                 fullScreen={isMobile}
                 PaperProps={{ sx: { borderRadius: isMobile ? 0 : 4, bgcolor: '#f8f9fa' } }}
             >
-                <DialogTitle sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center', 
-                    borderBottom: '1px solid', 
+                <DialogTitle sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    borderBottom: '1px solid',
                     borderColor: alpha(theme.palette.divider, 0.1),
                     bgcolor: 'white',
                     p: isMobile ? 2 : 2.5,
                     pt: isMobile ? '60px' : 2.5
                 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Box sx={{ 
-                            p: 1, 
-                            borderRadius: 1.5, 
-                            bgcolor: alpha(theme.palette.info.main, 0.1), 
+                        <Box sx={{
+                            p: 1,
+                            borderRadius: 1.5,
+                            bgcolor: alpha(theme.palette.info.main, 0.1),
                             color: 'info.main',
                             display: 'flex'
                         }}>
-                             <EmailIcon fontSize={isMobile ? "small" : "medium"} />
+                            <EmailIcon fontSize={isMobile ? "small" : "medium"} />
                         </Box>
-                        <Typography 
-                            variant={isMobile ? "subtitle1" : "h6"} 
+                        <Typography
+                            variant={isMobile ? "subtitle1" : "h6"}
                             fontWeight={700}
                             sx={{ fontFamily: '"Outfit", sans-serif', textTransform: 'uppercase' }}
                         >
                             Email Promotion
                         </Typography>
                     </Box>
-                    <IconButton 
-                        onClick={handleCloseEmailDialog} 
-                        size="small" 
-                        sx={{ 
-                            bgcolor: alpha(theme.palette.error.main, 0.1), 
-                            color: 'error.main', 
-                            '&:hover': { bgcolor: 'error.main', color: 'white' } 
+                    <IconButton
+                        onClick={handleCloseEmailDialog}
+                        size="small"
+                        sx={{
+                            bgcolor: alpha(theme.palette.error.main, 0.1),
+                            color: 'error.main',
+                            '&:hover': { bgcolor: 'error.main', color: 'white' }
                         }}
                     >
                         <CloseIcon fontSize="small" />
@@ -1316,9 +1348,9 @@ const CouponsAdminPage: React.FC = () => {
                         variant="contained"
                         onClick={handleSendBulkEmail}
                         disabled={emailLoading}
-                        sx={{ 
-                            borderRadius: 2, 
-                            px: 3, 
+                        sx={{
+                            borderRadius: 2,
+                            px: 3,
                             fontWeight: 'bold',
                             background: 'linear-gradient(45deg, #4F46E5, #6366F1)'
                         }}
@@ -1329,48 +1361,48 @@ const CouponsAdminPage: React.FC = () => {
             </Dialog>
 
             {/* SMS Broadcast Dialog */}
-            <Dialog 
-                open={openSmsDialog} 
-                onClose={handleCloseSmsDialog} 
-                maxWidth="sm" 
+            <Dialog
+                open={openSmsDialog}
+                onClose={handleCloseSmsDialog}
+                maxWidth="sm"
                 fullWidth
                 fullScreen={isMobile}
                 PaperProps={{ sx: { borderRadius: isMobile ? 0 : 4, bgcolor: '#f8f9fa' } }}
             >
-                <DialogTitle sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center', 
-                    borderBottom: '1px solid', 
+                <DialogTitle sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    borderBottom: '1px solid',
                     borderColor: alpha(theme.palette.divider, 0.1),
                     bgcolor: 'white',
                     p: isMobile ? 2 : 2.5,
                     pt: isMobile ? '80px' : 2.5
                 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Box sx={{ 
-                            p: 1, 
-                            borderRadius: 1.5, 
-                            bgcolor: alpha(theme.palette.success.main, 0.1), 
+                        <Box sx={{
+                            p: 1,
+                            borderRadius: 1.5,
+                            bgcolor: alpha(theme.palette.success.main, 0.1),
                             color: 'success.main',
                             display: 'flex'
                         }}>
-                             <SmsIcon fontSize={isMobile ? "small" : "medium"} />
+                            <SmsIcon fontSize={isMobile ? "small" : "medium"} />
                         </Box>
-                        <Typography 
-                            variant={isMobile ? "subtitle1" : "h6"} 
+                        <Typography
+                            variant={isMobile ? "subtitle1" : "h6"}
                             fontWeight={700}
                             sx={{ fontFamily: '"Outfit", sans-serif', textTransform: 'uppercase' }}
                         >
                             SMS Broadcast
                         </Typography>
                     </Box>
-                    <IconButton 
-                        onClick={handleCloseSmsDialog} 
-                        size="small" 
-                        sx={{ 
-                            bgcolor: alpha(theme.palette.error.main, 0.1), 
-                            color: 'error.main', 
+                    <IconButton
+                        onClick={handleCloseSmsDialog}
+                        size="small"
+                        sx={{
+                            bgcolor: alpha(theme.palette.error.main, 0.1),
+                            color: 'error.main',
                         }}
                     >
                         <CloseIcon fontSize="small" />
