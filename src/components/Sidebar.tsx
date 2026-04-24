@@ -13,6 +13,7 @@ import {
   Menu,
   MenuItem,
   Tooltip,
+  useMediaQuery,
   useTheme,
   Typography
 } from '@mui/material';
@@ -58,6 +59,7 @@ import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
 import { useActiveTenant } from '../hooks/useActiveTenant';
 import { BRAND_CONFIG } from '../config/brandConfig';
+import { Capacitor } from '@capacitor/core';
 
 /**
  * Ensures image URLs are absolute.
@@ -92,6 +94,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
   const { slug, getRelativePath } = useActiveTenant();
   const { settings } = useSettings();
   const restaurantSettings = settings?.restaurant || {};
+  const isMobileOrTablet = useMediaQuery(theme.breakpoints.down('md'));
 
   const handleNavigation = (path: string) => {
     navigate(getRelativePath(path));
@@ -201,14 +204,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
       items: [
         { path: '/reports', label: 'Reports', icon: <Assessment />, roles: ['admin', 'manager'] },
         { path: '/service-usage', label: 'Service Usage', icon: <WebIcon />, roles: ['admin', 'manager'] },
-        { path: '/invoices', label: 'Invoices', icon: <Receipt />, roles: ['admin', 'superadmin'] },
+        { path: '/invoices', label: 'Invoices', icon: <Receipt />, roles: ['admin', 'superadmin'], laptopOnly: true },
       ]
     },
     {
       title: 'ACCOUNT',
       items: [
         { path: '/profile', label: 'Profile', icon: <Person />, roles: ['admin', 'manager', 'waiter', 'cashier', 'delivery', 'customer'] },
-        { path: '/subscription', label: 'Subscription', icon: <AdminPanelSettings />, roles: ['admin'] },
+        { path: '/subscription', label: 'Subscription', icon: <AdminPanelSettings />, roles: ['admin'], hideOnIOS: true, laptopOnly: true },
         { path: '/support', label: 'Super Admin Support', icon: <HeadsetMic />, roles: ['admin', 'manager'] },
         { path: '/customer-support', label: 'Customer Tickets', icon: <Forum />, roles: ['admin', 'manager'] },
         { path: '/settings', label: 'Settings', icon: <Settings />, roles: ['admin', 'manager'] },
@@ -397,7 +400,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
           const filteredItems = (group.items as any[]).filter(item => {
             const roleMatch = !item.roles || (activeRole && item.roles.includes(activeRole));
             const featureMatch = hasFeatureAccess(item.feature);
-            return roleMatch && featureMatch;
+            const iosHideMatch = item.hideOnIOS && Capacitor.getPlatform() === 'ios';
+            const laptopOnlyMatch = item.laptopOnly && isMobileOrTablet;
+            return roleMatch && featureMatch && !iosHideMatch && !laptopOnlyMatch;
           });
 
           if (filteredItems.length === 0) return null;
@@ -536,13 +541,13 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
 
 
 
-      <Box sx={{ p: collapsed ? 1 : 2, mt: 'auto' }}>
+      {/* <Box sx={{ p: collapsed ? 1 : 2, mt: 'auto' }}>
         {!collapsed && (
           <Typography variant="caption" color="text.secondary" align="center" display="block">
             Version 1.0.0
           </Typography>
         )}
-      </Box>
+      </Box> */}
 
       {/* Submenu for Collapsed Sidebar */}
       <Menu

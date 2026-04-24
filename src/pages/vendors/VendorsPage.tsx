@@ -406,7 +406,7 @@ const VendorsPage: React.FC = () => {
     return (
         <Box sx={{ 
             p: isMobile ? 2 : 4, 
-            pt: isMobile ? '80px' : 4, // More space for mobile status bars
+            pt: isMobile ? '20px' : 4, // Minimize top gap on phones only
             maxWidth: 1600, 
             mx: 'auto' 
         }}>

@@ -492,7 +492,7 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                             </Box>
                             {order.tax?.amount > 0 && (
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <Typography variant="body2">Tax ({order.tax.rate}%):</Typography>
+                                    <Typography variant="body2">Tax </Typography>
                                     <Typography variant="body2">{formatCurrency(order.tax.amount)}</Typography>
                                 </Box>
                             )}
