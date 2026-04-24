@@ -3,6 +3,7 @@ import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosReq
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { BRAND_CONFIG } from '../config/brandConfig';
+import { Capacitor } from '@capacitor/core';
 
 const envApiBase = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
 const brandApiBase = (BRAND_CONFIG.apiBaseUrl as string | undefined)?.trim();
@@ -55,6 +56,12 @@ api.interceptors.response.use(
   (error) => {
     const message = error.response?.data?.message || error.message || 'An error occurred';
     if (error.response?.status === 401) {
+      // Mobile-only: keep local session until explicit logout.
+      // Some transient 401s should not force users back to login.
+      if (Capacitor.isNativePlatform()) {
+        return Promise.reject(error);
+      }
+
       localStorage.removeItem('jwt');
       localStorage.removeItem('user');
 

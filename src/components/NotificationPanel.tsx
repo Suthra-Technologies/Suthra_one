@@ -237,7 +237,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ open, onClose, no
           px: 2,
           pt: 1.5,
           pb: 1.5,
-          mt: 5,
+          mt: 1,
           display: 'flex',
           gap: 1,
           borderBottom: '1px solid rgba(0,0,0,0.12)',
