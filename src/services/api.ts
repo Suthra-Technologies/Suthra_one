@@ -417,7 +417,7 @@ export const couponsAPI = {
 
 // New Promos API – separate endpoints for promo codes
 export const promosAPI = {
-  getAll: (params?: { page: number; limit: number }) => api.get('/promos', { params }),
+  getAll: (params?: { page: number; limit: number; search?: string }) => api.get('/promos', { params }),
   getActive: (orderType?: string, billAmount?: number) =>
     api.get('/promos/active', { params: { orderType, billAmount } }),
   validate: (code: string, orderType: string, billAmount: number, customerId?: string) =>
@@ -427,6 +427,10 @@ export const promosAPI = {
   update: (id: string, promoData: any) => api.put(`/promos/${id}`, promoData),
   delete: (id: string) => api.delete(`/promos/${id}`),
   // apply endpoint can be added if needed
+  sendBulkEmail: (data: { promoId: string; subject: string; message: string; recipients: string[] }) => 
+    api.post('/promos/send-bulk-email', data),
+  sendBulkSms: (data: { promoId: string; phoneNumbers: string[] }) => 
+    api.post('/promos/send-sms', data),
 };
 
 // -------------------- Bookings API --------------------
