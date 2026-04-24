@@ -1960,7 +1960,7 @@ const HomePage: React.FC = () => {
 
                     {/* DESCRIPTION */}
                     <Typography variant="body2" color="text.secondary" mb={4}>
-                      {plan.description || `Everything you need with the ${plan.name} plan.`}
+                      {plan.description || `Everything you will get with the ${plan.name} plan.`}
                     </Typography>
 
                     {/* FEATURES */}

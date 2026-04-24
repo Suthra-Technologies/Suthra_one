@@ -367,7 +367,7 @@ export const subscriptionAPI = {
 
 // -------------------- Coupons API --------------------
 export const couponsAPI = {
-  getAll: (params?: { page: number; limit: number }) => api.get('/coupons', { params }),
+  getAll: (params?: { page: number; limit: number; search?: string }) => api.get('/coupons', { params }),
   getActive: (orderType?: string, billAmount?: number) =>
     api.get('/coupons/active', { params: { orderType, billAmount } }),
   validate: (code: string, orderType: string, billAmount: number, customerId?: string) =>
