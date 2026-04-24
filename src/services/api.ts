@@ -207,6 +207,41 @@ export const ordersAPI = {
   simulateUberEatsStatus: (orderId: string, status: string) => api.post(`/ubereats/simulate/${orderId}`, { status }),
 };
 
+// -------------------- Uber Direct API --------------------
+export const ubereatsAPI = {
+  // Deliveries
+  createDelivery: (payload: any) => api.post('/ubereats/deliveries', payload),
+  listDeliveries: (params?: any) => api.get('/ubereats/deliveries', { params }),
+  getDelivery: (deliveryId: string) => api.get(`/ubereats/deliveries/${deliveryId}`),
+  updateDelivery: (deliveryId: string, payload: any) => api.post(`/ubereats/deliveries/${deliveryId}`, payload),
+  cancelDelivery: (deliveryId: string, payload?: any) => api.post(`/ubereats/deliveries/${deliveryId}/cancel`, payload),
+  getProofOfDelivery: (deliveryId: string) => api.get(`/ubereats/deliveries/${deliveryId}/proof-of-delivery`),
+
+  // Quotes
+  createQuote: (payload: any) => api.post('/ubereats/quotes', payload),
+
+  // Stores
+  findStores: (latitude: number, longitude: number) => api.get('/ubereats/stores', { params: { latitude, longitude } }),
+
+  // Organizations
+  createOrganization: (payload: any) => api.post('/ubereats/organizations', payload),
+  getOrganization: (organizationId: string) => api.get(`/ubereats/organizations/${organizationId}`),
+  inviteMember: (organizationId: string, payload: any) => api.post(`/ubereats/organizations/${organizationId}/memberships/invite`, payload),
+
+  // Business Locations
+  getBusinessLocations: (organizationId: string) => api.get(`/ubereats/organizations/${organizationId}/business-locations`),
+  getBusinessLocation: (organizationId: string, businessLocationId: string) => api.get(`/ubereats/organizations/${organizationId}/business-locations/${businessLocationId}`),
+  updateBusinessLocation: (organizationId: string, businessLocationId: string, payload: any) => api.patch(`/ubereats/organizations/${organizationId}/business-locations/${businessLocationId}`, payload),
+
+  // Refunds
+  submitRefund: (payload: any) => api.post('/ubereats/refund', payload),
+
+  // Webhooks
+  listWebhooks: () => api.get('/ubereats/webhooks'),
+  registerWebhook: (url: string) => api.post('/ubereats/webhooks/register', { url }),
+  deleteWebhook: (webhookId: string) => api.delete(`/ubereats/webhooks/${webhookId}`),
+};
+
 // -------------------- Rewards API --------------------
 export const rewardsAPI = {
   getCustomerInfo: (params: { search?: string; email?: string; phone?: string }) => api.get('/orders/rewards/customer-info', { params }),
