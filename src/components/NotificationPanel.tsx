@@ -95,6 +95,59 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ open, onClose, no
     return colorMap[priority] || 'default';
   };
 
+  const getOrderNotificationDetails = (notification: Notification) => {
+    const sourceOrder = notification.data?.order || notification.data || {};
+
+    const rawOrderId =
+      sourceOrder.orderNumber ??
+      sourceOrder.orderId ??
+      sourceOrder.order_id ??
+      notification.data?.orderNumber ??
+      notification.data?.orderId ??
+      notification.data?.order_id;
+
+    const orderIdString = String(rawOrderId ?? '');
+    const displayOrderId = orderIdString
+      ? (orderIdString.includes('-') ? orderIdString.split('-').pop() : orderIdString)
+      : '--';
+
+    const rawToken =
+      sourceOrder.dailyTokenNumber ??
+      sourceOrder.tokenNumber ??
+      sourceOrder.tokenNo ??
+      sourceOrder.token_no ??
+      sourceOrder.token ??
+      notification.data?.dailyTokenNumber ??
+      notification.data?.tokenNumber ??
+      notification.data?.tokenNo ??
+      notification.data?.token_no ??
+      notification.data?.token;
+
+    const tokenDigits = rawToken === null || rawToken === undefined ? '' : String(rawToken).replace(/\D/g, '');
+    const displayTokenNo = tokenDigits ? tokenDigits.padStart(2, '0') : '--';
+
+    const rawOrderType =
+      sourceOrder.orderType ??
+      sourceOrder.type ??
+      sourceOrder.order_type ??
+      notification.data?.orderType ??
+      notification.data?.type ??
+      notification.data?.order_type;
+
+    const displayOrderType = rawOrderType
+      ? String(rawOrderType)
+          .replace(/_/g, ' ')
+          .replace(/\b\w/g, (char) => char.toUpperCase())
+      : '--';
+
+    const displayStatus =
+      notification.data?.status ??
+      sourceOrder.status ??
+      'Update';
+
+    return { displayOrderId, displayTokenNo, displayOrderType, displayStatus };
+  };
+
   const handleMarkAllAsRead = () => {
     markAllAsRead();
   };
@@ -184,7 +237,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ open, onClose, no
           px: 2,
           pt: 1.5,
           pb: 1.5,
-          mt: 5,
+          mt: 1,
           display: 'flex',
           gap: 1,
           borderBottom: '1px solid rgba(0,0,0,0.12)',
@@ -234,6 +287,11 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ open, onClose, no
                   {/* Conditional Rendering: Premium Single Card for Order Updates vs Standard Layout */}
                   {(notification.data?.orderId || notification.data?.orderNumber || notification.data?.status) ? (
                     <Box sx={{ flexGrow: 1 }}>
+                      {(() => {
+                        const { displayOrderId, displayTokenNo, displayOrderType, displayStatus } =
+                          getOrderNotificationDetails(notification);
+
+                        return (
                       <Box sx={{
                         p: 1.75,
                         borderRadius: '16px',
@@ -259,9 +317,9 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ open, onClose, no
                             <Typography sx={{ fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.9, mb: 0.25 }}>
                               Order Update
                             </Typography>
-                            <Typography sx={{ fontSize: '0.9rem', fontWeight: 900, letterSpacing: '0.02em' }}>
-                              #{notification.data?.orderId || notification.data?.orderNumber}
-                            </Typography>
+                             <Typography sx={{ fontSize: '0.68rem', opacity: 0.95, fontWeight: 700 }}>
+                            Token No: <Box component="span" sx={{ fontWeight: 900 }}>{displayTokenNo}</Box>
+                          </Typography>
                           </Box>
                           {!notification.read && (
                             <IconButton
@@ -272,6 +330,16 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ open, onClose, no
                               <CheckCircle sx={{ fontSize: 16 }} />
                             </IconButton>
                           )}
+                        </Box>
+
+                        <Box sx={{ display: 'flex', gap: 1.25, flexWrap: 'wrap', mb: 1.25 }}>
+             
+                          <Typography sx={{ fontSize: '0.9rem', fontWeight: 900, letterSpacing: '0.02em' }}>
+                              Order ID: {displayOrderId}
+                            </Typography>
+                          <Typography sx={{ fontSize: '0.68rem', opacity: 0.95, fontWeight: 700 }}>
+                            Type: <Box component="span" sx={{ fontWeight: 900 }}>{displayOrderType}</Box>
+                          </Typography>
                         </Box>
 
                         <Box sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
@@ -294,10 +362,12 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ open, onClose, no
                             letterSpacing: '0.05em',
                             boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
                           }}>
-                            {String(notification.data?.status || 'Update').replace(/_/g, ' ')}
+                            {String(displayStatus).replace(/_/g, ' ')}
                           </Box>
                         </Box>
                       </Box>
+                        );
+                      })()}
                     </Box>
                   ) : (
                     <ListItemText

@@ -1393,7 +1393,8 @@ const SettingsPage: React.FC = () => {
                 variant="h4" 
                 gutterBottom 
                 sx={{ 
-                    mb: { xs: 2.5, sm: 3 }, 
+                    mt: { xs: 0.75, sm: 0 },
+                    mb: { xs: 1.25, sm: 3 }, 
                     textAlign: { xs: 'center', md: 'left' },
                     fontWeight: 800,
                     fontFamily: "'Outfit', sans-serif",

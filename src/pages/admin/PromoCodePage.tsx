@@ -12,6 +12,7 @@ import {
     Info as InfoIcon,
     LocalOffer as LocalOfferIcon,
     Search as SearchIcon,
+    Send as SendIcon,
     TrendingUp as TrendingUpIcon,
     ViewList as ViewListIcon,
     AccountBalanceWallet as WalletIcon
@@ -22,6 +23,7 @@ import {
     Button,
     Card,
     CardContent,
+    Checkbox,
     Chip,
     CircularProgress,
     Dialog,
@@ -31,6 +33,7 @@ import {
     Divider,
     Fade,
     FormControl,
+    FormControlLabel,
     Grid,
     IconButton,
     InputAdornment,
@@ -57,7 +60,15 @@ import { format } from 'date-fns';
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
-import { promosAPI } from '../../services/api';
+import { promosAPI, customersAPI, reportsAPI, menuAPI } from '../../services/api';
+
+interface Customer {
+    name: string;
+    email: string;
+    phone: string;
+    totalOrders: number;
+    totalSpent?: number;
+}
 
 // types
 interface PromoCode {
@@ -182,6 +193,7 @@ const PromoCodePage: React.FC = () => {
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(6);
     const [totalItems, setTotalItems] = useState(0);
+    const [debouncedSearch, setDebouncedSearch] = useState('');
 
     // Dialog state
     const [openDialog, setOpenDialog] = useState(false);
@@ -192,8 +204,26 @@ const PromoCodePage: React.FC = () => {
     const [openEmailDialog, setOpenEmailDialog] = useState(false);
     const [openSmsDialog, setOpenSmsDialog] = useState(false);
     const [selectedForMessage, setSelectedForMessage] = useState<PromoCode | null>(null);
+    const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+    const [promoToDelete, setPromoToDelete] = useState<PromoCode | null>(null);
     const [renderError, setRenderError] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+    const [customers, setCustomers] = useState<Customer[]>([]);
+    const [emailLoading, setEmailLoading] = useState(false);
+    const [smsLoading, setSmsLoading] = useState(false);
+
+    // Email form state
+    const [emailData, setEmailData] = useState({
+        subject: '',
+        message: '',
+        selectedCustomers: [] as string[],
+        selectAll: false,
+    });
+
+    // SMS form state
+    const [selectedSmsPhones, setSelectedSmsPhones] = useState<string[]>([]);
+    const [selectAllSms, setSelectAllSms] = useState(false);
+    const [smsSearch, setSmsSearch] = useState('');
 
     // Defensive date formatter
     const safeFormatDate = (dateStr: string, formatStr: string = 'MMM dd, yyyy') => {
@@ -226,7 +256,11 @@ const PromoCodePage: React.FC = () => {
     const fetchPromos = async () => {
         try {
             setLoading(true);
-            const response = await promosAPI.getAll({ page: page + 1, limit: rowsPerPage });
+            const response = await promosAPI.getAll({ 
+                page: page + 1, 
+                limit: rowsPerPage,
+                search: debouncedSearch.trim() || undefined
+            });
             const responseData = response.data;
 
             if (responseData && (responseData.promos || responseData.coupons) && Array.isArray(responseData.promos || responseData.coupons)) {
@@ -248,9 +282,40 @@ const PromoCodePage: React.FC = () => {
         }
     };
 
+    // Debounce search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchTerm);
+            setPage(0); // Reset to first page on search
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    const fetchCustomers = async () => {
+        try {
+            const response = await customersAPI.getAll({ page: 1, limit: 1000 });
+            const raw = response.data.customers || response.data;
+            const fetched: Customer[] = Array.isArray(raw) ? raw : [];
+            
+            // Filter unique by email or phone to avoid key errors
+            const uniqueMap = new Map();
+            fetched.forEach(c => {
+                const identifier = c.email || c.phone;
+                if (identifier && !uniqueMap.has(identifier)) {
+                    uniqueMap.set(identifier, c);
+                }
+            });
+            
+            setCustomers(Array.from(uniqueMap.values()));
+        } catch (error) {
+            console.error('Error fetching customers:', error);
+        }
+    };
+
     useEffect(() => {
         fetchPromos();
-    }, [page, rowsPerPage]);
+        fetchCustomers();
+    }, [page, rowsPerPage, debouncedSearch]);
 
     const handleOpenDialog = (promo?: PromoCode) => {
         if (promo) {
@@ -324,11 +389,18 @@ const PromoCodePage: React.FC = () => {
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (!window.confirm('Are you sure you want to delete this promo code?')) return;
+    const handleDelete = (promo: PromoCode) => {
+        setPromoToDelete(promo);
+        setOpenDeleteDialog(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!promoToDelete) return;
         try {
-            await promosAPI.delete(id);
+            await promosAPI.delete(promoToDelete._id);
             toast.success('Promo code deleted');
+            setOpenDeleteDialog(false);
+            setPromoToDelete(null);
             fetchPromos();
         } catch (error) {
             toast.error('Failed to delete promo code');
@@ -337,17 +409,123 @@ const PromoCodePage: React.FC = () => {
 
     const toggleStatus = async (promo: PromoCode) => {
         try {
-            await promosAPI.update(promo._id, { ...promo, active: !promo.active });
-            toast.success(`Promo ${!promo.active ? 'activated' : 'deactivated'}`);
-            fetchPromos();
-        } catch (error) {
-            toast.error('Failed to update status');
+            const newActiveStatus = !promo.active;
+            // ONLY send the 'active' field to avoid any backend side-effects or field conflicts
+            await promosAPI.update(promo._id, { active: newActiveStatus });
+            
+            // Update local state directly to prevent visual disappearance and jumping
+            setPromos(prev => prev.map(p => p._id === promo._id ? { ...p, active: newActiveStatus } : p));
+            
+            toast.success(`Promo ${newActiveStatus ? 'activated' : 'deactivated'}`);
+        } catch (error: any) {
+            console.error('Toggle status error:', error);
+            toast.error('Failed to update status: ' + (error.response?.data?.message || error.message));
         }
     };
 
     const copyToClipboard = (code: string) => {
         navigator.clipboard.writeText(code);
         toast.success(`Code ${code} copied!`);
+    };
+
+    // --- Email Handlers ---
+    const handleSelectCustomer = (email: string, checked: boolean) => {
+        setEmailData(prev => {
+            const selected = checked 
+                ? [...prev.selectedCustomers, email]
+                : prev.selectedCustomers.filter(e => e !== email);
+            return { ...prev, selectedCustomers: selected, selectAll: selected.length === customers.filter(c => c.email).length };
+        });
+    };
+
+    const handleSelectAllCustomers = (checked: boolean) => {
+        const customersWithEmail = customers.filter(c => c.email);
+        setEmailData(prev => ({
+            ...prev,
+            selectAll: checked,
+            selectedCustomers: checked ? customersWithEmail.map(c => c.email) : []
+        }));
+    };
+
+    const handleSendBulkEmail = async () => {
+        if (emailData.selectedCustomers.length === 0) {
+            toast.error('Please select at least one customer');
+            return;
+        }
+        if (!emailData.subject || !emailData.message) {
+            toast.error('Subject and message are required');
+            return;
+        }
+
+        try {
+            setEmailLoading(true);
+            await promosAPI.sendBulkEmail({
+                promoId: selectedForMessage?._id || '',
+                recipients: emailData.selectedCustomers,
+                subject: emailData.subject,
+                message: emailData.message
+            });
+            toast.success(`Email campaign sent to ${emailData.selectedCustomers.length} customers`);
+            setOpenEmailDialog(false);
+            setEmailData({ subject: '', message: '', selectedCustomers: [], selectAll: false });
+        } catch (error) {
+            toast.error('Failed to send emails');
+        } finally {
+            setEmailLoading(false);
+        }
+    };
+
+    // --- SMS Handlers ---
+    const handleSelectSmsPhone = (phone: string, checked: boolean) => {
+        setSelectedSmsPhones(prev => checked ? [...prev, phone] : prev.filter(p => p !== phone));
+    };
+
+    const handleSelectAllSms = (checked: boolean) => {
+        const withPhone = customers.filter(c => c.phone);
+        setSelectAllSms(checked);
+        setSelectedSmsPhones(checked ? withPhone.map(c => c.phone) : []);
+    };
+
+    const handleSendSmsBroadcast = async () => {
+        if (selectedSmsPhones.length === 0) {
+            toast.error('Select recipients');
+            return;
+        }
+        if (!selectedForMessage) return;
+
+        try {
+            setSmsLoading(true);
+            const message = `Special Offer! Use code ${selectedForMessage.code} to get ${selectedForMessage.discountValue}${selectedForMessage.discountType === 'percentage' ? '%' : '$'} off your next order. Valid until ${safeFormatDate(selectedForMessage.validTo)}.`;
+            
+            await promosAPI.sendBulkSms({
+                promoId: selectedForMessage._id,
+                phoneNumbers: selectedSmsPhones
+            });
+            
+            toast.success('SMS broadcast sent successfully');
+            setOpenSmsDialog(false);
+            setSelectedSmsPhones([]);
+            setSelectAllSms(false);
+        } catch (error) {
+            toast.error('Failed to send SMS');
+        } finally {
+            setSmsLoading(false);
+        }
+    };
+
+    const handleOpenEmailDialog = (promo: PromoCode) => {
+        setSelectedForMessage(promo);
+        setEmailData(prev => ({
+            ...prev,
+            subject: `Special Offer: ${promo.name}`,
+            message: `Hi there!\n\nWe have a special offer for you. Use the promo code ${promo.code} to get ${promo.discountValue}${promo.discountType === 'percentage' ? '%' : '$'} off your order.\n\nThis offer is valid until ${safeFormatDate(promo.validTo)}.\n\nEnjoy your meal!`
+        }));
+        setOpenEmailDialog(true);
+    };
+
+    const handleOpenSmsDialog = (promo: PromoCode) => {
+        setSelectedForMessage(promo);
+        setOpenSmsDialog(true);
     };
 
     const getStatusInfo = (promo: PromoCode) => {
@@ -532,7 +710,7 @@ const PromoCodePage: React.FC = () => {
                                             />
                                             <Stack direction="row" spacing={0.5}>
                                                 <Tooltip title="Send Email">
-                                                    <IconButton size="small" color="info" onClick={() => { setSelectedForMessage(promo); setOpenEmailDialog(true); }}>
+                                                    <IconButton size="small" color="info" onClick={() => handleOpenEmailDialog(promo)}>
                                                         <EmailIcon fontSize="small" />
                                                     </IconButton>
                                                 </Tooltip>
@@ -647,7 +825,7 @@ const PromoCodePage: React.FC = () => {
                                                 size="small"
                                                 color="error"
                                                 startIcon={<DeleteIcon fontSize="small" />}
-                                                onClick={() => handleDelete(promo._id)}
+                                                onClick={() => handleDelete(promo)}
                                                 sx={{ borderRadius: 2 }}
                                             >
                                                 Delete
@@ -660,8 +838,8 @@ const PromoCodePage: React.FC = () => {
                     })}
                 </Grid>
             ) : (
-                <TableContainer component={Paper} sx={{ borderRadius: 4, overflow: 'hidden', border: '1px solid', borderColor: 'divider', boxShadow: 'none' }}>
-                    <Table>
+                <TableContainer component={Paper} sx={{ borderRadius: 4, overflowX: 'auto', border: '1px solid', borderColor: 'divider', boxShadow: 'none' }}>
+                    <Table sx={{ minWidth: 1000 }}>
                         <TableHead sx={{ bgcolor: alpha(theme.palette.background.default, 0.5) }}>
                             <TableRow>
                                 <TableCell sx={{ fontWeight: 700 }}>Promo Code</TableCell>
@@ -754,7 +932,7 @@ const PromoCodePage: React.FC = () => {
                                         <TableCell align="right">
                                             <Stack direction="row" spacing={0.5} justifyContent="flex-end">
                                                 <Tooltip title="Send Email">
-                                                    <IconButton size="small" color="info" onClick={() => { setSelectedForMessage(promo); setOpenEmailDialog(true); }}>
+                                                    <IconButton size="small" color="info" onClick={() => handleOpenEmailDialog(promo)}>
                                                         <EmailIcon fontSize="small" />
                                                     </IconButton>
                                                 </Tooltip>
@@ -764,7 +942,7 @@ const PromoCodePage: React.FC = () => {
                                                     </IconButton>
                                                 </Tooltip>
                                                 <Tooltip title="Delete">
-                                                    <IconButton size="small" color="error" onClick={() => handleDelete(promo._id)}>
+                                                    <IconButton size="small" color="error" onClick={() => handleDelete(promo)}>
                                                         <DeleteIcon fontSize="small" />
                                                     </IconButton>
                                                 </Tooltip>
@@ -832,7 +1010,7 @@ const PromoCodePage: React.FC = () => {
                 fullScreen={isMobile}
                 PaperProps={{ sx: { borderRadius: isMobile ? 0 : 4, bgcolor: '#f8f9fa' } }}
             >
-                <DialogTitle sx={{ 
+                <DialogTitle component="div" sx={{ 
                     display: 'flex', 
                     justifyContent: 'space-between', 
                     alignItems: 'center', 
@@ -991,7 +1169,9 @@ const PromoCodePage: React.FC = () => {
                                             size="small"
                                             required
                                             value={formData.discountValue}
-                                            onChange={(e) => setFormData({ ...formData, discountValue: Number(e.target.value) })}
+                                            onFocus={(e) => e.target.select()}
+                                            onChange={(e) => setFormData({ ...formData, discountValue: Math.max(0, Number(e.target.value)) })}
+                                            inputProps={{ min: 0 }}
                                             InputProps={{
                                                 endAdornment: <InputAdornment position="end" sx={{ opacity: 0.5 }}>{formData.discountType === 'percentage' ? '%' : '$'}</InputAdornment>,
                                                 sx: { borderRadius: 2, fontWeight: 700 }
@@ -1005,7 +1185,9 @@ const PromoCodePage: React.FC = () => {
                                             type="number"
                                             size="small"
                                             value={formData.minBillAmount}
-                                            onChange={(e) => setFormData({ ...formData, minBillAmount: Number(e.target.value) })}
+                                            onFocus={(e) => e.target.select()}
+                                            onChange={(e) => setFormData({ ...formData, minBillAmount: Math.max(0, Number(e.target.value)) })}
+                                            inputProps={{ min: 0 }}
                                             InputProps={{
                                                 startAdornment: <InputAdornment position="start" sx={{ opacity: 0.5 }}>$</InputAdornment>,
                                                 sx: { borderRadius: 2 }
@@ -1052,6 +1234,9 @@ const PromoCodePage: React.FC = () => {
                                             value={formData.validFrom}
                                             onChange={(e) => setFormData({ ...formData, validFrom: e.target.value })}
                                             InputLabelProps={{ shrink: true }}
+                                            inputProps={{ 
+                                                min: editingPromo ? formData.validFrom : format(new Date(), 'yyyy-MM-dd') 
+                                            }}
                                             InputProps={{ sx: { borderRadius: 2 } }}
                                         />
                                     </Grid>
@@ -1065,6 +1250,11 @@ const PromoCodePage: React.FC = () => {
                                             value={formData.validTo}
                                             onChange={(e) => setFormData({ ...formData, validTo: e.target.value })}
                                             InputLabelProps={{ shrink: true }}
+                                            inputProps={{ 
+                                                min: (formData.validFrom && formData.validFrom > format(new Date(), 'yyyy-MM-dd')) 
+                                                    ? formData.validFrom 
+                                                    : format(new Date(), 'yyyy-MM-dd') 
+                                            }}
                                             InputProps={{ sx: { borderRadius: 2 } }}
                                         />
                                     </Grid>
@@ -1075,7 +1265,9 @@ const PromoCodePage: React.FC = () => {
                                             type="number"
                                             size="small"
                                             value={formData.maxTotalUses}
-                                            onChange={(e) => setFormData({ ...formData, maxTotalUses: Number(e.target.value) })}
+                                            onFocus={(e) => e.target.select()}
+                                            onChange={(e) => setFormData({ ...formData, maxTotalUses: Math.max(0, Number(e.target.value)) })}
+                                            inputProps={{ min: 0 }}
                                             InputProps={{ sx: { borderRadius: 2 } }}
                                         />
                                     </Grid>
@@ -1086,7 +1278,9 @@ const PromoCodePage: React.FC = () => {
                                             type="number"
                                             size="small"
                                             value={formData.maxUsesPerCustomer}
-                                            onChange={(e) => setFormData({ ...formData, maxUsesPerCustomer: Number(e.target.value) })}
+                                            onFocus={(e) => e.target.select()}
+                                            onChange={(e) => setFormData({ ...formData, maxUsesPerCustomer: Math.max(0, Number(e.target.value)) })}
+                                            inputProps={{ min: 0 }}
                                             InputProps={{ sx: { borderRadius: 2 } }}
                                         />
                                     </Grid>
@@ -1185,6 +1379,255 @@ const PromoCodePage: React.FC = () => {
                 </DialogActions>
             </Dialog>
 
+            {/* Email Promotion Dialog */}
+            <Dialog
+                open={openEmailDialog}
+                onClose={() => setOpenEmailDialog(false)}
+                maxWidth="md"
+                fullWidth
+                fullScreen={isMobile}
+                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 4, bgcolor: '#f8f9fa' } }}
+            >
+                <DialogTitle component="div" sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    borderBottom: '1px solid',
+                    borderColor: alpha(theme.palette.divider, 0.1),
+                    bgcolor: 'white',
+                    p: isMobile ? 2 : 2.5,
+                    pt: isMobile ? '60px' : 2.5
+                }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box sx={{
+                            p: 1,
+                            borderRadius: 1.5,
+                            bgcolor: alpha(theme.palette.info.main, 0.1),
+                            color: 'info.main',
+                            display: 'flex'
+                        }}>
+                            <EmailIcon fontSize={isMobile ? "small" : "medium"} />
+                        </Box>
+                        <Typography
+                            variant={isMobile ? "subtitle1" : "h6"}
+                            fontWeight={700}
+                            sx={{ fontFamily: '"Outfit", sans-serif', textTransform: 'uppercase' }}
+                        >
+                            Email Promotion
+                        </Typography>
+                    </Box>
+                    <IconButton
+                        onClick={() => setOpenEmailDialog(false)}
+                        size="small"
+                        sx={{
+                            bgcolor: alpha(theme.palette.error.main, 0.1),
+                            color: 'error.main',
+                            '&:hover': { bgcolor: 'error.main', color: 'white' }
+                        }}
+                    >
+                        <CloseIcon fontSize="small" />
+                    </IconButton>
+                </DialogTitle>
+                <DialogContent sx={{ p: isMobile ? 1.5 : 3, bgcolor: '#f8f9fa' }}>
+                    <Grid container spacing={isMobile ? 1.5 : 3} sx={{ mt: 0.5 }}>
+                        <Grid item xs={12} md={7}>
+                            <Paper sx={{ p: isMobile ? 2 : 3, borderRadius: 3, bgcolor: 'white', height: '100%' }}>
+                                <Typography variant="caption" fontWeight={700} color="primary" sx={{ display: 'block', mb: 2, textTransform: 'uppercase', fontFamily: '"Outfit", sans-serif' }}>
+                                    Message Content
+                                </Typography>
+                                <TextField
+                                    fullWidth
+                                    label="Subject"
+                                    size="small"
+                                    value={emailData.subject}
+                                    onChange={(e) => setEmailData({ ...emailData, subject: e.target.value })}
+                                    sx={{ mb: 2 }}
+                                    InputProps={{ sx: { borderRadius: 2 } }}
+                                />
+                                <TextField
+                                    fullWidth
+                                    multiline
+                                    rows={isMobile ? 6 : 12}
+                                    label="Message Body"
+                                    size="small"
+                                    value={emailData.message}
+                                    onChange={(e) => setEmailData({ ...emailData, message: e.target.value })}
+                                    InputProps={{ sx: { borderRadius: 2 } }}
+                                />
+                            </Paper>
+                        </Grid>
+                        <Grid item xs={12} md={5}>
+                            <Paper sx={{ p: isMobile ? 2 : 3, borderRadius: 3, bgcolor: 'white', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                                <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Typography variant="caption" fontWeight={700} color="primary" sx={{ textTransform: 'uppercase', fontFamily: '"Outfit", sans-serif' }}>
+                                        Recipients ({emailData.selectedCustomers.length})
+                                    </Typography>
+                                    <FormControlLabel
+                                        control={
+                                            <Checkbox
+                                                size="small"
+                                                checked={emailData.selectAll}
+                                                onChange={(e) => handleSelectAllCustomers(e.target.checked)}
+                                            />
+                                        }
+                                        label={<Typography variant="caption" fontWeight={700}>Select All</Typography>}
+                                        sx={{ m: 0 }}
+                                    />
+                                </Box>
+                                <Box sx={{ flexGrow: 1, maxHeight: 400, overflowY: 'auto', pr: 1 }}>
+                                    {Array.from(
+                                        new Map(
+                                            customers.filter(c => c.email).map(c => [c.email, c])
+                                        ).values()
+                                    ).map((customer, index) => (
+                                        <FormControlLabel
+                                            key={`customer-email-${index}-${customer.email}`}
+                                            control={
+                                                <Checkbox
+                                                    size="small"
+                                                    checked={emailData.selectedCustomers.includes(customer.email)}
+                                                    onChange={(e) => handleSelectCustomer(customer.email, e.target.checked)}
+                                                />
+                                            }
+                                            label={
+                                                <Box>
+                                                    <Typography variant="body2" fontWeight={600} noWrap sx={{ maxWidth: 150 }}>{customer.name || 'Guest'}</Typography>
+                                                    <Typography variant="caption" color="text.secondary" display="block" noWrap sx={{ maxWidth: 150 }}>{customer.email}</Typography>
+                                                </Box>
+                                            }
+                                            sx={{ display: 'flex', mb: 1, ml: 0, p: 1, borderRadius: 2, border: '1px solid', borderColor: alpha(theme.palette.divider, 0.1), '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.05) } }}
+                                        />
+                                    ))}
+                                </Box>
+                            </Paper>
+                        </Grid>
+                    </Grid>
+                </DialogContent>
+                <DialogActions sx={{ p: isMobile ? 2 : 3, bgcolor: 'white', borderTop: '1px solid', borderColor: alpha(theme.palette.divider, 0.1), gap: 1.5 }}>
+                    <Button onClick={() => setOpenEmailDialog(false)} sx={{ fontWeight: 'bold', color: 'text.secondary' }}>Cancel</Button>
+                    <Button
+                        variant="contained"
+                        onClick={handleSendBulkEmail}
+                        disabled={emailLoading || emailData.selectedCustomers.length === 0}
+                        startIcon={emailLoading ? <CircularProgress size={20} color="inherit" /> : <SendIcon />}
+                        sx={{
+                            borderRadius: 2,
+                            px: 4,
+                            fontWeight: 'bold',
+                            background: 'linear-gradient(45deg, #4F46E5, #6366F1)'
+                        }}
+                    >
+                        Send to {emailData.selectedCustomers.length}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog
+                open={openDeleteDialog}
+                onClose={() => setOpenDeleteDialog(false)}
+                fullScreen={isMobile}
+                PaperProps={{
+                    sx: { borderRadius: { xs: 0, sm: 4 }, backgroundImage: 'none' }
+                }}
+            >
+                <DialogTitle component="div" sx={{ 
+                    m: 0, 
+                    p: { xs: 2.5, sm: 3 }, 
+                    pt: { xs: isMobile ? '54px' : 2.5, sm: 3 },
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center'
+                }}>
+                    <Typography 
+                        variant="h6" 
+                        sx={{ 
+                            fontWeight: 800, 
+                            fontFamily: "'Outfit', sans-serif",
+                            fontSize: { xs: '1.25rem', sm: '1.25rem' }
+                        }}
+                    >
+                        Delete Promo Code
+                    </Typography>
+                    <IconButton
+                        onClick={() => setOpenDeleteDialog(false)}
+                        size="small"
+                        sx={{
+                            color: 'text.secondary',
+                            '&:hover': { bgcolor: alpha(theme.palette.divider, 0.1) }
+                        }}
+                    >
+                        <CloseIcon />
+                    </IconButton>
+                </DialogTitle>
+                <DialogContent sx={{ p: { xs: 3, sm: 4 }, textAlign: 'center' }}>
+                    <Box sx={{ 
+                        width: 80, 
+                        height: 80, 
+                        borderRadius: '50%', 
+                        bgcolor: alpha(theme.palette.error.main, 0.1), 
+                        color: 'error.main',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        mx: 'auto',
+                        mb: 3
+                    }}>
+                        <DeleteIcon sx={{ fontSize: 40 }} />
+                    </Box>
+                    <Typography variant="h5" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif", mb: 2 }}>
+                        Are you sure?
+                    </Typography>
+                    <Typography sx={{ color: 'text.secondary', fontWeight: 500, mb: 1 }}>
+                        You are about to permanently delete the promo code:
+                        <br />
+                        <Box component="span" sx={{ color: 'text.primary', fontWeight: 800, fontFamily: 'monospace', letterSpacing: 1 }}>
+                            {promoToDelete?.code}
+                        </Box>
+                    </Typography>
+                    <Typography variant="body2" color="text.disabled" sx={{ mt: 2, fontStyle: 'italic' }}>
+                        This action cannot be undone and this code will no longer be usable by customers.
+                    </Typography>
+                </DialogContent>
+                <DialogActions sx={{ 
+                    p: { xs: 2.5, sm: 3 }, 
+                    pb: { xs: isMobile ? '32px' : 2.5, sm: 3 },
+                    gap: 1.5,
+                    borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`
+                }}>
+                    <Button
+                        onClick={() => setOpenDeleteDialog(false)}
+                        sx={{ 
+                            flex: 1,
+                            borderRadius: 2.5,
+                            py: 1.25,
+                            textTransform: 'none',
+                            fontWeight: 700,
+                            fontFamily: "'Outfit', sans-serif",
+                            color: 'text.secondary'
+                        }}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={confirmDelete}
+                        variant="contained"
+                        color="error"
+                        sx={{ 
+                            flex: 1,
+                            borderRadius: 2.5,
+                            py: 1.25,
+                            textTransform: 'none',
+                            fontWeight: 800,
+                            fontFamily: "'Outfit', sans-serif",
+                            boxShadow: `0 8px 16px ${alpha(theme.palette.error.main, 0.3)}`,
+                            background: 'linear-gradient(45deg, #EF4444, #DC2626)'
+                        }}
+                    >
+                        Confirm Delete
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };

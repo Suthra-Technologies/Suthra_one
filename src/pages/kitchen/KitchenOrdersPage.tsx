@@ -124,7 +124,7 @@ const KitchenOrdersPage: React.FC = () => {
             }}>
                 <CardContent sx={{ p: 2.5, flexGrow: 1 }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                        <Typography variant="h5" sx={{ fontWeight: 900, color: '#0284C7', display: 'flex', alignItems: 'center' }}>
+                        <Typography variant="h5" sx={{ fontWeight: 900, color: '#0284C7', display: 'flex', alignItems: 'center', fontSize: { xs: '1.05rem', sm: '1.5rem' } }}>
                             Token No: {order.dailyTokenNumber || '--'}
                         </Typography>
                         <Chip
@@ -137,7 +137,7 @@ const KitchenOrdersPage: React.FC = () => {
                                 borderRadius: '8px',
                                 px: 1,
                                 height: 28,
-                                fontSize: '0.7rem'
+                                fontSize: { xs: '0.62rem', sm: '0.7rem' }
                             }}
                         />
                     </Box>
@@ -145,22 +145,22 @@ const KitchenOrdersPage: React.FC = () => {
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             {getOrderIcon()}
-                            <Typography sx={{ fontWeight: 900, color: '#374151', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                            <Typography sx={{ fontWeight: 900, color: '#374151', fontSize: { xs: '0.78rem', sm: '0.9rem' }, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                 {order.orderType?.replace(/_/g, ' ')}
                             </Typography>
                         </Box>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: '#6B7280' }}>
                             <TimeIcon sx={{ fontSize: 20 }} />
-                            <Typography sx={{ fontWeight: 600, fontSize: '0.9rem' }}>{timeStr}</Typography>
+                            <Typography sx={{ fontWeight: 600, fontSize: { xs: '0.78rem', sm: '0.9rem' } }}>{timeStr}</Typography>
                         </Box>
                     </Box>
 
                     <Box sx={{ mb: 2 }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                            <Typography sx={{ fontWeight: 600, color: '#4B5563', fontSize: '0.85rem' }}>
+                            <Typography sx={{ fontWeight: 600, color: '#4B5563', fontSize: { xs: '0.74rem', sm: '0.85rem' } }}>
                                 Items Ready ({readyItems}/{totalItems})
                             </Typography>
-                            <Typography sx={{ fontWeight: 900, color: '#EF4444', fontSize: '0.85rem' }}>
+                            <Typography sx={{ fontWeight: 900, color: '#EF4444', fontSize: { xs: '0.74rem', sm: '0.85rem' } }}>
                                 {Math.round(progress)}%
                             </Typography>
                         </Box>
@@ -185,10 +185,10 @@ const KitchenOrdersPage: React.FC = () => {
                         alignItems: 'center',
                         mt: 'auto'
                     }}>
-                        <Typography sx={{ fontWeight: 700, color: '#92400E', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                        <Typography sx={{ fontWeight: 700, color: '#92400E', fontSize: { xs: '0.68rem', sm: '0.8rem' }, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                             TOTAL ITEMS
                         </Typography>
-                        <Typography sx={{ fontWeight: 900, color: '#F59E0B', fontSize: '1.5rem' }}>
+                        <Typography sx={{ fontWeight: 900, color: '#F59E0B', fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
                             {totalItems}
                         </Typography>
                     </Box>
@@ -200,7 +200,7 @@ const KitchenOrdersPage: React.FC = () => {
     return (
         <Box sx={{ p: { xs: 2, sm: 3 }, bgcolor: '#F9FAFB', minHeight: '100vh' }}>
             {/* Header section */}
-            <Typography variant="h4" sx={{ fontWeight: 900, textAlign: 'center', mb: 3, color: '#111827' }}>
+            <Typography variant="h4" sx={{ fontWeight: 900, textAlign: 'center', mb: 3, color: '#111827', fontSize: { xs: '1.35rem', sm: '2.125rem' } }}>
                 Kitchen Display
             </Typography>
 
@@ -229,8 +229,8 @@ const KitchenOrdersPage: React.FC = () => {
                             boxShadow: statusFilter === stat.value ? `0 4px 12px ${alpha(stat.color, 0.2)}` : 'none',
                         }}
                     >
-                        <Typography sx={{ fontWeight: 900, fontSize: '1rem', mr: 1 }}>{stat.count}</Typography>
-                        <Typography sx={{ fontWeight: 700, fontSize: '0.85rem' }}>{stat.label}</Typography>
+                        <Typography sx={{ fontWeight: 900, fontSize: { xs: '0.9rem', sm: '1rem' }, mr: 1 }}>{stat.count}</Typography>
+                        <Typography sx={{ fontWeight: 700, fontSize: { xs: '0.74rem', sm: '0.85rem' } }}>{stat.label}</Typography>
                     </Box>
                 ))}
                 <IconButton onClick={fetchOrders} sx={{ bgcolor: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
@@ -253,6 +253,7 @@ const KitchenOrdersPage: React.FC = () => {
                         sx={{
                             bgcolor: orderTypeFilter === type.value ? '#E5E7EB' : '#fff',
                             fontWeight: 700,
+                            fontSize: { xs: '0.72rem', sm: '0.8125rem' },
                             px: 1,
                             height: 36,
                             borderRadius: '12px',

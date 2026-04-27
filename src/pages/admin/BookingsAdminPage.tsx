@@ -393,7 +393,7 @@ const BookingsAdminPage: React.FC = () => {
                     alignItems: 'center', 
                     mb: { xs: 2, sm: 3 }, 
                     gap: 2,
-                    mt: { xs: 1.5, sm: 0 }
+                    mt: { xs: 0, sm: 0 }
                 }}>
                     <Typography 
                         variant="h4" 

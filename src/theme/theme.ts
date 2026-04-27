@@ -1,6 +1,9 @@
 import { alpha, createTheme, type Theme } from '@mui/material/styles';
 import { BRAND_CONFIG } from '../config/brandConfig';
 
+const MOBILE_HEADING_SIZE = '1.25rem';
+const MOBILE_BODY_SIZE = '0.875rem';
+
 const getPalette = (mode: 'light' | 'dark') => ({
     mode,
     primary: {
@@ -160,6 +163,23 @@ export const getTheme = (mode: 'light' | 'dark'): Theme => createTheme({
                     },
                     '&::-webkit-scrollbar-thumb:hover': {
                         background: mode === 'light' ? '#a8a8a8' : '#475569',
+                    },
+                },
+            },
+        },
+        MuiTypography: {
+            styleOverrides: {
+                root: {
+                    '@media (max-width:600px)': {
+                        '&.MuiTypography-h1, &.MuiTypography-h2, &.MuiTypography-h3, &.MuiTypography-h4, &.MuiTypography-h5, &.MuiTypography-h6': {
+                            fontSize: `${MOBILE_HEADING_SIZE} !important`,
+                            color: '#000000 !important',
+                            textAlign: 'center !important',
+                            width: '100%',
+                        },
+                        '&.MuiTypography-body1, &.MuiTypography-body2, &.MuiTypography-subtitle1, &.MuiTypography-subtitle2, &.MuiTypography-caption': {
+                            fontSize: `${MOBILE_BODY_SIZE} !important`,
+                        },
                     },
                 },
             },
