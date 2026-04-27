@@ -556,7 +556,7 @@ const CheckoutPage: React.FC = () => {
               Track on {placedOrder.deliveryProvider === 'doordash' ? 'DoorDash' : 'Delivery Partner'}
             </Button>
           )}
-          <Button fullWidth variant="outlined" sx={{ mt: 2 }} onClick={() => navigate('/')}>Back to Home</Button>
+          <Button fullWidth variant="outlined" sx={{ mt: 2 }} onClick={() => navigate(slug ? getRelativePath('/customer/order') : '/')}>Go To Home</Button>
         </Paper>
       </Container>
     );

@@ -327,8 +327,32 @@ const PrintBillDialog: React.FC<PrintBillDialogProps> = ({ open, order, onClose 
         }
     };
 
-    const handleDownloadPDF = () => {
-        alert('PDF download functionality coming soon');
+    const handleDownloadPDF = async () => {
+        try {
+            setLoading(true);
+            const { ordersAPI } = await import('../services/api');
+            const response = await ordersAPI.downloadPDF(order._id);
+
+            // Create a blob from the response data
+            const blob = new Blob([response.data], { type: 'application/pdf' });
+            const url = window.URL.createObjectURL(blob);
+
+            // Create a temporary link element and trigger download
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `Bill-${billData?.orderNumber || order._id.slice(-8).toUpperCase()}.pdf`);
+            document.body.appendChild(link);
+            link.click();
+
+            // Clean up
+            link.parentNode?.removeChild(link);
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Error downloading PDF:', error);
+            alert('Failed to download PDF. Please try again.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     if (!order) return null;
@@ -479,7 +503,7 @@ const PrintBillDialog: React.FC<PrintBillDialogProps> = ({ open, order, onClose 
                                     {((billData.tax?.amount || 0) + (billData.processingFee || 0)) > 0 && (
                                         <TableRow>
                                             <TableCell colSpan={3} sx={{ borderBottom: 'none', py: 0.25 }}>
-                                                <Typography variant="body2">Tax ({billData.tax?.rate || 0}%) & Processing Fee:</Typography>
+                                                <Typography variant="body2">Tax & Processing Fee:</Typography>
                                             </TableCell>
                                             <TableCell align="right" sx={{ borderBottom: 'none', py: 0.25 }}>
                                                 <Typography variant="body2">{formatCurrency((billData.tax?.amount || 0) + (billData.processingFee || 0))}</Typography>

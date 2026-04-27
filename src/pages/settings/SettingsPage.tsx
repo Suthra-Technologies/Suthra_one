@@ -538,6 +538,7 @@ const SettingsPage: React.FC = () => {
     const [smsRowsPerPage, setSmsRowsPerPage] = useState(10);
     const [smsTotal, setSmsTotal] = useState(0);
     const [smsSummary, setSmsSummary] = useState<any[]>([]);
+
     const [smsLoading, setSmsLoading] = useState(false);
 
     const fetchUsers = async (page: number, limit: number) => {
@@ -1392,11 +1393,12 @@ const SettingsPage: React.FC = () => {
                 variant="h4" 
                 gutterBottom 
                 sx={{ 
-                    mb: { xs: 2, sm: 3 }, 
+                    mt: { xs: 0.75, sm: 0 },
+                    mb: { xs: 1.25, sm: 3 }, 
                     textAlign: { xs: 'center', md: 'left' },
-                    fontSize: { xs: '1.45rem', sm: '2.125rem' },
-                    fontWeight: 'bold',
-                    color: { xs: '#000', sm: 'inherit' }
+                    fontWeight: 800,
+                    fontFamily: "'Outfit', sans-serif",
+                    fontSize: { xs: '1.5rem', md: '2.125rem' }
                 }}
             >
                 Settings
@@ -1410,6 +1412,14 @@ const SettingsPage: React.FC = () => {
                     textColor="primary"
                     variant="scrollable"
                     scrollButtons="auto"
+                    sx={{
+                        '& .MuiTab-root': {
+                            fontWeight: 800,
+                            fontFamily: "'Outfit', sans-serif",
+                            fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                            minHeight: { xs: 48, sm: 64 }
+                        }
+                    }}
                 >
                     <Tab label="Restaurant Profile" />
                     <Tab label="System Preferences" />
@@ -1417,13 +1427,20 @@ const SettingsPage: React.FC = () => {
                     <Tab label="Notifications" icon={<SmsIcon />} iconPosition="start" />
                     <Tab label="Payment" icon={<CreditCardIcon />} iconPosition="start" />
                     <Tab label="Printers" icon={<PrintIcon />} iconPosition="start" />
-
                     <Tab label="Loyalty / Rewards" icon={<StarIcon />} iconPosition="start" />
                     <Tab label="Delivery" icon={<DeliveryDiningIcon />} iconPosition="start" />
                 </Tabs>
                 <Divider />
 
                 <TabPanel value={tabValue} index={0}>
+                    <Box sx={{ mb: 3 }}>
+                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
+                            Restaurant Profile
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, fontFamily: "'Outfit', sans-serif" }}>
+                            Manage your restaurant's public information, location, and contact details.
+                        </Typography>
+                    </Box>
                     <Grid container spacing={4}>
                         <Grid size={{ xs: 12, md: 8 }}>
                             <Grid container spacing={3}>
@@ -2273,12 +2290,22 @@ const SettingsPage: React.FC = () => {
                             </Grid>
                         </Grid>
 
-                        <Grid size={{ xs: 12 }}>
+                        <Grid size={{ xs: 12 }} sx={{ display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' }, mt: { xs: 2.5, md: 0 } }}>
                             <Button
                                 variant="contained"
+                                size="medium"
                                 startIcon={<SaveIcon />}
                                 onClick={() => handleSave('restaurant')}
                                 disabled={loading}
+                                sx={{ 
+                                    borderRadius: 2.5,
+                                    px: { xs: 3, sm: 4 },
+                                    fontWeight: 800,
+                                    fontFamily: "'Outfit', sans-serif",
+                                    width: { xs: 'auto', sm: 'auto' },
+                                    minWidth: { xs: '140px', sm: 'auto' },
+                                    boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.2)}`
+                                }}
                             >
                                 Save Changes
                             </Button>
@@ -2287,6 +2314,14 @@ const SettingsPage: React.FC = () => {
                 </TabPanel>
 
                 <TabPanel value={tabValue} index={1}>
+                    <Box sx={{ mb: 3 }}>
+                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
+                            System Preferences
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, fontFamily: "'Outfit', sans-serif" }}>
+                            Configure global application settings, themes, and automated behavior.
+                        </Typography>
+                    </Box>
                     <Grid container spacing={3}>
                         <Grid size={{ xs: 12, md: 6 }}>
                             <TextField
@@ -2324,19 +2359,29 @@ const SettingsPage: React.FC = () => {
                                 label="Auto-print receipts after payment"
                             />
                         </Grid>
-                        <Grid size={{ xs: 12 }}>
+                        <Grid size={{ xs: 12 }} sx={{ display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' }, mt: { xs: 2.5, md: 0 } }}>
                             <Button
                                 variant="contained"
+                                size="medium"
                                 startIcon={<SaveIcon />}
                                 onClick={() => handleSave('system')}
                                 disabled={loading}
+                                sx={{ 
+                                    borderRadius: 2.5,
+                                    px: { xs: 3, sm: 4 },
+                                    fontWeight: 800,
+                                    fontFamily: "'Outfit', sans-serif",
+                                    width: { xs: 'auto', sm: 'auto' },
+                                    minWidth: { xs: '140px', sm: 'auto' },
+                                    boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.2)}`
+                                }}
                             >
                                 Save Preferences
                             </Button>
                         </Grid>
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 2 }} />
-                            <Typography variant="h6" gutterBottom>
+                            <Typography variant="h6" gutterBottom sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
                                 External Integrations
                             </Typography>
                             <TextField
@@ -2355,12 +2400,12 @@ const SettingsPage: React.FC = () => {
 
                 {/* Inventory Settings Tab */}
                 <TabPanel value={tabValue} index={2}>
-                    <Typography variant="h6" gutterBottom>
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
                         Measurement Units
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                        Customize the units available for inventory management. These units will be available across the entire application.
-                    </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 3, fontWeight: 500, fontFamily: "'Outfit', sans-serif" }}>
+                            Customize the units available for inventory management. These units will be available across the entire application.
+                        </Typography>
 
                     {/* Current Units Display */}
                     <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
@@ -2501,9 +2546,16 @@ const SettingsPage: React.FC = () => {
                     </Paper>
 
                     {/* Reset to Defaults */}
-                    <Stack direction="row" spacing={2}>
+                    <Stack 
+                        direction={{ xs: 'column', sm: 'row' }} 
+                        spacing={2} 
+                        alignItems="center"
+                        justifyContent={{ xs: 'center', md: 'flex-start' }}
+                        sx={{ mt: 2 }}
+                    >
                         <Button
                             variant="outlined"
+                            size="medium"
                             onClick={() => {
                                 const defaultUnits = getUnitSystem(settings.restaurant.country) === 'imperial'
                                     ? IMPERIAL_UNITS.map(u => ({ ...u, type: 'weight' as const }))
@@ -2517,14 +2569,33 @@ const SettingsPage: React.FC = () => {
                                 }));
                                 toast.success('Units reset to country defaults');
                             }}
+                            sx={{ 
+                                borderRadius: 2,
+                                textTransform: 'none',
+                                fontWeight: 700,
+                                fontFamily: "'Outfit', sans-serif",
+                                width: { xs: 'auto', sm: 'auto' },
+                                px: { xs: 3, sm: 4 },
+                                minWidth: { xs: '120px', sm: 'auto' }
+                            }}
                         >
                             Reset to Defaults
                         </Button>
                         <Button
                             variant="contained"
+                            size="medium"
                             startIcon={<SaveIcon />}
                             onClick={() => handleSave('restaurant')}
                             disabled={loading}
+                            sx={{ 
+                                borderRadius: 2.5,
+                                px: { xs: 3, sm: 4 },
+                                fontWeight: 800,
+                                fontFamily: "'Outfit', sans-serif",
+                                width: { xs: 'auto', sm: 'auto' },
+                                minWidth: { xs: '120px', sm: 'auto' },
+                                boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.2)}`
+                            }}
                         >
                             Save Units
                         </Button>
@@ -2563,10 +2634,10 @@ const SettingsPage: React.FC = () => {
                             </Paper>
                         </Grid>
                         <Grid size={{ xs: 12 }}>
-                            <Typography variant="h6" gutterBottom>
+                            <Typography variant="h6" gutterBottom sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
                                 SMS Settings
                             </Typography>
-                            <Typography color="text.secondary">
+                            <Typography color="text.secondary" sx={{ fontWeight: 500, fontFamily: "'Outfit', sans-serif" }}>
                                 Customer-facing SMS for this restaurant will use these Twilio credentials. Stored credentials are never shown back in the UI.
                             </Typography>
                         </Grid>
@@ -3042,13 +3113,22 @@ const SettingsPage: React.FC = () => {
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 1 }} />
                         </Grid>
-                        <Grid size={{ xs: 12 }} sx={{ display: 'flex', justifyContent: { xs: 'center', sm: 'flex-start' } }}>
-
+                        <Grid size={{ xs: 12 }} sx={{ display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' }, mt: { xs: 2.5, md: 0 } }}>
                             <Button
                                 variant="contained"
+                                size="medium"
                                 startIcon={<SaveIcon />}
                                 onClick={() => handleSave('notification')}
                                 disabled={loading}
+                                sx={{ 
+                                    borderRadius: 2.5,
+                                    px: { xs: 3, sm: 4 },
+                                    fontWeight: 800,
+                                    fontFamily: "'Outfit', sans-serif",
+                                    width: { xs: 'auto', sm: 'auto' },
+                                    minWidth: { xs: '140px', sm: 'auto' },
+                                    boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.2)}`
+                                }}
                             >
                                 Save Notification Settings
                             </Button>
@@ -3058,10 +3138,10 @@ const SettingsPage: React.FC = () => {
 
                 <TabPanel value={tabValue} index={4}>
                     <Box sx={{ mb: 4 }}>
-                        <Typography variant="h6" sx={{ mb: 1 }}>
+                        <Typography variant="h6" sx={{ mb: 1, fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
                             Point of Sale Payment Methods
                         </Typography>
-                        <Typography color="text.secondary" sx={{ mb: 3 }}>
+                        <Typography color="text.secondary" sx={{ mb: 3, fontWeight: 500, fontFamily: "'Outfit', sans-serif" }}>
                             Enable or disable payment methods that will be available at the Point of Sale interface.
                         </Typography>
 
@@ -3098,14 +3178,26 @@ const SettingsPage: React.FC = () => {
                             </Grid>
                         </Paper>
 
-                        <Button
-                            variant="contained"
-                            startIcon={<SaveIcon />}
-                            onClick={() => handleSave('system')}
-                            disabled={loading}
-                        >
-                            Save POS Methods
-                        </Button>
+                        <Box sx={{ mt: 4, display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' } }}>
+                            <Button
+                                variant="contained"
+                                size={isMobile ? "medium" : "large"}
+                                startIcon={<SaveIcon />}
+                                onClick={() => handleSave('system')}
+                                disabled={loading}
+                                sx={{ 
+                                    borderRadius: 2.5,
+                                    px: 4,
+                                    fontWeight: 800,
+                                    fontFamily: "'Outfit', sans-serif",
+                                    width: { xs: '100%', sm: 'auto' },
+                                    maxWidth: { xs: '320px', sm: 'none' },
+                                    boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.25)}`
+                                }}
+                            >
+                                Save POS Methods
+                            </Button>
+                        </Box>
                     </Box>
 
                     <Divider sx={{ my: 4 }} />
@@ -3138,10 +3230,10 @@ const SettingsPage: React.FC = () => {
                         </Stack>
                         {(stripeStatus?.hasPublishableKey && stripeStatus?.hasSecretKey) ? <CheckCircleIcon sx={{ color: '#16a34a' }} /> : null}
                     </Paper>
-                    <Typography variant="h6" sx={{ mb: 1 }}>
+                    <Typography variant="h6" sx={{ mb: 1, fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
                         Stripe Payments
                     </Typography>
-                    <Typography color="text.secondary" sx={{ mb: 3 }}>
+                    <Typography color="text.secondary" sx={{ mb: 3, fontWeight: 500, fontFamily: "'Outfit', sans-serif" }}>
                         Configure your restaurant’s Stripe keys. These are tenant-specific and used for in-restaurant transactions.
                     </Typography>
                     <Grid container spacing={3}>
@@ -3289,7 +3381,18 @@ const SettingsPage: React.FC = () => {
                                         setLoading(false);
                                     }
                                 }}
+                                size="medium"
                                 disabled={loading}
+                                sx={{ 
+                                    borderRadius: 2.5,
+                                    px: { xs: 3, sm: 4 },
+                                    fontWeight: 800,
+                                    fontFamily: "'Outfit', sans-serif",
+                                    width: { xs: 'auto', sm: 'auto' },
+                                    minWidth: { xs: '140px', sm: 'auto' },
+                                    boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.2)}`,
+                                    mt: { xs: 2, md: 0 }
+                                }}
                             >
                                 Save Stripe Settings
                             </Button>
@@ -3299,13 +3402,13 @@ const SettingsPage: React.FC = () => {
 
                 {/* Printers Tab */}
                 <TabPanel value={tabValue} index={5}>
-                    <Typography variant="h6" gutterBottom>
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
                         Printers Settings
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                        Configure automated billing and kitchen printing for this restaurant.
-                        Enable the "Print Automation" switch to start auto-printing when an order is created.
-                    </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 3, fontWeight: 500, fontFamily: "'Outfit', sans-serif" }}>
+                            Configure automated billing and kitchen printing for this restaurant.
+                            Enable the "Print Automation" switch to start auto-printing when an order is created.
+                        </Typography>
 
                     <Grid container spacing={4}>
                         <Grid size={{ xs: 12 }}>
@@ -3647,12 +3750,22 @@ const SettingsPage: React.FC = () => {
                             </Box>
                         </Grid>
 
-                        <Grid size={{ xs: 12 }}>
+                        <Grid size={{ xs: 12 }} sx={{ display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' }, mt: { xs: 2.5, md: 0 } }}>
                             <Button
                                 variant="contained"
+                                size="medium"
                                 startIcon={<SaveIcon />}
                                 onClick={() => handleSave('printer')}
                                 disabled={loading}
+                                sx={{ 
+                                    borderRadius: 2.5,
+                                    px: { xs: 3, sm: 4 },
+                                    fontWeight: 800,
+                                    fontFamily: "'Outfit', sans-serif",
+                                    width: { xs: 'auto', sm: 'auto' },
+                                    minWidth: { xs: '140px', sm: 'auto' },
+                                    boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.2)}`
+                                }}
                             >
                                 Save Printer Settings
                             </Button>
@@ -3664,10 +3777,10 @@ const SettingsPage: React.FC = () => {
 
                 <TabPanel value={tabValue} index={6}>
                     <Box sx={{ mb: 4, maxWidth: 800 }}>
-                        <Typography variant="h6" gutterBottom>
+                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
                             Loyalty & Reward Points
                         </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 3, fontWeight: 500, fontFamily: "'Outfit', sans-serif" }}>
                             Configure how customers earn and redeem points.
                         </Typography>
 
@@ -3813,12 +3926,22 @@ const SettingsPage: React.FC = () => {
                                         />
                                     </Grid>
 
-                                    <Grid size={{ xs: 12 }}>
+                                    <Grid size={{ xs: 12 }} sx={{ display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' }, mt: { xs: 2, md: 0 } }}>
                                         <Button
                                             variant="contained"
+                                            size={isMobile ? "medium" : "large"}
                                             startIcon={<SaveIcon />}
                                             onClick={() => handleSave('rewards')}
                                             disabled={loading}
+                                            sx={{ 
+                                                borderRadius: 2.5,
+                                                px: 4,
+                                                fontWeight: 800,
+                                                fontFamily: "'Outfit', sans-serif",
+                                                width: { xs: '100%', sm: 'auto' },
+                                                maxWidth: { xs: '320px', sm: 'none' },
+                                                boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.25)}`
+                                            }}
                                         >
                                             Save Loyalty Rules
                                         </Button>
@@ -3827,12 +3950,22 @@ const SettingsPage: React.FC = () => {
                             </Collapse>
 
                             {!(settings.rewards?.isEnabled ?? true) && (
-                                <Box sx={{ mt: 2 }}>
+                                <Box sx={{ mt: 2, display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' } }}>
                                     <Button
                                         variant="contained"
+                                        size="medium"
                                         startIcon={<SaveIcon />}
                                         onClick={() => handleSave('rewards')}
                                         disabled={loading}
+                                        sx={{ 
+                                            borderRadius: 2.5,
+                                            px: { xs: 3, sm: 4 },
+                                            fontWeight: 800,
+                                            fontFamily: "'Outfit', sans-serif",
+                                            width: { xs: 'auto', sm: 'auto' },
+                                            minWidth: { xs: '140px', sm: 'auto' },
+                                            boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.2)}`
+                                        }}
                                     >
                                         Save Loyalty Status
                                     </Button>
@@ -3844,7 +3977,7 @@ const SettingsPage: React.FC = () => {
 
                 <TabPanel value={tabValue} index={7}>
                     <Box sx={{ mb: 4 }}>
-                        <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif", display: 'flex', alignItems: 'center', gap: 1 }}>
                             <DeliveryDiningIcon color="primary" /> Delivery Integration
                         </Typography>
                         <Alert severity="info" sx={{ mb: 3 }}>
@@ -3903,12 +4036,22 @@ const SettingsPage: React.FC = () => {
                                             />
                                         </Stack>
                                     </Stack>
-                                    <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end' }}>
+                                    <Box sx={{ mt: 4, display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' } }}>
                                         <Button
                                             variant="contained"
+                                            size={isMobile ? "medium" : "large"}
                                             startIcon={<SaveIcon />}
                                             onClick={() => handleSave('delivery')}
                                             disabled={loading}
+                                            sx={{ 
+                                                borderRadius: 2.5,
+                                                px: 4,
+                                                fontWeight: 800,
+                                                fontFamily: "'Outfit', sans-serif",
+                                                width: { xs: '100%', sm: 'auto' },
+                                                maxWidth: { xs: '320px', sm: 'none' },
+                                                boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.25)}`
+                                            }}
                                         >
                                             Save DoorDash Settings
                                         </Button>
@@ -3974,12 +4117,22 @@ const SettingsPage: React.FC = () => {
                                             />
                                         </Stack>
                                     </Stack>
-                                    <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end' }}>
+                                    <Box sx={{ mt: 4, display: 'flex', justifyContent: { xs: 'center', md: 'flex-end' } }}>
                                         <Button
                                             variant="contained"
+                                            size={isMobile ? "medium" : "large"}
                                             startIcon={<SaveIcon />}
                                             onClick={() => handleSave('delivery')}
                                             disabled={loading}
+                                            sx={{ 
+                                                borderRadius: 2.5,
+                                                px: 4,
+                                                fontWeight: 800,
+                                                fontFamily: "'Outfit', sans-serif",
+                                                width: { xs: '100%', sm: 'auto' },
+                                                maxWidth: { xs: '320px', sm: 'none' },
+                                                boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.25)}`
+                                            }}
                                         >
                                             Save Uber Eats Settings
                                         </Button>
@@ -3987,6 +4140,7 @@ const SettingsPage: React.FC = () => {
                                 </Paper>
                             </Grid>
                         </Grid>
+
                     </Box>
                 </TabPanel>
             </Paper >

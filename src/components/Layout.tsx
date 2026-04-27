@@ -54,6 +54,8 @@ import ShiftManager from './ShiftManager';
 import Sidebar from './Sidebar';
 import SubscriptionBanner from './SubscriptionBanner';
 import SubscriptionStatus from './SubscriptionStatus';
+import { Capacitor } from '@capacitor/core';
+
 
 /**
  * Ensures image URLs are absolute.
@@ -232,11 +234,9 @@ const RestaurantStatusToggle: React.FC = () => {
           label={
             saving
               ? 'Saving...'
-              : isMobile
-                ? undefined
-                : isOverride
-                  ? (isOpen ? 'OPEN*' : 'CLOSED*')
-                  : (isOpen ? 'OPEN' : 'CLOSED')
+              : isOverride
+                ? (isOpen ? 'OPEN*' : 'CLOSED*')
+                : (isOpen ? 'OPEN' : 'CLOSED')
           }
           variant="outlined"
           size="small"
@@ -244,10 +244,11 @@ const RestaurantStatusToggle: React.FC = () => {
             borderColor: chipColor,
             color: textColor,
             fontWeight: 700,
-            fontSize: '0.7rem',
+            fontSize: isMobile ? '0.65rem' : '0.7rem',
             letterSpacing: '0.08em',
             cursor: saving ? 'default' : 'pointer',
-            minWidth: isMobile ? 36 : 90,
+            minWidth: isMobile ? 68 : 90,
+            px: isMobile ? 0.5 : 1,
             '&:hover': {
               bgcolor: saving
                 ? 'transparent'
@@ -555,7 +556,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
             <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 0.5 }}>
               <ShiftManager />
-              <SubscriptionStatus />
+              {Capacitor.getPlatform() !== 'ios' && <SubscriptionStatus />}
             </Box>
             <RestaurantStatusToggle />
             <Tooltip title="Notifications">
@@ -830,7 +831,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
         </Box>
 
         <Box sx={{ position: 'relative', zIndex: 1 }}>
-          <SubscriptionBanner />
+          {Capacitor.getPlatform() !== 'ios' && <SubscriptionBanner />}
           {children || <Outlet />}
         </Box>
       </Box>

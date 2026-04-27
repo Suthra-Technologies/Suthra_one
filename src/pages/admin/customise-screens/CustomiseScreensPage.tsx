@@ -37,6 +37,9 @@ import {
   MenuItem,
   Tabs,
   Tab,
+  useTheme,
+  useMediaQuery,
+  alpha
 } from '@mui/material';
 import {
   FormatBold,
@@ -64,6 +67,9 @@ import {
   ChevronRight,
   Star,
   RestartAlt,
+  CalendarMonth,
+  Celebration,
+  ShoppingBag,
 } from '@mui/icons-material';
 import { homepageAPI, uploadAPI } from '../../../services/api';
 import { toast } from 'react-hot-toast';
@@ -234,7 +240,20 @@ function TabPanel(props: TabPanelProps) {
   );
 }
 
+// Icon Mapping for Services
+const getServiceIcon = (iconName: string) => {
+  const iconProps = { fontSize: 'small', sx: { fontSize: 18 } };
+  switch (iconName) {
+    case 'CalendarRange': return <CalendarMonth {...iconProps} />;
+    case 'PartyPopper': return <Celebration {...iconProps} />;
+    case 'ShoppingBag': return <ShoppingBag {...iconProps} />;
+    default: return <Star {...iconProps} />;
+  }
+};
+
 const CustomiseScreensPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sections, setSections] = useState<SectionData[]>([]);
@@ -270,10 +289,16 @@ const CustomiseScreensPage: React.FC = () => {
     try {
       // For now we still send htmlContent just in case, but prioritize sections
       await homepageAPI.updateContent('', sections);
-      toast.success('Homepage updated successfully!');
+      toast.success('Homepage updated successfully!', { 
+        position: 'top-center',
+        style: { marginTop: '90px', fontFamily: "'Outfit', sans-serif", fontWeight: 700, borderRadius: '12px', background: '#333', color: '#fff' } 
+      });
     } catch (error) {
       console.error('Error saving homepage:', error);
-      toast.error('Failed to save homepage content');
+      toast.error('Failed to save homepage content', { 
+        position: 'top-center',
+        style: { marginTop: '90px', fontFamily: "'Outfit', sans-serif", fontWeight: 700, borderRadius: '12px' } 
+      });
     } finally {
       setSaving(false);
     }
@@ -347,29 +372,33 @@ const CustomiseScreensPage: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="xl" sx={{ py: { xs: 2, md: 4 }, px: { xs: 1.5, sm: 3 } }}>
+    <Container maxWidth="xl" sx={{ 
+      py: { xs: 2.5, md: 4 }, 
+      px: { xs: isMobile ? 2 : 3, sm: 3 },
+      pt: { xs: isMobile ? '20px' : 2.5, sm: 4 } 
+    }}>
       <Stack 
         direction={{ xs: 'column', md: 'row' }} 
         justifyContent="space-between" 
         alignItems={{ xs: 'center', md: 'center' }} 
         spacing={{ xs: 2, md: 2 }} 
-        mb={{ xs: 3, md: 4 }}
+        mb={{ xs: 2.5, md: 4 }}
       >
-        <Box sx={{ textAlign: { xs: 'center', md: 'left' }, width: { xs: '100%', md: 'auto' } }}>
+        <Box sx={{ textAlign: { xs: 'left', md: 'left' }, width: { xs: '100%', md: 'auto' } }}>
           <Typography 
             variant="h4" 
-            fontWeight="bold" 
             sx={{ 
-                fontSize: { xs: '1.45rem', md: '2.125rem' },
-                color: { xs: '#000', md: 'inherit' },
-                whiteSpace: { xs: 'nowrap', md: 'normal' },
+                fontWeight: 800,
+                fontFamily: "'Outfit', sans-serif",
+                fontSize: { xs: '1.5rem', md: '2.125rem' },
+                color: 'text.primary',
                 mb: { xs: 0.5, md: 0 }
             }}
           >
             Customise Screens
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', md: '0.875rem' } }}>
-            Configure and personalize your application's public and internal screens.
+          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, fontSize: { xs: '0.75rem', md: '0.875rem' } }}>
+            Manage and personalize your application's public screens.
           </Typography>
         </Box>
         <Stack 
@@ -377,9 +406,12 @@ const CustomiseScreensPage: React.FC = () => {
           spacing={{ xs: 1, md: 2 }} 
           sx={{ 
             width: { xs: '100%', md: 'auto' }, 
-            justifyContent: { xs: 'center', md: 'flex-end' },
-            flexWrap: { xs: 'wrap', md: 'nowrap' },
-            gap: { xs: 1, md: 0 }
+            justifyContent: { xs: 'flex-start', md: 'flex-end' },
+            flexWrap: { xs: 'nowrap', md: 'nowrap' },
+            gap: { xs: 1, md: 0 },
+            overflowX: { xs: 'auto', md: 'visible' },
+            pb: { xs: 1, md: 0 },
+            '&::-webkit-scrollbar': { display: 'none' }
           }}
         >
           <Button 
@@ -387,7 +419,15 @@ const CustomiseScreensPage: React.FC = () => {
             color="error" 
             startIcon={<RestartAlt />} 
             onClick={() => setIsResetDialogOpen(true)}
-            sx={{ px: { xs: 1.5, md: 2 }, fontSize: { xs: '0.7rem', md: '0.875rem' }, whiteSpace: 'nowrap' }}
+            sx={{ 
+              px: { xs: 1.5, md: 2 }, 
+              height: { xs: 36, md: 42 },
+              borderRadius: 2.5,
+              fontWeight: 700,
+              fontFamily: "'Outfit', sans-serif",
+              fontSize: { xs: '0.75rem', md: '0.875rem' }, 
+              whiteSpace: 'nowrap' 
+            }}
           >
             Reset
           </Button>
@@ -395,7 +435,15 @@ const CustomiseScreensPage: React.FC = () => {
             variant="outlined" 
             startIcon={<Visibility />} 
             onClick={openPreview}
-            sx={{ px: { xs: 1.5, md: 2 }, fontSize: { xs: '0.7rem', md: '0.875rem' }, whiteSpace: 'nowrap' }}
+            sx={{ 
+              px: { xs: 1.5, md: 2 }, 
+              height: { xs: 36, md: 42 },
+              borderRadius: 2.5,
+              fontWeight: 700,
+              fontFamily: "'Outfit', sans-serif",
+              fontSize: { xs: '0.75rem', md: '0.875rem' }, 
+              whiteSpace: 'nowrap' 
+            }}
           >
             Preview
           </Button>
@@ -404,14 +452,23 @@ const CustomiseScreensPage: React.FC = () => {
             startIcon={saving ? <CircularProgress size={20} color="inherit" /> : <Save />} 
             onClick={handleSave} 
             disabled={saving}
-            sx={{ px: { xs: 1.5, md: 2 }, fontSize: { xs: '0.7rem', md: '0.875rem' }, whiteSpace: 'nowrap' }}
+            sx={{ 
+              px: { xs: 2.5, md: 3 }, 
+              height: { xs: 36, md: 42 },
+              borderRadius: 2.5,
+              fontWeight: 800,
+              fontFamily: "'Outfit', sans-serif",
+              fontSize: { xs: '0.75rem', md: '0.875rem' }, 
+              whiteSpace: 'nowrap',
+              boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.2)}`
+            }}
           >
-            Save
+            {saving ? 'Saving...' : 'Save Changes'}
           </Button>
         </Stack>
       </Stack>
 
-      <Paper sx={{ width: '100%', borderRadius: 4, overflow: 'hidden' }} elevation={0} variant="outlined">
+      <Paper sx={{ width: '100%', borderRadius: { xs: 3, md: 4 }, overflow: 'hidden', border: 'none', bgcolor: 'transparent' }} elevation={0}>
         <Tabs
           value={tabValue}
           onChange={(_, newValue) => setTabValue(newValue)}
@@ -420,70 +477,116 @@ const CustomiseScreensPage: React.FC = () => {
           variant="scrollable"
           scrollButtons="auto"
           sx={{ 
-            px: { xs: 1, md: 2 }, 
-            pt: 0.5, 
-            borderBottom: '1px solid #e2e8f0',
+            px: { xs: 0, md: 2 }, 
+            borderBottom: `2px solid ${alpha(theme.palette.divider, 0.1)}`,
+            '& .MuiTabs-indicator': { height: 3, borderRadius: '3px 3px 0 0' },
             '& .MuiTab-root': {
                 minHeight: { xs: 44, md: 48 },
-                fontSize: { xs: '0.8rem', md: '0.875rem' },
-                py: { xs: 1, md: 2 }
+                fontSize: { xs: '0.85rem', md: '0.875rem' },
+                fontWeight: 800,
+                fontFamily: "'Outfit', sans-serif",
+                textTransform: 'none',
+                color: 'text.secondary',
+                '&.Mui-selected': { color: 'primary.main' }
             }
           }}
         >
-          <Tab label="Home Page" sx={{ fontWeight: 'bold' }} />
-          <Tab label="Gallery" sx={{ fontWeight: 'bold' }} />
+          <Tab label="Home Page" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }} />
+          <Tab label="Gallery" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }} />
         </Tabs>
 
         <TabPanel value={tabValue} index={0}>
-          <Box sx={{ p: { xs: 1.5, md: 3 } }}>
+          <Box sx={{ py: { xs: 2, md: 3 }, px: { xs: 0, md: 3 } }}>
             <Stack spacing={{ xs: 2.5, md: 4 }}>
-        {sections.filter(s => s.type !== 'cards').map((section, idx) => (
-          <Card key={section.id} elevation={0} sx={{ border: '1px solid #e2e8f0', borderRadius: 4, overflow: 'visible' }}>
-            <CardHeader
-              title={<Typography variant="subtitle1" fontWeight="bold" sx={{ textTransform: 'capitalize', fontSize: { xs: '0.875rem', md: '1rem' } }}>{section.type} Section</Typography>}
-              action={
-                <Stack direction="row" spacing={0.5}>
-                  <IconButton size="small" onClick={() => moveSection(idx, 'up')} disabled={idx === 0}><ArrowUpward sx={{ fontSize: { xs: 16, md: 20 } }} /></IconButton>
-                  <IconButton size="small" onClick={() => moveSection(idx, 'down')} disabled={idx === sections.length - 1}><ArrowDownward sx={{ fontSize: { xs: 16, md: 20 } }} /></IconButton>
-                  <IconButton size="small" color="error" onClick={() => removeSection(section.id)}><Delete sx={{ fontSize: { xs: 16, md: 20 } }} /></IconButton>
-                </Stack>
-              }
-              sx={{ bgcolor: '#f8fafc', borderBottom: '1px solid #e2e8f0', py: { xs: 1, md: 1.5 }, px: { xs: 1.5, md: 2 } }}
-            />
-            <CardContent sx={{ p: { xs: 1.5, md: 3 }, '&:last-child': { pb: { xs: 1.5, md: 3 } } }}>
-              {section.type === 'hero' && <HeroSectionEditor section={section} onUpdate={(data) => updateSection(section.id, data)} uploadImage={handleUploadImage} onRemove={() => {}} onMoveUp={() => {}} onMoveDown={() => {}} />}
-              {section.type === 'hospitality' && <HospitalitySectionEditor section={section} onUpdate={(data) => updateSection(section.id, data)} uploadImage={handleUploadImage} onRemove={() => {}} onMoveUp={() => {}} onMoveDown={() => {}} />}
-              {section.type === 'services' && <ServicesSectionEditor section={section} onUpdate={(data) => updateSection(section.id, data)} onRemove={() => {}} onMoveUp={() => {}} onMoveDown={() => {}} uploadImage={handleUploadImage} />}
-              {section.type === 'featured-items' && <DynamicBlockPlaceholder type="featured-items" />}
-              {section.type === 'testimonials' && <DynamicBlockPlaceholder type="testimonials" />}
-              {section.type === 'online-order' && <OnlineOrderEditor section={section} onUpdate={(data) => updateSection(section.id, data)} onRemove={() => {}} onMoveUp={() => {}} onMoveDown={() => {}} uploadImage={handleUploadImage} />}
-              {section.type === 'rich-text' && <RichTextSection html={section.data?.html || ''} onChange={(html) => updateSection(section.id, { html })} uploadImage={handleUploadImage} />}
-            </CardContent>
-          </Card>
-        ))}
+              {sections.filter(s => s.type !== 'cards').map((section, idx) => (
+                <Card key={section.id} elevation={0} sx={{ 
+                  borderRadius: { xs: 3.5, md: 4 }, 
+                  overflow: 'visible',
+                  border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                  boxShadow: { xs: '0 4px 16px rgba(0,0,0,0.02)', md: 'none' }
+                }}>
+                  <CardHeader
+                    title={
+                      <Typography sx={{ 
+                        fontWeight: 800, 
+                        fontFamily: "'Outfit', sans-serif",
+                        textTransform: 'uppercase', 
+                        letterSpacing: '0.05em',
+                        fontSize: { xs: '0.7rem', md: '0.8rem' },
+                        color: 'text.secondary'
+                      }}>
+                        {section.type.replace('-', ' ')} SECTION
+                      </Typography>
+                    }
+                    action={
+                      <Stack direction="row" spacing={0.5}>
+                        <IconButton size="small" onClick={() => moveSection(idx, 'up')} disabled={idx === 0} sx={{ bgcolor: alpha(theme.palette.divider, 0.05) }}><ArrowUpward sx={{ fontSize: 18 }} /></IconButton>
+                        <IconButton size="small" onClick={() => moveSection(idx, 'down')} disabled={idx === sections.length - 1} sx={{ bgcolor: alpha(theme.palette.divider, 0.05) }}><ArrowDownward sx={{ fontSize: 18 }} /></IconButton>
+                        <IconButton size="small" color="error" onClick={() => removeSection(section.id)} sx={{ bgcolor: alpha(theme.palette.error.main, 0.05) }}><Delete sx={{ fontSize: 18 }} /></IconButton>
+                      </Stack>
+                    }
+                    sx={{ bgcolor: alpha(theme.palette.divider, 0.02), borderBottom: `1px solid ${alpha(theme.palette.divider, 0.05)}`, py: 1.5, px: { xs: 2, md: 2.5 } }}
+                  />
+                  <CardContent sx={{ p: { xs: 2, md: 3 }, '&:last-child': { pb: { xs: 2, md: 3 } } }}>
+                    {section.type === 'hero' && <HeroSectionEditor section={section} onUpdate={(data) => updateSection(section.id, data)} uploadImage={handleUploadImage} onRemove={() => {}} onMoveUp={() => {}} onMoveDown={() => {}} />}
+                    {section.type === 'hospitality' && <HospitalitySectionEditor section={section} onUpdate={(data) => updateSection(section.id, data)} uploadImage={handleUploadImage} onRemove={() => {}} onMoveUp={() => {}} onMoveDown={() => {}} />}
+                    {section.type === 'services' && <ServicesSectionEditor section={section} onUpdate={(data) => updateSection(section.id, data)} onRemove={() => {}} onMoveUp={() => {}} onMoveDown={() => {}} uploadImage={handleUploadImage} />}
+                    {section.type === 'featured-items' && <DynamicBlockPlaceholder type="featured-items" />}
+                    {section.type === 'testimonials' && <DynamicBlockPlaceholder type="testimonials" />}
+                    {section.type === 'online-order' && <OnlineOrderEditor section={section} onUpdate={(data) => updateSection(section.id, data)} onRemove={() => {}} onMoveUp={() => {}} onMoveDown={() => {}} uploadImage={handleUploadImage} />}
+                    {section.type === 'rich-text' && <RichTextSection html={section.data?.html || ''} onChange={(html) => updateSection(section.id, { html })} uploadImage={handleUploadImage} />}
+                  </CardContent>
+                </Card>
+              ))}
+            </Stack>
+          </Box>
 
-        </Stack>
-
-        <Box sx={{ textAlign: 'center', py: 2 }}>
-          <Button
-            variant="outlined"
-            size="large"
-            startIcon={<AddIcon />}
-            onClick={(e) => setAnchorEl(e.currentTarget)}
-            sx={{ borderRadius: 10, px: 4, borderStyle: 'dashed', borderWidth: 2 }}
-          >
-            Add New Section
-          </Button>
-          <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
-            <MenuItem onClick={() => addSection('hero')}>Hero Carousel</MenuItem>
-            <MenuItem onClick={() => addSection('hospitality')}>Hospitality (Story)</MenuItem>
-            <MenuItem onClick={() => addSection('services')}>Our Services</MenuItem>
-            <MenuItem onClick={() => addSection('featured-items')}>Featured Items (Dynamic)</MenuItem>
-            <MenuItem onClick={() => addSection('testimonials')}>Testimonials (Dynamic)</MenuItem>
-            <MenuItem onClick={() => addSection('online-order')}>Online Order Block</MenuItem>
-            <MenuItem onClick={() => addSection('rich-text')}>Rich Text / HTML</MenuItem>
-          </Menu>
-            </Box>
+          <Box sx={{ textAlign: 'center', py: { xs: 3, md: 4 } }}>
+            <Button
+              variant="outlined"
+              size="large"
+              startIcon={<AddIcon />}
+              onClick={(e) => setAnchorEl(e.currentTarget)}
+              sx={{ 
+                borderRadius: 10, 
+                px: { xs: 4, md: 6 }, 
+                py: 1.5,
+                borderStyle: 'dashed', 
+                borderWidth: 2,
+                fontWeight: 800,
+                fontFamily: "'Outfit', sans-serif",
+                fontSize: { xs: '0.85rem', md: '1rem' },
+                '&:hover': { borderWidth: 2 }
+              }}
+            >
+              Add New Section
+            </Button>
+            <Menu 
+              anchorEl={anchorEl} 
+              open={Boolean(anchorEl)} 
+              onClose={() => setAnchorEl(null)}
+              PaperProps={{
+                sx: { 
+                  borderRadius: 3, 
+                  mt: 1, 
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+                  '& .MuiMenuItem-root': {
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    fontFamily: "'Outfit', sans-serif",
+                    py: 1.25
+                  }
+                }
+              }}
+            >
+              <MenuItem onClick={() => addSection('hero')}>Hero Carousel</MenuItem>
+              <MenuItem onClick={() => addSection('hospitality')}>Hospitality (Story)</MenuItem>
+              <MenuItem onClick={() => addSection('services')}>Our Services</MenuItem>
+              <MenuItem onClick={() => addSection('featured-items')}>Featured Items (Dynamic)</MenuItem>
+              <MenuItem onClick={() => addSection('testimonials')}>Testimonials (Dynamic)</MenuItem>
+              <MenuItem onClick={() => addSection('online-order')}>Online Order Block</MenuItem>
+              <MenuItem onClick={() => addSection('rich-text')}>Rich Text / HTML</MenuItem>
+            </Menu>
           </Box>
         </TabPanel>
 
@@ -498,8 +601,8 @@ const CustomiseScreensPage: React.FC = () => {
         <AppBar sx={{ position: 'relative', bgcolor: '#1a1a1a' }}>
           <Toolbar>
             <IconButton edge="start" color="inherit" onClick={closePreview} aria-label="close"><Close /></IconButton>
-            <Typography sx={{ ml: 2, flex: 1 }} variant="h6">Homepage Preview (Desktop View)</Typography>
-            <Button autoFocus color="inherit" onClick={closePreview}>Done</Button>
+            <Typography sx={{ ml: 2, flex: 1, fontWeight: 800, fontFamily: "'Outfit', sans-serif" }} variant="h6">Home Preview</Typography>
+            <Button autoFocus color="inherit" onClick={closePreview} sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>Done</Button>
           </Toolbar>
         </AppBar>
         <Box sx={{ bgcolor: '#fff', minHeight: '100dvh' }}>
@@ -516,7 +619,7 @@ const CustomiseScreensPage: React.FC = () => {
                     <Box sx={{ position: 'relative', height: '60vh', bgcolor: '#1b120d', mx: -2, mt: -4, mb: 4, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: 'white' }}>
                       <img src={displayImages[0]} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6 }} />
                       <Box sx={{ position: 'relative', zIndex: 1, p: 4, maxWidth: 900 }}>
-                        <Typography variant="h2" fontWeight="bold" sx={{ fontSize: { xs: '1.8rem', sm: '2.5rem' }, dropShadow: '0 20px 13px rgba(0,0,0,0.4)', mb: 1.5 }}>{section.data?.title}</Typography>
+                        <Typography variant="h2" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif", fontSize: { xs: '1.8rem', sm: '2.5rem' }, dropShadow: '0 20px 13px rgba(0,0,0,0.4)', mb: 1.5 }}>{section.data?.title}</Typography>
                         <Typography variant="h6" sx={{ fontSize: '0.9rem', opacity: 0.9, maxWidth: 600, mx: 'auto', mb: 3 }}>{section.data?.description}</Typography>
                         <Stack direction="row" spacing={2} justifyContent="center" sx={{ mt: 3 }}>
                           <Button variant="contained" sx={{ bgcolor: '#c44d24', color: 'white', px: 3, py: 1, borderRadius: 10, fontSize: '0.9rem', '&:hover': { bgcolor: '#a53f1e' } }}>{isClosed ? 'Pre-order Online' : 'Order Online'}</Button>
@@ -541,8 +644,8 @@ const CustomiseScreensPage: React.FC = () => {
                       <img src={section.data?.image || 'https://images.unsplash.com/photo-1544025162-d76694265947'} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                     </Box>
                     <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                      <Typography variant="overline" color="#a83214" fontWeight="bold" sx={{ letterSpacing: '0.25em', fontSize: '0.65rem' }}>{section.data?.subtitle}</Typography>
-                      <Typography variant="h4" fontWeight="bold" sx={{ mb: 2 }}>{section.data?.title}</Typography>
+                      <Typography variant="overline" color="#a83214" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif", letterSpacing: '0.25em', fontSize: '0.65rem' }}>{section.data?.subtitle}</Typography>
+                      <Typography variant="h4" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif", mb: 2 }}>{section.data?.title}</Typography>
                       {section.data?.description?.map((p: string, i: number) => (
                         <Typography key={i} variant="body1" sx={{ mb: 1.5, color: '#334155', fontSize: '1rem', lineHeight: 1.6 }}>{p}</Typography>
                       ))}
@@ -556,15 +659,15 @@ const CustomiseScreensPage: React.FC = () => {
                 {/* Services Preview */}
                 {section.type === 'services' && (
                   <Box sx={{ textAlign: 'center', py: 6 }}>
-                    <Typography variant="overline" color="#a83214" fontWeight="bold" sx={{ letterSpacing: '0.25em', fontSize: '0.65rem' }}>{section.data?.subtitle}</Typography>
-                    <Typography variant="h4" fontWeight="bold" sx={{ mb: 4 }}>{section.data?.title}</Typography>
+                    <Typography variant="overline" color="#a83214" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif", letterSpacing: '0.25em', fontSize: '0.65rem' }}>{section.data?.subtitle}</Typography>
+                    <Typography variant="h4" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif", mb: 4 }}>{section.data?.title}</Typography>
                     <Stack direction={{ xs: 'column', md: 'row' }} spacing={3}>
                       {section.data?.items?.map((item: any, i: number) => (
                         <Box key={i} sx={{ flex: 1, p: 3, borderRadius: 6, border: '1px solid rgba(230,211,191,0.4)', textAlign: 'left', transition: '0.3s', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)' }}>
                           <Box sx={{ bgcolor: '#f7e1ce', p: 1, borderRadius: 3, display: 'inline-flex', mb: 2, color: '#9f2f16' }}>
-                            <Typography variant="subtitle1" lineHeight={1}>✦</Typography>
+                            {getServiceIcon(item.icon)}
                           </Box>
-                          <Typography variant="h6" fontWeight="bold" gutterBottom>{item.title}</Typography>
+                          <Typography variant="h6" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }} gutterBottom>{item.title}</Typography>
                           <Typography variant="body2" color="#475569" lineHeight={1.5}>{item.description}</Typography>
                         </Box>
                       ))}
@@ -603,8 +706,8 @@ const CustomiseScreensPage: React.FC = () => {
                 {/* Featured Items (Must Try) Preview */}
                 {section.type === 'featured-items' && (
                   <Box sx={{ py: 6, textAlign: 'center', bgcolor: '#fdf8f4', borderRadius: 4, mx: -2, px: 2, position: 'relative' }}>
-                    <Typography variant="overline" color="#a83214" fontWeight="bold" sx={{ letterSpacing: '0.25em', fontSize: '0.65rem', display: 'block', mb: 1 }}>MUST TRY</Typography>
-                    <Typography variant="h4" fontWeight="bold" sx={{ color: '#1e293b', mb: 6 }}>{section.data?.title || 'Savor Our Signature Creations'}</Typography>
+                    <Typography variant="overline" color="#a83214" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif", letterSpacing: '0.25em', fontSize: '0.65rem', display: 'block', mb: 1 }}>MUST TRY</Typography>
+                    <Typography variant="h4" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif", color: '#1e293b', mb: 6 }}>{section.data?.title || 'Savor Our Signature Creations'}</Typography>
                     
                     <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                       <IconButton sx={{ position: 'absolute', left: -20, bgcolor: 'white', shadow: 2, '&:hover': { bgcolor: '#f8fafc' } }}><ChevronLeft sx={{ color: '#a83214' }} /></IconButton>
@@ -617,12 +720,12 @@ const CustomiseScreensPage: React.FC = () => {
                             </Box>
                             <Box sx={{ p: 2, textAlign: 'left' }}>
                               <Stack direction="row" justifyContent="space-between" alignItems="flex-start" sx={{ mb: 1 }}>
-                                <Typography variant="subtitle2" fontWeight="bold" sx={{ lineHeight: 1.2 }}>Signature Dish {i}</Typography>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif", lineHeight: 1.2 }}>Signature Dish {i}</Typography>
                                 <Box sx={{ display: 'inline-flex', alignItems: 'center', bgcolor: '#fff6e5', color: '#f59e0b', px: 1, py: 0.2, borderRadius: 0.5, fontSize: '0.6rem', fontWeight: 'bold' }}>
                                   ★ 4.{i+5}
                                 </Box>
                               </Stack>
-                              <Typography variant="caption" fontWeight="bold" sx={{ color: '#a83214', display: 'block', mb: 2 }}>$14.99</Typography>
+                              <Typography variant="caption" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif", color: '#a83214', display: 'block', mb: 2 }}>$14.99</Typography>
                               <Button fullWidth sx={{ bgcolor: '#a83214', color: 'white', borderRadius: 2, py: 0.5, '&:hover': { bgcolor: '#8e2810' }, fontWeight: 'bold', fontSize: '0.75rem' }}>Add to cart</Button>
                             </Box>
                           </Box>
@@ -637,7 +740,7 @@ const CustomiseScreensPage: React.FC = () => {
                 {/* Testimonials Preview */}
                 {section.type === 'testimonials' && (
                   <Box sx={{ py: 6, textAlign: 'center' }}>
-                    <Typography variant="h4" fontWeight="bold" sx={{ mb: 4 }}>What Our Guests Say</Typography>
+                    <Typography variant="h4" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif", mb: 4 }}>What Our Guests Say</Typography>
                     <Stack direction={{ xs: 'column', md: 'row' }} spacing={3}>
                       {[1, 2, 3].map((i) => (
                         <Box key={i} sx={{ flex: 1, p: 3, borderRadius: 6, border: '1px solid #f1f5f9', bgcolor: 'white', textAlign: 'left' }}>
@@ -652,7 +755,7 @@ const CustomiseScreensPage: React.FC = () => {
                               G
                             </Box>
                             <Box>
-                              <Typography variant="subtitle2" fontWeight="bold">Guest Name {i}</Typography>
+                              <Typography variant="subtitle2" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>Guest Name {i}</Typography>
                               <Typography variant="caption" color="text.secondary">Verified Customer</Typography>
                             </Box>
                           </Stack>
@@ -675,26 +778,73 @@ const CustomiseScreensPage: React.FC = () => {
         </Box>
       </Dialog>
 
-      <Dialog open={isResetDialogOpen} onClose={() => setIsResetDialogOpen(false)}>
-        <DialogTitle>Reset to Default Template?</DialogTitle>
-        <DialogContent>
-          <Typography>
+      <Dialog 
+        open={isResetDialogOpen} 
+        onClose={() => setIsResetDialogOpen(false)}
+        fullScreen={isMobile}
+        PaperProps={{
+          sx: { borderRadius: { xs: 0, sm: 4 } }
+        }}
+      >
+        <DialogTitle sx={{ 
+          m: 0, 
+          p: { xs: 2.5, sm: 3 }, 
+          pt: { xs: isMobile ? '54px' : 2.5, sm: 3 },
+          bgcolor: isMobile ? 'error.main' : 'transparent',
+          color: isMobile ? 'white' : 'text.primary',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <Typography variant="h6" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
+            Reset Template?
+          </Typography>
+          {isMobile && <IconButton onClick={() => setIsResetDialogOpen(false)} color="inherit"><Close /></IconButton>}
+        </DialogTitle>
+        <DialogContent sx={{ p: { xs: 3, sm: 4 } }}>
+          <Typography sx={{ fontWeight: 500, color: 'text.secondary', lineHeight: 1.6 }}>
             This will replace all your current sections with the default template. 
-            Any unsaved changes will be lost. This action cannot be undone unless you refresh without saving.
+            Any unsaved changes will be lost. This action cannot be undone.
           </Typography>
         </DialogContent>
-        <DialogActions sx={{ pb: 3, px: 3 }}>
-          <Button onClick={() => setIsResetDialogOpen(false)} color="inherit">Cancel</Button>
+        <DialogActions sx={{ 
+          p: { xs: 2.5, sm: 3 }, 
+          pb: { xs: isMobile ? '32px' : 2.5, sm: 4 },
+          gap: 1.5 
+        }}>
+          <Button 
+            onClick={() => setIsResetDialogOpen(false)} 
+            sx={{ 
+                flex: 1, 
+                borderRadius: 2.5, 
+                py: 1.25, 
+                fontWeight: 700, 
+                fontFamily: "'Outfit', sans-serif" 
+            }}
+          >
+            Cancel
+          </Button>
           <Button 
             onClick={() => {
               setSections(DEFAULT_HOMEPAGE_SECTIONS);
               setIsResetDialogOpen(false);
-              toast.success('Reset to default template. Don\'t forget to Save Changes!');
-            }} 
+              toast.success("Reset to default template. Don't forget to Save Changes!", {
+                position: 'top-center',
+                style: { marginTop: '90px', fontFamily: "'Outfit', sans-serif", fontWeight: 700, borderRadius: '12px', background: '#333', color: '#fff' }
+              });
+            }}
             color="error" 
             variant="contained"
+            sx={{ 
+                flex: 1, 
+                borderRadius: 2.5, 
+                py: 1.25, 
+                fontWeight: 800, 
+                fontFamily: "'Outfit', sans-serif",
+                boxShadow: `0 4px 12px ${alpha(theme.palette.error.main, 0.2)}`
+            }}
           >
-            Reset Everything
+            Reset All
           </Button>
         </DialogActions>
       </Dialog>

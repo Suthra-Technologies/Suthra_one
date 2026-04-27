@@ -3,6 +3,7 @@ import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosReq
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { BRAND_CONFIG } from '../config/brandConfig';
+import { Capacitor } from '@capacitor/core';
 
 const envApiBase = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
 const brandApiBase = (BRAND_CONFIG.apiBaseUrl as string | undefined)?.trim();
@@ -55,6 +56,12 @@ api.interceptors.response.use(
   (error) => {
     const message = error.response?.data?.message || error.message || 'An error occurred';
     if (error.response?.status === 401) {
+      // Mobile-only: keep local session until explicit logout.
+      // Some transient 401s should not force users back to login.
+      if (Capacitor.isNativePlatform()) {
+        return Promise.reject(error);
+      }
+
       localStorage.removeItem('jwt');
       localStorage.removeItem('user');
 
@@ -102,6 +109,7 @@ export const authAPI = {
   getCustomerCards: () => api.get('/auth/customer/cards'),
   saveCustomerCard: (cardData: any) => api.post('/auth/customer/cards', cardData),
   deleteCustomerCard: (index: number) => api.delete(`/auth/customer/cards/${index}`),
+  deleteAccount: () => api.delete('/auth/delete-account'),
 };
 
 
@@ -193,6 +201,7 @@ export const ordersAPI = {
 
   // Bill generation
   getBillData: (id: string) => api.get(`/orders/${id}/bill`),
+  downloadPDF: (id: string) => api.get(`/orders/${id}/pdf`, { responseType: 'blob' }),
 
   // Coupon management
   validateCoupon: (code: string) => api.post('/orders/validate-coupon', { code }),
@@ -205,6 +214,41 @@ export const ordersAPI = {
   syncDoordashStatus: (orderId: string) => api.post(`/doordash/sync/${orderId}`),
   dispatchUberEatsDelivery: (orderId: string) => api.post(`/ubereats/dispatch/${orderId}`),
   simulateUberEatsStatus: (orderId: string, status: string) => api.post(`/ubereats/simulate/${orderId}`, { status }),
+};
+
+// -------------------- Uber Direct API --------------------
+export const ubereatsAPI = {
+  // Deliveries
+  createDelivery: (payload: any) => api.post('/ubereats/deliveries', payload),
+  listDeliveries: (params?: any) => api.get('/ubereats/deliveries', { params }),
+  getDelivery: (deliveryId: string) => api.get(`/ubereats/deliveries/${deliveryId}`),
+  updateDelivery: (deliveryId: string, payload: any) => api.post(`/ubereats/deliveries/${deliveryId}`, payload),
+  cancelDelivery: (deliveryId: string, payload?: any) => api.post(`/ubereats/deliveries/${deliveryId}/cancel`, payload),
+  getProofOfDelivery: (deliveryId: string) => api.get(`/ubereats/deliveries/${deliveryId}/proof-of-delivery`),
+
+  // Quotes
+  createQuote: (payload: any) => api.post('/ubereats/quotes', payload),
+
+  // Stores
+  findStores: (latitude: number, longitude: number) => api.get('/ubereats/stores', { params: { latitude, longitude } }),
+
+  // Organizations
+  createOrganization: (payload: any) => api.post('/ubereats/organizations', payload),
+  getOrganization: (organizationId: string) => api.get(`/ubereats/organizations/${organizationId}`),
+  inviteMember: (organizationId: string, payload: any) => api.post(`/ubereats/organizations/${organizationId}/memberships/invite`, payload),
+
+  // Business Locations
+  getBusinessLocations: (organizationId: string) => api.get(`/ubereats/organizations/${organizationId}/business-locations`),
+  getBusinessLocation: (organizationId: string, businessLocationId: string) => api.get(`/ubereats/organizations/${organizationId}/business-locations/${businessLocationId}`),
+  updateBusinessLocation: (organizationId: string, businessLocationId: string, payload: any) => api.patch(`/ubereats/organizations/${organizationId}/business-locations/${businessLocationId}`, payload),
+
+  // Refunds
+  submitRefund: (payload: any) => api.post('/ubereats/refund', payload),
+
+  // Webhooks
+  listWebhooks: () => api.get('/ubereats/webhooks'),
+  registerWebhook: (url: string) => api.post('/ubereats/webhooks/register', { url }),
+  deleteWebhook: (webhookId: string) => api.delete(`/ubereats/webhooks/${webhookId}`),
 };
 
 // -------------------- Rewards API --------------------
@@ -367,7 +411,7 @@ export const subscriptionAPI = {
 
 // -------------------- Coupons API --------------------
 export const couponsAPI = {
-  getAll: (params?: { page: number; limit: number }) => api.get('/coupons', { params }),
+  getAll: (params?: { page: number; limit: number; search?: string }) => api.get('/coupons', { params }),
   getActive: (orderType?: string, billAmount?: number) =>
     api.get('/coupons/active', { params: { orderType, billAmount } }),
   validate: (code: string, orderType: string, billAmount: number, customerId?: string) =>
@@ -382,7 +426,7 @@ export const couponsAPI = {
 
 // New Promos API – separate endpoints for promo codes
 export const promosAPI = {
-  getAll: (params?: { page: number; limit: number }) => api.get('/promos', { params }),
+  getAll: (params?: { page: number; limit: number; search?: string }) => api.get('/promos', { params }),
   getActive: (orderType?: string, billAmount?: number) =>
     api.get('/promos/active', { params: { orderType, billAmount } }),
   validate: (code: string, orderType: string, billAmount: number, customerId?: string) =>
@@ -392,6 +436,10 @@ export const promosAPI = {
   update: (id: string, promoData: any) => api.put(`/promos/${id}`, promoData),
   delete: (id: string) => api.delete(`/promos/${id}`),
   // apply endpoint can be added if needed
+  sendBulkEmail: (data: { promoId: string; subject: string; message: string; recipients: string[] }) => 
+    api.post('/promos/send-bulk-email', data),
+  sendBulkSms: (data: { promoId: string; phoneNumbers: string[] }) => 
+    api.post('/promos/send-sms', data),
 };
 
 // -------------------- Bookings API --------------------
@@ -630,7 +678,7 @@ export const homepageAPI = {
 export const smsAPI = {
   getLogs: (params: { page: number; limit: number; type?: string; startDate?: string; endDate?: string }) =>
     api.get('/sms/logs', { params }),
-  getSummary: () => api.get('/sms/summary'),
+  getSummary: (params?: { startDate?: string; endDate?: string }) => api.get('/sms/summary', { params }),
   sendTest: (to: string, message: string) => api.post('/sms/test', { to, message }),
 };
 

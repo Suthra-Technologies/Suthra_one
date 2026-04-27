@@ -509,7 +509,7 @@ const ReportsPage: React.FC = () => {
     // Dashboard top items
     const topItems =
         (bestSellingItems || [])
-            .slice(0, 10)
+            .slice(0, isMobile ? 5 : 10)
             .map(item => ({
                 itemName: item.itemName,
                 totalQuantity: Number(item.totalQuantity) || 0
@@ -555,211 +555,142 @@ const ReportsPage: React.FC = () => {
 
     // Dashboard Tab
     const renderDashboard = () => (
-        <Grid container spacing={3}>
+        <Grid container spacing={isMobile ? 1 : 3}>
             {/* Summary Cards */}
-            <Grid item xs={12} md={3}>
-                <Card sx={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
-                    <CardContent>
-                        <Stack direction="row" justifyContent="space-between" alignItems="center">
-                            <Box>
-                                <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
-                                    Total Sales
+                <Grid item xs={6} md={3}>
+                    <Card sx={{ 
+                        background: 'linear-gradient(135deg, #3f51b5 0%, #1a237e 100%)', 
+                        borderRadius: isMobile ? 3 : 4,
+                        boxShadow: isMobile ? '0 4px 12px rgba(26, 35, 126, 0.2)' : 3,
+                        position: 'relative',
+                        overflow: 'hidden'
+                    }}>
+                        <CardContent sx={{ p: isMobile ? 1.5 : 2, '&:last-child': { pb: isMobile ? 1.5 : 2 } }}>
+                            <Stack spacing={isMobile ? 0.25 : 1}>
+                                <Stack direction="row" alignItems="center" spacing={0.5}>
+                                    <CurrencyExchangeIcon sx={{ fontSize: isMobile ? 16 : 28, color: 'rgba(255,255,255,0.9)' }} />
+                                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontSize: isMobile ? '0.65rem' : 'inherit', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                        Total Sales
+                                    </Typography>
+                                </Stack>
+                                <Typography variant={isMobile ? "h6" : "h4"} sx={{ color: 'white', fontWeight: 800, fontSize: isMobile ? '1.1rem' : 'inherit' }}>
+                                    {salesReport ? formatCurrency(salesReport.summary.totalSales).replace('₹', '') : '-'}
                                 </Typography>
-                                <Typography variant="h4" sx={{ color: 'white', fontWeight: 'bold' }}>
-                                    {salesReport ? formatCurrency(salesReport.summary.totalSales) : '-'}
-                                </Typography>
-                            </Box>
-                            <CurrencyExchangeIcon sx={{ fontSize: 48, color: 'rgba(255,255,255,0.25)' }} />
+                            </Stack>
+                        </CardContent>
+                    </Card>
+                </Grid>
 
-
-                        </Stack>
-                    </CardContent>
-                </Card>
-            </Grid>
-
-            <Grid item xs={12} md={3}>
-                <Card sx={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }}>
-                    <CardContent>
-                        <Stack direction="row" justifyContent="space-between" alignItems="center">
-                            <Box>
-                                <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
-                                    Total Orders
-                                </Typography>
-                                <Typography variant="h4" sx={{ color: 'white', fontWeight: 'bold' }}>
+                <Grid item xs={6} md={3}>
+                    <Card sx={{ 
+                        background: 'linear-gradient(135deg, #ec407a 0%, #ad1457 100%)', 
+                        borderRadius: isMobile ? 3 : 4,
+                        boxShadow: isMobile ? '0 4px 12px rgba(173, 20, 87, 0.2)' : 3,
+                    }}>
+                        <CardContent sx={{ p: isMobile ? 1.5 : 2, '&:last-child': { pb: isMobile ? 1.5 : 2 } }}>
+                            <Stack spacing={isMobile ? 0.25 : 1}>
+                                <Stack direction="row" alignItems="center" spacing={0.5}>
+                                    <ShoppingBagIcon sx={{ fontSize: isMobile ? 16 : 28, color: 'rgba(255,255,255,0.9)' }} />
+                                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontSize: isMobile ? '0.65rem' : 'inherit', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                        Total Orders
+                                    </Typography>
+                                </Stack>
+                                <Typography variant={isMobile ? "h6" : "h4"} sx={{ color: 'white', fontWeight: 800, fontSize: isMobile ? '1.1rem' : 'inherit' }}>
                                     {salesReport ? salesReport.summary.totalOrders : '-'}
                                 </Typography>
-                            </Box>
-                            <ShoppingBagIcon sx={{ fontSize: 48, color: 'rgba(255,255,255,0.25)' }} />
+                            </Stack>
+                        </CardContent>
+                    </Card>
+                </Grid>
 
-                        </Stack>
-                    </CardContent>
-                </Card>
-            </Grid>
-
-            <Grid item xs={12} md={3}>
-                <Card sx={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' }}>
-                    <CardContent>
-                        <Stack direction="row" justifyContent="space-between" alignItems="center">
-                            <Box>
-                                <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
-                                    Avg Order Value
+                <Grid item xs={6} md={3}>
+                    <Card sx={{ 
+                        background: 'linear-gradient(135deg, #0288d1 0%, #01579b 100%)', 
+                        borderRadius: isMobile ? 3 : 4,
+                        boxShadow: isMobile ? '0 4px 12px rgba(1, 87, 155, 0.2)' : 3,
+                    }}>
+                        <CardContent sx={{ p: isMobile ? 1.5 : 2, '&:last-child': { pb: isMobile ? 1.5 : 2 } }}>
+                            <Stack spacing={isMobile ? 0.25 : 1}>
+                                <Stack direction="row" alignItems="center" spacing={0.5}>
+                                    <TrendingUpIcon sx={{ fontSize: isMobile ? 16 : 28, color: 'rgba(255,255,255,0.9)' }} />
+                                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontSize: isMobile ? '0.65rem' : 'inherit', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                        Avg Order Value
+                                    </Typography>
+                                </Stack>
+                                <Typography variant={isMobile ? "h6" : "h4"} sx={{ color: 'white', fontWeight: 800, fontSize: isMobile ? '1.1rem' : 'inherit' }}>
+                                    {salesReport ? formatCurrency(salesReport.summary.averageOrderValue).replace('₹', '') : '-'}
                                 </Typography>
-                                <Typography variant="h4" sx={{ color: 'white', fontWeight: 'bold' }}>
-                                    {salesReport ? formatCurrency(salesReport.summary.averageOrderValue) : '-'}
-                                </Typography>
-                            </Box>
-                            <Box
-                                sx={{
-                                    width: 70,
-                                    height: 70,
-                                    borderRadius: '50%',
-                                    background: 'rgba(255,255,255,0.15)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
-                                }}
-                            >
-                                <TrendingUpIcon
-                                    sx={{
-                                        fontSize: 36,
-                                        color: '#ffffff'
-                                    }}
-                                />
-                            </Box>
+                            </Stack>
+                        </CardContent>
+                    </Card>
+                </Grid>
 
-                        </Stack>
-                    </CardContent>
-                </Card>
-            </Grid>
-
-            <Grid item xs={12} md={3}>
-                <Card sx={{ background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)' }}>
-                    <CardContent>
-                        <Stack direction="row" justifyContent="space-between" alignItems="center">
-                            <Box>
-                                <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
-                                    Top Items Sold
-                                </Typography>
-                                <Typography variant="h4" sx={{ color: 'white', fontWeight: 'bold' }}>
+                <Grid item xs={6} md={3}>
+                    <Card sx={{ 
+                        background: 'linear-gradient(135deg, #ff8f00 0%, #e65100 100%)', 
+                        borderRadius: isMobile ? 3 : 4,
+                        boxShadow: isMobile ? '0 4px 12px rgba(230, 81, 0, 0.2)' : 3,
+                    }}>
+                        <CardContent sx={{ p: isMobile ? 1.5 : 2, '&:last-child': { pb: isMobile ? 1.5 : 2 } }}>
+                            <Stack spacing={isMobile ? 0.25 : 1}>
+                                <Stack direction="row" alignItems="center" spacing={0.5}>
+                                    <LeaderboardIcon sx={{ fontSize: isMobile ? 16 : 28, color: 'rgba(255,255,255,0.9)' }} />
+                                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontSize: isMobile ? '0.65rem' : 'inherit', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                        Top Items Sold
+                                    </Typography>
+                                </Stack>
+                                <Typography variant={isMobile ? "h6" : "h4"} sx={{ color: 'white', fontWeight: 800, fontSize: isMobile ? '1.1rem' : 'inherit' }}>
                                     {topItems.length}
                                 </Typography>
-                            </Box>
-                            <Box
-                                sx={{
-                                    width: 70,
-                                    height: 70,
-                                    borderRadius: '50%',
-                                    background: 'rgba(255,255,255,0.15)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
-                                }}
-                            >
-                                <LeaderboardIcon
-                                    sx={{
-                                        fontSize: 36,
-                                        color: '#ffffff'
-                                    }}
-                                />
-                            </Box>
+                            </Stack>
+                        </CardContent>
+                    </Card>
+                </Grid>
 
-                        </Stack>
-                    </CardContent>
-                </Card>
-            </Grid>
-
-            {/* Total Tips Card */}
-            <Grid item xs={12} md={3}>
-                <Card sx={{ background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)' }}>
-                    <CardContent>
-                        <Stack direction="row" justifyContent="space-between" alignItems="center">
-                            <Box>
-                                <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
-                                    Total Tips
-                                </Typography>
-                                <Typography variant="h4" sx={{ color: 'white', fontWeight: 'bold' }}>
-                                    {salesReport ? formatCurrency(salesReport.summary.totalTips || 0) : '-'}
-                                </Typography>
-                            </Box>
-                            <Box
-                                sx={{
-                                    width: 70,
-                                    height: 70,
-                                    borderRadius: '50%',
-                                    background: 'rgba(255,255,255,0.15)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
-                                }}
-                            >
-                                <PaymentsIcon
-                                    sx={{
-                                        fontSize: 36,
-                                        color: '#ffffff'
-                                    }}
-                                />
-                            </Box>
-
-
-                        </Stack>
-                    </CardContent>
-                </Card>
-            </Grid>
-
-            {/* Total Tax Collected Card */}
-            <Grid item xs={12} md={3}>
-                <Card sx={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
-                    <CardContent>
-                        <Stack direction="row" justifyContent="space-between" alignItems="center">
-                            <Box>
-                                <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
-                                    Total Tax
-                                </Typography>
-                                <Box>
-                                    <Typography variant="h4" sx={{ color: 'white', fontWeight: 'bold' }}>
-                                        {salesReport ? formatCurrency(salesReport.summary.totalTax || 0) : '-'}
+                <Grid item xs={6} md={3}>
+                    <Card sx={{ 
+                        background: 'linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%)', 
+                        borderRadius: isMobile ? 3 : 4,
+                        boxShadow: isMobile ? '0 4px 12px rgba(27, 94, 32, 0.2)' : 3,
+                    }}>
+                        <CardContent sx={{ p: isMobile ? 1.5 : 2, '&:last-child': { pb: isMobile ? 1.5 : 2 } }}>
+                            <Stack spacing={isMobile ? 0.25 : 1}>
+                                <Stack direction="row" alignItems="center" spacing={0.5}>
+                                    <PaymentsIcon sx={{ fontSize: isMobile ? 16 : 28, color: 'rgba(255,255,255,0.9)' }} />
+                                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontSize: isMobile ? '0.65rem' : 'inherit', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                        Total Tips
                                     </Typography>
-                                    {salesReport?.summary?.taxBreakdown && (
-                                        <Box mt={0.5}>
-                                            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)', display: 'block', lineHeight: 1.1 }}>
-                                                Country: {formatCurrency(salesReport.summary.taxBreakdown.country)}
-                                            </Typography>
-                                            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)', display: 'block', lineHeight: 1.1 }}>
-                                                State: {formatCurrency(salesReport.summary.taxBreakdown.state)}
-                                            </Typography>
-                                            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.9)', display: 'block', lineHeight: 1.1 }}>
-                                                City: {formatCurrency(salesReport.summary.taxBreakdown.city)}
-                                            </Typography>
-                                        </Box>
-                                    )}
-                                </Box>
-                            </Box>
-                            <Box
-                                sx={{
-                                    width: 70,
-                                    height: 70,
-                                    borderRadius: '50%',
-                                    background: 'rgba(255,255,255,0.15)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
-                                }}
-                            >
-                                <ReceiptIcon
-                                    sx={{
-                                        fontSize: 36,
-                                        color: '#ffffff'
-                                    }}
-                                />
-                            </Box>
+                                </Stack>
+                                <Typography variant={isMobile ? "h6" : "h4"} sx={{ color: 'white', fontWeight: 800, fontSize: isMobile ? '1.1rem' : 'inherit' }}>
+                                    {salesReport ? formatCurrency(salesReport.summary.totalTips || 0).replace('₹', '') : '-'}
+                                </Typography>
+                            </Stack>
+                        </CardContent>
+                    </Card>
+                </Grid>
 
-                        </Stack>
-                    </CardContent>
-                </Card>
-            </Grid>
-
-            {/* Charts */}
-            {/* Charts Row - Forced to new line */}
+                <Grid item xs={6} md={3}>
+                    <Card sx={{ 
+                        background: 'linear-gradient(135deg, #455a64 0%, #263238 100%)', 
+                        borderRadius: isMobile ? 3 : 4,
+                        boxShadow: isMobile ? '0 4px 12px rgba(38, 50, 56, 0.2)' : 3,
+                    }}>
+                        <CardContent sx={{ p: isMobile ? 1.5 : 2, '&:last-child': { pb: isMobile ? 1.5 : 2 } }}>
+                            <Stack spacing={isMobile ? 0.25 : 1}>
+                                <Stack direction="row" alignItems="center" spacing={0.5}>
+                                    <ReceiptIcon sx={{ fontSize: isMobile ? 16 : 28, color: 'rgba(255,255,255,0.9)' }} />
+                                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontSize: isMobile ? '0.65rem' : 'inherit', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                        Total Tax
+                                    </Typography>
+                                </Stack>
+                                <Typography variant={isMobile ? "h6" : "h4"} sx={{ color: 'white', fontWeight: 800, fontSize: isMobile ? '1.1rem' : 'inherit' }}>
+                                    {salesReport ? formatCurrency(salesReport.summary.totalTax || 0).replace('₹', '') : '-'}
+                                </Typography>
+                            </Stack>
+                        </CardContent>
+                    </Card>
+                </Grid>
+            {/* Charts Row */}
             <Grid item xs={12}>
                 <Grid container spacing={{ xs: 2, md: 3 }}>
 
@@ -768,18 +699,19 @@ const ReportsPage: React.FC = () => {
                         <Paper
                             elevation={0}
                             sx={{
-                                p: { xs: 2.5, sm: 3, md: 4 },
-                                borderRadius: 5,
-                                background: "#f5f5f5",
+                                p: isMobile ? 2 : 4,
+                                borderRadius: isMobile ? 3 : 5,
+                                background: isMobile ? "#ffffff" : "#f5f5f5",
+                                boxShadow: isMobile ? "0 2px 10px rgba(0,0,0,0.05)" : "none"
                             }}
                         >
                             <Typography
                                 variant="h6"
                                 sx={{
-                                    color: "#f4511e",
-                                    fontWeight: 600,
-                                    mb: { xs: 2, md: 3 },
-                                    fontSize: { xs: 16, md: 18 }
+                                    color: "#374151",
+                                    fontWeight: 700,
+                                    mb: 2,
+                                    fontSize: { xs: 15, md: 18 }
                                 }}
                             >
                                 Item-wise Sales
@@ -1236,7 +1168,7 @@ const ReportsPage: React.FC = () => {
     );
 
     const bestPieData = (bestSellingItems || [])
-        .slice(0, 10)
+        .slice(0, isMobile ? 5 : 10)
         .map(item => ({
             itemName: item.itemName,
             totalQuantity: Number(item.totalQuantity) || 0
@@ -1266,39 +1198,59 @@ const ReportsPage: React.FC = () => {
 
     // Best Selling Items Tab
     const renderBestSellingItems = () => (
-        <Paper sx={{ p: 3 }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-                <Typography variant="h6">Best Selling Items</Typography>
+        <Box sx={{ py: 0 }}>
+            <Box sx={{ 
+                display: 'flex', 
+                flexDirection: 'row', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                mb: isMobile ? 1.5 : 3,
+                gap: 1
+            }}>
+                <Typography variant={isMobile ? "body2" : "h5"} sx={{ fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {isMobile ? 'Best Selling' : 'Best Selling Items'}
+                </Typography>
                 <Button
                     variant="contained"
-                    startIcon={<DownloadIcon />}
+                    size="small"
+                    startIcon={<DownloadIcon sx={{ fontSize: isMobile ? '14px !important' : 'inherit' }} />}
                     onClick={() => downloadExcel('best-selling')}
+                    sx={{ 
+                        borderRadius: 2, 
+                        fontSize: isMobile ? '0.65rem' : 'inherit',
+                        px: isMobile ? 1 : 2,
+                        minWidth: 'auto',
+                        whiteSpace: 'nowrap',
+                        height: isMobile ? 28 : 'auto',
+                        textTransform: 'none'
+                    }}
                 >
-                    Export Excel
+                    {isMobile ? 'Export' : 'Export Excel'}
                 </Button>
-            </Stack>
+            </Box>
 
-            <Grid container spacing={3}>
+            <Grid container spacing={isMobile ? 1.5 : 3}>
                 <Grid item xs={12}>
-                    <Grid container spacing={3} sx={{ alignItems: "stretch" }}>
+                    <Grid container spacing={isMobile ? 1.5 : 3} sx={{ alignItems: "stretch" }}>
 
                         {/* LEFT SIDE */}
                         <Grid item xs={12} md={8}>
                             <Paper
                                 elevation={0}
                                 sx={{
-                                    p: 4,
-                                    borderRadius: 6,
-                                    background: "transparent",
+                                    p: isMobile ? 1.5 : 4,
+                                    borderRadius: isMobile ? 3 : 6,
+                                    background: isMobile ? "#ffffff" : "transparent",
+                                    boxShadow: isMobile ? "0 2px 10px rgba(0,0,0,0.05)" : "none",
                                     height: "100%"
                                 }}
                             >
                                 <Typography
-                                    variant="h6"
+                                    variant="subtitle2"
                                     sx={{
-                                        color: "#f4511e",
-                                        fontWeight: 600,
-                                        mb: 3,
+                                        color: "#374151",
+                                        fontWeight: 700,
+                                        mb: isMobile ? 1 : 3,
                                     }}
                                 >
                                     Item-wise Sales
@@ -1313,96 +1265,84 @@ const ReportsPage: React.FC = () => {
                                 ) : (
                                     <Grid container direction="column" sx={{ gap: 3 }}>
 
-                                        {/* Pie */}
                                         <Grid item xs={12}>
-                                            <ResponsiveContainer width="100%" height={320}>
-                                                <PieChart>
-                                                    <Pie
-                                                        minAngle={3}
-                                                        data={safeBestPie}
-                                                        dataKey="totalQuantity"
-                                                        nameKey="itemName"
-                                                        cx="50%"
-                                                        cy="50%"
-                                                        outerRadius={isMobile ? 55 : isTablet ? 70 : 85}
-                                                        stroke="none"
-                                                        paddingAngle={2}
-                                                        isAnimationActive={false}
-                                                        label={({ cx, cy, midAngle, outerRadius, percent }) => {
-                                                            if (!percent) return null;
-                                                            const value = Math.round(percent * 100);
-                                                            if (value < 2) return null;
-                                                            const RADIAN = Math.PI / 180;
-                                                            const sx = cx + outerRadius * Math.cos(-midAngle * RADIAN);
-                                                            const sy = cy + outerRadius * Math.sin(-midAngle * RADIAN);
-                                                            const mx = cx + (outerRadius + 20) * Math.cos(-midAngle * RADIAN);
-                                                            const my = cy + (outerRadius + 20) * Math.sin(-midAngle * RADIAN);
-                                                            const ex = cx + (outerRadius + 45) * Math.cos(-midAngle * RADIAN);
-                                                            const ey = cy + (outerRadius + 45) * Math.sin(-midAngle * RADIAN);
-                                                            const textAnchor = ex > cx ? "start" : "end";
-                                                            return (
-                                                                <g>
-                                                                    <polyline
-                                                                        points={`${sx},${sy} ${mx},${my} ${ex},${ey}`}
-                                                                        fill="none"
-                                                                        stroke="#9ca3af"
-                                                                        strokeWidth={1.5}
-                                                                    />
-                                                                    <circle cx={sx} cy={sy} r={2} fill="#9ca3af" />
-                                                                    <text
-                                                                        x={ex + (ex > cx ? 4 : -4)}
-                                                                        y={ey}
-                                                                        textAnchor={textAnchor}
-                                                                        dominantBaseline="central"
-                                                                        fill="#374151"
-                                                                        style={{ fontSize: 12, fontWeight: 600 }}
-                                                                    >
-                                                                        {value}%
-                                                                    </text>
-                                                                </g>
-                                                            );
-                                                        }}
-                                                        labelLine={false}
-                                                    >
-                                                        {safeBestPie.map((entry, index) => (
-                                                            <Cell
-                                                                key={index}
-                                                                fill={COLORS[index % COLORS.length]}
-                                                            />
-                                                        ))}
-                                                    </Pie>
-                                                    {bestItemCount === 1 && bestTotalQty > 0 && (
-                                                        <>
+                                            <Box sx={{ width: "100%", height: isMobile ? 220 : 320 }}>
+                                                <ResponsiveContainer width="100%" height="100%">
+                                                    <PieChart>
+                                                        <Pie
+                                                            minAngle={3}
+                                                            data={safeBestPie}
+                                                            dataKey="totalQuantity"
+                                                            nameKey="itemName"
+                                                            cx="50%"
+                                                            cy="50%"
+                                                            innerRadius={isMobile ? 55 : 60}
+                                                            outerRadius={isMobile ? 95 : 90}
+                                                            stroke="none"
+                                                            paddingAngle={2}
+                                                            isAnimationActive={false}
+                                                            label={isMobile ? false : ({ cx, cy, midAngle, outerRadius, percent }) => {
+                                                                if (!percent) return null;
+                                                                const value = Math.round(percent * 100);
+                                                                if (value < 2) return null;
+                                                                const RADIAN = Math.PI / 180;
+                                                                const sx = cx + outerRadius * Math.cos(-midAngle * RADIAN);
+                                                                const sy = cy + outerRadius * Math.sin(-midAngle * RADIAN);
+                                                                const mx = cx + (outerRadius + 20) * Math.cos(-midAngle * RADIAN);
+                                                                const my = cy + (outerRadius + 20) * Math.sin(-midAngle * RADIAN);
+                                                                const ex = cx + (outerRadius + 45) * Math.cos(-midAngle * RADIAN);
+                                                                const ey = cy + (outerRadius + 45) * Math.sin(-midAngle * RADIAN);
+                                                                const textAnchor = ex > cx ? "start" : "end";
+                                                                return (
+                                                                    <g>
+                                                                        <polyline
+                                                                            points={`${sx},${sy} ${mx},${my} ${ex},${ey}`}
+                                                                            fill="none"
+                                                                            stroke="#9ca3af"
+                                                                            strokeWidth={1.5}
+                                                                        />
+                                                                        <circle cx={sx} cy={sy} r={2} fill="#9ca3af" />
+                                                                        <text
+                                                                            x={ex + (ex > cx ? 4 : -4)}
+                                                                            y={ey}
+                                                                            textAnchor={textAnchor}
+                                                                            dominantBaseline="central"
+                                                                            fill="#374151"
+                                                                            style={{ fontSize: 12, fontWeight: 600 }}
+                                                                        >
+                                                                            {value}%
+                                                                        </text>
+                                                                    </g>
+                                                                );
+                                                            }}
+                                                            labelLine={false}
+                                                        >
+                                                            {safeBestPie.map((entry, index) => (
+                                                                <Cell
+                                                                    key={index}
+                                                                    fill={COLORS[index % COLORS.length]}
+                                                                />
+                                                            ))}
+                                                        </Pie>
+                                                        {bestTotalQty > 0 && (
                                                             <text
                                                                 x="50%"
-                                                                y="48%"
+                                                                y="50%"
                                                                 textAnchor="middle"
-                                                                dominantBaseline="central"
+                                                                dominantBaseline="middle"
                                                                 style={{
-                                                                    fontSize: isMobile ? 18 : 22,
+                                                                    fontSize: isMobile ? '16px' : '22px',
                                                                     fontWeight: 800,
-                                                                    fill: "#111827"
+                                                                    fill: '#111827',
                                                                 }}
                                                             >
-                                                                {Math.round(((bestTopItem?.totalQuantity || 0) / bestTotalQty) * 100)}%
+                                                                {bestTotalQty}
                                                             </text>
-                                                            <text
-                                                                x="50%"
-                                                                y="62%"
-                                                                textAnchor="middle"
-                                                                dominantBaseline="central"
-                                                                style={{
-                                                                    fontSize: isMobile ? 10 : 12,
-                                                                    fill: "#6b7280"
-                                                                }}
-                                                            >
-                                                                Top item share
-                                                            </text>
-                                                        </>
-                                                    )}
-                                                    <RechartsTooltip />
-                                                </PieChart>
-                                            </ResponsiveContainer>
+                                                        )}
+                                                        <RechartsTooltip />
+                                                    </PieChart>
+                                                </ResponsiveContainer>
+                                            </Box>
                                         </Grid>
 
                                         {/* Custom Legend */}
@@ -1467,78 +1407,49 @@ const ReportsPage: React.FC = () => {
                                 }}
                             >
                                 <Typography
-                                    variant="h6"
+                                    variant="subtitle1"
                                     sx={{
-                                        color: "#f4511e",
-                                        fontWeight: 600,
-                                        mb: 3,
+                                        color: "#374151",
+                                        fontWeight: 700,
+                                        mb: isMobile ? 2 : 3,
                                     }}
                                 >
-                                    Order from
+                                    Top Selling Items Sold
                                 </Typography>
 
-                                {filteredOrders.map((item, index) => {
-                                    const totalOrdersAll = filteredOrders.reduce(
-                                        (sum, o) => sum + (o.totalOrders || 0),
-                                        0
-                                    );
-                                    const orderPercent = totalOrdersAll
-                                        ? (item.totalOrders / totalOrdersAll) * 100
-                                        : 0;
-                                    return (
-                                        <Box
+                                <Stack spacing={isMobile ? 1 : 2}>
+                                    {safeBestPie.map((item, index) => (
+                                        <Paper
                                             key={index}
+                                            elevation={0}
                                             sx={{
-                                                mb: 3,
-                                                p: 2.5,
-                                                borderRadius: 4,
-                                                background: "#f7ebe5",
+                                                p: isMobile ? 1.25 : 2,
+                                                borderRadius: isMobile ? 2 : 3,
+                                                background: alpha(COLORS[index % COLORS.length], 0.05),
+                                                border: `1px solid ${alpha(COLORS[index % COLORS.length], 0.1)}`,
+                                                transition: 'transform 0.2s',
+                                                '&:hover': { transform: 'translateY(-2px)' }
                                             }}
                                         >
-                                            <Typography
-                                                variant="subtitle2"
-                                                sx={{ fontWeight: 600, mb: 1 }}
-                                            >
-                                                {item.orderType}
-                                            </Typography>
-                                            <Box
-                                                sx={{
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    gap: 2,
-                                                }}
-                                            >
-                                                <Box
-                                                    sx={{
-                                                        flex: 1,
-                                                        height: 6,
-                                                        background: "#e0e0e0",
-                                                        borderRadius: 10,
-                                                        overflow: "hidden",
-                                                    }}
-                                                >
-                                                    <Box
-                                                        sx={{
-                                                            width: `${orderPercent}%`,
-                                                            height: "100%",
-                                                            background: "#f4511e",
-                                                            borderRadius: 10,
-                                                        }}
-                                                    />
-                                                </Box>
-                                                <Typography
-                                                    variant="body2"
-                                                    sx={{
-                                                        color: "#f4511e",
-                                                        fontWeight: 600,
-                                                    }}
-                                                >
-                                                    {item.totalOrders}
+                                            <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                                <Stack direction="row" spacing={1.5} alignItems="center">
+                                                    <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: COLORS[index % COLORS.length] }} />
+                                                    <Box>
+                                                        <Typography variant="body2" sx={{ fontWeight: 700, color: '#374151', fontSize: isMobile ? '0.85rem' : 'inherit' }}>
+                                                            {item.itemName}
+                                                        </Typography>
+                                                        <Typography variant="caption" color="text.secondary">
+                                                            {item.totalQuantity} units sold
+                                                        </Typography>
+                                                    </Box>
+                                                </Stack>
+                                                <Typography variant="body2" sx={{ fontWeight: 800, color: COLORS[index % COLORS.length] }}>
+                                                    {Math.round((item.totalQuantity / (bestTotalQty || 1)) * 100)}%
                                                 </Typography>
-                                            </Box>
-                                        </Box>
-                                    );
-                                })}
+                                            </Stack>
+                                        </Paper>
+                                    ))}
+                                </Stack>
                             </Paper>
                         </Grid>
 
@@ -1546,8 +1457,19 @@ const ReportsPage: React.FC = () => {
                 </Grid>
 
                 <Grid item xs={12}>
-                    {/* Mobile Cards */}
-                    <Box sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', gap: 1.5 }}>
+                    <Paper 
+                        elevation={0}
+                        sx={{ 
+                            p: isMobile ? 2 : 3, 
+                            borderRadius: isMobile ? 3 : 4,
+                            background: isMobile ? "#ffffff" : "#f9fafb",
+                            boxShadow: isMobile ? "0 2px 10px rgba(0,0,0,0.05)" : "none",
+                            border: isMobile ? "none" : "1px solid #edf2f7"
+                        }}
+                    >
+                        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, fontSize: isMobile ? '1.1rem' : 'inherit' }}>Detailed Report</Typography>
+                        {/* Mobile Cards */}
+                        <Box sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', gap: 1.5 }}>
                         {bestSellingItems
                             .slice(bestSellingPage * bestSellingRowsPerPage, bestSellingPage * bestSellingRowsPerPage + bestSellingRowsPerPage)
                             .map((item, index) => {
@@ -1633,30 +1555,32 @@ const ReportsPage: React.FC = () => {
                             setBestSellingPage(0);
                         }}
                     />
+                    </Paper>
                 </Grid>
             </Grid>
-        </Paper >
+        </Box>
     );
 
     // Tips Report Tab
     const renderTipsReport = () => (
-        <Grid container spacing={3}>
+        <Grid container spacing={isMobile ? 1 : 3}>
             {/* Header with Export Button */}
             <Grid item xs={12}>
-                <Box display="flex" justifyContent="space-between" alignItems="center">
-                    <Typography variant="h5" sx={{ color: 'black', fontWeight: 'bold' }}>Tips Report</Typography>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                    <Typography variant={isMobile ? "subtitle2" : "h5"} sx={{ color: 'black', fontWeight: 'bold' }}>Tips Report</Typography>
                     <Button
                         variant="contained"
-                        startIcon={<DownloadIcon />}
+                        size={isMobile ? "small" : "medium"}
+                        startIcon={<DownloadIcon sx={{ fontSize: isMobile ? '14px !important' : 'inherit' }} />}
                         onClick={() => downloadExcel('tips-report')}
-                        sx={{ borderRadius: 2, textTransform: 'none' }}
+                        sx={{ borderRadius: 2, textTransform: 'none', px: isMobile ? 1 : 2, height: isMobile ? 28 : 36, fontSize: isMobile ? '0.65rem' : 'inherit' }}
                     >
-                        Export Tips Excel
+                        {isMobile ? 'Export' : 'Export Tips Excel'}
                     </Button>
                 </Box>
             </Grid>
             {/* Tip Summary Cards */}
-            <Grid item xs={12} md={4}>
+            <Grid item xs={4} md={4}>
                 <Card sx={{
                     position: 'relative',
                     overflow: 'hidden',
@@ -1679,25 +1603,25 @@ const ReportsPage: React.FC = () => {
                         height: '100%',
                         bgcolor: 'primary.main'
                     }} />
-                    <CardContent sx={{ p: 3 }}>
-                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
+                    <CardContent sx={{ p: isMobile ? 1 : 3 }}>
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={isMobile ? 1 : 2} alignItems="center" textAlign={{ xs: 'center', sm: 'left' }}>
                             <Box sx={{
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                width: 56,
-                                height: 56,
+                                width: isMobile ? 32 : 56,
+                                height: isMobile ? 32 : 56,
                                 borderRadius: 3,
                                 bgcolor: alpha('#4F46E5', 0.1),
                                 color: 'primary.main'
                             }}>
-                                <PaymentsIcon sx={{ fontSize: 32 }} />
+                                <PaymentsIcon sx={{ fontSize: isMobile ? 20 : 32 }} />
                             </Box>
                             <Box>
-                                <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600, mb: 0.5 }}>
+                                <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600, mb: 0.5, fontSize: isMobile ? '0.65rem' : undefined, whiteSpace: isMobile ? 'normal' : 'nowrap', lineHeight: 1.1 }}>
                                     Total Tips
                                 </Typography>
-                                <Typography variant="h4" sx={{ color: 'text.primary', fontWeight: 800 }}>
+                                <Typography variant={isMobile ? "body1" : "h4"} sx={{ color: 'text.primary', fontWeight: 800 }}>
                                     {salesReport ? formatCurrency(salesReport.summary.totalTips || 0) : '-'}
                                 </Typography>
                             </Box>
@@ -1706,7 +1630,7 @@ const ReportsPage: React.FC = () => {
                 </Card>
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid item xs={4} md={4}>
                 <Card sx={{
                     position: 'relative',
                     overflow: 'hidden',
@@ -1729,25 +1653,25 @@ const ReportsPage: React.FC = () => {
                         height: '100%',
                         bgcolor: 'secondary.main'
                     }} />
-                    <CardContent sx={{ p: 3 }}>
-                        <Stack direction="row" spacing={2} alignItems="center">
+                    <CardContent sx={{ p: isMobile ? 1 : 3 }}>
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={isMobile ? 1 : 2} alignItems="center" textAlign={{ xs: 'center', sm: 'left' }}>
                             <Box sx={{
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                width: 56,
-                                height: 56,
+                                width: isMobile ? 32 : 56,
+                                height: isMobile ? 32 : 56,
                                 borderRadius: 3,
                                 bgcolor: alpha('#EC4899', 0.1),
                                 color: 'secondary.main'
                             }}>
-                                <TrendingUpIcon sx={{ fontSize: 32 }} />
+                                <TrendingUpIcon sx={{ fontSize: isMobile ? 20 : 32 }} />
                             </Box>
                             <Box>
-                                <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600, mb: 0.5 }}>
-                                    Avg Tip Per Order
+                                <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600, mb: 0.5, fontSize: isMobile ? '0.65rem' : undefined, whiteSpace: isMobile ? 'normal' : 'nowrap', lineHeight: 1.1 }}>
+                                    Avg Tip/Order
                                 </Typography>
-                                <Typography variant="h4" sx={{ color: 'text.primary', fontWeight: 800 }}>
+                                <Typography variant={isMobile ? "body1" : "h4"} sx={{ color: 'text.primary', fontWeight: 800 }}>
                                     {salesReport && salesReport.summary.totalOrders > 0
                                         ? formatCurrency(salesReport.summary.totalTips / salesReport.summary.totalOrders)
                                         : formatCurrency(0)}
@@ -1758,7 +1682,7 @@ const ReportsPage: React.FC = () => {
                 </Card>
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid item xs={4} md={4}>
                 <Card sx={{
                     position: 'relative',
                     overflow: 'hidden',
@@ -1781,25 +1705,25 @@ const ReportsPage: React.FC = () => {
                         height: '100%',
                         bgcolor: 'success.main'
                     }} />
-                    <CardContent sx={{ p: 3 }}>
-                        <Stack direction="row" spacing={2} alignItems="center">
+                    <CardContent sx={{ p: isMobile ? 1 : 3 }}>
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={isMobile ? 1 : 2} alignItems="center" textAlign={{ xs: 'center', sm: 'left' }}>
                             <Box sx={{
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                width: 56,
-                                height: 56,
+                                width: isMobile ? 32 : 56,
+                                height: isMobile ? 32 : 56,
                                 borderRadius: 3,
                                 bgcolor: alpha('#10B981', 0.1),
                                 color: 'success.main'
                             }}>
-                                <ReceiptIcon sx={{ fontSize: 32 }} />
+                                <ReceiptIcon sx={{ fontSize: isMobile ? 20 : 32 }} />
                             </Box>
                             <Box>
-                                <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600, mb: 0.5 }}>
-                                    Orders with Tips
+                                <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600, mb: 0.5, fontSize: isMobile ? '0.65rem' : undefined, whiteSpace: isMobile ? 'normal' : 'nowrap', lineHeight: 1.1 }}>
+                                    With Tips
                                 </Typography>
-                                <Typography variant="h4" sx={{ color: 'text.primary', fontWeight: 800 }}>
+                                <Typography variant={isMobile ? "body1" : "h4"} sx={{ color: 'text.primary', fontWeight: 800 }}>
                                     {salesReport ? salesReport.summary.ordersWithTips || 0 : '-'}
                                 </Typography>
                             </Box>
@@ -1817,12 +1741,12 @@ const ReportsPage: React.FC = () => {
                     border: '1px solid',
                     borderColor: 'divider'
                 }}>
-                    <Typography variant="h6" gutterBottom color="black" fontWeight="800" sx={{ mb: 3 }}>
+                    <Typography variant={isMobile ? "subtitle2" : "h6"} gutterBottom color="black" fontWeight="800" sx={{ mb: isMobile ? 1.5 : 3 }}>
                         Tips Trend Analysis
                     </Typography>
-                    <Box sx={{ width: "100%", height: 350 }}>
+                    <Box sx={{ width: "100%", height: isMobile ? 220 : 350 }}>
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={salesReport?.dailySales || []} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+                            <BarChart data={isMobile ? salesReport?.dailySales.slice(0, 5) : (salesReport?.dailySales || [])} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
                                 <defs>
                                     <linearGradient id="colorTips" x1="0" y1="0" x2="0" y2="1">
                                         <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.8} />
@@ -2215,27 +2139,44 @@ const ReportsPage: React.FC = () => {
     //     </Paper>
     // );
     const renderOrdersByType = () => (
-        <Paper sx={{ p: 3 }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-                <Typography variant="h6">Orders by Type</Typography>
+        <Paper sx={{ p: isMobile ? 1.5 : 3 }}>
+            <Box sx={{ 
+                display: 'flex', 
+                flexDirection: 'row', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                mb: isMobile ? 1.5 : 3,
+                gap: 1
+            }}>
+                <Typography variant={isMobile ? "body2" : "h6"} sx={{ fontWeight: 800 }}>Orders by Type</Typography>
                 <Button
                     variant="contained"
-                    startIcon={<DownloadIcon />}
+                    size="small"
+                    startIcon={<DownloadIcon sx={{ fontSize: isMobile ? '14px !important' : 'inherit' }} />}
                     onClick={() => downloadExcel('orders-by-type')}
+                    sx={{ 
+                        borderRadius: 2, 
+                        fontSize: isMobile ? '0.65rem' : 'inherit',
+                        px: isMobile ? 1 : 2,
+                        minWidth: 'auto',
+                        whiteSpace: 'nowrap',
+                        height: isMobile ? 28 : 'auto',
+                        textTransform: 'none'
+                    }}
                 >
-                    Export Excel
+                    {isMobile ? 'Export' : 'Export Excel'}
                 </Button>
-            </Stack>
+            </Box>
 
-            <Grid container spacing={3}>
-                <Grid container spacing={3}>
+            <Grid container spacing={isMobile ? 1.5 : 3}>
+                <Grid container spacing={isMobile ? 1.5 : 3}>
 
                     {/* LEFT SIDE — PIE CARD */}
                     <Grid item xs={12} lg={8}>
                         <Paper
                             sx={{
-                                p: 4,
-                                borderRadius: 4,
+                                p: isMobile ? 1.5 : 4,
+                                borderRadius: isMobile ? 3 : 4,
                                 height: '100%',
                             }}
                         >
@@ -2265,27 +2206,23 @@ const ReportsPage: React.FC = () => {
                                     <Box
                                         sx={{
                                             width: '100%',
-                                            height: {
-                                                xs: 260,   // mobile
-                                                sm: 300,   // tablet
-                                                md: 340,   // laptop
-                                                lg: 360    // desktop
-                                            }
+                                            height: isMobile ? 220 : 360
                                         }}
                                     >
                                         <ResponsiveContainer width="100%" height="100%">
                                             <PieChart>
                                                 <Pie
-                                                    data={ordersByType}
+                                                    data={isMobile ? ordersByType.slice(0, 5) : ordersByType}
                                                     dataKey="totalRevenue"
                                                     nameKey="orderType"
                                                     cx="50%"
                                                     cy="50%"
-                                                    outerRadius="75%"
+                                                    innerRadius={isMobile ? 45 : 0}
+                                                    outerRadius={isMobile ? 75 : "75%"}
                                                     paddingAngle={3}
                                                     isAnimationActive={false}
 
-                                                    label={({ percent, cx, cy, midAngle, outerRadius }) => {
+                                                    label={isMobile ? false : ({ percent, cx, cy, midAngle, outerRadius }) => {
                                                         if (!percent) return null;
 
                                                         const value = Math.round(percent * 100);
@@ -2312,7 +2249,7 @@ const ReportsPage: React.FC = () => {
                                                         );
                                                     }}
                                                 >
-                                                    {ordersByType.map((entry, index) => (
+                                                    {(isMobile ? ordersByType.slice(0, 5) : ordersByType).map((entry, index) => (
                                                         <Cell
                                                             key={`cell-${index}`}
                                                             fill={COLORS[index % COLORS.length]}
@@ -2331,16 +2268,16 @@ const ReportsPage: React.FC = () => {
                                         sx={{
                                             display: "grid",
                                             gridTemplateColumns: {
-                                                xs: "1fr",
+                                                xs: "1fr 1fr",
                                                 sm: "1fr 1fr",
                                                 md: "1fr 1fr",
                                                 lg: "1fr 1fr"
                                             },
-                                            gap: 1.5,
-                                            px: { xs: 1, sm: 2 }
+                                            gap: isMobile ? 1 : 1.5,
+                                            px: { xs: 0, sm: 2 }
                                         }}
                                     >
-                                        {ordersByType.map((type, index) => {
+                                        {(isMobile ? ordersByType.slice(0, 5) : ordersByType).map((type, index) => {
 
                                             const totalRevenue = ordersByType.reduce(
                                                 (sum, t) => sum + t.totalRevenue,
@@ -2469,33 +2406,41 @@ const ReportsPage: React.FC = () => {
 
                 <Grid item xs={12}>
                     {/* Mobile Cards */}
-                    <Box sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', gap: 1.5 }}>
+                    <Box sx={{ display: { xs: 'grid', md: 'none' }, gridTemplateColumns: "1fr 1fr", gap: 1 }}>
                         {ordersByType.map((type, index) => (
-                            <Paper key={index} elevation={1} sx={{ p: 2, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                                    <Chip label={formatOrderType(type.orderType)} color="primary" />
-                                    <Chip
-                                        label={`${type.successRate?.toFixed(1)}%`}
-                                        color={type.successRate > 90 ? 'success' : 'warning'}
+                            <Paper key={index} elevation={0} sx={{ 
+                                p: 1.5, 
+                                borderRadius: 3, 
+                                border: '1px solid', 
+                                borderColor: 'divider',
+                                background: "linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)"
+                             }}>
+                                <Box sx={{ mb: 1 }}>
+                                    <Chip 
+                                        label={formatOrderType(type.orderType)} 
                                         size="small"
+                                        sx={{ 
+                                            maxWidth: '100%', 
+                                            height: 20, 
+                                            fontSize: '0.65rem',
+                                            fontWeight: 700 
+                                        }} 
                                     />
                                 </Box>
-                                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+                                <Box>
+                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Total Revenue</Typography>
+                                    <Typography variant="subtitle2" fontWeight={800} sx={{ fontSize: '0.8rem' }}>{formatCurrency(type.totalRevenue)}</Typography>
+                                </Box>
+                                <Box sx={{ mt: 1, pt: 1, borderTop: "1px dashed #e5e7eb", display: 'flex', justifyContent: 'space-between' }}>
                                     <Box>
-                                        <Typography variant="caption" color="text.secondary">Total Orders</Typography>
-                                        <Typography variant="body2" fontWeight={600}>{type.totalOrders}</Typography>
+                                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem' }}>Orders</Typography>
+                                        <Typography variant="caption" fontWeight={700} sx={{ display: 'block' }}>{type.totalOrders}</Typography>
                                     </Box>
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary">Total Revenue</Typography>
-                                        <Typography variant="body2" fontWeight={600}>{formatCurrency(type.totalRevenue)}</Typography>
-                                    </Box>
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary">Avg Order Value</Typography>
-                                        <Typography variant="body2" fontWeight={600}>{formatCurrency(type.averageOrderValue)}</Typography>
-                                    </Box>
-                                    <Box>
-                                        <Typography variant="caption" color="text.secondary">Cancelled</Typography>
-                                        <Typography variant="body2" fontWeight={600}>{type.cancelledOrders}</Typography>
+                                    <Box sx={{ textAlign: 'right' }}>
+                                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem' }}>Rate</Typography>
+                                        <Typography variant="caption" fontWeight={700} sx={{ display: 'block', color: type.successRate > 90 ? 'success.main' : 'warning.main' }}>
+                                            {type.successRate?.toFixed(0)}%
+                                        </Typography>
                                     </Box>
                                 </Box>
                             </Paper>
@@ -2626,35 +2571,39 @@ const ReportsPage: React.FC = () => {
                 </Grid>
 
                 <Grid item xs={12}>
-                    <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                    <Box sx={{ display: { xs: 'grid', md: 'none' }, gridTemplateColumns: "1fr 1fr", gap: 1 }}>
                         {waiterPerformance.map((waiter, index) => (
-                            <Card key={index} sx={{ mb: 2, mx: 1 }}>
-                                <CardContent>
-                                    <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-                                        <Stack direction="row" alignItems="center" spacing={1}>
-                                            <Chip label={index + 1} size="small" color={index < 3 ? 'primary' : 'default'} />
-                                            <PeopleIcon />
-                                            <Typography variant="subtitle2">{waiter.waiterName}</Typography>
-                                        </Stack>
+                            <Card key={index} sx={{ 
+                                borderRadius: 3,
+                                boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+                                background: "linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)"
+                            }}>
+                                <CardContent sx={{ p: 1.5 }}>
+                                    <Stack direction="row" alignItems="center" spacing={1} mb={1}>
+                                        <Chip 
+                                            label={index + 1} 
+                                            size="small" 
+                                            sx={{ width: 20, height: 20, fontSize: '0.6rem', p: 0 }}
+                                            color={index < 3 ? 'primary' : 'default'} 
+                                        />
+                                        <Typography variant="caption" fontWeight={800} noWrap sx={{ maxWidth: 80 }}>
+                                            {waiter.waiterName}
+                                        </Typography>
                                     </Stack>
-                                    <Grid container spacing={2}>
-                                        <Grid item xs={6}>
-                                            <Typography variant="caption" color="text.secondary">Total Orders</Typography>
-                                            <Typography variant="body2" fontWeight="bold">{waiter.totalOrders}</Typography>
-                                        </Grid>
-                                        <Grid item xs={6}>
-                                            <Typography variant="caption" color="text.secondary">Total Sales</Typography>
-                                            <Typography variant="body2" fontWeight="bold">{formatCurrency(waiter.totalSales)}</Typography>
-                                        </Grid>
-                                        <Grid item xs={6}>
-                                            <Typography variant="caption" color="text.secondary">Avg Order Value</Typography>
-                                            <Typography variant="body2" fontWeight="bold">{formatCurrency(waiter.averageOrderValue)}</Typography>
-                                        </Grid>
-                                        <Grid item xs={6}>
-                                            <Typography variant="caption" color="text.secondary">Total Tips</Typography>
-                                            <Typography variant="body2" fontWeight="bold">{formatCurrency(waiter.totalTips)}</Typography>
-                                        </Grid>
-                                    </Grid>
+                                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+                                        <Box>
+                                            <Typography variant="caption" sx={{ fontSize: '0.6rem' }} color="text.secondary">Sales</Typography>
+                                            <Typography variant="caption" fontWeight={700} sx={{ display: 'block', fontSize: '0.7rem' }}>
+                                                {formatCurrency(waiter.totalSales)}
+                                            </Typography>
+                                        </Box>
+                                        <Box sx={{ textAlign: 'right' }}>
+                                            <Typography variant="caption" sx={{ fontSize: '0.6rem' }} color="text.secondary">Orders</Typography>
+                                            <Typography variant="caption" fontWeight={700} sx={{ display: 'block' }}>
+                                                {waiter.totalOrders}
+                                            </Typography>
+                                        </Box>
+                                    </Box>
                                 </CardContent>
                             </Card>
                         ))}
@@ -2699,26 +2648,35 @@ const ReportsPage: React.FC = () => {
 
     // Material Usage Tab
     const renderMaterialUsage = () => (
-        <Paper sx={{ p: 3 }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-                <Typography variant="h6">Material/Inventory Usage Report</Typography>
-                <Button
-                    variant="contained"
-                    startIcon={<DownloadIcon />}
+        <Paper sx={{ p: isMobile ? 1.5 : 3 }}>
+            <Box sx={{ 
+                display: 'flex', 
+                flexDirection: 'row', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                mb: isMobile ? 1.5 : 3,
+                gap: 1
+            }}>
+                <Typography variant={isMobile ? "body2" : "h6"} sx={{ fontWeight: 800 }}>Material Usage</Typography>
+                <Button 
+                    variant="contained" 
+                    size="small"
+                    startIcon={<DownloadIcon sx={{ fontSize: isMobile ? '14px !important' : 'inherit' }} />} 
                     onClick={() => downloadExcel('material-usage')}
+                    sx={{ borderRadius: 2, height: 28, px: 1, textTransform: 'none', fontSize: isMobile ? '0.65rem' : 'inherit' }}
                 >
-                    Export Excel
+                    {isMobile ? 'Export' : 'Export Excel'}
                 </Button>
-            </Stack>
+            </Box>
 
-            <Grid container spacing={3}>
+            <Grid container spacing={isMobile ? 1.5 : 3}>
                 <Grid item xs={12}>
-                    <ResponsiveContainer width="100%" height={450}>
+                    <ResponsiveContainer width="100%" height={isMobile ? 220 : 450}>
                         <BarChart
                             data={materialUsage
-                                .slice(0, 10)
+                                .slice(0, isMobile ? 5 : 10)
                                 .sort((a, b) => b.totalUsed - a.totalUsed)}
-                            margin={{ top: 20, right: 30, left: 10, bottom: 80 }}
+                            margin={{ top: 20, right: isMobile ? 10 : 30, left: 10, bottom: isMobile ? 0 : 80 }}
                         >
                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
 
@@ -2761,17 +2719,25 @@ const ReportsPage: React.FC = () => {
                 </Grid>
 
                 <Grid item xs={12}>
-                    <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
+                    <Box sx={{ display: { xs: 'grid', md: 'none' }, gridTemplateColumns: "1fr 1fr", gap: 1 }}>
                         {materialUsage.map((item, index) => (
-                            <Paper key={index} sx={{ mb: 1.5, p: 1.5, borderRadius: 2 }}>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
-                                    <Typography sx={{ fontWeight: 600, fontSize: '0.8rem', flex: 1, mr: 1 }}>{item.itemName}</Typography>
-                                    <Chip label={item.category} size="small" />
+                            <Paper key={index} elevation={0} sx={{ 
+                                p: 1.5, 
+                                borderRadius: 3, 
+                                border: '1px solid', 
+                                borderColor: 'divider',
+                                background: "linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)"
+                            }}>
+                                <Box sx={{ mb: 1 }}>
+                                    <Typography variant="caption" fontWeight={800} sx={{ display: 'block' }} noWrap>{item.itemName}</Typography>
+                                    <Chip label={item.category} size="small" sx={{ height: 16, fontSize: '0.6rem', mt: 0.5 }} />
                                 </Box>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
-                                    <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>Unit: <b>{item.unit}</b></Typography>
-                                    <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>Used: <b>{Number(item.totalUsed).toFixed(3)}</b></Typography>
-                                    <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>Count: <b>{item.usageCount}</b></Typography>
+                                <Box>
+                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.6rem' }}>Used</Typography>
+                                    <Typography variant="caption" fontWeight={800} color="primary.main">{Number(item.totalUsed).toFixed(1)} {item.unit}</Typography>
+                                </Box>
+                                <Box sx={{ mt: 1, pt: 0.5, borderTop: "1px dashed #e5e7eb" }}>
+                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem' }}>Count: <b>{item.usageCount}</b></Typography>
                                 </Box>
                             </Paper>
                         ))}
@@ -2824,57 +2790,41 @@ const ReportsPage: React.FC = () => {
             {salesReport && (
                 <Grid container spacing={3}>
                     {/* Summary Cards */}
-                    <Grid item xs={12} md={3}>
-                        <Card>
-                            <CardContent>
-                                <Typography color="textSecondary" gutterBottom>
-                                    Total Sales
-                                </Typography>
-                                <Typography variant="h5">{formatCurrency(salesReport.summary.totalSales)}</Typography>
-                            </CardContent>
-                        </Card>
-                    </Grid>
-                    <Grid item xs={12} md={3}>
-                        <Card>
-                            <CardContent>
-                                <Typography color="textSecondary" gutterBottom>
-                                    Total Orders
-                                </Typography>
-                                <Typography variant="h5">{salesReport.summary.totalOrders}</Typography>
-                            </CardContent>
-                        </Card>
-                    </Grid>
-                    <Grid item xs={12} md={3}>
-                        <Card sx={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
-                            <CardContent>
-                                <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.8)' }} gutterBottom>
-                                    Total Tax
-                                </Typography>
-                                <Typography variant="h5" sx={{ color: 'white', fontWeight: 'bold' }}>
-                                    {formatCurrency(salesReport.summary.totalTax)}
-                                </Typography>
-                            </CardContent>
-                        </Card>
-                    </Grid>
-                    <Grid item xs={12} md={3}>
-                        <Card>
-                            <CardContent>
-                                <Typography color="textSecondary" gutterBottom>
-                                    Total Discount
-                                </Typography>
-                                <Typography variant="h5">{formatCurrency(salesReport.summary.totalDiscount)}</Typography>
-                            </CardContent>
-                        </Card>
-                    </Grid>
-                    <Grid item xs={12} md={3}>
-                        <Card>
-                            <CardContent>
-                                <Typography color="textSecondary" gutterBottom>
-                                    Total Tips
-                                </Typography>
-                                <Typography variant="h5">{formatCurrency(salesReport.summary.totalTips || 0)}</Typography>
-                            </CardContent>
-                        </Card>
+                    <Grid item xs={12}>
+                        <Grid container spacing={isMobile ? 1 : 3}>
+                            <Grid item xs={6} md={3}>
+                                <Card sx={{ borderRadius: 3, background: "linear-gradient(135deg, #10b981 0%, #059669 100%)", color: "#fff" }}>
+                                    <CardContent sx={{ p: isMobile ? 1.5 : 2 }}>
+                                        <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.7rem' }} gutterBottom>Total Sales</Typography>
+                                        <Typography variant={isMobile ? "subtitle2" : "h5"} fontWeight={800}>{formatCurrency(salesReport.summary.totalSales)}</Typography>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+                            <Grid item xs={6} md={3}>
+                                <Card sx={{ borderRadius: 3 }}>
+                                    <CardContent sx={{ p: isMobile ? 1.5 : 2 }}>
+                                        <Typography color="textSecondary" sx={{ fontSize: '0.7rem' }} gutterBottom>Total Orders</Typography>
+                                        <Typography variant={isMobile ? "subtitle2" : "h5"} fontWeight={800}>{salesReport.summary.totalOrders}</Typography>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+                            <Grid item xs={6} md={3}>
+                                <Card sx={{ borderRadius: 3, background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', color: "#fff" }}>
+                                    <CardContent sx={{ p: isMobile ? 1.5 : 2 }}>
+                                        <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.7rem' }} gutterBottom>Total Tax</Typography>
+                                        <Typography variant={isMobile ? "subtitle2" : "h5"} fontWeight={800}>{formatCurrency(salesReport.summary.totalTax)}</Typography>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+                            <Grid item xs={6} md={3}>
+                                <Card sx={{ borderRadius: 3 }}>
+                                    <CardContent sx={{ p: isMobile ? 1.5 : 2 }}>
+                                        <Typography color="textSecondary" sx={{ fontSize: '0.7rem' }} gutterBottom>Total Discount</Typography>
+                                        <Typography variant={isMobile ? "subtitle2" : "h5"} fontWeight={800}>{formatCurrency(salesReport.summary.totalDiscount)}</Typography>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+                        </Grid>
                     </Grid>
 
                     {/* Chart */}
@@ -3023,21 +2973,35 @@ const ReportsPage: React.FC = () => {
 
     // Peak Hours Tab
     const renderPeakHours = () => (
-        <Paper sx={{ p: 3 }}>
-            <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} gap={2} mb={3}>
-                <Typography variant="h6">Peak Hours Analysis</Typography>
-                <Button variant="contained" startIcon={<DownloadIcon />} onClick={() => downloadExcel('peak-hours')}>
-                    Export Excel
+        <Paper sx={{ p: isMobile ? 1.5 : 3 }}>
+            <Box sx={{ 
+                display: 'flex', 
+                flexDirection: 'row', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                mb: isMobile ? 1.5 : 3,
+                gap: 1
+            }}>
+                <Typography variant={isMobile ? "body2" : "h6"} sx={{ fontWeight: 800 }}>Peak Hours Analysis</Typography>
+                <Button 
+                    variant="contained" 
+                    size="small"
+                    startIcon={<DownloadIcon sx={{ fontSize: isMobile ? '14px !important' : 'inherit' }} />} 
+                    onClick={() => downloadExcel('peak-hours')}
+                    sx={{ borderRadius: 2, height: 28, px: 1, textTransform: 'none', fontSize: isMobile ? '0.65rem' : 'inherit' }}
+                >
+                    {isMobile ? 'Export' : 'Export Excel'}
                 </Button>
-            </Stack>
+            </Box>
 
             {peakHours && (
-                <Grid container spacing={3}>
+                <Grid container spacing={isMobile ? 1.5 : 3}>
                     <Grid item xs={12} sm={6}>
-                        <Typography variant="subtitle1" gutterBottom>Hourly Traffic</Typography>
-                        <ResponsiveContainer width="100%" height={420}>
-                            <BarChart
-                                data={peakHours.hourlyData}
+                        <Paper sx={{ p: isMobile ? 1.5 : 3, borderRadius: 3 }}>
+                            <Typography variant="subtitle2" fontWeight={800} gutterBottom>Hourly Traffic</Typography>
+                            <ResponsiveContainer width="100%" height={isMobile ? 220 : 420}>
+                                <BarChart
+                                    data={isMobile ? peakHours.hourlyData.slice(0, 5) : peakHours.hourlyData}
                                 margin={{ top: 20, right: 20, left: 10, bottom: 20 }}
                             >
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -3069,14 +3033,15 @@ const ReportsPage: React.FC = () => {
                                 />
                             </BarChart>
                         </ResponsiveContainer>
-
+                        </Paper>
                     </Grid>
 
                     <Grid item xs={12} sm={6}>
-                        <Typography variant="subtitle1" gutterBottom>Day of Week Performance</Typography>
-                        <ResponsiveContainer width="100%" height={400}>
-                            <BarChart data={peakHours.dailyData}>
-                                <CartesianGrid strokeDasharray="3 3" />
+                        <Paper sx={{ p: isMobile ? 1.5 : 3, borderRadius: 3 }}>
+                            <Typography variant="subtitle2" fontWeight={800} gutterBottom>Day of Week Performance</Typography>
+                            <ResponsiveContainer width="100%" height={isMobile ? 220 : 400}>
+                                <BarChart data={isMobile ? peakHours.dailyData.slice(0, 5) : peakHours.dailyData}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                 <XAxis dataKey="dayName" />
                                 <YAxis />
                                 <RechartsTooltip />
@@ -3085,10 +3050,35 @@ const ReportsPage: React.FC = () => {
                                 <Bar dataKey="totalRevenue" fill="#ffc658" name={`Revenue (${settings.restaurant.currency})`} isAnimationActive={false} />
                             </BarChart>
                         </ResponsiveContainer>
+                        </Paper>
                     </Grid>
 
                     <Grid item xs={12}>
-                        <TableContainer component={Paper} sx={{ maxWidth: '100%', overflowX: 'auto' }}>
+                        <Box sx={{ display: { xs: 'grid', md: 'none' }, gridTemplateColumns: "1fr 1fr", gap: 1 }}>
+                            {peakHours.hourlyData
+                                .slice(peakHoursPage * peakHoursRowsPerPage, peakHoursPage * peakHoursRowsPerPage + peakHoursRowsPerPage)
+                                .map((hour: any, index: number) => (
+                                    <Paper key={index} elevation={0} sx={{ 
+                                        p: 1.5, 
+                                        borderRadius: 3, 
+                                        border: '1px solid', 
+                                        borderColor: 'divider',
+                                        background: "linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)"
+                                    }}>
+                                        <Box sx={{ mb: 1 }}>
+                                            <Typography variant="caption" fontWeight={800} sx={{ display: 'block' }}>{hour.hour}:00 - {hour.hour + 1}:00</Typography>
+                                        </Box>
+                                        <Box>
+                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.6rem' }}>Revenue | Orders</Typography>
+                                            <Typography variant="caption" fontWeight={800} color="primary.main">{formatCurrency(hour.totalRevenue)} | {hour.totalOrders}</Typography>
+                                        </Box>
+                                        <Box sx={{ mt: 1, pt: 0.5, borderTop: "1px dashed #e5e7eb" }}>
+                                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem' }}>Avg Order: <b>{formatCurrency(hour.averageOrderValue)}</b></Typography>
+                                        </Box>
+                                    </Paper>
+                                ))}
+                        </Box>
+                        <TableContainer component={Paper} sx={{ display: { xs: 'none', md: 'block' }, maxWidth: '100%', overflowX: 'auto' }}>
                             <Table>
                                 <TableHead>
                                     <TableRow>
@@ -3144,54 +3134,68 @@ const ReportsPage: React.FC = () => {
             : rawData.filter((item) => (item.paymentMethod || 'Unknown') === paymentMethodFilter);
 
         return (
-            <Paper sx={{ p: 3 }}>
-                <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} gap={2} mb={3}>
-                    <Typography variant="h6">Payment Method Analytics</Typography>
-                    <Stack direction={{ xs: 'row', sm: 'row' }} spacing={2} alignItems="center" sx={{ width: { xs: '100%', sm: 'auto' } }}>
-                        <FormControl size="small" sx={{ minWidth: { xs: 0, sm: 200 }, flex: { xs: 1, sm: 'unset' } }}>
-                            <InputLabel id="payment-method-select-label">Payment Method</InputLabel>
+            <Paper sx={{ p: isMobile ? 1.5 : 3 }}>
+                <Box sx={{ 
+                    display: 'flex', 
+                    flexDirection: isMobile ? 'column' : 'row', 
+                    justifyContent: 'space-between', 
+                    alignItems: isMobile ? 'flex-start' : 'center', 
+                    mb: isMobile ? 1.5 : 3,
+                    gap: 1.5
+                }}>
+                    <Typography variant={isMobile ? "body2" : "h6"} sx={{ fontWeight: 800 }}>Payment Method Analytics</Typography>
+                    <Box sx={{ display: 'flex', gap: 1, width: isMobile ? '100%' : 'auto' }}>
+                        <FormControl size="small" sx={{ flex: 1, minWidth: isMobile ? 0 : 200 }}>
+                            <InputLabel id="payment-method-select-label">Method</InputLabel>
                             <Select
                                 labelId="payment-method-select-label"
                                 value={paymentMethodFilter}
-                                label="Payment Method"
+                                label="Method"
                                 onChange={(e) => setPaymentMethodFilter(e.target.value)}
+                                sx={{ borderRadius: 2 }}
                             >
                                 <MenuItem value="all">All Methods</MenuItem>
                                 {uniqueMethods.map((method) => (
-                                    <MenuItem key={method} value={method}>
-                                        {method}
-                                    </MenuItem>
+                                    <MenuItem key={method} value={method}>{method}</MenuItem>
                                 ))}
                             </Select>
                         </FormControl>
-                        <Button variant="contained" startIcon={<DownloadIcon />} onClick={() => downloadExcel('payment-analytics')}>
-                            Export Excel
+                        <Button 
+                            variant="contained" 
+                            size="small"
+                            startIcon={<DownloadIcon sx={{ fontSize: isMobile ? '14px !important' : 'inherit' }} />} 
+                            onClick={() => downloadExcel('payment-analytics')}
+                            sx={{ borderRadius: 2, height: 40, px: 2, textTransform: 'none' }}
+                        >
+                            {isMobile ? 'Export' : 'Export Excel'}
                         </Button>
-                    </Stack>
-                </Stack>
+                    </Box>
+                </Box>
 
-                <Grid container spacing={3}>
+                <Grid container spacing={isMobile ? 1.5 : 3}>
                     <Grid item xs={12} md={6}>
-                        <Paper sx={{ p: 3, borderRadius: 4 }}>
-                            <Typography variant="subtitle1" fontWeight={600} mb={2}>
+                        <Paper sx={{ p: isMobile ? 1.5 : 3, borderRadius: isMobile ? 3 : 4 }}>
+                            <Typography variant={isMobile ? "subtitle2" : "subtitle1"} fontWeight={isMobile ? 800 : 600} mb={isMobile ? 1 : 2}>
                                 Revenue Distribution
                             </Typography>
 
-                            <ResponsiveContainer width="100%" height={350}>
+                            <ResponsiveContainer width="100%" height={isMobile ? 220 : 350}>
                                 <PieChart>
                                     <Pie
-                                        data={data}
+                                        data={isMobile ? data.slice(0, 5) : data}
                                         dataKey="totalRevenue"
                                         nameKey="paymentMethod"
                                         cx="50%"
                                         cy="50%"
-                                        outerRadius={120}
-                                        label={({ percent }) =>
+                                        innerRadius={isMobile ? 45 : 0}
+                                        outerRadius={isMobile ? 75 : 120}
+                                        stroke="none"
+                                        label={isMobile ? false : ({ percent }) =>
                                             `${(percent * 100).toFixed(0)}%`
                                         }
                                         isAnimationActive={false}
                                     >
-                                        {data.map((entry, index) => (
+                                        {(isMobile ? data.slice(0, 5) : data).map((entry, index) => (
                                             <Cell
                                                 key={index}
                                                 fill={COLORS[index % COLORS.length]}
@@ -3216,14 +3220,14 @@ const ReportsPage: React.FC = () => {
 
                     {/* 🟣 Modern Bar */}
                     <Grid item xs={12} md={6}>
-                        <Paper sx={{ p: 3, borderRadius: 4 }}>
-                            <Typography variant="subtitle1" fontWeight={600} mb={2}>
-                                Orders by Payment Method
+                        <Paper sx={{ p: isMobile ? 1.5 : 3, borderRadius: isMobile ? 3 : 4 }}>
+                            <Typography variant="subtitle2" fontWeight={800} mb={isMobile ? 1 : 2}>
+                                Orders by Method
                             </Typography>
 
-                            <ResponsiveContainer width="100%" height={350}>
+                            <ResponsiveContainer width="100%" height={isMobile ? 220 : 350}>
                                 <BarChart
-                                    data={data}
+                                    data={isMobile ? data.slice(0, 5) : data}
                                     margin={{ top: 20, right: 20, left: 10, bottom: 20 }}
                                 >
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -3256,7 +3260,34 @@ const ReportsPage: React.FC = () => {
                     </Grid>
 
                     <Grid item xs={12}>
-                        <TableContainer component={Paper} sx={{ maxWidth: '100%', overflowX: 'auto' }}>
+                        {/* Mobile summary cards */}
+                        <Box sx={{ display: { xs: 'flex', sm: 'none' }, flexDirection: 'column', gap: 1.5 }}>
+                            {data.map((method, index) => (
+                                <Paper key={index} elevation={0} sx={{
+                                    p: 2, borderRadius: 3, border: '1px solid',
+                                    borderColor: 'divider',
+                                    background: 'linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)',
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
+                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                                }}>
+                                    <Box sx={{ flex: 1 }}>
+                                        <Chip label={method.paymentMethod || 'Unknown'} size="small" color="primary"
+                                            sx={{ mb: 0.5, fontWeight: 700, borderRadius: 1.5 }}
+                                            onClick={() => { setPaymentMethodFilter(method.paymentMethod || 'Unknown'); downloadExcel('payment-analytics', method.paymentMethod || 'Unknown'); }}
+                                        />
+                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>Orders: <b>{method.totalOrders || 0}</b></Typography>
+                                    </Box>
+                                    <Box sx={{ textAlign: 'right' }}>
+                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>Revenue</Typography>
+                                        <Typography variant="subtitle2" fontWeight={800} color="primary.main">{formatCurrency(method.totalRevenue || 0)}</Typography>
+                                        <Typography variant="caption" color="text.secondary">Avg: {formatCurrency(method.averageOrderValue || 0)}</Typography>
+                                    </Box>
+                                </Paper>
+                            ))}
+                            {data.length === 0 && <Typography sx={{ textAlign: 'center', py: 2, color: 'text.secondary' }}>No data</Typography>}
+                        </Box>
+                        {/* Desktop table */}
+                        <TableContainer component={Paper} sx={{ display: { xs: 'none', sm: 'block' }, maxWidth: '100%', overflowX: 'auto' }}>
                             <Table sx={{ '& .MuiTableCell-root': { padding: { xs: '8px 4px', sm: '16px' } } }}>
                                 <TableHead>
                                     <TableRow>
@@ -3292,7 +3323,7 @@ const ReportsPage: React.FC = () => {
                     </Grid>
 
                     <Grid item xs={12}>
-                        <Typography variant="h6" gutterBottom sx={{ mt: 3 }}>
+                        <Typography variant={isMobile ? "subtitle2" : "h6"} fontWeight={800} sx={{ mt: isMobile ? 1.5 : 3, mb: isMobile ? 1 : 2 }}>
                             Detailed Transactions ({paymentMethodFilter === 'all' ? 'All Methods' : paymentMethodFilter})
                         </Typography>
                         <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
@@ -3392,25 +3423,38 @@ const ReportsPage: React.FC = () => {
         const data = Array.isArray(categoryPerformance) ? categoryPerformance : [];
 
         return (
-            <Paper sx={{ p: 3 }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-                    <Typography variant="h6">Category Performance</Typography>
-                    <Button variant="contained" startIcon={<DownloadIcon />} onClick={() => downloadExcel('category-performance')}>
-                        Export Excel
+            <Paper sx={{ p: isMobile ? 1.5 : 3 }}>
+                <Box sx={{ 
+                    display: 'flex', 
+                    flexDirection: 'row', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    mb: isMobile ? 1.5 : 3,
+                    gap: 1
+                }}>
+                    <Typography variant={isMobile ? "body2" : "h6"} sx={{ fontWeight: 800 }}>Category Performance</Typography>
+                    <Button 
+                        variant="contained" 
+                        size="small"
+                        startIcon={<DownloadIcon sx={{ fontSize: isMobile ? '14px !important' : 'inherit' }} />} 
+                        onClick={() => downloadExcel('category-performance')}
+                        sx={{ borderRadius: 2, height: 28, px: 1, textTransform: 'none', fontSize: isMobile ? '0.65rem' : 'inherit' }}
+                    >
+                        {isMobile ? 'Export' : 'Export Excel'}
                     </Button>
-                </Stack>
+                </Box>
 
-                <Grid container spacing={3}>
+                <Grid container spacing={isMobile ? 1.5 : 3}>
                     {/* 📊 Modern Bar Chart */}
                     <Grid item xs={12} md={6}>
-                        <Paper sx={{ p: 3, borderRadius: 4 }}>
-                            <Typography variant="subtitle1" fontWeight={600} mb={2}>
+                        <Paper sx={{ p: isMobile ? 1.5 : 3, borderRadius: isMobile ? 3 : 4 }}>
+                            <Typography variant="subtitle2" fontWeight={800} mb={isMobile ? 1 : 2}>
                                 Revenue by Category
                             </Typography>
 
-                            <ResponsiveContainer width="100%" height={350}>
+                            <ResponsiveContainer width="100%" height={isMobile ? 220 : 350}>
                                 <BarChart
-                                    data={data}
+                                    data={isMobile ? data.slice(0, 5) : data}
                                     margin={{ top: 20, right: 20, left: 10, bottom: 40 }}
                                 >
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -3420,11 +3464,11 @@ const ReportsPage: React.FC = () => {
                                         angle={-30}
                                         textAnchor="end"
                                         interval={0}
-                                        height={70}
-                                        tick={{ fontSize: 12 }}
+                                        height={isMobile ? 45 : 70}
+                                        tick={{ fontSize: isMobile ? 10 : 12 }}
                                     />
 
-                                    <YAxis tick={{ fontSize: 12 }} />
+                                    <YAxis tick={{ fontSize: isMobile ? 10 : 12 }} width={isMobile ? 35 : 60} />
 
                                     <RechartsTooltip
                                         formatter={(value: any) =>
@@ -3441,7 +3485,7 @@ const ReportsPage: React.FC = () => {
                                         dataKey="totalRevenue"
                                         fill="#6366f1"
                                         radius={[8, 8, 0, 0]}
-                                        barSize={35}
+                                        barSize={isMobile ? 25 : 35}
                                         isAnimationActive={false}
                                     />
                                 </BarChart>
@@ -3451,27 +3495,28 @@ const ReportsPage: React.FC = () => {
 
                     {/* 🟠 Modern Donut Chart */}
                     <Grid item xs={12} md={6}>
-                        <Paper sx={{ p: 3, borderRadius: 4 }}>
-                            <Typography variant="subtitle1" fontWeight={600} mb={2}>
+                        <Paper sx={{ p: isMobile ? 1.5 : 3, borderRadius: isMobile ? 3 : 4 }}>
+                            <Typography variant={isMobile ? "subtitle2" : "subtitle1"} fontWeight={isMobile ? 800 : 600} mb={isMobile ? 1 : 2}>
                                 Revenue Distribution
                             </Typography>
 
-                            <ResponsiveContainer width="100%" height={350}>
+                            <ResponsiveContainer width="100%" height={isMobile ? 220 : 350}>
                                 <PieChart>
                                     <Pie
-                                        data={data}
+                                        data={isMobile ? data.slice(0, 5) : data}
                                         dataKey="totalRevenue"
                                         nameKey="category"
                                         cx="50%"
                                         cy="50%"
-                                        innerRadius={70}
-                                        outerRadius={120}
-                                        label={({ percent }) =>
+                                        innerRadius={isMobile ? 45 : 70}
+                                        outerRadius={isMobile ? 75 : 120}
+                                        stroke="none"
+                                        label={isMobile ? false : ({ percent }) =>
                                             `${(percent * 100).toFixed(0)}%`
                                         }
                                         isAnimationActive={false}
                                     >
-                                        {data.map((entry, index) => (
+                                        {(isMobile ? data.slice(0, 5) : data).map((entry, index) => (
                                             <Cell
                                                 key={index}
                                                 fill={COLORS[index % COLORS.length]}
@@ -3495,23 +3540,35 @@ const ReportsPage: React.FC = () => {
                     </Grid>
 
                     <Grid item xs={12}>
-                        <Box sx={{ display: { xs: 'block', sm: 'none' } }}>
+                        <Box sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', gap: 1.5 }}>
                             {data.length === 0 ? (
-                                <Typography sx={{ textAlign: 'center', py: 2, color: 'text.secondary' }}>No data available</Typography>
+                                <Typography sx={{ textAlign: 'center', py: 3, color: 'text.secondary' }}>No data available</Typography>
                             ) : data.map((cat, index) => (
-                                <Paper key={index} sx={{ mb: 1.5, p: 1.5, borderRadius: 2 }}>
-                                    <Box sx={{ mb: 0.5 }}>
-                                        <Chip label={cat.category || 'Uncategorized'} color="primary" />
+                                <Paper key={index} elevation={0} sx={{ 
+                                    p: 2, 
+                                    borderRadius: 3, 
+                                    border: '1px solid', 
+                                    borderColor: 'divider',
+                                    background: "linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)",
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center'
+                                }}>
+                                    <Box sx={{ flex: 1, pr: 2 }}>
+                                        <Typography variant="body2" fontWeight={800} sx={{ wordBreak: 'break-word', lineHeight: 1.3, mb: 0.5 }}>
+                                            {cat.category || 'Uncategorized'}
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                            Items: <b>{cat.itemCount || 0}</b>
+                                        </Typography>
                                     </Box>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.3 }}>
-                                        <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>Total Quantity: <b>{cat.totalQuantity || 0}</b></Typography>
-                                        <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>Item Count: <b>{cat.itemCount || 0}</b></Typography>
+                                    <Box sx={{ textAlign: 'right' }}>
+                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>Revenue</Typography>
+                                        <Typography variant="subtitle2" fontWeight={800} color="primary.main">
+                                            {formatCurrency(cat.totalRevenue || 0)}
+                                        </Typography>
                                     </Box>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.3 }}>
-                                        <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>Total Revenue: <b>{formatCurrency(cat.totalRevenue || 0)}</b></Typography>
-                                        <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>Order Count: <b>{cat.orderCount || 0}</b></Typography>
-                                    </Box>
-                                    <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>Avg Revenue/Order: <b>{formatCurrency(cat.averageRevenuePerOrder || 0)}</b></Typography>
                                 </Paper>
                             ))}
                         </Box>
@@ -3575,70 +3632,40 @@ const ReportsPage: React.FC = () => {
 
                 <Grid container spacing={4}>
                     {/* Summary Cards */}
-                    <Grid item xs={12} container spacing={2}>
-                        <Grid item xs={12} sm={6} md={2.4}>
-                            <Card sx={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', borderRadius: 4, height: '100%' }}>
-                                <CardContent>
-                                    <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
-                                        Cancelled Orders
-                                    </Typography>
-                                    <Typography variant="h4" sx={{ color: 'white', fontWeight: 'bold', mt: 1 }}>
-                                        {totalCancelled}
-                                    </Typography>
-                                </CardContent>
-                            </Card>
-                        </Grid>
-
-                        <Grid item xs={12} sm={6} md={2.4}>
-                            <Card sx={{ background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', borderRadius: 4, height: '100%' }}>
-                                <CardContent>
-                                    <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
-                                        Item Cancellations
-                                    </Typography>
-                                    <Typography variant="h4" sx={{ color: 'white', fontWeight: 'bold', mt: 1 }}>
-                                        {totalItemCancellations}
-                                    </Typography>
-                                </CardContent>
-                            </Card>
-                        </Grid>
-
-                        <Grid item xs={12} sm={6} md={2.4}>
-                            <Card sx={{ background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', borderRadius: 4, height: '100%' }}>
-                                <CardContent>
-                                    <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
-                                        Cancellation Rate
-                                    </Typography>
-                                    <Typography variant="h4" sx={{ color: 'white', fontWeight: 'bold', mt: 1 }}>
-                                        {Number(cancellationRate).toFixed(2)}%
-                                    </Typography>
-                                </CardContent>
-                            </Card>
-                        </Grid>
-
-                        <Grid item xs={12} sm={6} md={2.4}>
-                            <Card sx={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', borderRadius: 4, height: '100%' }}>
-                                <CardContent>
-                                    <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
-                                        Revenue Loss
-                                    </Typography>
-                                    <Typography variant="h4" sx={{ color: 'white', fontWeight: 'bold', mt: 1 }}>
-                                        {formatCurrency(revenueLoss)}
-                                    </Typography>
-                                </CardContent>
-                            </Card>
-                        </Grid>
-
-                        <Grid item xs={12} sm={12} md={2.4}>
-                            <Card sx={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)', borderRadius: 4, height: '100%' }}>
-                                <CardContent>
-                                    <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
-                                        Total Orders
-                                    </Typography>
-                                    <Typography variant="h4" sx={{ color: 'white', fontWeight: 'bold', mt: 1 }}>
-                                        {totalOrders}
-                                    </Typography>
-                                </CardContent>
-                            </Card>
+                    <Grid item xs={12}>
+                        <Grid container spacing={isMobile ? 1 : 2}>
+                            <Grid item xs={6} md={2.4}>
+                                <Card sx={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)', borderRadius: 3, height: '100%' }}>
+                                    <CardContent sx={{ p: isMobile ? 1.5 : 2 }}>
+                                        <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.7rem' }}>Cancels</Typography>
+                                        <Typography variant={isMobile ? "subtitle2" : "h4"} sx={{ color: 'white', fontWeight: 800, mt: 0.5 }}>{totalCancelled}</Typography>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+                            <Grid item xs={6} md={2.4}>
+                                <Card sx={{ background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', borderRadius: 3, height: '100%' }}>
+                                    <CardContent sx={{ p: isMobile ? 1.5 : 2 }}>
+                                        <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.7rem' }}>Items</Typography>
+                                        <Typography variant={isMobile ? "subtitle2" : "h4"} sx={{ color: 'white', fontWeight: 800, mt: 0.5 }}>{totalItemCancellations}</Typography>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+                            <Grid item xs={6} md={2.4}>
+                                <Card sx={{ background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)', borderRadius: 3, height: '100%' }}>
+                                    <CardContent sx={{ p: isMobile ? 1.5 : 2 }}>
+                                        <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.7rem' }}>Rate</Typography>
+                                        <Typography variant={isMobile ? "subtitle2" : "h4"} sx={{ color: 'white', fontWeight: 800, mt: 0.5 }}>{Number(cancellationRate).toFixed(1)}%</Typography>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+                            <Grid item xs={6} md={2.4}>
+                                <Card sx={{ background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', borderRadius: 3, height: '100%' }}>
+                                    <CardContent sx={{ p: isMobile ? 1.5 : 2 }}>
+                                        <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.7rem' }}>Loss</Typography>
+                                        <Typography variant={isMobile ? "subtitle2" : "h4"} sx={{ color: 'white', fontWeight: 800, mt: 0.5 }}>{formatCurrency(revenueLoss)}</Typography>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
                         </Grid>
                     </Grid>
 
@@ -3648,8 +3675,8 @@ const ReportsPage: React.FC = () => {
                             <Typography variant="subtitle1" fontWeight={600} mb={3}>
                                 Cancellation by Order Type
                             </Typography>
-                            <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={byOrderType}>
+                            <ResponsiveContainer width="100%" height={isMobile ? 220 : 300}>
+                                <BarChart data={isMobile ? byOrderType.slice(0, 5) : byOrderType}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                     <XAxis dataKey="orderType" tickFormatter={formatOrderType} />
                                     <YAxis />
@@ -3924,39 +3951,39 @@ const ReportsPage: React.FC = () => {
     };
 
     const renderProfitLoss = () => (
-        <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>Profit & Loss Statement</Typography>
+        <Paper sx={{ p: isMobile ? 1.5 : 3 }}>
+            <Typography variant={isMobile ? "subtitle2" : "h6"} sx={{ fontWeight: 800, mb: isMobile ? 1.5 : 3 }}>Profit & Loss Statement</Typography>
             {profitLoss && (
-                <Grid container spacing={3}>
-                    <Grid item xs={12} md={3}>
-                        <Card sx={{ bgcolor: '#e3f2fd' }}>
-                            <CardContent>
-                                <Typography variant="subtitle2" color="textSecondary">Total Revenue</Typography>
-                                <Typography variant="h4">{formatCurrency(profitLoss.revenue)}</Typography>
+                <Grid container spacing={isMobile ? 1 : 3}>
+                    <Grid item xs={6} md={3}>
+                        <Card sx={{ bgcolor: '#e3f2fd', borderRadius: 3 }}>
+                            <CardContent sx={{ p: isMobile ? 1.5 : 2 }}>
+                                <Typography sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>Total Revenue</Typography>
+                                <Typography variant={isMobile ? "subtitle2" : "h4"} fontWeight={800}>{formatCurrency(profitLoss.revenue)}</Typography>
                             </CardContent>
                         </Card>
                     </Grid>
-                    <Grid item xs={12} md={3}>
-                        <Card sx={{ bgcolor: '#ffebee' }}>
-                            <CardContent>
-                                <Typography variant="subtitle2" color="textSecondary">Total Expenses (PO)</Typography>
-                                <Typography variant="h4">{formatCurrency(profitLoss.cogs)}</Typography>
+                    <Grid item xs={6} md={3}>
+                        <Card sx={{ bgcolor: '#ffebee', borderRadius: 3 }}>
+                            <CardContent sx={{ p: isMobile ? 1.5 : 2 }}>
+                                <Typography sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>Expenses (PO)</Typography>
+                                <Typography variant={isMobile ? "subtitle2" : "h4"} fontWeight={800}>{formatCurrency(profitLoss.cogs)}</Typography>
                             </CardContent>
                         </Card>
                     </Grid>
-                    <Grid item xs={12} md={3}>
-                        <Card sx={{ bgcolor: '#e8f5e9' }}>
-                            <CardContent>
-                                <Typography variant="subtitle2" color="textSecondary">Gross Profit</Typography>
-                                <Typography variant="h4">{formatCurrency(profitLoss.grossProfit)}</Typography>
+                    <Grid item xs={6} md={3}>
+                        <Card sx={{ bgcolor: '#e8f5e9', borderRadius: 3 }}>
+                            <CardContent sx={{ p: isMobile ? 1.5 : 2 }}>
+                                <Typography sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>Gross Profit</Typography>
+                                <Typography variant={isMobile ? "subtitle2" : "h4"} fontWeight={800}>{formatCurrency(profitLoss.grossProfit)}</Typography>
                             </CardContent>
                         </Card>
                     </Grid>
-                    <Grid item xs={12} md={3}>
-                        <Card sx={{ bgcolor: '#fff3e0' }}>
-                            <CardContent>
-                                <Typography variant="subtitle2" color="textSecondary">Gross Margin</Typography>
-                                <Typography variant="h4">{profitLoss.margin.toFixed(2)}%</Typography>
+                    <Grid item xs={6} md={3}>
+                        <Card sx={{ bgcolor: '#fff3e0', borderRadius: 3 }}>
+                            <CardContent sx={{ p: isMobile ? 1.5 : 2 }}>
+                                <Typography sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>Gross Margin</Typography>
+                                <Typography variant={isMobile ? "subtitle2" : "h4"} fontWeight={800}>{profitLoss.margin.toFixed(1)}%</Typography>
                             </CardContent>
                         </Card>
                     </Grid>
@@ -3968,28 +3995,32 @@ const ReportsPage: React.FC = () => {
                         </Typography>
                         <Box>
                             {/* Mobile Card View */}
-                            <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                            <Box sx={{ display: { xs: 'grid', md: 'none' }, gridTemplateColumns: "1fr 1fr", gap: 1 }}>
                                 {profitLoss.expenses && profitLoss.expenses.length > 0 ? (
                                     profitLoss.expenses.map((item: any, index: number) => (
-                                        <Paper key={index} sx={{ p: 2, mb: 2, borderRadius: 2 }} variant="outlined">
-                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5, alignItems: 'flex-start' }}>
-                                                <Box>
-                                                    <Typography variant="body2" fontWeight="bold">{item.poNumber || '-'}</Typography>
-                                                    <Typography variant="caption" color="text.secondary">{new Date(item.date).toLocaleDateString()}</Typography>
-                                                </Box>
-                                                <Typography variant="body2" fontWeight={600} color="primary">
-                                                    {formatCurrency(item.amount)}
-                                                </Typography>
+                                        <Paper key={index} sx={{ 
+                                            p: 1.5, 
+                                            borderRadius: 3, 
+                                            border: '1px solid', 
+                                            borderColor: 'divider',
+                                            background: "linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)"
+                                        }}>
+                                            <Box sx={{ mb: 1 }}>
+                                                <Typography variant="caption" fontWeight={800} noWrap sx={{ display: 'block' }}>{item.poNumber || 'N/A'}</Typography>
+                                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem' }}>{new Date(item.date).toLocaleDateString()}</Typography>
                                             </Box>
-                                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                <Typography variant="body2" color="text.secondary">Vendor:</Typography>
-                                                <Typography variant="body2" fontWeight={600}>{item.vendor || 'Unknown'}</Typography>
+                                            <Box>
+                                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.6rem' }}>Amount</Typography>
+                                                <Typography variant="caption" fontWeight={800} color="primary.main">{formatCurrency(item.amount)}</Typography>
+                                            </Box>
+                                            <Box sx={{ mt: 1, pt: 0.5, borderTop: "1px dashed #e5e7eb" }}>
+                                                <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', fontSize: '0.6rem' }}>Vendor: {item.vendor || 'N/A'}</Typography>
                                             </Box>
                                         </Paper>
                                     ))
                                 ) : (
-                                    <Paper sx={{ p: 3, textAlign: 'center' }} variant="outlined">
-                                        <Typography variant="body2" color="text.secondary">No expenses recorded for this period</Typography>
+                                    <Paper sx={{ p: 3, textAlign: 'center', gridColumn: "1 / span 2" }}>
+                                        <Typography variant="caption" color="text.secondary">No expenses found</Typography>
                                     </Paper>
                                 )}
                             </Box>
@@ -4031,34 +4062,31 @@ const ReportsPage: React.FC = () => {
     );
 
     const renderCustomerAnalytics = () => (
-        <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>Top Customers</Typography>
+        <Paper sx={{ p: isMobile ? 1.5 : 3 }}>
+            <Typography variant={isMobile ? "subtitle2" : "h6"} sx={{ fontWeight: 800, mb: isMobile ? 1.5 : 3 }}>Top Customers</Typography>
             <Box>
                 {/* Mobile Card View */}
-                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                <Box sx={{ display: { xs: 'grid', md: 'none' }, gridTemplateColumns: "1fr 1fr", gap: 1 }}>
                     {customerAnalytics
                         .slice(customerPage * customerRowsPerPage, customerPage * customerRowsPerPage + customerRowsPerPage)
                         .map((customer: any, index: number) => (
-                            <Paper key={index} sx={{ p: 2, mb: 2, borderRadius: 2 }}>
-                                <Box sx={{ mb: 1.5 }}>
-                                    <Typography variant="body2" fontWeight="bold">{customer.name || 'Guest'}</Typography>
-                                    <Typography variant="caption" color="text.secondary">{customer.email || '-'}</Typography>
+                            <Paper key={index} elevation={0} sx={{ 
+                                p: 1.5, 
+                                borderRadius: 3, 
+                                border: '1px solid', 
+                                borderColor: 'divider',
+                                background: "linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)"
+                            }}>
+                                <Box sx={{ mb: 1 }}>
+                                    <Typography variant="caption" fontWeight={800} noWrap sx={{ display: 'block' }}>{customer.name || 'Guest'}</Typography>
+                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem' }}>{customer.phone || 'No Phone'}</Typography>
                                 </Box>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                    <Typography variant="body2" color="text.secondary">Phone:</Typography>
-                                    <Typography variant="body2" fontWeight={600}>{customer.phone || '-'}</Typography>
+                                <Box>
+                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.6rem' }}>Total Spend</Typography>
+                                    <Typography variant="caption" fontWeight={800} color="primary.main">{formatCurrency(customer.totalSpend)}</Typography>
                                 </Box>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                    <Typography variant="body2" color="text.secondary">Total Orders:</Typography>
-                                    <Typography variant="body2" fontWeight={600}>{customer.totalOrders}</Typography>
-                                </Box>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                    <Typography variant="body2" color="text.secondary">Total Spend:</Typography>
-                                    <Typography variant="body2" fontWeight={600}>{formatCurrency(customer.totalSpend)}</Typography>
-                                </Box>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <Typography variant="body2" color="text.secondary">Avg Order Value:</Typography>
-                                    <Typography variant="body2" fontWeight={600}>{formatCurrency(customer.averageOrderValue)}</Typography>
+                                <Box sx={{ mt: 1, pt: 0.5, borderTop: "1px dashed #e5e7eb", display: 'flex', justifyContent: 'space-between' }}>
+                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem' }}>Orders: <b>{customer.totalOrders}</b></Typography>
                                 </Box>
                             </Paper>
                         ))}
@@ -4110,64 +4138,68 @@ const ReportsPage: React.FC = () => {
     );
 
     const renderInventoryStock = () => (
-        <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>Inventory Stock Levels</Typography>
+        <Paper sx={{ p: isMobile ? 1.5 : 3 }}>
+            <Typography variant={isMobile ? "subtitle2" : "h6"} sx={{ fontWeight: 800, mb: isMobile ? 1.5 : 3 }}>Inventory Stock Levels</Typography>
             {inventoryStock && (
                 <>
-                    <Grid container spacing={3} sx={{ mb: 3 }}>
-                        <Grid item xs={12} md={4}>
-                            <Card>
-                                <CardContent>
-                                    <Typography variant="subtitle2">Total Items</Typography>
-                                    <Typography variant="h4">{inventoryStock.totalItems}</Typography>
+                    <Grid container spacing={isMobile ? 1 : 3} sx={{ mb: isMobile ? 2 : 3 }}>
+                        <Grid item xs={6} md={4}>
+                            <Card sx={{ borderRadius: 3 }}>
+                                <CardContent sx={{ p: isMobile ? 1.5 : 2 }}>
+                                    <Typography sx={{ color: 'text.secondary', fontSize: '0.7rem' }}>Total Items</Typography>
+                                    <Typography variant={isMobile ? "subtitle2" : "h4"} fontWeight={800}>{inventoryStock.totalItems}</Typography>
+                                </CardContent>
+                            </Card>
+                        </Grid>
+                        <Grid item xs={6} md={4}>
+                            <Card sx={{ borderRadius: 3 }}>
+                                <CardContent sx={{ p: isMobile ? 1.5 : 2 }}>
+                                    <Typography sx={{ color: 'error.main', fontSize: '0.7rem' }}>Low Stock</Typography>
+                                    <Typography variant={isMobile ? "subtitle2" : "h4"} fontWeight={800} color="error.main">{inventoryStock.lowStockCount}</Typography>
                                 </CardContent>
                             </Card>
                         </Grid>
                         <Grid item xs={12} md={4}>
-                            <Card>
-                                <CardContent>
-                                    <Typography variant="subtitle2" color="error">Low Stock Items</Typography>
-                                    <Typography variant="h4" color="error">{inventoryStock.lowStockCount}</Typography>
-                                </CardContent>
-                            </Card>
-                        </Grid>
-                        <Grid item xs={12} md={4}>
-                            <Card>
-                                <CardContent>
-                                    <Typography variant="subtitle2">Total Stock Value</Typography>
-                                    <Typography variant="h4">{formatCurrency(inventoryStock.totalStockValue)}</Typography>
+                            <Card sx={{ borderRadius: 3, background: "linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)", color: "#fff" }}>
+                                <CardContent sx={{ p: isMobile ? 1.5 : 2 }}>
+                                    <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.7rem' }}>Total Stock Value</Typography>
+                                    <Typography variant={isMobile ? "subtitle2" : "h4"} fontWeight={800}>{formatCurrency(inventoryStock.totalStockValue)}</Typography>
                                 </CardContent>
                             </Card>
                         </Grid>
                     </Grid>
                     <Box>
                         {/* Mobile Card View */}
-                        <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                        <Box sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', gap: 1.5 }}>
                             {inventoryStock.items
                                 .slice(inventoryPage * inventoryRowsPerPage, inventoryPage * inventoryRowsPerPage + inventoryRowsPerPage)
                                 .map((item: any, index: number) => (
-                                    <Paper key={index} sx={{ p: 2, mb: 2, borderRadius: 2 }}>
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5, alignItems: 'flex-start' }}>
-                                            <Box>
-                                                <Typography variant="body2" fontWeight="bold">{item.name}</Typography>
-                                                <Typography variant="caption" color="text.secondary">SKU: {item.sku}</Typography>
-                                            </Box>
-                                            <Chip
-                                                label={item.status}
-                                                color={item.status === 'Low Stock' ? 'error' : 'success'}
-                                                size="small"
+                                    <Paper key={index} elevation={0} sx={{ 
+                                        p: 2, 
+                                        borderRadius: 3, 
+                                        border: '1px solid', 
+                                        borderColor: item.status === 'Low Stock' ? 'error.light' : 'divider',
+                                        background: item.status === 'Low Stock' ? "#fff5f5" : "linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)",
+                                        boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center'
+                                    }}>
+                                        <Box sx={{ flex: 1, pr: 2 }}>
+                                            <Typography variant="body2" fontWeight={800} sx={{ wordBreak: 'break-word', lineHeight: 1.3 }}>
+                                                {item.name}
+                                            </Typography>
+                                            <Chip 
+                                                label={item.status} 
+                                                size="small" 
+                                                color={item.status === 'Low Stock' ? 'error' : 'success'} 
+                                                sx={{ height: 20, fontSize: '0.65rem', mt: 0.75, fontWeight: 600, borderRadius: 1.5 }} 
                                             />
                                         </Box>
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                            <Typography variant="body2" color="text.secondary">Current Stock:</Typography>
-                                            <Typography variant="body2" fontWeight={600}>
-                                                {Number(item.currentStock).toFixed(3)} {item.unit}
-                                            </Typography>
-                                        </Box>
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            <Typography variant="body2" color="text.secondary">Min Stock:</Typography>
-                                            <Typography variant="body2" fontWeight={600}>
-                                                {Number(item.minimumStock).toFixed(3)} {item.unit}
+                                        <Box sx={{ textAlign: 'right' }}>
+                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>Stock</Typography>
+                                            <Typography variant="subtitle2" fontWeight={800} color={item.status === 'Low Stock' ? 'error.main' : 'text.primary'}>
+                                                {Number(item.currentStock).toFixed(1)} {item.unit}
                                             </Typography>
                                         </Box>
                                     </Paper>
@@ -4294,11 +4326,26 @@ const ReportsPage: React.FC = () => {
     };
 
     const renderTableStats = () => (
-        <Paper sx={{ p: 3 }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-                <Typography variant="h6">Table Performance</Typography>
-                <Button variant="contained" startIcon={<DownloadIcon />} onClick={() => downloadExcel('table-stats')}>Export Excel</Button>
-            </Stack>
+        <Paper sx={{ p: isMobile ? 1.5 : 3 }}>
+            <Box sx={{ 
+                display: 'flex', 
+                flexDirection: 'row', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                mb: isMobile ? 1.5 : 3,
+                gap: 1
+            }}>
+                <Typography variant={isMobile ? "body2" : "h6"} sx={{ fontWeight: 800 }}>Table Performance</Typography>
+                <Button 
+                    variant="contained" 
+                    size="small"
+                    startIcon={<DownloadIcon sx={{ fontSize: isMobile ? '14px !important' : 'inherit' }} />} 
+                    onClick={() => downloadExcel('table-stats')}
+                    sx={{ borderRadius: 2, height: 28, px: 1, textTransform: 'none', fontSize: isMobile ? '0.65rem' : 'inherit' }}
+                >
+                    {isMobile ? 'Export' : 'Export Excel'}
+                </Button>
+            </Box>
             <Grid container spacing={3}>
                 <Grid item xs={12}>
                     <ResponsiveContainer width="100%" height={320}>
@@ -4362,7 +4409,31 @@ const ReportsPage: React.FC = () => {
                 </Grid>
 
                 <Grid item xs={12}>
-                    <TableContainer component={Paper} sx={{ maxWidth: '100%', overflowX: 'auto' }}>
+                    <Box sx={{ display: { xs: 'grid', md: 'none' }, gridTemplateColumns: "1fr 1fr", gap: 1 }}>
+                        {tableStats
+                            .slice(tableStatsPage * tableStatsRowsPerPage, tableStatsPage * tableStatsRowsPerPage + tableStatsRowsPerPage)
+                            .map((row, i) => (
+                                <Paper key={i} elevation={0} sx={{ 
+                                    p: 1.5, 
+                                    borderRadius: 3, 
+                                    border: '1px solid', 
+                                    borderColor: 'divider',
+                                    background: "linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)"
+                                }}>
+                                    <Box sx={{ mb: 1 }}>
+                                        <Typography variant="caption" fontWeight={800} sx={{ display: 'block' }}>{row.tableName}</Typography>
+                                    </Box>
+                                    <Box>
+                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.6rem' }}>Revenue</Typography>
+                                        <Typography variant="caption" fontWeight={800}>{formatCurrency(row.totalRevenue)}</Typography>
+                                    </Box>
+                                    <Box sx={{ mt: 1, pt: 0.5, borderTop: "1px dashed #e5e7eb", display: 'flex', justifyContent: 'space-between' }}>
+                                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem' }}>Bookings: <b>{row.totalBookings}</b></Typography>
+                                    </Box>
+                                </Paper>
+                            ))}
+                    </Box>
+                    <TableContainer component={Paper} sx={{ display: { xs: 'none', md: 'block' }, maxWidth: '100%', overflowX: 'auto' }}>
                         <Table>
                             <TableHead>
                                 <TableRow>
@@ -4404,34 +4475,31 @@ const ReportsPage: React.FC = () => {
     );
 
     const renderCouponAnalytics = () => (
-        <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>Coupon Performance</Typography>
+        <Paper sx={{ p: isMobile ? 1.5 : 3 }}>
+            <Typography variant={isMobile ? "subtitle2" : "h6"} sx={{ fontWeight: 800, mb: isMobile ? 1.5 : 3 }}>Coupon Performance</Typography>
             <Box>
                 {/* Mobile Card View */}
-                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                <Box sx={{ display: { xs: 'grid', md: 'none' }, gridTemplateColumns: "1fr 1fr", gap: 1 }}>
                     {couponAnalytics
                         .slice(couponPage * couponRowsPerPage, couponPage * couponRowsPerPage + couponRowsPerPage)
                         .map((coupon: any, index: number) => (
-                            <Paper key={index} sx={{ p: 2, mb: 2, borderRadius: 2 }}>
-                                <Box sx={{ mb: 1.5 }}>
-                                    <Typography variant="body2" fontWeight="bold">{coupon.code}</Typography>
-                                    <Typography variant="caption" color="text.secondary">{coupon.name}</Typography>
+                            <Paper key={index} elevation={0} sx={{ 
+                                p: 1.5, 
+                                borderRadius: 3, 
+                                border: '1px solid', 
+                                borderColor: 'divider',
+                                background: "linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)"
+                            }}>
+                                <Box sx={{ mb: 1 }}>
+                                    <Typography variant="caption" fontWeight={800} noWrap sx={{ display: 'block' }}>{coupon.code}</Typography>
+                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem' }}>{coupon.name}</Typography>
                                 </Box>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                    <Typography variant="body2" color="text.secondary">Discount:</Typography>
-                                    <Typography variant="body2" fontWeight={600}>
-                                        {coupon.discountType === 'percentage'
-                                            ? `${coupon.discountValue}%`
-                                            : formatCurrency(coupon.discountValue)}
-                                    </Typography>
+                                <Box>
+                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem' }}>Saved</Typography>
+                                    <Typography variant="caption" fontWeight={800} color="success.main">{formatCurrency(coupon.totalRevenue)}</Typography>
                                 </Box>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                    <Typography variant="body2" color="text.secondary">Usage Count:</Typography>
-                                    <Typography variant="body2" fontWeight={600}>{coupon.usageCount}</Typography>
-                                </Box>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <Typography variant="body2" color="text.secondary">Total Revenue:</Typography>
-                                    <Typography variant="body2" fontWeight={600}>{formatCurrency(coupon.totalRevenue)}</Typography>
+                                <Box sx={{ mt: 1, pt: 0.5, borderTop: "1px dashed #e5e7eb" }}>
+                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem' }}>Used: <b>{coupon.usageCount}</b></Typography>
                                 </Box>
                             </Paper>
                         ))}
@@ -4485,11 +4553,11 @@ const ReportsPage: React.FC = () => {
     );
 
     const renderPromoSummary = () => (
-        <Grid container spacing={3}>
+        <Grid container spacing={isMobile ? 1 : 3}>
             <Grid item xs={12}>
-                <Paper sx={{ p: 2, mb: 2 }}>
-                    <Stack direction="row" spacing={2} alignItems="center">
-                        <FormControl size="small" sx={{ minWidth: 150 }}>
+                <Paper sx={{ p: isMobile ? 1.5 : 2, mb: isMobile ? 1 : 2 }}>
+                    <Stack direction={isMobile ? "column" : "row"} spacing={1.5} alignItems={isMobile ? "stretch" : "center"}>
+                        <FormControl size="small" sx={{ minWidth: isMobile ? 0 : 150 }}>
                             <InputLabel>Promo Type</InputLabel>
                             <Select value={promoType} onChange={(e) => setPromoType(e.target.value)} label="Promo Type">
                                 <MenuItem value="all">All Types</MenuItem>
@@ -4503,39 +4571,39 @@ const ReportsPage: React.FC = () => {
                             value={promoSearch} 
                             onChange={(e) => setPromoSearch(e.target.value)}
                         />
-                        <Button variant="contained" onClick={fetchReportData}>Apply</Button>
+                        <Button variant="contained" size={isMobile ? "small" : "medium"} onClick={fetchReportData}>Apply</Button>
                     </Stack>
                 </Paper>
             </Grid>
-            <Grid item xs={12} md={3}>
-                <Card sx={{ bgcolor: 'primary.main', color: 'white' }}>
-                    <CardContent>
-                        <Typography variant="subtitle2" sx={{ opacity: 0.8 }}>Codes Created (Total)</Typography>
-                        <Typography variant="h4" fontWeight="bold">{promoSummary?.totalCreated || 0}</Typography>
+            <Grid item xs={6} md={3}>
+                <Card sx={{ bgcolor: 'primary.main', color: 'white', borderRadius: 3 }}>
+                    <CardContent sx={{ p: isMobile ? 1.5 : 2 }}>
+                        <Typography sx={{ opacity: 0.8, fontSize: '0.7rem' }}>Total Created</Typography>
+                        <Typography variant={isMobile ? "subtitle2" : "h4"} fontWeight={800}>{promoSummary?.totalCreated || 0}</Typography>
                     </CardContent>
                 </Card>
             </Grid>
-            <Grid item xs={12} md={3}>
-                <Card sx={{ bgcolor: 'secondary.main', color: 'white' }}>
-                    <CardContent>
-                        <Typography variant="subtitle2" sx={{ opacity: 0.8 }}>Redemptions (Period)</Typography>
-                        <Typography variant="h4" fontWeight="bold">{promoSummary?.redemptionCount || 0}</Typography>
+            <Grid item xs={6} md={3}>
+                <Card sx={{ bgcolor: 'secondary.main', color: 'white', borderRadius: 3 }}>
+                    <CardContent sx={{ p: isMobile ? 1.5 : 2 }}>
+                        <Typography sx={{ opacity: 0.8, fontSize: '0.7rem' }}>Redemptions</Typography>
+                        <Typography variant={isMobile ? "subtitle2" : "h4"} fontWeight={800}>{promoSummary?.redemptionCount || 0}</Typography>
                     </CardContent>
                 </Card>
             </Grid>
-            <Grid item xs={12} md={3}>
-                <Card sx={{ bgcolor: 'success.main', color: 'white' }}>
-                    <CardContent>
-                        <Typography variant="subtitle2" sx={{ opacity: 0.8 }}>Total Value Saved</Typography>
-                        <Typography variant="h4" fontWeight="bold">{formatCurrency(promoSummary?.totalRedeemedValue || 0)}</Typography>
+            <Grid item xs={6} md={3}>
+                <Card sx={{ bgcolor: 'success.main', color: 'white', borderRadius: 3 }}>
+                    <CardContent sx={{ p: isMobile ? 1.5 : 2 }}>
+                        <Typography sx={{ opacity: 0.8, fontSize: '0.7rem' }}>Value Saved</Typography>
+                        <Typography variant={isMobile ? "subtitle2" : "h4"} fontWeight={800}>{formatCurrency(promoSummary?.totalRedeemedValue || 0)}</Typography>
                     </CardContent>
                 </Card>
             </Grid>
-            <Grid item xs={12} md={3}>
-                <Card sx={{ bgcolor: 'warning.main', color: 'white' }}>
-                    <CardContent>
-                        <Typography variant="subtitle2" sx={{ opacity: 0.8 }}>Avg. Saving per Order</Typography>
-                        <Typography variant="h4" fontWeight="bold">
+            <Grid item xs={6} md={3}>
+                <Card sx={{ bgcolor: 'warning.main', color: 'white', borderRadius: 3 }}>
+                    <CardContent sx={{ p: isMobile ? 1.5 : 2 }}>
+                        <Typography sx={{ opacity: 0.8, fontSize: '0.7rem' }}>Avg. Saving</Typography>
+                        <Typography variant={isMobile ? "subtitle2" : "h4"} fontWeight={800}>
                             {promoSummary?.redemptionCount > 0 
                                 ? formatCurrency(promoSummary.totalRedeemedValue / promoSummary.redemptionCount) 
                                 : formatCurrency(0)}
@@ -4546,12 +4614,12 @@ const ReportsPage: React.FC = () => {
 
             {promoSummary?.topPromos?.length > 0 && (
                 <Grid item xs={12}>
-                    <Paper sx={{ p: 3, borderRadius: 2 }}>
-                        <Typography variant="h6" gutterBottom>Top Performing Promos</Typography>
-                        <Box sx={{ height: 300 }}>
+                    <Paper sx={{ p: isMobile ? 1.5 : 3, borderRadius: 3 }}>
+                        <Typography variant="subtitle2" fontWeight={800} mb={isMobile ? 1.5 : 2}>Top Performing Promos</Typography>
+                        <Box sx={{ height: isMobile ? 220 : 300 }}>
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={promoSummary.topPromos}>
-                                    <CartesianGrid strokeDasharray="3 3" />
+                                <BarChart data={isMobile ? promoSummary.topPromos.slice(0, 5) : promoSummary.topPromos}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                     <XAxis dataKey="code" />
                                     <YAxis />
                                     <RechartsTooltip />
@@ -4568,7 +4636,48 @@ const ReportsPage: React.FC = () => {
     );
 
     const renderPromoRedemptions = () => (
-        <TableContainer component={Paper}>
+        <Paper sx={{ p: isMobile ? 1.5 : 3 }}>
+            <Typography variant={isMobile ? "subtitle2" : "h6"} sx={{ fontWeight: 800, mb: isMobile ? 1.5 : 3 }}>Promo Redemptions</Typography>
+            <Box>
+                {/* Mobile Card View */}
+                <Box sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', gap: 1.5 }}>
+                    {promoRedemptions.map((row: any) => (
+                        <Paper key={row._id} elevation={0} sx={{ 
+                            p: 2, 
+                            borderRadius: 3, 
+                            border: '1px solid', 
+                            borderColor: 'divider',
+                            background: "linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)",
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.02)'
+                        }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1 }}>
+                                <Box sx={{ flex: 1, pr: 1 }}>
+                                    <Typography variant="body2" fontWeight={800} sx={{ display: 'block', wordBreak: 'break-all' }}>
+                                        ORD#{row.orderNumber}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                                        {row.customer?.name || 'Guest'}
+                                    </Typography>
+                                </Box>
+                                <Chip 
+                                    label={row.couponCode} 
+                                    size="small" 
+                                    sx={{ height: 20, fontSize: '0.65rem', fontWeight: 600, bgcolor: 'primary.50', color: 'primary.700', borderRadius: 1.5 }} 
+                                />
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1.5, pt: 1, borderTop: "1px dashed #e5e7eb" }}>
+                                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>Discount Applied</Typography>
+                                <Typography variant="body2" fontWeight={800} color="error.main">
+                                    -{formatCurrency(row.discount?.amount || 0)}
+                                </Typography>
+                            </Box>
+                        </Paper>
+                    ))}
+                    {promoRedemptions.length === 0 && (
+                        <Typography sx={{ textAlign: 'center', py: 3, color: 'text.secondary' }}>No redemptions found</Typography>
+                    )}
+                </Box>
+                <TableContainer component={Paper} elevation={0} sx={{ display: { xs: 'none', md: 'block' } }}>
             <Table>
                 <TableHead>
                     <TableRow sx={{ bgcolor: 'grey.50' }}>
@@ -4603,10 +4712,49 @@ const ReportsPage: React.FC = () => {
                 </TableBody>
             </Table>
         </TableContainer>
+            </Box>
+        </Paper>
     );
 
     const renderPromoCompensation = () => (
-        <TableContainer component={Paper}>
+        <Paper sx={{ p: isMobile ? 1.5 : 3 }}>
+            <Typography variant={isMobile ? "subtitle2" : "h6"} sx={{ fontWeight: 800, mb: isMobile ? 1.5 : 3 }}>Compensation Analysis</Typography>
+            <Box>
+                {/* Mobile Card View */}
+                <Box sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', gap: 1.5 }}>
+                    {promoCompensation.map((row: any, i: number) => (
+                        <Paper key={i} elevation={0} sx={{ 
+                            p: 2, 
+                            borderRadius: 3, 
+                            border: '1px solid', 
+                            borderColor: 'divider',
+                            background: "linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)",
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                        }}>
+                            <Box sx={{ flex: 1, pr: 2 }}>
+                                <Typography variant="body2" fontWeight={800} sx={{ wordBreak: 'break-word', lineHeight: 1.3 }}>
+                                    {row._id || 'General Support'}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                                    Count: <b>{row.count}</b>
+                                </Typography>
+                            </Box>
+                            <Box sx={{ textAlign: 'right' }}>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>Total Value</Typography>
+                                <Typography variant="subtitle2" fontWeight={800} color="error.main">
+                                    {formatCurrency(row.totalValue)}
+                                </Typography>
+                            </Box>
+                        </Paper>
+                    ))}
+                    {promoCompensation.length === 0 && (
+                        <Typography sx={{ textAlign: 'center', py: 3, color: 'text.secondary' }}>No compensation data</Typography>
+                    )}
+                </Box>
+                <TableContainer component={Paper} elevation={0} sx={{ display: { xs: 'none', md: 'block' } }}>
             <Table>
                 <TableHead>
                     <TableRow sx={{ bgcolor: 'grey.50' }}>
@@ -4633,6 +4781,8 @@ const ReportsPage: React.FC = () => {
                 </TableBody>
             </Table>
         </TableContainer>
+            </Box>
+        </Paper>
     );
 
     const renderCustomerFeedback = () => {
@@ -4647,28 +4797,35 @@ const ReportsPage: React.FC = () => {
             : '0.0';
 
         return (
-            <Paper sx={{ p: 3 }}>
-                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
-                    <Typography variant="h6">Customer Feedback Analysis</Typography>
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-    <Button
-        variant={feedbackView === 'summary' ? "contained" : "outlined"}
-        onClick={() => setFeedbackView('summary')}
-        size="small"
-        sx={{ flex: { xs: '1 1 auto', sm: '0 1 auto' } }}
-    >
-        Review Summary
-    </Button>
-    <Button
-        variant={feedbackView === 'item-wise' ? "contained" : "outlined"}
-        onClick={() => setFeedbackView('item-wise')}
-        size="small"
-        sx={{ flex: { xs: '1 1 auto', sm: '0 1 auto' } }}
-    >
-        Item Risk Analysis
-    </Button>
-</Box>
-                </Stack>
+            <Paper sx={{ p: isMobile ? 1.5 : 3 }}>
+                <Box sx={{ 
+                    display: 'flex', 
+                    flexDirection: isMobile ? 'column' : 'row', 
+                    justifyContent: 'space-between', 
+                    alignItems: isMobile ? 'flex-start' : 'center', 
+                    mb: isMobile ? 1.5 : 3,
+                    gap: 1.5
+                }}>
+                    <Typography variant={isMobile ? "subtitle2" : "h6"} sx={{ fontWeight: 800 }}>Feedback Analysis</Typography>
+                    <Box sx={{ display: 'flex', width: isMobile ? '100%' : 'auto', gap: 1 }}>
+                        <Button
+                            variant={feedbackView === 'summary' ? "contained" : "outlined"}
+                            onClick={() => setFeedbackView('summary')}
+                            size="small"
+                            sx={{ flex: 1, borderRadius: 2, textTransform: 'none' }}
+                        >
+                            Summary
+                        </Button>
+                        <Button
+                            variant={feedbackView === 'item-wise' ? "contained" : "outlined"}
+                            onClick={() => setFeedbackView('item-wise')}
+                            size="small"
+                            sx={{ flex: 1, borderRadius: 2, textTransform: 'none' }}
+                        >
+                            Items
+                        </Button>
+                    </Box>
+                </Box>
 
                 {/* KPI Cards */}
                 <Grid container spacing={3} mb={4}>
@@ -4911,11 +5068,11 @@ const ReportsPage: React.FC = () => {
         };
 
         return (
-            <Paper sx={{ p: 3 }}>
-                <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2} sx={{ mb: 3 }}>
-                    <Typography variant="h6" fontWeight="bold">Delivery Reports</Typography>
-                    <Stack direction="row" spacing={2} alignItems="center">
-                        <FormControl size="small" sx={{ minWidth: 150 }}>
+            <Paper sx={{ p: isMobile ? 1.5 : 3 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ mb: isMobile ? 1.5 : 3 }}>
+                    <Typography variant={isMobile ? "body2" : "h6"} fontWeight="bold">Delivery Reports</Typography>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                        <FormControl size="small" sx={{ minWidth: isMobile ? 0 : 150, display: isMobile ? 'none' : 'block' }}>
                             <InputLabel>Provider</InputLabel>
                             <Select
                                 value={deliveryProviderFilter}
@@ -4933,16 +5090,17 @@ const ReportsPage: React.FC = () => {
                         <Button
                             variant="outlined"
                             size="small"
-                            startIcon={<DownloadIcon />}
+                            startIcon={<DownloadIcon sx={{ fontSize: isMobile ? '14px !important' : 'inherit' }} />}
                             onClick={() => downloadExcel('delivery-report')}
+                            sx={{ borderRadius: 2, height: 28, px: 1, textTransform: 'none', fontSize: isMobile ? '0.65rem' : 'inherit' }}
                         >
-                            Export
+                            {isMobile ? 'Export' : 'Export'}
                         </Button>
                     </Stack>
                 </Stack>
 
                 {/* Summary Cards */}
-                <Grid container spacing={2} sx={{ mb: 3 }}>
+                <Grid container spacing={isMobile ? 1 : 2} sx={{ mb: isMobile ? 1.5 : 3 }}>
                     {[
                         { label: 'Total Orders', value: summary?.totalOrders ?? 0, isCurrency: false, icon: <ShoppingCartIcon />, color: '#6366f1' },
                         { label: 'DoorDash Orders', value: summary?.doordashOrders ?? 0, isCurrency: false, icon: <LocalShippingIcon />, color: '#ef4444' },
@@ -4972,7 +5130,37 @@ const ReportsPage: React.FC = () => {
                 </Grid>
 
                 {/* Orders Table */}
-                <TableContainer>
+                <Box sx={{ display: { xs: 'grid', md: 'none' }, gridTemplateColumns: "1fr 1fr", gap: 1 }}>
+                    {paged.map((order: any, idx: number) => (
+                        <Paper key={order.orderNumber || idx} elevation={0} sx={{ 
+                            p: 1.5, 
+                            borderRadius: 3, 
+                            border: '1px solid', 
+                            borderColor: 'divider',
+                            background: "linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)"
+                        }}>
+                            <Box sx={{ mb: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                <Typography variant="caption" fontWeight={800} sx={{ display: 'block' }}>ORD#{order.orderNumber}</Typography>
+                                <Chip label={providerLabel(order.provider)} size="small" sx={{ height: 16, fontSize: '0.6rem', bgcolor: providerColor(order.provider), color: '#fff', fontWeight: 'bold' }} />
+                            </Box>
+                            <Box>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.6rem' }}>{order.customerName || 'Guest'}</Typography>
+                                <Typography variant="caption" fontWeight={800} color="primary.main">{formatCurrency(order.totalAmount)}</Typography>
+                            </Box>
+                            <Box sx={{ mt: 1, pt: 0.5, borderTop: "1px dashed #e5e7eb", display: 'flex', justifyContent: 'space-between' }}>
+                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem' }}>Status: 
+                                    <span style={{ color: order.status === 'delivered' ? 'green' : 'inherit', marginLeft: 4 }}>
+                                        {order.status}
+                                    </span>
+                                </Typography>
+                            </Box>
+                        </Paper>
+                    ))}
+                    {orders.length === 0 && (
+                        <Typography sx={{ textAlign: 'center', py: 2, color: 'text.secondary', gridColumn: "1 / span 2" }}>No orders found</Typography>
+                    )}
+                </Box>
+                <TableContainer sx={{ display: { xs: 'none', md: 'block' } }}>
                     <Table size="small">
                         <TableHead>
                             <TableRow sx={{ bgcolor: 'grey.50' }}>
@@ -5076,16 +5264,16 @@ const ReportsPage: React.FC = () => {
     };
 
     return (
-        <Container maxWidth="xl" sx={{ py: 4 }}>
-            <Typography variant="h4" gutterBottom sx={{ textAlign: { xs: 'center', sm: 'left' } }}>
+        <Container maxWidth="xl" sx={{ py: isMobile ? 1 : 4, px: isMobile ? 1 : 3 }}>
+            <Typography variant={isMobile ? "h5" : "h4"} gutterBottom sx={{ textAlign: { xs: 'center', sm: 'left' }, fontWeight: 800, mt: isMobile ? 1 : 0 }}>
                 Reports & Analytics
             </Typography>
 
-            {/* Filters — sticky just below the 64px fixed AppBar */}
-            <Paper sx={{ p: 2, mb: 3, position: 'sticky', top: 64, zIndex: 100, boxShadow: 2 }}>
-                <Grid container spacing={2} alignItems="center">
+            {/* Filters — sticky just below the fixed AppBar */}
+            <Paper sx={{ p: isMobile ? 1 : 2, mb: isMobile ? 1 : 2, position: 'sticky', top: isMobile ? 0 : 64, zIndex: 100, boxShadow: 1, borderRadius: isMobile ? 0 : 1 }}>
+                <Grid container spacing={isMobile ? 1 : 2} alignItems="center">
                     <Grid item xs={12} sm={6} md={3}>
-                        <FormControl fullWidth>
+                        <FormControl fullWidth size={isMobile ? "small" : "medium"}>
                             <InputLabel>Time Period</InputLabel>
                             <Select value={period} onChange={(e) => setPeriod(e.target.value as string)} label="Time Period">
                                 <MenuItem value="today">Today</MenuItem>
@@ -5095,12 +5283,12 @@ const ReportsPage: React.FC = () => {
                             </Select>
                         </FormControl>
                     </Grid>
-
                     {period === 'custom' && (
                         <>
                             <Grid item xs={12} sm={6} md={3}>
                                 <TextField
                                     fullWidth
+                                    size={isMobile ? "small" : "medium"}
                                     label="Start Date"
                                     type="date"
                                     value={startDate}
@@ -5111,6 +5299,7 @@ const ReportsPage: React.FC = () => {
                             <Grid item xs={12} sm={6} md={3}>
                                 <TextField
                                     fullWidth
+                                    size={isMobile ? "small" : "medium"}
                                     label="End Date"
                                     type="date"
                                     value={endDate}
@@ -5120,23 +5309,30 @@ const ReportsPage: React.FC = () => {
                             </Grid>
                         </>
                     )}
-
                     <Grid item xs={12} sm={6} md={3}>
                         <Button
                             fullWidth
                             variant="contained"
+                            size={isMobile ? "small" : "medium"}
                             startIcon={<DownloadIcon />}
                             onClick={() => downloadExcel('comprehensive')}
+                            sx={{ borderRadius: 2 }}
                         >
-                            Download All Reports
+                            Export All
                         </Button>
                     </Grid>
                 </Grid>
             </Paper>
 
-            {/* Tabs — sticky below filter bar (64px AppBar + ~72px filter) */}
-            <Paper sx={{ mb: 3, position: 'sticky', top: 136, zIndex: 99, boxShadow: 2 }}>
-                <Tabs value={activeTab} onChange={(e, v) => setActiveTab(v)} variant="scrollable" scrollButtons="auto">
+            {/* Tabs — sticky below filter bar */}
+            <Paper sx={{ mb: isMobile ? 1 : 2, position: 'sticky', top: isMobile ? 48 : 136, zIndex: 99, boxShadow: 1, borderRadius: isMobile ? 0 : 1 }}>
+                <Tabs 
+                    value={activeTab} 
+                    onChange={(e, v) => setActiveTab(v)} 
+                    variant="scrollable" 
+                    scrollButtons="auto"
+                    sx={{ minHeight: isMobile ? 40 : 48 }}
+                >
                     <Tab label="Dashboard" />
                     <Tab label="Best Selling Items" />
                     <Tab label="Orders by Type" />

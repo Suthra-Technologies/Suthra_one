@@ -44,6 +44,7 @@ import {
     TablePagination,
     useTheme,
     useMediaQuery,
+    alpha,
 } from '@mui/material';
 import Grid from '@mui/material/Grid2';
 import {
@@ -71,6 +72,7 @@ import {
     Link as LinkIcon,
     LinkOff as LinkOffIcon,
     PlaylistAddCheck as SelectionIcon,
+    AccessTime as TimeIcon,
 } from '@mui/icons-material';
 import { validatePhone, validateEmail } from '../../utils/validation';
 import { useSettings } from '../../context/SettingsContext';
@@ -105,7 +107,7 @@ function TabPanel(props: TabPanelProps) {
     const { children, value, index, ...other } = props;
     return (
         <div role="tabpanel" hidden={value !== index} {...other}>
-            {value === index && <Box sx={{ pt: 2 }}>{children}</Box>}
+            {value === index && <Box sx={{ pt: { xs: 1, sm: 2 } }}>{children}</Box>}
         </div>
     );
 }
@@ -643,22 +645,22 @@ const TablesPage: React.FC = () => {
                 justifyContent: 'space-between', 
                 alignItems: 'center', 
                 mb: { xs: 2, sm: 3 }, 
-                gap: 2 
+                gap: 2,
+                mt: { xs: 1.5, sm: 0 }
             }}>
                 <Typography 
                     variant="h4" 
                     sx={{ 
-                        fontSize: { xs: '1.45rem', sm: '2.125rem' }, 
                         fontWeight: 800,
                         width: { xs: '100%', sm: 'auto' },
                         textAlign: { xs: 'center', sm: 'left' },
-                        color: { xs: '#000', sm: 'inherit' }
+                        fontSize: { xs: '1.35rem', sm: '1.75rem', md: '2.125rem' }
                     }}
                 >
                     Table Management
                 </Typography>
                 <Stack direction="row" spacing={1} sx={{ width: { xs: '100%', sm: 'auto' }, justifyContent: 'center' }}>
-                    <Button
+                    {/* <Button
                         variant={selectionMode ? "contained" : "outlined"}
                         color={selectionMode ? "secondary" : "primary"}
                         startIcon={<SelectionIcon sx={{ fontSize: { xs: '1rem !important', sm: 'inherit' } }} />}
@@ -669,11 +671,14 @@ const TablesPage: React.FC = () => {
                         size={isMobile ? "small" : "medium"}
                         sx={{ 
                             fontSize: { xs: '0.65rem', sm: '0.875rem' },
-                            px: { xs: 1, sm: 2 }
+                            px: { xs: 1, sm: 2 },
+                            borderRadius: 2,
+                            textTransform: 'none',
+                            fontWeight: 'bold'
                         }}
                     >
                         {selectionMode ? "Exit" : "Select Tables"}
-                    </Button>
+                    </Button> */}
                     {selectionMode && selectedTableIds.length >= 2 && (
                         <Button
                             variant="contained"
@@ -686,7 +691,10 @@ const TablesPage: React.FC = () => {
                             size={isMobile ? "small" : "medium"}
                             sx={{ 
                                 fontSize: { xs: '0.65rem', sm: '0.875rem' },
-                                px: { xs: 1, sm: 2 }
+                                px: { xs: 1, sm: 2 },
+                                borderRadius: 2,
+                                textTransform: 'none',
+                                fontWeight: 'bold'
                             }}
                         >
                             Merge ({selectedTableIds.length})
@@ -699,7 +707,10 @@ const TablesPage: React.FC = () => {
                         size={isMobile ? "small" : "medium"}
                         sx={{ 
                             fontSize: { xs: '0.65rem', sm: '0.875rem' },
-                            px: { xs: 1, sm: 2 }
+                            px: { xs: 1, sm: 2 },
+                            borderRadius: 2,
+                            textTransform: 'none',
+                            fontWeight: 'bold'
                         }}
                     >
                         Add Table
@@ -708,18 +719,18 @@ const TablesPage: React.FC = () => {
             </Box>
 
             {/* Tabs */}
-            <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)} sx={{ mb: 2 }} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile>
+            <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)} sx={{ mb: { xs: 1, sm: 2 } }} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile>
                 <Tab
                     label={
                         <Badge badgeContent={tables.length} color="primary" max={99}>
-                            <Box sx={{ pr: 2 }}>Tables</Box>
+                            <Box sx={{ pr: { xs: 1, sm: 2 } }}>Tables</Box>
                         </Badge>
                     }
                 />
                 <Tab
                     label={
                         <Badge badgeContent={filteredBookings.length} color="warning" max={99}>
-                            <Box sx={{ pr: 2 }}>Bookings</Box>
+                            <Box sx={{ pr: { xs: 1, sm: 2 } }}>Bookings</Box>
                         </Badge>
                     }
                 />
@@ -733,7 +744,7 @@ const TablesPage: React.FC = () => {
                     overflowX: 'auto', 
                     flexWrap: { xs: 'nowrap', sm: 'wrap' }, 
                     gap: 1, 
-                    mb: 3,
+                    mb: { xs: 1.5, sm: 3 },
                     pb: { xs: 1, sm: 0 },
                     '&::-webkit-scrollbar': { display: 'none' }
                 }}>
@@ -778,14 +789,14 @@ const TablesPage: React.FC = () => {
                         </Typography>
                     </Paper>
                 ) : (
-                    <Grid container spacing={{ xs: 1.5, sm: 3 }}>
+                    <Grid container spacing={{ xs: 1, sm: 3 }}>
                         {filteredTables.map((table) => (
                             <Grid size={{ xs: 6, sm: 6, md: 4, lg: 3 }} key={table._id}>
                                 <Card sx={{
                                     position: 'relative',
-                                    borderRadius: { xs: 3, sm: 4 },
+                                    borderRadius: { xs: 2.5, sm: 4 },
                                     overflow: 'hidden',
-                                    boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+                                    boxShadow: '0 2px 15px rgba(0,0,0,0.06)',
                                     border: '1px solid',
                                     borderColor: 'divider',
                                     outline: selectionMode && selectedTableIds.includes(table._id) ? `3px solid ${theme.palette.secondary.main}` : 'none',
@@ -816,13 +827,13 @@ const TablesPage: React.FC = () => {
                                             top: 0, 
                                             left: 0, 
                                             bottom: 0, 
-                                            width: 4, 
+                                            width: 3, 
                                             bgcolor: `${getStatusColor(table.status)}.main` 
                                         }} 
                                     />
                                     <CardActionArea onClick={() => selectionMode ? handleToggleSelection(table._id) : handleOpenBooking(table)}>
-                                        <CardContent sx={{ textAlign: 'center', p: 0, pb: { xs: 1, sm: 1.5 } }}>
-                                            <Box sx={{ mb: { xs: 1, sm: 2 }, position: 'relative', width: '100%', mx: 0 }}>
+                                        <CardContent sx={{ textAlign: 'center', p: 0, pb: { xs: 0.75, sm: 1.5 } }}>
+                                            <Box sx={{ mb: { xs: 0.75, sm: 2 }, position: 'relative', width: '100%', mx: 0 }}>
                                                 <Box
                                                     component="img"
                                                     src={getTableImage(table.capacity)}
@@ -992,19 +1003,19 @@ const TablesPage: React.FC = () => {
                                         setPage(0);
                                     }}
                                     startIcon={<TodayIcon />}
-                                    sx={{ whiteSpace: 'nowrap' }}
+                                    sx={{ whiteSpace: 'nowrap', borderRadius: 2, textTransform: 'none', fontWeight: 'bold' }}
                                 >
                                     Today
                                 </Button>
                                 <Button
                                     size="small"
-                                    variant="outlined"
+                                    variant={!bookingDateFilter ? 'contained' : 'outlined'}
                                     onClick={() => {
                                         setBookingDateFilter('');
                                         setPage(0);
                                         if (bookingViewMode === 1) setBookingViewMode(0); // Switch to list if viewing all
                                     }}
-                                    sx={{ whiteSpace: 'nowrap' }}
+                                    sx={{ whiteSpace: 'nowrap', borderRadius: 2, textTransform: 'none', fontWeight: 'bold' }}
                                 >
                                     All Dates
                                 </Button>
@@ -1101,65 +1112,152 @@ const TablesPage: React.FC = () => {
                         ) : (
                             <>
                                 {isMobile ? (
-                                    // Mobile Card View for Bookings
-                                    <Stack spacing={2} mb={2}>
-                                        {paginatedBookings.map((booking) => (
-                                            <Card key={booking._id}>
-                                                <CardContent>
-                                                    <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-                                                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                                                            {booking.bookingId}
-                                                        </Typography>
-                                                        <Chip
-                                                            label={booking.status.toUpperCase()}
-                                                            color={getBookingStatusColor(booking.status) as any}
-                                                            size="small"
-                                                        />
-                                                    </Stack>
+                                    // Premium Mobile Card View for Bookings
+                                    <Stack spacing={1.5} mb={2}>
+                                        {paginatedBookings.map((booking) => {
+                                            const statusColor = getBookingStatusColor(booking.status);
+                                            const mainColor = theme.palette[statusColor as 'primary' | 'success' | 'warning' | 'error' | 'info']?.main || theme.palette.grey[500];
+                                            
+                                            return (
+                                                <Card 
+                                                    key={booking._id}
+                                                    sx={{ 
+                                                        borderRadius: 2,
+                                                        overflow: 'hidden',
+                                                        boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+                                                        borderLeft: `4px solid ${mainColor}`,
+                                                        position: 'relative',
+                                                        '&:hover': { boxShadow: '0 4px 15px rgba(0,0,0,0.08)' }
+                                                    }}
+                                                >
+                                                    <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+                                                            <Box>
+                                                                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, fontSize: '0.6rem' }}>
+                                                                    ID: {booking.bookingId}
+                                                                </Typography>
+                                                                <Typography variant="subtitle1" sx={{ fontWeight: 800, mt: -0.5, fontSize: '0.95rem' }}>
+                                                                    {booking.guestInfo?.firstName} {booking.guestInfo?.lastName}
+                                                                </Typography>
+                                                            </Box>
+                                                            <Chip
+                                                                label={booking.status.toUpperCase()}
+                                                                size="small"
+                                                                sx={{ 
+                                                                    fontWeight: 'bold', 
+                                                                    fontSize: '0.6rem',
+                                                                    height: 20,
+                                                                    bgcolor: alpha(mainColor, 0.1),
+                                                                    color: mainColor,
+                                                                    border: `1px solid ${alpha(mainColor, 0.2)}`
+                                                                }}
+                                                            />
+                                                        </Box>
 
-                                                    <Grid container spacing={1} mb={2}>
-                                                        <Grid size={{ xs: 6 }}>
-                                                            <Typography variant="caption" color="text.secondary">Table</Typography>
-                                                            <Typography variant="body2">{booking.table?.tableName || `Table ${booking.table?.tableNumber}` || 'N/A'}</Typography>
+                                                        <Grid container spacing={1} sx={{ mb: 1.5 }}>
+                                                            <Grid size={{ xs: 6 }}>
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                                                                    <TableIcon sx={{ fontSize: 16, color: 'primary.main' }} />
+                                                                    <Box>
+                                                                        <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.65rem' }}>Table</Typography>
+                                                                        <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>{booking.table?.tableName || `Table ${booking.table?.tableNumber}` || 'N/A'}</Typography>
+                                                                    </Box>
+                                                                </Box>
+                                                            </Grid>
+                                                            <Grid size={{ xs: 6 }}>
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                                                                    <TimeIcon sx={{ fontSize: 16, color: 'primary.main' }} />
+                                                                    <Box>
+                                                                        <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.65rem' }}>Date & Time</Typography>
+                                                                        <Typography variant="body2" sx={{ fontWeight: 700, color: 'primary.main', fontSize: '0.8rem' }}>{booking.timeSlot?.requested}</Typography>
+                                                                    </Box>
+                                                                </Box>
+                                                            </Grid>
+                                                            <Grid size={{ xs: 6 }}>
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                                                                    <SelectionIcon sx={{ fontSize: 16, color: 'primary.main' }} />
+                                                                    <Box>
+                                                                        <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.65rem' }}>Guests</Typography>
+                                                                        <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>{booking.guests} People</Typography>
+                                                                    </Box>
+                                                                </Box>
+                                                            </Grid>
+                                                            <Grid size={{ xs: 6 }}>
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                                                                    <SearchIcon sx={{ fontSize: 16, color: 'primary.main' }} />
+                                                                    <Box>
+                                                                        <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.65rem' }}>Contact</Typography>
+                                                                        <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>{booking.guestInfo?.phone}</Typography>
+                                                                    </Box>
+                                                                </Box>
+                                                            </Grid>
                                                         </Grid>
-                                                        <Grid size={{ xs: 6 }}>
-                                                            <Typography variant="caption" color="text.secondary">Date & Time</Typography>
-                                                            <Typography variant="body2">{formatDate(booking.date)} {booking.timeSlot?.requested}</Typography>
-                                                        </Grid>
-                                                        <Grid size={{ xs: 12 }}>
-                                                            <Typography variant="caption" color="text.secondary">Customer</Typography>
-                                                            <Typography variant="body2" fontWeight="bold">{booking.guestInfo?.firstName} {booking.guestInfo?.lastName}</Typography>
-                                                            <Typography variant="caption">{booking.guestInfo?.phone}</Typography>
-                                                        </Grid>
-                                                    </Grid>
 
-                                                    <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ borderTop: 1, borderColor: 'divider', pt: 2 }}>
-                                                        {booking.status === 'pending' && (
-                                                            <Button size="small" variant="contained" color="success" onClick={() => handleBookingStatusChange(booking._id, 'confirmed')}>Confirm</Button>
-                                                        )}
-                                                        {(() => {
-                                                            const tableId = booking.table?._id || (typeof booking.table === 'string' ? booking.table : null);
-                                                            const realTable = tables.find(t => t._id === tableId);
-                                                            const hasActiveOrder = !!realTable?.currentOrder;
+                                                        <Divider sx={{ mb: 1.5, borderStyle: 'dashed' }} />
 
-                                                            return (
-                                                                <>
-                                                                    {(booking.status === 'confirmed' || booking.status === 'pending') && (!booking.checkedIn || !hasActiveOrder) && (
-                                                                        <Button size="small" variant="contained" color="primary" onClick={() => handleCheckIn(booking._id)}>Check In</Button>
-                                                                    )}
-                                                                    {booking.checkedIn && booking.status !== 'completed' && hasActiveOrder && (
-                                                                        <Button size="small" variant="contained" color="warning" onClick={() => handleCheckIn(booking._id)}>Checkout</Button>
-                                                                    )}
-                                                                </>
-                                                            );
-                                                        })()}
-                                                        {(booking.status === 'pending' || booking.status === 'confirmed') && (
-                                                            <Button size="small" variant="outlined" color="error" onClick={() => handleBookingStatusChange(booking._id, 'cancelled')}>Cancel</Button>
-                                                        )}
-                                                    </Stack>
-                                                </CardContent>
-                                            </Card>
-                                        ))}
+                                                        <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                                            {booking.status === 'pending' && (
+                                                                <Button 
+                                                                    size="small" 
+                                                                    variant="contained" 
+                                                                    color="success" 
+                                                                    sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 'bold' }}
+                                                                    onClick={(e) => { e.stopPropagation(); handleBookingStatusChange(booking._id, 'confirmed'); }}
+                                                                >
+                                                                    Confirm
+                                                                </Button>
+                                                            )}
+                                                            {(() => {
+                                                                const tableId = booking.table?._id || (typeof booking.table === 'string' ? booking.table : null);
+                                                                const realTable = tables.find(t => t._id === tableId);
+                                                                const hasActiveOrder = !!realTable?.currentOrder;
+
+                                                                return (
+                                                                    <>
+                                                                        {(booking.status === 'confirmed' || booking.status === 'pending') && (!booking.checkedIn || !hasActiveOrder) && (
+                                                                            <Button 
+                                                                                size="small" 
+                                                                                variant="contained" 
+                                                                                color="primary" 
+                                                                                sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 'bold' }}
+                                                                                onClick={(e) => { e.stopPropagation(); handleCheckIn(booking._id); }}
+                                                                            >
+                                                                                Check In
+                                                                            </Button>
+                                                                        )}
+                                                                        {booking.checkedIn && booking.status !== 'completed' && hasActiveOrder && (
+                                                                            <Button 
+                                                                                size="small" 
+                                                                                variant="contained" 
+                                                                                color="warning" 
+                                                                                sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 'bold' }}
+                                                                                onClick={(e) => { e.stopPropagation(); handleCheckIn(booking._id); }}
+                                                                            >
+                                                                                Checkout
+                                                                            </Button>
+                                                                        )}
+                                                                    </>
+                                                                );
+                                                            })()}
+                                                            {(booking.status === 'pending' || booking.status === 'confirmed') && (
+                                                                <Button 
+                                                                    size="small" 
+                                                                    variant="outlined" 
+                                                                    color="error" 
+                                                                    sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 'bold' }}
+                                                                    onClick={(e) => { e.stopPropagation(); handleBookingStatusChange(booking._id, 'cancelled'); }}
+                                                                >
+                                                                    Cancel
+                                                                </Button>
+                                                            )}
+                                                            {booking.status === 'completed' && (
+                                                                <Chip label="Completed" size="small" color="info" variant="outlined" sx={{ fontWeight: 'bold' }} />
+                                                            )}
+                                                        </Stack>
+                                                    </CardContent>
+                                                </Card>
+                                            );
+                                        })}
                                     </Stack>
                                 ) : (
                                     <TableContainer component={Paper} sx={{ overflowX: 'auto', maxWidth: '100%' }}>
@@ -1332,88 +1430,157 @@ const TablesPage: React.FC = () => {
                     </>
                 ) : (
                     // TIMELINE VIEW CONTENT
-                    <Paper sx={{ p: isMobile ? 1 : 2, overflowX: 'auto', maxWidth: '100%' }}>
-                        <Box sx={{ minWidth: 800 }}>
-                            {/* Time Header */}
-                            <Box sx={{ display: 'flex', ml: '150px', borderBottom: 1, borderColor: 'divider', pb: 1, mb: 2 }}>
-                                {Array.from({ length: totalHours + 1 }).map((_, i) => (
-                                    <Box key={i} sx={{ flex: 1, position: 'relative', borderLeft: 1, borderColor: 'divider', minHeight: '20px' }}>
-                                        <Typography variant="caption" color="text.secondary" sx={{ position: 'absolute', top: 0, left: 0, transform: i === 0 ? 'translateX(4px)' : 'translateX(-50%)', bgcolor: 'background.paper', px: 0.5 }}>
-                                            {timelineStartHour + i}:00
-                                        </Typography>
+                    <>
+                        {isMobile ? (
+                            <Stack spacing={2}>
+                                {tables.map(table => {
+                                    const tableBookings = bookings.filter(b => 
+                                        (b.table?._id === table._id || b.table === table._id) &&
+                                        (!bookingDateFilter || new Date(b.date).toISOString().split('T')[0] === bookingDateFilter) &&
+                                        b.status !== 'cancelled'
+                                    );
+                                    
+                                    return (
+                                        <Paper key={table._id} sx={{ p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: alpha(theme.palette.background.paper, 0.5) }}>
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                                                <Typography variant="subtitle1" sx={{ fontWeight: 800, color: 'primary.main' }}>
+                                                    {table.tableName || `Table ${table.tableNumber}`}
+                                                </Typography>
+                                                <Chip label={`Cap: ${table.capacity}`} size="small" variant="outlined" sx={{ fontWeight: 600, height: 20, fontSize: '0.65rem' }} />
+                                            </Box>
+                                            
+                                            {tableBookings.length > 0 ? (
+                                                <Stack spacing={1}>
+                                                    {tableBookings.sort((a,b) => (a.timeSlot?.requested || '').localeCompare(b.timeSlot?.requested || '')).map(booking => {
+                                                        const statusColor = getBookingStatusColor(booking.status);
+                                                        const mainColor = theme.palette[statusColor as 'primary' | 'success' | 'warning' | 'error' | 'info']?.main || theme.palette.grey[500];
+                                                        const endTime = calculateEndTime(booking.timeSlot?.requested, booking.duration);
+                                                        
+                                                        return (
+                                                            <Card 
+                                                                key={booking._id} 
+                                                                variant="outlined" 
+                                                                sx={{ 
+                                                                    borderRadius: 2, 
+                                                                    bgcolor: alpha(mainColor, 0.04),
+                                                                    borderColor: alpha(mainColor, 0.2),
+                                                                    cursor: 'pointer',
+                                                                    transition: 'all 0.2s',
+                                                                    '&:active': { transform: 'scale(0.98)' }
+                                                                }}
+                                                                onClick={() => handleViewBooking(booking)}
+                                                            >
+                                                                <CardContent sx={{ p: 1.25, '&:last-child': { pb: 1.25 } }}>
+                                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                            <TimeIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
+                                                                            <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                                                                                {booking.timeSlot?.requested} - {endTime}
+                                                                            </Typography>
+                                                                        </Box>
+                                                                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                                                            {booking.guestInfo?.firstName} {booking.guestInfo?.lastName?.charAt(0)}.
+                                                                        </Typography>
+                                                                    </Box>
+                                                                </CardContent>
+                                                            </Card>
+                                                        )
+                                                    })}
+                                                </Stack>
+                                            ) : (
+                                                <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic', fontSize: '0.8rem', textAlign: 'center', py: 1, bgcolor: alpha(theme.palette.grey[500], 0.05), borderRadius: 1 }}>
+                                                    No bookings scheduled
+                                                </Typography>
+                                            )}
+                                        </Paper>
+                                    );
+                                })}
+                            </Stack>
+                        ) : (
+                            <Paper sx={{ p: 2, overflowX: 'auto', maxWidth: '100%' }}>
+                                <Box sx={{ minWidth: 800 }}>
+                                    {/* Time Header */}
+                                    <Box sx={{ display: 'flex', ml: '150px', borderBottom: 1, borderColor: 'divider', pb: 1, mb: 2 }}>
+                                        {Array.from({ length: totalHours + 1 }).map((_, i) => (
+                                            <Box key={i} sx={{ flex: 1, position: 'relative', borderLeft: 1, borderColor: 'divider', minHeight: '20px' }}>
+                                                <Typography variant="caption" color="text.secondary" sx={{ position: 'absolute', top: 0, left: 0, transform: i === 0 ? 'translateX(4px)' : 'translateX(-50%)', bgcolor: 'background.paper', px: 0.5 }}>
+                                                    {timelineStartHour + i}:00
+                                                </Typography>
+                                            </Box>
+                                        ))}
                                     </Box>
-                                ))}
-                            </Box>
 
-                            {/* Tables Timeline Rows */}
-                            {tables.map(table => (
-                                <Box key={table._id} sx={{ display: 'flex', mb: 2, alignItems: 'center', height: 50 }}>
-                                    {/* Table Label */}
-                                    <Box sx={{ width: '150px', pr: 2, borderRight: 1, borderColor: 'divider' }}>
-                                        <Typography variant="subtitle2" noWrap>
-                                            {table.tableName || `Table ${table.tableNumber}`}
-                                        </Typography>
-                                        <Typography variant="caption" color="text.secondary">
-                                            Cap: {table.capacity}
-                                        </Typography>
-                                    </Box>
+                                    {/* Tables Timeline Rows */}
+                                    {tables.map(table => (
+                                        <Box key={table._id} sx={{ display: 'flex', mb: 2, alignItems: 'center', height: 50 }}>
+                                            {/* Table Label */}
+                                            <Box sx={{ width: '150px', pr: 2, borderRight: 1, borderColor: 'divider' }}>
+                                                <Typography variant="subtitle2" noWrap>
+                                                    {table.tableName || `Table ${table.tableNumber}`}
+                                                </Typography>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    Cap: {table.capacity}
+                                                </Typography>
+                                            </Box>
 
-                                    {/* Timeline Track */}
-                                    <Box sx={{ flex: 1, position: 'relative', height: '100%', bgcolor: '#f5f5f5', borderRadius: 1 }}>
-                                        {/* Grid Lines */}
-                                        <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex' }}>
-                                            {Array.from({ length: totalHours + 1 }).map((_, i) => (
-                                                <Box key={i} sx={{ flex: 1, borderLeft: '1px dashed #e0e0e0' }} />
-                                            ))}
+                                            {/* Timeline Track */}
+                                            <Box sx={{ flex: 1, position: 'relative', height: '100%', bgcolor: '#f5f5f5', borderRadius: 1 }}>
+                                                {/* Grid Lines */}
+                                                <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex' }}>
+                                                    {Array.from({ length: totalHours + 1 }).map((_, i) => (
+                                                        <Box key={i} sx={{ flex: 1, borderLeft: '1px dashed #e0e0e0' }} />
+                                                    ))}
+                                                </Box>
+
+                                                {/* Bookings for this table */}
+                                                {bookings
+                                                    .filter(b => (b.table?._id === table._id || b.table === table._id) &&
+                                                        (!bookingDateFilter || new Date(b.date).toISOString().split('T')[0] === bookingDateFilter) &&
+                                                        b.status !== 'cancelled')
+                                                    .map(booking => {
+                                                        const pos = getBookingPosition(booking);
+                                                        const endTime = calculateEndTime(booking.timeSlot?.requested, booking.duration);
+                                                        return (
+                                                            <Tooltip
+                                                                key={booking._id}
+                                                                title={`${booking.guestInfo?.firstName} - ${booking.timeSlot?.requested || '?'} to ${endTime || '?'}`}
+                                                            >
+                                                                <Box
+                                                                    sx={{
+                                                                        position: 'absolute',
+                                                                        left: pos.left,
+                                                                        width: pos.width,
+                                                                        top: 4,
+                                                                        bottom: 4,
+                                                                        bgcolor: booking.status === 'confirmed' ? 'success.light' : 'warning.light',
+                                                                        border: 1,
+                                                                        borderColor: booking.status === 'confirmed' ? 'success.main' : 'warning.main',
+                                                                        borderRadius: 1,
+                                                                        zIndex: 1,
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center',
+                                                                        overflow: 'hidden',
+                                                                        px: 0.5,
+                                                                        opacity: 0.9,
+                                                                        cursor: 'pointer'
+                                                                    }}
+                                                                    onClick={() => handleViewBooking(booking)}
+                                                                >
+                                                                    <Typography variant="caption" noWrap sx={{ fontSize: '0.7rem', color: '#000' }}>
+                                                                        {booking.guestInfo?.firstName} ({booking.timeSlot?.requested} - {endTime})
+                                                                    </Typography>
+                                                                </Box>
+                                                            </Tooltip>
+                                                        );
+                                                    })}
+                                            </Box>
                                         </Box>
-
-                                        {/* Bookings for this table */}
-                                        {bookings
-                                            .filter(b => (b.table?._id === table._id || b.table === table._id) &&
-                                                (!bookingDateFilter || new Date(b.date).toISOString().split('T')[0] === bookingDateFilter) &&
-                                                b.status !== 'cancelled')
-                                            .map(booking => {
-                                                const pos = getBookingPosition(booking);
-                                                const endTime = calculateEndTime(booking.timeSlot?.requested, booking.duration);
-                                                return (
-                                                    <Tooltip
-                                                        key={booking._id}
-                                                        title={`${booking.guestInfo?.firstName} - ${booking.timeSlot?.requested || '?'} to ${endTime || '?'}`}
-                                                    >
-                                                        <Box
-                                                            sx={{
-                                                                position: 'absolute',
-                                                                left: pos.left,
-                                                                width: pos.width,
-                                                                top: 4,
-                                                                bottom: 4,
-                                                                bgcolor: booking.status === 'confirmed' ? 'success.light' : 'warning.light',
-                                                                border: 1,
-                                                                borderColor: booking.status === 'confirmed' ? 'success.main' : 'warning.main',
-                                                                borderRadius: 1,
-                                                                zIndex: 1,
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                justifyContent: 'center',
-                                                                overflow: 'hidden',
-                                                                px: 0.5,
-                                                                opacity: 0.9,
-                                                                cursor: 'pointer'
-                                                            }}
-                                                            onClick={() => handleViewBooking(booking)}
-                                                        >
-                                                            <Typography variant="caption" noWrap sx={{ fontSize: '0.7rem', color: '#000' }}>
-                                                                {booking.guestInfo?.firstName} ({booking.timeSlot?.requested} - {endTime})
-                                                            </Typography>
-                                                        </Box>
-                                                    </Tooltip>
-                                                );
-                                            })}
-                                    </Box>
+                                    ))}
                                 </Box>
-                            ))}
-                        </Box>
-                    </Paper>
+                            </Paper>
+                        )}
+                    </>
                 )}
             </TabPanel>
 

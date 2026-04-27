@@ -127,6 +127,59 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }
     }, []);
 
+    const getOrderNotificationDetails = useCallback((payload: any) => {
+        const sourceOrder = payload?.order || payload || {};
+
+        const rawOrderId =
+            sourceOrder.orderNumber ??
+            sourceOrder.orderId ??
+            sourceOrder.order_id ??
+            payload?.orderNumber ??
+            payload?.orderId ??
+            payload?.order_id;
+
+        const orderIdString = String(rawOrderId ?? '');
+        const displayOrderId = orderIdString
+            ? (orderIdString.includes('-') ? orderIdString.split('-').pop() : orderIdString)
+            : '--';
+
+        const rawToken =
+            sourceOrder.dailyTokenNumber ??
+            sourceOrder.tokenNumber ??
+            sourceOrder.tokenNo ??
+            sourceOrder.token_no ??
+            sourceOrder.token ??
+            payload?.dailyTokenNumber ??
+            payload?.tokenNumber ??
+            payload?.tokenNo ??
+            payload?.token_no ??
+            payload?.token;
+
+        const tokenDigits = rawToken === null || rawToken === undefined ? '' : String(rawToken).replace(/\D/g, '');
+        const displayTokenNo = tokenDigits || '--';
+
+        const rawOrderType =
+            sourceOrder.orderType ??
+            sourceOrder.type ??
+            sourceOrder.order_type ??
+            payload?.orderType ??
+            payload?.type ??
+            payload?.order_type;
+
+        const displayOrderType = rawOrderType
+            ? String(rawOrderType)
+                .replace(/_/g, ' ')
+                .replace(/\b\w/g, (char) => char.toUpperCase())
+            : '--';
+
+        const rawStatus = payload?.status ?? sourceOrder.status ?? 'Update';
+        const displayStatus = String(rawStatus)
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, (char) => char.toUpperCase());
+
+        return { displayOrderId, displayTokenNo, displayOrderType, displayStatus };
+    }, []);
+
     const handleNewOrder = useCallback((data: any) => {
         console.log('🔔 [NotificationProvider] RAW newOrder event:', data);
 
@@ -176,14 +229,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             }
         };
         const typeLabel = formatOrderType(orderType);
-        const orderNumber = data.order?.orderNumber || data.orderId || 'N/A';
+        const { displayTokenNo, displayOrderType } = getOrderNotificationDetails(data);
 
         let title = `New ${typeLabel} Order!`;
-        let body = `Order #${orderNumber}`;
+        let body = `Token No #${displayTokenNo}\nType: ${displayOrderType}\nStatus: Placed`;
 
         if (isOwnOrder) {
             title = 'Order Placed!';
-            body = `Your order #${orderNumber} is placed.`;
+            body = `Token No #${displayTokenNo}\nType: ${displayOrderType}\nStatus: Placed`;
         }
 
         console.log(`✅ [NotificationProvider] Showing notification: ${title}`);
@@ -255,13 +308,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
         playNotificationSound();
 
-        const orderNumber = data.order?.orderNumber || data.orderNumber || 'N/A';
-        const status = data.status || 'Updated';
+        const { displayTokenNo, displayOrderType, displayStatus } = getOrderNotificationDetails(data);
         const title = 'Order Update';
-        let message = `Order #${orderNumber} is now ${status}`;
+        let message = `Token No #${displayTokenNo}\nType: ${displayOrderType}\nStatus: ${displayStatus}`;
 
         if (isOwnOrder) {
-            message = `Your order #${orderNumber} is ${status}`;
+            message = `Token No #${displayTokenNo}\nType: ${displayOrderType}\nStatus: ${displayStatus}`;
         }
 
         showNotification(title, message);
@@ -302,7 +354,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         };
         setNotifications(prev => [newNotif, ...prev].slice(0, 50));
 
-    }, [user, playNotificationSound, showNotification]);
+    }, [user, playNotificationSound, showNotification, getOrderNotificationDetails]);
 
     const [deliveryLocations, setDeliveryLocations] = useState<Record<string, { lat: number, lng: number, timestamp: Date }>>({});
 

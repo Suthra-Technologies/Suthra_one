@@ -23,7 +23,8 @@ import {
     Grid,
     Avatar,
     InputAdornment,
-    Divider
+    Divider,
+    useMediaQuery
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -51,6 +52,7 @@ const PurchaseOrdersPage: React.FC = () => {
     const navigate = useNavigate();
     const { formatCurrency } = useSettings();
     const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [pos, setPOs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
@@ -140,34 +142,34 @@ const PurchaseOrdersPage: React.FC = () => {
     };
 
     return (
-        <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 1600, mx: 'auto' }}>
+        <Box sx={{ p: { xs: 1.5, md: 4 }, maxWidth: 1600, mx: 'auto' }}>
             {/* Header Section */}
             <Stack
                 direction={{ xs: 'column', sm: 'row' }}
                 justifyContent="space-between"
-                alignItems={{ xs: 'flex-start', sm: 'center' }}
-                spacing={3}
-                mb={5}
+                alignItems={{ xs: 'center', sm: 'center' }}
+                spacing={{ xs: 1.5, sm: 3 }}
+                mb={{ xs: 2, md: 5 }}
             >
-                <Box>
-                    <Typography variant="h4" fontWeight="bold" sx={{ mb: 0.5, fontSize: { xs: '1.75rem', md: '2.125rem' } }}>
+                <Box sx={{ textAlign: { xs: 'center', sm: 'left' }, width: { xs: '100%', sm: 'auto' } }}>
+                    <Typography variant="h4" fontWeight={800} sx={{ mb: 0.5, fontSize: { xs: '1.5rem', md: '2.125rem' } }}>
                         Financial Ledger
                     </Typography>
-                    <Typography variant="body1" color="text.secondary">
+                    <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
                         Comprehensive tracking of procurement, salaries, and operational costs.
                     </Typography>
                 </Box>
                 <Button
                     variant="contained"
-                    size="large"
+                    size={isMobile ? "medium" : "large"}
                     startIcon={<AddIcon />}
                     onClick={() => navigate('create')}
                     sx={{
-                        borderRadius: 3,
-                        px: 4,
-                        py: { xs: 1.5, md: 1.8 },
+                        borderRadius: { xs: 2, md: 3 },
+                        px: { xs: 2.5, md: 4 },
+                        py: { xs: 1, md: 1.8 },
                         fontWeight: 'bold',
-                        fontSize: '1rem',
+                        fontSize: { xs: '0.875rem', md: '1rem' },
                         boxShadow: '0 8px 25px rgba(0,0,0,0.1)',
                         textTransform: 'none',
                         width: { xs: '100%', sm: 'auto' }
@@ -178,9 +180,9 @@ const PurchaseOrdersPage: React.FC = () => {
             </Stack>
 
             <Paper sx={{
-                p: { xs: 2, md: 1 },
-                mb: 4,
-                borderRadius: 4,
+                p: { xs: 1, md: 1 },
+                mb: { xs: 2, md: 4 },
+                borderRadius: { xs: 3, md: 4 },
                 bgcolor: '#111827',
                 display: 'flex',
                 flexDirection: { xs: 'column', md: 'row' },
@@ -190,16 +192,23 @@ const PurchaseOrdersPage: React.FC = () => {
                 boxShadow: '0 4px 15px rgba(0,0,0,0.1)'
             }}>
                 <TextField
-                    placeholder="Search Number or Vendor..."
+                    placeholder="Search Order or Vendor..."
                     size="small"
                     value={filters.search}
                     onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                     sx={{
                         minWidth: { xs: '100%', md: 280 },
-                        '& .MuiOutlinedInput-root': { color: 'white', '& fieldset': { border: 'none' } },
-                        bgcolor: alpha('#fff', 0.05), borderRadius: 3, m: 0.5
+                        '& .MuiOutlinedInput-root': { 
+                            color: 'white', 
+                            '& fieldset': { border: 'none' },
+                            height: { xs: 40, md: 'auto' }
+                        },
+                        bgcolor: alpha('#fff', 0.05), borderRadius: { xs: 2, md: 3 }, m: 0.5
                     }}
-                    InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: alpha('#fff', 0.5) }} /></InputAdornment> }}
+                    InputProps={{ 
+                        startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: alpha('#fff', 0.5), fontSize: { xs: 20, md: 24 } }} /></InputAdornment>,
+                        sx: { fontSize: { xs: '0.875rem', md: '1rem' } }
+                    }}
                 />
 
                 <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', p: 0.5, justifyContent: { xs: 'space-between', md: 'flex-start' } }}>
@@ -216,16 +225,25 @@ const PurchaseOrdersPage: React.FC = () => {
                             value={(filters as any)[f.key]}
                             onChange={(e) => setFilters({ ...filters, [f.key]: e.target.value })}
                             sx={{
-                                minWidth: { xs: 'calc(50% - 8px)', sm: 150 },
-                                flexGrow: { xs: 1, md: 0 },
-                                '& .MuiOutlinedInput-root': { color: 'white', '& fieldset': { borderColor: alpha('#fff', 0.1) } },
-                                '& .MuiInputLabel-root': { color: alpha('#fff', 0.5) },
-                                '& .MuiSvgIcon-root': { color: 'white' }
+                                minWidth: { xs: 'calc(33.33% - 8px)', sm: 150 },
+                                flexGrow: 1,
+                                '& .MuiOutlinedInput-root': { 
+                                    color: 'white', 
+                                    '& fieldset': { borderColor: alpha('#fff', 0.1) },
+                                    height: { xs: 36, md: 'auto' },
+                                    borderRadius: 2
+                                },
+                                '& .MuiInputLabel-root': { color: alpha('#fff', 0.5), fontSize: { xs: '0.75rem', md: '0.875rem' } },
+                                '& .MuiSvgIcon-root': { color: 'white', fontSize: { xs: 18, md: 20 } },
+                                m: 0.2
+                            }}
+                            SelectProps={{
+                                sx: { fontSize: { xs: '0.75rem', md: '0.875rem' } }
                             }}
                         >
-                            <MenuItem value="">All {f.label}</MenuItem>
+                            <MenuItem value="" sx={{ fontSize: '0.875rem' }}>All {f.label}</MenuItem>
                             {f.options.map((opt) => (
-                                <MenuItem key={opt} value={opt}>{opt.replace('_', ' ').toUpperCase()}</MenuItem>
+                                <MenuItem key={opt} value={opt} sx={{ fontSize: '0.875rem' }}>{opt.replace('_', ' ').toUpperCase()}</MenuItem>
                             ))}
                         </TextField>
                     ))}
@@ -240,91 +258,87 @@ const PurchaseOrdersPage: React.FC = () => {
                     <BillIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
                     <Typography variant="h5" color="text.secondary">No transactions found matching your criteria</Typography>
                 </Paper>
-            ) : (
-                <Grid container spacing={3}>
+            ) : isMobile ? (
+                <Grid container spacing={isMobile ? 0 : 2} justifyContent="center" sx={{ width: '100%', m: 0, px: 1 }}>
                     {pos.map((po) => {
                         const catStyle = getCategoryStyles(po.category);
                         const statusStyle = getStatusStyles(po.status);
                         return (
-                            <Grid item xs={12} key={po._id}>
+                            <Grid item xs={12} key={po._id} sx={{ display: 'flex', justifyContent: 'center' }}>
                                 <Paper
                                     sx={{
-                                        p: { xs: 2, md: 3 },
-                                        borderRadius: 4,
-                                        transition: '0.3s',
-                                        '&:hover': { transform: { md: 'translateY(-2px)' }, boxShadow: '0 12px 30px rgba(0,0,0,0.08)' },
+                                        width: '100%',
+                                        maxWidth: 500,
+                                        mx: 'auto',
+                                        p: 1.5,
+                                        borderRadius: 3,
                                         display: 'flex',
-                                        flexDirection: { xs: 'column', md: 'row' },
-                                        alignItems: { xs: 'stretch', md: 'center' },
-                                        gap: { xs: 2, md: 3 },
-                                        position: 'relative'
+                                        flexDirection: 'column',
+                                        gap: 1.5,
+                                        position: 'relative',
+                                        border: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
+                                        boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
                                     }}
                                 >
-                                    <Box sx={{ display: { xs: 'flex', md: 'contents' }, alignItems: 'center', gap: 2 }}>
-                                        <Avatar sx={{ bgcolor: alpha(catStyle.color, 0.1), color: catStyle.color, width: { xs: 50, md: 60 }, height: { xs: 50, md: 60 } }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                        <Avatar sx={{ bgcolor: alpha(catStyle.color, 0.1), color: catStyle.color, width: 40, height: 40 }}>
                                             {catStyle.icon}
                                         </Avatar>
-
                                         <Box sx={{ flexGrow: 1 }}>
-                                            <Stack direction="row" spacing={1} alignItems="center" mb={0.5}>
-                                                <Typography variant="h6" fontWeight="bold">#{po.poNumber}</Typography>
+                                            <Stack direction="row" spacing={1} alignItems="center" mb={0.2}>
+                                                <Typography variant="body2" fontWeight={800} sx={{ fontSize: '0.9rem' }}>#{po.poNumber}</Typography>
                                                 <Chip
                                                     label={statusStyle.label}
                                                     size="small"
-                                                    sx={{
-                                                        bgcolor: statusStyle.bg,
-                                                        color: statusStyle.color,
-                                                        fontWeight: 'bold'
-                                                    }}
+                                                    sx={{ bgcolor: statusStyle.bg, color: statusStyle.color, fontSize: '0.625rem', height: 20, fontWeight: 800 }}
                                                 />
                                             </Stack>
-                                            <Typography variant="body1" fontWeight="500">{po.vendor.name}</Typography>
-                                            <Typography variant="caption" color="text.secondary">
-                                                {po.category.replace('_', ' ').toUpperCase()} • {new Date(po.createdAt).toLocaleDateString(undefined, { dateStyle: 'long' })}
+                                            <Typography variant="body2" fontWeight="600" sx={{ mb: 0.2, fontSize: '0.8rem' }}>{po.vendor?.name || 'Manual Entry'}</Typography>
+                                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                                                {po.category?.replace('_', ' ').toUpperCase() || 'OTHER'} • {po.createdAt ? new Date(po.createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' }) : 'N/A'}
                                             </Typography>
                                         </Box>
                                     </Box>
 
-                                    <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', md: 'block' }, mx: 2 }} />
+                                    <Divider sx={{ my: 0.5, borderStyle: 'dashed', opacity: 0.5 }} />
 
-                                    <Box sx={{ display: { xs: 'flex', md: 'contents' }, justifyContent: 'space-between', alignItems: 'center', gap: 2 }}>
-                                        <Box sx={{ textAlign: { xs: 'left', md: 'center' }, minWidth: { md: 120 } }}>
-                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>Payment Status</Typography>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <Box>
+                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2, fontSize: '0.65rem' }}>Payment</Typography>
                                             <Chip
                                                 label={po.paymentStatus.toUpperCase()}
                                                 size="small"
                                                 variant="outlined"
                                                 color={po.paymentStatus === 'paid' ? 'success' : po.paymentStatus === 'partial' ? 'warning' : 'error'}
-                                                sx={{ fontWeight: 'bold' }}
+                                                sx={{ fontWeight: 800, fontSize: '0.6rem', height: 18 }}
                                             />
                                         </Box>
-
-                                        <Box sx={{ textAlign: 'right', minWidth: { md: 150 } }}>
-                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>Grand Net</Typography>
-                                            <Typography variant="h5" fontWeight="900" color="primary.main">
-                                                {formatCurrency(po.totalAmount)}
+                                        <Box sx={{ textAlign: 'right' }}>
+                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2, fontSize: '0.65rem' }}>Grand Total</Typography>
+                                            <Typography variant="h6" fontWeight={900} color="primary.main" sx={{ fontSize: '1.1rem' }}>
+                                                {formatCurrency ? formatCurrency(po.totalAmount || 0) : `$${(po.totalAmount || 0).toFixed(2)}`}
                                             </Typography>
                                         </Box>
                                     </Box>
 
-                                    <Divider sx={{ display: { xs: 'block', md: 'none' } }} />
+                                    <Divider sx={{ my: 0.5, opacity: 0.3 }} />
 
-                                    <Stack direction="row" spacing={1} sx={{ justifyContent: { xs: 'flex-end', md: 'flex-start' }, ml: { md: 2 } }}>
+                                    <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end' }}>
                                         <Tooltip title="View Details">
-                                            <IconButton onClick={() => navigate(`${po._id}`)} sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}><ViewIcon color="primary" /></IconButton>
+                                            <IconButton size="small" onClick={() => navigate(`${po._id}`)} sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}><ViewIcon color="primary" fontSize="small" /></IconButton>
                                         </Tooltip>
                                         {po.status === 'pending' && (
                                             <Tooltip title="Approve">
-                                                <IconButton onClick={() => handleApprove(po._id)} sx={{ bgcolor: alpha(theme.palette.info.main, 0.05) }}><ApproveIcon color="info" /></IconButton>
+                                                <IconButton size="small" onClick={() => handleApprove(po._id)} sx={{ bgcolor: alpha(theme.palette.info.main, 0.05) }}><ApproveIcon color="info" fontSize="small" /></IconButton>
                                             </Tooltip>
                                         )}
                                         {po.status === 'approved' && po.type !== 'expense' && (
                                             <Tooltip title="Receive Items">
-                                                <IconButton onClick={() => handleReceive(po._id)} sx={{ bgcolor: alpha(theme.palette.success.main, 0.05) }}><ReceiveIcon color="success" /></IconButton>
+                                                <IconButton size="small" onClick={() => handleReceive(po._id)} sx={{ bgcolor: alpha(theme.palette.success.main, 0.05) }}><ReceiveIcon color="success" fontSize="small" /></IconButton>
                                             </Tooltip>
                                         )}
                                         <Tooltip title="Delete">
-                                            <IconButton onClick={() => po.status === 'draft' && handleDelete(po._id)} sx={{ bgcolor: alpha(theme.palette.error.main, 0.05), opacity: po.status === 'draft' ? 1 : 0.3 }}><DeleteIcon color="error" /></IconButton>
+                                            <IconButton size="small" onClick={() => po.status === 'draft' && handleDelete(po._id)} sx={{ bgcolor: alpha(theme.palette.error.main, 0.05), opacity: po.status === 'draft' ? 1 : 0.3 }}><DeleteIcon color="error" fontSize="small" /></IconButton>
                                         </Tooltip>
                                     </Stack>
                                 </Paper>
@@ -332,6 +346,84 @@ const PurchaseOrdersPage: React.FC = () => {
                         );
                     })}
                 </Grid>
+            ) : (
+                <TableContainer component={Paper} sx={{ borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+                    <Table>
+                        <TableHead>
+                            <TableRow sx={{ bgcolor: '#f8fafc' }}>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Order Details</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Vendor / Entity</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Category</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Amount</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Payment</TableCell>
+                                <TableCell align="right" sx={{ fontWeight: 'bold' }}>Actions</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {pos.map((po) => {
+                                const catStyle = getCategoryStyles(po.category);
+                                const statusStyle = getStatusStyles(po.status);
+                                return (
+                                    <TableRow key={po._id} hover>
+                                        <TableCell>
+                                            <Typography variant="body2" fontWeight="bold">#{po.poNumber}</Typography>
+                                            <Typography variant="caption" color="text.secondary">{new Date(po.createdAt).toLocaleDateString()}</Typography>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Typography variant="body2">{po.vendor?.name || 'Manual Entry'}</Typography>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Chip
+                                                icon={catStyle.icon}
+                                                label={po.category.replace('_', ' ').toUpperCase()}
+                                                size="small"
+                                                sx={{ bgcolor: alpha(catStyle.color, 0.1), color: catStyle.color, fontWeight: 'bold' }}
+                                            />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Typography variant="body2" fontWeight="bold" color="primary.main">
+                                                {formatCurrency ? formatCurrency(po.totalAmount || 0) : `$${(po.totalAmount || 0).toFixed(2)}`}
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Chip label={statusStyle.label} size="small" sx={{ bgcolor: statusStyle.bg, color: statusStyle.color, fontWeight: 'bold' }} />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Chip
+                                                label={po.paymentStatus.toUpperCase()}
+                                                size="small"
+                                                color={po.paymentStatus === 'paid' ? 'success' : po.paymentStatus === 'partial' ? 'warning' : 'error'}
+                                                variant="outlined"
+                                                sx={{ fontWeight: 'bold' }}
+                                            />
+                                        </TableCell>
+                                        <TableCell align="right">
+                                            <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                                <Tooltip title="View Details">
+                                                    <IconButton size="small" onClick={() => navigate(`${po._id}`)}><ViewIcon color="primary" /></IconButton>
+                                                </Tooltip>
+                                                {po.status === 'pending' && (
+                                                    <Tooltip title="Approve">
+                                                        <IconButton size="small" onClick={() => handleApprove(po._id)}><ApproveIcon color="info" /></IconButton>
+                                                    </Tooltip>
+                                                )}
+                                                {po.status === 'approved' && po.type !== 'expense' && (
+                                                    <Tooltip title="Receive Items">
+                                                        <IconButton size="small" onClick={() => handleReceive(po._id)}><ReceiveIcon color="success" /></IconButton>
+                                                    </Tooltip>
+                                                )}
+                                                <Tooltip title="Delete">
+                                                    <IconButton size="small" onClick={() => po.status === 'draft' && handleDelete(po._id)} disabled={po.status !== 'draft'}><DeleteIcon color="error" /></IconButton>
+                                                </Tooltip>
+                                            </Stack>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+                            })}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
             )}
 
             {/* Pagination Sidebar */}

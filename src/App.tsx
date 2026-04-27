@@ -1,5 +1,5 @@
 import { Box, Button, CircularProgress, CssBaseline, Paper, ThemeProvider, Typography, useMediaQuery } from '@mui/material';
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Navigate, Route, BrowserRouter as Router, Routes, useParams, useLocation } from 'react-router-dom';
 import CustomerLayout from './components/CustomerLayout';
 import Layout from './components/Layout';
@@ -9,7 +9,7 @@ import { TenantRoutes } from './routes/TenantRoutes';
 import { AuthProvider } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationProvider';
 import { SocketProvider } from './context/SocketContext';
-import { Capacitor } from '@capacitor/core';
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import LoginPage from './pages/auth/LoginPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import CustomerOrderPage from './pages/customer/CustomerOrderPage';
@@ -76,7 +76,10 @@ import SuperAdminPortal from './pages/superadmin/SuperAdminPortal';
 import TenantsPage from './pages/superadmin/TenantsPage';
 import TicketsPage from './pages/superadmin/TicketsPage';
 import DeliveryReportsPage from './pages/superadmin/DeliveryReportsPage';
+import UberDirectPage from './pages/superadmin/UberDirectPage';
 import DemoRequestsPage from './pages/superadmin/DemoRequestsPage';
+import SmsOverviewPage from './pages/superadmin/SmsOverviewPage';
+import SmsLogsDetailPage from './pages/superadmin/SmsLogsDetailPage';
 import VendorsPage from './pages/vendors/VendorsPage';
 
 import { SettingsProvider, useSettings } from './context/SettingsContext';
@@ -152,17 +155,64 @@ const ThemedAppContent: React.FC = () => {
   );
 };
 
+const MobileBackHandler: React.FC = () => {
+  const location = useLocation();
+  const isNative = Capacitor.isNativePlatform();
+  const AppPlugin = registerPlugin<any>('App');
+
+  useEffect(() => {
+    if (!isNative) return;
+
+    let listenerHandle: { remove: () => Promise<void> } | null = null;
+    const setupListener = async () => {
+      listenerHandle = await AppPlugin.addListener('backButton', ({ canGoBack }: { canGoBack: boolean }) => {
+        const currentPath = location.pathname;
+        const storedTenantSlug = localStorage.getItem('tenantSlug');
+        const isAuthScreen = ['/login', '/reset-password', '/register'].some((path) => currentPath === path || currentPath.startsWith(`${path}/`));
+        const defaultPath = storedTenantSlug ? `/${storedTenantSlug}/dashboard` : '/dashboard';
+
+        // If we have browser history, go back within app.
+        if (canGoBack && !isAuthScreen) {
+          window.history.back();
+          return;
+        }
+
+        // If no history, route to dashboard instead of closing app.
+        if (currentPath !== defaultPath) {
+          window.location.href = defaultPath;
+          return;
+        }
+
+        // At dashboard root: keep app open (do not exit automatically).
+      });
+    };
+
+    setupListener();
+    return () => {
+      if (listenerHandle) {
+        listenerHandle.remove();
+      }
+    };
+  }, [isNative, location.pathname]);
+
+  return null;
+};
+
 const AppRoutes: React.FC = () => {
   const hostnameSlug = getTenantSlugFromHostname();
   const isNative = Capacitor.isNativePlatform();
+  const storedToken = typeof window !== 'undefined' ? localStorage.getItem('jwt') : null;
+  const storedTenantSlug = typeof window !== 'undefined' ? localStorage.getItem('tenantSlug') : null;
+  const defaultAuthedPath = hostnameSlug ? '/dashboard' : (storedTenantSlug ? `/${storedTenantSlug}/dashboard` : '/dashboard');
+  const hasStoredSession = !!storedToken;
 
   return (
     <Routes>
       {/* Public routes (no layout, no slug) */}
-      <Route path="/" element={isNative ? <Navigate to="/login" replace /> : <HomePage />} />
+      <Route path="/" element={isNative ? <Navigate to={hasStoredSession ? defaultAuthedPath : '/login'} replace /> : <HomePage />} />
       <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
       <Route path="/terms-and-conditions" element={<TermsConditionsPage />} />
-      <Route path="/login" element={<LoginPage />} />
+      <Route path="/login" element={hasStoredSession ? <Navigate to={defaultAuthedPath} replace /> : <LoginPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/register" element={<RestaurantRegisterPage />} />
 
@@ -176,6 +226,9 @@ const AppRoutes: React.FC = () => {
           <Route path="/superadmin/tickets" element={<TicketsPage />} />
           <Route path="/superadmin/delivery-reports" element={<DeliveryReportsPage />} />
           <Route path="/superadmin/demo-requests" element={<DemoRequestsPage />} />
+          <Route path="/superadmin/sms-logs" element={<SmsOverviewPage />} />
+          <Route path="/superadmin/sms-logs/:tenantId" element={<SmsLogsDetailPage />} />
+          <Route path="/superadmin/uber-direct" element={<UberDirectPage />} />
         </Route>
       </Route>
 
@@ -196,10 +249,10 @@ const AppRoutes: React.FC = () => {
       )}
 
       {/* Fallback for old routes without slug - redirect to login */}
-      <Route path="/dashboard" element={<Navigate to="/login" replace />} />
-      <Route path="/users" element={<Navigate to="/login" replace />} />
+      <Route path="/dashboard" element={<Navigate to={hasStoredSession ? defaultAuthedPath : '/login'} replace />} />
+      <Route path="/users" element={<Navigate to={hasStoredSession ? defaultAuthedPath : '/login'} replace />} />
       <Route path="/unauthorized" element={<Unauthorized />} />
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      <Route path="*" element={<Navigate to={hasStoredSession ? defaultAuthedPath : '/login'} replace />} />
     </Routes>
   );
 };
@@ -215,6 +268,7 @@ const App: React.FC = () => {
         <AuthProvider>
           <SettingsProvider>
             <GuestCartProvider>
+              <MobileBackHandler />
               <ThemedAppContent />
             </GuestCartProvider>
           </SettingsProvider>

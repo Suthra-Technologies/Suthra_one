@@ -1,6 +1,9 @@
 import { alpha, createTheme, type Theme } from '@mui/material/styles';
 import { BRAND_CONFIG } from '../config/brandConfig';
 
+const MOBILE_HEADING_SIZE = '1.25rem';
+const MOBILE_BODY_SIZE = '0.875rem';
+
 const getPalette = (mode: 'light' | 'dark') => ({
     mode,
     primary: {
@@ -46,15 +49,88 @@ export const getTheme = (mode: 'light' | 'dark'): Theme => createTheme({
     palette: getPalette(mode),
     typography: {
         fontFamily: '"Outfit", "Inter", "Roboto", "Helvetica", "Arial", sans-serif',
-        h1: { fontWeight: 700 },
-        h2: { fontWeight: 700 },
-        h3: { fontWeight: 600 },
-        h4: { fontWeight: 600 },
-        h5: { fontWeight: 600 },
-        h6: { fontWeight: 600 },
-        subtitle1: { fontWeight: 500 },
-        subtitle2: { fontWeight: 600 },
-        button: { fontWeight: 600, textTransform: 'none' },
+        h1: { 
+            fontWeight: 800,
+            fontSize: '2.5rem',
+            lineHeight: 1.2,
+            '@media (max-width:600px)': {
+                fontSize: '1.25rem',
+                color: '#000000',
+            }
+        },
+        h2: { 
+            fontWeight: 800,
+            fontSize: '2.25rem',
+            lineHeight: 1.2,
+            '@media (max-width:600px)': {
+                fontSize: '1.25rem',
+                color: '#000000',
+            }
+        },
+        h3: { 
+            fontWeight: 700,
+            fontSize: '2rem',
+            lineHeight: 1.2,
+            '@media (max-width:600px)': {
+                fontSize: '1.25rem',
+                color: '#000000',
+            }
+        },
+        h4: { 
+            fontWeight: 700,
+            fontSize: '2.125rem',
+            lineHeight: 1.2,
+            '@media (max-width:600px)': {
+                fontSize: '1.25rem',
+                color: '#000000',
+            }
+        },
+        h5: { 
+            fontWeight: 700,
+            fontSize: '1.5rem',
+            lineHeight: 1.2,
+            '@media (max-width:600px)': {
+                fontSize: '1.25rem',
+                color: '#000000',
+            }
+        },
+        h6: { 
+            fontWeight: 700,
+            fontSize: '1.25rem',
+            lineHeight: 1.2,
+            '@media (max-width:600px)': {
+                fontSize: '1.25rem',
+                color: '#000000',
+            }
+        },
+        body1: {
+            fontSize: '1rem',
+            '@media (max-width:600px)': {
+                fontSize: '0.925rem',
+            }
+        },
+        body2: {
+            fontSize: '0.875rem',
+            '@media (max-width:600px)': {
+                fontSize: '0.85rem',
+            }
+        },
+        subtitle1: { 
+            fontWeight: 600,
+            fontSize: '1.1rem',
+            '@media (max-width:600px)': {
+                fontSize: '0.95rem',
+            }
+        },
+        subtitle2: { 
+            fontWeight: 600,
+            fontSize: '0.95rem'
+        },
+        button: { 
+            fontWeight: 600, 
+            textTransform: 'none',
+            fontSize: '0.875rem'
+        },
     },
     shape: {
         borderRadius: 12,
@@ -87,6 +163,23 @@ export const getTheme = (mode: 'light' | 'dark'): Theme => createTheme({
                     },
                     '&::-webkit-scrollbar-thumb:hover': {
                         background: mode === 'light' ? '#a8a8a8' : '#475569',
+                    },
+                },
+            },
+        },
+        MuiTypography: {
+            styleOverrides: {
+                root: {
+                    '@media (max-width:600px)': {
+                        '&.MuiTypography-h1, &.MuiTypography-h2, &.MuiTypography-h3, &.MuiTypography-h4, &.MuiTypography-h5, &.MuiTypography-h6': {
+                            fontSize: `${MOBILE_HEADING_SIZE} !important`,
+                            color: '#000000 !important',
+                            textAlign: 'center !important',
+                            width: '100%',
+                        },
+                        '&.MuiTypography-body1, &.MuiTypography-body2, &.MuiTypography-subtitle1, &.MuiTypography-subtitle2, &.MuiTypography-caption': {
+                            fontSize: `${MOBILE_BODY_SIZE} !important`,
+                        },
                     },
                 },
             },

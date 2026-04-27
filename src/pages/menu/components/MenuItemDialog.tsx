@@ -31,7 +31,8 @@ import {
     TextField,
     Typography,
     alpha,
-    useTheme
+    useTheme,
+    useMediaQuery
 } from '@mui/material';
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
@@ -75,6 +76,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
     trays
 }) => {
     const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const navigate = useNavigate();
     const { formatCurrency } = useSettings();
     const [dialogTab, setDialogTab] = useState(0);
@@ -312,48 +314,86 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
     };
 
     return (
-        <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
-            <DialogTitle sx={{ m: 0, p: 2 }}>
-                {editingMenuItem ? 'Edit Menu Item' : 'Add New Menu Item'}
+        <Dialog 
+            open={open} 
+            onClose={onClose} 
+            maxWidth="lg" 
+            fullWidth 
+            PaperProps={{
+                sx: {
+                    borderRadius: 3,
+                    boxShadow: theme.shadows[10],
+                    backgroundImage: `linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05))`,
+                    maxHeight: isMobile ? '80vh' : '90vh',
+                    m: isMobile ? 1.5 : 2
+                }
+            }}
+        >
+            <DialogTitle sx={{ 
+                m: 0, 
+                p: { xs: 1.25, sm: 2.5 }, 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: isMobile ? 'center' : 'flex-start',
+                borderBottom: isMobile ? 1 : 0,
+                borderColor: 'divider',
+                bgcolor: isMobile ? alpha(theme.palette.primary.main, 0.03) : 'transparent'
+            }}>
+                <Typography variant={isMobile ? "subtitle1" : "h5"} fontWeight={800} color="primary.main">
+                    {editingMenuItem ? 'Edit Menu Item' : 'Add New Menu Item'}
+                </Typography>
                 <IconButton
                     aria-label="close"
                     onClick={onClose}
                     size="small"
                     sx={{
                         position: 'absolute',
-                        right: 8,
-                        top: 8,
-                        bgcolor: theme.palette.error.main,
-                        color: '#fff',
-                        width: 28,
-                        height: 28,
-                        minWidth: 28,
-                        padding: '4px',
-                        fontSize: '14px',
-                        '&:hover': { bgcolor: alpha(theme.palette.error.main, 0.85) },
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
+                        right: 12,
+                        top: 12,
+                        bgcolor: alpha(theme.palette.error.main, 0.1),
+                        color: theme.palette.error.main,
+                        width: 32,
+                        height: 32,
+                        transition: 'all 0.2s',
+                        '&:hover': { 
+                            bgcolor: theme.palette.error.main,
+                            color: '#fff',
+                            transform: 'rotate(90deg)'
+                        },
                     }}
                 >
-                    <CloseIcon sx={{ fontSize: 14 }} />
+                    <CloseIcon sx={{ fontSize: 18 }} />
                 </IconButton>
             </DialogTitle>
-            <DialogContent sx={{ '& .MuiFormLabel-asterisk': { color: 'red' } }}>
-                <Tabs value={dialogTab} onChange={(_, v) => setDialogTab(v)} sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>
+            <DialogContent sx={{ 
+                p: { xs: 1, sm: 3 },
+                pt: { xs: 0, sm: 1 },
+                '& .MuiFormLabel-asterisk': { color: 'red' } 
+            }}>
+                <Tabs 
+                    value={dialogTab} 
+                    onChange={(_, v) => setDialogTab(v)} 
+                    sx={{ 
+                        mb: { xs: 1, sm: 2 }, 
+                        borderBottom: 1, 
+                        borderColor: 'divider',
+                        minHeight: { xs: 36, sm: 48 },
+                        '& .MuiTab-root': { py: 0.5, minHeight: { xs: 36, sm: 48 } }
+                    }}
+                >
                     <Tab label="Details" />
                     <Tab label="History" disabled={!editingMenuItem} />
                 </Tabs>
                 {dialogTab === 0 && (
-                    <Grid container spacing={3} sx={{ mt: 1 }}>
+                    <Grid container spacing={isMobile ? 1 : 3} sx={{ mt: isMobile ? 0 : 1 }}>
                         {/* Left Column */}
                         <Grid item xs={12} md={6}>
-                            <Stack spacing={3}>
-                                <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: alpha(theme.palette.primary.main, 0.02) }}>
-                                    <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Stack spacing={isMobile ? 1.5 : 3}>
+                                <Paper variant="outlined" sx={{ p: isMobile ? 1 : 2, borderRadius: 2, bgcolor: alpha(theme.palette.primary.main, 0.02) }}>
+                                    <Typography variant={isMobile ? "caption" : "subtitle2"} fontWeight="bold" sx={{ mb: isMobile ? 1 : 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                                         <RestaurantIcon fontSize="small" color="primary" /> Primary Information
                                     </Typography>
-                                    <Stack spacing={2}>
+                                    <Stack spacing={isMobile ? 1 : 2}>
                                         <TextField
                                             label="Item Name"
                                             value={menuItemForm.name}
@@ -363,9 +403,10 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                             helperText={menuItemTouched.name && !menuItemForm.name.trim() ? 'Item name is required' : ''}
                                             fullWidth
                                             required
+                                            size={isMobile ? "small" : "medium"}
                                         />
 
-                                        <FormControl fullWidth error={menuItemTouched.category && !menuItemForm.category}>
+                                        <FormControl fullWidth size={isMobile ? "small" : "medium"} error={menuItemTouched.category && !menuItemForm.category}>
                                             <InputLabel>Category</InputLabel>
                                             <Select
                                                 value={menuItemForm.category}
@@ -380,7 +421,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                             </Select>
                                         </FormControl>
 
-                                        <FormControl fullWidth disabled={!menuItemForm.category}>
+                                        <FormControl fullWidth size={isMobile ? "small" : "medium"} disabled={!menuItemForm.category}>
                                             <InputLabel>Subcategory</InputLabel>
                                             <Select
                                                 value={menuItemForm.subcategory}
@@ -394,7 +435,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                             </Select>
                                         </FormControl>
 
-                                        <FormControl fullWidth>
+                                        <FormControl fullWidth size={isMobile ? "small" : "medium"}>
                                             <InputLabel>Food Type</InputLabel>
                                             <Select
                                                 value={menuItemForm.foodType}
@@ -412,18 +453,19 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                             onChange={(e) => setMenuItemForm({ ...menuItemForm, description: e.target.value })}
                                             fullWidth
                                             multiline
-                                            rows={3}
+                                            rows={2}
+                                            size={isMobile ? "small" : "medium"}
                                         />
                                     </Stack>
                                 </Paper>
 
-                                <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-                                    <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Paper variant="outlined" sx={{ p: isMobile ? 1 : 2, borderRadius: 2 }}>
+                                    <Typography variant={isMobile ? "caption" : "subtitle2"} fontWeight="bold" sx={{ mb: isMobile ? 1 : 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                                         <ImageIcon fontSize="small" color="primary" /> Media & Image
                                     </Typography>
-                                    <Stack spacing={2}>
-                                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ xs: 'stretch', sm: 'center' }}>
-                                            <Button variant="outlined" component="label" startIcon={<ImageIcon fontSize="small" />} color="primary">
+                                    <Stack spacing={isMobile ? 1 : 2}>
+                                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ xs: 'stretch', sm: 'center' }}>
+                                            <Button variant="outlined" component="label" startIcon={<ImageIcon fontSize="small" />} color="primary" size={isMobile ? "small" : "medium"}>
                                                 Upload Image
                                                 <input type="file" hidden accept="image/*" onChange={handleUploadImage} />
                                             </Button>
@@ -443,12 +485,12 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
 
                         {/* Right Column */}
                         <Grid item xs={12} md={6}>
-                            <Stack spacing={3}>
-                                <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: alpha(theme.palette.secondary.main, 0.02) }}>
-                                    <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Stack spacing={isMobile ? 1 : 3}>
+                                <Paper variant="outlined" sx={{ p: isMobile ? 1 : 2, borderRadius: 2, bgcolor: alpha(theme.palette.secondary.main, 0.02) }}>
+                                    <Typography variant={isMobile ? "caption" : "subtitle2"} fontWeight="bold" sx={{ mb: isMobile ? 1 : 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                                         <StraightenIcon fontSize="small" color="secondary" /> Pricing & Serving
                                     </Typography>
-                                    <Stack spacing={2}>
+                                    <Stack spacing={isMobile ? 1 : 2}>
                                         <TextField
                                             label="Standard Price (Per Item) ($)"
                                             type="number"
@@ -461,12 +503,13 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                             error={menuItemTouched.price && (menuItemForm.price === '' || parseFloat(menuItemForm.price as any) <= 0)}
                                             fullWidth
                                             required
+                                            size={isMobile ? "small" : "medium"}
                                             inputProps={{ min: 0.01, step: 0.01 }}
                                         />
 
                                         {menuItemForm.isCateringAvailable && (
-                                            <Box sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
-                                                <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+                                            <Box sx={{ p: isMobile ? 1 : 2, bgcolor: 'background.paper', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+                                                <FormControl fullWidth size="small" sx={{ mb: 1 }}>
                                                     <InputLabel>Primary Tray for Display</InputLabel>
                                                     <Select
                                                         value={menuItemForm.baseTray}
@@ -478,17 +521,17 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                                         ))}
                                                     </Select>
                                                 </FormControl>
-                                                <Typography variant="caption" fontWeight="bold" color="secondary" sx={{ mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', textTransform: 'uppercase' }}>
+                                                <Typography variant="caption" fontWeight="bold" color="secondary" sx={{ mb: 0.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', textTransform: 'uppercase' }}>
                                                     Catering Tray Pricing
                                                 </Typography>
-                                                <Stack spacing={1.5}>
+                                                <Stack spacing={0.5}>
                                                     {trays.map((t) => {
                                                         const option = menuItemForm.trayOptions.find(o => o.tray === t._id);
                                                         return (
-                                                            <Stack key={t._id} direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
-                                                                <Box sx={{ flex: 1, minWidth: 0 }}><Typography variant="body2" noWrap>{t.name}</Typography></Box>
+                                                            <Stack key={t._id} direction="row" alignItems="center" spacing={1} sx={{ mb: 0.25 }}>
+                                                                <Box sx={{ flex: 1, minWidth: 0 }}><Typography variant="caption" noWrap>{t.name}</Typography></Box>
                                                                 <TextField
-                                                                    size="small" sx={{ width: 90 }} label="Serves" type="number"
+                                                                    size="small" sx={{ width: 60 }} label="Serves" type="number"
                                                                     value={option?.servingSize || menuItemForm.servingSize || 1}
                                                                     onChange={(e) => {
                                                                         const val = parseInt(e.target.value);
@@ -501,7 +544,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                                                     }}
                                                                 />
                                                                 <TextField
-                                                                    size="small" sx={{ width: 110 }} label="Price" type="number"
+                                                                    size="small" sx={{ width: 70 }} label="Price" type="number"
                                                                     value={option?.price || ''}
                                                                     onChange={(e) => {
                                                                         const val = e.target.value === '' ? null : parseFloat(e.target.value);
@@ -523,27 +566,18 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                                 </Stack>
                                             </Box>
                                         )}
-
-                                        {/* <TextField
-                                            label="Tax Rate (%)"
-                                            type="number"
-                                            value={menuItemForm.taxRate}
-                                            onChange={(e) => setMenuItemForm({ ...menuItemForm, taxRate: e.target.value })}
-                                            fullWidth
-                                            placeholder="Override Global Tax"
-                                        /> */}
                                     </Stack>
                                 </Paper>
 
-                                <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-                                    <Typography variant="subtitle2" fontWeight="bold" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Paper variant="outlined" sx={{ p: isMobile ? 1 : 2, borderRadius: 2 }}>
+                                    <Typography variant={isMobile ? "caption" : "subtitle2"} fontWeight="bold" sx={{ mb: isMobile ? 0.5 : 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                                         <AddIcon fontSize="small" color="primary" /> Inventory & Visibility
                                     </Typography>
-                                    <Stack spacing={1}>
-                                        <FormControlLabel control={<Switch checked={menuItemForm.isAvailable} onChange={(e) => setMenuItemForm({ ...menuItemForm, isAvailable: e.target.checked })} />} label="Available for ordering" />
-                                        <FormControlLabel control={<Switch checked={menuItemForm.isAutoDebit} onChange={(e) => setMenuItemForm({ ...menuItemForm, isAutoDebit: e.target.checked })} />} label="Auto Debit from Inventory" />
-                                        <FormControlLabel control={<Switch checked={menuItemForm.isCateringAvailable} onChange={(e) => setMenuItemForm({ ...menuItemForm, isCateringAvailable: e.target.checked })} />} label="Available for Catering" />
-                                        <FormControlLabel control={<Switch checked={menuItemForm.isSpiceLevelAvailable} onChange={(e) => setMenuItemForm({ ...menuItemForm, isSpiceLevelAvailable: e.target.checked })} />} label="Enable Spice Level Selection" />
+                                    <Stack spacing={0}>
+                                        <FormControlLabel control={<Switch size="small" checked={menuItemForm.isAvailable} onChange={(e) => setMenuItemForm({ ...menuItemForm, isAvailable: e.target.checked })} />} label={<Typography variant="body2">Available for ordering</Typography>} />
+                                        <FormControlLabel control={<Switch size="small" checked={menuItemForm.isAutoDebit} onChange={(e) => setMenuItemForm({ ...menuItemForm, isAutoDebit: e.target.checked })} />} label={<Typography variant="body2">Auto Debit from Inventory</Typography>} />
+                                        <FormControlLabel control={<Switch size="small" checked={menuItemForm.isCateringAvailable} onChange={(e) => setMenuItemForm({ ...menuItemForm, isCateringAvailable: e.target.checked })} />} label={<Typography variant="body2">Available for Catering</Typography>} />
+                                        <FormControlLabel control={<Switch size="small" checked={menuItemForm.isSpiceLevelAvailable} onChange={(e) => setMenuItemForm({ ...menuItemForm, isSpiceLevelAvailable: e.target.checked })} />} label={<Typography variant="body2">Enable Spice Level Selection</Typography>} />
                                     </Stack>
                                 </Paper>
                             </Stack>
@@ -551,14 +585,15 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
 
                         {/* Weekly Availability Section */}
                         <Grid item xs={12}>
-                            <Paper variant="outlined" sx={{ p: 2, borderRadius: 2 }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: menuItemForm.isWeeklyScheduleEnabled ? 3 : 0 }}>
-                                    <Typography variant="subtitle2" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Paper variant="outlined" sx={{ p: isMobile ? 1 : 2, borderRadius: 2 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: menuItemForm.isWeeklyScheduleEnabled ? 1 : 0 }}>
+                                    <Typography variant={isMobile ? "caption" : "subtitle2"} fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                         <TodayIcon fontSize="small" color="primary" /> Weekly Availability
                                     </Typography>
                                     <FormControlLabel
                                         control={
                                             <Switch
+                                                size="small"
                                                 checked={menuItemForm.isWeeklyScheduleEnabled}
                                                 onChange={(e) => setMenuItemForm({ ...menuItemForm, isWeeklyScheduleEnabled: e.target.checked })}
                                                 color="primary"
@@ -571,7 +606,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                 </Box>
 
                                 {menuItemForm.isWeeklyScheduleEnabled && (
-                                    <Grid container spacing={3}>
+                                    <Grid container spacing={1.5}>
                                         <Grid item xs={12} sm={6}>
                                             <FormControl fullWidth size="small">
                                                 <InputLabel>Availability Type</InputLabel>
@@ -601,13 +636,13 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                         </Grid>
 
                                         <Grid item xs={12}>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+                                            <Box sx={{ display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', gap: 1, mb: 0.5, flexDirection: isMobile ? 'column' : 'row' }}>
                                                 <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>Quick Select:</Typography>
-                                                <Stack direction="row" spacing={1}>
+                                                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ gap: 0.5 }}>
                                                     <Button
                                                         size="small"
                                                         variant="outlined"
-                                                        sx={{ borderRadius: 2, textTransform: 'none', px: 2 }}
+                                                        sx={{ borderRadius: 2, textTransform: 'none', px: 1, fontSize: '0.7rem' }}
                                                         onClick={() => setMenuItemForm({ ...menuItemForm, availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'] })}
                                                     >
                                                         Weekdays
@@ -615,7 +650,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                                     <Button
                                                         size="small"
                                                         variant="outlined"
-                                                        sx={{ borderRadius: 2, textTransform: 'none', px: 2 }}
+                                                        sx={{ borderRadius: 2, textTransform: 'none', px: 1, fontSize: '0.7rem' }}
                                                         onClick={() => setMenuItemForm({ ...menuItemForm, availableDays: ['saturday', 'sunday'] })}
                                                     >
                                                         Weekend
@@ -623,7 +658,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                                     <Button
                                                         size="small"
                                                         variant="outlined"
-                                                        sx={{ borderRadius: 2, textTransform: 'none', px: 2 }}
+                                                        sx={{ borderRadius: 2, textTransform: 'none', px: 1, fontSize: '0.7rem' }}
                                                         onClick={() => setMenuItemForm({ ...menuItemForm, availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] })}
                                                     >
                                                         All Days
@@ -702,14 +737,45 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                     </Grid>
                 )}
                 {dialogTab === 1 && editingMenuItem && (
-                    <Box sx={{ mt: 2 }}>
+                    <Box sx={{ mt: 1 }}>
                         <ActionHistoryList history={editingMenuItem.actionHistory || []} />
                     </Box>
                 )}
             </DialogContent>
-            <DialogActions sx={{ p: 2.5, pt: 1.5, gap: 1.5 }}>
-                <Button onClick={onClose} variant="outlined" sx={{ borderRadius: 2, px: 3, color: 'text.secondary', borderColor: 'divider' }}>Cancel</Button>
-                <Button onClick={handleSaveMenuItem} variant="contained" disabled={isSaving} sx={{ borderRadius: 2, px: 3, boxShadow: theme.shadows[4] }}>
+            <DialogActions sx={{ 
+                p: { xs: 1, sm: 2 }, 
+                flexDirection: isMobile ? 'column-reverse' : 'row',
+                gap: 1,
+                borderTop: 1,
+                borderColor: 'divider',
+                bgcolor: isMobile ? alpha(theme.palette.primary.main, 0.03) : 'transparent'
+            }}>
+                <Button 
+                    onClick={onClose} 
+                    variant="outlined" 
+                    fullWidth={isMobile}
+                    sx={{ 
+                        borderRadius: 2, 
+                        px: 3, 
+                        color: 'text.secondary', 
+                        borderColor: 'divider',
+                        order: isMobile ? 2 : 1
+                    }}
+                >
+                    Cancel
+                </Button>
+                <Button 
+                    onClick={handleSaveMenuItem} 
+                    variant="contained" 
+                    disabled={isSaving} 
+                    fullWidth={isMobile}
+                    sx={{ 
+                        borderRadius: 2, 
+                        px: 3, 
+                        boxShadow: theme.shadows[4],
+                        order: isMobile ? 1 : 2
+                    }}
+                >
                     {isSaving ? <CircularProgress size={24} /> : (editingMenuItem ? 'Update Item' : 'Save Item')}
                 </Button>
             </DialogActions>

@@ -95,6 +95,59 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ open, onClose, no
     return colorMap[priority] || 'default';
   };
 
+  const getOrderNotificationDetails = (notification: Notification) => {
+    const sourceOrder = notification.data?.order || notification.data || {};
+
+    const rawOrderId =
+      sourceOrder.orderNumber ??
+      sourceOrder.orderId ??
+      sourceOrder.order_id ??
+      notification.data?.orderNumber ??
+      notification.data?.orderId ??
+      notification.data?.order_id;
+
+    const orderIdString = String(rawOrderId ?? '');
+    const displayOrderId = orderIdString
+      ? (orderIdString.includes('-') ? orderIdString.split('-').pop() : orderIdString)
+      : '--';
+
+    const rawToken =
+      sourceOrder.dailyTokenNumber ??
+      sourceOrder.tokenNumber ??
+      sourceOrder.tokenNo ??
+      sourceOrder.token_no ??
+      sourceOrder.token ??
+      notification.data?.dailyTokenNumber ??
+      notification.data?.tokenNumber ??
+      notification.data?.tokenNo ??
+      notification.data?.token_no ??
+      notification.data?.token;
+
+    const tokenDigits = rawToken === null || rawToken === undefined ? '' : String(rawToken).replace(/\D/g, '');
+    const displayTokenNo = tokenDigits ? tokenDigits.padStart(2, '0') : '--';
+
+    const rawOrderType =
+      sourceOrder.orderType ??
+      sourceOrder.type ??
+      sourceOrder.order_type ??
+      notification.data?.orderType ??
+      notification.data?.type ??
+      notification.data?.order_type;
+
+    const displayOrderType = rawOrderType
+      ? String(rawOrderType)
+          .replace(/_/g, ' ')
+          .replace(/\b\w/g, (char) => char.toUpperCase())
+      : '--';
+
+    const displayStatus =
+      notification.data?.status ??
+      sourceOrder.status ??
+      'Update';
+
+    return { displayOrderId, displayTokenNo, displayOrderType, displayStatus };
+  };
+
   const handleMarkAllAsRead = () => {
     markAllAsRead();
   };
@@ -180,11 +233,30 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ open, onClose, no
       </Box>
       <Divider />
       {sortedNotifications.length > 0 && (
-        <Box sx={{ p: 2, display: 'flex', gap: 1 }}>
-          <Button size="small" variant="outlined" onClick={handleMarkAllAsRead} sx={{ flex: 1 }}>
+        <Box sx={{
+          px: 2,
+          pt: 1.5,
+          pb: 1.5,
+          mt: 1,
+          display: 'flex',
+          gap: 1,
+          borderBottom: '1px solid rgba(0,0,0,0.12)',
+        }}>
+          <Button
+            size="small"
+            variant="outlined"
+            onClick={handleMarkAllAsRead}
+            sx={{ flex: 1, fontSize: { xs: '0.72rem', sm: '0.8rem' }, py: { xs: 0.75, sm: 1 }, textTransform: 'none', borderRadius: 2 }}
+          >
             Mark All Read
           </Button>
-          <Button size="small" variant="outlined" color="error" onClick={handleClearAll} sx={{ flex: 1 }}>
+          <Button
+            size="small"
+            variant="outlined"
+            color="error"
+            onClick={handleClearAll}
+            sx={{ flex: 1, fontSize: { xs: '0.72rem', sm: '0.8rem' }, py: { xs: 0.75, sm: 1 }, textTransform: 'none', borderRadius: 2 }}
+          >
             Clear All
           </Button>
         </Box>
@@ -210,69 +282,146 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ open, onClose, no
                     borderLeftColor: 'error.main',
                   }}
                 >
-                  <Box sx={{ mr: 2, mt: 0.5 }}>{getNotificationIcon(notification.type)}</Box>
-                  <ListItemText
-                    primary={
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                        <Typography variant="subtitle2" fontWeight="medium" component="span">
-                          {notification.title}
-                        </Typography>
-                        {notification.priority && notification.priority !== 'low' && (
-                          <Chip
-                            label={getPriorityLabel(notification.priority)}
-                            size="small"
-                            color={getPriorityColor(notification.priority)}
-                            sx={{ height: 18, fontSize: '0.625rem' }}
-                          />
-                        )}
-                      </Box>
-                    }
-                    secondary={
-                      <Box component="span" sx={{ display: 'block' }}>
-                        <Typography variant="body2" color="text.secondary" component="span" sx={{ display: 'block', mb: 0.5 }}>
-                          {notification.message}
-                        </Typography>
-                        <Box component="span" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <Typography variant="caption" color="text.secondary" component="span">
-                            {formatDistanceToNow(new Date(notification.timestamp), { addSuffix: true })}
+                  <Box sx={{ mr: 2, mt: 0.5, flexShrink: 0 }}>{getNotificationIcon(notification.type)}</Box>
+                  
+                  {/* Conditional Rendering: Premium Single Card for Order Updates vs Standard Layout */}
+                  {(notification.data?.orderId || notification.data?.orderNumber || notification.data?.status) ? (
+                    <Box sx={{ flexGrow: 1 }}>
+                      {(() => {
+                        const { displayOrderId, displayTokenNo, displayOrderType, displayStatus } =
+                          getOrderNotificationDetails(notification);
+
+                        return (
+                      <Box sx={{
+                        p: 1.75,
+                        borderRadius: '16px',
+                        background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+                        color: 'white',
+                        boxShadow: '0 4px 15px rgba(99, 102, 241, 0.25)',
+                        position: 'relative',
+                        overflow: 'hidden'
+                      }}>
+                        {/* Decorative background element */}
+                        <Box sx={{
+                          position: 'absolute',
+                          top: -20,
+                          right: -20,
+                          width: 80,
+                          height: 80,
+                          borderRadius: '50%',
+                          background: 'rgba(255,255,255,0.1)',
+                        }} />
+                        
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+                          <Box>
+                            <Typography sx={{ fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.9, mb: 0.25 }}>
+                              Order Update
+                            </Typography>
+                             <Typography sx={{ fontSize: '0.68rem', opacity: 0.95, fontWeight: 700 }}>
+                            Token No: <Box component="span" sx={{ fontWeight: 900 }}>{displayTokenNo}</Box>
                           </Typography>
-                          {notification.type && (
-                            <Chip
-                              label={notification.type.toUpperCase()}
+                          </Box>
+                          {!notification.read && (
+                            <IconButton
                               size="small"
-                              variant="outlined"
-                              color={getNotificationColor(notification.type)}
-                              sx={{ height: 16, fontSize: '0.625rem' }}
+                              onClick={(e) => handleMarkAsRead(e, notification.id)}
+                              sx={{ color: 'white', p: 0.5, bgcolor: 'rgba(255,255,255,0.2)', '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' } }}
+                            >
+                              <CheckCircle sx={{ fontSize: 16 }} />
+                            </IconButton>
+                          )}
+                        </Box>
+
+                        <Box sx={{ display: 'flex', gap: 1.25, flexWrap: 'wrap', mb: 1.25 }}>
+             
+                          <Typography sx={{ fontSize: '0.9rem', fontWeight: 900, letterSpacing: '0.02em' }}>
+                              Order ID: {displayOrderId}
+                            </Typography>
+                          <Typography sx={{ fontSize: '0.68rem', opacity: 0.95, fontWeight: 700 }}>
+                            Type: <Box component="span" sx={{ fontWeight: 900 }}>{displayOrderType}</Box>
+                          </Typography>
+                        </Box>
+
+                        <Box sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
+                          <Box>
+                             <Typography sx={{ fontSize: '0.65rem', opacity: 0.8, fontWeight: 500 }}>
+                                {formatDistanceToNow(new Date(notification.timestamp), { addSuffix: true })}
+                             </Typography>
+                          </Box>
+                          
+                          {/* HIGHLIGHTED STATUS */}
+                          <Box sx={{
+                            bgcolor: 'white',
+                            color: '#6366f1',
+                            px: 1.5,
+                            py: 0.6,
+                            borderRadius: '8px',
+                            fontWeight: 950,
+                            fontSize: '0.7rem',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.05em',
+                            boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
+                          }}>
+                            {String(displayStatus).replace(/_/g, ' ')}
+                          </Box>
+                        </Box>
+                      </Box>
+                        );
+                      })()}
+                    </Box>
+                  ) : (
+                    <ListItemText
+                      primary={
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.5, flexWrap: 'wrap' }}>
+                          <Typography variant="subtitle2" fontWeight={900} component="span" sx={{ fontSize: '0.8rem', color: 'text.primary' }}>
+                             {notification.title}
+                          </Typography>
+                          {notification.priority && notification.priority !== 'low' && (
+                            <Chip
+                              label={getPriorityLabel(notification.priority)}
+                              size="small"
+                              color={getPriorityColor(notification.priority)}
+                              sx={{ height: 18, fontSize: '0.6rem', fontWeight: 900 }}
                             />
                           )}
                         </Box>
-                        {notification.data && notification.data.orderId && (
-                          <Typography variant="caption" color="primary.main" component="span" sx={{ display: 'block', mt: 0.5 }}>
-                            Order #{notification.data.orderId}
+                      }
+                      secondary={
+                        <Box component="span" sx={{ display: 'block' }}>
+                          <Typography variant="body2" color="text.secondary" component="span" sx={{ display: 'block', mb: 0.5 }}>
+                            {notification.message}
                           </Typography>
-                        )}
-                        {notification.data && notification.data.tableNumber && (
-                          <Typography variant="caption" color="secondary.main" component="span" sx={{ display: 'block' }}>
-                            Table {notification.data.tableNumber}
-                          </Typography>
-                        )}
-                      </Box>
-                    }
-                  />
-                  <ListItemSecondaryAction>
-                    {!notification.read && (
-                      <Tooltip title="Mark as Read">
-                        <IconButton
-                          edge="end"
-                          size="small"
-                          onClick={(e) => handleMarkAsRead(e, notification.id)}
-                          sx={{ color: 'primary.main' }}
-                        >
-                          <CheckCircle sx={{ fontSize: 20 }} />
-                        </IconButton>
-                      </Tooltip>
-                    )}
-                  </ListItemSecondaryAction>
+                          <Box component="span" sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1 }}>
+                            <Typography variant="caption" color="text.secondary" component="span">
+                              {formatDistanceToNow(new Date(notification.timestamp), { addSuffix: true })}
+                            </Typography>
+                            <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              {notification.type && (
+                                <Chip
+                                  label={notification.type.toUpperCase()}
+                                  size="small"
+                                  variant="outlined"
+                                  color={getNotificationColor(notification.type)}
+                                  sx={{ height: 16, fontSize: '0.625rem' }}
+                                />
+                              )}
+                              {!notification.read && (
+                                <Tooltip title="Mark as Read">
+                                  <IconButton
+                                    size="small"
+                                    onClick={(e) => handleMarkAsRead(e, notification.id)}
+                                    sx={{ color: 'primary.main', p: 0.25 }}
+                                  >
+                                    <CheckCircle sx={{ fontSize: 18 }} />
+                                  </IconButton>
+                                </Tooltip>
+                              )}
+                            </Box>
+                          </Box>
+                        </Box>
+                      }
+                    />
+                  )}
                 </ListItem>
                 {index < sortedNotifications.length - 1 && <Divider />}
               </React.Fragment>
