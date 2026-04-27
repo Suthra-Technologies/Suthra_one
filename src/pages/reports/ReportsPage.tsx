@@ -1268,79 +1268,59 @@ const ReportsPage: React.FC = () => {
                                         <Grid item xs={12}>
                                             <Box sx={{ width: "100%", height: isMobile ? 220 : 320 }}>
                                                 <ResponsiveContainer width="100%" height="100%">
-                                                    <PieChart>
-                                                        <Pie
-                                                            minAngle={3}
-                                                            data={safeBestPie}
-                                                            dataKey="totalQuantity"
-                                                            nameKey="itemName"
-                                                            cx="50%"
-                                                            cy="50%"
-                                                            innerRadius={isMobile ? 55 : 60}
-                                                            outerRadius={isMobile ? 95 : 90}
-                                                            stroke="none"
-                                                            paddingAngle={2}
-                                                            isAnimationActive={false}
-                                                            label={isMobile ? false : ({ cx, cy, midAngle, outerRadius, percent }) => {
-                                                                if (!percent) return null;
-                                                                const value = Math.round(percent * 100);
-                                                                if (value < 2) return null;
-                                                                const RADIAN = Math.PI / 180;
-                                                                const sx = cx + outerRadius * Math.cos(-midAngle * RADIAN);
-                                                                const sy = cy + outerRadius * Math.sin(-midAngle * RADIAN);
-                                                                const mx = cx + (outerRadius + 20) * Math.cos(-midAngle * RADIAN);
-                                                                const my = cy + (outerRadius + 20) * Math.sin(-midAngle * RADIAN);
-                                                                const ex = cx + (outerRadius + 45) * Math.cos(-midAngle * RADIAN);
-                                                                const ey = cy + (outerRadius + 45) * Math.sin(-midAngle * RADIAN);
-                                                                const textAnchor = ex > cx ? "start" : "end";
-                                                                return (
-                                                                    <g>
-                                                                        <polyline
-                                                                            points={`${sx},${sy} ${mx},${my} ${ex},${ey}`}
-                                                                            fill="none"
-                                                                            stroke="#9ca3af"
-                                                                            strokeWidth={1.5}
-                                                                        />
-                                                                        <circle cx={sx} cy={sy} r={2} fill="#9ca3af" />
-                                                                        <text
-                                                                            x={ex + (ex > cx ? 4 : -4)}
-                                                                            y={ey}
-                                                                            textAnchor={textAnchor}
-                                                                            dominantBaseline="central"
-                                                                            fill="#374151"
-                                                                            style={{ fontSize: 12, fontWeight: 600 }}
-                                                                        >
-                                                                            {value}%
-                                                                        </text>
-                                                                    </g>
-                                                                );
-                                                            }}
-                                                            labelLine={false}
-                                                        >
-                                                            {safeBestPie.map((entry, index) => (
-                                                                <Cell
-                                                                    key={index}
-                                                                    fill={COLORS[index % COLORS.length]}
-                                                                />
-                                                            ))}
-                                                        </Pie>
-                                                        {bestTotalQty > 0 && (
-                                                            <text
-                                                                x="50%"
-                                                                y="50%"
-                                                                textAnchor="middle"
-                                                                dominantBaseline="middle"
-                                                                style={{
-                                                                    fontSize: isMobile ? '16px' : '22px',
-                                                                    fontWeight: 800,
-                                                                    fill: '#111827',
-                                                                }}
-                                                            >
-                                                                {bestTotalQty}
-                                                            </text>
-                                                        )}
-                                                        <RechartsTooltip />
-                                                    </PieChart>
+                                                <PieChart>
+                                                    <Pie
+                                                        data={safeBestPie}
+                                                        dataKey="totalQuantity"
+                                                        nameKey="itemName"
+                                                        cx="50%"
+                                                        cy="50%"
+                                                        innerRadius={0}
+                                                        outerRadius={isMobile ? 80 : 110}
+                                                        stroke="none"
+                                                        paddingAngle={0}
+                                                        isAnimationActive={false}
+                                                        labelLine={true}
+                                                        label={({ cx, cy, midAngle, outerRadius, percent }) => {
+                                                            if (!percent) return null;
+                                                            const value = Math.round(percent * 100);
+                                                            if (value < 2) return null;
+                                                            
+                                                            const RADIAN = Math.PI / 180;
+                                                            const sx = cx + (outerRadius - 5) * Math.cos(-midAngle * RADIAN);
+                                                            const sy = cy + (outerRadius - 5) * Math.sin(-midAngle * RADIAN);
+                                                            const mx = cx + (outerRadius + 20) * Math.cos(-midAngle * RADIAN);
+                                                            const my = cy + (outerRadius + 20) * Math.sin(-midAngle * RADIAN);
+                                                            const ex = mx + (mx > cx ? 20 : -20);
+                                                            const ey = my;
+                                                            const textAnchor = ex > cx ? "start" : "end";
+
+                                                            return (
+                                                                <g>
+                                                                    <path d={`M${sx},${sy}L${mx},${my}`} stroke="#9ca3af" fill="none" strokeWidth={1} />
+                                                                    <text
+                                                                        x={ex}
+                                                                        y={ey}
+                                                                        textAnchor={textAnchor}
+                                                                        dominantBaseline="central"
+                                                                        fill="#374151"
+                                                                        style={{ fontSize: 11, fontWeight: 500 }}
+                                                                    >
+                                                                        {value}%
+                                                                    </text>
+                                                                </g>
+                                                            );
+                                                        }}
+                                                    >
+                                                        {safeBestPie.map((entry, index) => (
+                                                            <Cell
+                                                                key={index}
+                                                                fill={COLORS[index % COLORS.length]}
+                                                            />
+                                                        ))}
+                                                    </Pie>
+                                                    <RechartsTooltip />
+                                                </PieChart>
                                                 </ResponsiveContainer>
                                             </Box>
                                         </Grid>
@@ -1361,11 +1341,12 @@ const ReportsPage: React.FC = () => {
                                                             display: "flex",
                                                             alignItems: "center",
                                                             justifyContent: "space-between",
-                                                            bgcolor: "#fff",
-                                                            px: 1.5,
-                                                            py: 1,
+                                                            bgcolor: "#f9fafb",
+                                                            px: 2,
+                                                            py: 1.25,
                                                             borderRadius: 2,
-                                                            boxShadow: "0 4px 10px rgba(0,0,0,0.05)"
+                                                            transition: 'all 0.2s',
+                                                            '&:hover': { bgcolor: '#f3f4f6' }
                                                         }}
                                                     >
                                                         <Box sx={{ display: "flex", alignItems: "center" }}>
@@ -1375,14 +1356,14 @@ const ReportsPage: React.FC = () => {
                                                                     height: 10,
                                                                     borderRadius: "50%",
                                                                     bgcolor: COLORS[index % COLORS.length],
-                                                                    mr: 1
+                                                                    mr: 1.5
                                                                 }}
                                                             />
-                                                            <Typography variant="body2">
+                                                            <Typography variant="body2" sx={{ fontWeight: 600, color: '#374151', textTransform: 'uppercase', fontSize: '0.75rem', letterSpacing: 0.5 }}>
                                                                 {item.itemName}
                                                             </Typography>
                                                         </Box>
-                                                        <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                                                        <Typography variant="body2" sx={{ fontWeight: 800, color: '#111827' }}>
                                                             {item.totalQuantity}
                                                         </Typography>
                                                     </Box>
@@ -1400,55 +1381,95 @@ const ReportsPage: React.FC = () => {
                             <Paper
                                 elevation={0}
                                 sx={{
-                                    p: 4,
-                                    borderRadius: 6,
+                                    p: { xs: 2, sm: 3, md: 4 },
+                                    borderRadius: { xs: 4, sm: 5, md: 6 },
                                     background: "transparent",
                                     height: "100%"
                                 }}
                             >
                                 <Typography
-                                    variant="subtitle1"
+                                    variant="h6"
                                     sx={{
-                                        color: "#374151",
+                                        color: "#f4511e",
                                         fontWeight: 700,
-                                        mb: isMobile ? 2 : 3,
+                                        mb: isMobile ? 3 : 4,
+                                        fontSize: { xs: 16, md: 20 },
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 1
                                     }}
                                 >
-                                    Top Selling Items Sold
+                                    Order from
                                 </Typography>
 
-                                <Stack spacing={isMobile ? 1 : 2}>
-                                    {safeBestPie.map((item, index) => (
-                                        <Paper
-                                            key={index}
-                                            elevation={0}
-                                            sx={{
-                                                p: isMobile ? 1.25 : 2,
-                                                borderRadius: isMobile ? 2 : 3,
-                                                background: alpha(COLORS[index % COLORS.length], 0.05),
-                                                border: `1px solid ${alpha(COLORS[index % COLORS.length], 0.1)}`,
-                                                transition: 'transform 0.2s',
-                                                '&:hover': { transform: 'translateY(-2px)' }
-                                            }}
-                                        >
-                                            <Stack direction="row" justifyContent="space-between" alignItems="center">
-                                                <Stack direction="row" spacing={1.5} alignItems="center">
-                                                    <Box sx={{ width: 12, height: 12, borderRadius: '50%', bgcolor: COLORS[index % COLORS.length] }} />
-                                                    <Box>
-                                                        <Typography variant="body2" sx={{ fontWeight: 700, color: '#374151', fontSize: isMobile ? '0.85rem' : 'inherit' }}>
-                                                            {item.itemName}
-                                                        </Typography>
-                                                        <Typography variant="caption" color="text.secondary">
-                                                            {item.totalQuantity} units sold
-                                                        </Typography>
-                                                    </Box>
-                                                </Stack>
-                                                <Typography variant="body2" sx={{ fontWeight: 800, color: COLORS[index % COLORS.length] }}>
-                                                    {Math.round((item.totalQuantity / (bestTotalQty || 1)) * 100)}%
+                                <Stack spacing={isMobile ? 2 : 3}>
+                                    {ordersByType.map((item, index) => {
+                                        const total = ordersByType.reduce((sum, o) => sum + (o.totalOrders || 0), 0);
+                                        const percent = total > 0 ? (item.totalOrders / total) * 100 : 0;
+                                        
+                                        return (
+                                            <Box
+                                                key={index}
+                                                sx={{
+                                                    p: { xs: 2, md: 3 },
+                                                    borderRadius: 10,
+                                                    background: "rgba(244, 81, 30, 0.08)",
+                                                    transition: 'all 0.3s ease',
+                                                    '&:hover': {
+                                                        background: "rgba(244, 81, 30, 0.12)",
+                                                        transform: 'translateX(8px)'
+                                                    }
+                                                }}
+                                            >
+                                                <Typography
+                                                    variant="subtitle2"
+                                                    sx={{
+                                                        fontWeight: 800,
+                                                        mb: 1.5,
+                                                        color: "#374151",
+                                                        fontSize: { xs: 13, md: 15 },
+                                                        textTransform: 'lowercase',
+                                                        letterSpacing: 0.5
+                                                    }}
+                                                >
+                                                    {item.orderType}
                                                 </Typography>
-                                            </Stack>
-                                        </Paper>
-                                    ))}
+
+                                                <Stack direction="row" spacing={2} alignItems="center">
+                                                    <Box
+                                                        sx={{
+                                                            flexGrow: 1,
+                                                            height: 10,
+                                                            background: "rgba(0,0,0,0.05)",
+                                                            borderRadius: 10,
+                                                            overflow: "hidden",
+                                                        }}
+                                                    >
+                                                        <Box
+                                                            sx={{
+                                                                width: `${percent}%`,
+                                                                height: "100%",
+                                                                background: "#f4511e",
+                                                                borderRadius: 10,
+                                                                transition: 'width 1s ease-in-out'
+                                                            }}
+                                                        />
+                                                    </Box>
+                                                    <Typography
+                                                        variant="h6"
+                                                        sx={{
+                                                            color: "#f4511e",
+                                                            fontWeight: 900,
+                                                            fontSize: { xs: 14, md: 18 },
+                                                            minWidth: 30
+                                                        }}
+                                                    >
+                                                        {item.totalOrders}
+                                                    </Typography>
+                                                </Stack>
+                                            </Box>
+                                        );
+                                    })}
                                 </Stack>
                             </Paper>
                         </Grid>
@@ -4870,8 +4891,10 @@ const ReportsPage: React.FC = () => {
                                     <Paper key={fb._id} sx={{ p: 2, mb: 2, borderRadius: 2 }}>
                                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5, alignItems: 'flex-start' }}>
                                             <Box>
-                                                <Typography variant="body2" fontWeight="bold">{fb.orderNumber}</Typography>
-                                                <Typography variant="caption" color="text.secondary">
+                                                <Typography variant="body2" sx={{ fontWeight: 700, color: '#374151', fontSize: { xs: '0.85rem', sm: '0.95rem', md: '1rem' } }}>
+                                                    {fb.orderNumber}
+                                                </Typography>
+                                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.8rem' } }}>
                                                     {new Date(fb.createdAt).toLocaleDateString()}
                                                 </Typography>
                                             </Box>
@@ -5264,13 +5287,29 @@ const ReportsPage: React.FC = () => {
     };
 
     return (
-        <Container maxWidth="xl" sx={{ py: isMobile ? 1 : 4, px: isMobile ? 1 : 3 }}>
-            <Typography variant={isMobile ? "h5" : "h4"} gutterBottom sx={{ textAlign: { xs: 'center', sm: 'left' }, fontWeight: 800, mt: isMobile ? 1 : 0 }}>
+        <Container maxWidth="xl" sx={{ py: { xs: 1.5, sm: 3, md: 4 }, px: { xs: 1.5, sm: 2, md: 3 } }}>
+            <Typography variant={isMobile ? "h5" : "h4"} gutterBottom sx={{ 
+                textAlign: { xs: 'center', sm: 'left' }, 
+                fontWeight: 900, 
+                mt: { xs: 1, sm: 0 },
+                fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' },
+                letterSpacing: '-0.04em'
+            }}>
                 Reports & Analytics
             </Typography>
 
             {/* Filters — sticky just below the fixed AppBar */}
-            <Paper sx={{ p: isMobile ? 1 : 2, mb: isMobile ? 1 : 2, position: 'sticky', top: isMobile ? 0 : 64, zIndex: 100, boxShadow: 1, borderRadius: isMobile ? 0 : 1 }}>
+            <Paper sx={{ 
+                p: { xs: 1.5, sm: 2 }, 
+                mb: { xs: 1.5, sm: 2 }, 
+                position: 'sticky', 
+                top: isMobile ? 0 : 64, 
+                zIndex: 100, 
+                boxShadow: '0 2px 10px rgba(0,0,0,0.05)', 
+                borderRadius: { xs: 0, sm: 2 },
+                border: '1px solid',
+                borderColor: alpha(theme.palette.divider, 0.05)
+            }}>
                 <Grid container spacing={isMobile ? 1 : 2} alignItems="center">
                     <Grid item xs={12} sm={6} md={3}>
                         <FormControl fullWidth size={isMobile ? "small" : "medium"}>
@@ -5325,7 +5364,17 @@ const ReportsPage: React.FC = () => {
             </Paper>
 
             {/* Tabs — sticky below filter bar */}
-            <Paper sx={{ mb: isMobile ? 1 : 2, position: 'sticky', top: isMobile ? 48 : 136, zIndex: 99, boxShadow: 1, borderRadius: isMobile ? 0 : 1 }}>
+            <Paper sx={{ 
+                mb: { xs: 2, sm: 3 }, 
+                position: 'sticky', 
+                top: isMobile ? 48 : 136, 
+                zIndex: 99, 
+                boxShadow: '0 2px 10px rgba(0,0,0,0.05)', 
+                borderRadius: { xs: 0, sm: 2 },
+                overflow: 'hidden',
+                border: '1px solid',
+                borderColor: alpha(theme.palette.divider, 0.05)
+            }}>
                 <Tabs 
                     value={activeTab} 
                     onChange={(e, v) => setActiveTab(v)} 

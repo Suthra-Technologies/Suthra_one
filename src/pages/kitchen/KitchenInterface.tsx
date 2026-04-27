@@ -7,10 +7,10 @@ import {
   Restaurant as DineInIcon,
   DoneAll as DoneAllIcon,
   PlayArrow as PlayArrowIcon,
-  Print as PrintIcon,
   Refresh as RefreshIcon,
   TakeoutDining as TakeawayIcon,
-  LocalFireDepartment as UrgentIcon
+  LocalFireDepartment as UrgentIcon,
+  Print as PrintIcon
 } from '@mui/icons-material';
 import {
   alpha,
@@ -416,15 +416,15 @@ const KitchenInterface: React.FC = () => {
   return (
     <Box sx={{ p: 2, minHeight: '100vh', bgcolor: 'background.default' }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: 'center', mb: 3, gap: 2 }}>
-        <Box sx={{ width: { xs: '100%', md: 'auto' }, textAlign: { xs: 'center', md: 'left' } }}>
-          <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'text.primary', fontSize: { xs: '1.25rem', md: '2.125rem' } }}>
+      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', md: 'center' }, mb: 3, gap: 2 }}>
+        <Box>
+          <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'text.primary', fontSize: { xs: '1.75rem', md: '2.125rem' } }}>
             Kitchen Orders
           </Typography>
           <Tabs
             value={activeTab}
             onChange={(_, newValue) => setActiveTab(newValue)}
-            sx={{ mt: 1, minHeight: 36, '& .MuiTab-root': { minHeight: 36, py: 0.5, fontSize: { xs: '0.8rem', sm: '0.875rem' } } }}
+            sx={{ mt: 1, minHeight: 36, '& .MuiTab-root': { minHeight: 36, py: 0.5 } }}
           >
             <Tab label="Live Orders" id="kitchen-tab-0" aria-controls="kitchen-tabpanel-0" />
             <Tab label="Pre-Orders" id="kitchen-tab-1" aria-controls="kitchen-tabpanel-1" />
@@ -539,8 +539,7 @@ const KitchenInterface: React.FC = () => {
               <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={order._id}>
                 <Card
                   sx={{
-                    minHeight: { xs: 'auto', sm: 480 },
-                    height: '100%',
+                    height: 480,
                     display: 'flex',
                     flexDirection: 'column',
                     borderTop: `6px solid ${urgency === 'critical' ? theme.palette.error.main :
@@ -564,7 +563,6 @@ const KitchenInterface: React.FC = () => {
                   <CardContent sx={{
                     flexGrow: 1,
                     p: 2,
-                    pb: 0,
                     display: 'flex',
                     flexDirection: 'column',
                     overflow: 'hidden'
@@ -708,7 +706,6 @@ const KitchenInterface: React.FC = () => {
                                       fontWeight={isReady ? 'normal' : 'medium'}
                                       sx={{
                                         color: isReady ? 'text.secondary' : 'text.primary',
-                                        fontSize: { xs: '0.85rem', sm: '0.875rem' }
                                       }}
                                     >
                                       <strong>{item.quantity}x</strong> {item.name}
@@ -794,58 +791,43 @@ const KitchenInterface: React.FC = () => {
                   </CardContent>
 
                   {/* Action Buttons */}
-                  <CardActions sx={{
-                    px: 2,
-                    pb: 1.5,
-                    pt: 1,
-                    flexDirection: 'row',
-                    flexWrap: { xs: 'nowrap', sm: 'wrap' }, // wrap at sm+ to allow 2-row layout
-                    gap: 0.75,
-                    '& .MuiButton-root': {
-                      minWidth: 0,
-                      whiteSpace: 'nowrap',
-                      fontSize: { xs: '0.65rem', sm: '0.78rem' },
-                    }
-                  }}>
-                    {/* Row 1 at sm+: Print KOT + All Ready side by side */}
+                  <CardActions sx={{ p: 2, pt: 0, flexDirection: 'column', gap: 1 }}>
                     <Button
+                      fullWidth
                       variant="outlined"
                       color="primary"
                       size="small"
                       onClick={() => handlePrintKOT(order)}
-                      startIcon={<PrintIcon sx={{ fontSize: '1rem' }} />}
-                      sx={{ flex: 1 }}
+                      startIcon={<PrintIcon />}
+                      sx={{ mb: 0.5 }}
                     >
                       Print KOT
                     </Button>
                     {!isAllReady && (
                       <Button
+                        fullWidth
                         variant="outlined"
                         color="success"
                         size="small"
                         onClick={() => handleMarkAllReady(order._id)}
-                        startIcon={<DoneAllIcon sx={{ fontSize: '1rem' }} />}
-                        sx={{ flex: 1 }}
+                        startIcon={<DoneAllIcon />}
                       >
-                        All Ready
+                        Mark All Ready
                       </Button>
                     )}
 
-                    {/* Row 2 at sm+: Confirm / Start / Ready — full width */}
                     {!(order.status === 'ready' || order.status === 'ready_to_takeaway' || order.status === 'ready_to_pickup') && (
                       <Button
+                        fullWidth
                         variant="contained"
                         color={isAllReady ? "success" : (getStatusColor(order.status) as any)}
                         onClick={() => handleOrderStatusUpdate(order._id, order.status, order.orderType)}
-                        startIcon={isAllReady ? <CheckCircleIcon sx={{ fontSize: '1rem' }} /> : <PlayArrowIcon sx={{ fontSize: '1rem' }} />}
+                        startIcon={isAllReady ? <CheckCircleIcon /> : <PlayArrowIcon />}
                         disabled={(!isAllReady && order.status === 'preparing')}
-                        sx={{
-                          flex: { xs: 1, sm: '1 0 100%' }, // full width row at sm+, equal share at xs
-                        }}
                       >
                         {order.status === 'pending' ? 'Confirm' :
                           order.status === 'confirmed' ? 'Start' :
-                            (isAllReady ? 'Ready' : 'Prep')}
+                            (isAllReady ? 'Mark Ready' : 'Continue Preparing')}
                       </Button>
                     )}
                   </CardActions>
