@@ -678,7 +678,7 @@ export const homepageAPI = {
 export const smsAPI = {
   getLogs: (params: { page: number; limit: number; type?: string; startDate?: string; endDate?: string }) =>
     api.get('/sms/logs', { params }),
-  getSummary: () => api.get('/sms/summary'),
+  getSummary: (params?: { startDate?: string; endDate?: string }) => api.get('/sms/summary', { params }),
   sendTest: (to: string, message: string) => api.post('/sms/test', { to, message }),
 };
 

@@ -1,49 +1,38 @@
-import React, { useState, useEffect } from 'react';
 import {
+  Refresh
+} from '@mui/icons-material';
+import {
+  alpha,
   Box,
-  Grid,
-  Typography,
   Card,
   CardContent,
   Chip,
-  Avatar,
-  Stack,
+  Grid,
   IconButton,
-  ToggleButtonGroup,
-  ToggleButton,
-  useTheme,
-  alpha,
-  Button,
+  Stack,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
   useMediaQuery,
+  useTheme
 } from '@mui/material';
-import {
-  AttachMoney,
-  ShoppingCart,
-  TableRestaurant,
-  Kitchen,
-  Refresh,
-  Inventory,
-  ShoppingBag,
-  Event as EventIcon,
-  Assessment,
-} from '@mui/icons-material';
+import React, { useEffect, useState } from 'react';
 
 
-import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
-import EventSeatIcon from '@mui/icons-material/EventSeat';
-import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import AssignmentLateOutlinedIcon from '@mui/icons-material/AssignmentLateOutlined';
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined';
+import EventSeatIcon from '@mui/icons-material/EventSeat';
+import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import RestaurantMenuOutlinedIcon from '@mui/icons-material/RestaurantMenuOutlined';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 
 import { toast } from 'react-hot-toast';
+import { Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useAuth } from '../context/AuthContext';
-import { reportsAPI, ordersAPI, billingAPI, tenantAPI, inventoryAPI, purchaseOrdersAPI, bookingsAPI } from '../services/api';
 import { useSettings } from '../context/SettingsContext';
-import SubscriptionStatusCard from '../components/dashboard/SubscriptionStatusCard';
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, Legend, BarChart, Bar } from 'recharts';
+import { billingAPI, bookingsAPI, inventoryAPI, purchaseOrdersAPI, reportsAPI } from '../services/api';
 
 // ---------------------------------------------------------------------------
 // StatCard – reusable card used throughout the dashboard
@@ -177,7 +166,7 @@ const OrdersChart: React.FC<OrdersChartProps> = ({ data }) => {
     <ResponsiveContainer width="100%" height={isXs ? 240 : isSm ? 280 : 320}>
       <AreaChart
         data={data}
-       margin={{ top: 20, right: isXs ? 0 : 40, left: isXs ? -20 : 10, bottom: 10 }}
+        margin={{ top: 20, right: isXs ? 0 : 40, left: isXs ? -20 : 10, bottom: 10 }}
       >
         {/* Gradient Fill */}
         <defs>
@@ -190,7 +179,7 @@ const OrdersChart: React.FC<OrdersChartProps> = ({ data }) => {
         {/* Softer Grid */}
         <CartesianGrid
           vertical={false}
-          stroke="#e5e7eb"
+          stroke={theme.palette.divider}
           strokeDasharray="3 6"
           opacity={0.5}
         />
@@ -200,7 +189,7 @@ const OrdersChart: React.FC<OrdersChartProps> = ({ data }) => {
           dataKey="hour"
           axisLine={false}
           tickLine={false}
-          tick={{ fill: "#9ca3af", fontSize: 12 }}
+          tick={{ fill: theme.palette.text.secondary, fontSize: 12 }}
         />
 
         {/* RIGHT Y Axis like screenshot */}
@@ -208,18 +197,18 @@ const OrdersChart: React.FC<OrdersChartProps> = ({ data }) => {
           orientation="right"
           axisLine={false}
           tickLine={false}
-          tick={{ fill: "#9ca3af", fontSize: 12 }}
+          tick={{ fill: theme.palette.text.secondary, fontSize: 12 }}
           width={isXs ? 30 : 40}
         />
 
         {/* Tooltip */}
         <Tooltip
-          cursor={{ stroke: "#e5e7eb", strokeWidth: 1 }}
+          cursor={{ stroke: theme.palette.divider, strokeWidth: 1 }}
           contentStyle={{
-            background: "#111827",
+            background: theme.palette.mode === 'dark' ? theme.palette.background.paper : "#111827",
             borderRadius: 8,
             border: "none",
-            color: "#fff",
+            color: theme.palette.mode === 'dark' ? theme.palette.text.primary : "#fff",
             fontSize: 12,
             padding: "8px 10px",
             boxShadow: "0 8px 24px rgba(0,0,0,0.25)"
@@ -770,8 +759,8 @@ const DashboardPage: React.FC = () => {
               sx={{
                 p: { xs: 2.5, md: 4 },
                 borderRadius: 5,
-                bgcolor: "#f3f4f6",
-                boxShadow: "0 10px 40px rgba(0,0,0,0.05)",
+                bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : "#f3f4f6",
+                boxShadow: theme.palette.mode === 'dark' ? "none" : "0 10px 40px rgba(0,0,0,0.05)",
                 display: "flex",
                 flexDirection: "column",
                 flex: 1,
@@ -923,11 +912,12 @@ const DashboardPage: React.FC = () => {
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "space-between",
-                          bgcolor: "#f5ebe6",
+                          // bgcolor: "#f5ebe6",
+                          bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : "#f5ebe6",
                           px: 1.5,
                           py: 1,
                           borderRadius: 3,
-                          boxShadow: "0 4px 14px rgba(0,0,0,0.04)",
+                          boxShadow: theme.palette.mode === 'dark' ? "none" : "0 4px 14px rgba(0,0,0,0.04)",
                           transition: "all 0.2s ease",
                           '&:hover': {
                             transform: "translateY(-1px)",
@@ -989,8 +979,8 @@ const DashboardPage: React.FC = () => {
               sx={{
                 p: { xs: 2.5, md: 4 },
                 borderRadius: 5,
-                bgcolor: "#f3f4f6",
-                boxShadow: "0 10px 40px rgba(0,0,0,0.05)",
+                bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : "#f3f4f6",
+                boxShadow: theme.palette.mode === 'dark' ? "none" : "0 10px 40px rgba(0,0,0,0.05)",
                 display: "flex",
                 flexDirection: "column",
                 flex: 1,
@@ -1010,12 +1000,12 @@ const DashboardPage: React.FC = () => {
                     : 0;
 
                   return (
-                    <Box key={index} sx={{ mb: 3, p: 2.5, borderRadius: 3, bgcolor: "#f5ebe6" }}>
+                    <Box key={index} sx={{ mb: 3, p: 2.5, borderRadius: 3, bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : "#f5ebe6" }}>
                       <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
                         {order.label || order.orderType}
                       </Typography>
 
-                      <Box sx={{ height: 6, borderRadius: 5, bgcolor: "#e5e7eb", overflow: "hidden" }}>
+                      <Box sx={{ height: 6, borderRadius: 5, bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : "#e5e7eb", overflow: "hidden" }}>
                         <Box sx={{ width: `${percentage}%`, height: "100%", bgcolor: "#f97316" }} />
                       </Box>
 
