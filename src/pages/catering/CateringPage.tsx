@@ -60,6 +60,7 @@ interface CartItem {
     trayName?: string;
     taxRate?: number | null;
     spiceLevel?: string;
+    isCustom?: boolean;
 }
 
 const SPICE_LEVELS = [
@@ -160,6 +161,10 @@ const CateringPage = () => {
     const [occasionInputValue, setOccasionInputValue] = useState('');
     const [addCustomOccasionOpen, setAddCustomOccasionOpen] = useState(false);
     const [customOccasion, setCustomOccasion] = useState('');
+    
+    // Custom item state
+    const [customItemName, setCustomItemName] = useState('');
+    const [customItemQty, setCustomItemQty] = useState<number>(1);
     
     // Check if the occasion is a celebratory one that needs a person's name
     const isCelebratoryOccasion = [
@@ -433,6 +438,29 @@ const CateringPage = () => {
         setSelectedSpice('mild');
     };
 
+    const handleAddCustomItem = () => {
+        if (!customItemName.trim()) {
+            toast.error('Please enter a custom item name');
+            return;
+        }
+        if (customItemQty < 1) {
+            toast.error('Quantity must be at least 1');
+            return;
+        }
+        
+        setCart(prev => [...prev, {
+            menuItem: '', // empty for custom item
+            name: customItemName.trim(),
+            quantity: customItemQty,
+            unitPrice: 0,
+            total: 0,
+            isCustom: true
+        }]);
+        setCustomItemName('');
+        setCustomItemQty(1);
+        toast.success('Custom item added. Admin will quote a price later.');
+    };
+
     const updateQuantity = (cartKey: string, change: number) => {
         setCart(prev =>
             prev.map(item => {
@@ -639,6 +667,50 @@ const CateringPage = () => {
                                 );
                             })}
                         </Grid>
+
+                        {/* Custom Item Section */}
+                        <Box mt={4}>
+                            <Typography variant="h6" fontWeight={700} mb={2}>Need something else?</Typography>
+                            <Card sx={{ borderRadius: 3, border: '1px dashed', borderColor: 'primary.main', bgcolor: alpha('#4F46E5', 0.02) }}>
+                                <CardContent sx={{ p: 3 }}>
+                                    <Typography variant="body2" color="text.secondary" mb={2}>
+                                        Don't see what you're looking for? Add a custom item and our admin will provide a quote.
+                                    </Typography>
+                                    <Grid container spacing={2} alignItems="center">
+                                        <Grid item xs={12} sm={6}>
+                                            <TextField 
+                                                label="Custom Item Name / Description" 
+                                                fullWidth 
+                                                size="small"
+                                                value={customItemName}
+                                                onChange={e => setCustomItemName(e.target.value)}
+                                            />
+                                        </Grid>
+                                        <Grid item xs={12} sm={3}>
+                                            <TextField 
+                                                label="Quantity" 
+                                                type="number"
+                                                fullWidth 
+                                                size="small"
+                                                value={customItemQty}
+                                                onChange={e => setCustomItemQty(Math.max(1, parseInt(e.target.value) || 1))}
+                                                inputProps={{ min: 1 }}
+                                            />
+                                        </Grid>
+                                        <Grid item xs={12} sm={3}>
+                                            <Button 
+                                                variant="outlined" 
+                                                fullWidth 
+                                                onClick={handleAddCustomItem}
+                                                startIcon={<Add />}
+                                            >
+                                                Add Request
+                                            </Button>
+                                        </Grid>
+                                    </Grid>
+                                </CardContent>
+                            </Card>
+                        </Box>
                     </Grid>
 
                     {/* Order Summary Form */}
@@ -794,7 +866,11 @@ const CateringPage = () => {
                                                                         )}
                                                                     </Box>
                                                                 }
-                                                                secondary={`${item.quantity} x ${formatCurrency(item.unitPrice)}`}
+                                                                secondary={
+                                                                    item.isCustom 
+                                                                    ? `${item.quantity} x (Price TBD by Admin)` 
+                                                                    : `${item.quantity} x ${formatCurrency(item.unitPrice)}`
+                                                                }
                                                             />
                                                         </ListItem>
                                                     );
