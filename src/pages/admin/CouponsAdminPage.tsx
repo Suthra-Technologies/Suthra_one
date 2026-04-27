@@ -1,57 +1,57 @@
-import React, { useEffect, useState } from 'react';
-import {
-    Box,
-    Paper,
-    Typography,
-    Table,
-    TableHead,
-    TableRow,
-    TableCell,
-    TableBody,
-    Button,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    TextField,
-    FormControl,
-    InputLabel,
-    Select,
-    MenuItem,
-    Chip,
-    Stack,
-    IconButton,
-    Checkbox,
-    FormControlLabel,
-    Grid,
-    Card,
-    CardContent,
-    CircularProgress,
-    useTheme,
-    useMediaQuery,
-    Tooltip,
-    TablePagination,
-    Avatar,
-    InputAdornment,
-    Divider,
-} from '@mui/material';
 import {
     Add as AddIcon,
-    Edit as EditIcon,
-    Delete as DeleteIcon,
-    Email as EmailIcon,
-    Send as SendIcon,
-    People as PeopleIcon,
-    Close as CloseIcon,
-    Sms as SmsIcon,
-    Search as SearchIcon,
     CheckCircle as CheckCircleIcon,
+    Close as CloseIcon,
+    Delete as DeleteIcon,
+    Edit as EditIcon,
+    Email as EmailIcon,
+    People as PeopleIcon,
     Phone as PhoneIcon,
+    Search as SearchIcon,
+    Send as SendIcon,
+    Sms as SmsIcon
 } from '@mui/icons-material';
-import { couponsAPI, reportsAPI } from '../../services/api';
-import { toast } from 'react-hot-toast';
+import {
+    Avatar,
+    Box,
+    Button,
+    Card,
+    CardContent,
+    Checkbox,
+    Chip,
+    CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    Divider,
+    FormControl,
+    FormControlLabel,
+    Grid,
+    IconButton,
+    InputAdornment,
+    InputLabel,
+    MenuItem,
+    Paper,
+    Select,
+    Stack,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TablePagination,
+    TableRow,
+    TextField,
+    Tooltip,
+    Typography,
+    useMediaQuery,
+    useTheme,
+} from '@mui/material';
 import axios from 'axios';
+import React, { useEffect, useState } from 'react';
+import { toast } from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
+import { couponsAPI } from '../../services/api';
 
 interface Coupon {
     _id: string;
@@ -69,6 +69,7 @@ interface Coupon {
     description?: string;
     offerType?: 'cart_total' | 'menu_item' | 'combo';
     applicableItems?: string[];
+    comboConfig?: Array<{ menuItem: string; quantity: number }>;
 }
 
 interface Customer {
@@ -122,6 +123,7 @@ const CouponsAdminPage: React.FC = () => {
         description: '',
         offerType: 'cart_total' as 'cart_total' | 'menu_item' | 'combo',
         applicableItems: [] as string[],
+        comboConfig: [] as Array<{ menuItem: string; quantity: number }>,
     });
 
     // Email form state
@@ -203,6 +205,7 @@ const CouponsAdminPage: React.FC = () => {
                 description: coupon.description || '',
                 offerType: (coupon.offerType as any) || 'cart_total',
                 applicableItems: coupon.applicableItems || [],
+                comboConfig: (coupon as any).comboConfig || [],
             });
         } else {
             setSelectedCoupon(null);
@@ -222,6 +225,7 @@ const CouponsAdminPage: React.FC = () => {
                 description: '',
                 offerType: 'cart_total',
                 applicableItems: [],
+                comboConfig: [],
             });
         }
         setOpenDialog(true);
@@ -850,7 +854,8 @@ const CouponsAdminPage: React.FC = () => {
                             </FormControl>
                         </Grid>
 
-                        {formData.offerType !== 'cart_total' && (
+                        {/* Item selector for menu_item type */}
+                        {formData.offerType === 'menu_item' && (
                             <Grid item xs={12}>
                                 <FormControl fullWidth>
                                     <InputLabel>Select Items</InputLabel>
@@ -876,6 +881,96 @@ const CouponsAdminPage: React.FC = () => {
                                         ))}
                                     </Select>
                                 </FormControl>
+                            </Grid>
+                        )}
+
+                        {/* Combo items with the quantity configuration */}
+                        {formData.offerType === 'combo' && (
+                            <Grid item xs={12}>
+                                <FormControl fullWidth>
+                                    <InputLabel>Add Items to Combo</InputLabel>
+                                    <Select
+                                        value=""
+                                        label="Add Items to Combo"
+                                        onChange={(e) => {
+                                            const itemId = e.target.value as string;
+                                            if (!itemId) return;
+                                            if (formData.comboConfig.some(c => c.menuItem === itemId)) return;
+                                            setFormData({
+                                                ...formData,
+                                                comboConfig: [...formData.comboConfig, { menuItem: itemId, quantity: 1 }],
+                                                applicableItems: [...formData.applicableItems, itemId],
+                                            });
+                                        }}
+                                        MenuProps={{ PaperProps: { sx: { maxHeight: 300 } } }}
+                                    >
+                                        {menuItems
+                                            .filter(item => !formData.comboConfig.some(c => c.menuItem === item._id))
+                                            .map((item) => (
+                                                <MenuItem key={item._id} value={item._id}>
+                                                    {item.name} ({formatCurrency(item.price)})
+                                                </MenuItem>
+                                            ))}
+                                    </Select>
+                                </FormControl>
+
+                                {/* Combo items list with quantity */}
+                                {formData.comboConfig.length > 0 && (
+                                    <Box sx={{ mt: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
+                                        <Box sx={{ bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : 'grey.100', px: 2, py: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <Typography variant="subtitle2" fontWeight="bold">Combo Items ({formData.comboConfig.length})</Typography>
+                                            <Typography variant="caption" color="text.secondary">All items required in cart</Typography>
+                                        </Box>
+                                        {formData.comboConfig.map((entry, index) => {
+                                            const item = menuItems.find(i => i._id === entry.menuItem);
+                                            return (
+                                                <Box key={entry.menuItem} sx={{
+                                                    px: 2, py: 1.5,
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                                    borderBottom: index < formData.comboConfig.length - 1 ? '1px solid' : 'none',
+                                                    borderColor: 'divider',
+                                                }}>
+                                                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                                                        <Typography variant="body2" fontWeight={600} noWrap>{item?.name || entry.menuItem}</Typography>
+                                                        <Typography variant="caption" color="text.secondary">{formatCurrency(item?.price || 0)}</Typography>
+                                                    </Box>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                        <TextField
+                                                            type="number"
+                                                            size="small"
+                                                            label="Qty"
+                                                            value={entry.quantity}
+                                                            onChange={(e) => {
+                                                                const qty = Math.max(1, Number(e.target.value) || 1);
+                                                                setFormData(prev => ({
+                                                                    ...prev,
+                                                                    comboConfig: prev.comboConfig.map((c, i) =>
+                                                                        i === index ? { ...c, quantity: qty } : c
+                                                                    ),
+                                                                }));
+                                                            }}
+                                                            inputProps={{ min: 1, style: { textAlign: 'center', width: 40 } }}
+                                                            sx={{ width: 80 }}
+                                                        />
+                                                        <IconButton
+                                                            size="small"
+                                                            color="error"
+                                                            onClick={() => {
+                                                                setFormData(prev => ({
+                                                                    ...prev,
+                                                                    comboConfig: prev.comboConfig.filter((_, i) => i !== index),
+                                                                    applicableItems: prev.applicableItems.filter(id => id !== entry.menuItem),
+                                                                }));
+                                                            }}
+                                                        >
+                                                            <DeleteIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Box>
+                                                </Box>
+                                            );
+                                        })}
+                                    </Box>
+                                )}
                             </Grid>
                         )}
                         <Grid item xs={12} md={6}>
