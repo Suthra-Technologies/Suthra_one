@@ -237,7 +237,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ open, onClose, no
           px: 2,
           pt: 1.5,
           pb: 1.5,
-          mt: 5,
+          mt: 1,
           display: 'flex',
           gap: 1,
           borderBottom: '1px solid rgba(0,0,0,0.12)',
@@ -317,9 +317,9 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ open, onClose, no
                             <Typography sx={{ fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.9, mb: 0.25 }}>
                               Order Update
                             </Typography>
-                            <Typography sx={{ fontSize: '0.9rem', fontWeight: 900, letterSpacing: '0.02em' }}>
-                              Order ID: {displayOrderId}
-                            </Typography>
+                             <Typography sx={{ fontSize: '0.68rem', opacity: 0.95, fontWeight: 700 }}>
+                            Token No: <Box component="span" sx={{ fontWeight: 900 }}>{displayTokenNo}</Box>
+                          </Typography>
                           </Box>
                           {!notification.read && (
                             <IconButton
@@ -334,9 +334,9 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ open, onClose, no
 
                         <Box sx={{ display: 'flex', gap: 1.25, flexWrap: 'wrap', mb: 1.25 }}>
              
-                          <Typography sx={{ fontSize: '0.68rem', opacity: 0.95, fontWeight: 700 }}>
-                            Token No: <Box component="span" sx={{ fontWeight: 900 }}>{displayTokenNo}</Box>
-                          </Typography>
+                          <Typography sx={{ fontSize: '0.9rem', fontWeight: 900, letterSpacing: '0.02em' }}>
+                              Order ID: {displayOrderId}
+                            </Typography>
                           <Typography sx={{ fontSize: '0.68rem', opacity: 0.95, fontWeight: 700 }}>
                             Type: <Box component="span" sx={{ fontWeight: 900 }}>{displayOrderType}</Box>
                           </Typography>

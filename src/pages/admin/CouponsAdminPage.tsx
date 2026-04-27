@@ -505,7 +505,7 @@ const CouponsAdminPage: React.FC = () => {
     return (
         <Box sx={{
             p: { xs: 2, md: 4 },
-            pt: isMobile ? '80px' : 4,
+            pt: isMobile ? '20px' : 4,
             minHeight: '100%',
             bgcolor: '#f8f9fa'
         }}>
@@ -525,9 +525,10 @@ const CouponsAdminPage: React.FC = () => {
                         sx={{
                             fontFamily: '"Outfit", sans-serif',
                             fontSize: { xs: '1.5rem', sm: '2.125rem' },
-                            background: 'linear-gradient(45deg, #4F46E5 30%, #6366F1 90%)',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
+                            background: { xs: 'none', sm: 'linear-gradient(45deg, #4F46E5 30%, #6366F1 90%)' },
+                            WebkitBackgroundClip: { xs: 'initial', sm: 'text' },
+                            WebkitTextFillColor: { xs: '#000000', sm: 'transparent' },
+                            color: { xs: '#000000', sm: 'inherit' },
                             mb: 0.5
                         }}
                     >

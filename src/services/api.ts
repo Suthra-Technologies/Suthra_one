@@ -3,6 +3,7 @@ import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosReq
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { BRAND_CONFIG } from '../config/brandConfig';
+import { Capacitor } from '@capacitor/core';
 
 const envApiBase = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
 const brandApiBase = (BRAND_CONFIG.apiBaseUrl as string | undefined)?.trim();
@@ -55,6 +56,12 @@ api.interceptors.response.use(
   (error) => {
     const message = error.response?.data?.message || error.message || 'An error occurred';
     if (error.response?.status === 401) {
+      // Mobile-only: keep local session until explicit logout.
+      // Some transient 401s should not force users back to login.
+      if (Capacitor.isNativePlatform()) {
+        return Promise.reject(error);
+      }
+
       localStorage.removeItem('jwt');
       localStorage.removeItem('user');
 
@@ -102,6 +109,7 @@ export const authAPI = {
   getCustomerCards: () => api.get('/auth/customer/cards'),
   saveCustomerCard: (cardData: any) => api.post('/auth/customer/cards', cardData),
   deleteCustomerCard: (index: number) => api.delete(`/auth/customer/cards/${index}`),
+  deleteAccount: () => api.delete('/auth/delete-account'),
 };
 
 
@@ -193,6 +201,7 @@ export const ordersAPI = {
 
   // Bill generation
   getBillData: (id: string) => api.get(`/orders/${id}/bill`),
+  downloadPDF: (id: string) => api.get(`/orders/${id}/pdf`, { responseType: 'blob' }),
 
   // Coupon management
   validateCoupon: (code: string) => api.post('/orders/validate-coupon', { code }),
@@ -669,7 +678,7 @@ export const homepageAPI = {
 export const smsAPI = {
   getLogs: (params: { page: number; limit: number; type?: string; startDate?: string; endDate?: string }) =>
     api.get('/sms/logs', { params }),
-  getSummary: () => api.get('/sms/summary'),
+  getSummary: (params?: { startDate?: string; endDate?: string }) => api.get('/sms/summary', { params }),
   sendTest: (to: string, message: string) => api.post('/sms/test', { to, message }),
 };
 

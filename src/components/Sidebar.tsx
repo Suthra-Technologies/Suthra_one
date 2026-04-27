@@ -242,128 +242,138 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
 
-      {/* Logo / Header */}
-      <Box sx={{
-        mt: { xs: 2, sm: 2.5 },
-        px: collapsed ? 1 : 2,
-        py: collapsed ? 1.5 : 2.5,
-        textAlign: 'center',
-        transition: 'all 0.3s ease',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '100%',
-        boxSizing: 'border-box',
-      }}>
-        {(restaurantSettings.logo || (user?.tenant as any)?.logo) ? (
-          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, width: '100%' }}>
-            <Avatar
-              src={resolveImageUrl(restaurantSettings.logo || (user?.tenant as any)?.logo)}
-              alt={restaurantSettings.name || (user?.tenant as any)?.name || 'Restaurant Logo'}
-              sx={{
-                mt: { xs: 0.5, sm: 0.5, md: 1 },
-                width: collapsed ? 36 : { xs: 52, sm: 56, md: 68 },
-                height: collapsed ? 36 : { xs: 52, sm: 56, md: 68 },
-                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                transition: 'all 0.3s ease',
-                flexShrink: 0,
-              }}
-            />
-            {!collapsed && (
-              <Typography fontWeight={700} sx={{
-                color: 'text.primary',
-                letterSpacing: 0.3,
-                fontSize: { xs: '0.85rem', sm: '0.9rem', md: '1rem' },
-                textAlign: 'center',
-                width: '100%',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                px: 1,
-              }}>
-                {restaurantSettings.name || (user?.tenant as any)?.name || 'Restaurant POS'}
-              </Typography>
-            )}
-          </Box>
-        ) : (
-          <>
-            {!collapsed ? (
-              <Box sx={{ width: '100%', overflow: 'hidden', px: 1 }}>
-                <Typography fontWeight={900} sx={{
-                  background: 'linear-gradient(45deg, #4F46E5 30%, #EC4899 90%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  mb: 0.5,
-                  fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' },
+      <Box
+        sx={{
+          position: { xs: 'sticky', md: 'static' },
+          top: { xs: 'calc(56px + env(safe-area-inset-top))', sm: 'calc(64px + env(safe-area-inset-top))', md: 0 },
+          zIndex: { xs: 2, md: 'auto' },
+          bgcolor: 'background.paper',
+          pb: { xs: 1, md: 0 },
+        }}
+      >
+        {/* Logo / Header */}
+        <Box sx={{
+          mt: { xs: 0.5, sm: 2.5 },
+          px: collapsed ? 1 : 2,
+          py: collapsed ? 1.5 : { xs: 1.25, sm: 2.5 },
+          textAlign: 'center',
+          transition: 'all 0.3s ease',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          width: '100%',
+          boxSizing: 'border-box',
+        }}>
+          {(restaurantSettings.logo || (user?.tenant as any)?.logo) ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, width: '100%' }}>
+              <Avatar
+                src={resolveImageUrl(restaurantSettings.logo || (user?.tenant as any)?.logo)}
+                alt={restaurantSettings.name || (user?.tenant as any)?.name || 'Restaurant Logo'}
+                sx={{
+                  mt: { xs: 0, sm: 0.5, md: 1 },
+                  width: collapsed ? 36 : { xs: 52, sm: 56, md: 68 },
+                  height: collapsed ? 36 : { xs: 52, sm: 56, md: 68 },
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                  transition: 'all 0.3s ease',
+                  flexShrink: 0,
+                }}
+              />
+              {!collapsed && (
+                <Typography fontWeight={700} sx={{
+                  color: 'text.primary',
+                  letterSpacing: 0.3,
+                  fontSize: { xs: '0.85rem', sm: '0.9rem', md: '1rem' },
+                  textAlign: 'center',
+                  width: '100%',
                   overflow: 'hidden',
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap',
-                  display: 'block',
-                  textAlign: 'center',
+                  px: 1,
                 }}>
-                  {restaurantSettings.name || (user?.tenant as any)?.name || 'POS SYSTEM'}
+                  {restaurantSettings.name || (user?.tenant as any)?.name || 'Restaurant POS'}
                 </Typography>
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 500, letterSpacing: 2, textTransform: 'uppercase', display: 'block', textAlign: 'center' }}>
-                  Premium Dining
-                </Typography>
-              </Box>
-            ) : (
-              <Avatar sx={{
-                width: 40,
-                height: 40,
-                bgcolor: 'primary.main',
-                fontSize: '1rem',
-                fontWeight: 'bold',
-              }}>
-                {(restaurantSettings.name || (user?.tenant as any)?.name || 'P').charAt(0).toUpperCase()}
-              </Avatar>
-            )}
-          </>
-        )}
-      </Box>
-
-      {/* User Info Card */}
-      <Tooltip title={collapsed ? `${getUserFullName()} - ${activeRole}` : ''} placement="right">
-        <Box
-          sx={{
-            mx: collapsed ? 1 : 2,
-            mb: 2,
-            p: collapsed ? 1 : 2,
-            borderRadius: 3,
-            bgcolor: alpha(activeRole === 'admin' ? '#4F46E5' : '#111827', 0.05),
-            border: '1px solid',
-            borderColor: 'divider',
-            cursor: user?.roles && user.roles.length > 1 ? 'pointer' : 'default',
-            transition: 'all 0.3s ease',
-            display: 'flex',
-            justifyContent: 'center',
-          }}
-          onClick={handleRoleClick}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: collapsed ? 0 : 1.5 }}>
-            <Avatar sx={{
-              bgcolor: alpha(activeRole === 'admin' ? '#4F46E5' : '#111827', 0.1),
-              color: activeRole === 'admin' ? '#4F46E5' : '#111827',
-              width: collapsed ? 32 : 36,
-              height: collapsed ? 32 : 36,
-              transition: 'all 0.3s ease',
-            }}>
-              {activeRole?.charAt(0).toUpperCase()}
-            </Avatar>
-            {!collapsed && (
-              <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
-                <Typography variant="subtitle2" fontWeight="bold" noWrap>
-                  {getUserFullName()}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'capitalize' }}>
-                  {activeRole === 'admin' ? 'Administrator' : activeRole}
-                  {user?.roles && user.roles.length > 1 && ' ▾'}
-                </Typography>
-              </Box>
-            )}
-          </Box>
+              )}
+            </Box>
+          ) : (
+            <>
+              {!collapsed ? (
+                <Box sx={{ width: '100%', overflow: 'hidden', px: 1 }}>
+                  <Typography fontWeight={900} sx={{
+                    background: 'linear-gradient(45deg, #4F46E5 30%, #EC4899 90%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    mb: 0.5,
+                    fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' },
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    display: 'block',
+                    textAlign: 'center',
+                  }}>
+                    {restaurantSettings.name || (user?.tenant as any)?.name || 'POS SYSTEM'}
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 500, letterSpacing: 2, textTransform: 'uppercase', display: 'block', textAlign: 'center' }}>
+                    Premium Dining
+                  </Typography>
+                </Box>
+              ) : (
+                <Avatar sx={{
+                  width: 40,
+                  height: 40,
+                  bgcolor: 'primary.main',
+                  fontSize: '1rem',
+                  fontWeight: 'bold',
+                }}>
+                  {(restaurantSettings.name || (user?.tenant as any)?.name || 'P').charAt(0).toUpperCase()}
+                </Avatar>
+              )}
+            </>
+          )}
         </Box>
-      </Tooltip>
+
+        {/* User Info Card */}
+        <Tooltip title={collapsed ? `${getUserFullName()} - ${activeRole}` : ''} placement="right">
+          <Box
+            sx={{
+              mx: collapsed ? 1 : 2,
+              mb: 2,
+              p: collapsed ? 1 : 2,
+              borderRadius: 3,
+              bgcolor: alpha(activeRole === 'admin' ? '#4F46E5' : '#111827', 0.05),
+              border: '1px solid',
+              borderColor: 'divider',
+              cursor: user?.roles && user.roles.length > 1 ? 'pointer' : 'default',
+              transition: 'all 0.3s ease',
+              display: 'flex',
+              justifyContent: 'center',
+            }}
+            onClick={handleRoleClick}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: collapsed ? 0 : 1.5 }}>
+              <Avatar sx={{
+                bgcolor: alpha(activeRole === 'admin' ? '#4F46E5' : '#111827', 0.1),
+                color: activeRole === 'admin' ? '#4F46E5' : '#111827',
+                width: collapsed ? 32 : 36,
+                height: collapsed ? 32 : 36,
+                transition: 'all 0.3s ease',
+              }}>
+                {activeRole?.charAt(0).toUpperCase()}
+              </Avatar>
+              {!collapsed && (
+                <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>
+                  <Typography variant="subtitle2" fontWeight="bold" noWrap>
+                    {getUserFullName()}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'capitalize' }}>
+                    {activeRole === 'admin' ? 'Administrator' : activeRole}
+                    {user?.roles && user.roles.length > 1 && ' ▾'}
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          </Box>
+        </Tooltip>
+      </Box>
 
       <Menu
         anchorEl={roleAnchorEl}
@@ -548,6 +558,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
           </Typography>
         )}
       </Box> */}
+
 
       {/* Submenu for Collapsed Sidebar */}
       <Menu

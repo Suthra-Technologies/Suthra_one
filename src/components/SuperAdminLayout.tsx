@@ -29,6 +29,7 @@ import {
     Menu as MenuIcon,
     LocalShipping as DeliveryIcon,
     ContactPage as DemoIcon,
+    DirectionsBike as UberDirectIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 
@@ -67,6 +68,7 @@ const SuperAdminLayout: React.FC = () => {
         { path: '/superadmin/delivery-reports', label: 'Delivery Reports', icon: <DeliveryIcon /> },
         { path: '/superadmin/demo-requests', label: 'Demo Requests', icon: <DemoIcon /> },
         { path: '/superadmin/sms-logs', label: 'SMS Logs', icon: <ReceiptIcon /> },
+        { path: '/superadmin/uber-direct', label: 'Uber Direct', icon: <UberDirectIcon /> },
         { path: '/superadmin/tickets', label: 'Support Tickets', icon: <SupportIcon /> },
     ];
 

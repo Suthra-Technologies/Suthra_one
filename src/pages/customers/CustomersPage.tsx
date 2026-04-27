@@ -218,9 +218,18 @@ const CustomersPage: React.FC = () => {
         <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
             {/* Header */}
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <PersonIcon sx={{ fontSize: 32, color: 'primary.main' }} />
-                    <Typography variant={{ xs: 'h5', sm: 'h4' } as any} fontWeight="bold">
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'center', sm: 'flex-start' }, width: '100%', gap: 2 }}>
+                    <PersonIcon sx={{ fontSize: 32, color: 'primary.main', display: { xs: 'none', sm: 'inline-flex' } }} />
+                    <Typography
+                        variant="h4"
+                        sx={{
+                            width: '100%',
+                            textAlign: { xs: 'center', sm: 'left' },
+                            fontWeight: 800,
+                            fontFamily: '"Outfit", sans-serif',
+                            fontSize: { xs: '1.5rem', md: '2.125rem' }
+                        }}
+                    >
 
                         Customers
                     </Typography>
