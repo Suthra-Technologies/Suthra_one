@@ -6,7 +6,7 @@ import Layout from './components/Layout';
 import PushNotificationInitializer from './components/PushNotificationInitializer';
 import { getTenantSlugFromHostname } from './utils/tenant.utils';
 import { TenantRoutes } from './routes/TenantRoutes';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationProvider';
 import { SocketProvider } from './context/SocketContext';
 import { Capacitor, registerPlugin } from '@capacitor/core';
@@ -144,21 +144,22 @@ const ThemedAppContent: React.FC = () => {
       <CssBaseline />
       <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
       <NotificationProvider>
-        <SocketProvider>
-          <PushNotificationInitializer />
-          <ErrorBoundary>
+        <ErrorBoundary>
+          <SocketProvider>
+            <PushNotificationInitializer />
             <AppRoutes />
-          </ErrorBoundary>
-        </SocketProvider>
+          </SocketProvider>
+        </ErrorBoundary>
       </NotificationProvider>
     </ThemeProvider>
   );
 };
 
+const AppPlugin = registerPlugin<any>('App');
+
 const MobileBackHandler: React.FC = () => {
   const location = useLocation();
   const isNative = Capacitor.isNativePlatform();
-  const AppPlugin = registerPlugin<any>('App');
 
   useEffect(() => {
     if (!isNative) return;
@@ -199,12 +200,22 @@ const MobileBackHandler: React.FC = () => {
 };
 
 const AppRoutes: React.FC = () => {
+  const { user, activeRole, isAuthenticated } = useAuth();
   const hostnameSlug = getTenantSlugFromHostname();
   const isNative = Capacitor.isNativePlatform();
   const storedToken = typeof window !== 'undefined' ? localStorage.getItem('jwt') : null;
   const storedTenantSlug = typeof window !== 'undefined' ? localStorage.getItem('tenantSlug') : null;
-  const defaultAuthedPath = hostnameSlug ? '/dashboard' : (storedTenantSlug ? `/${storedTenantSlug}/dashboard` : '/dashboard');
-  const hasStoredSession = !!storedToken;
+  
+  // Use user context if available, fallback to localStorage for initial render/handover
+  const role = activeRole || (typeof window !== 'undefined' ? localStorage.getItem('activeRole') : null);
+  const isSuperAdmin = role === 'superadmin';
+
+  const defaultAuthedPath = isSuperAdmin 
+    ? '/superadmin' 
+    : (hostnameSlug ? '/dashboard' : (storedTenantSlug ? `/${storedTenantSlug}/dashboard` : '/dashboard'));
+  
+  const hasStoredSession = isAuthenticated || !!storedToken;
+  console.log('AppRoutes: Rendering. Token present:', hasStoredSession, 'Role:', role, 'Tenant:', storedTenantSlug, 'AuthedPath:', defaultAuthedPath);
 
   return (
     <Routes>
@@ -248,8 +259,8 @@ const AppRoutes: React.FC = () => {
         </Route>
       )}
 
-      {/* Fallback for old routes without slug - redirect to login */}
-      <Route path="/dashboard" element={<Navigate to={hasStoredSession ? defaultAuthedPath : '/login'} replace />} />
+      {/* Fallback for old routes without slug - redirect to login or default authed path */}
+      <Route path="/dashboard" element={<Navigate to={hasStoredSession ? (defaultAuthedPath === '/dashboard' ? '/unauthorized' : defaultAuthedPath) : '/login'} replace />} />
       <Route path="/users" element={<Navigate to={hasStoredSession ? defaultAuthedPath : '/login'} replace />} />
       <Route path="/unauthorized" element={<Unauthorized />} />
       <Route path="*" element={<Navigate to={hasStoredSession ? defaultAuthedPath : '/login'} replace />} />

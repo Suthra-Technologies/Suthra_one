@@ -176,37 +176,48 @@ const LoginPage: React.FC = () => {
       });
 
       if (result.success) {
-        console.log('LoginPage: Login successful, result:', result);
+        console.log('LoginPage: Login successful. User:', result.user);
         const userRole = result.user?.role;
-        console.log('LoginPage: User role detected:', userRole);
+        const targetSlug = result.slug;
+        console.log('LoginPage: User role:', userRole, 'Tenant Slug:', targetSlug);
 
         if (userRole === 'superadmin') {
-          console.log('LoginPage: Navigating to /superadmin');
+          console.log('LoginPage: Superadmin detected, navigating to /superadmin');
           navigate('/superadmin', { replace: true });
-        } else if (result.slug) {
+        } else if (targetSlug) {
           const from = (location.state as any)?.from;
+          console.log('LoginPage: Redirecting. "from" state:', from);
+          
           if (from) {
+            console.log('LoginPage: Navigating to "from":', from);
             setTimeout(() => navigate(from, { replace: true }), 100);
           } else if (userRole === 'customer') {
+            console.log('LoginPage: Customer detected. isSubdomain:', isSubdomain);
             if (isSubdomain) {
+              console.log('LoginPage: Navigating to /customer/order');
               setTimeout(() => navigate('/customer/order', { replace: true }), 100);
             } else {
-              // Redirect to subdomain if on main domain, passing token for handover
-              window.location.href = getTenantUrl(result.slug!, '/customer/order', result.token);
+              const url = getTenantUrl(targetSlug, '/customer/order', result.token);
+              console.log('LoginPage: Redirecting to subdomain URL:', url);
+              window.location.href = url;
             }
           } else {
+            console.log('LoginPage: Staff/Admin detected. isSubdomain:', isSubdomain);
             if (isSubdomain) {
+              console.log('LoginPage: Navigating to /dashboard');
               setTimeout(() => navigate('/dashboard', { replace: true }), 100);
             } else {
-              // Redirect to subdomain if on main domain, passing token for handover
-              window.location.href = getTenantUrl(result.slug!, '/dashboard', result.token);
+              const url = getTenantUrl(targetSlug, '/dashboard', result.token);
+              console.log('LoginPage: Redirecting to subdomain URL:', url);
+              window.location.href = url;
             }
           }
         } else {
-          console.error('LoginPage: No slug and not superadmin');
+          console.error('LoginPage: No slug and not superadmin. Result:', result);
           setApiError('Login successful but no tenant associated with this account. Please contact support.');
         }
       } else {
+        console.warn('LoginPage: Login failed:', result.error);
         setApiError(result.error || 'Login failed. Please check your credentials.');
       }
     } catch (error: any) {
