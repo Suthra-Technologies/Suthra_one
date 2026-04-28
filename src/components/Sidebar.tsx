@@ -408,7 +408,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
       <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
         {navigationGroups.map((group, groupIndex) => {
           const filteredItems = (group.items as any[]).filter(item => {
-            const roleMatch = !item.roles || (activeRole && item.roles.includes(activeRole));
+            const isSuperAdmin = activeRole === 'superadmin' || user?.roles?.includes('superadmin');
+            const roleMatch = !item.roles || isSuperAdmin || (activeRole && item.roles.includes(activeRole));
             const featureMatch = hasFeatureAccess(item.feature);
             const iosHideMatch = item.hideOnIOS && Capacitor.getPlatform() === 'ios';
             const laptopOnlyMatch = item.laptopOnly && isMobileOrTablet;
