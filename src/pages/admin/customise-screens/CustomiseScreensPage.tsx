@@ -84,6 +84,14 @@ import {
   ServicesSectionEditor,
   DynamicBlockPlaceholder
 } from './components/SectionEditors';
+import {
+  type AboutSectionData,
+  DEFAULT_ABOUT_SECTIONS,
+  AboutIntroEditor,
+  AboutValuesEditor,
+  AboutServicesEditor,
+  AboutWhyChooseEditor,
+} from './components/AboutSectionEditors';
 
 const DEFAULT_HOMEPAGE_SECTIONS: SectionData[] = [
   {
@@ -257,26 +265,38 @@ const CustomiseScreensPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sections, setSections] = useState<SectionData[]>([]);
+  const [aboutSections, setAboutSections] = useState<AboutSectionData[]>([]);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [tabValue, setTabValue] = useState(0);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [aboutAnchorEl, setAboutAnchorEl] = useState<null | HTMLElement>(null);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  const [isAboutResetDialogOpen, setIsAboutResetDialogOpen] = useState(false);
   const isClosed = false; // Mocked for preview parity
 
   useEffect(() => {
     const fetchContent = async () => {
       try {
-        const response = await homepageAPI.getContent();
-        if (response.data) {
-          if (response.data.sections && response.data.sections.length > 0) {
-            setSections(response.data.sections);
+        const [homeResponse, aboutResponse] = await Promise.all([
+          homepageAPI.getContent(),
+          homepageAPI.getAboutContent(),
+        ]);
+        if (homeResponse.data) {
+          if (homeResponse.data.sections && homeResponse.data.sections.length > 0) {
+            setSections(homeResponse.data.sections);
           } else {
-            // Default template mimicking the original landing page
             setSections(DEFAULT_HOMEPAGE_SECTIONS);
           }
         }
+        if (aboutResponse.data) {
+          if (aboutResponse.data.aboutSections && aboutResponse.data.aboutSections.length > 0) {
+            setAboutSections(aboutResponse.data.aboutSections);
+          } else {
+            setAboutSections(DEFAULT_ABOUT_SECTIONS);
+          }
+        }
       } catch (error) {
-        console.error('Error fetching homepage content:', error);
+        console.error('Error fetching content:', error);
       } finally {
         setLoading(false);
       }
@@ -287,15 +307,22 @@ const CustomiseScreensPage: React.FC = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      // For now we still send htmlContent just in case, but prioritize sections
-      await homepageAPI.updateContent('', sections);
-      toast.success('Homepage updated successfully!', { 
-        position: 'top-center',
-        style: { marginTop: '90px', fontFamily: "'Outfit', sans-serif", fontWeight: 700, borderRadius: '12px', background: '#333', color: '#fff' } 
-      });
+      if (tabValue === 0) {
+        await homepageAPI.updateContent('', sections);
+        toast.success('Homepage updated successfully!', { 
+          position: 'top-center',
+          style: { marginTop: '90px', fontFamily: "'Outfit', sans-serif", fontWeight: 700, borderRadius: '12px', background: '#333', color: '#fff' } 
+        });
+      } else if (tabValue === 2) {
+        await homepageAPI.updateAboutContent(aboutSections);
+        toast.success('About page updated successfully!', { 
+          position: 'top-center',
+          style: { marginTop: '90px', fontFamily: "'Outfit', sans-serif", fontWeight: 700, borderRadius: '12px', background: '#333', color: '#fff' } 
+        });
+      }
     } catch (error) {
-      console.error('Error saving homepage:', error);
-      toast.error('Failed to save homepage content', { 
+      console.error('Error saving content:', error);
+      toast.error('Failed to save content', { 
         position: 'top-center',
         style: { marginTop: '90px', fontFamily: "'Outfit', sans-serif", fontWeight: 700, borderRadius: '12px' } 
       });
@@ -333,6 +360,38 @@ const CustomiseScreensPage: React.FC = () => {
     if (targetIndex >= 0 && targetIndex < newSections.length) {
       [newSections[index], newSections[targetIndex]] = [newSections[targetIndex], newSections[index]];
       setSections(newSections);
+    }
+  };
+
+  // ── About Page Section Handlers ──
+  const addAboutSection = (type: AboutSectionData['type']) => {
+    const newSection: AboutSectionData = {
+      id: Date.now().toString(),
+      type,
+      data: type === 'about-intro' ? { badgeText: '', paragraphs: [''], image: '' } :
+            type === 'about-values' ? { badgeText: '', heading: '', items: [''], image: '' } :
+            type === 'about-services' ? { title: '', subtitle: '', items: [] } :
+            type === 'about-why-choose' ? { title: '', subtitle: '', items: [] } :
+            {}
+    };
+    setAboutSections([...aboutSections, newSection]);
+    setAboutAnchorEl(null);
+  };
+
+  const updateAboutSection = (id: string, data: any) => {
+    setAboutSections(aboutSections.map(s => s.id === id ? { ...s, data } : s));
+  };
+
+  const removeAboutSection = (id: string) => {
+    setAboutSections(aboutSections.filter(s => s.id !== id));
+  };
+
+  const moveAboutSection = (index: number, direction: 'up' | 'down') => {
+    const newSections = [...aboutSections];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    if (targetIndex >= 0 && targetIndex < newSections.length) {
+      [newSections[index], newSections[targetIndex]] = [newSections[targetIndex], newSections[index]];
+      setAboutSections(newSections);
     }
   };
 
@@ -414,39 +473,43 @@ const CustomiseScreensPage: React.FC = () => {
             '&::-webkit-scrollbar': { display: 'none' }
           }}
         >
-          <Button 
-            variant="outlined" 
-            color="error" 
-            startIcon={<RestartAlt />} 
-            onClick={() => setIsResetDialogOpen(true)}
-            sx={{ 
-              px: { xs: 1.5, md: 2 }, 
-              height: { xs: 36, md: 42 },
-              borderRadius: 2.5,
-              fontWeight: 700,
-              fontFamily: "'Outfit', sans-serif",
-              fontSize: { xs: '0.75rem', md: '0.875rem' }, 
-              whiteSpace: 'nowrap' 
-            }}
-          >
-            Reset
-          </Button>
-          <Button 
-            variant="outlined" 
-            startIcon={<Visibility />} 
-            onClick={openPreview}
-            sx={{ 
-              px: { xs: 1.5, md: 2 }, 
-              height: { xs: 36, md: 42 },
-              borderRadius: 2.5,
-              fontWeight: 700,
-              fontFamily: "'Outfit', sans-serif",
-              fontSize: { xs: '0.75rem', md: '0.875rem' }, 
-              whiteSpace: 'nowrap' 
-            }}
-          >
-            Preview
-          </Button>
+          {(tabValue === 0 || tabValue === 2) && (
+            <>
+              <Button 
+                variant="outlined" 
+                color="error" 
+                startIcon={<RestartAlt />} 
+                onClick={() => tabValue === 2 ? setIsAboutResetDialogOpen(true) : setIsResetDialogOpen(true)}
+                sx={{ 
+                  px: { xs: 1.5, md: 2 }, 
+                  height: { xs: 36, md: 42 },
+                  borderRadius: 2.5,
+                  fontWeight: 700,
+                  fontFamily: "'Outfit', sans-serif",
+                  fontSize: { xs: '0.75rem', md: '0.875rem' }, 
+                  whiteSpace: 'nowrap' 
+                }}
+              >
+                Reset
+              </Button>
+              <Button 
+                variant="outlined" 
+                startIcon={<Visibility />} 
+                onClick={openPreview}
+                sx={{ 
+                  px: { xs: 1.5, md: 2 }, 
+                  height: { xs: 36, md: 42 },
+                  borderRadius: 2.5,
+                  fontWeight: 700,
+                  fontFamily: "'Outfit', sans-serif",
+                  fontSize: { xs: '0.75rem', md: '0.875rem' }, 
+                  whiteSpace: 'nowrap' 
+                }}
+              >
+                Preview
+              </Button>
+            </>
+          )}
           <Button 
             variant="contained" 
             startIcon={saving ? <CircularProgress size={20} color="inherit" /> : <Save />} 
@@ -493,6 +556,7 @@ const CustomiseScreensPage: React.FC = () => {
         >
           <Tab label="Home Page" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }} />
           <Tab label="Gallery" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }} />
+          <Tab label="About Page" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }} />
         </Tabs>
 
         <TabPanel value={tabValue} index={0}>
@@ -595,28 +659,246 @@ const CustomiseScreensPage: React.FC = () => {
             <GallerySettings />
           </Box>
         </TabPanel>
+
+        <TabPanel value={tabValue} index={2}>
+          <Box sx={{ py: { xs: 2, md: 3 }, px: { xs: 0, md: 3 } }}>
+            <Stack spacing={{ xs: 2.5, md: 4 }}>
+              {aboutSections.map((section, idx) => (
+                <Card key={section.id} elevation={0} sx={{ 
+                  borderRadius: { xs: 3.5, md: 4 }, 
+                  overflow: 'visible',
+                  border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                  boxShadow: { xs: '0 4px 16px rgba(0,0,0,0.02)', md: 'none' }
+                }}>
+                  <CardHeader
+                    title={
+                      <Typography sx={{ 
+                        fontWeight: 800, 
+                        fontFamily: "'Outfit', sans-serif",
+                        textTransform: 'uppercase', 
+                        letterSpacing: '0.05em',
+                        fontSize: { xs: '0.7rem', md: '0.8rem' },
+                        color: 'text.secondary'
+                      }}>
+                        {section.type.replace(/-/g, ' ')} SECTION
+                      </Typography>
+                    }
+                    action={
+                      <Stack direction="row" spacing={0.5}>
+                        <IconButton size="small" onClick={() => moveAboutSection(idx, 'up')} disabled={idx === 0} sx={{ bgcolor: alpha(theme.palette.divider, 0.05) }}><ArrowUpward sx={{ fontSize: 18 }} /></IconButton>
+                        <IconButton size="small" onClick={() => moveAboutSection(idx, 'down')} disabled={idx === aboutSections.length - 1} sx={{ bgcolor: alpha(theme.palette.divider, 0.05) }}><ArrowDownward sx={{ fontSize: 18 }} /></IconButton>
+                        <IconButton size="small" color="error" onClick={() => removeAboutSection(section.id)} sx={{ bgcolor: alpha(theme.palette.error.main, 0.05) }}><Delete sx={{ fontSize: 18 }} /></IconButton>
+                      </Stack>
+                    }
+                    sx={{ bgcolor: alpha(theme.palette.divider, 0.02), borderBottom: `1px solid ${alpha(theme.palette.divider, 0.05)}`, py: 1.5, px: { xs: 2, md: 2.5 } }}
+                  />
+                  <CardContent sx={{ p: { xs: 2, md: 3 }, '&:last-child': { pb: { xs: 2, md: 3 } } }}>
+                    {section.type === 'about-intro' && <AboutIntroEditor section={section} onUpdate={(data) => updateAboutSection(section.id, data)} uploadImage={handleUploadImage} />}
+                    {section.type === 'about-values' && <AboutValuesEditor section={section} onUpdate={(data) => updateAboutSection(section.id, data)} uploadImage={handleUploadImage} />}
+                    {section.type === 'about-services' && <AboutServicesEditor section={section} onUpdate={(data) => updateAboutSection(section.id, data)} uploadImage={handleUploadImage} />}
+                    {section.type === 'about-why-choose' && <AboutWhyChooseEditor section={section} onUpdate={(data) => updateAboutSection(section.id, data)} uploadImage={handleUploadImage} />}
+                  </CardContent>
+                </Card>
+              ))}
+            </Stack>
+          </Box>
+
+          <Box sx={{ textAlign: 'center', py: { xs: 3, md: 4 } }}>
+            <Button
+              variant="outlined"
+              size="large"
+              startIcon={<AddIcon />}
+              onClick={(e) => setAboutAnchorEl(e.currentTarget)}
+              sx={{ 
+                borderRadius: 10, 
+                px: { xs: 4, md: 6 }, 
+                py: 1.5,
+                borderStyle: 'dashed', 
+                borderWidth: 2,
+                fontWeight: 800,
+                fontFamily: "'Outfit', sans-serif",
+                fontSize: { xs: '0.85rem', md: '1rem' },
+                '&:hover': { borderWidth: 2 }
+              }}
+            >
+              Add About Section
+            </Button>
+            <Menu 
+              anchorEl={aboutAnchorEl} 
+              open={Boolean(aboutAnchorEl)} 
+              onClose={() => setAboutAnchorEl(null)}
+              PaperProps={{
+                sx: { 
+                  borderRadius: 3, 
+                  mt: 1, 
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
+                  '& .MuiMenuItem-root': {
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    fontFamily: "'Outfit', sans-serif",
+                    py: 1.25
+                  }
+                }
+              }}
+            >
+              <MenuItem onClick={() => addAboutSection('about-intro')}>Intro / About Section</MenuItem>
+              <MenuItem onClick={() => addAboutSection('about-values')}>Values Section</MenuItem>
+              <MenuItem onClick={() => addAboutSection('about-services')}>Services Section</MenuItem>
+              <MenuItem onClick={() => addAboutSection('about-why-choose')}>Why Choose Us Section</MenuItem>
+            </Menu>
+          </Box>
+
+
+        </TabPanel>
       </Paper>
 
       <Dialog fullScreen open={isPreviewOpen} onClose={closePreview}>
-        <AppBar sx={{ position: 'relative', bgcolor: '#1a1a1a' }}>
-          <Toolbar>
-            <IconButton edge="start" color="inherit" onClick={closePreview} aria-label="close"><Close /></IconButton>
-            <Typography sx={{ ml: 2, flex: 1, fontWeight: 800, fontFamily: "'Outfit', sans-serif" }} variant="h6">Home Preview</Typography>
-            <Button autoFocus color="inherit" onClick={closePreview} sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>Done</Button>
+        <AppBar sx={{ position: 'sticky', top: 0, zIndex: 1100, bgcolor: '#1a1a1a', color: 'white', boxShadow: 'none', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
+          <Toolbar sx={{ minHeight: { xs: 56, md: 64 } }}>
+            <Button
+              startIcon={<ChevronLeft />}
+              onClick={closePreview}
+              color="inherit"
+              sx={{ 
+                textTransform: 'none', 
+                fontWeight: 700, 
+                fontFamily: "'Outfit', sans-serif",
+                fontSize: { xs: '0.9rem', md: '1rem' },
+                mr: 1,
+                ml: -1,
+                '& .MuiButton-startIcon': { mr: { xs: 0.5, md: 1 } }
+              }}
+            >
+              Back
+            </Button>
+            <Typography sx={{ flex: 1, fontWeight: 800, fontFamily: "'Outfit', sans-serif", fontSize: { xs: '0.9rem', md: '1.1rem' }, color: 'white' }} variant="h6">
+              {tabValue === 2 ? 'About Page Preview' : 'Home Page Preview'}
+            </Typography>
+            {!isMobile && (
+              <Button 
+                autoFocus 
+                color="inherit" 
+                onClick={closePreview} 
+                sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif", textTransform: 'none' }}
+              >
+                Done
+              </Button>
+            )}
           </Toolbar>
         </AppBar>
         <Box sx={{ bgcolor: '#fff', minHeight: '100dvh' }}>
           {/* Preview Container mirroring Mythri styles */}
-          <Box sx={{ maxWidth: 1200, mx: 'auto', py: 4, px: 2 }}>
-            {sections.map((section, idx) => (
-              <Box key={section.id} sx={{ mb: 10 }}>
+          <Box sx={{ 
+            maxWidth: 1200, 
+            mx: 'auto', 
+            py: { xs: 2, md: 4 }, 
+            px: { xs: 2, md: 3 } 
+          }}>
+            {tabValue === 2 ? (
+              aboutSections.map((section, idx) => (
+                <Box key={section.id} sx={{ mb: 10 }}>
+                   {section.type === 'about-intro' && (
+                     <Stack direction={{ xs: 'column', md: 'row' }} spacing={4} alignItems="center">
+                       <Box sx={{ flex: 1, textAlign: 'left' }}>
+                         {section.data?.badgeText && (
+                           <Typography variant="overline" sx={{ bgcolor: 'rgba(230, 159, 36, 0.2)', px: 2, py: 0.5, borderRadius: 5, color: '#e69f24', fontWeight: 'bold' }}>
+                             {section.data.badgeText}
+                           </Typography>
+                         )}
+                         <Typography variant="body1" sx={{ mt: 2, color: '#475569', lineHeight: 1.8 }}>
+                           {(section.data?.paragraphs?.[0] || 'Welcome to our restaurant. This is a preview of the intro section.')}
+                         </Typography>
+                       </Box>
+                       <Box sx={{ flex: 1, height: { xs: 200, md: 300 }, bgcolor: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
+                         {section.data?.image && <img src={section.data.image} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                       </Box>
+                     </Stack>
+                   )}
+                   {section.type === 'about-values' && (
+                     <Stack direction={{ xs: 'column', md: 'row-reverse' }} spacing={4} alignItems="center" sx={{ py: 4 }}>
+                       <Box sx={{ flex: 1, textAlign: 'left' }}>
+                         {section.data?.badgeText && (
+                           <Typography variant="overline" sx={{ bgcolor: '#1b120d', px: 2, py: 0.5, borderRadius: 5, color: '#f4c5a1', fontWeight: 'bold' }}>
+                             {section.data.badgeText}
+                           </Typography>
+                         )}
+                         <Typography variant="h5" sx={{ fontWeight: 800, mt: 2, fontFamily: "'Outfit', sans-serif" }}>
+                           {section.data?.heading || 'Our Values'}
+                         </Typography>
+                         <Stack spacing={2} sx={{ mt: 3 }}>
+                           {section.data?.items?.map((item: string, i: number) => (
+                             <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 2, border: '1px solid #eadaca', borderRadius: 3 }}>
+                               <Typography>✔️</Typography>
+                               <Typography variant="body2" fontWeight="bold">{item}</Typography>
+                             </Box>
+                           ))}
+                         </Stack>
+                       </Box>
+                       <Box sx={{ flex: 1, height: { xs: 200, md: 300 }, bgcolor: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
+                         {section.data?.image && <img src={section.data.image} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                       </Box>
+                     </Stack>
+                   )}
+                   {section.type === 'about-services' && (
+                     <Box sx={{ py: 4, textAlign: 'center' }}>
+                       <Typography variant="h4" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>{section.data?.title || 'Our Services'}</Typography>
+                       <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>{section.data?.subtitle}</Typography>
+                       <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} justifyContent="center">
+                         {section.data?.items?.map((item: any, i: number) => (
+                           <Box key={i} sx={{ p: 3, bgcolor: '#fdf8f4', borderRadius: 4, textAlign: 'left', flex: 1 }}>
+                             <Typography variant="h3" sx={{ mb: 2 }}>{item.emoji}</Typography>
+                             <Typography variant="h6" fontWeight="bold" sx={{ mb: 1, color: '#a83214' }}>{item.title}</Typography>
+                             <Typography variant="body2" color="text.secondary">{item.description}</Typography>
+                           </Box>
+                         ))}
+                       </Stack>
+                     </Box>
+                   )}
+                   {section.type === 'about-why-choose' && (
+                     <Box sx={{ py: 4, textAlign: 'center' }}>
+                       <Typography variant="h4" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>{section.data?.title || 'Why Choose Us'}</Typography>
+                       <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>{section.data?.subtitle}</Typography>
+                       <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} justifyContent="center">
+                         {section.data?.items?.map((item: any, i: number) => (
+                           <Box key={i} sx={{ borderRadius: 4, overflow: 'hidden', border: '1px solid #f1f5f9', textAlign: 'left', flex: 1 }}>
+                             <Box sx={{ height: 160, bgcolor: '#f1f5f9', position: 'relative' }}>
+                               {item.image && <img src={item.image} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                               {item.stat && <Box sx={{ position: 'absolute', top: 10, right: 10, bgcolor: 'white', px: 1.5, py: 0.5, borderRadius: 5 }}><Typography variant="caption" fontWeight="bold" color="#a83214">{item.stat}</Typography></Box>}
+                             </Box>
+                             <Box sx={{ p: 3 }}>
+                               <Typography variant="h6" fontWeight="bold" sx={{ mb: 1 }}>{item.title}</Typography>
+                               <Typography variant="body2" color="text.secondary">{item.description}</Typography>
+                             </Box>
+                           </Box>
+                         ))}
+                       </Stack>
+                     </Box>
+                   )}
+                </Box>
+              ))
+            ) : (
+              sections.map((section, idx) => (
+                <Box key={section.id} sx={{ mb: 10 }}>
                 {/* Hero Preview */}
                 {section.type === 'hero' && (() => {
                   const validImages = section.data?.images?.filter((img: string) => img?.trim?.() !== '') || [];
                   const displayImages = validImages.length > 0 ? validImages : ['https://s3.us-east-1.amazonaws.com/restaurant.pos.com/uploads/03e5f01c-ba44-45e2-bcc7-fe305a64788e.png'];
                   
                   return (
-                    <Box sx={{ position: 'relative', height: '60vh', bgcolor: '#1b120d', mx: -2, mt: -4, mb: 4, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', color: 'white' }}>
+                    <Box sx={{ 
+                      position: 'relative', 
+                      height: { xs: '40vh', md: '60vh' }, 
+                      bgcolor: '#1b120d', 
+                      mx: { xs: -2, md: -3 }, 
+                      mt: { xs: -2, md: -4 }, 
+                      mb: 4, 
+                      overflow: 'hidden', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      textAlign: 'center', 
+                      color: 'white' 
+                    }}>
                       <img src={displayImages[0]} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', opacity: 0.6 }} />
                       <Box sx={{ position: 'relative', zIndex: 1, p: 4, maxWidth: 900 }}>
                         <Typography variant="h2" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif", fontSize: { xs: '1.8rem', sm: '2.5rem' }, dropShadow: '0 20px 13px rgba(0,0,0,0.4)', mb: 1.5 }}>{section.data?.title}</Typography>
@@ -639,7 +921,7 @@ const CustomiseScreensPage: React.FC = () => {
 
                 {/* Hospitality Preview */}
                 {section.type === 'hospitality' && (
-                  <Stack direction={{ xs: 'column', lg: section.data?.imagePosition === "right" ? "row-reverse" : "row" }} spacing={4} alignItems="stretch" sx={{ py: 6 }}>
+                  <Stack direction={{ xs: 'column', lg: section.data?.imagePosition === "right" ? "row-reverse" : "row" }} spacing={4} alignItems="stretch" sx={{ py: { xs: 2, md: 6 } }}>
                     <Box sx={{ flex: 1, minHeight: { xs: 260, md: 320 }, borderRadius: 6, overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
                       <img src={section.data?.image || 'https://images.unsplash.com/photo-1544025162-d76694265947'} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                     </Box>
@@ -773,7 +1055,7 @@ const CustomiseScreensPage: React.FC = () => {
                   />
                 )}
               </Box>
-            ))}
+            )))}
           </Box>
         </Box>
       </Dialog>
@@ -843,6 +1125,65 @@ const CustomiseScreensPage: React.FC = () => {
                 fontFamily: "'Outfit', sans-serif",
                 boxShadow: `0 4px 12px ${alpha(theme.palette.error.main, 0.2)}`
             }}
+          >
+            Reset All
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* About Page Reset Dialog */}
+      <Dialog 
+        open={isAboutResetDialogOpen} 
+        onClose={() => setIsAboutResetDialogOpen(false)}
+        fullScreen={isMobile}
+        PaperProps={{
+          sx: { borderRadius: { xs: 0, sm: 4 } }
+        }}
+      >
+        <DialogTitle sx={{ 
+          m: 0, 
+          p: { xs: 2.5, sm: 3 }, 
+          pt: { xs: isMobile ? '54px' : 2.5, sm: 3 },
+          bgcolor: isMobile ? 'error.main' : 'transparent',
+          color: isMobile ? 'white' : 'text.primary',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <Typography variant="h6" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
+            Reset About Page?
+          </Typography>
+          {isMobile && <IconButton onClick={() => setIsAboutResetDialogOpen(false)} color="inherit"><Close /></IconButton>}
+        </DialogTitle>
+        <DialogContent sx={{ p: { xs: 3, sm: 4 } }}>
+          <Typography sx={{ fontWeight: 500, color: 'text.secondary', lineHeight: 1.6 }}>
+            This will replace all your current About page sections with the default template. 
+            Any unsaved changes will be lost. This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ 
+          p: { xs: 2.5, sm: 3 }, 
+          pb: { xs: isMobile ? '32px' : 2.5, sm: 4 },
+          gap: 1.5 
+        }}>
+          <Button 
+            onClick={() => setIsAboutResetDialogOpen(false)} 
+            sx={{ flex: 1, borderRadius: 2.5, py: 1.25, fontWeight: 700, fontFamily: "'Outfit', sans-serif" }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={() => {
+              setAboutSections(DEFAULT_ABOUT_SECTIONS);
+              setIsAboutResetDialogOpen(false);
+              toast.success("About page reset to default. Don't forget to Save Changes!", {
+                position: 'top-center',
+                style: { marginTop: '90px', fontFamily: "'Outfit', sans-serif", fontWeight: 700, borderRadius: '12px', background: '#333', color: '#fff' }
+              });
+            }}
+            color="error" 
+            variant="contained"
+            sx={{ flex: 1, borderRadius: 2.5, py: 1.25, fontWeight: 800, fontFamily: "'Outfit', sans-serif", boxShadow: `0 4px 12px ${alpha(theme.palette.error.main, 0.2)}` }}
           >
             Reset All
           </Button>

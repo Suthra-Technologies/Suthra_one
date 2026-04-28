@@ -672,6 +672,9 @@ export const homepageAPI = {
   getContent: () => api.get('/homepage'),
   updateContent: (htmlContent: string, sections?: any[]) => api.put('/homepage', { htmlContent, sections }),
   getPublicContent: (tenantSlug: string) => api.get('/homepage/public', { params: { tenantSlug } }),
+  getAboutContent: () => api.get('/homepage/about'),
+  updateAboutContent: (aboutSections: any[]) => api.put('/homepage/about', { aboutSections }),
+  getPublicAboutContent: (tenantSlug: string) => api.get('/homepage/about/public', { params: { tenantSlug } }),
 };
 
 // -------------------- SMS API --------------------
