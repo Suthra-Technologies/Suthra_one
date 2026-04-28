@@ -252,6 +252,11 @@ const CateringManagementPage = () => {
     const [updating, setUpdating] = useState(false);
     const [creating, setCreating] = useState(false);
 
+    // Admin custom-item (off-menu) state
+    const [adminCustomItemName, setAdminCustomItemName] = useState('');
+    const [adminCustomItemQty, setAdminCustomItemQty] = useState<number>(1);
+    const [adminCustomItemPrice, setAdminCustomItemPrice] = useState<number>(0);
+
     const [occasionsList, setOccasionsList] = useState<string[]>((settings?.restaurant?.occasions || [
         "Birthday Party",
         "Sweet Sixteen Party",
@@ -439,7 +444,31 @@ const CateringManagementPage = () => {
     const handleUpdateEditItemQty = (index: number, newQty: number) => {
         const newItems = [...editData.items];
         newItems[index] = { ...newItems[index], quantity: newQty, total: newItems[index].unitPrice * newQty };
-        setEditData({ ...editData, items: newItems });
+        
+        const subtotal = newItems.reduce((sum, item) => sum + item.total, 0);
+        let discountAmt = editData.discount?.type === 'percentage'
+            ? (subtotal * (editData.discount?.value || 0)) / 100
+            : (editData.discount?.value || 0);
+        const taxRate = editData.tax?.rate || 0;
+        const taxAmount = Math.max(0, subtotal - discountAmt) * (taxRate / 100);
+        const totalAmount = Math.max(0, subtotal - discountAmt) + taxAmount;
+
+        setEditData({ ...editData, items: newItems, subtotal, totalAmount, tax: { ...editData.tax, amount: taxAmount } });
+    };
+
+    const handleUpdateEditItemPrice = (index: number, newPrice: number) => {
+        const newItems = [...editData.items];
+        newItems[index] = { ...newItems[index], unitPrice: newPrice, total: newPrice * newItems[index].quantity };
+        
+        const subtotal = newItems.reduce((sum, item) => sum + item.total, 0);
+        let discountAmt = editData.discount?.type === 'percentage'
+            ? (subtotal * (editData.discount?.value || 0)) / 100
+            : (editData.discount?.value || 0);
+        const taxRate = editData.tax?.rate || 0;
+        const taxAmount = Math.max(0, subtotal - discountAmt) * (taxRate / 100);
+        const totalAmount = Math.max(0, subtotal - discountAmt) + taxAmount;
+
+        setEditData({ ...editData, items: newItems, subtotal, totalAmount, tax: { ...editData.tax, amount: taxAmount } });
     };
 
     const handleAddItemsToEdit = (finalizedItems: any[]) => {
@@ -1193,6 +1222,29 @@ const CateringManagementPage = () => {
             ...prev,
             items: prev.items.filter((_, i) => i !== index)
         }));
+    };
+
+    const handleAddAdminCustomItem = () => {
+        const name = adminCustomItemName.trim();
+        if (!name) { toast.error('Please enter a custom item name'); return; }
+        if (adminCustomItemQty < 1) { toast.error('Quantity must be at least 1'); return; }
+        if (adminCustomItemPrice < 0) { toast.error('Price cannot be negative'); return; }
+        const total = adminCustomItemPrice * adminCustomItemQty;
+        setNewOrder(prev => ({
+            ...prev,
+            items: [...prev.items, {
+                menuItem: '',
+                name,
+                quantity: adminCustomItemQty,
+                unitPrice: adminCustomItemPrice,
+                total,
+                isCustom: true,
+            }]
+        }));
+        toast.success(`"${name}" added to order`);
+        setAdminCustomItemName('');
+        setAdminCustomItemQty(1);
+        setAdminCustomItemPrice(0);
     };
 
     const handleCreateOrder = async () => {
@@ -2103,7 +2155,18 @@ const CateringManagementPage = () => {
                                                                 </TableCell>
                                                                 <TableCell align="right">
                                                                     {item.basePrice && <Typography variant="caption" display="block">B: {formatCurrency(item.basePrice)}</Typography>}
-                                                                    <Typography variant="body2">{formatCurrency(item.unitPrice)}</Typography>
+                                                                    {item.isCustom ? (
+                                                                        <TextField
+                                                                            type="number"
+                                                                            size="small"
+                                                                            inputProps={{ min: 0, step: "0.01" }}
+                                                                            value={item.unitPrice}
+                                                                            onChange={(e) => handleUpdateEditItemPrice(i, parseFloat(e.target.value) || 0)}
+                                                                            sx={{ width: 80 }}
+                                                                        />
+                                                                    ) : (
+                                                                        <Typography variant="body2">{formatCurrency(item.unitPrice)}</Typography>
+                                                                    )}
                                                                 </TableCell>
                                                                 <TableCell align="right">{formatCurrency(item.total)}</TableCell>
                                                                 <TableCell align="center">
@@ -2925,6 +2988,62 @@ const CateringManagementPage = () => {
                                                 Food Selection
                                             </Typography>
                                             {renderItemSelector()}
+
+                                            {/* ── Custom / Off-Menu Item ── */}
+                                            <Box sx={{ mt: 2, p: 2, border: '1px dashed', borderColor: 'primary.main', borderRadius: 2, bgcolor: alpha(theme.palette.primary.main, 0.02) }}>
+                                                <Typography variant="subtitle2" fontWeight={700} color="primary.main" mb={1}>
+                                                    ➕ Add Custom / Off-Menu Item
+                                                </Typography>
+                                                <Typography variant="caption" color="text.secondary" display="block" mb={1.5}>
+                                                    Customer requested an item not on the menu? Add it here and set the price.
+                                                </Typography>
+                                                <Grid container spacing={1.5} alignItems="flex-end">
+                                                    <Grid item xs={12} sm={5}>
+                                                        <TextField
+                                                            label="Item Name / Description"
+                                                            size="small"
+                                                            fullWidth
+                                                            value={adminCustomItemName}
+                                                            onChange={e => setAdminCustomItemName(e.target.value)}
+                                                            onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddAdminCustomItem(); } }}
+                                                        />
+                                                    </Grid>
+                                                    <Grid item xs={6} sm={2}>
+                                                        <TextField
+                                                            label="Qty"
+                                                            type="number"
+                                                            size="small"
+                                                            fullWidth
+                                                            value={adminCustomItemQty}
+                                                            onChange={e => setAdminCustomItemQty(Math.max(1, parseInt(e.target.value) || 1))}
+                                                            inputProps={{ min: 1 }}
+                                                        />
+                                                    </Grid>
+                                                    <Grid item xs={6} sm={3}>
+                                                        <TextField
+                                                            label="Unit Price ($)"
+                                                            type="number"
+                                                            size="small"
+                                                            fullWidth
+                                                            value={adminCustomItemPrice}
+                                                            onChange={e => setAdminCustomItemPrice(Math.max(0, parseFloat(e.target.value) || 0))}
+                                                            inputProps={{ min: 0, step: '0.01' }}
+                                                        />
+                                                    </Grid>
+                                                    <Grid item xs={12} sm={2}>
+                                                        <Button
+                                                            variant="contained"
+                                                            fullWidth
+                                                            startIcon={<Add />}
+                                                            onClick={handleAddAdminCustomItem}
+                                                            sx={{ height: 40 }}
+                                                        >
+                                                            Add
+                                                        </Button>
+                                                    </Grid>
+                                                </Grid>
+                                            </Box>
+
                                             <Box sx={{ mt: 2 }}>
                                                 <Typography variant="subtitle2" sx={{ mb: 1 }}>Selected Items</Typography>
                                                 <Paper variant="outlined">
@@ -2937,8 +3056,15 @@ const CateringManagementPage = () => {
                                                             }>
                                                                 <ListItemText
                                                                     primary={
-                                                                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
                                                                             <Typography variant="body2" fontWeight="bold">{item.name}</Typography>
+                                                                            {(item as any).isCustom && (
+                                                                                <Chip
+                                                                                    size="small"
+                                                                                    label="Custom"
+                                                                                    sx={{ height: 18, fontSize: '0.6rem', bgcolor: '#e3f2fd', color: '#1565c0', fontWeight: 700 }}
+                                                                                />
+                                                                            )}
                                                                             {item.spiceLevel && (
                                                                                 <Chip
                                                                                     size="small"
@@ -2951,7 +3077,10 @@ const CateringManagementPage = () => {
                                                                     }
                                                                     secondary={
                                                                         <Typography variant="caption" color="text.secondary">
-                                                                            {item.basePrice && `Base: ${formatCurrency(item.basePrice)} | `}{formatCurrency(item.unitPrice)} x {item.isNotSure ? '?' : item.quantity} | Total: {formatCurrency(item.total)}
+                                                                            {(item as any).isCustom
+                                                                                ? `Custom item — ${formatCurrency(item.unitPrice)} x ${item.quantity} | Total: ${formatCurrency(item.total)}`
+                                                                                : `${item.basePrice ? `Base: ${formatCurrency(item.basePrice)} | ` : ''}${formatCurrency(item.unitPrice)} x ${item.isNotSure ? '?' : item.quantity} | Total: ${formatCurrency(item.total)}`
+                                                                            }
                                                                         </Typography>
                                                                     }
                                                                 />

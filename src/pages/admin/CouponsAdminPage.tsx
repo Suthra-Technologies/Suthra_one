@@ -1,58 +1,58 @@
-import React, { useEffect, useState } from 'react';
-import { alpha } from '@mui/material/styles';
-import {
-    Box,
-    Paper,
-    Typography,
-    Table,
-    TableHead,
-    TableRow,
-    TableCell,
-    TableBody,
-    Button,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    TextField,
-    FormControl,
-    InputLabel,
-    Select,
-    MenuItem,
-    Chip,
-    Stack,
-    IconButton,
-    Checkbox,
-    FormControlLabel,
-    Grid,
-    Card,
-    CardContent,
-    CircularProgress,
-    useTheme,
-    useMediaQuery,
-    Tooltip,
-    TablePagination,
-    Avatar,
-    InputAdornment,
-    Divider,
-} from '@mui/material';
 import {
     Add as AddIcon,
-    Edit as EditIcon,
-    Delete as DeleteIcon,
-    Email as EmailIcon,
-    Send as SendIcon,
-    People as PeopleIcon,
-    Close as CloseIcon,
-    Sms as SmsIcon,
-    Search as SearchIcon,
     CheckCircle as CheckCircleIcon,
+    Close as CloseIcon,
+    Delete as DeleteIcon,
+    Edit as EditIcon,
+    Email as EmailIcon,
+    People as PeopleIcon,
     Phone as PhoneIcon,
+    Search as SearchIcon,
+    Send as SendIcon,
+    Sms as SmsIcon
 } from '@mui/icons-material';
-import { couponsAPI, reportsAPI } from '../../services/api';
-import { toast } from 'react-hot-toast';
+import {
+    Avatar,
+    Box,
+    Button,
+    Card,
+    CardContent,
+    Checkbox,
+    Chip,
+    CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    Divider,
+    FormControl,
+    FormControlLabel,
+    Grid,
+    IconButton,
+    InputAdornment,
+    InputLabel,
+    MenuItem,
+    Paper,
+    Select,
+    Stack,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TablePagination,
+    TableRow,
+    TextField,
+    Tooltip,
+    Typography,
+    useMediaQuery,
+    useTheme,
+} from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import axios from 'axios';
+import React, { useEffect, useState } from 'react';
+import { toast } from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
+import { couponsAPI } from '../../services/api';
 
 interface Coupon {
     _id: string;
@@ -70,6 +70,7 @@ interface Coupon {
     description?: string;
     offerType?: 'cart_total' | 'menu_item' | 'combo';
     applicableItems?: string[];
+    comboConfig?: Array<{ menuItem: string; quantity: number }>;
 }
 
 interface Customer {
@@ -127,6 +128,7 @@ const CouponsAdminPage: React.FC = () => {
         description: '',
         offerType: 'cart_total' as 'cart_total' | 'menu_item' | 'combo',
         applicableItems: [] as string[],
+        comboConfig: [] as Array<{ menuItem: string; quantity: number }>,
     });
 
     // Email form state
@@ -221,6 +223,7 @@ const CouponsAdminPage: React.FC = () => {
                 description: coupon.description || '',
                 offerType: (coupon.offerType as any) || 'cart_total',
                 applicableItems: coupon.applicableItems || [],
+                comboConfig: (coupon as any).comboConfig || [],
             });
         } else {
             setSelectedCoupon(null);
@@ -240,6 +243,7 @@ const CouponsAdminPage: React.FC = () => {
                 description: '',
                 offerType: 'cart_total',
                 applicableItems: [],
+                comboConfig: [],
             });
         }
         setOpenDialog(true);

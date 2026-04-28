@@ -1053,12 +1053,12 @@ const PromoCodePage: React.FC = () => {
                 <DialogContent sx={{ p: isMobile ? 1.5 : 3, bgcolor: '#f8f9fa' }}>
                     <Grid container spacing={isMobile ? 1.5 : 3} sx={{ mt: 0.5 }}>
                         {/* Basic Info */}
-                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center' }}>
+                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: isMobile ? 'center' : 'stretch' }}>
                             <Paper sx={{ 
                                 p: isMobile ? 2 : 3, 
                                 borderRadius: 3, 
                                 width: '100%', 
-                                maxWidth: 600,
+                                maxWidth: isMobile ? 600 : 'none',
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                                 border: '1px solid',
                                 borderColor: alpha(theme.palette.divider, 0.05),
@@ -1121,12 +1121,12 @@ const PromoCodePage: React.FC = () => {
                             </Paper>
                         </Grid>
                         {/* Discount Rules */}
-                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center' }}>
+                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: isMobile ? 'center' : 'stretch' }}>
                             <Paper sx={{ 
                                 p: isMobile ? 2 : 3, 
                                 borderRadius: 3, 
                                 width: '100%', 
-                                maxWidth: 600,
+                                maxWidth: isMobile ? 600 : 'none',
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                                 border: '1px solid',
                                 borderColor: alpha(theme.palette.divider, 0.05),
@@ -1198,12 +1198,12 @@ const PromoCodePage: React.FC = () => {
                             </Paper>
                         </Grid>
                         {/* Validity & Limits */}
-                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center' }}>
+                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: isMobile ? 'center' : 'stretch' }}>
                             <Paper sx={{ 
                                 p: isMobile ? 2 : 3, 
                                 borderRadius: 3, 
                                 width: '100%', 
-                                maxWidth: 600,
+                                maxWidth: isMobile ? 600 : 'none',
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                                 border: '1px solid',
                                 borderColor: alpha(theme.palette.divider, 0.05),
@@ -1289,12 +1289,12 @@ const PromoCodePage: React.FC = () => {
                         </Grid>
 
                         {/* Availability */}
-                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center' }}>
+                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: isMobile ? 'center' : 'stretch' }}>
                             <Paper sx={{ 
                                 p: isMobile ? 2 : 3, 
                                 borderRadius: 3, 
                                 width: '100%', 
-                                maxWidth: 600,
+                                maxWidth: isMobile ? 600 : 'none',
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                                 border: '1px solid',
                                 borderColor: alpha(theme.palette.divider, 0.05),
