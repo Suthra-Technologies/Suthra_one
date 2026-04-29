@@ -397,7 +397,10 @@ export const settingsAPI = {
 
 // -------------------- Subscription API --------------------
 export const subscriptionAPI = {
+  getUsage: () => api.get('/subscription/usage'),
   getPlans: () => api.get('/subscription/plans'),
+  getTopups: () => api.get('/subscription/topups'),
+  purchaseTopup: (planId: string) => api.post('/subscription/purchase-topup', { planId }),
   subscribe: (planId: string) => api.post('/subscription/subscribe', { planId }),
   cancel: () => api.post('/subscription/cancel'),
   createCheckoutSession: (data: {
@@ -682,4 +685,12 @@ export const smsAPI = {
   sendTest: (to: string, message: string) => api.post('/sms/test', { to, message }),
 };
 
+// -------------------- Email API --------------------
+export const emailAPI = {
+  getLogs: (params: { page: number; limit: number; type?: string; startDate?: string; endDate?: string }) =>
+    api.get('/email/logs', { params }),
+  getSummary: (params?: { startDate?: string; endDate?: string }) => api.get('/email/summary', { params }),
+};
+
 export default api;
+

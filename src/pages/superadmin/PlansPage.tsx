@@ -21,7 +21,9 @@ import {
     CircularProgress,
     Chip,
     Divider,
+    Stack,
 } from '@mui/material';
+import { alpha, useTheme } from '@mui/material/styles';
 import Grid from '@mui/material/Grid2';
 import { Edit as EditIcon, Add as AddIcon, Delete as DeleteIcon, Close as CloseIcon } from '@mui/icons-material';
 import { superAPI } from '../../services/api';
@@ -31,16 +33,22 @@ interface SubscriptionPlan {
     _id: string;
     name: string;
     price: number;
-    interval: 'monthly' | 'yearly';
+    interval: 'monthly' | 'yearly' | 'one-time';
+    type: 'subscription' | 'topup';
+    resourceType?: 'email' | 'sms' | 'orders' | 'none';
+    resourceCount?: number;
     features: string[];
     maxUsers?: number;
     maxTables?: number;
     maxOrders?: number;
+    maxSms?: number;
+    maxEmail?: number;
     isActive: boolean;
     stripePriceId?: string;
 }
 
 const PlansPage: React.FC = () => {
+    const theme = useTheme();
     const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
     const [loading, setLoading] = useState(true);
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -50,11 +58,16 @@ const PlansPage: React.FC = () => {
     const [formData, setFormData] = useState({
         name: '',
         price: 0,
-        interval: 'monthly' as 'monthly' | 'yearly',
+        interval: 'monthly' as 'monthly' | 'yearly' | 'one-time',
+        type: 'subscription' as 'subscription' | 'topup',
+        resourceType: 'none' as 'email' | 'sms' | 'orders' | 'none',
+        resourceCount: 0,
         features: '',
         maxUsers: 10,
         maxTables: 20,
         maxOrders: 1000,
+        maxSms: 0,
+        maxEmail: 0,
         isActive: true,
         cateringEnabled: false,
         inventoryEnabled: false,
@@ -91,11 +104,16 @@ const PlansPage: React.FC = () => {
             setFormData({
                 name: plan.name,
                 price: plan.price,
-                interval: plan.interval,
+                interval: plan.interval as any,
+                type: plan.type || 'subscription',
+                resourceType: plan.resourceType || 'none',
+                resourceCount: plan.resourceCount || 0,
                 features: otherFeatures,
                 maxUsers: plan.maxUsers || 10,
                 maxTables: plan.maxTables || 20,
                 maxOrders: plan.maxOrders || 1000,
+                maxSms: plan.maxSms || 0,
+                maxEmail: plan.maxEmail || 0,
                 isActive: plan.isActive,
                 cateringEnabled: hasCatering,
                 inventoryEnabled: hasInventory,
@@ -108,10 +126,15 @@ const PlansPage: React.FC = () => {
                 name: '',
                 price: 0,
                 interval: 'monthly',
+                type: 'subscription',
+                resourceType: 'none',
+                resourceCount: 0,
                 features: '',
                 maxUsers: 10,
                 maxTables: 20,
                 maxOrders: 1000,
+                maxSms: 0,
+                maxEmail: 0,
                 isActive: true,
                 cateringEnabled: false,
                 inventoryEnabled: false,
@@ -240,7 +263,7 @@ const PlansPage: React.FC = () => {
                                         <Typography variant="h4" color="primary" gutterBottom>
                                             ${plan.price}
                                             <Typography component="span" variant="body2" color="text.secondary">
-                                                /{plan.interval}
+                                                /{plan.type === 'topup' ? 'one-time' : plan.interval}
                                             </Typography>
 
 
@@ -267,12 +290,32 @@ const PlansPage: React.FC = () => {
                                     </Box>
                                 </Box>
 
-                                <Chip
-                                    label={plan.isActive ? 'Active' : 'Inactive'}
-                                    color={plan.isActive ? 'success' : 'default'}
-                                    size="small"
-                                    sx={{ mb: 2, width: 'fit-content' }}
-                                />
+                                <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+                                    <Chip
+                                        label={plan.isActive ? 'Active' : 'Inactive'}
+                                        color={plan.isActive ? 'success' : 'default'}
+                                        size="small"
+                                        sx={{ fontWeight: 600 }}
+                                    />
+                                    <Chip
+                                        label={plan.type === 'topup' ? 'Top-up' : 'Subscription'}
+                                        color={plan.type === 'topup' ? 'secondary' : 'primary'}
+                                        variant="outlined"
+                                        size="small"
+                                        sx={{ fontWeight: 600 }}
+                                    />
+                                </Stack>
+
+                                {plan.type === 'topup' && (
+                                    <Box sx={{ mb: 2, p: 1.5, bgcolor: alpha(theme.palette.secondary.main, 0.05), borderRadius: 2, border: '1px dashed', borderColor: 'secondary.main' }}>
+                                        <Typography variant="subtitle2" color="secondary.main" fontWeight="bold">
+                                            Resource Credit:
+                                        </Typography>
+                                        <Typography variant="body1" fontWeight={800}>
+                                            {plan.resourceCount?.toLocaleString()} {plan.resourceType?.toUpperCase()} Credits
+                                        </Typography>
+                                    </Box>
+                                )}
 
                                 <Box sx={{ mb: 2 }}>
                                     <Typography variant="subtitle2" color="text.secondary" gutterBottom>
@@ -281,17 +324,27 @@ const PlansPage: React.FC = () => {
                                     <Typography variant="body2">• Max Users: {plan.maxUsers || 'Unlimited'}</Typography>
                                     <Typography variant="body2">• Max Tables: {plan.maxTables || 'Unlimited'}</Typography>
                                     <Typography variant="body2">• Max Orders/month: {plan.maxOrders || 'Unlimited'}</Typography>
+                                    <Typography variant="body2">• Max SMS/month: {plan.maxSms || 'Unlimited'}</Typography>
+                                    <Typography variant="body2">• Max Emails/month: {plan.maxEmail || 'Unlimited'}</Typography>
                                 </Box>
 
                                 <Box sx={{ flexGrow: 1 }}>
                                     <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                                         Features:
                                     </Typography>
-                                    {plan.features.map((feature, index) => (
-                                        <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
-                                            ✓ {feature}
-                                        </Typography>
-                                    ))}
+                                    {plan.features.map((feature, index) => {
+                                        const featureLabels: Record<string, string> = {
+                                            catering: 'Catering Management',
+                                            inventory: 'Inventory Management',
+                                            wastemanagement: 'Waste Management',
+                                            attendance: 'Staff Attendance',
+                                        };
+                                        return (
+                                            <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
+                                                ✓ {featureLabels[feature] || feature}
+                                            </Typography>
+                                        );
+                                    })}
                                 </Box>
                             </Paper>
                         </Grid>
@@ -366,12 +419,55 @@ const PlansPage: React.FC = () => {
                                 >
                                     <option value="monthly">Monthly</option>
                                     <option value="yearly">Yearly</option>
+                                    <option value="one-time">One-Time</option>
+                                </TextField>
+                            </Grid>
+                            <Grid size={{ xs: 6 }}>
+                                <TextField
+                                    select
+                                    label="Plan Type"
+                                    value={formData.type}
+                                    onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
+                                    fullWidth
+                                    SelectProps={{ native: true }}
+                                >
+                                    <option value="subscription">Subscription</option>
+                                    <option value="topup">Top-Up</option>
                                 </TextField>
                             </Grid>
                         </Grid>
 
+                        {formData.type === 'topup' && (
+                            <Grid container spacing={2} sx={{ mt: 1 }}>
+                                <Grid size={{ xs: 6 }}>
+                                    <TextField
+                                        select
+                                        label="Resource Type"
+                                        value={formData.resourceType}
+                                        onChange={(e) => setFormData({ ...formData, resourceType: e.target.value as any })}
+                                        fullWidth
+                                        SelectProps={{ native: true }}
+                                    >
+                                        <option value="none">None</option>
+                                        <option value="email">Email</option>
+                                        <option value="sms">SMS</option>
+                                        <option value="orders">Orders</option>
+                                    </TextField>
+                                </Grid>
+                                <Grid size={{ xs: 6 }}>
+                                    <TextField
+                                        label="Resource Count"
+                                        type="number"
+                                        value={formData.resourceCount}
+                                        onChange={(e) => setFormData({ ...formData, resourceCount: parseInt(e.target.value) || 0 })}
+                                        fullWidth
+                                    />
+                                </Grid>
+                            </Grid>
+                        )}
+
                         <Grid container spacing={2}>
-                            <Grid size={{ xs: 4 }}>
+                            <Grid size={{ xs: 6 }}>
                                 <TextField
                                     label="Max Users"
                                     type="number"
@@ -384,7 +480,7 @@ const PlansPage: React.FC = () => {
                                     inputProps={{ min: 0 }}
                                 />
                             </Grid>
-                            <Grid size={{ xs: 4 }}>
+                            <Grid size={{ xs: 6 }}>
                                 <TextField
                                     label="Max Tables"
                                     type="number"
@@ -397,9 +493,9 @@ const PlansPage: React.FC = () => {
                                     inputProps={{ min: 0 }}
                                 />
                             </Grid>
-                            <Grid size={{ xs: 4 }}>
+                            <Grid size={{ xs: 6 }}>
                                 <TextField
-                                    label="Max Orders"
+                                    label="Max Orders / Month"
                                     type="number"
                                     value={formData.maxOrders}
                                     onChange={(e) => {
@@ -408,6 +504,34 @@ const PlansPage: React.FC = () => {
                                     }}
                                     fullWidth
                                     inputProps={{ min: 0 }}
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 6 }}>
+                                <TextField
+                                    label="Max SMS / Month"
+                                    type="number"
+                                    value={formData.maxSms}
+                                    onChange={(e) => {
+                                        const val = parseInt(e.target.value);
+                                        setFormData({ ...formData, maxSms: val < 0 ? 0 : val });
+                                    }}
+                                    fullWidth
+                                    inputProps={{ min: 0 }}
+                                    helperText="0 = unlimited"
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 6 }}>
+                                <TextField
+                                    label="Max Emails / Month"
+                                    type="number"
+                                    value={formData.maxEmail}
+                                    onChange={(e) => {
+                                        const val = parseInt(e.target.value);
+                                        setFormData({ ...formData, maxEmail: val < 0 ? 0 : val });
+                                    }}
+                                    fullWidth
+                                    inputProps={{ min: 0 }}
+                                    helperText="0 = unlimited"
                                 />
                             </Grid>
                         </Grid>
