@@ -14,32 +14,52 @@ const SuperAdminPortal: React.FC = () => {
   ];
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ px: { xs: 1.5, sm: 3, md: 4 }, pb: { xs: 1.5, sm: 3, md: 4 }, pt: { xs: 0.5, sm: 3, md: 4 } }}>
       <Typography
-        variant="h3"
+        variant="h4"
         gutterBottom
         sx={{
           fontWeight: 'bold',
-          mb: 4,
+          mb: { xs: 2.5, sm: 4 },
           textAlign: { xs: 'center', sm: 'left' },
-          fontSize: { xs: '1.5rem', sm: '2.125rem', md: '3rem' },
-          whiteSpace: { xs: 'nowrap', sm: 'normal' },
-          overflow: { xs: 'hidden', sm: 'visible' },
-          textOverflow: { xs: 'ellipsis', sm: 'clip' }
+          fontSize: { xs: '1.5rem', sm: '2.125rem' },
         }}
       >
         Super Admin Portal
       </Typography>
 
-      <Grid container spacing={3}>
+      <Grid container spacing={{ xs: 2, sm: 3 }}>
         {cards.map((card, index) => (
-          <Grid item xs={12} md={4} key={index}>
-            <Card sx={{ height: '100%' }}>
-              <CardActionArea onClick={() => navigate(card.path)} sx={{ height: '100%', p: 2 }}>
-                <CardContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+          <Grid item xs={12} sm={6} lg={3} key={index}>
+            <Card sx={{ height: '100%', borderRadius: 2 }}>
+              <CardActionArea
+                onClick={() => navigate(card.path)}
+                sx={{ height: '100%', p: { xs: 1.5, sm: 2 } }}
+              >
+                <CardContent
+                  sx={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    textAlign: 'center',
+                    gap: 0.5,
+                    p: { xs: 1, sm: 1.5 },
+                  }}
+                >
                   {card.icon}
-                  <Typography variant="h5" sx={{ mt: 2, mb: 1 }}>{card.title}</Typography>
-                  <Typography variant="body2" color="textSecondary">{card.desc}</Typography>
+                  <Typography
+                    variant="h6"
+                    sx={{ mt: { xs: 1.5, sm: 2 }, mb: 0.5, fontSize: { xs: '1.05rem', sm: '1.25rem' } }}
+                  >
+                    {card.title}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{ fontSize: { xs: '0.85rem', sm: '0.875rem' } }}
+                  >
+                    {card.desc}
+                  </Typography>
                 </CardContent>
               </CardActionArea>
             </Card>
