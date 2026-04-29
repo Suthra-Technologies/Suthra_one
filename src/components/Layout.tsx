@@ -558,7 +558,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
               <ShiftManager />
               {Capacitor.getPlatform() !== 'ios' && <SubscriptionStatus />}
             </Box>
-            {hasRole(['admin']) && <RestaurantStatusToggle />}
+            {hasRole(['admin']) && activeRole !== 'customer' && <RestaurantStatusToggle />}
             <Tooltip title="Notifications">
               <IconButton color="inherit" onClick={handleNotificationToggle}>
                 <Badge badgeContent={unreadCount} color="error">

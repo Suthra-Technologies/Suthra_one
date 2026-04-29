@@ -45,6 +45,14 @@ const SmsOverviewPage: React.FC = () => {
         mobilePage * mobileRowsPerPage + mobileRowsPerPage
     );
 
+    const totals = usageData.reduce((acc, tenant) => {
+        acc.total += (tenant.total || 0);
+        acc.delivered += (tenant.delivered || 0);
+        acc.failed += (tenant.failed || 0);
+        acc.cost += (tenant.totalCost || 0);
+        return acc;
+    }, { total: 0, delivered: 0, failed: 0, cost: 0 });
+
     return (
         <Box sx={{ px: { xs: 1.5, sm: 2, md: 3 }, pb: { xs: 1.5, sm: 2, md: 3 }, pt: { xs: 0.5, sm: 2, md: 3 }, overflowX: 'hidden' }}>
             <Box sx={{ mb: { xs: 2.5, sm: 4 } }}>
@@ -66,6 +74,27 @@ const SmsOverviewPage: React.FC = () => {
                     View SMS statistics across all restaurant stores.
                 </Typography>
             </Box>
+
+            <Grid container spacing={2} sx={{ mb: 4 }}>
+                {[
+                    { label: 'Total Messages', value: totals.total, color: '#6366f1' },
+                    { label: 'Delivered', value: totals.delivered, color: '#22c55e' },
+                    { label: 'Failed', value: totals.failed, color: '#ef4444' },
+                    { label: 'Total Charges', value: `$${totals.cost.toFixed(2)}`, color: '#f59e0b' },
+                ].map((kpi) => (
+                    <Grid size={{ xs: 6, sm: 3 }} key={kpi.label}>
+                        <Paper elevation={0} sx={{ 
+                            p: 2.5, borderRadius: 4, border: '1px solid', borderColor: 'divider',
+                            borderLeft: `4px solid ${kpi.color}`
+                        }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase', mb: 0.5, display: 'block' }}>
+                                {kpi.label}
+                            </Typography>
+                            <Typography variant="h5" fontWeight={800}>{kpi.value}</Typography>
+                        </Paper>
+                    </Grid>
+                ))}
+            </Grid>
 
             <Paper elevation={0} sx={{ borderRadius: 4, border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
                 <TableContainer sx={{ display: { xs: 'none', md: 'block' } }}>

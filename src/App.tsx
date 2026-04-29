@@ -80,6 +80,8 @@ import UberDirectPage from './pages/superadmin/UberDirectPage';
 import DemoRequestsPage from './pages/superadmin/DemoRequestsPage';
 import SmsOverviewPage from './pages/superadmin/SmsOverviewPage';
 import SmsLogsDetailPage from './pages/superadmin/SmsLogsDetailPage';
+import EmailOverviewPage from './pages/superadmin/EmailOverviewPage';
+import EmailLogsDetailPage from './pages/superadmin/EmailLogsDetailPage';
 import VendorsPage from './pages/vendors/VendorsPage';
 
 import { SettingsProvider, useSettings } from './context/SettingsContext';
@@ -239,6 +241,8 @@ const AppRoutes: React.FC = () => {
           <Route path="/superadmin/demo-requests" element={<DemoRequestsPage />} />
           <Route path="/superadmin/sms-logs" element={<SmsOverviewPage />} />
           <Route path="/superadmin/sms-logs/:tenantId" element={<SmsLogsDetailPage />} />
+          <Route path="/superadmin/email-logs" element={<EmailOverviewPage />} />
+          <Route path="/superadmin/email-logs/:tenantId" element={<EmailLogsDetailPage />} />
           <Route path="/superadmin/uber-direct" element={<UberDirectPage />} />
         </Route>
       </Route>

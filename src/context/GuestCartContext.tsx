@@ -10,6 +10,7 @@ export interface CartItem {
   quantity: number;
   customizations?: any[];
   spiceLevel?: string;
+  notes?: string;
   itemTotal: number;
   isAlcohol?: boolean;
   categoryName?: string;
@@ -37,6 +38,7 @@ export interface GuestCartContextType {
   addItem: (item: any, quantity?: number, customizations?: any[], spiceLevel?: string) => void;
   removeItem: (index: number) => void;
   updateQuantity: (index: number, quantity: number) => void;
+  updateNote: (index: number, notes: string) => void;
   clearCart: () => void;
   setOrderType: (orderType: 'delivery' | 'takeaway') => void;
   setDeliveryAddress: (address: string) => void;
@@ -55,6 +57,7 @@ const CART_ACTIONS = {
   ADD_ITEM: 'ADD_ITEM',
   REMOVE_ITEM: 'REMOVE_ITEM',
   UPDATE_QUANTITY: 'UPDATE_QUANTITY',
+  UPDATE_NOTE: 'UPDATE_NOTE',
   CLEAR_CART: 'CLEAR_CART',
   APPLY_PREFERENCES: 'APPLY_PREFERENCES',
   SET_DELIVERY_ADDRESS: 'SET_DELIVERY_ADDRESS',
@@ -144,6 +147,13 @@ function cartReducer(state: CartState, action: any): CartState {
       const totalAmount = updatedItems.reduce((sum, item) => sum + item.itemTotal, 0);
       return { ...state, items: updatedItems, totalItems, totalAmount };
     }
+    case CART_ACTIONS.UPDATE_NOTE: {
+      const { index, notes } = action.payload;
+      const updatedItems = state.items.map((item, i) =>
+        i === index ? { ...item, notes } : item
+      );
+      return { ...state, items: updatedItems };
+    }
     case CART_ACTIONS.CLEAR_CART:
       return initialState;
     case CART_ACTIONS.SET_ORDER_TYPE:
@@ -204,6 +214,10 @@ export const GuestCartProvider = ({ children }: { children: ReactNode }) => {
     dispatch({ type: CART_ACTIONS.UPDATE_QUANTITY, payload: { index, quantity } });
   };
 
+  const updateNote = (index: number, notes: string) => {
+    dispatch({ type: CART_ACTIONS.UPDATE_NOTE, payload: { index, notes } });
+  };
+
   const clearCart = () => {
     dispatch({ type: CART_ACTIONS.CLEAR_CART });
     localStorage.removeItem('guestCart');
@@ -233,6 +247,7 @@ export const GuestCartProvider = ({ children }: { children: ReactNode }) => {
     addItem,
     removeItem,
     updateQuantity,
+    updateNote,
     clearCart,
     setOrderType,
     setDeliveryAddress,

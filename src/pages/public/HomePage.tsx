@@ -24,6 +24,7 @@ import {
   Button,
   Card,
   CardContent,
+  CircularProgress,
   Dialog,
   DialogContent,
   Drawer,
@@ -769,12 +770,14 @@ const HomePage: React.FC = () => {
 
   // Fetch pricing plans from public API
   const [plans, setPlans] = useState<any[]>([]);
+  const [plansLoading, setPlansLoading] = useState(true);
   useEffect(() => {
     const apiUrl = (import.meta as any).env.VITE_API_URL || "http://localhost:5006";
     fetch(`${apiUrl}/api/superadmin/plans/public`)
       .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setPlans(data); })
-      .catch(() => {});
+      .then(data => { if (Array.isArray(data)) setPlans(data.filter((p: any) => p.isActive !== false)); })
+      .catch(() => {})
+      .finally(() => setPlansLoading(false));
   }, []);
 
   // Auto-rotate slideshows
@@ -1910,102 +1913,149 @@ const HomePage: React.FC = () => {
             </Typography>
           </Box>
 
-          <Grid container spacing={4} justifyContent="center">
-            {(plans.length > 0 ? plans : [
-              { name: "Starter", price: 49, interval: "monthly", features: [], maxUsers: 5, maxTables: 5, maxOrders: 100 },
-              { name: "Professional", price: 99, interval: "monthly", features: ["catering", "inventory"], maxUsers: 10, maxTables: 15, maxOrders: 500 },
-              { name: "Enterprise", price: 149, interval: "monthly", features: ["catering", "inventory", "wastemanagement", "attendance"], maxUsers: 25, maxTables: 50, maxOrders: 2000 },
-            ]).map((plan: any, i: number) => {
-              const featureLabels: Record<string, string> = {
-                catering: "Catering Management",
-                inventory: "Inventory Management",
-                wastemanagement: "Waste Management",
-                attendance: "Staff Attendance",
-              };
-              const allItems = [
-                `Up to ${plan.maxUsers} Users`,
-                `Up to ${plan.maxTables} Tables`,
-                `Up to ${plan.maxOrders} Orders`,
-                ...(plan.features || []).map((f: string) => featureLabels[f] || f),
-              ];
-              return (
-                <Grid item xs={12} md={4} key={plan._id || i}>
-                  <Paper
-                    elevation={0}
-                    sx={{
-                      p: 5,
-                      height: "100%",
-                      borderRadius: 3,
-                      bgcolor: "#f7f6f4",
-                      border: "1px solid #eee",
-                      display: "flex",
-                      flexDirection: "column",
-                    }}
-                  >
-                    {/* PLAN NAME */}
-                    <Typography variant="h6" fontWeight={700} gutterBottom>
-                      {plan.name}
-                    </Typography>
-
-                    {/* PRICE */}
-                    <Typography variant="h3" fontWeight={900} mb={1}>
-                      ${plan.price}
-                      <Box
-                        component="span"
-                        sx={{ fontSize: "1.2rem", fontWeight: 500 }}
-                      >
-                        /{plan.interval === "yearly" ? "yr" : "mo"}
-                      </Box>
-                    </Typography>
-
-                    {/* DESCRIPTION */}
-                    <Typography variant="body2" color="text.secondary" mb={4}>
-                      {plan.description || `Everything you will get with the ${plan.name} plan.`}
-                    </Typography>
-
-                    {/* FEATURES */}
-                    <Stack spacing={1.5} mb={6}>
-                      {allItems.map((item: string, j: number) => (
-                        <Stack
-                          key={j}
-                          direction="row"
-                          spacing={1}
-                          alignItems="center"
-                        >
-                          <CheckIcon sx={{ fontSize: 18 }} />
-                          <Typography variant="body2">{item}</Typography>
-                        </Stack>
-                      ))}
-                    </Stack>
-
-                    {/* CTA */}
-                    <Button
-                      fullWidth
-                      variant="contained"
+          {plansLoading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+              <CircularProgress />
+            </Box>
+          ) : plans.length === 0 ? (
+            <Box textAlign="center" py={8}>
+              <Typography variant="body1" color="text.secondary">
+                No plans available at the moment. Please check back soon.
+              </Typography>
+            </Box>
+          ) : (
+            <Grid container spacing={4} justifyContent="center">
+              {plans.map((plan: any, i: number) => {
+                const featureLabels: Record<string, string> = {
+                  catering: "Catering Management",
+                  inventory: "Inventory Management",
+                  wastemanagement: "Waste Management",
+                  attendance: "Staff Attendance",
+                };
+                const systemItems = [
+                  plan.maxUsers ? `Up to ${plan.maxUsers} Users` : null,
+                  plan.maxTables ? `Up to ${plan.maxTables} Tables` : null,
+                  plan.maxOrders ? `Up to ${plan.maxOrders} Orders/month` : null,
+                  plan.maxSms !== undefined && plan.maxSms !== null ? (plan.maxSms === 0 || plan.maxSms === -1 ? `Unlimited SMS/month` : `Up to ${plan.maxSms} SMS/month`) : null,
+                ].filter(Boolean) as string[];
+                const featureItems = (plan.features || []).map(
+                  (f: string) => featureLabels[f] || f
+                );
+                const allItems = [...systemItems, ...featureItems];
+                const isPopular = i === Math.floor(plans.length / 2);
+                return (
+                  <Grid item xs={12} md={4} key={plan._id || i}>
+                    <Paper
+                      elevation={0}
                       sx={{
-                        mt: "auto",
-                        bgcolor: "#fff",
-                        color: "#000",
-                        border: "1px solid #ddd",
-                        borderRadius: 2,
-                        fontWeight: 600,
-                        boxShadow: "none",
-                        "&:hover": {
-                          bgcolor: "#f2f2f2",
-                          boxShadow: "none",
-                        },
-                      }}
-                      onClick={() => {
-                        document.getElementById("demo-form")?.scrollIntoView({ behavior: "smooth" });
+                        p: 5,
+                        height: "100%",
+                        borderRadius: 3,
+                        bgcolor: isPopular ? "#1a1a2e" : "#f7f6f4",
+                        border: isPopular ? "2px solid #6366f1" : "1px solid #eee",
+                        display: "flex",
+                        flexDirection: "column",
+                        position: "relative",
+                        overflow: "hidden",
                       }}
                     >
-                      CHOOSE THIS PLAN
-                    </Button>
-                  </Paper>
-                </Grid>
-              );
-            })}
-          </Grid>
+                      {isPopular && (
+                        <Box
+                          sx={{
+                            position: "absolute",
+                            top: 16,
+                            right: 16,
+                            bgcolor: "#6366f1",
+                            color: "#fff",
+                            fontSize: "0.65rem",
+                            fontWeight: 800,
+                            px: 1.5,
+                            py: 0.5,
+                            borderRadius: 2,
+                            textTransform: "uppercase",
+                            letterSpacing: 1,
+                          }}
+                        >
+                          Most Popular
+                        </Box>
+                      )}
+
+                      {/* PLAN NAME */}
+                      <Typography
+                        variant="h6"
+                        fontWeight={700}
+                        gutterBottom
+                        sx={{ color: isPopular ? "#fff" : "inherit" }}
+                      >
+                        {plan.name}
+                      </Typography>
+
+                      {/* PRICE */}
+                      <Typography
+                        variant="h3"
+                        fontWeight={900}
+                        mb={1}
+                        sx={{ color: isPopular ? "#fff" : "inherit" }}
+                      >
+                        ${plan.price}
+                        <Box component="span" sx={{ fontSize: "1.2rem", fontWeight: 500 }}>
+                          /{plan.interval === "yearly" ? "yr" : "mo"}
+                        </Box>
+                      </Typography>
+
+                      {/* DESCRIPTION */}
+                      <Typography
+                        variant="body2"
+                        mb={4}
+                        sx={{ color: isPopular ? "rgba(255,255,255,0.7)" : "text.secondary" }}
+                      >
+                        {plan.description || `Everything you will get with the ${plan.name} plan.`}
+                      </Typography>
+
+                      {/* FEATURES */}
+                      <Stack spacing={1.5} mb={6}>
+                        {allItems.map((item: string, j: number) => (
+                          <Stack key={j} direction="row" spacing={1} alignItems="center">
+                            <CheckIcon sx={{ fontSize: 18, color: isPopular ? "#6366f1" : "inherit" }} />
+                            <Typography
+                              variant="body2"
+                              sx={{ color: isPopular ? "rgba(255,255,255,0.85)" : "inherit" }}
+                            >
+                              {item}
+                            </Typography>
+                          </Stack>
+                        ))}
+                      </Stack>
+
+                      {/* CTA */}
+                      <Button
+                        fullWidth
+                        variant="contained"
+                        sx={{
+                          mt: "auto",
+                          bgcolor: isPopular ? "#6366f1" : "#fff",
+                          color: isPopular ? "#fff" : "#000",
+                          border: isPopular ? "none" : "1px solid #ddd",
+                          borderRadius: 2,
+                          fontWeight: 700,
+                          boxShadow: "none",
+                          "&:hover": {
+                            bgcolor: isPopular ? "#4f46e5" : "#f2f2f2",
+                            boxShadow: "none",
+                          },
+                        }}
+                        onClick={() => {
+                          document.getElementById("demo-form")?.scrollIntoView({ behavior: "smooth" });
+                        }}
+                      >
+                        CHOOSE THIS PLAN
+                      </Button>
+                    </Paper>
+                  </Grid>
+                );
+              })}
+            </Grid>
+          )}
         </Container>
       </Box>
 
