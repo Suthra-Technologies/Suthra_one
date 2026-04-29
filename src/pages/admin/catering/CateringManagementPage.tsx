@@ -2471,14 +2471,16 @@ const CateringManagementPage = () => {
                                         >
                                             {sendingEmail ? 'Sending...' : 'Email Receipt'}
                                         </Button>
-                                        <Button
-                                            size="small"
-                                            variant="contained"
-                                            onClick={handleEditOrder}
-                                            color="primary"
-                                        >
-                                            Edit Order
-                                        </Button>
+                                        {selectedOrder.status !== 'completed' && (
+                                            <Button
+                                                size="small"
+                                                variant="contained"
+                                                onClick={handleEditOrder}
+                                                color="primary"
+                                            >
+                                                Edit Order
+                                            </Button>
+                                        )}
                                     </>
                                 ) : (
                                     <>
