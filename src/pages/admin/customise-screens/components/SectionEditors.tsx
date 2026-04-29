@@ -131,8 +131,8 @@ export const HeroSectionEditor: React.FC<SectionEditorProps> = ({ section, onUpd
         multiline
         rows={2}
         value={data.description || ''}
-        inputProps={{ maxLength: 100 }}
-        helperText={`${(data.description || '').length}/100`}
+        inputProps={{ maxLength: 150 }}
+        helperText={`${(data.description || '').length}/150`}
         onChange={(e) => onUpdate({ ...data, description: e.target.value })}
       />
       <Box>
@@ -284,6 +284,8 @@ export const HospitalitySectionEditor: React.FC<SectionEditorProps> = ({ section
                 multiline 
                 rows={3} 
                 value={para} 
+                inputProps={{ maxLength: 500 }}
+                helperText={`${para.length}/500`}
                 onChange={(e) => handleDescChange(idx, e.target.value)} 
               />
               <IconButton color="error" onClick={() => removePara(idx)} disabled={data.description.length <= 1}><Delete /></IconButton>
@@ -348,7 +350,7 @@ export const ServicesSectionEditor: React.FC<SectionEditorProps> = ({ section, o
               </Box>
               <Stack spacing={1} flex={1}>
                 <TextField label="Title" fullWidth size="small" value={item.title} inputProps={{ maxLength: 25 }} helperText={`${(item.title || '').length}/25`} onChange={(e) => updateItem(idx, { title: e.target.value })} />
-                <TextField label="Description" fullWidth size="small" multiline rows={2} value={item.description} inputProps={{ maxLength: 50 }} helperText={`${(item.description || '').length}/50`} onChange={(e) => updateItem(idx, { description: e.target.value })} />
+                <TextField label="Description" fullWidth size="small" multiline rows={2} value={item.description} inputProps={{ maxLength: 150 }} helperText={`${(item.description || '').length}/150`} onChange={(e) => updateItem(idx, { description: e.target.value })} />
                 <TextField label="Link Path" fullWidth size="small" value={item.path} onChange={(e) => updateItem(idx, { path: e.target.value })} />
               </Stack>
               <IconButton color="error" onClick={() => removeItem(idx)}><Delete /></IconButton>
