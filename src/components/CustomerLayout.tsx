@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link as RouterLink, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   AppBar,
   Avatar,
@@ -54,6 +54,7 @@ const CustomerLayout: React.FC = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const restaurant = settings?.restaurant;
+  const restaurantName = (restaurant?.name || 'Restaurant').trim();
 
   const baseNavLinks = [
     { label: 'Order', path: getRelativePath('/customer/order'), icon: <ShoppingCart fontSize="small" /> },
@@ -91,7 +92,15 @@ const CustomerLayout: React.FC = () => {
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', bgcolor: '#fafbfc' }}>
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        /* Below md: let the page height follow content so short menus don’t leave a huge gap above the footer */
+        minHeight: { xs: 'auto', md: '100vh' },
+        bgcolor: '#fafbfc',
+      }}
+    >
       {/* ─── Elegant Header ─── */}
       <AppBar
         position="sticky"
@@ -129,8 +138,8 @@ const CustomerLayout: React.FC = () => {
                   src={restaurant.logo}
                   alt={restaurant.name}
                   sx={{
-                    width: 42,
-                    height: 42,
+                    width: { xs: 46, sm: 46 },
+                    height: { xs: 46, sm: 46 },
                     border: '2px solid',
                     borderColor: 'primary.main',
                     boxShadow: '0 2px 8px rgba(79,70,229,0.15)',
@@ -139,8 +148,8 @@ const CustomerLayout: React.FC = () => {
               ) : (
                 <Avatar
                   sx={{
-                    width: 42,
-                    height: 42,
+                    width: { xs: 46, sm: 46 },
+                    height: { xs: 46, sm: 46 },
                     bgcolor: 'primary.main',
                     boxShadow: '0 2px 8px rgba(79,70,229,0.25)',
                   }}
@@ -284,7 +293,7 @@ const CustomerLayout: React.FC = () => {
                     <HistoryIcon fontSize="small" sx={{ mr: 1.5, color: 'text.secondary' }} />
                     My Activity
                   </MenuItem>
-                  <MenuItem onClick={() => { setAnchorEl(null); navigate(getRelativePath('/profile')); }}>
+                  <MenuItem onClick={() => { setAnchorEl(null); navigate(getRelativePath('/customer/profile')); }}>
                     <Person fontSize="small" sx={{ mr: 1.5, color: 'text.secondary' }} />
                     Profile
                   </MenuItem>
@@ -361,10 +370,10 @@ const CustomerLayout: React.FC = () => {
       <Box
         component="main"
         sx={{
-          flexGrow: 1,
+          flexGrow: { xs: 0, md: 1 },
           py: { xs: 2, md: 3 },
           px: { xs: 1, sm: 2 },
-          minHeight: 'calc(100vh - 72px - 280px)',
+          minHeight: { xs: 0, md: 'calc(100vh - 72px - 280px)' },
         }}
       >
         <Outlet />
@@ -376,7 +385,7 @@ const CustomerLayout: React.FC = () => {
         sx={{
           background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
           color: 'white',
-          mt: 'auto',
+          mt: { xs: 0, md: 'auto' },
         }}
       >
         {/* Main Footer Content */}
@@ -390,14 +399,67 @@ const CustomerLayout: React.FC = () => {
           >
             {/* Restaurant Info */}
             <Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+              {/* Mobile: strict vertical stack (logo -> title -> subtitle) */}
+              <Box sx={{ display: { xs: 'block', md: 'none' }, mb: 3 }}>
                 {restaurant?.logo ? (
                   <Avatar
                     src={restaurant.logo}
                     alt={restaurant.name}
                     sx={{
-                      width: 56,
-                      height: 56,
+                      width: 46,
+                      height: 46,
+                      border: '3px solid rgba(255,255,255,0.2)',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                      mb: 0.8,
+                    }}
+                  />
+                ) : (
+                  <Avatar
+                    sx={{
+                      width: 46,
+                      height: 46,
+                      bgcolor: 'rgba(79,70,229,0.6)',
+                      border: '3px solid rgba(255,255,255,0.2)',
+                      mb: 0.8,
+                    }}
+                  >
+                    <RestaurantIcon sx={{ fontSize: 30 }} />
+                  </Avatar>
+                )}
+                <Typography
+                  variant="h5"
+                  sx={{
+                    fontWeight: 800,
+                    letterSpacing: '-0.02em',
+                    lineHeight: 1.2,
+                    color: '#ffffff',
+                    fontSize: '1.55rem',
+                    textAlign: 'left',
+                  }}
+                >
+                  {restaurantName}
+                </Typography>
+                <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', fontWeight: 500, mt: 0.3, textAlign: 'left' }}>
+                  Delicious Food, Delivered Fresh
+                </Typography>
+              </Box>
+
+              {/* Desktop/tablet: keep horizontal brand alignment */}
+              <Box
+                sx={{
+                  display: { xs: 'none', md: 'flex' },
+                  alignItems: 'center',
+                  gap: 1.5,
+                  mb: 3,
+                }}
+              >
+                {restaurant?.logo ? (
+                  <Avatar
+                    src={restaurant.logo}
+                    alt={restaurant.name}
+                    sx={{
+                      width: 46,
+                      height: 46,
                       border: '3px solid rgba(255,255,255,0.2)',
                       boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
                     }}
@@ -405,8 +467,8 @@ const CustomerLayout: React.FC = () => {
                 ) : (
                   <Avatar
                     sx={{
-                      width: 56,
-                      height: 56,
+                      width: 46,
+                      height: 46,
                       bgcolor: 'rgba(79,70,229,0.6)',
                       border: '3px solid rgba(255,255,255,0.2)',
                     }}
@@ -414,16 +476,19 @@ const CustomerLayout: React.FC = () => {
                     <RestaurantIcon sx={{ fontSize: 30 }} />
                   </Avatar>
                 )}
-                <Box>
+                <Box sx={{ minWidth: 0 }}>
                   <Typography
                     variant="h5"
                     sx={{
                       fontWeight: 800,
                       letterSpacing: '-0.02em',
                       lineHeight: 1.2,
+                      color: '#ffffff',
+                      fontSize: '1.5rem',
+                      wordBreak: 'break-word',
                     }}
                   >
-                    {restaurant?.name || 'Restaurant'}
+                    {restaurantName}
                   </Typography>
                   <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', fontWeight: 500, mt: 0.3 }}>
                     Delicious Food, Delivered Fresh
@@ -562,28 +627,84 @@ const CustomerLayout: React.FC = () => {
           </Box>
         </Container>
 
-        {/* Bottom Bar */}
+        {/* Bottom Bar — platform attribution */}
         <Box
           sx={{
             borderTop: '1px solid rgba(255,255,255,0.08)',
-            py: 2.5,
+            py: { xs: 2, sm: 2.5 },
           }}
         >
           <Container maxWidth="lg">
             <Box
               sx={{
                 display: 'flex',
-                flexDirection: { xs: 'column', sm: 'row' },
+                flexDirection: { xs: 'column', md: 'row' },
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                gap: 1,
+                gap: { xs: 1.25, md: 2 },
+                textAlign: { xs: 'center', md: 'left' },
               }}
             >
-              <Typography sx={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8rem' }}>
-                © {new Date().getFullYear()} {restaurant?.name || 'Restaurant'}. All rights reserved.
+              <Typography sx={{ color: 'rgba(255,255,255,0.45)', fontSize: { xs: '0.72rem', sm: '0.8rem' }, order: { xs: 1, md: 1 } }}>
+                © {new Date().getFullYear()} NexZentek. All rights reserved.
               </Typography>
-              <Typography sx={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.75rem' }}>
-                Powered by POS System
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexWrap: 'wrap',
+                  gap: { xs: 0.75, sm: 1 },
+                  order: { xs: 3, md: 2 },
+                }}
+              >
+                <Typography
+                  component={RouterLink}
+                  to="/privacy-policy"
+                  sx={{
+                    fontSize: { xs: '0.72rem', sm: '0.78rem' },
+                    color: 'rgba(255,255,255,0.65)',
+                    textDecoration: 'none',
+                    fontWeight: 600,
+                    '&:hover': { color: 'rgba(129, 140, 248, 1)', textDecoration: 'underline' },
+                  }}
+                >
+                  Privacy Policy
+                </Typography>
+                <Typography component="span" sx={{ color: 'rgba(255,255,255,0.28)', fontSize: '0.75rem', userSelect: 'none' }}>
+                  |
+                </Typography>
+                <Typography
+                  component={RouterLink}
+                  to="/terms-and-conditions"
+                  sx={{
+                    fontSize: { xs: '0.72rem', sm: '0.78rem' },
+                    color: 'rgba(255,255,255,0.65)',
+                    textDecoration: 'none',
+                    fontWeight: 600,
+                    '&:hover': { color: 'rgba(129, 140, 248, 1)', textDecoration: 'underline' },
+                  }}
+                >
+                  Terms & Conditions
+                </Typography>
+              </Box>
+              <Typography
+                sx={{
+                  color: 'rgba(255,255,255,0.38)',
+                  fontSize: { xs: '0.7rem', sm: '0.75rem' },
+                  order: { xs: 2, md: 3 },
+                }}
+              >
+                Developed by{' '}
+                <Link
+                  href="https://suthratech.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  underline="hover"
+                  sx={{ color: 'primary.light', fontWeight: 600 }}
+                >
+                  Suthra Technologies
+                </Link>
               </Typography>
             </Box>
           </Container>

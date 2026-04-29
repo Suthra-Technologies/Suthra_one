@@ -87,7 +87,7 @@ const RestaurantStatusToggle: React.FC = () => {
   const [closeReason, setCloseReason] = useState('');
   const [customerMessage, setCustomerMessage] = useState('We are temporarily closed. Pre-orders for later slots are still open.');
 
-  const { tenantSlug } = useAuth() as any;
+  const { tenantSlug } = useAuth();
 
   const loadStatus = React.useCallback(async () => {
     if (!tenantSlug) return;
@@ -363,7 +363,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout, isLoading, availableTenants, switchTenant, activeRole } = useAuth(); // Added availableTenants, switchTenant, tenantSlug
+  const { user, logout, isLoading, availableTenants, switchTenant, activeRole, hasRole } = useAuth(); // Added availableTenants, switchTenant, tenantSlug
   const { slug, isSubdomain, getRelativePath } = useActiveTenant();
   const tenantSlug = slug;
   const { notifications } = useNotifications();
@@ -558,7 +558,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
               <ShiftManager />
               {Capacitor.getPlatform() !== 'ios' && <SubscriptionStatus />}
             </Box>
-            {activeRole !== 'customer' && <RestaurantStatusToggle />}
+            {hasRole(['admin']) && {activeRole !== 'customer' && <RestaurantStatusToggle />}}
             <Tooltip title="Notifications">
               <IconButton color="inherit" onClick={handleNotificationToggle}>
                 <Badge badgeContent={unreadCount} color="error">

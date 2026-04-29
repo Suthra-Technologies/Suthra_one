@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { alpha } from '@mui/material/styles';
 import {
     Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
-    TableHead, TableRow, TablePagination, Chip, CircularProgress, useTheme,
+    TableHead, TableRow, TablePagination, Chip, CircularProgress, useTheme, useMediaQuery,
     Tabs, Tab, Stack, FormControl, InputLabel, Select, MenuItem, Button,
     TextField, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions,
     IconButton, Collapse, Card, CardContent, Divider, LinearProgress,
@@ -159,6 +159,7 @@ function SmsRow({ log }: { log: any }) {
 
 const ServiceUsagePage: React.FC = () => {
     const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const { formatCurrency } = useSettings();
     const [activeTab, setActiveTab] = useState(0);
     const [period, setPeriod] = useState<string>('today');
@@ -380,7 +381,7 @@ const ServiceUsagePage: React.FC = () => {
     const renderSmsUsage = () => (
         <Box>
             {/* KPI Strip */}
-            <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid container spacing={{ xs: 1.25, sm: 2 }} sx={{ mb: 3 }}>
                 {[
                     {
                         label: 'Total Sent',
@@ -415,14 +416,14 @@ const ServiceUsagePage: React.FC = () => {
                         <Paper
                             elevation={0}
                             sx={{
-                                p: 2.5,
+                                p: { xs: 1.5, sm: 2.5 },
                                 borderRadius: 3,
                                 border: '1px solid',
                                 borderColor: 'divider',
                                 borderLeft: `4px solid ${kpi.color}`,
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: 1.5,
+                                gap: { xs: 1, sm: 1.5 },
                             }}
                         >
                             <Box sx={{ color: kpi.color, display: 'flex', alignItems: 'center' }}>{kpi.icon}</Box>
@@ -430,7 +431,7 @@ const ServiceUsagePage: React.FC = () => {
                                 <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block' }}>
                                     {kpi.label}
                                 </Typography>
-                                <Typography variant="h6" fontWeight={800} sx={{ lineHeight: 1.1, color: typeof kpi.value === 'number' && kpi.value === 0 && kpi.label === 'Failed' ? 'text.disabled' : 'text.primary' }}>
+                                <Typography variant="h6" fontWeight={800} sx={{ lineHeight: 1.1, fontSize: { xs: '1rem', sm: '1.25rem' }, color: typeof kpi.value === 'number' && kpi.value === 0 && kpi.label === 'Failed' ? 'text.disabled' : 'text.primary' }}>
                                     {kpi.value}
                                 </Typography>
                                 <Typography variant="caption" color="text.secondary">{kpi.sub}</Typography>
@@ -516,7 +517,7 @@ const ServiceUsagePage: React.FC = () => {
 
             {/* Table toolbar */}
             <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1.5 }}>
-                <FormControl size="small" sx={{ minWidth: 160 }}>
+                <FormControl size="small" sx={{ minWidth: 160, width: { xs: '100%', sm: 'auto' } }}>
                     <InputLabel>Message Type</InputLabel>
                     <Select value={smsTypeFilter} label="Message Type" onChange={e => { setSmsTypeFilter(e.target.value); setSmsPage(0); }}>
                         <MenuItem value="">All Types</MenuItem>
@@ -525,49 +526,89 @@ const ServiceUsagePage: React.FC = () => {
                         ))}
                     </Select>
                 </FormControl>
-                <Button variant="outlined" startIcon={<SendIcon />} onClick={() => setTestSmsOpen(true)} sx={{ borderRadius: 2 }}>
+                <Button variant="outlined" startIcon={<SendIcon />} onClick={() => setTestSmsOpen(true)} sx={{ borderRadius: 2, width: { xs: '100%', sm: 'auto' } }}>
                     Send Test Message
                 </Button>
             </Box>
 
-            {/* Log Table */}
+            {/* Log Table / Mobile Cards */}
             <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
-                <TableContainer>
-                    <Table size="small">
-                        <TableHead sx={{ bgcolor: alpha(theme.palette.action.hover, 0.5) }}>
-                            <TableRow>
-                                <TableCell sx={{ fontWeight: 700, width: 110 }}>Date</TableCell>
-                                <TableCell sx={{ fontWeight: 700, width: 110 }}>Type</TableCell>
-                                <TableCell sx={{ fontWeight: 700 }}>To</TableCell>
-                                <TableCell sx={{ fontWeight: 700 }}>Message</TableCell>
-                                <TableCell sx={{ fontWeight: 700, width: 130 }}>Status</TableCell>
-                                <TableCell sx={{ fontWeight: 700, width: 140 }}>
-                                    <Tooltip title="Twilio Message SID — use this to verify the charge in your Twilio console">
-                                        <span>Proof (SID) ⓘ</span>
-                                    </Tooltip>
-                                </TableCell>
-                                <TableCell sx={{ fontWeight: 700, width: 80 }} align="right">Cost</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {smsLoading ? (
+                {!isMobile ? (
+                    <TableContainer>
+                        <Table size="small">
+                            <TableHead sx={{ bgcolor: alpha(theme.palette.action.hover, 0.5) }}>
                                 <TableRow>
-                                    <TableCell colSpan={7} align="center" sx={{ py: 8 }}>
-                                        <CircularProgress size={24} />
+                                    <TableCell sx={{ fontWeight: 700, width: 110 }}>Date</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, width: 110 }}>Type</TableCell>
+                                    <TableCell sx={{ fontWeight: 700 }}>To</TableCell>
+                                    <TableCell sx={{ fontWeight: 700 }}>Message</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, width: 130 }}>Status</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, width: 140 }}>
+                                        <Tooltip title="Twilio Message SID — use this to verify the charge in your Twilio console">
+                                            <span>Proof (SID) ⓘ</span>
+                                        </Tooltip>
                                     </TableCell>
+                                    <TableCell sx={{ fontWeight: 700, width: 80 }} align="right">Cost</TableCell>
                                 </TableRow>
-                            ) : smsLogs.length === 0 ? (
-                                <TableRow>
-                                    <TableCell colSpan={7} align="center" sx={{ py: 8 }}>
-                                        <Typography color="text.secondary">No messages found for this period</Typography>
-                                    </TableCell>
-                                </TableRow>
-                            ) : smsLogs.map((log: any) => (
-                                <SmsRow key={log._id} log={log} />
-                            ))}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
+                            </TableHead>
+                            <TableBody>
+                                {smsLoading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={7} align="center" sx={{ py: 8 }}>
+                                            <CircularProgress size={24} />
+                                        </TableCell>
+                                    </TableRow>
+                                ) : smsLogs.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={7} align="center" sx={{ py: 8 }}>
+                                            <Typography color="text.secondary">No messages found for this period</Typography>
+                                        </TableCell>
+                                    </TableRow>
+                                ) : smsLogs.map((log: any) => (
+                                    <SmsRow key={log._id} log={log} />
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                ) : (
+                    <Box sx={{ p: 1.25 }}>
+                        {smsLoading ? (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}><CircularProgress size={24} /></Box>
+                        ) : smsLogs.length === 0 ? (
+                            <Box sx={{ textAlign: 'center', py: 5 }}>
+                                <Typography color="text.secondary" sx={{ fontSize: '0.85rem' }}>No messages found for this period</Typography>
+                            </Box>
+                        ) : (
+                            <Stack spacing={1.25}>
+                                {smsLogs.map((log: any) => (
+                                    <Card key={log._id} variant="outlined" sx={{ borderRadius: 2 }}>
+                                        <CardContent sx={{ p: 1.25, '&:last-child': { pb: 1.25 } }}>
+                                            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.75, gap: 1 }}>
+                                                <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary' }}>
+                                                    {new Date(log.createdAt).toLocaleDateString()} {new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </Typography>
+                                                <StatusChip status={log.status} />
+                                            </Stack>
+                                            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.5 }}>
+                                                <Chip
+                                                    label={TYPE_LABELS[log.type] ?? log.type ?? 'General'}
+                                                    size="small"
+                                                    variant="outlined"
+                                                    sx={{ fontSize: '0.6rem', borderColor: TYPE_COLORS[log.type] ?? '#6b7280', color: TYPE_COLORS[log.type] ?? '#6b7280', fontWeight: 600 }}
+                                                />
+                                                <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: log.cost > 0 ? 'primary.main' : 'text.disabled' }}>
+                                                    {log.cost > 0 ? `$${log.cost.toFixed(4)}` : '—'}
+                                                </Typography>
+                                            </Stack>
+                                            <Typography sx={{ fontSize: '0.78rem', fontFamily: 'monospace', mb: 0.5, wordBreak: 'break-word' }}>{log.to}</Typography>
+                                            <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{log.body}</Typography>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </Stack>
+                        )}
+                    </Box>
+                )}
                 <Divider />
                 {/* Cost footer */}
                 {smsLogs.length > 0 && (
@@ -585,6 +626,10 @@ const ServiceUsagePage: React.FC = () => {
                     onPageChange={(_, p) => setSmsPage(p)}
                     onRowsPerPageChange={e => { setSmsRowsPerPage(parseInt(e.target.value, 10)); setSmsPage(0); }}
                     rowsPerPageOptions={[10, 25, 50]}
+                    sx={{
+                        '& .MuiTablePagination-toolbar': { px: { xs: 1, sm: 2 }, flexWrap: { xs: 'wrap', sm: 'nowrap' } },
+                        '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': { fontSize: { xs: '0.72rem', sm: '0.875rem' } },
+                    }}
                 />
             </Paper>
         </Box>
@@ -601,7 +646,7 @@ const ServiceUsagePage: React.FC = () => {
 
         return (
             <Box>
-                <Grid container spacing={2} sx={{ mb: 4 }}>
+                <Grid container spacing={{ xs: 1.25, sm: 2 }} sx={{ mb: 4 }}>
                     {[
                         { label: 'Total Orders', value: summary?.totalOrders ?? 0, isCurrency: false, icon: <ShoppingCartIcon />, color: '#6366f1' },
                         { label: 'DoorDash', value: summary?.doordashOrders ?? 0, isCurrency: false, icon: <LocalShippingIcon />, color: '#ef4444' },
@@ -614,10 +659,10 @@ const ServiceUsagePage: React.FC = () => {
                     ].map((card) => (
                         <Grid size={{ xs: 6, sm: 3, md: 1.5 }} key={card.label}>
                             <Card variant="outlined" sx={{ borderRadius: 3, borderColor: alpha(card.color, 0.25), borderLeft: `4px solid ${card.color}`, height: '100%' }}>
-                                <CardContent sx={{ textAlign: 'center', p: '12px !important' }}>
+                                <CardContent sx={{ textAlign: 'center', p: { xs: '10px !important', sm: '12px !important' } }}>
                                     <Box sx={{ color: card.color, mb: 0.5, '& svg': { fontSize: 22 } }}>{card.icon}</Box>
-                                    <Typography variant="caption" color="text.secondary" display="block" sx={{ lineHeight: 1.2, mb: 0.5 }}>{card.label}</Typography>
-                                    <Typography variant="subtitle1" fontWeight={800} color={card.color} sx={{ lineHeight: 1 }}>
+                                    <Typography variant="caption" color="text.secondary" display="block" sx={{ lineHeight: 1.2, mb: 0.5, fontSize: { xs: '0.62rem', sm: '0.75rem' } }}>{card.label}</Typography>
+                                    <Typography variant="subtitle1" fontWeight={800} color={card.color} sx={{ lineHeight: 1, fontSize: { xs: '0.85rem', sm: '1rem' } }}>
                                         {card.isCurrency ? formatCurrency(card.value) : card.value}
                                     </Typography>
                                 </CardContent>
@@ -627,8 +672,8 @@ const ServiceUsagePage: React.FC = () => {
                 </Grid>
 
                 <Paper elevation={0} sx={{ borderRadius: 3, border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
-                    <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid', borderColor: 'divider' }}>
-                        <FormControl size="small" sx={{ minWidth: 150 }}>
+                    <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+                        <FormControl size="small" sx={{ minWidth: 150, width: { xs: '100%', sm: 'auto' } }}>
                             <InputLabel>Provider</InputLabel>
                             <Select value={deliveryProviderFilter} label="Provider" onChange={e => setDeliveryProviderFilter(e.target.value)}>
                                 <MenuItem value="all">All Providers</MenuItem>
@@ -636,81 +681,118 @@ const ServiceUsagePage: React.FC = () => {
                                 <MenuItem value="ubereats">Uber Eats</MenuItem>
                             </Select>
                         </FormControl>
-                        <Button variant="outlined" size="small" startIcon={<DownloadIcon />} onClick={() => downloadExcel('delivery-report')}>
+                        <Button variant="outlined" size="small" startIcon={<DownloadIcon />} onClick={() => downloadExcel('delivery-report')} sx={{ width: { xs: '100%', sm: 'auto' } }}>
                             Export Excel
                         </Button>
                     </Box>
-                    <TableContainer>
-                        <Table size="small">
-                            <TableHead sx={{ bgcolor: alpha(theme.palette.action.hover, 0.5) }}>
-                                <TableRow>
-                                    <TableCell sx={{ fontWeight: 700 }}>Order #</TableCell>
-                                    <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
-                                    <TableCell sx={{ fontWeight: 700 }}>Provider</TableCell>
-                                    <TableCell sx={{ fontWeight: 700 }}>Customer</TableCell>
-                                    <TableCell sx={{ fontWeight: 700 }}>Address</TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: 700 }}>Subtotal</TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: 700 }}>Charge</TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: 700 }}>Tip</TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: 700 }}>Tax</TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: 700 }}>Fee</TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: 700 }}>Total</TableCell>
-                                    <TableCell sx={{ fontWeight: 700 }}>Payment</TableCell>
-                                    <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
-                                    <TableCell sx={{ fontWeight: 700 }}>Track</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {deliveryLoading ? (
-                                    <TableRow><TableCell colSpan={14} align="center" sx={{ py: 8 }}><CircularProgress size={24} /></TableCell></TableRow>
-                                ) : orders.length === 0 ? (
-                                    <TableRow><TableCell colSpan={14} align="center" sx={{ py: 8 }}><Typography color="text.secondary">No records found</Typography></TableCell></TableRow>
-                                ) : paged.map((order: any) => (
-                                    <TableRow key={order.orderNumber} hover>
-                                        <TableCell sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{order.orderNumber}</TableCell>
-                                        <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                                            {new Date(order.date).toLocaleDateString()}
-                                            <Typography variant="caption" display="block" color="text.secondary">
-                                                {new Date(order.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            </Typography>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Chip label={providerLabel(order.provider)} size="small" sx={{ bgcolor: providerColor(order.provider), color: '#fff', fontWeight: 700, fontSize: '0.6rem' }} />
-                                        </TableCell>
-                                        <TableCell>
-                                            <Typography variant="body2" sx={{ whiteSpace: 'nowrap' }}>{order.customerName}</Typography>
-                                            <Typography variant="caption" color="text.secondary">{order.customerPhone}</Typography>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Tooltip title={order.deliveryAddress || ''}>
-                                                <Typography variant="caption" sx={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', maxWidth: 150, lineHeight: 1.2 }}>
-                                                    {order.deliveryAddress || '—'}
-                                                </Typography>
-                                            </Tooltip>
-                                        </TableCell>
-                                        <TableCell align="right">{formatCurrency(order.subtotal)}</TableCell>
-                                        <TableCell align="right">{formatCurrency(order.deliveryCharge)}</TableCell>
-                                        <TableCell align="right">{formatCurrency(order.tip)}</TableCell>
-                                        <TableCell align="right">{formatCurrency(order.tax)}</TableCell>
-                                        <TableCell align="right">{formatCurrency(order.processingFee)}</TableCell>
-                                        <TableCell align="right" sx={{ fontWeight: 700 }}>{formatCurrency(order.totalAmount)}</TableCell>
-                                        <TableCell>
-                                            <Stack spacing={0.5}>
-                                                <Chip label={order.paymentMethod} size="small" variant="outlined" sx={{ fontSize: '0.6rem' }} />
-                                                <Chip label={order.paymentStatus} size="small" color={order.paymentStatus === 'paid' ? 'success' : 'default'} sx={{ fontSize: '0.6rem' }} />
-                                            </Stack>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Chip label={order.status} size="small" color={order.status === 'delivered' ? 'success' : 'warning'} sx={{ fontSize: '0.65rem' }} />
-                                        </TableCell>
-                                        <TableCell>
-                                            {order.trackingUrl ? <Button size="small" href={order.trackingUrl} target="_blank">Track</Button> : '—'}
-                                        </TableCell>
+                    {!isMobile ? (
+                        <TableContainer>
+                            <Table size="small">
+                                <TableHead sx={{ bgcolor: alpha(theme.palette.action.hover, 0.5) }}>
+                                    <TableRow>
+                                        <TableCell sx={{ fontWeight: 700 }}>Order #</TableCell>
+                                        <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
+                                        <TableCell sx={{ fontWeight: 700 }}>Provider</TableCell>
+                                        <TableCell sx={{ fontWeight: 700 }}>Customer</TableCell>
+                                        <TableCell sx={{ fontWeight: 700 }}>Address</TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: 700 }}>Subtotal</TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: 700 }}>Charge</TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: 700 }}>Tip</TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: 700 }}>Tax</TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: 700 }}>Fee</TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: 700 }}>Total</TableCell>
+                                        <TableCell sx={{ fontWeight: 700 }}>Payment</TableCell>
+                                        <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
+                                        <TableCell sx={{ fontWeight: 700 }}>Track</TableCell>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
+                                </TableHead>
+                                <TableBody>
+                                    {deliveryLoading ? (
+                                        <TableRow><TableCell colSpan={14} align="center" sx={{ py: 8 }}><CircularProgress size={24} /></TableCell></TableRow>
+                                    ) : orders.length === 0 ? (
+                                        <TableRow><TableCell colSpan={14} align="center" sx={{ py: 8 }}><Typography color="text.secondary">No records found</Typography></TableCell></TableRow>
+                                    ) : paged.map((order: any) => (
+                                        <TableRow key={order.orderNumber} hover>
+                                            <TableCell sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{order.orderNumber}</TableCell>
+                                            <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                                                {new Date(order.date).toLocaleDateString()}
+                                                <Typography variant="caption" display="block" color="text.secondary">
+                                                    {new Date(order.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </Typography>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Chip label={providerLabel(order.provider)} size="small" sx={{ bgcolor: providerColor(order.provider), color: '#fff', fontWeight: 700, fontSize: '0.6rem' }} />
+                                            </TableCell>
+                                            <TableCell>
+                                                <Typography variant="body2" sx={{ whiteSpace: 'nowrap' }}>{order.customerName}</Typography>
+                                                <Typography variant="caption" color="text.secondary">{order.customerPhone}</Typography>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Tooltip title={order.deliveryAddress || ''}>
+                                                    <Typography variant="caption" sx={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', maxWidth: 150, lineHeight: 1.2 }}>
+                                                        {order.deliveryAddress || '—'}
+                                                    </Typography>
+                                                </Tooltip>
+                                            </TableCell>
+                                            <TableCell align="right">{formatCurrency(order.subtotal)}</TableCell>
+                                            <TableCell align="right">{formatCurrency(order.deliveryCharge)}</TableCell>
+                                            <TableCell align="right">{formatCurrency(order.tip)}</TableCell>
+                                            <TableCell align="right">{formatCurrency(order.tax)}</TableCell>
+                                            <TableCell align="right">{formatCurrency(order.processingFee)}</TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 700 }}>{formatCurrency(order.totalAmount)}</TableCell>
+                                            <TableCell>
+                                                <Stack spacing={0.5}>
+                                                    <Chip label={order.paymentMethod} size="small" variant="outlined" sx={{ fontSize: '0.6rem' }} />
+                                                    <Chip label={order.paymentStatus} size="small" color={order.paymentStatus === 'paid' ? 'success' : 'default'} sx={{ fontSize: '0.6rem' }} />
+                                                </Stack>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Chip label={order.status} size="small" color={order.status === 'delivered' ? 'success' : 'warning'} sx={{ fontSize: '0.65rem' }} />
+                                            </TableCell>
+                                            <TableCell>
+                                                {order.trackingUrl ? <Button size="small" href={order.trackingUrl} target="_blank">Track</Button> : '—'}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    ) : (
+                        <Box sx={{ p: 1.25 }}>
+                            {deliveryLoading ? (
+                                <Box sx={{ display: 'flex', justifyContent: 'center', py: 5 }}><CircularProgress size={24} /></Box>
+                            ) : orders.length === 0 ? (
+                                <Box sx={{ textAlign: 'center', py: 5 }}><Typography color="text.secondary" sx={{ fontSize: '0.85rem' }}>No records found</Typography></Box>
+                            ) : (
+                                <Stack spacing={1.25}>
+                                    {paged.map((order: any) => (
+                                        <Card key={order.orderNumber} variant="outlined" sx={{ borderRadius: 2 }}>
+                                            <CardContent sx={{ p: 1.25, '&:last-child': { pb: 1.25 } }}>
+                                                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 0.75 }}>
+                                                    <Typography sx={{ fontSize: '0.8rem', fontWeight: 700 }}>{order.orderNumber}</Typography>
+                                                    <Chip label={providerLabel(order.provider)} size="small" sx={{ bgcolor: providerColor(order.provider), color: '#fff', fontWeight: 700, fontSize: '0.58rem' }} />
+                                                </Stack>
+                                                <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', mb: 0.5 }}>
+                                                    {new Date(order.date).toLocaleDateString()} {new Date(order.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </Typography>
+                                                <Typography sx={{ fontSize: '0.78rem', fontWeight: 600 }}>{order.customerName}</Typography>
+                                                <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', mb: 0.5 }}>{order.customerPhone}</Typography>
+                                                <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', mb: 0.75 }}>{order.deliveryAddress || '—'}</Typography>
+                                                <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
+                                                    <Typography sx={{ fontSize: '0.73rem' }}>Total</Typography>
+                                                    <Typography sx={{ fontSize: '0.8rem', fontWeight: 700 }}>{formatCurrency(order.totalAmount)}</Typography>
+                                                </Stack>
+                                                <Stack direction="row" justifyContent="space-between" sx={{ gap: 0.75, flexWrap: 'wrap' }}>
+                                                    <Chip label={order.paymentStatus} size="small" color={order.paymentStatus === 'paid' ? 'success' : 'default'} sx={{ fontSize: '0.58rem' }} />
+                                                    <Chip label={order.status} size="small" color={order.status === 'delivered' ? 'success' : 'warning'} sx={{ fontSize: '0.58rem' }} />
+                                                </Stack>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                </Stack>
+                            )}
+                        </Box>
+                    )}
                     <TablePagination
                         component="div"
                         count={orders.length}
@@ -719,6 +801,10 @@ const ServiceUsagePage: React.FC = () => {
                         rowsPerPage={deliveryRowsPerPage}
                         onRowsPerPageChange={e => { setDeliveryRowsPerPage(parseInt(e.target.value, 10)); setDeliveryPage(0); }}
                         rowsPerPageOptions={[10, 25, 50]}
+                        sx={{
+                            '& .MuiTablePagination-toolbar': { px: { xs: 1, sm: 2 }, flexWrap: { xs: 'wrap', sm: 'nowrap' } },
+                            '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': { fontSize: { xs: '0.72rem', sm: '0.875rem' } },
+                        }}
                     />
                 </Paper>
             </Box>
@@ -941,21 +1027,21 @@ const ServiceUsagePage: React.FC = () => {
     // ─── Root ────────────────────────────────────────────────────────────────
 
     return (
-        <Box sx={{ p: { xs: 2, sm: 3 } }}>
+        <Box sx={{ p: { xs: 1.5, sm: 3 } }}>
             {/* Header */}
             <Box sx={{ mb: 3, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2 }}>
                 <Box>
-                    <Typography variant="h4" fontWeight={800} gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <ReceiptLongIcon fontSize="large" color="primary" /> Service Usage
+                    <Typography variant="h4" fontWeight={800} gutterBottom sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'center', sm: 'flex-start' }, textAlign: { xs: 'center', sm: 'left' }, gap: 1, fontSize: { xs: '1.45rem', sm: '2.125rem' } }}>
+                        <ReceiptLongIcon sx={{ fontSize: { xs: 28, sm: 34 } }} color="primary" /> Service Usage
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
                         Audit third-party charges — Twilio SMS and delivery providers.
                     </Typography>
                 </Box>
 
                 {/* Period picker */}
-                <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 3, display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center' }}>
-                    <FormControl size="small" sx={{ minWidth: 140 }}>
+                <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 3, display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center', width: { xs: '100%', md: 'auto' } }}>
+                    <FormControl size="small" sx={{ minWidth: 140, width: { xs: '100%', sm: 'auto' } }}>
                         <InputLabel>Period</InputLabel>
                         <Select value={period} label="Period" onChange={e => setPeriod(e.target.value)}>
                             <MenuItem value="today">Today</MenuItem>
@@ -965,7 +1051,7 @@ const ServiceUsagePage: React.FC = () => {
                         </Select>
                     </FormControl>
                     {period === 'custom' && (
-                        <Stack direction="row" spacing={1}>
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ width: { xs: '100%', sm: 'auto' } }}>
                             <TextField size="small" type="date" label="From" InputLabelProps={{ shrink: true }} value={startDate} onChange={e => setStartDate(e.target.value)} />
                             <TextField size="small" type="date" label="To" InputLabelProps={{ shrink: true }} value={endDate} onChange={e => setEndDate(e.target.value)} />
                         </Stack>
@@ -977,9 +1063,13 @@ const ServiceUsagePage: React.FC = () => {
             <Tabs
                 value={activeTab}
                 onChange={(_, v) => setActiveTab(v)}
+                variant={isMobile ? 'scrollable' : 'standard'}
+                allowScrollButtonsMobile
                 sx={{
                     mb: 3,
-                    '& .MuiTab-root': { fontWeight: 700, borderRadius: 2, minHeight: 44, px: 3 },
+                    minHeight: { xs: 40, sm: 44 },
+                    '& .MuiTab-root': { fontWeight: 700, borderRadius: 2, minHeight: { xs: 38, sm: 44 }, px: { xs: 1.25, sm: 3 }, fontSize: { xs: '0.74rem', sm: '0.875rem' }, minWidth: { xs: 120, sm: 160 } },
+                    '& .MuiTab-iconWrapper': { mr: { xs: 0.5, sm: 1 } },
                     '& .Mui-selected': { bgcolor: alpha(theme.palette.primary.main, 0.08) },
                 }}
             >

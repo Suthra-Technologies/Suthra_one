@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
     Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
     TableHead, TableRow, IconButton, CircularProgress, alpha, useTheme,
-    Button, Stack, Chip, Grid
+    Button, Stack, Chip, Card, CardContent, Grid, TablePagination
 } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import StoreIcon from '@mui/icons-material/Store';
@@ -18,6 +18,8 @@ const SmsOverviewPage: React.FC = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
     const [usageData, setUsageData] = useState<any[]>([]);
+    const [mobilePage, setMobilePage] = useState(0);
+    const [mobileRowsPerPage, setMobileRowsPerPage] = useState(10);
 
     const fetchUsage = async () => {
         setLoading(true);
@@ -37,6 +39,11 @@ const SmsOverviewPage: React.FC = () => {
     useEffect(() => {
         fetchUsage();
     }, []);
+    
+    const paginatedMobileData = usageData.slice(
+        mobilePage * mobileRowsPerPage,
+        mobilePage * mobileRowsPerPage + mobileRowsPerPage
+    );
 
     const totals = usageData.reduce((acc, tenant) => {
         acc.total += (tenant.total || 0);
@@ -47,12 +54,23 @@ const SmsOverviewPage: React.FC = () => {
     }, { total: 0, delivered: 0, failed: 0, cost: 0 });
 
     return (
-        <Box sx={{ p: { xs: 2, md: 3 } }}>
-            <Box sx={{ mb: 4 }}>
-                <Typography variant="h4" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                    <ReceiptIcon fontSize="large" color="error" /> SMS Logs Overview
+        <Box sx={{ px: { xs: 1.5, sm: 2, md: 3 }, pb: { xs: 1.5, sm: 2, md: 3 }, pt: { xs: 0.5, sm: 2, md: 3 }, overflowX: 'hidden' }}>
+            <Box sx={{ mb: { xs: 2.5, sm: 4 } }}>
+                <Typography
+                    variant="h4"
+                    fontWeight="bold"
+                    sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: { xs: 'center', sm: 'flex-start' },
+                        gap: 1.5,
+                        textAlign: { xs: 'center', sm: 'left' },
+                        fontSize: { xs: '1.5rem', sm: '2.125rem' },
+                    }}
+                >
+                    <ReceiptIcon sx={{ fontSize: { xs: 28, sm: 35 } }} color="error" /> SMS Logs Overview
                 </Typography>
-                <Typography variant="body1" color="text.secondary">
+                <Typography variant="body1" color="text.secondary" sx={{ textAlign: { xs: 'center', sm: 'left' } }}>
                     View SMS statistics across all restaurant stores.
                 </Typography>
             </Box>
@@ -79,7 +97,7 @@ const SmsOverviewPage: React.FC = () => {
             </Grid>
 
             <Paper elevation={0} sx={{ borderRadius: 4, border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
-                <TableContainer>
+                <TableContainer sx={{ display: { xs: 'none', md: 'block' } }}>
                     <Table>
                         <TableHead sx={{ bgcolor: alpha(theme.palette.action.hover, 0.5) }}>
                             <TableRow>
@@ -114,7 +132,7 @@ const SmsOverviewPage: React.FC = () => {
                                                 bgcolor: alpha(theme.palette.primary.main, 0.08),
                                                 color: 'primary.main'
                                             }}>
-                                                <StoreIcon size="small" />
+                                                <StoreIcon sx={{ fontSize: 18 }} />
                                             </Box>
                                             <Box>
                                                 <Typography variant="subtitle2" fontWeight="bold">{tenant.name}</Typography>
@@ -152,6 +170,115 @@ const SmsOverviewPage: React.FC = () => {
                         </TableBody>
                     </Table>
                 </TableContainer>
+
+                <Box sx={{ display: { xs: 'block', md: 'none' }, p: 1.5 }}>
+                    {loading ? (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+                            <CircularProgress />
+                        </Box>
+                    ) : usageData.length === 0 ? (
+                        <Typography color="text.secondary" textAlign="center" sx={{ py: 4 }}>
+                            No store usage found
+                        </Typography>
+                    ) : (
+                        <Stack spacing={1.5}>
+                            {paginatedMobileData.map((tenant) => (
+                                <Card key={tenant.tenantId} variant="outlined" sx={{ borderRadius: 2 }}>
+                                    <CardContent sx={{ p: 1.5 }}>
+                                        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1.5 }}>
+                                            <Box
+                                                sx={{
+                                                    p: 1,
+                                                    borderRadius: 1,
+                                                    bgcolor: alpha(theme.palette.primary.main, 0.08),
+                                                    color: 'primary.main',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                }}
+                                            >
+                                                <StoreIcon sx={{ fontSize: 18 }} />
+                                            </Box>
+                                            <Box sx={{ minWidth: 0 }}>
+                                                <Typography variant="subtitle2" fontWeight="bold" sx={{ wordBreak: 'break-word' }}>
+                                                    {tenant.name}
+                                                </Typography>
+                                                <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
+                                                    {tenant.slug}
+                                                </Typography>
+                                            </Box>
+                                        </Stack>
+
+                                        <Grid container spacing={1}>
+                                            <Grid item xs={6}>
+                                                <Typography variant="caption" color="text.secondary">Total Messages</Typography>
+                                                <Typography variant="body2" fontWeight="bold">{tenant.total}</Typography>
+                                            </Grid>
+                                            <Grid item xs={6}>
+                                                <Typography variant="caption" color="text.secondary">Total Cost</Typography>
+                                                <Typography variant="body2" fontWeight="bold" color="primary.main">
+                                                    ${tenant.totalCost.toFixed(4)}
+                                                </Typography>
+                                            </Grid>
+                                            <Grid item xs={6}>
+                                                <Typography variant="caption" color="text.secondary">Delivered</Typography>
+                                                <Box>
+                                                    <Chip label={tenant.delivered} size="small" color="success" sx={{ fontWeight: 'bold' }} />
+                                                </Box>
+                                            </Grid>
+                                            <Grid item xs={6}>
+                                                <Typography variant="caption" color="text.secondary">Failed</Typography>
+                                                <Box>
+                                                    <Chip label={tenant.failed} size="small" color="error" sx={{ fontWeight: 'bold' }} />
+                                                </Box>
+                                            </Grid>
+                                        </Grid>
+
+                                        <Button
+                                            fullWidth
+                                            size="small"
+                                            startIcon={<VisibilityIcon />}
+                                            onClick={() => navigate(`/superadmin/sms-logs/${tenant.tenantId}?name=${encodeURIComponent(tenant.name)}`)}
+                                            variant="outlined"
+                                            sx={{ borderRadius: 2, mt: 1.5 }}
+                                        >
+                                            View Logs
+                                        </Button>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </Stack>
+                    )}
+                    {!loading && usageData.length > 0 && (
+                        <TablePagination
+                            component="div"
+                            count={usageData.length}
+                            page={mobilePage}
+                            onPageChange={(_, page) => setMobilePage(page)}
+                            rowsPerPage={mobileRowsPerPage}
+                            onRowsPerPageChange={(e) => {
+                                setMobileRowsPerPage(parseInt(e.target.value, 10));
+                                setMobilePage(0);
+                            }}
+                            rowsPerPageOptions={[5, 10, 25]}
+                            sx={{
+                                mt: 1,
+                                '& .MuiTablePagination-toolbar': {
+                                    px: 0.5,
+                                    flexWrap: 'wrap',
+                                    rowGap: 0.75,
+                                    justifyContent: 'center',
+                                },
+                                '& .MuiTablePagination-spacer': {
+                                    display: 'none',
+                                },
+                                '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+                                    m: 0,
+                                    fontSize: '0.75rem',
+                                },
+                            }}
+                        />
+                    )}
+                </Box>
             </Paper>
         </Box>
     );

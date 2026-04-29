@@ -831,7 +831,7 @@ const CheckoutPage: React.FC = () => {
                       </Card>
                     </Grid>
                   ))}
-                  <Grid size={{ xs: 12, sm: 6 }}>
+                  {/* <Grid size={{ xs: 12, sm: 6 }}>
                     <Card
                       variant={selectedAddressMode === 'new' ? 'outlined' : 'elevation'}
                       sx={{
@@ -852,7 +852,7 @@ const CheckoutPage: React.FC = () => {
                         <Typography variant="subtitle2">Add New Address</Typography>
                       </CardContent>
                     </Card>
-                  </Grid>
+                  </Grid> */}
                 </Grid>
               </Box>
             </Grid>
@@ -1551,12 +1551,12 @@ const CheckoutPage: React.FC = () => {
                   </Typography>
                 )}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography>Tax ({taxRate}%)</Typography>
+                  <Typography>Tax </Typography>
                   <Typography>${(cart.totalAmount * (taxRate / 100)).toFixed(2)}</Typography>
                 </Box>
                 {processingFeeRate > 0 && (
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography>Processing Fee ({processingFeeRate}%)</Typography>
+                    <Typography>Processing Fee</Typography>
                     <Typography>${((cart.totalAmount * processingFeeRate) / 100).toFixed(2)}</Typography>
                   </Box>
                 )}

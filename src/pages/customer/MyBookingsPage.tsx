@@ -26,7 +26,10 @@ import {
     Tabs,
     Pagination,
     Avatar,
-    CircularProgress
+    CircularProgress,
+    Stack,
+    useMediaQuery,
+    useTheme
 } from '@mui/material';
 import {
     Restaurant,
@@ -110,6 +113,8 @@ interface Order {
 const MyBookingsPage: React.FC = () => {
     const navigate = useNavigate();
     const { user, isAuthenticated, tenantSlug } = useAuth();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
     const [tabValue, setTabValue] = useState<number>(0);
     // ... rest of state stays same ...
@@ -149,6 +154,10 @@ const MyBookingsPage: React.FC = () => {
         return filterBookingsByTab(bookings, tabValue);
     }, [bookings, tabValue]);
 
+    const cancelledOrders = React.useMemo(() => {
+        return orders.filter(o => o.status === 'cancelled');
+    }, [orders]);
+
     useEffect(() => {
         fetchData();
     }, []);
@@ -158,12 +167,17 @@ const MyBookingsPage: React.FC = () => {
     }, [tabValue]);
 
     useEffect(() => {
-        const totalItems = tabValue === 0 ? orders.length : filteredBookings.length;
+        const totalItems =
+            tabValue === 0
+                ? orders.length
+                : tabValue === 4
+                    ? filterBookingsByTab(bookings, 4).length + cancelledOrders.length
+                    : filteredBookings.length;
         const totalPages = Math.ceil(totalItems / itemsPerPage);
         if (page > totalPages && totalPages > 0) {
             setPage(totalPages);
         }
-    }, [orders.length, filteredBookings.length, tabValue]);
+    }, [orders.length, filteredBookings.length, tabValue, bookings, cancelledOrders.length]);
 
     const fetchData = async () => {
         try {
@@ -305,6 +319,13 @@ const MyBookingsPage: React.FC = () => {
         });
     };
 
+    const getOrderDisplayId = (order: Order) => {
+        const rawId = order.orderNumber || order._id.slice(-6).toUpperCase();
+        if (!isMobile) return `#${rawId}`;
+        if (rawId.length <= 16) return `#${rawId}`;
+        return `#${rawId.slice(0, 10)}…${rawId.slice(-4)}`;
+    };
+
     const renderBookingCard = (booking: Booking) => (
         <Card
             key={booking.id}
@@ -316,16 +337,16 @@ const MyBookingsPage: React.FC = () => {
                 '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 10px 25px rgba(0,0,0,0.08)' }
             }}
         >
-            <CardContent sx={{ p: 3 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2.5 }}>
+            <CardContent sx={{ p: { xs: 2, sm: 2.5 }, '&:last-child': { pb: { xs: 2, sm: 2.5 } } }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: { xs: 1.75, sm: 2 } }}>
                     <Box>
-                        <Typography variant="h6" fontWeight={800} sx={{ lineHeight: 1.2 }}>
+                        <Typography variant="h6" fontWeight={800} sx={{ lineHeight: 1.2, fontSize: { xs: '0.92rem', sm: '1rem' } }}>
                             Table {booking.tableNumber}
                         </Typography>
-                        <Typography variant="caption" sx={{ fontWeight: 800, display: 'block', mt: 0.5, letterSpacing: 0.5, color: 'primary.main' }}>
+                        <Typography variant="caption" sx={{ fontWeight: 800, display: 'block', mt: 0.5, letterSpacing: 0.5, color: 'primary.main', fontSize: { xs: '0.62rem', sm: '0.68rem' } }}>
                             ID: {booking.id.toUpperCase()}
                         </Typography>
-                        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, display: 'block', mt: 1 }}>
+                        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, display: 'block', mt: 0.75, fontSize: { xs: '0.62rem', sm: '0.68rem' } }}>
                             {booking.location}
                         </Typography>
                     </Box>
@@ -333,73 +354,75 @@ const MyBookingsPage: React.FC = () => {
                         icon={getStatusIcon(booking.status)}
                         label={booking.status.toUpperCase()}
                         color={getStatusColor(booking.status)}
-                        size="medium"
+                        size="small"
                         sx={{
                             fontWeight: 800,
                             borderRadius: '12px',
-                            px: 1.5,
-                            height: 32,
+                            px: { xs: 1, sm: 1.5 },
+                            height: { xs: 26, sm: 28 },
+                            fontSize: { xs: '0.58rem', sm: '0.65rem' },
+                            '& .MuiChip-icon': { ml: 0.5 },
                             boxShadow: booking.status === 'confirmed' ? '0 4px 12px rgba(16, 185, 129, 0.2)' : 'none',
                         }}
                     />
                 </Box>
 
-                <Grid container spacing={2}>
+                <Grid container spacing={{ xs: 1.25, sm: 2 }}>
                     <Grid item xs={12} sm={4}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', p: 1.5, bgcolor: 'rgba(0,0,0,0.02)', borderRadius: 2 }}>
-                            <DateRange sx={{ fontSize: 18, mr: 1.5, color: 'primary.main' }} />
+                        <Box sx={{ display: 'flex', alignItems: 'center', p: { xs: 1, sm: 1.25 }, bgcolor: 'rgba(0,0,0,0.02)', borderRadius: 2 }}>
+                            <DateRange sx={{ fontSize: { xs: 15, sm: 16 }, mr: { xs: 1, sm: 1.25 }, color: 'primary.main' }} />
                             <Box>
-                                <Typography variant="caption" color="text.secondary" fontWeight={600} display="block">DATE</Typography>
-                                <Typography variant="body2" fontWeight={700}>{booking.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</Typography>
+                                <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" sx={{ fontSize: { xs: '0.58rem', sm: '0.62rem' } }}>DATE</Typography>
+                                <Typography variant="body2" fontWeight={700} sx={{ fontSize: { xs: '0.72rem', sm: '0.78rem' } }}>{booking.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</Typography>
                             </Box>
                         </Box>
                     </Grid>
                     <Grid item xs={6} sm={4}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', p: 1.5, bgcolor: 'rgba(0,0,0,0.02)', borderRadius: 2 }}>
-                            <AccessTime sx={{ fontSize: 18, mr: 1.5, color: 'primary.main' }} />
+                        <Box sx={{ display: 'flex', alignItems: 'center', p: { xs: 1, sm: 1.25 }, bgcolor: 'rgba(0,0,0,0.02)', borderRadius: 2 }}>
+                            <AccessTime sx={{ fontSize: { xs: 15, sm: 16 }, mr: { xs: 1, sm: 1.25 }, color: 'primary.main' }} />
                             <Box>
-                                <Typography variant="caption" color="text.secondary" fontWeight={600} display="block">TIME</Typography>
-                                <Typography variant="body2" fontWeight={700}>{booking.time}</Typography>
+                                <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" sx={{ fontSize: { xs: '0.58rem', sm: '0.62rem' } }}>TIME</Typography>
+                                <Typography variant="body2" fontWeight={700} sx={{ fontSize: { xs: '0.72rem', sm: '0.78rem' } }}>{booking.time}</Typography>
                             </Box>
                         </Box>
                     </Grid>
                     <Grid item xs={6} sm={4}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', p: 1.5, bgcolor: 'rgba(0,0,0,0.02)', borderRadius: 2 }}>
-                            <People sx={{ fontSize: 18, mr: 1.5, color: 'primary.main' }} />
+                        <Box sx={{ display: 'flex', alignItems: 'center', p: { xs: 1, sm: 1.25 }, bgcolor: 'rgba(0,0,0,0.02)', borderRadius: 2 }}>
+                            <People sx={{ fontSize: { xs: 15, sm: 16 }, mr: { xs: 1, sm: 1.25 }, color: 'primary.main' }} />
                             <Box>
-                                <Typography variant="caption" color="text.secondary" fontWeight={600} display="block">GUESTS</Typography>
-                                <Typography variant="body2" fontWeight={700}>{booking.guests} {booking.guests === 1 ? 'Person' : 'People'}</Typography>
+                                <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" sx={{ fontSize: { xs: '0.58rem', sm: '0.62rem' } }}>GUESTS</Typography>
+                                <Typography variant="body2" fontWeight={700} sx={{ fontSize: { xs: '0.72rem', sm: '0.78rem' } }}>{booking.guests} {booking.guests === 1 ? 'Person' : 'People'}</Typography>
                             </Box>
                         </Box>
                     </Grid>
                 </Grid>
 
                 {booking.status === 'cancelled' && (
-                    <Box sx={{ mt: 2.5, p: 1.75, bgcolor: 'rgba(0,0,0,0.025)', borderRadius: 2.5 }}>
+                    <Box sx={{ mt: { xs: 1.75, sm: 2 }, p: { xs: 1.25, sm: 1.5 }, bgcolor: 'rgba(0,0,0,0.025)', borderRadius: 2.5 }}>
                         {booking.reservationFee?.refunded && getRefundAmount(booking) > 0 ? (
                             <>
-                                <Typography variant="body2" fontWeight={800}>
+                                <Typography variant="body2" fontWeight={800} sx={{ fontSize: { xs: '0.72rem', sm: '0.78rem' } }}>
                                     Refund sent: {formatCurrency(getRefundAmount(booking))}
                                 </Typography>
-                                <Typography variant="caption" color="text.secondary">
+                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem' } }}>
                                     Back to your original payment method{booking.refunds[0]?.timestamp ? ` on ${formatRefundTime(booking.refunds[0]?.timestamp)}` : ''}. Confirmation sent by email.
                                 </Typography>
                             </>
                         ) : booking.reservationFee?.paid ? (
                             <>
-                                <Typography variant="body2" fontWeight={800}>
+                                <Typography variant="body2" fontWeight={800} sx={{ fontSize: { xs: '0.72rem', sm: '0.78rem' } }}>
                                     Refund in progress
                                 </Typography>
-                                <Typography variant="caption" color="text.secondary">
+                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem' } }}>
                                     We&apos;ll send confirmation by email once it&apos;s processed.
                                 </Typography>
                             </>
                         ) : (
                             <>
-                                <Typography variant="body2" fontWeight={800}>
+                                <Typography variant="body2" fontWeight={800} sx={{ fontSize: { xs: '0.72rem', sm: '0.78rem' } }}>
                                     Booking cancelled
                                 </Typography>
-                                <Typography variant="caption" color="text.secondary">
+                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem' } }}>
                                     No further action needed.
                                 </Typography>
                             </>
@@ -428,43 +451,69 @@ const MyBookingsPage: React.FC = () => {
         <Box sx={{ p: 0, bgcolor: '#fbfbff', minHeight: '100vh' }}>
             {/* Hero Header */}
             <Box sx={{
-                background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
+                background: { xs: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 55%, #3b82f6 100%)', md: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)' },
                 color: 'white',
-                pt: { xs: 6, md: 8 },
-                pb: { xs: 6, md: 10 },
-                px: 4,
-                mb: -6,
+                pt: { xs: 3, md: 8 },
+                pb: { xs: 5.5, md: 10 },
+                px: { xs: 2, sm: 3, md: 4 },
+                mb: { xs: -4, md: -6 },
                 position: 'relative',
                 overflow: 'hidden',
                 borderRadius: { xs: 0, md: '0 0 40px 40px' },
-                boxShadow: '0 10px 30px rgba(0,0,0,0.15)',
+                boxShadow: { xs: '0 8px 20px rgba(37,99,235,0.22)', md: '0 10px 30px rgba(0,0,0,0.15)' },
             }}>
-                <Box sx={{ position: 'absolute', top: -100, right: -100, width: 300, height: 300, borderRadius: '50%', background: 'rgba(79,70,229,0.1)', filter: 'blur(80px)' }} />
+                <Box sx={{ position: 'absolute', top: { xs: -80, md: -100 }, right: { xs: -70, md: -100 }, width: { xs: 180, md: 300 }, height: { xs: 180, md: 300 }, borderRadius: '50%', background: 'rgba(255,255,255,0.12)', filter: { xs: 'blur(40px)', md: 'blur(80px)' } }} />
 
                 <Container maxWidth="lg">
-                    <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 3 }}>
-                        <Box>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-                                <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)' }}>
+                    <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: { xs: 'flex-start', md: 'center' }, flexWrap: 'wrap', gap: { xs: 2, md: 3 } }}>
+                        <Box sx={{ width: { xs: '100%', md: 'auto' } }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mb: 0.75 }}>
+                                <Avatar sx={{ bgcolor: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.32)', width: { xs: 34, md: 40 }, height: { xs: 34, md: 40 } }}>
                                     <HistoryIcon sx={{ color: 'white' }} />
                                 </Avatar>
-                                <Typography variant="h3" fontWeight={800} sx={{ letterSpacing: '-0.02em', fontSize: { xs: '2rem', md: '2.5rem' } }}>
+                                <Typography
+                                    variant="h3"
+                                    fontWeight={800}
+                                    sx={{
+                                        letterSpacing: '-0.02em',
+                                        fontSize: { xs: '1.38rem', md: '2.5rem' },
+                                        lineHeight: 1.15,
+                                        color: '#ffffff',
+                                    }}
+                                >
                                     My Activity
                                 </Typography>
                             </Box>
-                            <Typography variant="h6" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 400 }}>
+                            <Typography
+                                variant="h6"
+                                sx={{
+                                    color: 'rgba(255,255,255,0.92)',
+                                    fontWeight: 400,
+                                    fontSize: { xs: '0.84rem', md: '1.25rem' },
+                                    maxWidth: { xs: '95%', md: 620 },
+                                    lineHeight: 1.35
+                                }}
+                            >
                                 Track your orders and manage upcoming table reservations.
                             </Typography>
                         </Box>
                         <Button
                             variant="contained"
-                            size="large"
+                            size={isMobile ? 'medium' : 'large'}
                             startIcon={<Add />}
                             onClick={() => navigate(`/${tenantSlug}/customer/book-table`)}
                             sx={{
-                                borderRadius: '16px', textTransform: 'none', fontWeight: 700, px: 4, py: 1.5,
-                                background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.2)',
-                                '&:hover': { background: 'rgba(255,255,255,0.2)' }
+                                borderRadius: '14px',
+                                textTransform: 'none',
+                                fontWeight: 700,
+                                px: { xs: 2, md: 4 },
+                                py: { xs: 0.9, md: 1.5 },
+                                width: { xs: '100%', sm: 'auto' },
+                                background: 'rgba(255,255,255,0.16)',
+                                backdropFilter: 'blur(8px)',
+                                border: '1px solid rgba(255,255,255,0.3)',
+                                boxShadow: '0 6px 16px rgba(0,0,0,0.14)',
+                                '&:hover': { background: 'rgba(255,255,255,0.24)' }
                             }}
                         >
                             New Booking
@@ -473,7 +522,7 @@ const MyBookingsPage: React.FC = () => {
                 </Container>
             </Box>
 
-            <Container maxWidth="md" sx={{ position: 'relative', zIndex: 2 }}>
+            <Container maxWidth="md" sx={{ position: 'relative', zIndex: 2, px: { xs: 1.25, sm: 3 } }}>
                 {loading ? (
                     <Paper sx={{ p: 6, textAlign: 'center', borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
                         <CircularProgress size={40} thickness={4} />
@@ -481,7 +530,7 @@ const MyBookingsPage: React.FC = () => {
                     </Paper>
                 ) : (
                     <>
-                        <Box sx={{ mb: 4, bgcolor: 'white', p: 1, borderRadius: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                        <Box sx={{ mb: 4, bgcolor: 'white', p: { xs: 0.75, sm: 1 }, borderRadius: { xs: '16px', sm: '20px' }, boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
                             <Tabs
                                 value={tabValue}
                                 onChange={(e, n) => setTabValue(n)}
@@ -489,8 +538,23 @@ const MyBookingsPage: React.FC = () => {
                                 scrollButtons="auto"
                                 sx={{
                                     '& .MuiTabs-indicator': { display: 'none' },
+                                    minHeight: { xs: 40, sm: 48 },
                                     '& .MuiTab-root': {
-                                        borderRadius: '14px', minHeight: 48, mx: 0.5, textTransform: 'none', fontWeight: 700,
+                                        borderRadius: '14px',
+                                        minHeight: { xs: 36, sm: 48 },
+                                        py: { xs: 0.4, sm: 1 },
+                                        mx: { xs: 0.15, sm: 0.5 },
+                                        px: { xs: 0.55, sm: 1.75 },
+                                        textTransform: 'none',
+                                        fontWeight: 700,
+                                        fontSize: { xs: '0.54rem', sm: '0.875rem' },
+                                        lineHeight: { xs: 1.15, sm: 1.25 },
+                                        letterSpacing: { xs: '-0.01em', sm: 'normal' },
+                                        minWidth: { xs: 'fit-content', sm: 120 },
+                                        '& .MuiTab-iconWrapper': {
+                                            mr: { xs: 0.3, sm: 1 },
+                                            '& svg': { fontSize: { xs: 14, sm: 20 } },
+                                        },
                                         '&.Mui-selected': {
                                             background: 'linear-gradient(135deg, #4F46E5, #7C3AED)',
                                             color: 'white !important',
@@ -499,11 +563,11 @@ const MyBookingsPage: React.FC = () => {
                                     }
                                 }}
                             >
-                                <Tab icon={<Fastfood fontSize="small" />} iconPosition="start" label={`Orders (${orders.length})`} />
-                                <Tab icon={<EventSeat fontSize="small" />} iconPosition="start" label={`Table Bookings (${bookings.length})`} />
+                                <Tab icon={<Fastfood fontSize="small" />} iconPosition="start" label={isMobile ? `Orders (${orders.length})` : `Orders (${orders.length})`} />
+                                <Tab icon={<EventSeat fontSize="small" />} iconPosition="start" label={isMobile ? `Bookings (${bookings.length})` : `Table Bookings (${bookings.length})`} />
                                 <Tab icon={<CheckCircle fontSize="small" />} iconPosition="start" label={`Upcoming (${filterBookingsByTab(bookings, 2).length})`} />
                                 <Tab icon={<HistoryIcon fontSize="small" />} iconPosition="start" label={`Past (${filterBookingsByTab(bookings, 3).length})`} />
-                                <Tab icon={<Cancel fontSize="small" />} iconPosition="start" label={`Cancelled (${filterBookingsByTab(bookings, 4).length})`} />
+                                <Tab icon={<Cancel fontSize="small" />} iconPosition="start" label={`Cancelled (${filterBookingsByTab(bookings, 4).length + cancelledOrders.length})`} />
                             </Tabs>
                         </Box>
 
@@ -538,7 +602,7 @@ const MyBookingsPage: React.FC = () => {
                                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                                                     <Box>
                                                         <Typography variant="h6" fontWeight={800} color="primary.main">
-                                                            #{o.orderNumber || o._id.slice(-6).toUpperCase()}
+                                                            {getOrderDisplayId(o)}
                                                         </Typography>
                                                         <Typography variant="caption" fontWeight={600} color="text.secondary">
                                                             {new Date(o.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at {new Date(o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -666,73 +730,195 @@ const MyBookingsPage: React.FC = () => {
                                 </Paper>
                             ) : (
                                 <Paper elevation={0} sx={{ borderRadius: 4, border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
-                                    {/* Table Header */}
-                                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 0.7fr', gap: 1, px: 3, py: 2, bgcolor: 'linear-gradient(135deg,#4F46E5,#7C3AED)', background: 'linear-gradient(135deg,#4F46E5,#7C3AED)', color: 'white' }}>
-                                        <Typography variant="caption" fontWeight={800} sx={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}>Booking ID</Typography>
-                                        <Typography variant="caption" fontWeight={800} sx={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}>Table</Typography>
-                                        <Typography variant="caption" fontWeight={800} sx={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}>Date & Time</Typography>
-                                        <Typography variant="caption" fontWeight={800} sx={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}>Guests</Typography>
-                                        <Typography variant="caption" fontWeight={800} sx={{ textTransform: 'uppercase', letterSpacing: '0.08em' }}>Status</Typography>
-                                    </Box>
-                                    <Divider />
-                                    {bookings.slice((page - 1) * itemsPerPage, page * itemsPerPage).map((b, idx) => (
-                                        <Box
-                                            key={b.id}
-                                            sx={{
-                                                display: 'grid',
-                                                gridTemplateColumns: '1fr 1fr 1fr 1fr 0.7fr',
-                                                gap: 1,
-                                                px: 3,
-                                                py: 2.5,
-                                                bgcolor: idx % 2 === 0 ? 'white' : 'rgba(79,70,229,0.02)',
-                                                borderBottom: '1px solid',
-                                                borderColor: 'divider',
-                                                alignItems: 'center',
-                                                transition: 'background 0.2s',
-                                                '&:hover': { bgcolor: 'rgba(79,70,229,0.05)' },
-                                                '&:last-child': { borderBottom: 'none' }
-                                            }}
-                                        >
-                                            <Box>
-                                                <Typography variant="body2" fontWeight={700} color="primary.main" sx={{ fontFamily: 'monospace', fontSize: '0.75rem' }}>
-                                                    #{b.id.slice(-8).toUpperCase()}
-                                                </Typography>
-                                                <Typography variant="caption" color="text.secondary">
-                                                    {b.createdAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                                </Typography>
-                                            </Box>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                <EventSeat sx={{ fontSize: 16, color: 'primary.main' }} />
-                                                <Box>
-                                                    <Typography variant="body2" fontWeight={700}>Table {b.tableNumber}</Typography>
-                                                    <Typography variant="caption" color="text.secondary">{b.location}</Typography>
-                                                </Box>
-                                            </Box>
-                                            <Box>
-                                                <Typography variant="body2" fontWeight={600}>
-                                                    {b.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                                </Typography>
-                                                <Typography variant="caption" color="text.secondary">{b.time}</Typography>
-                                            </Box>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                                <People sx={{ fontSize: 15, color: 'text.secondary' }} />
-                                                <Typography variant="body2" fontWeight={600}>{b.guests} {b.guests === 1 ? 'person' : 'people'}</Typography>
-                                            </Box>
-                                            <Chip
-                                                label={b.status.toUpperCase()}
-                                                size="small"
-                                                color={getStatusColor(b.status)}
-                                                icon={getStatusIcon(b.status)}
-                                                sx={{ fontWeight: 800, borderRadius: '8px', fontSize: '0.65rem' }}
-                                            />
+                                    <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                                        {/* Table Header */}
+                                        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr 0.7fr', gap: 1, px: 3, py: 1.5, bgcolor: 'linear-gradient(135deg,#4F46E5,#7C3AED)', background: 'linear-gradient(135deg,#4F46E5,#7C3AED)', color: 'white' }}>
+                                            <Typography variant="caption" fontWeight={800} sx={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>Booking ID</Typography>
+                                            <Typography variant="caption" fontWeight={800} sx={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>Table</Typography>
+                                            <Typography variant="caption" fontWeight={800} sx={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>Date & Time</Typography>
+                                            <Typography variant="caption" fontWeight={800} sx={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>Guests</Typography>
+                                            <Typography variant="caption" fontWeight={800} sx={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>Status</Typography>
                                         </Box>
-                                    ))}
+                                        <Divider />
+                                        {bookings.slice((page - 1) * itemsPerPage, page * itemsPerPage).map((b, idx) => (
+                                            <Box
+                                                key={b.id}
+                                                sx={{
+                                                    display: 'grid',
+                                                    gridTemplateColumns: '1fr 1fr 1fr 1fr 0.7fr',
+                                                    gap: 1,
+                                                    px: 3,
+                                                    py: 1.75,
+                                                    bgcolor: idx % 2 === 0 ? 'white' : 'rgba(79,70,229,0.02)',
+                                                    borderBottom: '1px solid',
+                                                    borderColor: 'divider',
+                                                    alignItems: 'center',
+                                                    transition: 'background 0.2s',
+                                                    '&:hover': { bgcolor: 'rgba(79,70,229,0.05)' },
+                                                    '&:last-child': { borderBottom: 'none' }
+                                                }}
+                                            >
+                                                <Box>
+                                                    <Typography variant="body2" fontWeight={700} color="primary.main" sx={{ fontFamily: 'monospace', fontSize: '0.68rem' }}>
+                                                        #{b.id.slice(-8).toUpperCase()}
+                                                    </Typography>
+                                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.62rem' }}>
+                                                        {b.createdAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                    </Typography>
+                                                </Box>
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                    <EventSeat sx={{ fontSize: 15, color: 'primary.main' }} />
+                                                    <Box>
+                                                        <Typography variant="body2" fontWeight={700} sx={{ fontSize: '0.75rem' }}>Table {b.tableNumber}</Typography>
+                                                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.62rem' }}>{b.location}</Typography>
+                                                    </Box>
+                                                </Box>
+                                                <Box>
+                                                    <Typography variant="body2" fontWeight={600} sx={{ fontSize: '0.75rem' }}>
+                                                        {b.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                    </Typography>
+                                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.62rem' }}>{b.time}</Typography>
+                                                </Box>
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                    <People sx={{ fontSize: 14, color: 'text.secondary' }} />
+                                                    <Typography variant="body2" fontWeight={600} sx={{ fontSize: '0.75rem' }}>{b.guests} {b.guests === 1 ? 'person' : 'people'}</Typography>
+                                                </Box>
+                                                <Chip
+                                                    label={b.status.toUpperCase()}
+                                                    size="small"
+                                                    color={getStatusColor(b.status)}
+                                                    icon={getStatusIcon(b.status)}
+                                                    sx={{ fontWeight: 800, borderRadius: '8px', fontSize: '0.58rem', height: 22 }}
+                                                />
+                                            </Box>
+                                        ))}
+                                    </Box>
+
+                                    <Box sx={{ display: { xs: 'block', md: 'none' }, p: 1.5 }}>
+                                        <Stack spacing={1.5}>
+                                            {bookings.slice((page - 1) * itemsPerPage, page * itemsPerPage).map((b) => (
+                                                <Card
+                                                    key={b.id}
+                                                    sx={{
+                                                        borderRadius: 3,
+                                                        border: '1px solid',
+                                                        borderColor: 'divider',
+                                                        boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
+                                                    }}
+                                                >
+                                                    <CardContent sx={{ p: 1.1, '&:last-child': { pb: 1.1 } }}>
+                                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1, mb: 0.75 }}>
+                                                            <Box>
+                                                                <Typography variant="body2" fontWeight={800} color="primary.main" sx={{ fontFamily: 'monospace', fontSize: '0.66rem' }}>
+                                                                    #{b.id.slice(-8).toUpperCase()}
+                                                                </Typography>
+                                                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.58rem' }}>
+                                                                    {b.createdAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                                </Typography>
+                                                            </Box>
+                                                            <Chip
+                                                                label={b.status.toUpperCase()}
+                                                                size="small"
+                                                                color={getStatusColor(b.status)}
+                                                                icon={getStatusIcon(b.status)}
+                                                                sx={{ fontWeight: 800, borderRadius: '8px', fontSize: '0.52rem', height: 20, '& .MuiChip-label': { px: 0.75 } }}
+                                                            />
+                                                        </Box>
+
+                                                        <Grid container spacing={0.75}>
+                                                            <Grid item xs={6}>
+                                                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.58rem' }}>Table</Typography>
+                                                                <Typography variant="body2" fontWeight={700} sx={{ fontSize: '0.68rem' }}>Table {b.tableNumber}</Typography>
+                                                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.58rem' }}>{b.location}</Typography>
+                                                            </Grid>
+                                                            <Grid item xs={6}>
+                                                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.58rem' }}>Date & Time</Typography>
+                                                                <Typography variant="body2" fontWeight={700} sx={{ fontSize: '0.68rem' }}>
+                                                                    {b.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                                </Typography>
+                                                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.58rem' }}>{b.time}</Typography>
+                                                            </Grid>
+                                                            <Grid item xs={12}>
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.6 }}>
+                                                                    <People sx={{ fontSize: 13, color: 'text.secondary' }} />
+                                                                    <Typography variant="body2" fontWeight={600} sx={{ fontSize: '0.66rem' }}>
+                                                                        {b.guests} {b.guests === 1 ? 'person' : 'people'}
+                                                                    </Typography>
+                                                                </Box>
+                                                            </Grid>
+                                                        </Grid>
+                                                    </CardContent>
+                                                </Card>
+                                            ))}
+                                        </Stack>
+                                    </Box>
                                     {bookings.length > itemsPerPage && (
                                         <Box sx={{ display: 'flex', justifyContent: 'center', py: 2, borderTop: '1px solid', borderColor: 'divider' }}>
                                             <Pagination count={Math.ceil(bookings.length / itemsPerPage)} page={page} onChange={(_, v) => setPage(v)} color="primary" />
                                         </Box>
                                     )}
                                 </Paper>
+                            )
+                        ) : tabValue === 4 ? (
+                            (filterBookingsByTab(bookings, 4).length + cancelledOrders.length) === 0 ? (
+                                <Paper sx={{ p: 4, textAlign: 'center' }}>
+                                    <Typography variant="h6">No Cancelled Items</Typography>
+                                    <Typography color="text.secondary">You don't have any cancelled bookings or orders.</Typography>
+                                </Paper>
+                            ) : (
+                                <>
+                                    {cancelledOrders.slice((page - 1) * itemsPerPage, page * itemsPerPage).map(o => (
+                                        <Card
+                                            key={o._id}
+                                            sx={{
+                                                mb: 2.5, borderRadius: 4, overflow: 'hidden',
+                                                boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
+                                                border: '1px solid rgba(0,0,0,0.06)',
+                                            }}
+                                        >
+                                            <CardContent sx={{ p: 3 }}>
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                                    <Box>
+                                                        <Typography variant="h6" fontWeight={800} color="primary.main" sx={{ fontSize: { xs: '1.02rem', sm: '1.25rem' } }}>
+                                                            {getOrderDisplayId(o)}
+                                                        </Typography>
+                                                        <Typography variant="caption" fontWeight={600} color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
+                                                            {new Date(o.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                        </Typography>
+                                                    </Box>
+                                                    <Chip label="CANCELLED" color="error" size="small" sx={{ fontWeight: 800, borderRadius: '8px', fontSize: { xs: '0.62rem', sm: '0.75rem' } }} />
+                                                </Box>
+                                                <Box sx={{ p: 2, bgcolor: 'rgba(0,0,0,0.02)', borderRadius: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                                        <Avatar sx={{ bgcolor: 'white', border: '1px solid rgba(0,0,0,0.06)', color: 'text.secondary' }}>
+                                                            <Fastfood sx={{ fontSize: 20 }} />
+                                                        </Avatar>
+                                                        <Box>
+                                                            <Typography variant="body2" fontWeight={700} sx={{ textTransform: 'capitalize', fontSize: { xs: '0.82rem', sm: '0.875rem' } }}>
+                                                                {o.orderType.replace(/_/g, ' ')}
+                                                            </Typography>
+                                                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
+                                                                {o.items?.length || 0} items
+                                                            </Typography>
+                                                        </Box>
+                                                    </Box>
+                                                    <Typography variant="h6" fontWeight={900} sx={{ fontSize: { xs: '1.12rem', sm: '1.25rem' } }}>
+                                                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(o.totalAmount)}
+                                                    </Typography>
+                                                </Box>
+                                            </CardContent>
+                                        </Card>
+                                    ))}
+                                    {filterBookingsByTab(bookings, 4).slice((page - 1) * itemsPerPage, page * itemsPerPage).map(b => renderBookingCard(b))}
+                                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3, mb: 2 }}>
+                                        <Pagination
+                                            count={Math.ceil((filterBookingsByTab(bookings, 4).length + cancelledOrders.length) / itemsPerPage)}
+                                            page={page}
+                                            onChange={(_, value) => setPage(value)}
+                                            color="primary"
+                                        />
+                                    </Box>
+                                </>
                             )
                         ) : filteredBookings.length === 0 ? (
                             <Paper sx={{ p: 4, textAlign: 'center' }}>

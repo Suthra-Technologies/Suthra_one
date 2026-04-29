@@ -494,6 +494,10 @@ export const superAPI = {
   listSupportTickets: (params?: any) => api.get('/superadmin/support-tickets', { params }),
   replySupportTicket: (ticketId: string, payload: any) =>
     api.post(`/superadmin/support-tickets/${ticketId}/reply`, payload),
+  updateSupportTicket: (ticketId: string, payload: any) =>
+    api.patch(`/superadmin/support-tickets/${ticketId}`, payload),
+  deleteSupportTicket: (ticketId: string) =>
+    api.delete(`/superadmin/support-tickets/${ticketId}`),
 
   // Plans management
   listPlans: () => api.get('/superadmin/plans'),
@@ -515,6 +519,8 @@ export const supportAPI = {
   create: (payload: any) => api.post('/support', payload),
   reply: (id: string, payload: any) => api.post(`/support/${id}/reply`, payload),
   resolve: (id: string, payload: any) => api.post(`/support/${id}/resolve`, payload),
+  update: (id: string, payload: any) => api.patch(`/support/${id}`, payload),
+  delete: (id: string) => api.delete(`/support/${id}`),
 };
 
 
@@ -675,6 +681,9 @@ export const homepageAPI = {
   getContent: () => api.get('/homepage'),
   updateContent: (htmlContent: string, sections?: any[]) => api.put('/homepage', { htmlContent, sections }),
   getPublicContent: (tenantSlug: string) => api.get('/homepage/public', { params: { tenantSlug } }),
+  getAboutContent: () => api.get('/homepage/about'),
+  updateAboutContent: (aboutSections: any[]) => api.put('/homepage/about', { aboutSections }),
+  getPublicAboutContent: (tenantSlug: string) => api.get('/homepage/about/public', { params: { tenantSlug } }),
 };
 
 // -------------------- SMS API --------------------

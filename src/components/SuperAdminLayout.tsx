@@ -238,7 +238,9 @@ const SuperAdminLayout: React.FC = () => {
                 component="main"
                 sx={{
                     flexGrow: 1,
-                    p: 3,
+                    px: { xs: 1, sm: 2, md: 3 },
+                    pb: { xs: 1.5, sm: 2, md: 3 },
+                    pt: { xs: 0.25, sm: 0.75, md: 3 },
                     width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
                     mt: '64px',
                     minHeight: 'calc(100vh - 64px)',
