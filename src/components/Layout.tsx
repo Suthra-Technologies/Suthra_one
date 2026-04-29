@@ -55,6 +55,7 @@ import Sidebar from './Sidebar';
 import SubscriptionBanner from './SubscriptionBanner';
 import SubscriptionStatus from './SubscriptionStatus';
 import { Capacitor } from '@capacitor/core';
+import { usePullToRefresh } from '../hooks/usePullToRefresh';
 
 
 /**
@@ -369,6 +370,9 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
   const { notifications } = useNotifications();
   const { settings, updateSettings } = useSettings();
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  // Pull-to-refresh for mobile apps
+  usePullToRefresh();
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {

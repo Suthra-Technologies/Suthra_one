@@ -41,6 +41,7 @@ import {
 import { useAuth } from 'src/context/AuthContext';
 import { useSettings } from 'src/context/SettingsContext';
 import { useActiveTenant } from 'src/hooks/useActiveTenant';
+import { usePullToRefresh } from 'src/hooks/usePullToRefresh';
 
 const CustomerLayout: React.FC = () => {
   const theme = useTheme();
@@ -52,6 +53,9 @@ const CustomerLayout: React.FC = () => {
   const { settings } = useSettings();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+  // Pull-to-refresh for mobile apps
+  usePullToRefresh();
 
   const restaurant = settings?.restaurant;
   const restaurantName = (restaurant?.name || 'Restaurant').trim();

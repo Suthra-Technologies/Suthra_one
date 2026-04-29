@@ -33,6 +33,7 @@ import {
     Email as EmailIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
+import { usePullToRefresh } from '../hooks/usePullToRefresh';
 
 const DRAWER_WIDTH = 280;
 
@@ -42,6 +43,9 @@ const SuperAdminLayout: React.FC = () => {
     const { logout, user } = useAuth();
     const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
     const [mobileOpen, setMobileOpen] = React.useState(false);
+
+    // Pull-to-refresh for mobile apps
+    usePullToRefresh();
 
     const handleDrawerToggle = () => {
         setMobileOpen(!mobileOpen);
