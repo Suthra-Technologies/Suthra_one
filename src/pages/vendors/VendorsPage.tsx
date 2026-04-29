@@ -33,6 +33,7 @@ import {
     TablePagination,
     CircularProgress,
     useMediaQuery,
+    Switch,
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -574,13 +575,27 @@ const VendorsPage: React.FC = () => {
                                             ))}
                                             {vendor.categories?.length > 2 && <Chip label={`+${vendor.categories.length - 2}`} size="small" sx={{ height: 20, fontSize: '0.65rem' }} />}
                                         </Box>
-                                        <Chip 
-                                            label={vendor.status} 
-                                            color={vendor.status === 'active' ? 'success' : 'default'} 
-                                            size="small" 
-                                            onClick={() => handleToggleStatus(vendor)} 
-                                            sx={{ fontWeight: 900, fontSize: '0.65rem', height: 24, textTransform: 'uppercase' }} 
-                                        />
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                            <Typography
+                                                variant="caption"
+                                                sx={{
+                                                    fontWeight: 800,
+                                                    color: vendor.status === 'active' ? 'success.main' : 'text.secondary',
+                                                    textTransform: 'uppercase',
+                                                    minWidth: 54,
+                                                    textAlign: 'right',
+                                                }}
+                                            >
+                                                {vendor.status}
+                                            </Typography>
+                                            <Switch
+                                                size="small"
+                                                checked={vendor.status === 'active'}
+                                                onChange={() => handleToggleStatus(vendor)}
+                                                color="success"
+                                                inputProps={{ 'aria-label': `Toggle ${vendor.name} status` }}
+                                            />
+                                        </Box>
                                     </Box>
                                 </Paper>
                             </Grid>
@@ -671,13 +686,26 @@ const VendorsPage: React.FC = () => {
                                         </Box>
                                     </TableCell>
                                     <TableCell>
-                                        <Chip
-                                            label={vendor.status}
-                                            color={vendor.status === 'active' ? 'success' : 'default'}
-                                            size="small"
-                                            onClick={() => handleToggleStatus(vendor)}
-                                            sx={{ cursor: 'pointer', textTransform: 'capitalize' }}
-                                        />
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                                            <Typography
+                                                variant="caption"
+                                                sx={{
+                                                    fontWeight: 800,
+                                                    color: vendor.status === 'active' ? 'success.main' : 'text.secondary',
+                                                    textTransform: 'uppercase',
+                                                    minWidth: 54,
+                                                }}
+                                            >
+                                                {vendor.status}
+                                            </Typography>
+                                            <Switch
+                                                size="small"
+                                                checked={vendor.status === 'active'}
+                                                onChange={() => handleToggleStatus(vendor)}
+                                                color="success"
+                                                inputProps={{ 'aria-label': `Toggle ${vendor.name} status` }}
+                                            />
+                                        </Box>
                                     </TableCell>
                                      <TableCell align="center">
                                         <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>

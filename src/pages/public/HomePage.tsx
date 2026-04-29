@@ -2442,49 +2442,92 @@ const HomePage: React.FC = () => {
               mt: 4,
               pt: 4,
               borderTop: "1px solid rgba(255,255,255,0.1)",
-              textAlign: "center",
             }}
           >
-            <Typography variant="caption" sx={{ opacity: 0.4 }}>
-              © 2026 NexZen POS. Premium Restaurant Solutions. Proudly
-              powering dining worldwide.
-            </Typography>
-            <Box sx={{ mt: 1, display: 'flex', justifyContent: 'center', gap: 2 }}>
-              <Typography
-                variant="caption"
-                component={Link}
-                to="/privacy-policy"
-                sx={{
-                  color: "inherit",
-                  textDecoration: "none",
-                  opacity: 0.6,
-                  fontWeight: 500,
-                  transition: "color 0.2s, opacity 0.2s",
-                  "&:hover": {
-                    opacity: 1,
-                    color: "primary.light",
-                  },
-                }}
-              >
-                Privacy Policy
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: { xs: "column", md: "row" },
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: { xs: 2, md: 3 },
+                textAlign: { xs: "center", md: "left" },
+              }}
+            >
+              <Typography variant="caption" sx={{ opacity: 0.65, fontSize: { xs: "0.72rem", sm: "0.8rem" } }}>
+                © {new Date().getFullYear()} nexZentek. All rights reserved.
               </Typography>
-              <Typography
-                variant="caption"
-                component={Link}
-                to="/terms-and-conditions"
+              <Box
                 sx={{
-                  color: "inherit",
-                  textDecoration: "none",
-                  opacity: 0.6,
-                  fontWeight: 500,
-                  transition: "color 0.2s, opacity 0.2s",
-                  "&:hover": {
-                    opacity: 1,
-                    color: "primary.light",
-                  },
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexWrap: "wrap",
+                  gap: { xs: 1, sm: 1.5 },
                 }}
               >
-                Terms and Conditions
+                <Typography
+                  variant="caption"
+                  component={Link}
+                  to="/privacy-policy"
+                  sx={{
+                    color: "inherit",
+                    textDecoration: "none",
+                    opacity: 0.75,
+                    fontWeight: 600,
+                    fontSize: { xs: "0.72rem", sm: "0.8rem" },
+                    transition: "color 0.2s, opacity 0.2s",
+                    "&:hover": {
+                      opacity: 1,
+                      color: "primary.light",
+                    },
+                  }}
+                >
+                  Privacy Policy
+                </Typography>
+                <Typography
+                  component="span"
+                  variant="caption"
+                  sx={{ opacity: 0.35, userSelect: "none" }}
+                >
+                  |
+                </Typography>
+                <Typography
+                  variant="caption"
+                  component={Link}
+                  to="/terms-and-conditions"
+                  sx={{
+                    color: "inherit",
+                    textDecoration: "none",
+                    opacity: 0.75,
+                    fontWeight: 600,
+                    fontSize: { xs: "0.72rem", sm: "0.8rem" },
+                    transition: "color 0.2s, opacity 0.2s",
+                    "&:hover": {
+                      opacity: 1,
+                      color: "primary.light",
+                    },
+                  }}
+                >
+                  Terms & Conditions
+                </Typography>
+              </Box>
+              <Typography variant="caption" sx={{ opacity: 0.55, fontSize: { xs: "0.72rem", sm: "0.78rem" } }}>
+                Developed by{" "}
+                <Box
+                  component="a"
+                  href="https://suthratech.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{
+                    color: "primary.light",
+                    fontWeight: 700,
+                    textDecoration: "none",
+                    "&:hover": { textDecoration: "underline" },
+                  }}
+                >
+                  Suthra Technologies
+                </Box>
               </Typography>
             </Box>
           </Box>

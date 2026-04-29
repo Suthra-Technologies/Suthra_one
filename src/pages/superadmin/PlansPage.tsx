@@ -192,7 +192,7 @@ const PlansPage: React.FC = () => {
     };
 
     return (
-        <Box sx={{ p: { xs: 1.5, sm: 3 } }}>
+        <Box sx={{ px: { xs: 1.5, sm: 3 }, pb: { xs: 1.5, sm: 3 }, pt: { xs: 0.5, sm: 3 } }}>
             <Box sx={{
                 display: 'flex',
                 flexDirection: { xs: 'column', sm: 'row' },
