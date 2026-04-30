@@ -1,5 +1,6 @@
 import {
   Add,
+  ArrowBack,
   CancelOutlined,
   CheckCircleOutline,
   ChevronLeft,
@@ -362,6 +363,8 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isNative = Capacitor.isNativePlatform();
+  const showMobileUI = isMobile || isNative;
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout, isLoading, availableTenants, switchTenant, activeRole, hasRole } = useAuth(); // Added availableTenants, switchTenant, tenantSlug
@@ -522,12 +525,44 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
         }}
       >
         <Toolbar sx={{ minHeight: { xs: 56, sm: 64 }, px: { xs: 1, sm: 2 } }}>
+          {/* Mobile Back Button - visible on non-dashboard pages for native apps & mobile screens */}
+          {showMobileUI && !location.pathname.match(/\/(dashboard)\/?$/) && (
+            <IconButton
+              color="inherit"
+              aria-label="go back"
+              edge="start"
+              onClick={() => {
+                if (window.history.length > 1) {
+                  navigate(-1);
+                } else {
+                  navigate(getRelativePath('/dashboard'), { replace: true });
+                }
+              }}
+              sx={{
+                ml: 0.5,
+                mr: 0.5,
+                display: { md: isNative ? 'flex' : 'none' },
+                bgcolor: 'action.hover',
+                borderRadius: '10px',
+                width: 44,
+                height: 44,
+                minWidth: 44,
+                '&:hover, &:active': {
+                  bgcolor: 'primary.main',
+                  color: 'white',
+                },
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <ArrowBack />
+            </IconButton>
+          )}
           <IconButton
             color="inherit"
             aria-label="open drawer"
             edge="start"
             onClick={handleDrawerToggle}
-            sx={{ ml: 1, mr: 2, display: { md: 'none' } }}
+            sx={{ ml: 1, mr: 2, display: { md: isNative ? 'flex' : 'none' } }}
           >
             <MenuIcon />
           </IconButton>

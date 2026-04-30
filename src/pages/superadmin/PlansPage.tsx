@@ -145,12 +145,18 @@ const PlansPage: React.FC = () => {
         setDialogOpen(true);
     };
 
+    const isFormValid = formData.name.trim() !== '' && formData.price >= 0;
+
     const handleCloseDialog = () => {
         setDialogOpen(false);
         setEditingPlan(null);
     };
 
     const handleSave = async () => {
+        if (!isFormValid) {
+            toast.error('Please fill all required fields');
+            return;
+        }
         try {
             const featuresList = formData.features.split('\n').filter(f => f.trim());
             if (formData.cateringEnabled) {
@@ -362,6 +368,9 @@ const PlansPage: React.FC = () => {
                     '& .MuiDialog-paper': {
                         mt: { xs: 10, sm: 'auto' },
                         mb: { xs: 4, sm: 'auto' }
+                    },
+                    '& .MuiFormLabel-asterisk': {
+                        color: 'error.main'
                     }
                 }}
             >
@@ -401,11 +410,12 @@ const PlansPage: React.FC = () => {
                                     value={formData.price}
                                     onChange={(e) => {
                                         const val = parseFloat(e.target.value);
-                                        setFormData({ ...formData, price: val < 0 ? 0 : val });
+                                        setFormData({ ...formData, price: isNaN(val) ? 0 : (val < 0 ? 0 : val) });
                                     }}
+                                    onFocus={(e) => e.target.select()}
                                     fullWidth
                                     required
-                                    inputProps={{ min: 0 }}
+                                    inputProps={{ min: 0, step: "0.01" }}
                                 />
                             </Grid>
                             <Grid size={{ xs: 6 }}>
@@ -459,8 +469,13 @@ const PlansPage: React.FC = () => {
                                         label="Resource Count"
                                         type="number"
                                         value={formData.resourceCount}
-                                        onChange={(e) => setFormData({ ...formData, resourceCount: parseInt(e.target.value) || 0 })}
+                                        onChange={(e) => {
+                                            const val = parseInt(e.target.value);
+                                            setFormData({ ...formData, resourceCount: isNaN(val) ? 0 : (val < 0 ? 0 : val) });
+                                        }}
+                                        onFocus={(e) => e.target.select()}
                                         fullWidth
+                                        inputProps={{ min: 0 }}
                                     />
                                 </Grid>
                             </Grid>
@@ -474,8 +489,9 @@ const PlansPage: React.FC = () => {
                                     value={formData.maxUsers}
                                     onChange={(e) => {
                                         const val = parseInt(e.target.value);
-                                        setFormData({ ...formData, maxUsers: val < 0 ? 0 : val });
+                                        setFormData({ ...formData, maxUsers: isNaN(val) ? 0 : (val < 0 ? 0 : val) });
                                     }}
+                                    onFocus={(e) => e.target.select()}
                                     fullWidth
                                     inputProps={{ min: 0 }}
                                 />
@@ -487,8 +503,9 @@ const PlansPage: React.FC = () => {
                                     value={formData.maxTables}
                                     onChange={(e) => {
                                         const val = parseInt(e.target.value);
-                                        setFormData({ ...formData, maxTables: val < 0 ? 0 : val });
+                                        setFormData({ ...formData, maxTables: isNaN(val) ? 0 : (val < 0 ? 0 : val) });
                                     }}
+                                    onFocus={(e) => e.target.select()}
                                     fullWidth
                                     inputProps={{ min: 0 }}
                                 />
@@ -500,8 +517,9 @@ const PlansPage: React.FC = () => {
                                     value={formData.maxOrders}
                                     onChange={(e) => {
                                         const val = parseInt(e.target.value);
-                                        setFormData({ ...formData, maxOrders: val < 0 ? 0 : val });
+                                        setFormData({ ...formData, maxOrders: isNaN(val) ? 0 : (val < 0 ? 0 : val) });
                                     }}
+                                    onFocus={(e) => e.target.select()}
                                     fullWidth
                                     inputProps={{ min: 0 }}
                                 />
@@ -513,8 +531,9 @@ const PlansPage: React.FC = () => {
                                     value={formData.maxSms}
                                     onChange={(e) => {
                                         const val = parseInt(e.target.value);
-                                        setFormData({ ...formData, maxSms: val < 0 ? 0 : val });
+                                        setFormData({ ...formData, maxSms: isNaN(val) ? 0 : (val < 0 ? 0 : val) });
                                     }}
+                                    onFocus={(e) => e.target.select()}
                                     fullWidth
                                     inputProps={{ min: 0 }}
                                     helperText="0 = unlimited"
@@ -527,8 +546,9 @@ const PlansPage: React.FC = () => {
                                     value={formData.maxEmail}
                                     onChange={(e) => {
                                         const val = parseInt(e.target.value);
-                                        setFormData({ ...formData, maxEmail: val < 0 ? 0 : val });
+                                        setFormData({ ...formData, maxEmail: isNaN(val) ? 0 : (val < 0 ? 0 : val) });
                                     }}
+                                    onFocus={(e) => e.target.select()}
                                     fullWidth
                                     inputProps={{ min: 0 }}
                                     helperText="0 = unlimited"
@@ -632,7 +652,7 @@ const PlansPage: React.FC = () => {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleCloseDialog}>Cancel</Button>
-                    <Button onClick={handleSave} variant="contained">
+                    <Button onClick={handleSave} variant="contained" disabled={!isFormValid}>
                         {editingPlan ? 'Update' : 'Create'}
                     </Button>
                 </DialogActions>
