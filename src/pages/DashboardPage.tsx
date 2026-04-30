@@ -537,7 +537,14 @@ const DashboardPage: React.FC = () => {
           alignItems={{ xs: "stretch", sm: "center" }}
           sx={{ width: { xs: "100%", sm: "auto" } }}
         >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ 
+            display: 'flex', 
+            flexWrap: 'wrap', 
+            alignItems: 'center', 
+            gap: { xs: 2, sm: 1 },
+            justifyContent: { xs: 'center', sm: 'flex-start' },
+            width: '100%'
+          }}>
 
             <ToggleButtonGroup
               value={timeRange}
@@ -553,7 +560,7 @@ const DashboardPage: React.FC = () => {
                 }
               }}
               size="small"
-              fullWidth={false}
+              fullWidth={isMobile}
             >
               <ToggleButton value="today">Today</ToggleButton>
               <ToggleButton value="week">Week</ToggleButton>
@@ -562,13 +569,19 @@ const DashboardPage: React.FC = () => {
             </ToggleButtonGroup>
 
             {timeRange === 'custom' && (
-              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+              <Box sx={{ 
+                display: 'flex', 
+                gap: 1, 
+                alignItems: 'center',
+                width: { xs: '100%', sm: 'auto' },
+                justifyContent: 'center'
+              }}>
                 <TextField
                   type="date"
                   size="small"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  sx={{ width: 140 }}
+                  sx={{ flex: { xs: 1, sm: 'none' }, width: { sm: 140 } }}
                 />
                 <Typography variant="body2">-</Typography>
                 <TextField
@@ -576,11 +589,16 @@ const DashboardPage: React.FC = () => {
                   size="small"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  sx={{ width: 140 }}
+                  sx={{ flex: { xs: 1, sm: 'none' }, width: { sm: 140 } }}
                 />
               </Box>
             )}
-            <IconButton onClick={fetchDashboardData} color="primary" disabled={loading}>
+            <IconButton 
+              onClick={fetchDashboardData} 
+              color="primary" 
+              disabled={loading}
+              sx={{ ml: { xs: 0, sm: 1 } }}
+            >
               <Refresh />
             </IconButton>
           </Box>

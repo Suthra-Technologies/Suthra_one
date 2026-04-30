@@ -54,49 +54,53 @@ const SmsOverviewPage: React.FC = () => {
     }, { total: 0, delivered: 0, failed: 0, cost: 0 });
 
     return (
-        <Box sx={{ px: { xs: 1.5, sm: 2, md: 3 }, pb: { xs: 1.5, sm: 2, md: 3 }, pt: { xs: 0.5, sm: 2, md: 3 }, overflowX: 'hidden' }}>
-            <Box sx={{ mb: { xs: 2.5, sm: 4 } }}>
+        <Box sx={{ px: { xs: 1, sm: 2, md: 3 }, pb: { xs: 2, sm: 3 }, pt: { xs: 1, sm: 2, md: 3 }, overflowX: 'hidden' }}>
+            <Box sx={{ mb: { xs: 2, sm: 3 } }}>
                 <Typography
                     variant="h4"
                     fontWeight="bold"
                     sx={{
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: { xs: 'center', sm: 'flex-start' },
+                        justifyContent: { xs: 'flex-start', sm: 'flex-start' },
                         gap: 1.5,
-                        textAlign: { xs: 'center', sm: 'left' },
-                        fontSize: { xs: '1.5rem', sm: '2.125rem' },
+                        textAlign: 'left',
+                        fontSize: { xs: '1.25rem', sm: '1.75rem', md: '2.125rem' },
+                        mb: 0.5
                     }}
                 >
-                    <ReceiptIcon sx={{ fontSize: { xs: 28, sm: 35 } }} color="error" /> SMS Logs Overview
+                    <ReceiptIcon sx={{ fontSize: { xs: 24, sm: 30, md: 35 } }} color="error" /> SMS Logs Overview
                 </Typography>
-                <Typography variant="body1" color="text.secondary" sx={{ textAlign: { xs: 'center', sm: 'left' } }}>
+                <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'left', fontSize: { xs: '0.8rem', sm: '0.9rem', md: '1rem' } }}>
                     View SMS statistics across all restaurant stores.
                 </Typography>
             </Box>
 
-            <Grid container spacing={2} sx={{ mb: 4 }}>
+            <Grid container spacing={{ xs: 1, sm: 2 }} sx={{ mb: { xs: 2, sm: 3 } }}>
                 {[
                     { label: 'Total Messages', value: totals.total, color: '#6366f1' },
                     { label: 'Delivered', value: totals.delivered, color: '#22c55e' },
                     { label: 'Failed', value: totals.failed, color: '#ef4444' },
                     { label: 'Total Charges', value: `$${totals.cost.toFixed(2)}`, color: '#f59e0b' },
                 ].map((kpi) => (
-                    <Grid size={{ xs: 6, sm: 3 }} key={kpi.label}>
+                    <Grid item xs={6} sm={3} key={kpi.label}>
                         <Paper elevation={0} sx={{ 
-                            p: 2.5, borderRadius: 4, border: '1px solid', borderColor: 'divider',
-                            borderLeft: `4px solid ${kpi.color}`
+                            p: { xs: 1.5, sm: 2, md: 2.5 }, 
+                            borderRadius: { xs: 2, md: 4 }, 
+                            border: '1px solid', borderColor: 'divider',
+                            borderLeft: `4px solid ${kpi.color}`,
+                            height: '100%'
                         }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase', mb: 0.5, display: 'block' }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 700, textTransform: 'uppercase', mb: 0.5, display: 'block', fontSize: { xs: '0.65rem', md: '0.75rem' } }}>
                                 {kpi.label}
                             </Typography>
-                            <Typography variant="h5" fontWeight={800}>{kpi.value}</Typography>
+                            <Typography variant="h6" fontWeight={800} sx={{ fontSize: { xs: '1rem', sm: '1.25rem', md: '1.5rem' } }}>{kpi.value}</Typography>
                         </Paper>
                     </Grid>
                 ))}
             </Grid>
 
-            <Paper elevation={0} sx={{ borderRadius: 4, border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
+            <Paper elevation={0} sx={{ borderRadius: { xs: 2, md: 4 }, border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
                 <TableContainer sx={{ display: { xs: 'none', md: 'block' } }}>
                     <Table>
                         <TableHead sx={{ bgcolor: alpha(theme.palette.action.hover, 0.5) }}>
@@ -171,24 +175,24 @@ const SmsOverviewPage: React.FC = () => {
                     </Table>
                 </TableContainer>
 
-                <Box sx={{ display: { xs: 'block', md: 'none' }, p: 1.5 }}>
+                <Box sx={{ display: { xs: 'block', md: 'none' }, p: { xs: 1, sm: 2 } }}>
                     {loading ? (
-                        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-                            <CircularProgress />
+                        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                            <CircularProgress size={30} />
                         </Box>
                     ) : usageData.length === 0 ? (
-                        <Typography color="text.secondary" textAlign="center" sx={{ py: 4 }}>
+                        <Typography color="text.secondary" textAlign="center" sx={{ py: 3 }}>
                             No store usage found
                         </Typography>
                     ) : (
-                        <Stack spacing={1.5}>
+                        <Stack spacing={1}>
                             {paginatedMobileData.map((tenant) => (
-                                <Card key={tenant.tenantId} variant="outlined" sx={{ borderRadius: 2 }}>
-                                    <CardContent sx={{ p: 1.5 }}>
+                                <Card key={tenant.tenantId} variant="outlined" sx={{ borderRadius: 2, bgcolor: 'background.paper' }}>
+                                    <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
                                         <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 1.5 }}>
                                             <Box
                                                 sx={{
-                                                    p: 1,
+                                                    p: 0.75,
                                                     borderRadius: 1,
                                                     bgcolor: alpha(theme.palette.primary.main, 0.08),
                                                     color: 'primary.main',
@@ -196,53 +200,53 @@ const SmsOverviewPage: React.FC = () => {
                                                     alignItems: 'center',
                                                 }}
                                             >
-                                                <StoreIcon sx={{ fontSize: 18 }} />
+                                                <StoreIcon sx={{ fontSize: 16 }} />
                                             </Box>
-                                            <Box sx={{ minWidth: 0 }}>
-                                                <Typography variant="subtitle2" fontWeight="bold" sx={{ wordBreak: 'break-word' }}>
+                                            <Box sx={{ minWidth: 0, flex: 1 }}>
+                                                <Typography variant="subtitle2" fontWeight="bold" sx={{ wordBreak: 'break-word', fontSize: '0.85rem', lineHeight: 1.2 }}>
                                                     {tenant.name}
                                                 </Typography>
-                                                <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
+                                                <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-word', fontSize: '0.7rem' }}>
                                                     {tenant.slug}
                                                 </Typography>
                                             </Box>
+                                            <IconButton 
+                                                size="small" 
+                                                color="primary"
+                                                onClick={() => navigate(`/superadmin/sms-logs/${tenant.tenantId}?name=${encodeURIComponent(tenant.name)}`)}
+                                                sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}
+                                            >
+                                                <VisibilityIcon fontSize="small" />
+                                            </IconButton>
                                         </Stack>
 
-                                        <Grid container spacing={1}>
-                                            <Grid item xs={6}>
-                                                <Typography variant="caption" color="text.secondary">Total Messages</Typography>
-                                                <Typography variant="body2" fontWeight="bold">{tenant.total}</Typography>
-                                            </Grid>
-                                            <Grid item xs={6}>
-                                                <Typography variant="caption" color="text.secondary">Total Cost</Typography>
-                                                <Typography variant="body2" fontWeight="bold" color="primary.main">
+                                        <Box sx={{ 
+                                            display: 'grid', 
+                                            gridTemplateColumns: 'repeat(2, 1fr)', 
+                                            gap: 1.5,
+                                            p: 1.25,
+                                            borderRadius: 1,
+                                            bgcolor: alpha(theme.palette.action.hover, 0.3)
+                                        }}>
+                                            <Box>
+                                                <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase' }}>Total Msgs</Typography>
+                                                <Typography sx={{ fontSize: '0.9rem', fontWeight: 700 }}>{tenant.total}</Typography>
+                                            </Box>
+                                            <Box>
+                                                <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase' }}>Cost</Typography>
+                                                <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: 'primary.main' }}>
                                                     ${tenant.totalCost.toFixed(4)}
                                                 </Typography>
-                                            </Grid>
-                                            <Grid item xs={6}>
-                                                <Typography variant="caption" color="text.secondary">Delivered</Typography>
-                                                <Box>
-                                                    <Chip label={tenant.delivered} size="small" color="success" sx={{ fontWeight: 'bold' }} />
-                                                </Box>
-                                            </Grid>
-                                            <Grid item xs={6}>
-                                                <Typography variant="caption" color="text.secondary">Failed</Typography>
-                                                <Box>
-                                                    <Chip label={tenant.failed} size="small" color="error" sx={{ fontWeight: 'bold' }} />
-                                                </Box>
-                                            </Grid>
-                                        </Grid>
-
-                                        <Button
-                                            fullWidth
-                                            size="small"
-                                            startIcon={<VisibilityIcon />}
-                                            onClick={() => navigate(`/superadmin/sms-logs/${tenant.tenantId}?name=${encodeURIComponent(tenant.name)}`)}
-                                            variant="outlined"
-                                            sx={{ borderRadius: 2, mt: 1.5 }}
-                                        >
-                                            View Logs
-                                        </Button>
+                                            </Box>
+                                            <Box>
+                                                <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', mb: 0.25 }}>Delivered</Typography>
+                                                <Chip label={tenant.delivered} size="small" color="success" sx={{ fontWeight: 800, height: 20, fontSize: '0.7rem' }} />
+                                            </Box>
+                                            <Box>
+                                                <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', mb: 0.25 }}>Failed</Typography>
+                                                <Chip label={tenant.failed} size="small" color="error" sx={{ fontWeight: 800, height: 20, fontSize: '0.7rem' }} />
+                                            </Box>
+                                        </Box>
                                     </CardContent>
                                 </Card>
                             ))}
@@ -261,20 +265,23 @@ const SmsOverviewPage: React.FC = () => {
                             }}
                             rowsPerPageOptions={[5, 10, 25]}
                             sx={{
-                                mt: 1,
+                                mt: 0.5,
                                 '& .MuiTablePagination-toolbar': {
-                                    px: 0.5,
-                                    flexWrap: 'wrap',
-                                    rowGap: 0.75,
+                                    px: 0,
+                                    minHeight: 48,
+                                    flexWrap: 'nowrap',
                                     justifyContent: 'center',
                                 },
                                 '& .MuiTablePagination-spacer': {
-                                    display: 'none',
+                                    display: { xs: 'none', sm: 'block' },
                                 },
                                 '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
                                     m: 0,
                                     fontSize: '0.75rem',
                                 },
+                                '& .MuiTablePagination-actions': {
+                                    ml: 0.5
+                                }
                             }}
                         />
                     )}

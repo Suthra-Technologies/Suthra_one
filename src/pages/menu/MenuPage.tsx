@@ -1529,7 +1529,7 @@ const MenuPage: React.FC = () => {
                         multiline
                         rows={6}
                         fullWidth
-                        placeholder="Burger, 10.99, Main Course, Burgers, Delicious cheese burger, https://example.com/burger.jpg, non-veg, true, true&#10;Pizza, 12.50, Main Course, Italian, Pizza Margherita, https://example.com/pizza.jpg, veg, true, true"
+                        placeholder="Burger, 10.99, Main Course, Burgers, Delicious cheese burger, https://example.com/burger.jpg, non-veg, yes, yes&#10;Pizza, 12.50, Main Course, Italian, Pizza Margherita, https://example.com/pizza.jpg, veg, yes, yes"
                         value={bulkCsv}
                         onChange={(e) => setBulkCsv(e.target.value)}
                         variant="outlined"

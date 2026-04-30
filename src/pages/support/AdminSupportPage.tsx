@@ -446,18 +446,25 @@ const AdminSupportPage: React.FC = () => {
                   </Box>
 
                   <Stack
-                    direction="row"
-                    spacing={1.5}
-                    alignItems="center"
-                    justifyContent={{ xs: 'space-between', md: 'flex-end' }}
-                    sx={{ width: { xs: '100%', md: 'auto' }, mt: { xs: 1, md: 0 } }}
+                    direction={{ xs: 'column', md: 'row' }}
+                    spacing={{ xs: 1.5, md: 2 }}
+                    alignItems={{ xs: 'stretch', md: 'center' }}
+                    justifyContent={{ xs: 'flex-start', md: 'flex-end' }}
+                    sx={{ width: { xs: '100%', md: 'auto' }, mt: { xs: 1.5, md: 0 } }}
                   >
-                    <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                       <Chip label={t.priority} size="small" variant="outlined" sx={{ textTransform: 'capitalize' }} />
                       <Chip label={t.category} size="small" variant="outlined" sx={{ textTransform: 'capitalize' }} />
                     </Box>
-                    <Stack direction="row" spacing={0.75} alignItems="center">
-                      <FormControl size="small" sx={{ minWidth: 116 }}>
+
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      alignItems="center"
+                      justifyContent={{ xs: 'space-between', md: 'flex-end' }}
+                      sx={{ flexWrap: { xs: 'wrap', sm: 'nowrap' }, gap: { xs: 1, sm: 0 } }}
+                    >
+                      <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 116 }, flex: { xs: 1, md: 'none' } }}>
                         <Select
                           value={t.status}
                           onChange={(e) => handleUpdateStatus(t, e.target.value)}
@@ -469,39 +476,41 @@ const AdminSupportPage: React.FC = () => {
                           <MenuItem value="closed">Closed</MenuItem>
                         </Select>
                       </FormControl>
-                      <IconButton
-                        onClick={() => handleEditTicket(t)}
-                        size="small"
-                        sx={{
-                          bgcolor: alpha(theme.palette.warning.main, 0.12),
-                          color: 'warning.main',
-                          '&:hover': { bgcolor: alpha(theme.palette.warning.main, 0.2) }
-                        }}
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        onClick={() => handleDeleteTicket(t)}
-                        size="small"
-                        sx={{
-                          bgcolor: alpha(theme.palette.error.main, 0.12),
-                          color: 'error.main',
-                          '&:hover': { bgcolor: alpha(theme.palette.error.main, 0.2) }
-                        }}
-                      >
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton
-                        onClick={() => viewTicketDetails(t)}
-                        size="small"
-                        sx={{
-                          bgcolor: alpha(theme.palette.primary.main, 0.08),
-                          color: 'primary.main',
-                          '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.15) }
-                        }}
-                      >
-                        <VisibilityIcon fontSize="small" />
-                      </IconButton>
+                      <Stack direction="row" spacing={0.75} alignItems="center" sx={{ ml: { xs: 0, sm: 1.5 }, width: { xs: '100%', sm: 'auto' }, justifyContent: { xs: 'flex-end', sm: 'flex-start' } }}>
+                        <IconButton
+                          onClick={() => handleEditTicket(t)}
+                          size="small"
+                          sx={{
+                            bgcolor: alpha(theme.palette.warning.main, 0.12),
+                            color: 'warning.main',
+                            '&:hover': { bgcolor: alpha(theme.palette.warning.main, 0.2) }
+                          }}
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          onClick={() => handleDeleteTicket(t)}
+                          size="small"
+                          sx={{
+                            bgcolor: alpha(theme.palette.error.main, 0.12),
+                            color: 'error.main',
+                            '&:hover': { bgcolor: alpha(theme.palette.error.main, 0.2) }
+                          }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                          onClick={() => viewTicketDetails(t)}
+                          size="small"
+                          sx={{
+                            bgcolor: alpha(theme.palette.primary.main, 0.08),
+                            color: 'primary.main',
+                            '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.15) }
+                          }}
+                        >
+                          <VisibilityIcon fontSize="small" />
+                        </IconButton>
+                      </Stack>
                     </Stack>
                   </Stack>
                 </Box>

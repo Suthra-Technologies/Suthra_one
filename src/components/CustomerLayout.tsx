@@ -119,14 +119,7 @@ const CustomerLayout: React.FC = () => {
       >
         <Container maxWidth="lg">
           <Toolbar disableGutters sx={{ minHeight: { xs: 64, md: 72 }, gap: 2 }}>
-            {/* Mobile hamburger */}
-            {isMobile && (
-              <IconButton onClick={() => setMobileOpen(true)} sx={{ mr: 1 }}>
-                <MenuIcon />
-              </IconButton>
-            )}
-
-            {/* Logo & Brand */}
+            {/* Logo & Brand - FAR LEFT */}
             <Box
               sx={{
                 display: 'flex',
@@ -134,6 +127,7 @@ const CustomerLayout: React.FC = () => {
                 gap: 1.5,
                 cursor: 'pointer',
                 mr: { md: 4 },
+                pl: { xs: 2, md: 0 },
               }}
               onClick={() => navigate(getRelativePath('/customer/order'))}
             >
@@ -211,7 +205,7 @@ const CustomerLayout: React.FC = () => {
               </Box>
             )}
 
-            <Box sx={{ flexGrow: isMobile ? 1 : 0 }} />
+            <Box sx={{ flexGrow: 1 }} />
 
             {/* Auth Buttons */}
             {!user ? (
@@ -309,6 +303,13 @@ const CustomerLayout: React.FC = () => {
                 </Menu>
               </Box>
             )}
+
+            {/* Mobile hamburger - ON FAR RIGHT */}
+            {isMobile && (
+              <IconButton onClick={() => setMobileOpen(true)} sx={{ ml: 1 }}>
+                <MenuIcon />
+              </IconButton>
+            )}
           </Toolbar>
         </Container>
       </AppBar>
@@ -402,9 +403,18 @@ const CustomerLayout: React.FC = () => {
             }}
           >
             {/* Restaurant Info */}
-            <Box>
+            <Box sx={{ pl: { xs: 2, md: 0 }, width: '100%', textAlign: 'left !important' }}>
               {/* Mobile: strict vertical stack (logo -> title -> subtitle) */}
-              <Box sx={{ display: { xs: 'block', md: 'none' }, mb: 3 }}>
+              <Box 
+                sx={{ 
+                  display: { xs: 'flex', md: 'none' }, 
+                  flexDirection: 'column', 
+                  alignItems: 'flex-start !important', 
+                  justifyContent: 'flex-start !important',
+                  mb: 3,
+                  width: '100%',
+                }}
+              >
                 {restaurant?.logo ? (
                   <Avatar
                     src={restaurant.logo}
@@ -414,7 +424,8 @@ const CustomerLayout: React.FC = () => {
                       height: 46,
                       border: '3px solid rgba(255,255,255,0.2)',
                       boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                      mb: 0.8,
+                      mb: 1.5,
+                      alignSelf: 'flex-start !important'
                     }}
                   />
                 ) : (
@@ -424,26 +435,40 @@ const CustomerLayout: React.FC = () => {
                       height: 46,
                       bgcolor: 'rgba(79,70,229,0.6)',
                       border: '3px solid rgba(255,255,255,0.2)',
-                      mb: 0.8,
+                      mb: 1.5,
+                      alignSelf: 'flex-start !important'
                     }}
                   >
                     <RestaurantIcon sx={{ fontSize: 30 }} />
                   </Avatar>
                 )}
                 <Typography
-                  variant="h5"
                   sx={{
                     fontWeight: 800,
                     letterSpacing: '-0.02em',
                     lineHeight: 1.2,
-                    color: '#ffffff',
-                    fontSize: '1.55rem',
-                    textAlign: 'left',
+                    color: '#FFFFFF !important',
+                    fontSize: '1.55rem !important',
+                    textAlign: 'left !important',
+                    width: 'fit-content !important',
+                    mb: 0.5,
+                    alignSelf: 'flex-start !important',
+                    fontFamily: '"Outfit", "Inter", "Roboto", sans-serif'
                   }}
                 >
                   {restaurantName}
                 </Typography>
-                <Typography sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.8rem', fontWeight: 500, mt: 0.3, textAlign: 'left' }}>
+                <Typography 
+                  sx={{ 
+                    color: 'rgba(255,255,255,0.7) !important', 
+                    fontSize: '0.85rem !important', 
+                    fontWeight: 500, 
+                    mt: 0.3, 
+                    textAlign: 'left !important', 
+                    width: 'fit-content !important',
+                    alignSelf: 'flex-start !important'
+                  }}
+                >
                   Delicious Food, Delivered Fresh
                 </Typography>
               </Box>
@@ -505,6 +530,7 @@ const CustomerLayout: React.FC = () => {
                   fontSize: '0.9rem',
                   lineHeight: 1.7,
                   maxWidth: 400,
+                  textAlign: 'left',
                 }}
               >
                 Experience the finest dining with our carefully curated menu.

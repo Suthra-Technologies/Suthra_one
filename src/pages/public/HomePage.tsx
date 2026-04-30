@@ -825,12 +825,18 @@ const HomePage: React.FC = () => {
             disableGutters
             sx={{ justifyContent: "space-between", height: 80 }}
           >
-            <Stack direction="row" alignItems="center" spacing={1.5} sx={{ cursor: 'pointer' }} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+            <Stack
+              direction="row"
+              alignItems="center"
+              spacing={1.5}
+              sx={{ cursor: "pointer", mr: { md: 4 } }}
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            >
               <Box
                 component="img"
                 src="/logo.png"
                 alt="NexZen POS"
-                sx={{ height: 45, filter: 'brightness(0)' }}
+                sx={{ height: 45, filter: "brightness(0)" }}
               />
               <Typography
                 variant="h6"
@@ -843,8 +849,9 @@ const HomePage: React.FC = () => {
                 </Box>
               </Typography>
             </Stack>
+
             {/* Responsive Navigation */}
-            <Box sx={{ display: { xs: 'none', md: 'flex' } }}>
+            <Box sx={{ display: { xs: "none", md: "flex" } }}>
               <Stack direction="row" spacing={2} alignItems="center">
                 <Button
                   color="inherit"
@@ -891,23 +898,6 @@ const HomePage: React.FC = () => {
                   Login
                 </Button>
               </Stack>
-            </Box>
-            {/* Hamburger Icon for Mobile */}
-            <Box sx={{ display: { xs: 'flex', md: 'none' } }}>
-              <IconButton
-                edge="end"
-                color="default"
-                sx={{ color: "black" }}
-                aria-label="menu"
-                onClick={() => setMobileMenuOpen(true)}
-              >
-                {/* Custom 3-line Hamburger Icon */}
-                <Box component="span" sx={{ display: 'inline-flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', width: 22, height: 22 }}>
-                  <Box sx={{ width: 18, height: 2, bgcolor: 'black', borderRadius: 1, mb: 0.4 }} />
-                  <Box sx={{ width: 18, height: 2, bgcolor: 'black', borderRadius: 1, mb: 0.4 }} />
-                  <Box sx={{ width: 18, height: 2, bgcolor: 'black', borderRadius: 1 }} />
-                </Box>
-              </IconButton>
             </Box>
             {/* Mobile Drawer */}
             <Drawer
@@ -956,6 +946,52 @@ const HomePage: React.FC = () => {
                 </Button>
               </Stack>
             </Drawer>
+
+            {/* Hamburger Icon for Mobile - Moved back to the right */}
+            <Box sx={{ display: { xs: "flex", md: "none" } }}>
+              <IconButton
+                edge="end"
+                color="default"
+                sx={{ color: "black", ml: 1 }}
+                aria-label="menu"
+                onClick={() => setMobileMenuOpen(true)}
+              >
+                {/* Custom 3-line Hamburger Icon */}
+                <Box
+                  component="span"
+                  sx={{
+                    display: "inline-flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    width: 22,
+                    height: 22,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 18,
+                      height: 2,
+                      bgcolor: "black",
+                      borderRadius: 1,
+                      mb: 0.4,
+                    }}
+                  />
+                  <Box
+                    sx={{
+                      width: 18,
+                      height: 2,
+                      bgcolor: "black",
+                      borderRadius: 1,
+                      mb: 0.4,
+                    }}
+                  />
+                  <Box
+                    sx={{ width: 18, height: 2, bgcolor: "black", borderRadius: 1 }}
+                  />
+                </Box>
+              </IconButton>
+            </Box>
           </Toolbar>
         </Container>
       </AppBar>

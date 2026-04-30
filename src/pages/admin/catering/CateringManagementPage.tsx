@@ -1455,18 +1455,15 @@ const CateringManagementPage = () => {
     };
 
     return (
-        <Box p={3}>
-            <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} mb={2} gap={2}>
+        <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
+            <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} mb={{ xs: 1.5, sm: 2 }} gap={2}>
                 <Typography
                     variant="h4"
                     fontWeight="bold"
                     sx={{
-                        whiteSpace: isMobile ? 'nowrap' : 'normal',
-                        fontSize: { xs: 'clamp(1.75rem, 7vw, 2.5rem)', md: '2.125rem' },
-                        overflow: isMobile ? 'hidden' : 'visible',
-                        textOverflow: isMobile ? 'ellipsis' : 'clip',
-                        width: isMobile ? '100%' : 'auto',
-                        textAlign: isMobile ? 'center' : 'left'
+                        fontSize: { xs: '1.5rem', sm: '1.8rem', md: '2.125rem' },
+                        textAlign: { xs: 'center', sm: 'left' },
+                        width: '100%'
                     }}
                 >
                     Catering Management
@@ -1563,52 +1560,52 @@ const CateringManagementPage = () => {
                             }}
                         >
                             <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                                <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
+                                <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1.5}>
                                     <Box>
-                                        <Typography variant="caption" fontWeight="bold" sx={{ color: 'primary.main', textTransform: 'uppercase', letterSpacing: 1 }}>
+                                        <Typography variant="caption" fontWeight="bold" sx={{ color: 'primary.main', textTransform: 'uppercase', letterSpacing: 0.5, fontSize: '0.7rem' }}>
                                             #{order.orderNumber}
                                         </Typography>
-                                        <Typography variant="h6" fontWeight="800" sx={{ mt: 0.5 }}>
+                                        <Typography variant="subtitle1" fontWeight="800" sx={{ mt: 0.2, lineHeight: 1.2 }}>
                                             {order.customerName}
                                         </Typography>
-                                        <Typography variant="body2" color="textSecondary">
+                                        <Typography variant="caption" color="textSecondary">
                                             {order.customerPhone}
                                         </Typography>
                                     </Box>
                                     {getStatusChip(order.status)}
                                 </Box>
 
-                                <Grid container spacing={2} sx={{ mb: 2 }}>
+                                <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
                                     <Grid item xs={6}>
-                                        <Box sx={{ p: 1.5, bgcolor: alpha(theme.palette.primary.main, 0.04), borderRadius: 2 }}>
-                                            <Typography variant="caption" color="textSecondary" display="block">Required Date</Typography>
-                                            <Typography variant="body2" fontWeight="600">
+                                        <Box sx={{ p: 1, bgcolor: alpha(theme.palette.primary.main, 0.04), borderRadius: 2 }}>
+                                            <Typography variant="caption" color="textSecondary" display="block" sx={{ fontSize: '0.65rem' }}>Required Date</Typography>
+                                            <Typography variant="body2" fontWeight="600" sx={{ fontSize: '0.8rem' }}>
                                                 {new Date(order.requiredDate).toLocaleDateString()}
                                             </Typography>
-                                            <Typography variant="caption" color="textSecondary">
+                                            <Typography variant="caption" color="textSecondary" sx={{ fontSize: '0.65rem' }}>
                                                 {new Date(order.requiredDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </Typography>
                                         </Box>
                                     </Grid>
                                     <Grid item xs={6}>
-                                        <Box sx={{ p: 1.5, bgcolor: alpha(theme.palette.secondary.main, 0.04), borderRadius: 2 }}>
-                                            <Typography variant="caption" color="textSecondary" display="block">Service Type</Typography>
-                                            <Typography variant="body2" fontWeight="600">
+                                        <Box sx={{ p: 1, bgcolor: alpha(theme.palette.secondary.main, 0.04), borderRadius: 2 }}>
+                                            <Typography variant="caption" color="textSecondary" display="block" sx={{ fontSize: '0.65rem' }}>Service Type</Typography>
+                                            <Typography variant="body2" fontWeight="600" sx={{ fontSize: '0.8rem' }}>
                                                 {getServiceTypeLabel(order.serviceType)}
                                             </Typography>
                                         </Box>
                                     </Grid>
                                     <Grid item xs={12}>
                                         <Box sx={{ 
-                                            p: 1.5, 
+                                            p: 1, 
                                             bgcolor: theme.palette.mode === 'light' ? '#f8fafc' : alpha(theme.palette.primary.main, 0.05), 
                                             borderRadius: 2,
                                             display: 'flex',
                                             justifyContent: 'space-between',
                                             alignItems: 'center'
                                         }}>
-                                            <Typography variant="body2" color="textSecondary">Total Amount</Typography>
-                                            <Typography variant="h6" fontWeight="bold" color="primary">
+                                            <Typography variant="caption" color="textSecondary">Total Amount</Typography>
+                                            <Typography variant="subtitle1" fontWeight="bold" color="primary">
                                                 {formatCurrency(order.totalAmount)}
                                             </Typography>
                                         </Box>
@@ -1617,33 +1614,35 @@ const CateringManagementPage = () => {
 
                                 <Divider sx={{ my: 2, borderStyle: 'dashed' }} />
 
-                                <Box display="flex" gap={1} flexWrap="wrap">
+                                <Box display="flex" gap={1}>
                                     <Button
                                         variant="outlined"
-                                        size="medium"
-                                        startIcon={<Visibility />}
+                                        size="small"
+                                        startIcon={<Visibility sx={{ fontSize: '1rem !important' }} />}
                                         onClick={() => { setIsEditing(false); setEditData(null); setSelectedOrder(order); setViewDialogOpen(true); setDialogTab(0); }}
                                         sx={{ 
                                             borderRadius: 2,
                                             borderColor: alpha(theme.palette.primary.main, 0.2),
                                             color: 'primary.main',
                                             flex: 1,
-                                            minWidth: '100px'
+                                            fontSize: '0.75rem',
+                                            py: 0.8
                                         }}
                                     >
                                         Details
                                     </Button>
                                     <Button
                                         variant="outlined"
-                                        size="medium"
-                                        startIcon={<ChatBubble />}
+                                        size="small"
+                                        startIcon={<ChatBubble sx={{ fontSize: '1rem !important' }} />}
                                         onClick={() => { setSelectedOrder(order); setChatDialogOpen(true); }}
                                         sx={{ 
                                             borderRadius: 2,
                                             borderColor: alpha('#0ea5e9', 0.2),
                                             color: '#0ea5e9',
                                             flex: 1,
-                                            minWidth: '100px'
+                                            fontSize: '0.75rem',
+                                            py: 0.8
                                         }}
                                     >
                                         Chat
@@ -1653,11 +1652,11 @@ const CateringManagementPage = () => {
                                         sx={{ 
                                             bgcolor: alpha(theme.palette.text.secondary, 0.05),
                                             borderRadius: 2,
-                                            width: 42,
-                                            height: 42
+                                            width: 36,
+                                            height: 36
                                         }}
                                     >
-                                        <MoreVert />
+                                        <MoreVert sx={{ fontSize: '1.2rem' }} />
                                     </IconButton>
                                 </Box>
                             </CardContent>
@@ -1788,8 +1787,8 @@ const CateringManagementPage = () => {
 
             {/* Inventory Requirements Dialog */}
             <Dialog open={reqDialogOpen} onClose={() => setReqDialogOpen(false)} maxWidth="md" fullWidth>
-                <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    Inventory Estimation Report
+                <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: { xs: 2, sm: 3 }, py: { xs: 1.5, sm: 2 } }}>
+                    <Typography variant="h6" sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>Inventory Estimation Report</Typography>
                     <IconButton
                         onClick={() => setReqDialogOpen(false)}
                         size="small"
@@ -1838,11 +1837,11 @@ const CateringManagementPage = () => {
                                 <Table size="small">
                                     <TableHead sx={{ bgcolor: theme.palette.mode === 'light' ? '#eee' : alpha(theme.palette.primary.main, 0.1) }}>
                                         <TableRow>
-                                            <TableCell><strong>Ingredient / Item</strong></TableCell>
-                                            <TableCell align="right"><strong>Qty Needed</strong></TableCell>
-                                            <TableCell align="right"><strong>Current Stock</strong></TableCell>
-                                            <TableCell align="right"><strong>Unit Cost</strong></TableCell>
-                                            <TableCell align="right"><strong>Total Cost</strong></TableCell>
+                                            <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}><strong>Ingredient / Item</strong></TableCell>
+                                            <TableCell align="right" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}><strong>Qty Needed</strong></TableCell>
+                                            <TableCell align="right" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 }, display: { xs: 'none', sm: 'table-cell' } }}><strong>Current Stock</strong></TableCell>
+                                            <TableCell align="right" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 }, display: { xs: 'none', md: 'table-cell' } }}><strong>Unit Cost</strong></TableCell>
+                                            <TableCell align="right" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}><strong>Total Cost</strong></TableCell>
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
@@ -1935,47 +1934,47 @@ const CateringManagementPage = () => {
                                                     <Typography>{selectedOrder.customerEmail}</Typography>
                                                 </Grid>
                                                 <Grid item xs={12} sm={6}>
-                                                    <Typography variant="subtitle2">Order Info</Typography>
-                                                    <Typography><strong>#:</strong> {selectedOrder.orderNumber}</Typography>
-                                                    <Typography><strong>Service:</strong> {getServiceTypeLabel(selectedOrder.serviceType)}</Typography>
-                                                    <Typography><strong>Occasion:</strong> {selectedOrder.occasion || 'N/A'}</Typography>
-                                                    {selectedOrder.occasionPersonName && (
-                                                        <Typography>
-                                                            <strong>Occasion Holder :</strong> {selectedOrder.occasionPersonName}
-                                                        </Typography>
-                                                    )}
-                                                    <Typography><strong>Date:</strong> {new Date(selectedOrder.requiredDate).toLocaleString()}</Typography>
-                                                    <Typography><strong>Status:</strong> {getStatusChip(selectedOrder.status)}</Typography>
+                                                    <Typography variant="subtitle2" sx={{ color: 'primary.main', mb: 1, borderBottom: '1px solid', borderColor: 'divider', pb: 0.5 }}>Order Info</Typography>
+                                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                                        <Typography variant="body2"><strong>#:</strong> {selectedOrder.orderNumber}</Typography>
+                                                        <Typography variant="body2"><strong>Service:</strong> {getServiceTypeLabel(selectedOrder.serviceType)}</Typography>
+                                                        <Typography variant="body2"><strong>Occasion:</strong> {selectedOrder.occasion || 'N/A'}</Typography>
+                                                        {selectedOrder.occasionPersonName && (
+                                                            <Typography variant="body2">
+                                                                <strong>Occasion Holder:</strong> {selectedOrder.occasionPersonName}
+                                                            </Typography>
+                                                        )}
+                                                        <Typography variant="body2"><strong>Date:</strong> {new Date(selectedOrder.requiredDate).toLocaleString()}</Typography>
+                                                        <Box sx={{ mt: 1 }}>{getStatusChip(selectedOrder.status)}</Box>
+                                                    </Box>
                                                 </Grid>
 
-                                                {selectedOrder.guests && (
-                                                    <Grid item xs={12}>
-                                                        <Typography variant="subtitle2" gutterBottom>Guest Requirements</Typography>
-                                                        <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 1 }}>
-                                                            <Table size="small">
-                                                                <TableHead sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}>
-                                                                    <TableRow>
-                                                                        <TableCell sx={{ fontWeight: 'bold' }}>Guests</TableCell>
-                                                                        <TableCell align="center" sx={{ fontWeight: 'bold' }}>Veg</TableCell>
-                                                                        <TableCell align="center" sx={{ fontWeight: 'bold' }}>Non-Veg</TableCell>
-                                                                    </TableRow>
-                                                                </TableHead>
-                                                                <TableBody>
-                                                                    <TableRow>
-                                                                        <TableCell sx={{ fontWeight: 'bold' }}>Adults</TableCell>
-                                                                        <TableCell align="center">{selectedOrder.guests.adults?.veg || 0}</TableCell>
-                                                                        <TableCell align="center">{selectedOrder.guests.adults?.nonVeg || 0}</TableCell>
-                                                                    </TableRow>
-                                                                    <TableRow>
-                                                                        <TableCell sx={{ fontWeight: 'bold' }}>Kids</TableCell>
-                                                                        <TableCell align="center">{selectedOrder.guests.kids?.veg || 0}</TableCell>
-                                                                        <TableCell align="center">{selectedOrder.guests.kids?.nonVeg || 0}</TableCell>
-                                                                    </TableRow>
-                                                                </TableBody>
-                                                            </Table>
-                                                        </TableContainer>
-                                                    </Grid>
-                                                )}
+                                                <Grid item xs={12}>
+                                                    <Typography variant="subtitle2" sx={{ color: 'primary.main', mb: 1, borderBottom: '1px solid', borderColor: 'divider', pb: 0.5 }}>Guest Requirements</Typography>
+                                                    <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, overflowX: 'auto' }}>
+                                                        <Table size="small">
+                                                            <TableHead sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}>
+                                                                <TableRow>
+                                                                    <TableCell sx={{ fontWeight: 'bold', py: 1.2, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Guests</TableCell>
+                                                                    <TableCell align="center" sx={{ fontWeight: 'bold', py: 1.2, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Veg</TableCell>
+                                                                    <TableCell align="center" sx={{ fontWeight: 'bold', py: 1.2, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Non-Veg</TableCell>
+                                                                </TableRow>
+                                                            </TableHead>
+                                                            <TableBody>
+                                                                <TableRow>
+                                                                    <TableCell sx={{ py: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Adults</TableCell>
+                                                                    <TableCell align="center" sx={{ py: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{selectedOrder.guests.adults?.veg || 0}</TableCell>
+                                                                    <TableCell align="center" sx={{ py: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{selectedOrder.guests.adults?.nonVeg || 0}</TableCell>
+                                                                </TableRow>
+                                                                <TableRow>
+                                                                    <TableCell sx={{ py: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Kids</TableCell>
+                                                                    <TableCell align="center" sx={{ py: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{selectedOrder.guests.kids?.veg || 0}</TableCell>
+                                                                    <TableCell align="center" sx={{ py: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{selectedOrder.guests.kids?.nonVeg || 0}</TableCell>
+                                                                </TableRow>
+                                                            </TableBody>
+                                                        </Table>
+                                                    </TableContainer>
+                                                </Grid>
 
                                                 {(selectedOrder.serviceType === 'delivery_service' || selectedOrder.serviceType === 'delivery') && (
                                                     <Grid item xs={12}>
@@ -2007,26 +2006,30 @@ const CateringManagementPage = () => {
                                             <Divider sx={{ my: 2 }} />
 
                                             <Typography variant="h6" gutterBottom>Items</Typography>
-                                            <List>
+                                            <List sx={{ py: 0 }}>
                                                 {selectedOrder.items.map((item: any, i: number) => (
-                                                    <ListItem key={i} divider>
+                                                    <ListItem key={i} divider sx={{ px: { xs: 0, sm: 2 }, py: { xs: 1, sm: 1.5 } }}>
                                                         <ListItemText
                                                             primary={
-                                                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                                                    {item.name}
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
+                                                                    <Typography variant="body2" fontWeight="bold">{item.name}</Typography>
                                                                     {item.spiceLevel && (
                                                                         <Chip
                                                                             size="small"
                                                                             label={SPICE_LEVELS.find(l => l.id === item.spiceLevel)?.label || item.spiceLevel}
                                                                             variant="outlined"
-                                                                            sx={{ ml: 1, height: 18, fontSize: '0.6rem', color: '#e65100', borderColor: '#ffb74d' }}
+                                                                            sx={{ height: 16, fontSize: '0.6rem', color: '#e65100', borderColor: '#ffb74d' }}
                                                                         />
                                                                     )}
                                                                 </Box>
                                                             }
-                                                            secondary={`${formatCurrency(item.unitPrice)} x ${item.quantity}`}
+                                                            secondary={
+                                                                <Typography variant="caption" color="textSecondary">
+                                                                    {formatCurrency(item.unitPrice)} x {item.quantity}
+                                                                </Typography>
+                                                            }
                                                         />
-                                                        <Typography fontWeight="bold">{formatCurrency(item.total)}</Typography>
+                                                        <Typography variant="body2" fontWeight="bold">{formatCurrency(item.total)}</Typography>
                                                     </ListItem>
                                                 ))}
                                             </List>
@@ -2192,12 +2195,12 @@ const CateringManagementPage = () => {
                                                 <Typography variant="h6">Edit Items</Typography>
                                             </Box>
 
-                                            <TableContainer component={Paper} variant="outlined">
+                                            <TableContainer component={Paper} variant="outlined" sx={{ overflowX: 'auto' }}>
                                                 <Table size="small">
                                                     <TableHead>
                                                         <TableRow>
-                                                            <TableCell>Item Name</TableCell>
-                                                            <TableCell align="center">Quantity</TableCell>
+                                                            <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}>Item Name</TableCell>
+                                                            <TableCell align="center" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}>Quantity</TableCell>
                                                             <TableCell align="right">Base / Unit Price</TableCell>
                                                             <TableCell align="right">Total</TableCell>
                                                             <TableCell align="center">Action</TableCell>
@@ -3014,27 +3017,27 @@ const CateringManagementPage = () => {
                                                                 (Enter number of guests per category)
                                                             </Typography>
                                                         </Box>
-                                                        <TableContainer component={Paper} elevation={0} sx={{ overflow: 'auto' }}>
+                                                        <TableContainer component={Paper} elevation={0} sx={{ overflow: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
                                                             <Table size="small">
                                                                 <TableHead>
-                                                                    <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-                                                                        <TableCell sx={{ fontWeight: 700, fontSize: '0.82rem', letterSpacing: '0.04em', textTransform: 'uppercase', width: '34%', py: 1.4, borderBottom: '1px solid #e0e0e0' }}>
+                                                                    <TableRow sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}>
+                                                                        <TableCell sx={{ fontWeight: 700, fontSize: { xs: '0.7rem', sm: '0.82rem' }, py: 1.2, borderBottom: '1px solid #e0e0e0' }}>
                                                                             Category
                                                                         </TableCell>
-                                                                        <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.82rem', letterSpacing: '0.04em', textTransform: 'uppercase', width: '33%', py: 1.4, borderBottom: '1px solid #e0e0e0' }}>
+                                                                        <TableCell align="center" sx={{ fontWeight: 700, fontSize: { xs: '0.7rem', sm: '0.82rem' }, py: 1.2, borderBottom: '1px solid #e0e0e0' }}>
                                                                             Veg
                                                                         </TableCell>
-                                                                        <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.82rem', letterSpacing: '0.04em', textTransform: 'uppercase', width: '33%', py: 1.4, borderBottom: '1px solid #e0e0e0' }}>
+                                                                        <TableCell align="center" sx={{ fontWeight: 700, fontSize: { xs: '0.7rem', sm: '0.82rem' }, py: 1.2, borderBottom: '1px solid #e0e0e0' }}>
                                                                             Non-Veg
                                                                         </TableCell>
                                                                     </TableRow>
                                                                 </TableHead>
                                                                 <TableBody>
                                                                     <TableRow>
-                                                                        <TableCell sx={{ py: 1.5 }}>
-                                                                            <Typography variant="body2" fontWeight={600}>Adults</Typography>
+                                                                        <TableCell sx={{ py: 1 }}>
+                                                                            <Typography variant="body2" fontWeight={600} sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>Adults</Typography>
                                                                         </TableCell>
-                                                                        <TableCell align="center" sx={{ py: 1.5 }}>
+                                                                        <TableCell align="center" sx={{ py: 1 }}>
                                                                             <TextField 
                                                                                 size="small" 
                                                                                 type="number" 
@@ -3042,10 +3045,10 @@ const CateringManagementPage = () => {
                                                                                 onKeyDown={preventScientificNotation}
                                                                                 onChange={(e) => handleGuestCountChange('newOrder', 'adults', 'veg', e.target.value)} 
                                                                                 inputProps={{ min: 0, max: 9999 }} 
-                                                                                sx={{ width: { xs: 60, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} 
+                                                                                sx={{ width: { xs: 55, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600, fontSize: { xs: '0.8rem', sm: '0.875rem' }, p: { xs: 1, sm: 1.5 } } }} 
                                                                             />
                                                                         </TableCell>
-                                                                        <TableCell align="center" sx={{ py: 1.5 }}>
+                                                                        <TableCell align="center" sx={{ py: 1 }}>
                                                                             <TextField 
                                                                                 size="small" 
                                                                                 type="number" 
@@ -3053,15 +3056,15 @@ const CateringManagementPage = () => {
                                                                                 onKeyDown={preventScientificNotation}
                                                                                 onChange={(e) => handleGuestCountChange('newOrder', 'adults', 'nonVeg', e.target.value)} 
                                                                                 inputProps={{ min: 0, max: 9999 }} 
-                                                                                sx={{ width: { xs: 60, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} 
+                                                                                sx={{ width: { xs: 55, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600, fontSize: { xs: '0.8rem', sm: '0.875rem' }, p: { xs: 1, sm: 1.5 } } }} 
                                                                             />
                                                                         </TableCell>
                                                                     </TableRow>
                                                                     <TableRow>
-                                                                        <TableCell sx={{ py: 1.5 }}>
-                                                                            <Typography variant="body2" fontWeight={600}>Kids</Typography>
+                                                                        <TableCell sx={{ py: 1 }}>
+                                                                            <Typography variant="body2" fontWeight={600} sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>Kids</Typography>
                                                                         </TableCell>
-                                                                        <TableCell align="center" sx={{ py: 1.5 }}>
+                                                                        <TableCell align="center" sx={{ py: 1 }}>
                                                                             <TextField 
                                                                                 size="small" 
                                                                                 type="number" 
@@ -3069,10 +3072,10 @@ const CateringManagementPage = () => {
                                                                                 onKeyDown={preventScientificNotation}
                                                                                 onChange={(e) => handleGuestCountChange('newOrder', 'kids', 'veg', e.target.value)} 
                                                                                 inputProps={{ min: 0, max: 9999 }} 
-                                                                                sx={{ width: { xs: 60, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} 
+                                                                                sx={{ width: { xs: 55, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600, fontSize: { xs: '0.8rem', sm: '0.875rem' }, p: { xs: 1, sm: 1.5 } } }} 
                                                                             />
                                                                         </TableCell>
-                                                                        <TableCell align="center" sx={{ py: 1.5 }}>
+                                                                        <TableCell align="center" sx={{ py: 1 }}>
                                                                             <TextField 
                                                                                 size="small" 
                                                                                 type="number" 
@@ -3080,7 +3083,7 @@ const CateringManagementPage = () => {
                                                                                 onKeyDown={preventScientificNotation}
                                                                                 onChange={(e) => handleGuestCountChange('newOrder', 'kids', 'nonVeg', e.target.value)} 
                                                                                 inputProps={{ min: 0, max: 9999 }} 
-                                                                                sx={{ width: { xs: 60, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} 
+                                                                                sx={{ width: { xs: 55, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600, fontSize: { xs: '0.8rem', sm: '0.875rem' }, p: { xs: 1, sm: 1.5 } } }} 
                                                                             />
                                                                         </TableCell>
                                                                     </TableRow>
@@ -3331,15 +3334,15 @@ const CateringManagementPage = () => {
                                                         </Button>
                                                     </Box>
 
-                                                    <TableContainer component={Paper} variant="outlined" sx={{ overflowX: 'hidden' }}>
+                                                    <TableContainer component={Paper} variant="outlined" sx={{ overflowX: 'auto' }}>
                                                         <Table size="small">
                                                             <TableHead>
                                                                 <TableRow>
-                                                                    <TableCell sx={{ px: { xs: 0.5, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>Amount</TableCell>
-                                                                    <TableCell sx={{ px: { xs: 0.5, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>Method</TableCell>
-                                                                    <TableCell sx={{ px: { xs: 0.5, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>Date</TableCell>
-                                                                    <TableCell sx={{ px: { xs: 0.5, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>Notes</TableCell>
-                                                                    <TableCell align="center" sx={{ px: { xs: 0.5, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>Action</TableCell>
+                                                                    <TableCell sx={{ px: { xs: 1, sm: 1.5 }, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Amount</TableCell>
+                                                                    <TableCell sx={{ px: { xs: 1, sm: 1.5 }, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Method</TableCell>
+                                                                    <TableCell sx={{ px: { xs: 1, sm: 1.5 }, fontSize: { xs: '0.75rem', sm: '0.875rem' }, display: { xs: 'none', sm: 'table-cell' } }}>Date</TableCell>
+                                                                    <TableCell sx={{ px: { xs: 1, sm: 1.5 }, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Notes</TableCell>
+                                                                    <TableCell align="center" sx={{ px: { xs: 1, sm: 1.5 }, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Action</TableCell>
                                                                 </TableRow>
                                                             </TableHead>
                                                             <TableBody>

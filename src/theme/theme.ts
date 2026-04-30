@@ -55,7 +55,7 @@ export const getTheme = (mode: 'light' | 'dark'): Theme => createTheme({
             lineHeight: 1.2,
             '@media (max-width:600px)': {
                 fontSize: '1.25rem',
-                color: '#000000',
+                color: mode === 'light' ? '#111827' : '#F8FAFC',
             }
         },
         h2: { 
@@ -64,7 +64,7 @@ export const getTheme = (mode: 'light' | 'dark'): Theme => createTheme({
             lineHeight: 1.2,
             '@media (max-width:600px)': {
                 fontSize: '1.25rem',
-                color: '#000000',
+                color: mode === 'light' ? '#111827' : '#F8FAFC',
             }
         },
         h3: { 
@@ -73,7 +73,7 @@ export const getTheme = (mode: 'light' | 'dark'): Theme => createTheme({
             lineHeight: 1.2,
             '@media (max-width:600px)': {
                 fontSize: '1.25rem',
-                color: '#000000',
+                color: mode === 'light' ? '#111827' : '#F8FAFC',
             }
         },
         h4: { 
@@ -82,7 +82,7 @@ export const getTheme = (mode: 'light' | 'dark'): Theme => createTheme({
             lineHeight: 1.2,
             '@media (max-width:600px)': {
                 fontSize: '1.25rem',
-                color: '#000000',
+                color: mode === 'light' ? '#111827' : '#F8FAFC',
             }
         },
         h5: { 
@@ -91,7 +91,7 @@ export const getTheme = (mode: 'light' | 'dark'): Theme => createTheme({
             lineHeight: 1.2,
             '@media (max-width:600px)': {
                 fontSize: '1.25rem',
-                color: '#000000',
+                color: mode === 'light' ? '#111827' : '#F8FAFC',
             }
         },
         h6: { 
@@ -100,7 +100,7 @@ export const getTheme = (mode: 'light' | 'dark'): Theme => createTheme({
             lineHeight: 1.2,
             '@media (max-width:600px)': {
                 fontSize: '1.25rem',
-                color: '#000000',
+                color: mode === 'light' ? '#111827' : '#F8FAFC',
             }
         },
         body1: {
@@ -173,7 +173,7 @@ export const getTheme = (mode: 'light' | 'dark'): Theme => createTheme({
                     '@media (max-width:600px)': {
                         '&.MuiTypography-h1, &.MuiTypography-h2, &.MuiTypography-h3, &.MuiTypography-h4, &.MuiTypography-h5, &.MuiTypography-h6': {
                             fontSize: `${MOBILE_HEADING_SIZE} !important`,
-                            color: '#000000 !important',
+                            color: `${mode === 'light' ? '#111827' : '#F8FAFC'} !important`,
                             textAlign: 'center !important',
                             width: '100%',
                         },
