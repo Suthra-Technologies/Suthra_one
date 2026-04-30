@@ -24,6 +24,7 @@ import {
   useTheme,
 } from '@mui/material';
 import {
+  ArrowBack,
   Close,
   Email as EmailIcon,
   Logout,
@@ -42,10 +43,13 @@ import { useAuth } from 'src/context/AuthContext';
 import { useSettings } from 'src/context/SettingsContext';
 import { useActiveTenant } from 'src/hooks/useActiveTenant';
 import { usePullToRefresh } from 'src/hooks/usePullToRefresh';
+import { Capacitor } from '@capacitor/core';
 
 const CustomerLayout: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isNative = Capacitor.isNativePlatform();
+  const showMobileUI = isMobile || isNative;
   const navigate = useNavigate();
   const location = useLocation();
   const { slug, getRelativePath } = useActiveTenant();
@@ -119,7 +123,42 @@ const CustomerLayout: React.FC = () => {
       >
         <Container maxWidth="lg">
           <Toolbar disableGutters sx={{ minHeight: { xs: 64, md: 72 }, gap: 2 }}>
-            {/* Logo & Brand - FAR LEFT */}
+            {/* Mobile Back Button + Hamburger */}
+            {showMobileUI && (
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                {!location.pathname.match(/\/customer\/order\/?$/) && (
+                  <IconButton
+                    onClick={() => {
+                      if (window.history.length > 1) {
+                        navigate(-1);
+                      } else {
+                        navigate(getRelativePath('/customer/order'), { replace: true });
+                      }
+                    }}
+                    aria-label="go back"
+                    sx={{
+                      mr: 0.5,
+                      bgcolor: 'rgba(79,70,229,0.08)',
+                      borderRadius: '10px',
+                      width: 44,
+                      height: 44,
+                      minWidth: 44,
+                      '&:hover, &:active': {
+                        bgcolor: 'rgba(79,70,229,0.15)',
+                      },
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    <ArrowBack sx={{ color: 'primary.main' }} />
+                  </IconButton>
+                )}
+                <IconButton onClick={() => setMobileOpen(true)} sx={{ mr: 1 }}>
+                  <MenuIcon />
+                </IconButton>
+              </Box>
+            )}
+
+            {/* Logo & Brand */}
             <Box
               sx={{
                 display: 'flex',

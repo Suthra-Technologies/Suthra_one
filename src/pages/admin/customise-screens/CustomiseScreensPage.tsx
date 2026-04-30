@@ -431,11 +431,13 @@ const CustomiseScreensPage: React.FC = () => {
   }
 
   return (
-    <Container maxWidth="xl" sx={{ 
-      py: { xs: 2.5, md: 4 }, 
-      px: { xs: isMobile ? 2 : 3, sm: 3 },
-      pt: { xs: isMobile ? '20px' : 2.5, sm: 4 } 
-    }}>
+    <>
+      {!isPreviewOpen ? (
+        <Container maxWidth="xl" sx={{ 
+          py: { xs: 2.5, md: 4 }, 
+          px: { xs: isMobile ? 2 : 3, sm: 3 },
+          pt: { xs: isMobile ? '20px' : 2.5, sm: 4 } 
+        }}>
       <Stack 
         direction={{ xs: 'column', md: 'row' }} 
         justifyContent="space-between" 
@@ -751,8 +753,9 @@ const CustomiseScreensPage: React.FC = () => {
 
         </TabPanel>
       </Paper>
-
-      <Dialog fullScreen open={isPreviewOpen} onClose={closePreview}>
+      </Container>
+      ) : (
+        <Box sx={{ bgcolor: '#fff', minHeight: '100dvh' }}>
         <AppBar sx={{ position: 'sticky', top: 0, zIndex: 1100, bgcolor: '#1a1a1a', color: 'white', boxShadow: 'none', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
           <Toolbar sx={{ minHeight: { xs: 56, md: 64 } }}>
             <Button
@@ -1058,7 +1061,8 @@ const CustomiseScreensPage: React.FC = () => {
             )))}
           </Box>
         </Box>
-      </Dialog>
+      </Box>
+    )}
 
       <Dialog 
         open={isResetDialogOpen} 
@@ -1203,7 +1207,7 @@ const CustomiseScreensPage: React.FC = () => {
           height: 0;
         }
       `}</style>
-    </Container>
+    </>
   );
 };
 
