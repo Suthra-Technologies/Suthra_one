@@ -7,6 +7,9 @@ import {
   Phone as PhoneIcon,
   Search as SearchIcon,
   Visibility as ViewIcon,
+  Event as EventIcon,
+  Update as UpdateIcon,
+  History as HistoryIcon,
 } from '@mui/icons-material';
 import {
   Box,
@@ -43,7 +46,7 @@ import {
 } from '@mui/material';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { superAPI } from '../../services/api';
+import { superAPI, publicDemoAPI } from '../../services/api';
 
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'Pending', color: 'warning' as const },
@@ -74,8 +77,15 @@ const DemoRequestsPage: React.FC = () => {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState<any | null>(null);
   const [notes, setNotes] = useState('');
+  const [meetingLink, setMeetingLink] = useState('');
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [requestToDelete, setRequestToDelete] = useState<string | null>(null);
+
+  const [rescheduleDialogOpen, setRescheduleDialogOpen] = useState(false);
+  const [rescheduleData, setRescheduleData] = useState({ preferredDate: '', preferredTime: '' });
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [fetchingSlots, setFetchingSlots] = useState(false);
+  const [rescheduling, setRescheduling] = useState(false);
 
   const fetchRequests = async () => {
     setLoading(true);
@@ -100,6 +110,25 @@ const DemoRequestsPage: React.FC = () => {
     fetchRequests();
   }, [page, statusFilter]);
 
+  useEffect(() => {
+    if (rescheduleData.preferredDate) {
+      setFetchingSlots(true);
+      setRescheduleData(prev => ({ ...prev, preferredTime: '' }));
+      publicDemoAPI.getAvailableSlots(rescheduleData.preferredDate)
+        .then(res => {
+          if (res.data && res.data.slots) {
+            setAvailableSlots(res.data.slots);
+          } else {
+            setAvailableSlots([]);
+          }
+        })
+        .catch(() => setAvailableSlots([]))
+        .finally(() => setFetchingSlots(false));
+    } else {
+      setAvailableSlots([]);
+    }
+  }, [rescheduleData.preferredDate]);
+
   const handleSearch = () => {
     setPage(1);
     fetchRequests();
@@ -112,6 +141,7 @@ const DemoRequestsPage: React.FC = () => {
   const handleViewDetails = (request: any) => {
     setSelectedRequest(request);
     setNotes(request.notes || '');
+    setMeetingLink(request.meetingLink || '');
     setDetailDialogOpen(true);
   };
 
@@ -143,9 +173,59 @@ const DemoRequestsPage: React.FC = () => {
     }
   };
 
+  const handleConfirmDemo = async () => {
+    if (!selectedRequest) return;
+    try {
+      await superAPI.confirmDemoRequest(selectedRequest._id, { meetingLink });
+      toast.success('Demo confirmed and email sent');
+      fetchRequests();
+      setSelectedRequest((prev: any) => ({ ...prev, status: 'demo_scheduled', meetingLink }));
+    } catch (error) {
+      console.error('Error confirming demo:', error);
+      toast.error('Failed to confirm demo');
+    }
+  };
+
   const handleDeleteClick = (id: string) => {
     setRequestToDelete(id);
     setDeleteConfirmOpen(true);
+  };
+
+  const handleRescheduleClick = (request: any) => {
+    setSelectedRequest(request);
+    setRescheduleData({ preferredDate: '', preferredTime: '' });
+    setAvailableSlots([]);
+    setRescheduleDialogOpen(true);
+  };
+
+  const handleRescheduleSubmit = async () => {
+    if (!selectedRequest || !rescheduleData.preferredDate || !rescheduleData.preferredTime) return;
+    setRescheduling(true);
+    try {
+      await superAPI.adminRescheduleDemo(selectedRequest._id, {
+        newDate: rescheduleData.preferredDate,
+        newTime: rescheduleData.preferredTime,
+        requestedBy: 'admin'
+      });
+      toast.success('Demo successfully rescheduled!');
+      setRescheduleDialogOpen(false);
+      fetchRequests();
+      if (detailDialogOpen) {
+        setDetailDialogOpen(false); // Close details or refetch to update history
+      }
+    } catch (error: any) {
+      console.error('Error rescheduling:', error);
+      toast.error(error.response?.data?.message || 'Failed to reschedule. The selected slot might be taken.');
+      // Refetch slots if conflict
+      setRescheduleData(prev => ({ ...prev, preferredTime: '' }));
+      if (rescheduleData.preferredDate) {
+        publicDemoAPI.getAvailableSlots(rescheduleData.preferredDate).then(res => {
+          if (res.data?.slots) setAvailableSlots(res.data.slots);
+        });
+      }
+    } finally {
+      setRescheduling(false);
+    }
   };
 
   const handleDeleteConfirm = async () => {
@@ -271,8 +351,11 @@ const DemoRequestsPage: React.FC = () => {
                 <TableCell sx={{ fontWeight: 700 }}>Business Name</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Email</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Phone</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Requested Time</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Submitted</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Last Updated</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Rescheduled By</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Actions</TableCell>
               </TableRow>
             </TableHead>
@@ -290,11 +373,16 @@ const DemoRequestsPage: React.FC = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                requests.map((req) => (
+                requests.map((req) => {
+                  const isRecentlyUpdated = req.updatedAt && (new Date().getTime() - new Date(req.updatedAt).getTime() < 5 * 60000); // 5 mins
+                  return (
                   <TableRow
                     key={req._id}
                     hover
-                    sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                    sx={{ 
+                      '&:last-child td, &:last-child th': { border: 0 },
+                      bgcolor: isRecentlyUpdated ? alpha('#4caf50', 0.05) : 'inherit',
+                    }}
                   >
                     <TableCell>
                       <Stack direction="row" spacing={1} alignItems="center">
@@ -310,6 +398,11 @@ const DemoRequestsPage: React.FC = () => {
                     <TableCell>
                       <Typography variant="body2">
                         {req.phonePrefix} {req.phoneNumber}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" color={req.preferredDateTime ? "primary" : "text.secondary"}>
+                        {req.preferredDateTime ? formatDate(req.preferredDateTime) : 'N/A'}
                       </Typography>
                     </TableCell>
                     <TableCell>
@@ -333,10 +426,25 @@ const DemoRequestsPage: React.FC = () => {
                       </Typography>
                     </TableCell>
                     <TableCell>
+                      <Typography variant="body2" color="text.secondary">
+                        {req.updatedAt ? formatDate(req.updatedAt) : '-'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2" color="text.secondary">
+                        {req.rescheduledBy || '-'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
                       <Stack direction="row" spacing={0.5}>
                         <Tooltip title="View Details">
                           <IconButton size="small" onClick={() => handleViewDetails(req)} color="primary">
                             <ViewIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Reschedule">
+                          <IconButton size="small" onClick={() => handleRescheduleClick(req)} color="secondary">
+                            <EventIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
                         <Tooltip title="Delete">
@@ -347,7 +455,8 @@ const DemoRequestsPage: React.FC = () => {
                       </Stack>
                     </TableCell>
                   </TableRow>
-                ))
+                  )
+                })
               )}
             </TableBody>
           </Table>
@@ -422,9 +531,12 @@ const DemoRequestsPage: React.FC = () => {
 
                   <Stack direction="row" spacing={1}>
                     <Button size="small" variant="contained" onClick={() => handleViewDetails(req)} fullWidth startIcon={<ViewIcon />}>
-                      View Details
+                      View
                     </Button>
-                    <Button size="small" variant="outlined" color="error" onClick={() => handleDeleteClick(req._id)} startIcon={<DeleteIcon />}>
+                    <Button size="small" variant="outlined" color="secondary" onClick={() => handleRescheduleClick(req)} fullWidth startIcon={<EventIcon />}>
+                      Reschedule
+                    </Button>
+                    <Button size="small" variant="outlined" color="error" onClick={() => handleDeleteClick(req._id)} fullWidth startIcon={<DeleteIcon />}>
                       Delete
                     </Button>
                   </Stack>
@@ -585,6 +697,73 @@ const DemoRequestsPage: React.FC = () => {
                   </Button>
                 </Box>
               </Paper>
+
+              {/* Scheduling & Confirmation */}
+              {selectedRequest.preferredDateTime && (
+                <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2, bgcolor: '#f0fdf4', borderColor: '#bbf7d0' }}>
+                  <Typography variant="overline" color="success.main" display="block" mb={1.5} fontWeight="bold">
+                    Schedule Confirmation
+                  </Typography>
+                  <Typography variant="body2" mb={2}>
+                    Requested Time: <strong>{formatDate(selectedRequest.preferredDateTime)}</strong>
+                  </Typography>
+                  <TextField
+                    fullWidth
+                    value={meetingLink}
+                    onChange={(e) => setMeetingLink(e.target.value)}
+                    placeholder="Enter meeting link (e.g. Zoom/Google Meet) for the customer"
+                    variant="outlined"
+                    size="small"
+                    sx={{ mb: 2, bgcolor: 'white' }}
+                  />
+                  <Button
+                    variant="contained"
+                    color="success"
+                    fullWidth
+                    onClick={handleConfirmDemo}
+                  >
+                    Confirm & Send Invite
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="secondary"
+                    fullWidth
+                    sx={{ mt: 1 }}
+                    onClick={() => handleRescheduleClick(selectedRequest)}
+                  >
+                    Reschedule
+                  </Button>
+                </Paper>
+              )}
+
+              {/* Reschedule History */}
+              {selectedRequest.rescheduleHistory && selectedRequest.rescheduleHistory.length > 0 && (
+                <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 2 }}>
+                  <Stack direction="row" alignItems="center" spacing={1} mb={1.5}>
+                    <HistoryIcon fontSize="small" color="action" />
+                    <Typography variant="overline" color="text.secondary" display="block">
+                      Reschedule History
+                    </Typography>
+                  </Stack>
+                  <Stack spacing={2}>
+                    {selectedRequest.rescheduleHistory.map((history: any, idx: number) => (
+                      <Box key={idx} sx={{ pl: 2, borderLeft: '2px solid #e0e0e0' }}>
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          {formatDate(history.timestamp)}
+                        </Typography>
+                        <Typography variant="body2">
+                          Changed by: <strong>{history.changedBy || 'Unknown'}</strong>
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          <strike>{history.oldSlot ? formatDate(history.oldSlot) : 'N/A'}</strike> 
+                          {' \u2192 '} 
+                          <strong style={{ color: '#1976d2' }}>{history.newSlot ? formatDate(history.newSlot) : 'N/A'}</strong>
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Stack>
+                </Paper>
+              )}
             </Stack>
           )}
         </DialogContent>
@@ -610,6 +789,68 @@ const DemoRequestsPage: React.FC = () => {
           <Button onClick={() => setDeleteConfirmOpen(false)}>Cancel</Button>
           <Button onClick={handleDeleteConfirm} variant="contained" color="error">
             Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Reschedule Dialog */}
+      <Dialog
+        open={rescheduleDialogOpen}
+        onClose={() => !rescheduling && setRescheduleDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Reschedule Demo</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" mb={3} color="text.secondary">
+            Current slot: <strong>{selectedRequest?.preferredDateTime ? formatDate(selectedRequest.preferredDateTime) : 'N/A'}</strong>
+          </Typography>
+
+          <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                required
+                type="date"
+                label="New Preferred Date"
+                value={rescheduleData.preferredDate}
+                onChange={(e) => setRescheduleData({ ...rescheduleData, preferredDate: e.target.value })}
+                InputLabelProps={{ shrink: true }}
+                inputProps={{ min: new Date().toISOString().split('T')[0] }}
+                disabled={rescheduling}
+              />
+            </Grid>
+
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                required
+                select
+                label={fetchingSlots ? "Loading slots..." : "New Preferred Time"}
+                value={rescheduleData.preferredTime}
+                onChange={(e) => setRescheduleData({ ...rescheduleData, preferredTime: e.target.value })}
+                disabled={!rescheduleData.preferredDate || fetchingSlots || rescheduling}
+              >
+                {availableSlots.length > 0 ? (
+                  availableSlots.map(slot => (
+                    <MenuItem key={slot} value={slot}>{slot}</MenuItem>
+                  ))
+                ) : (
+                  <MenuItem value="" disabled>No slots available</MenuItem>
+                )}
+              </TextField>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setRescheduleDialogOpen(false)} disabled={rescheduling}>Cancel</Button>
+          <Button 
+            onClick={handleRescheduleSubmit} 
+            variant="contained" 
+            color="primary"
+            disabled={rescheduling || !rescheduleData.preferredDate || !rescheduleData.preferredTime}
+          >
+            {rescheduling ? 'Rescheduling...' : 'Confirm'}
           </Button>
         </DialogActions>
       </Dialog>

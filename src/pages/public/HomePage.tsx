@@ -2,21 +2,19 @@ import {
   Business as BusinessIcon,
   CheckCircle as CheckIcon,
   Close as CloseIcon,
-  Devices as DeviceIcon,
+  Email as EmailIcon,
   Error as ErrorIcon,
   ExpandMore as ExpandMoreIcon,
   Inventory as InventoryIcon,
   Kitchen as KitchenIcon,
   Map as MapIcon,
-  RestaurantMenu as MenuIcon,
   People as PeopleIcon,
   PlayCircleOutline as PlayIcon,
   PointOfSale as PointOfSaleIcon,
   QrCode as QrIcon,
   Smartphone as SmartphoneIcon,
   EventSeat as TableIcon,
-  DeleteSweep as WastageIcon,
-  Email as EmailIcon
+  DeleteSweep as WastageIcon
 } from "@mui/icons-material";
 import {
   AppBar,
@@ -151,9 +149,9 @@ import USERS_PIC from "../../assets/images/users.png";
 import VENDORS_IMG from "../../assets/images/vendors.png";
 import waiter from "../../assets/images/waiter-image.jpg";
 import WM from "../../assets/images/WM.png";
-import womenserved from "../../assets/images/women-served.jpg";
-import womenserved1 from "../../assets/images/women-served1.jpg";
+// import womenserved from "../../assets/images/women-served.jpg";
 import TM from "../../assets/images/TM.png";
+import womenserved1 from "../../assets/images/women-served1.jpg";
 const MOCKUP_DASHBOARD =
   "https://images.unsplash.com/photo-1552566626-52f8b828add9?auto=format&fit=crop&w=1200&q=80"; // Premium Restaurant Interior/Management
 const MOCKUP_ORDERS =
@@ -675,7 +673,11 @@ const HomePage: React.FC = () => {
     email: "",
     phonePrefix: "+91",
     phoneNumber: "",
+    preferredDate: "",
+    preferredTime: "",
   });
+  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [fetchingSlots, setFetchingSlots] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ phoneNumber?: string }>({});
   const [dialogState, setDialogState] = useState<{
@@ -720,10 +722,21 @@ const HomePage: React.FC = () => {
     try {
       const apiUrl =
         (import.meta as any).env.VITE_API_URL || "http://localhost:5006";
+
+      const payload = {
+        businessName: formData.businessName,
+        email: formData.email,
+        phonePrefix: formData.phonePrefix,
+        phoneNumber: formData.phoneNumber,
+        preferredDateTime: formData.preferredDate && formData.preferredTime
+          ? new Date(`${formData.preferredDate}T${formData.preferredTime}:00`).toISOString()
+          : undefined
+      };
+
       const response = await fetch(`${apiUrl}/api/email/demo-request`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(payload),
       });
       if (response.ok) {
         setDialogState({
@@ -738,6 +751,8 @@ const HomePage: React.FC = () => {
           email: "",
           phonePrefix: "+91",
           phoneNumber: "",
+          preferredDate: "",
+          preferredTime: "",
         });
       } else {
         throw new Error("Failed to send request");
@@ -774,8 +789,30 @@ const HomePage: React.FC = () => {
     fetch(`${apiUrl}/api/superadmin/plans/public`)
       .then(res => res.json())
       .then(data => { if (Array.isArray(data)) setPlans(data); })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
+
+  // Fetch available slots
+  useEffect(() => {
+    if (formData.preferredDate) {
+      setFetchingSlots(true);
+      setFormData(prev => ({ ...prev, preferredTime: "" }));
+      const apiUrl = (import.meta as any).env.VITE_API_URL || "http://localhost:5006";
+      fetch(`${apiUrl}/api/email/demo-requests/slots?date=${formData.preferredDate}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.slots) {
+            setAvailableSlots(data.slots);
+          } else {
+            setAvailableSlots([]);
+          }
+        })
+        .catch(() => setAvailableSlots([]))
+        .finally(() => setFetchingSlots(false));
+    } else {
+      setAvailableSlots([]);
+    }
+  }, [formData.preferredDate]);
 
   // Auto-rotate slideshows
   // Auto-rotate slideshows
@@ -1230,7 +1267,7 @@ const HomePage: React.FC = () => {
                 }}
               >
                 <img
-                  src={womenserved}
+                  // src={womenserved}
                   alt="Waiter serving customer"
                   style={{
                     maxWidth: "100%",
@@ -2190,6 +2227,39 @@ const HomePage: React.FC = () => {
                       error={!!errors.phoneNumber}
                       helperText={errors.phoneNumber}
                     />
+                  </Grid>
+
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      type="date"
+                      name="preferredDate"
+                      label="Preferred Date (Optional)"
+                      value={formData.preferredDate}
+                      onChange={handleFormChange}
+                      InputLabelProps={{ shrink: true }}
+                      inputProps={{ min: new Date().toISOString().split('T')[0] }}
+                    />
+                  </Grid>
+
+                  <Grid item xs={12} sm={6}>
+                    <TextField
+                      fullWidth
+                      select
+                      name="preferredTime"
+                      label={fetchingSlots ? "Loading slots..." : "Preferred Time"}
+                      value={formData.preferredTime}
+                      onChange={handleFormChange}
+                      disabled={!formData.preferredDate || fetchingSlots}
+                    >
+                      {availableSlots.length > 0 ? (
+                        availableSlots.map(slot => (
+                          <MenuItem key={slot} value={slot}>{slot}</MenuItem>
+                        ))
+                      ) : (
+                        <MenuItem value="" disabled>No slots available</MenuItem>
+                      )}
+                    </TextField>
                   </Grid>
 
                   <Grid item xs={12}>

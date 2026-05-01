@@ -83,8 +83,11 @@ interface CustomerInfoSectionProps {
     setPointsToRedeem: (val: number) => void;
     isFetchingRewards: boolean;
     cartTotal: number;
+    finalTotal: number;
     suggestedPhone: string | null;
     customerConflict: boolean;
+    maxUsablePoints?: number;
+    isApplyingCoupon?: boolean;
 }
 
 const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
@@ -143,8 +146,11 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
     setPointsToRedeem,
     isFetchingRewards,
     cartTotal,
+    finalTotal,
     suggestedPhone,
-    customerConflict
+    customerConflict,
+    maxUsablePoints = 0,
+    isApplyingCoupon = false,
 }) => {
     const generateTimeSlots = (dateString: string) => {
         if (!settings?.restaurant?.businessHours) return [];
@@ -302,7 +308,7 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                         error={customerPhoneTouched && !!customerPhoneError}
                         helperText={suggestedPhone ? (
                             <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                                <Typography variant="caption" color="primary">Suggested: {suggestedPhone}</Typography>
+                                <Typography variant="caption" color="primary">Previously used: {suggestedPhone}</Typography>
                                 <Button 
                                     size="small" 
                                     variant="outlined" 
@@ -404,25 +410,29 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                         value={pointsToRedeem || ''}
                                         onChange={(e) => {
                                             const val = parseInt(e.target.value) || 0;
-                                            const cappedVal = Math.min(rewardPointsInfo.points || 0, Math.max(0, val));
-                                            
-                                            // Optional: Basic validation here, but full validation happens in POSPage logic
+                                            const cappedVal = Math.min(maxUsablePoints, Math.max(0, val));
                                             setPointsToRedeem(cappedVal);
                                         }}
-                                        inputProps={{ min: 0, max: rewardPointsInfo.points || 0 }}
+                                        inputProps={{ min: 0, max: maxUsablePoints }}
                                         fullWidth
-                                        disabled={!rewardPointsInfo.points || rewardPointsInfo.points < (rewardPointsInfo.settings?.minPointsToRedeem || 0)}
+                                        disabled={!rewardPointsInfo.points || rewardPointsInfo.points < (rewardPointsInfo.settings?.minPointsToRedeem || 0) || maxUsablePoints === 0}
+                                        helperText={pointsToRedeem > 0 ? `-$${(pointsToRedeem * (rewardPointsInfo.settings?.pointValue || 0)).toFixed(2)} discount` : `Max usable: ${maxUsablePoints} pts`}
                                     />
                                     <Button 
                                         variant="contained" 
                                         size="small"
                                         disableElevation
-                                        onClick={() => setPointsToRedeem(rewardPointsInfo.points)}
-                                        disabled={!rewardPointsInfo.points || rewardPointsInfo.points < (rewardPointsInfo.settings?.minPointsToRedeem || 0)}
+                                        onClick={() => setPointsToRedeem(maxUsablePoints)}
+                                        disabled={!rewardPointsInfo.points || rewardPointsInfo.points < (rewardPointsInfo.settings?.minPointsToRedeem || 0) || maxUsablePoints === 0 || pointsToRedeem === maxUsablePoints}
                                     >
                                         MAX
                                     </Button>
                                 </Stack>
+                                {pointsToRedeem >= maxUsablePoints && maxUsablePoints > 0 && rewardPointsInfo.points > maxUsablePoints && (
+                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5, fontStyle: 'italic' }}>
+                                        Note: Remaining reward points will stay in your wallet.
+                                    </Typography>
+                                )}
                             </Grid>
                         </Grid>
                     )}
@@ -448,11 +458,11 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
 
                     {orderType !== 'dine_in' && (
                         <FormControl component="fieldset" sx={{ alignItems: 'center' }}>
-                            <Typography variant="body2" gutterBottom fontWeight="bold">
-                                Payment Method
+                            <Typography variant="body2" gutterBottom fontWeight="bold" color={finalTotal === 0 ? 'text.disabled' : 'text.primary'}>
+                                Payment Method {finalTotal === 0 && '(N/A)'}
                             </Typography>
                             <RadioGroup
-                                value={paymentMethod}
+                                value={finalTotal === 0 ? '' : paymentMethod}
                                 onChange={(e) => setPaymentMethod(e.target.value as any)}
                                 sx={{ 
                                     display: { xs: 'grid', sm: 'flex' },
@@ -464,7 +474,9 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                     width: '100%',
                                     '& .MuiFormControlLabel-root': {
                                         mr: { xs: 0, sm: 2 }
-                                    }
+                                    },
+                                    opacity: finalTotal === 0 ? 0.5 : 1,
+                                    pointerEvents: finalTotal === 0 ? 'none' : 'auto'
                                 }}
                             >
                                 {(settings.system?.posPaymentMethods?.cash ?? true) && (

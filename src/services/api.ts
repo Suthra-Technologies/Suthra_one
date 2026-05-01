@@ -501,7 +501,15 @@ export const superAPI = {
   // Demo requests management
   listDemoRequests: (params?: any) => api.get('/superadmin/demo-requests', { params }),
   updateDemoRequest: (id: string, data: any) => api.patch(`/superadmin/demo-requests/${id}`, data),
+  confirmDemoRequest: (id: string, data: any) => api.patch(`/superadmin/demo-requests/${id}/confirm`, data),
   deleteDemoRequest: (id: string) => api.delete(`/superadmin/demo-requests/${id}`),
+  adminRescheduleDemo: (id: string, data: { newDate: string; newTime: string; requestedBy: string }) => api.put(`/superadmin/demo-requests/${id}/reschedule`, data),
+};
+
+export const publicDemoAPI = {
+  getDemoByToken: (token: string) => api.get(`/email/demo-requests/reschedule/${token}`),
+  rescheduleDemo: (token: string, newDateTime: string) => api.patch(`/email/demo-requests/reschedule/${token}`, { newDateTime }),
+  getAvailableSlots: (date: string) => api.get('/email/demo-requests/slots', { params: { date } }),
 };
 
 export const superAdminAPI = superAPI; // alias for compatibility

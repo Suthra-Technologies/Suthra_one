@@ -34,6 +34,7 @@ import FeedbackPage from './pages/public/FeedbackPage';
 import HomePage from './pages/public/HomePage';
 import PrivacyPolicyPage from './pages/public/PrivacyPolicyPage';
 import TermsConditionsPage from './pages/public/TermsConditionsPage';
+import RescheduleDemoPage from './pages/public/RescheduleDemoPage';
 import CreatePOPage from './pages/purchase-orders/CreatePOPage';
 import PurchaseOrderDetailPage from './pages/purchase-orders/PurchaseOrderDetailPage';
 import PurchaseOrdersPage from './pages/purchase-orders/PurchaseOrdersPage';
@@ -223,6 +224,7 @@ const AppRoutes: React.FC = () => {
       <Route path="/" element={isNative ? <Navigate to={hasStoredSession ? defaultAuthedPath : '/login'} replace /> : <HomePage />} />
       <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
       <Route path="/terms-and-conditions" element={<TermsConditionsPage />} />
+      <Route path="/reschedule-demo/:token" element={<RescheduleDemoPage />} />
       <Route path="/login" element={hasStoredSession ? <Navigate to={defaultAuthedPath} replace /> : <LoginPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/register" element={<RestaurantRegisterPage />} />
