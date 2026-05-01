@@ -178,9 +178,16 @@ const MemoizedCartItem = React.memo(({
                     }
                     sx={{ m: 0, '& .MuiListItemText-primary': { fontWeight: 500, fontSize: '0.9rem' } }}
                 />
-                <Typography variant="body2" fontWeight="bold" sx={{ ml: 1, whiteSpace: 'nowrap' }}>
-                    {formatCurrency(item.price * item.quantity)}
-                </Typography>
+                <Box sx={{ textAlign: 'right', ml: 1 }}>
+                    <Typography variant="body2" fontWeight="bold">
+                        {formatCurrency(item.price * item.quantity)}
+                    </Typography>
+                    {item.quantity > 1 && (
+                        <Typography variant="caption" color="text.secondary" display="block">
+                            ({formatCurrency(item.price)} ea)
+                        </Typography>
+                    )}
+                </Box>
             </Box>
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 0.5 }}>
@@ -233,6 +240,7 @@ const POSPage: React.FC = () => {
     const [pointsToRedeem, setPointsToRedeem] = useState<number>(0);
     const [rewardDiscount, setRewardDiscount] = useState<number>(0);
     const [isFetchingRewards, setIsFetchingRewards] = useState(false);
+    const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
     const [suggestedPhone, setSuggestedPhone] = useState<string | null>(null);
     const [customerConflict, setCustomerConflict] = useState<boolean>(false);
 
@@ -507,6 +515,7 @@ const POSPage: React.FC = () => {
             return;
         }
         try {
+            setIsApplyingCoupon(true);
             const cartTotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
             console.log(`[Coupon] Validating "${codeToUse}" | Cart Total: $${cartTotal} | Silent: ${silent}`);
 
@@ -605,6 +614,8 @@ const POSPage: React.FC = () => {
                 }
                 // Otherwise: silently keep the code; discount stays 0 until cart total grows
             }
+        } finally {
+            setIsApplyingCoupon(false);
         }
     }, [couponCode, cart]);
 
@@ -673,16 +684,6 @@ const POSPage: React.FC = () => {
         const timer = setTimeout(fetchRewards, 800);
         return () => clearTimeout(timer);
     }, [customerPhone, customerEmail, customerDialCode]);
-
-    // Calculate Reward Discount
-    useEffect(() => {
-        if (pointsToRedeem > 0 && rewardPointsInfo?.settings) {
-            const pointValue = Number(rewardPointsInfo.settings.pointValue) || 0;
-            setRewardDiscount(Number((pointsToRedeem * pointValue).toFixed(2)));
-        } else {
-            setRewardDiscount(0);
-        }
-    }, [pointsToRedeem, rewardPointsInfo]);
 
     const [searchParams, setSearchParams] = useSearchParams();
     const mode = searchParams.get("mode");   // 'edit' | null
@@ -1030,16 +1031,22 @@ const POSPage: React.FC = () => {
             const cartId = item.cartId || item._id;
             const existing = prev.find((i) => i.cartId === cartId);
             if (existing) {
+                toast.success(`${item.name} quantity updated`);
                 return prev.map((i) =>
                     i.cartId === cartId ? { ...i, quantity: i.quantity + (item.quantity || 1) } : i
                 );
             }
+            toast.success(`${item.name} added to cart`);
             return [...prev, { ...item, cartId, quantity: item.quantity || 1 }];
         });
     }, []);
 
     const removeFromCart = React.useCallback((cartId: string) => {
-        setCart((prev) => prev.filter((i) => i.cartId !== cartId));
+        setCart((prev) => {
+            const item = prev.find(i => i.cartId === cartId);
+            if (item) toast.success(`${item.name} removed`);
+            return prev.filter((i) => i.cartId !== cartId);
+        });
     }, []);
 
     const updateCartItemQuantity = React.useCallback((cartId: string, delta: number) => {
@@ -1129,9 +1136,47 @@ const POSPage: React.FC = () => {
         (orderType === 'dine_in' && guestCount > 3) ? Math.round(cartTotal * 0.18) : 0,
         [orderType, guestCount, cartTotal]);
 
-    const finalTotal = useMemo(() =>
-        cartTotal + taxAmount - discountAmount - couponDiscount + serviceChargeAmount + (Number(tip) || 0) - rewardDiscount,
-        [cartTotal, taxAmount, discountAmount, couponDiscount, serviceChargeAmount, tip, rewardDiscount]);
+    // Calculate Reward Discount
+    const totalBeforeRewards = useMemo(() => {
+        const subtotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
+        const disc = (subtotal * discountPercent) / 100;
+        return subtotal + taxAmount - disc - couponDiscount + serviceChargeAmount + (Number(tip) || 0);
+    }, [cart, taxAmount, discountPercent, couponDiscount, serviceChargeAmount, tip]);
+
+    const maxUsablePoints = useMemo(() => {
+        if (!rewardPointsInfo?.settings) return 0;
+        const pointValue = Number(rewardPointsInfo.settings.pointValue) || 0;
+        if (pointValue <= 0) return 0;
+
+        // Capped by available points AND by total order value
+        const pointsNeededForFullTotal = Math.ceil(totalBeforeRewards / pointValue);
+        return Math.min(rewardPointsInfo.points || 0, pointsNeededForFullTotal);
+    }, [rewardPointsInfo, totalBeforeRewards]);
+
+    useEffect(() => {
+        if (pointsToRedeem > 0 && rewardPointsInfo?.settings) {
+            const pointValue = Number(rewardPointsInfo.settings.pointValue) || 0;
+            const calculatedDiscount = Number((pointsToRedeem * pointValue).toFixed(2));
+
+            // Cap discount to totalBeforeRewards
+            setRewardDiscount(Math.min(calculatedDiscount, totalBeforeRewards));
+
+            // If pointsToRedeem exceeds what's needed for full total, adjust it (optional, but cleaner)
+            if (calculatedDiscount > totalBeforeRewards + 0.01) { // 0.01 for float buffer
+                const adjustedPoints = Math.ceil(totalBeforeRewards / pointValue);
+                if (adjustedPoints < pointsToRedeem) {
+                    setPointsToRedeem(adjustedPoints);
+                }
+            }
+        } else {
+            setRewardDiscount(0);
+        }
+    }, [pointsToRedeem, rewardPointsInfo, totalBeforeRewards]);
+
+    const finalTotal = useMemo(() => {
+        const total = totalBeforeRewards - rewardDiscount;
+        return Math.max(0, total);
+    }, [totalBeforeRewards, rewardDiscount]);
 
     const handlePlaceOrder = async () => {
         if (cart.length === 0) return;
@@ -1278,7 +1323,12 @@ const POSPage: React.FC = () => {
             let finalPaymentStatus = isManualCollectedPayment || isVerifiedStripePayment ? "paid" : "pending";
             let finalPaymentIntentId = paymentIntentId;
 
-            if (orderType === 'dine_in') {
+            // Handle fully paid by rewards
+            if (finalTotal === 0 && cart.length > 0) {
+                finalPaymentMethod = 'rewards';
+                finalPaymentStatus = 'paid';
+                console.log("[POS] Order fully covered by rewards/coupons. Setting status to PAID.");
+            } else if (orderType === 'dine_in') {
                 // For dine-in, always start with pending status
                 finalPaymentStatus = 'pending';
                 finalPaymentIntentId = undefined; // No payment intent for dine-in initially
@@ -1676,6 +1726,7 @@ const POSPage: React.FC = () => {
                     suggestedPhone={suggestedPhone}
                     customerConflict={customerConflict}
                     cartTotal={cartTotal}
+                    finalTotal={finalTotal}
                     tableError={tableError}
                     setTableError={setTableError}
                     selectedTable={selectedTable}
@@ -1694,6 +1745,8 @@ const POSPage: React.FC = () => {
                     setScheduledDate={setScheduledDate}
                     scheduledTime={scheduledTime}
                     setScheduledTime={setScheduledTime}
+                    maxUsablePoints={maxUsablePoints}
+                    isApplyingCoupon={isApplyingCoupon}
                 />
                 {/* Table Group Actions (Clear Pending Merge) */}
                 {pendingMergeSecondaryIds.length > 0 && (
@@ -1899,6 +1952,32 @@ const POSPage: React.FC = () => {
                         '& .MuiTabs-indicator': {
                             height: { xs: 2, sm: 3 },
                         },
+                        // Visual indicators for scrollable edges
+                        position: 'relative',
+                        '&::after': {
+                            content: '""',
+                            position: 'absolute',
+                            right: 0,
+                            top: 0,
+                            bottom: 0,
+                            width: 40,
+                            background: 'linear-gradient(to left, rgba(255,255,255,0.9), transparent)',
+                            pointerEvents: 'none',
+                            zIndex: 1,
+                            display: { xs: 'block', sm: 'none' }
+                        },
+                        '&::before': {
+                            content: '""',
+                            position: 'absolute',
+                            left: 0,
+                            top: 0,
+                            bottom: 0,
+                            width: 40,
+                            background: 'linear-gradient(to right, rgba(255,255,255,0.9), transparent)',
+                            pointerEvents: 'none',
+                            zIndex: 1,
+                            display: { xs: 'block', sm: 'none' }
+                        }
                     }}
                 >
                     <Tab label="All Items" value="all" />

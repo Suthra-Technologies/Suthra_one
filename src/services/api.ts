@@ -510,7 +510,15 @@ export const superAPI = {
   // Demo requests management
   listDemoRequests: (params?: any) => api.get('/superadmin/demo-requests', { params }),
   updateDemoRequest: (id: string, data: any) => api.patch(`/superadmin/demo-requests/${id}`, data),
+  confirmDemoRequest: (id: string, data: any) => api.patch(`/superadmin/demo-requests/${id}/confirm`, data),
   deleteDemoRequest: (id: string) => api.delete(`/superadmin/demo-requests/${id}`),
+  adminRescheduleDemo: (id: string, data: { newDate: string; newTime: string; requestedBy: string }) => api.put(`/superadmin/demo-requests/${id}/reschedule`, data),
+};
+
+export const publicDemoAPI = {
+  getDemoByToken: (token: string) => api.get(`/email/demo-requests/reschedule/${token}`),
+  rescheduleDemo: (token: string, newDateTime: string) => api.patch(`/email/demo-requests/reschedule/${token}`, { newDateTime }),
+  getAvailableSlots: (date: string) => api.get('/email/demo-requests/slots', { params: { date } }),
 };
 
 export const superAdminAPI = superAPI; // alias for compatibility
@@ -696,11 +704,36 @@ export const smsAPI = {
   sendTest: (to: string, message: string) => api.post('/sms/test', { to, message }),
 };
 
-// -------------------- Email API --------------------
 export const emailAPI = {
   getLogs: (params: { page: number; limit: number; type?: string; startDate?: string; endDate?: string }) =>
     api.get('/email/logs', { params }),
   getSummary: (params?: { startDate?: string; endDate?: string }) => api.get('/email/summary', { params }),
+};
+
+// -------------------- Assets API --------------------
+export const assetsAPI = {
+  getAll: (params?: { type?: string; status?: string; search?: string; page?: number; limit?: number }) => api.get('/assets', { params }),
+  getOne: (id: string) => api.get(`/assets/${id}`),
+  create: (data: any) => api.post('/assets', data),
+  update: (id: string, data: any) => api.put(`/assets/${id}`, data),
+  delete: (id: string) => api.delete(`/assets/${id}`),
+  getInsights: () => api.get('/assets/insights'),
+  getCounts: () => api.get('/assets/counts'),
+  getHistory: (id: string) => api.get(`/assets/${id}/history`),
+  addHistory: (id: string, data: any) => api.post(`/assets/${id}/history`, data),
+  completeService: (id: string, data: { date: string; cost: number }) => api.post(`/assets/${id}/complete-service`, data),
+  completeRenewal: (id: string, data: { date: string; cost: number }) => api.post(`/assets/${id}/complete-renewal`, data),
+};
+
+// -------------------- Expenses API --------------------
+export const expensesAPI = {
+  create: (data: any) => api.post('/expenses', data),
+  getAll: (params?: any) => api.get('/expenses', { params }),
+  getOne: (id: string) => api.get(`/expenses/${id}`),
+  update: (id: string, data: any) => api.put(`/expenses/${id}`, data),
+  delete: (id: string) => api.delete(`/expenses/${id}`),
+  getStats: () => api.get('/expenses/stats'),
+  getSuggestions: () => api.get('/expenses/suggestions'),
 };
 
 export default api;

@@ -34,6 +34,7 @@ import FeedbackPage from './pages/public/FeedbackPage';
 import HomePage from './pages/public/HomePage';
 import PrivacyPolicyPage from './pages/public/PrivacyPolicyPage';
 import TermsConditionsPage from './pages/public/TermsConditionsPage';
+import RescheduleDemoPage from './pages/public/RescheduleDemoPage';
 import CreatePOPage from './pages/purchase-orders/CreatePOPage';
 import PurchaseOrderDetailPage from './pages/purchase-orders/PurchaseOrderDetailPage';
 import PurchaseOrdersPage from './pages/purchase-orders/PurchaseOrdersPage';
@@ -229,6 +230,7 @@ const AppRoutes: React.FC = () => {
       <Route path="/" element={isNative ? <Navigate to={hasStoredSession ? defaultAuthedPath : '/login'} replace /> : <HomePage />} />
       <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
       <Route path="/terms-and-conditions" element={<TermsConditionsPage />} />
+      <Route path="/reschedule-demo/:token" element={<RescheduleDemoPage />} />
       <Route path="/login" element={hasStoredSession ? <Navigate to={defaultAuthedPath} replace /> : <LoginPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/register" element={<RestaurantRegisterPage />} />
@@ -256,7 +258,7 @@ const AppRoutes: React.FC = () => {
         <>
           {TenantRoutes()}
           {/* Redirect from /mythri/dashboard to /dashboard if on mythri.localhost */}
-          <Route path="/:slug/*" element={<SubdomainRedirect contextSlug={hostnameSlug} />} />
+          <Route path={`/${hostnameSlug}/*`} element={<SubdomainRedirect contextSlug={hostnameSlug} />} />
         </>
       )}
 
@@ -303,7 +305,6 @@ const App: React.FC = () => {
  * e.g. mythri.localhost/mythri/menu -> mythri.localhost/menu
  */
 const SubdomainRedirect: React.FC<{ contextSlug: string }> = ({ contextSlug }) => {
-  const { slug } = useParams<{ slug: string }>();
   const location = useLocation();
 
   const redirectContent = (path: string) => (
@@ -323,15 +324,9 @@ const SubdomainRedirect: React.FC<{ contextSlug: string }> = ({ contextSlug }) =
     </Box>
   );
 
-  if (slug === contextSlug) {
-    // Remove the slug from the path but preserve query parameters
-    const newPath = (location.pathname.replace(`/${slug}`, '') || '/') + location.search;
-    return redirectContent(newPath);
-  }
-
-  // If the slug doesn't match the subdomain, fallback redirect
-  const fallbackPath = "/" + location.search;
-  return redirectContent(fallbackPath);
+  // Remove the slug from the path but preserve query parameters
+  const newPath = (location.pathname.replace(`/${contextSlug}`, '') || '/') + location.search;
+  return redirectContent(newPath);
 };
 
 export default App;

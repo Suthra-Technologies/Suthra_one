@@ -1,14 +1,17 @@
 import {
     Add as AddIcon,
     ShoppingCart as CartIcon,
+    CheckCircle as CheckIcon,
     LocalOffer as CouponIcon,
     Delete as DeleteIcon,
     Remove as RemoveIcon,
 } from '@mui/icons-material';
 import {
+    Alert,
     Box,
     Button,
     Chip,
+    CircularProgress,
     Divider,
     IconButton,
     InputAdornment,
@@ -42,6 +45,7 @@ interface OrderDetailsSectionProps {
     finalTotal: number;
     rewardDiscount?: number;
     placingOrder: boolean;
+    isApplyingCoupon?: boolean;
     handlePlaceOrder: () => void;
 }
 
@@ -65,6 +69,7 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
     finalTotal,
     rewardDiscount = 0,
     placingOrder,
+    isApplyingCoupon = false,
     handlePlaceOrder,
 }) => {
     return (
@@ -111,9 +116,17 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
                     </ListItem>
                 ))}
                 {cart.length === 0 && (
-                    <Box sx={{ p: 3, textAlign: 'center' }}>
-                        <CartIcon sx={{ fontSize: 40, color: 'text.disabled', mb: 1 }} />
-                        <Typography color="text.secondary">Cart is empty</Typography>
+                    <Box sx={{ p: 4, textAlign: 'center', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                        <Box sx={{ mb: 2, position: 'relative', display: 'inline-block' }}>
+                            <CartIcon sx={{ fontSize: 64, color: 'action.disabled', opacity: 0.2 }} />
+                            <AddIcon sx={{ position: 'absolute', bottom: 0, right: 0, fontSize: 24, color: 'primary.main' }} />
+                        </Box>
+                        <Typography variant="h6" color="text.secondary" gutterBottom>
+                            Your cart is empty
+                        </Typography>
+                        <Typography variant="body2" color="text.disabled" sx={{ px: 2 }}>
+                            Add some delicious items from the menu to start your order.
+                        </Typography>
                     </Box>
                 )}
             </List>
@@ -157,9 +170,10 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
                             }
                         }}
                     >
-                        {couponDiscount > 0 ? 'Remove' : 'Apply'}
+                        {isApplyingCoupon ? 'Wait...' : (couponDiscount > 0 ? 'Remove' : 'Apply')}
                     </Button>
                 </Stack>
+                {isApplyingCoupon && <CircularProgress size={14} sx={{ mt: 1, ml: 1 }} />}
 
                 {/* Quick-pick available coupons */}
                 {availableCoupons.length > 0 && couponDiscount === 0 && (
@@ -225,15 +239,26 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
                         {formatSmartPrice(finalTotal)}
                     </Typography>
                 </Box>
+                <Box sx={{ mb: 2 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic', display: 'block', mb: 1 }}>
+                        ℹ️ Coupon is applied first, then rewards are used for the remaining balance.
+                    </Typography>
+                    {finalTotal === 0 && cart.length > 0 && (
+                        <Alert severity="success" icon={false} sx={{ py: 0, px: 1, '& .MuiAlert-message': { fontSize: '0.75rem' } }}>
+                            ✨ Fully paid using rewards!
+                        </Alert>
+                    )}
+                </Box>
                 <Button
                     variant="contained"
                     fullWidth
                     size="large"
                     disabled={cart.length === 0 || placingOrder}
-                    startIcon={<CartIcon />}
+                    color={finalTotal === 0 && cart.length > 0 ? 'success' : 'primary'}
+                    startIcon={finalTotal === 0 && cart.length > 0 ? <CheckIcon /> : <CartIcon />}
                     onClick={handlePlaceOrder}
                 >
-                    {placingOrder ? 'Placing...' : 'Place Order'}
+                    {placingOrder ? 'Placing...' : (finalTotal === 0 && cart.length > 0 ? 'Complete Order' : 'Place Order')}
                 </Button>
             </Box>
         </Box>

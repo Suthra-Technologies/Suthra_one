@@ -587,10 +587,10 @@ const PromoCodePage: React.FC = () => {
             <Box sx={{ mb: 4, display: 'flex', flexWrap: 'wrap', gap: 2, justifyContent: 'space-between', alignItems: 'center' }}>
                 <Box sx={{ width: { xs: '100%', sm: 'auto' }, textAlign: { xs: 'center', sm: 'left' } }}>
                     <Typography variant="h4" fontWeight={800} sx={{
-                        color: { xs: '#000', sm: 'transparent' },
+                        color: { xs: theme.palette.text.primary, sm: 'transparent' },
                         background: { xs: 'none', sm: 'linear-gradient(45deg, #4F46E5 30%, #EC4899 90%)' },
                         WebkitBackgroundClip: { xs: 'none', sm: 'text' },
-                        WebkitTextFillColor: { xs: 'initial', sm: 'transparent' },
+                        WebkitTextFillColor: { xs: theme.palette.text.primary, sm: 'transparent' },
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: { xs: 'center', sm: 'flex-start' },
@@ -1116,7 +1116,7 @@ const PromoCodePage: React.FC = () => {
                 maxWidth="md" 
                 fullWidth 
                 fullScreen={isMobile}
-                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 4, bgcolor: '#f8f9fa' } }}
+                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 4, bgcolor: 'background.default' } }}
             >
                 <DialogTitle component="div" sx={{ 
                     display: 'flex', 
@@ -1124,7 +1124,7 @@ const PromoCodePage: React.FC = () => {
                     alignItems: 'center', 
                     borderBottom: '1px solid', 
                     borderColor: alpha(theme.palette.divider, 0.1),
-                    bgcolor: 'white',
+                    bgcolor: 'background.paper',
                     p: isMobile ? 2 : 2.5,
                     pt: isMobile ? '60px' : 2.5
                 }}>
@@ -1158,7 +1158,7 @@ const PromoCodePage: React.FC = () => {
                         <CloseIcon fontSize="small" />
                     </IconButton>
                 </DialogTitle>
-                <DialogContent sx={{ p: isMobile ? 1.5 : 3, bgcolor: '#f8f9fa' }}>
+                <DialogContent sx={{ p: isMobile ? 1.5 : 3, bgcolor: 'background.default' }}>
                     <Grid container spacing={isMobile ? 1.5 : 3} sx={{ mt: 0.5 }}>
                         {/* Basic Info */}
                         <Grid item xs={12} sx={{ display: 'flex', justifyContent: isMobile ? 'center' : 'stretch' }}>
@@ -1170,7 +1170,7 @@ const PromoCodePage: React.FC = () => {
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                                 border: '1px solid',
                                 borderColor: alpha(theme.palette.divider, 0.05),
-                                bgcolor: 'white'
+                                bgcolor: 'background.paper'
                             }}>
                                 <Typography 
                                     variant="caption" 
@@ -1238,7 +1238,7 @@ const PromoCodePage: React.FC = () => {
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                                 border: '1px solid',
                                 borderColor: alpha(theme.palette.divider, 0.05),
-                                bgcolor: 'white'
+                                bgcolor: 'background.paper'
                             }}>
                                 <Typography 
                                     variant="caption" 
@@ -1325,7 +1325,7 @@ const PromoCodePage: React.FC = () => {
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                                 border: '1px solid',
                                 borderColor: alpha(theme.palette.divider, 0.05),
-                                bgcolor: 'white'
+                                bgcolor: 'background.paper'
                             }}>
                                 <Typography 
                                     variant="caption" 
@@ -1416,7 +1416,7 @@ const PromoCodePage: React.FC = () => {
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                                 border: '1px solid',
                                 borderColor: alpha(theme.palette.divider, 0.05),
-                                bgcolor: 'white'
+                                bgcolor: 'background.paper'
                             }}>
                                 <Typography 
                                     variant="caption" 
@@ -1469,7 +1469,7 @@ const PromoCodePage: React.FC = () => {
                         </Grid>
                     </Grid>
                 </DialogContent>
-                <DialogActions sx={{ p: isMobile ? 2 : 3, bgcolor: 'white', borderTop: '1px solid', borderColor: 'divider', gap: 1.5 }}>
+                <DialogActions sx={{ p: isMobile ? 2 : 3, bgcolor: 'background.paper', borderTop: '1px solid', borderColor: 'divider', gap: 1.5 }}>
                     <Button 
                         onClick={() => setOpenDialog(false)} 
                         sx={{ 
@@ -1504,7 +1504,7 @@ const PromoCodePage: React.FC = () => {
                 maxWidth="md"
                 fullWidth
                 fullScreen={isMobile}
-                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 4, bgcolor: '#f8f9fa' } }}
+                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 4, bgcolor: 'background.default' } }}
             >
                 <DialogTitle component="div" sx={{
                     display: 'flex',
@@ -1512,7 +1512,7 @@ const PromoCodePage: React.FC = () => {
                     alignItems: 'center',
                     borderBottom: '1px solid',
                     borderColor: alpha(theme.palette.divider, 0.1),
-                    bgcolor: 'white',
+                    bgcolor: 'background.paper',
                     p: isMobile ? 2 : 2.5,
                     pt: isMobile ? '60px' : 2.5
                 }}>
@@ -1546,10 +1546,10 @@ const PromoCodePage: React.FC = () => {
                         <CloseIcon fontSize="small" />
                     </IconButton>
                 </DialogTitle>
-                <DialogContent sx={{ p: isMobile ? 1.5 : 3, bgcolor: '#f8f9fa' }}>
+                <DialogContent sx={{ p: isMobile ? 1.5 : 3, bgcolor: 'background.default' }}>
                     <Grid container spacing={isMobile ? 1.5 : 3} sx={{ mt: 0.5 }}>
                         <Grid item xs={12} md={7}>
-                            <Paper sx={{ p: isMobile ? 2 : 3, borderRadius: 3, bgcolor: 'white', height: '100%' }}>
+                            <Paper sx={{ p: isMobile ? 2 : 3, borderRadius: 3, bgcolor: 'background.paper', height: '100%' }}>
                                 <Typography variant="caption" fontWeight={700} color="primary" sx={{ display: 'block', mb: 2, textTransform: 'uppercase', fontFamily: '"Outfit", sans-serif' }}>
                                     Message Content
                                 </Typography>
@@ -1575,7 +1575,7 @@ const PromoCodePage: React.FC = () => {
                             </Paper>
                         </Grid>
                         <Grid item xs={12} md={5}>
-                            <Paper sx={{ p: isMobile ? 2 : 3, borderRadius: 3, bgcolor: 'white', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                            <Paper sx={{ p: isMobile ? 2 : 3, borderRadius: 3, bgcolor: 'background.paper', height: '100%', display: 'flex', flexDirection: 'column' }}>
                                 <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <Typography variant="caption" fontWeight={700} color="primary" sx={{ textTransform: 'uppercase', fontFamily: '"Outfit", sans-serif' }}>
                                         Recipients ({emailData.selectedCustomers.length})
@@ -1621,7 +1621,7 @@ const PromoCodePage: React.FC = () => {
                         </Grid>
                     </Grid>
                 </DialogContent>
-                <DialogActions sx={{ p: isMobile ? 2 : 3, bgcolor: 'white', borderTop: '1px solid', borderColor: alpha(theme.palette.divider, 0.1), gap: 1.5 }}>
+                <DialogActions sx={{ p: isMobile ? 2 : 3, bgcolor: 'background.paper', borderTop: '1px solid', borderColor: alpha(theme.palette.divider, 0.1), gap: 1.5 }}>
                     <Button onClick={() => setOpenEmailDialog(false)} sx={{ fontWeight: 'bold', color: 'text.secondary' }}>Cancel</Button>
                     <Button
                         variant="contained"

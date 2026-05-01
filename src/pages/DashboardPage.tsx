@@ -1,8 +1,10 @@
+import React, { useState, useEffect } from 'react';
+import { alpha } from '@mui/material/styles';
 import {
   Refresh
 } from '@mui/icons-material';
 import {
-  alpha,
+  useTheme,
   Box,
   Card,
   CardContent,
@@ -12,27 +14,68 @@ import {
   Stack,
   TextField,
   ToggleButton,
+  Button,
   ToggleButtonGroup,
   Typography,
   useMediaQuery,
-  useTheme
+  Tabs,
+  Tab,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Pagination,
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Tooltip as MuiTooltip,
+  InputAdornment,
 } from '@mui/material';
-import React, { useEffect, useState } from 'react';
+import {
+  AttachMoney,
+  ShoppingCart,
+  TableRestaurant,
+  Kitchen,
+  Inventory,
+  ShoppingBag,
+  Event as EventIcon,
+  Assessment,
+  CheckCircle,
+} from '@mui/icons-material';
 
 
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import AssignmentLateOutlinedIcon from '@mui/icons-material/AssignmentLateOutlined';
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined';
 import EventSeatIcon from '@mui/icons-material/EventSeat';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import RestaurantMenuOutlinedIcon from '@mui/icons-material/RestaurantMenuOutlined';
-import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
+import DescriptionIcon from '@mui/icons-material/Description';
+import BadgeIcon from '@mui/icons-material/Badge';
+import DevicesIcon from '@mui/icons-material/Devices';
+import BuildIcon from '@mui/icons-material/Build';
 
 import { toast } from 'react-hot-toast';
 import { Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useAuth } from '../context/AuthContext';
+import { 
+  reportsAPI, 
+  ordersAPI, 
+  billingAPI, 
+  tenantAPI, 
+  inventoryAPI, 
+  purchaseOrdersAPI, 
+  bookingsAPI, 
+  assetsAPI 
+} from '../services/api';
 import { useSettings } from '../context/SettingsContext';
-import { billingAPI, bookingsAPI, inventoryAPI, purchaseOrdersAPI, reportsAPI } from '../services/api';
 
 // ---------------------------------------------------------------------------
 // StatCard – reusable card used throughout the dashboard
@@ -290,6 +333,17 @@ const DashboardPage: React.FC = () => {
   const [pendingPOs, setPendingPOs] = useState<number>(0);
   const [activeBookings, setActiveBookings] = useState<number>(0);
   const [lowStockItems, setLowStockItems] = useState<number>(0);
+  const [assetInsights, setAssetInsights] = useState<any>(null);
+  const [assetTabValue, setAssetTabValue] = useState(0);
+  const [assetTabData, setAssetTabData] = useState<any>({ data: [], total: 0, page: 1, loading: false });
+  const [completionDialog, setCompletionDialog] = useState({
+    open: false,
+    type: 'service' as 'service' | 'renewal',
+    assetId: '',
+    assetName: '',
+    date: new Date().toISOString().split('T')[0],
+    cost: 0
+  });
 
   const fetchDashboardData = async () => {
     if (timeRange === 'custom' && (!startDate || !endDate)) return;
@@ -310,10 +364,11 @@ const DashboardPage: React.FC = () => {
         bookingsAPI.getAll(),
         reportsAPI.getBestSellingItems(params),
         reportsAPI.getOrdersByType(params),
+        assetsAPI.getInsights(),
       ];
 
       const results = await Promise.all(promises);
-      const [dashboardRes, billingRes, inventoryRes, poRes, bookingsRes, bestSellingRes, ordersByTypeRes] = results;
+      const [dashboardRes, billingRes, inventoryRes, poRes, bookingsRes, bestSellingRes, ordersByTypeRes, assetsRes] = results;
 
       const dashboardDataActual = dashboardRes?.status === 'fulfilled' ? dashboardRes.value?.data : dashboardRes?.data;
       const billingData = billingRes?.status === 'fulfilled' ? billingRes.value?.data : billingRes?.data;
@@ -326,6 +381,8 @@ const DashboardPage: React.FC = () => {
         ordersByType: Array.isArray(ordersByTypeData) ? ordersByTypeData : [],
         subscriptionStatus: billingData?.status || 'unknown',
       });
+
+      setAssetInsights(assetsRes?.data);
 
       // Process Inventory for low stock
       const inventoryData = inventoryRes?.status === 'fulfilled' ? inventoryRes.value?.data : inventoryRes?.data;
@@ -361,6 +418,41 @@ const DashboardPage: React.FC = () => {
     }
   };
 
+  const fetchAssetTabData = async (status: string, page: number) => {
+    setAssetTabData((prev: any) => ({ ...prev, loading: true }));
+    try {
+      const res = await assetsAPI.getAll({ status, page, limit: 5 });
+      setAssetTabData({
+        data: res.data.data,
+        total: res.data.total,
+        page: res.data.page,
+        loading: false,
+      });
+    } catch (error) {
+      console.error('Error fetching asset tab data:', error);
+      setAssetTabData((prev: any) => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleCompleteAction = async () => {
+    try {
+      if (completionDialog.type === 'service') {
+        await assetsAPI.completeService(completionDialog.assetId, { date: completionDialog.date, cost: completionDialog.cost });
+      } else {
+        await assetsAPI.completeRenewal(completionDialog.assetId, { date: completionDialog.date, cost: completionDialog.cost });
+      }
+      toast.success(`${completionDialog.type === 'service' ? 'Service' : 'Renewal'} recorded successfully`);
+      setCompletionDialog({ ...completionDialog, open: false });
+      
+      // Refresh both insights and current tab data
+      fetchDashboardData();
+      const statuses = ['expired', 'expiring', 'service_due', 'upcoming_service'];
+      fetchAssetTabData(statuses[assetTabValue], assetTabData.page);
+    } catch (error) {
+      toast.error('Failed to record completion');
+    }
+  };
+
   useEffect(() => {
     fetchDashboardData();
     const interval = setInterval(fetchDashboardData, 30000);
@@ -382,6 +474,26 @@ const DashboardPage: React.FC = () => {
       window.removeEventListener('bookingUpdate', handleRealtimeUpdate);
     };
   }, [timeRange, startDate, endDate]);
+
+  useEffect(() => {
+    const statuses = ['expired', 'expiring', 'service_due', 'upcoming_service'];
+    fetchAssetTabData(statuses[assetTabValue], 1);
+  }, [assetTabValue]);
+
+  const getAssetIcon = (type: string) => {
+    switch (type?.toLowerCase()) {
+      case 'vehicle': return <DirectionsCarIcon />;
+      case 'document': return <DescriptionIcon />;
+      case 'license': return <BadgeIcon />;
+      case 'gadget': return <DevicesIcon />;
+      case 'equipment': return <BuildIcon />;
+      default: return <Inventory2OutlinedIcon />;
+    }
+  };
+
+  const navigate = (path: string) => {
+    window.location.href = path; // Using window.location since I don't have useNavigate import here (wait, I should check if I have it)
+  };
 
   // ✅ Create Top 10 Best Selling Items (Sorted by Quantity)
   // const topTenItems =
@@ -720,6 +832,7 @@ const DashboardPage: React.FC = () => {
         </Grid>
 
       </Grid>
+
       {/* ================= BOOKINGS SECTION ================= */}
 
       {!hasBookings ? (
@@ -1047,6 +1160,277 @@ const DashboardPage: React.FC = () => {
       )}
 
 
+      {/* Asset Lifecycle Management Section - MOVED TO BOTTOM */}
+      <Box sx={{ mt: 6, mb: 4 }}>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
+          <Typography variant="h5" fontWeight="700">
+            Asset Lifecycle Management
+          </Typography>
+          <Button 
+            variant="outlined" 
+            size="small" 
+            onClick={() => navigate('/assets')}
+            sx={{ borderRadius: 2 }}
+          >
+            Go to Asset Module
+          </Button>
+        </Stack>
+
+        {/* Asset Stat Cards */}
+        <Grid container spacing={2} mb={3}>
+          <Grid item xs={6} sm={3}>
+            <Card 
+              onClick={() => setAssetTabValue(0)}
+              sx={{ 
+                cursor: 'pointer', 
+                p: 2, 
+                borderRadius: 3, 
+                bgcolor: alpha(theme.palette.error.main, 0.05),
+                border: assetTabValue === 0 ? `2px solid ${theme.palette.error.main}` : 'none',
+                transition: 'all 0.2s',
+                '&:hover': { transform: 'translateY(-4px)', boxShadow: theme.shadows[2] }
+              }}
+            >
+              <Typography variant="caption" color="error" fontWeight="700">EXPIRED</Typography>
+              <Typography variant="h4" fontWeight="800" color="error">{assetInsights?.summary?.expired || 0}</Typography>
+            </Card>
+          </Grid>
+          <Grid item xs={6} sm={3}>
+            <Card 
+              onClick={() => setAssetTabValue(1)}
+              sx={{ 
+                cursor: 'pointer', 
+                p: 2, 
+                borderRadius: 3, 
+                bgcolor: alpha(theme.palette.warning.main, 0.05),
+                border: assetTabValue === 1 ? `2px solid ${theme.palette.warning.main}` : 'none',
+                transition: 'all 0.2s',
+                '&:hover': { transform: 'translateY(-4px)', boxShadow: theme.shadows[2] }
+              }}
+            >
+              <Typography variant="caption" color="warning.main" fontWeight="700">EXPIRING SOON</Typography>
+              <Typography variant="h4" fontWeight="800" color="warning.main">{assetInsights?.summary?.expiringSoon || 0}</Typography>
+            </Card>
+          </Grid>
+          <Grid item xs={6} sm={3}>
+            <Card 
+              onClick={() => setAssetTabValue(2)}
+              sx={{ 
+                cursor: 'pointer', 
+                p: 2, 
+                borderRadius: 3, 
+                bgcolor: alpha(theme.palette.info.main, 0.05),
+                border: assetTabValue === 2 ? `2px solid ${theme.palette.info.main}` : 'none',
+                transition: 'all 0.2s',
+                '&:hover': { transform: 'translateY(-4px)', boxShadow: theme.shadows[2] }
+              }}
+            >
+              <Typography variant="caption" color="info.main" fontWeight="700">SERVICE DUE</Typography>
+              <Typography variant="h4" fontWeight="800" color="info.main">{assetInsights?.summary?.maintenanceDue || 0}</Typography>
+            </Card>
+          </Grid>
+          <Grid item xs={6} sm={3}>
+            <Card 
+              onClick={() => setAssetTabValue(3)}
+              sx={{ 
+                cursor: 'pointer', 
+                p: 2, 
+                borderRadius: 3, 
+                bgcolor: alpha(theme.palette.success.main, 0.05),
+                border: assetTabValue === 3 ? `2px solid ${theme.palette.success.main}` : 'none',
+                transition: 'all 0.2s',
+                '&:hover': { transform: 'translateY(-4px)', boxShadow: theme.shadows[2] }
+              }}
+            >
+              <Typography variant="caption" color="success.main" fontWeight="700">UPCOMING SERVICES</Typography>
+              <Typography variant="h4" fontWeight="800" color="success.main">{assetInsights?.summary?.upcomingServices || 0}</Typography>
+            </Card>
+          </Grid>
+        </Grid>
+
+        {/* Asset Table */}
+        <Card sx={{ borderRadius: 3, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+          <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: alpha(theme.palette.primary.main, 0.02) }}>
+            <Tabs
+              value={assetTabValue}
+              onChange={(_, newValue) => setAssetTabValue(newValue)}
+              variant="scrollable"
+              scrollButtons="auto"
+              sx={{ px: 2 }}
+            >
+              <Tab label={`Expired (${assetInsights?.summary?.expired || 0})`} />
+              <Tab label={`Expiring Soon (${assetInsights?.summary?.expiringSoon || 0})`} />
+              <Tab label={`Service Due (${assetInsights?.summary?.maintenanceDue || 0})`} />
+              <Tab label={`Upcoming Services (${assetInsights?.summary?.upcomingServices || 0})`} />
+            </Tabs>
+          </Box>
+          <CardContent sx={{ p: 0 }}>
+            {assetTabData.loading ? (
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+                <CircularProgress size={32} />
+              </Box>
+            ) : (
+              <>
+                <TableContainer>
+                  <Table size="small">
+                    <TableHead sx={{ bgcolor: alpha(theme.palette.primary.main, 0.02) }}>
+                      <TableRow>
+                        <TableCell sx={{ fontWeight: 700 }}>Asset Name</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>Type</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>Relevant Date</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }} align="right">Actions</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {assetTabData.data.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                            <Typography variant="body2" color="text.secondary">No assets found in this category</Typography>
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        assetTabData.data.map((asset: any) => (
+                          <TableRow key={asset._id} hover>
+                            <TableCell>
+                              <Typography variant="subtitle2" fontWeight="700">{asset.name}</Typography>
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                icon={getAssetIcon(asset.type)}
+                                label={asset.type}
+                                size="small"
+                                sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), color: theme.palette.primary.main }}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              {assetTabValue < 2 ? (
+                                asset.lifecycle?.expiryDate ? new Date(asset.lifecycle.expiryDate).toLocaleDateString() : 'N/A'
+                              ) : (
+                                asset.lifecycle?.nextServiceDate ? new Date(asset.lifecycle.nextServiceDate).toLocaleDateString() : 'N/A'
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                label={assetTabValue === 0 ? 'Expired' : assetTabValue === 2 ? 'Overdue' : 'Due Soon'}
+                                size="small"
+                                color={assetTabValue % 2 === 0 ? 'error' : 'warning'}
+                                variant="outlined"
+                              />
+                            </TableCell>
+                            <TableCell align="right">
+                              <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                {asset.lifecycle?.serviceRequired && (
+                                  <MuiTooltip title="Record Service">
+                                    <IconButton
+                                      size="small"
+                                      color="info"
+                                      onClick={() => setCompletionDialog({
+                                        open: true,
+                                        type: 'service',
+                                        assetId: asset._id,
+                                        assetName: asset.name,
+                                        date: new Date().toISOString().split('T')[0],
+                                        cost: 0
+                                      })}
+                                    >
+                                      <BuildIcon fontSize="small" />
+                                    </IconButton>
+                                  </MuiTooltip>
+                                )}
+                                {(asset.type === 'Document' || asset.type === 'License') && asset.lifecycle?.renewalRequired && (
+                                  <MuiTooltip title="Record Renewal">
+                                    <IconButton
+                                      size="small"
+                                      color="warning"
+                                      onClick={() => setCompletionDialog({
+                                        open: true,
+                                        type: 'renewal',
+                                        assetId: asset._id,
+                                        assetName: asset.name,
+                                        date: new Date().toISOString().split('T')[0],
+                                        cost: 0
+                                      })}
+                                    >
+                                      <CheckCircle fontSize="small" />
+                                    </IconButton>
+                                  </MuiTooltip>
+                                )}
+                                <MuiTooltip title="View/Edit">
+                                  <IconButton
+                                    size="small"
+                                    color="primary"
+                                    onClick={() => navigate(`/assets/${asset._id}/edit`)}
+                                  >
+                                    <Assessment fontSize="small" />
+                                  </IconButton>
+                                </MuiTooltip>
+                              </Stack>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+                {assetTabData.total > 5 && (
+                  <Box sx={{ p: 1, display: 'flex', justifyContent: 'center', borderTop: 1, borderColor: 'divider' }}>
+                    <Pagination
+                      count={Math.ceil(assetTabData.total / 5)}
+                      page={assetTabData.page}
+                      onChange={(_, page) => {
+                        const statuses = ['expired', 'expiring', 'service_due', 'upcoming_service'];
+                        fetchAssetTabData(statuses[assetTabValue], page);
+                      }}
+                      color="primary"
+                      size="small"
+                    />
+                  </Box>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </Box>
+
+      {/* Completion Dialog */}
+      <Dialog open={completionDialog.open} onClose={() => setCompletionDialog({ ...completionDialog, open: false })} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ textTransform: 'capitalize' }}>
+          Record {completionDialog.type}
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 1 }}>
+            <Typography variant="body2" mb={2}>
+              Recording completion for <strong>{completionDialog.assetName}</strong>. 
+              The next {completionDialog.type} date will be automatically calculated.
+            </Typography>
+            <Stack spacing={2}>
+              <TextField
+                fullWidth
+                label="Completion Date"
+                type="date"
+                InputLabelProps={{ shrink: true }}
+                value={completionDialog.date}
+                onChange={(e) => setCompletionDialog({ ...completionDialog, date: e.target.value })}
+              />
+              <TextField
+                fullWidth
+                label="Total Cost"
+                type="number"
+                value={completionDialog.cost}
+                onChange={(e) => setCompletionDialog({ ...completionDialog, cost: parseFloat(e.target.value) || 0 })}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start">{formatCurrency(0).replace(/[0-9.]/g, '')}</InputAdornment>,
+                }}
+              />
+            </Stack>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, pt: 0 }}>
+          <Button onClick={() => setCompletionDialog({ ...completionDialog, open: false })}>Cancel</Button>
+          <Button variant="contained" onClick={handleCompleteAction}>Record & Schedule Next</Button>
+        </DialogActions>
+      </Dialog>
     </Box >
   );
 };
