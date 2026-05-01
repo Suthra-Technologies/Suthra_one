@@ -21,6 +21,8 @@ import {
     CircularProgress,
     Card,
     CardContent,
+    useMediaQuery,
+    useTheme,
 } from '@mui/material';
 import {
     History as HistoryIcon,
@@ -36,6 +38,11 @@ import { auditLogsAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 
 const AuditLogsPage: React.FC = () => {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const headingFontSize = { xs: '1.1rem', sm: '1.4rem', md: '2rem' };
+    const bodyFontSize = { xs: '0.78rem', sm: '0.88rem', md: '0.95rem' };
+
     const [logs, setLogs] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [page, setPage] = useState(0);
@@ -126,36 +133,52 @@ const AuditLogsPage: React.FC = () => {
         return new Date(dateString).toLocaleString();
     };
 
+    const getDetailsText = (details: any) => (
+        typeof details === 'string' ? details : JSON.stringify(details)
+    );
+
     return (
-        <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-            <Box sx={{ mb: 4 }}>
-                <Typography variant="h4" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <HistoryIcon fontSize="large" />
+        <Container maxWidth="xl" sx={{ mt: { xs: 1.5, sm: 4 }, mb: { xs: 2, sm: 4 }, px: { xs: 1.25, sm: 3 } }}>
+            <Box sx={{ mb: { xs: 2, sm: 4 } }}>
+                <Typography
+                    variant="h4"
+                    gutterBottom
+                    sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: { xs: 'center', sm: 'flex-start' },
+                        gap: 1,
+                        textAlign: { xs: 'center', sm: 'left' },
+                        color: { xs: '#000', sm: 'text.primary' },
+                        fontSize: headingFontSize,
+                    }}
+                >
+                    <HistoryIcon sx={{ fontSize: { xs: 22, sm: 34 } }} />
                     Audit Logs
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="text.secondary" sx={{ fontSize: bodyFontSize, textAlign: { xs: 'center', sm: 'left' } }}>
                     Track all system actions and changes made by users
                 </Typography>
             </Box>
 
             {/* Summary Cards */}
-            <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1.25, sm: 2 }} sx={{ mb: { xs: 2, sm: 3 } }}>
                 <Card sx={{ flex: 1, background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
-                    <CardContent>
-                        <Typography variant="h6" sx={{ color: 'white' }}>
+                    <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+                        <Typography variant="h6" sx={{ color: 'white', fontSize: headingFontSize }}>
                             Total Logs
                         </Typography>
-                        <Typography variant="h3" sx={{ color: 'white', fontWeight: 'bold' }}>
+                        <Typography variant="h3" sx={{ color: 'white', fontWeight: 'bold', fontSize: { xs: '1.35rem', sm: '2rem', md: '3rem' } }}>
                             {total}
                         </Typography>
                     </CardContent>
                 </Card>
                 <Card sx={{ flex: 1, background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }}>
-                    <CardContent>
-                        <Typography variant="h6" sx={{ color: 'white' }}>
+                    <CardContent sx={{ p: { xs: 1.5, sm: 2 } }}>
+                        <Typography variant="h6" sx={{ color: 'white', fontSize: headingFontSize }}>
                             Modules Tracked
                         </Typography>
-                        <Typography variant="h3" sx={{ color: 'white', fontWeight: 'bold' }}>
+                        <Typography variant="h3" sx={{ color: 'white', fontWeight: 'bold', fontSize: { xs: '1.35rem', sm: '2rem', md: '3rem' } }}>
                             {modules.length}
                         </Typography>
                     </CardContent>
@@ -163,17 +186,18 @@ const AuditLogsPage: React.FC = () => {
             </Stack>
 
             {/* Filters */}
-            <Paper sx={{ p: 3, mb: 3 }}>
-                <Typography variant="h6" gutterBottom>
+            <Paper sx={{ p: { xs: 1.5, sm: 3 }, mb: { xs: 2, sm: 3 } }}>
+                <Typography variant="h6" gutterBottom sx={{ fontSize: headingFontSize, color: { xs: '#000', sm: 'text.primary' }, textAlign: { xs: 'center', sm: 'left' } }}>
                     Filters
                 </Typography>
-                <Stack direction="row" spacing={2} flexWrap="wrap">
-                    <FormControl sx={{ minWidth: 200 }}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1, sm: 2 }} flexWrap="wrap">
+                    <FormControl fullWidth={isMobile} sx={{ minWidth: { xs: '100%', sm: 200 } }}>
                         <InputLabel>Module</InputLabel>
                         <Select
                             value={moduleFilter}
                             label="Module"
                             onChange={(e) => setModuleFilter(e.target.value)}
+                            size={isMobile ? 'small' : 'medium'}
                         >
                             <MenuItem value="">All Modules</MenuItem>
                             {modules.map((module) => (
@@ -184,12 +208,13 @@ const AuditLogsPage: React.FC = () => {
                         </Select>
                     </FormControl>
 
-                    <FormControl sx={{ minWidth: 200 }}>
+                    <FormControl fullWidth={isMobile} sx={{ minWidth: { xs: '100%', sm: 200 } }}>
                         <InputLabel>Action</InputLabel>
                         <Select
                             value={actionFilter}
                             label="Action"
                             onChange={(e) => setActionFilter(e.target.value)}
+                            size={isMobile ? 'small' : 'medium'}
                         >
                             <MenuItem value="">All Actions</MenuItem>
                             {actions.map((action) => (
@@ -206,7 +231,9 @@ const AuditLogsPage: React.FC = () => {
                         value={startDate}
                         onChange={(e) => setStartDate(e.target.value)}
                         InputLabelProps={{ shrink: true }}
-                        sx={{ minWidth: 200 }}
+                        size={isMobile ? 'small' : 'medium'}
+                        fullWidth={isMobile}
+                        sx={{ minWidth: { xs: '100%', sm: 200 } }}
                     />
 
                     <TextField
@@ -215,15 +242,74 @@ const AuditLogsPage: React.FC = () => {
                         value={endDate}
                         onChange={(e) => setEndDate(e.target.value)}
                         InputLabelProps={{ shrink: true }}
-                        sx={{ minWidth: 200 }}
+                        size={isMobile ? 'small' : 'medium'}
+                        fullWidth={isMobile}
+                        sx={{ minWidth: { xs: '100%', sm: 200 } }}
                     />
                 </Stack>
             </Paper>
 
+            {/* Audit Logs - Mobile Cards */}
+            <Paper sx={{ display: { xs: 'block', md: 'none' }, p: 1.1, mb: 1.25 }}>
+                {loading ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+                        <CircularProgress size={22} />
+                    </Box>
+                ) : logs.length === 0 ? (
+                    <Box sx={{ py: 2, textAlign: 'center' }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: bodyFontSize }}>
+                            No audit logs found
+                        </Typography>
+                    </Box>
+                ) : (
+                    <Stack spacing={1}>
+                        {logs.map((log) => (
+                            <Paper key={log._id} variant="outlined" sx={{ p: 1.1, borderRadius: 2 }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                    <Typography variant="caption" sx={{ fontSize: bodyFontSize }}>
+                                        {formatDate(log.createdAt)}
+                                    </Typography>
+                                    <Chip
+                                        icon={getActionIcon(log.action)}
+                                        label={log.action}
+                                        size="small"
+                                        color={getActionColor(log.action)}
+                                    />
+                                </Box>
+                                <Box sx={{ display: 'flex', gap: 0.75, mb: 0.5, flexWrap: 'wrap' }}>
+                                    <Chip icon={<CategoryIcon />} label={log.module} size="small" color="primary" variant="outlined" />
+                                    <Chip label={log.userRole} size="small" variant="outlined" />
+                                </Box>
+                                <Typography variant="body2" sx={{ fontSize: bodyFontSize }}>
+                                    <strong>User:</strong> {log.performedByName}
+                                </Typography>
+                                <Typography variant="body2" sx={{ fontSize: bodyFontSize }}>
+                                    <strong>Target:</strong> {log.targetName || log.targetId}
+                                </Typography>
+                                <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                    sx={{
+                                        fontSize: bodyFontSize,
+                                        mt: 0.35,
+                                        display: '-webkit-box',
+                                        WebkitLineClamp: 2,
+                                        WebkitBoxOrient: 'vertical',
+                                        overflow: 'hidden',
+                                    }}
+                                >
+                                    {getDetailsText(log.details)}
+                                </Typography>
+                            </Paper>
+                        ))}
+                    </Stack>
+                )}
+            </Paper>
+
             {/* Audit Logs Table */}
             <Paper>
-                <TableContainer>
-                    <Table>
+                <TableContainer sx={{ overflowX: 'auto', display: { xs: 'none', md: 'block' } }}>
+                    <Table size={isMobile ? 'small' : 'medium'} sx={{ minWidth: { xs: 760, sm: 900 } }}>
                         <TableHead>
                             <TableRow>
                                 <TableCell>Timestamp</TableCell>
@@ -245,7 +331,7 @@ const AuditLogsPage: React.FC = () => {
                             ) : logs.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
-                                        <Typography variant="body2" color="text.secondary">
+                                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: bodyFontSize }}>
                                             No audit logs found
                                         </Typography>
                                     </TableCell>
@@ -254,7 +340,7 @@ const AuditLogsPage: React.FC = () => {
                                 logs.map((log) => (
                                     <TableRow key={log._id} hover>
                                         <TableCell>
-                                            <Typography variant="body2">
+                                            <Typography variant="body2" sx={{ fontSize: bodyFontSize }}>
                                                 {formatDate(log.createdAt)}
                                             </Typography>
                                         </TableCell>
@@ -278,7 +364,7 @@ const AuditLogsPage: React.FC = () => {
                                         <TableCell>
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                                 <PersonIcon fontSize="small" color="action" />
-                                                <Typography variant="body2">
+                                                <Typography variant="body2" sx={{ fontSize: bodyFontSize }}>
                                                     {log.performedByName}
                                                 </Typography>
                                             </Box>
@@ -287,7 +373,7 @@ const AuditLogsPage: React.FC = () => {
                                             <Chip label={log.userRole} size="small" variant="outlined" />
                                         </TableCell>
                                         <TableCell>
-                                            <Typography variant="body2" fontWeight="medium">
+                                            <Typography variant="body2" fontWeight="medium" sx={{ fontSize: bodyFontSize }}>
                                                 {log.targetName || log.targetId}
                                             </Typography>
                                         </TableCell>
@@ -296,15 +382,14 @@ const AuditLogsPage: React.FC = () => {
                                                 variant="body2"
                                                 color="text.secondary"
                                                 sx={{
+                                                    fontSize: bodyFontSize,
                                                     maxWidth: 300,
                                                     overflow: 'hidden',
                                                     textOverflow: 'ellipsis',
                                                     whiteSpace: 'nowrap',
                                                 }}
                                             >
-                                                {typeof log.details === 'string'
-                                                    ? log.details
-                                                    : JSON.stringify(log.details)}
+                                                {getDetailsText(log.details)}
                                             </Typography>
                                         </TableCell>
                                     </TableRow>
@@ -321,6 +406,10 @@ const AuditLogsPage: React.FC = () => {
                     page={page}
                     onPageChange={handleChangePage}
                     onRowsPerPageChange={handleChangeRowsPerPage}
+                    sx={{
+                        '& .MuiTablePagination-toolbar': { px: { xs: 0.5, sm: 2 }, minHeight: { xs: 44, sm: 52 } },
+                        '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': { fontSize: bodyFontSize, m: 0 }
+                    }}
                 />
             </Paper>
         </Container>

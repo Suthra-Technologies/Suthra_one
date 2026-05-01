@@ -302,6 +302,8 @@ const InventoryPage: React.FC = () => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const isTabletOrMobile = useMediaQuery(theme.breakpoints.down('lg'));
+    const headingFontSize = { xs: '1.12rem', sm: '1.4rem', md: '2.125rem' };
+    const bodyFontSize = { xs: '0.78rem', sm: '0.88rem', md: '0.95rem' };
     const [tabValue, setTabValue] = React.useState(0);
     const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>([]);
     const [dailyReport, setDailyReport] = useState<DailyReport | null>(null);
@@ -465,9 +467,17 @@ const InventoryPage: React.FC = () => {
     };
 
     return (
-        <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
-            <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="h4" fontWeight="bold">
+        <Container maxWidth="xl" sx={{ mt: { xs: 1.5, sm: 4 }, mb: { xs: 2, sm: 4 }, px: { xs: 1.25, sm: 3 } }}>
+            <Box sx={{ mb: { xs: 2, sm: 3 }, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography
+                    variant="h4"
+                    fontWeight="bold"
+                    sx={{
+                        fontSize: headingFontSize,
+                        color: { xs: '#000', sm: 'text.primary' },
+                        textAlign: { xs: 'center', sm: 'left' },
+                    }}
+                >
                     Inventory Management
                 </Typography>
                 {isMobile ? (
@@ -491,8 +501,8 @@ const InventoryPage: React.FC = () => {
 
             <Paper sx={{ mb: 3 }}>
                 <Tabs value={tabValue} onChange={(_, newValue) => setTabValue(newValue)}>
-                    <Tab label="Raw Materials" />
-                    <Tab label="Usage Reports" />
+                    <Tab label="Raw Materials" sx={{ fontSize: bodyFontSize, minHeight: { xs: 42, sm: 48 } }} />
+                    <Tab label="Usage Reports" sx={{ fontSize: bodyFontSize, minHeight: { xs: 42, sm: 48 } }} />
                 </Tabs>
                   {/* <Box sx={{ display: 'flex', alignItems: 'center', px: 1 }}>
                     <IconButton
@@ -545,7 +555,7 @@ const InventoryPage: React.FC = () => {
                         </Box>
                     ) : rawMaterials.length === 0 ? (
                         <Box sx={{ p: 4, textAlign: 'center' }}>
-                            <Typography color="text.secondary">
+                            <Typography color="text.secondary" sx={{ fontSize: bodyFontSize, textAlign: 'center' }}>
                                 No raw materials found. Click "Add Material" to get started.
                             </Typography>
                         </Box>
@@ -666,10 +676,10 @@ const InventoryPage: React.FC = () => {
                                 <Grid item xs={12} md={6}>
                                     <Card>
                                         <CardContent>
-                                            <Typography color="text.secondary" gutterBottom>
+                                            <Typography color="text.secondary" gutterBottom sx={{ fontSize: bodyFontSize }}>
                                                 Total Materials Used
                                             </Typography>
-                                            <Typography variant="h4">
+                                            <Typography variant="h4" sx={{ fontSize: headingFontSize }}>
                                                 {dailyReport.summary.totalItems}
                                             </Typography>
                                         </CardContent>
@@ -678,10 +688,10 @@ const InventoryPage: React.FC = () => {
                                 <Grid item xs={12} md={6}>
                                     <Card>
                                         <CardContent>
-                                            <Typography color="text.secondary" gutterBottom>
+                                            <Typography color="text.secondary" gutterBottom sx={{ fontSize: bodyFontSize }}>
                                                 Total Cost
                                             </Typography>
-                                            <Typography variant="h4">
+                                            <Typography variant="h4" sx={{ fontSize: headingFontSize }}>
                                                 {formatCurrency(dailyReport.summary.totalCost)}
                                             </Typography>
                                         </CardContent>
@@ -691,7 +701,7 @@ const InventoryPage: React.FC = () => {
 
                             {(dailyReport.records?.length || 0) === 0 ? (
                                 <Box sx={{ p: 4, textAlign: 'center' }}>
-                                    <Typography color="text.secondary">
+                                    <Typography color="text.secondary" sx={{ fontSize: bodyFontSize, textAlign: 'center' }}>
                                         No usage recorded for this date range.
                                     </Typography>
                                 </Box>

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { socketService } from '../services/socket.service';
 import { useAuth } from './AuthContext';
-import { toast, Toaster } from 'react-hot-toast';
+import { toast } from 'react-hot-toast';
 import { Box, Typography, IconButton } from '@mui/material';
 import { Close as CloseIcon, Restaurant as RestaurantIcon } from '@mui/icons-material';
 import { Capacitor } from '@capacitor/core';
@@ -470,7 +470,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             trackOrder
         }}>
             {children}
-            <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
         </NotificationContext.Provider>
     );
 };

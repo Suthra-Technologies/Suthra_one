@@ -36,6 +36,8 @@ const KitchenOrdersPage: React.FC = () => {
     const theme = useTheme();
     const [orderTypeFilter, setOrderTypeFilter] = useState<string>('all');
     const [statusFilter, setStatusFilter] = useState<string>('all');
+    const headingFontSize = { xs: '1.2rem', sm: '1.45rem' };
+    const bodyFontSize = { xs: '0.76rem', sm: '0.88rem' };
 
     const fetchOrders = async () => {
         try {
@@ -148,9 +150,10 @@ const KitchenOrdersPage: React.FC = () => {
                     variant="h4"
                     sx={{
                         fontWeight: 'bold',
-                        background: 'linear-gradient(45deg, #FF9800 30%, #FF5722 90%)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent'
+                        fontSize: headingFontSize,
+                        color: '#000',
+                        textAlign: { xs: 'center', md: 'center' },
+                        width: '100%'
                     }}
                 >
                     Kitchen Display System
@@ -200,6 +203,7 @@ const KitchenOrdersPage: React.FC = () => {
                                         color: isActive ? '#fff' : item.color,
                                         border: `1px solid ${item.color}`,
                                         fontWeight: 600,
+                                        fontSize: bodyFontSize,
                                         borderRadius: 2,
                                         cursor: 'pointer'
                                     }}
@@ -243,6 +247,7 @@ const KitchenOrdersPage: React.FC = () => {
                                         border: `1px solid ${theme.palette.divider}`,
                                         color: theme.palette.text.primary,
                                         fontWeight: 600,
+                                        fontSize: bodyFontSize,
                                         borderRadius: 2,
                                         cursor: 'pointer'
                                     }}
@@ -261,7 +266,7 @@ const KitchenOrdersPage: React.FC = () => {
                 </Box>
             ) : orders.length === 0 ? (
                 <Box sx={{ textAlign: 'center', p: 5, bgcolor: 'background.paper', borderRadius: 2, boxShadow: 1 }}>
-                    <Typography variant="h6" color="text.secondary">
+                    <Typography variant="h6" color="text.secondary" sx={{ fontSize: headingFontSize }}>
                         No active kitchen orders.
                     </Typography>
                 </Box>
@@ -291,13 +296,14 @@ const KitchenOrdersPage: React.FC = () => {
                                         : 'linear-gradient(145deg, #ffffff, #f5f5f5)',
                                     border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
                                     borderLeft: `6px solid ${((theme.palette as any)[getStatusColor(order.status)]?.main || theme.palette.warning.main)
-                                        }`
+                                        }`,
+                                    minHeight: { xs: 210, sm: 260 }
                                 }}
                             >
-                                <CardContent sx={{ flexGrow: 1 }}>
-                                    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: 2, gap: 1 }}>
+                                <CardContent sx={{ flexGrow: 1, p: { xs: 1.25, sm: 2 }, '&:last-child': { pb: { xs: 1.25, sm: 2 } } }}>
+                                    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: { xs: 1, sm: 2 }, gap: { xs: 0.5, sm: 1 } }}>
                                         <Box>
-                                            <Typography variant="h6" color="info.main" gutterBottom sx={{ fontWeight: 'bold' }}>
+                                            <Typography variant="h6" color="info.main" gutterBottom sx={{ fontWeight: 'bold', fontSize: { xs: '0.95rem', sm: headingFontSize.sm } }}>
                                                 Token No: {order.dailyTokenNumber}
                                             </Typography>
                                             {/* <Typography variant="subtitle2" color="text.secondary" gutterBottom>
@@ -307,7 +313,7 @@ const KitchenOrdersPage: React.FC = () => {
                                                 Type: {getOrderTypeLabel(order.orderType, order)}
                                             </Typography> */}
                                             {(order.orderType === 'dine_in' && (order.tableNumber || order.table)) && (
-                                                <Typography variant="h6" component="div" sx={{ fontWeight: 'bold' }}>
+                                                <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', fontSize: { xs: '0.92rem', sm: headingFontSize.sm } }}>
                                                     Table: {order.tableNumber || order.table?.tableNumber || order.table?.number || order.table?.tableName || order.table?.name}
                                                 </Typography>
                                             )}
@@ -316,20 +322,20 @@ const KitchenOrdersPage: React.FC = () => {
                                             label={order.status?.replace(/_/g, ' ').toUpperCase()}
                                             color={getStatusColor(order.status) as any}
                                             size="small"
-                                            sx={{ fontWeight: 'bold', alignSelf: { xs: 'flex-start', sm: 'flex-start' } }}
+                                            sx={{ fontWeight: 'bold', alignSelf: { xs: 'flex-start', sm: 'flex-start' }, height: { xs: 22, sm: 24 }, fontSize: { xs: '0.62rem', sm: bodyFontSize.sm } }}
                                         />
                                     </Box>
 
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, color: 'text.secondary' }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: 1, sm: 2 }, color: 'text.secondary' }}>
                                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                            <RestaurantIcon fontSize="small" sx={{ mr: 1 }} />
-                                            <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                                            <RestaurantIcon fontSize="small" sx={{ mr: 0.75, fontSize: { xs: 14, sm: 16 } }} />
+                                            <Typography variant="body2" sx={{ fontWeight: 'bold', fontSize: bodyFontSize }}>
                                                 {order.orderType?.replace('_', ' ').toUpperCase()}
                                             </Typography>
                                         </Box>
                                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                            <TimeIcon fontSize="small" sx={{ mr: 0.5 }} />
-                                            <Typography variant="body2">
+                                            <TimeIcon fontSize="small" sx={{ mr: 0.4, fontSize: { xs: 14, sm: 16 } }} />
+                                            <Typography variant="body2" sx={{ fontSize: bodyFontSize }}>
                                                 {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </Typography>
                                         </Box>
@@ -340,12 +346,12 @@ const KitchenOrdersPage: React.FC = () => {
                                         const readyItems = order.items.filter((item: any) => item.preparationStatus === 'ready').length;
                                         const progress = (readyItems / order.items.length) * 100;
                                         return (
-                                            <Box sx={{ mt: 2, mb: 1 }}>
-                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                                                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: '500' }}>
+                                            <Box sx={{ mt: { xs: 1, sm: 2 }, mb: { xs: 0.5, sm: 1 } }}>
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.4 }}>
+                                                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: '500', fontSize: bodyFontSize }}>
                                                         Items Ready ({readyItems}/{order.items.length})
                                                     </Typography>
-                                                    <Typography variant="caption" fontWeight="bold" color={getProgressColor(progress) as any}>
+                                                    <Typography variant="caption" fontWeight="bold" color={getProgressColor(progress) as any} sx={{ fontSize: bodyFontSize }}>
                                                         {Math.round(progress)}%
                                                     </Typography>
                                                 </Box>
@@ -354,7 +360,7 @@ const KitchenOrdersPage: React.FC = () => {
                                                     value={progress}
                                                     color={getProgressColor(progress) as any}
                                                     sx={{
-                                                        height: 6,
+                                                        height: { xs: 5, sm: 6 },
                                                         borderRadius: 3,
                                                         bgcolor: alpha(theme.palette.grey[500], 0.1)
                                                     }}
@@ -365,8 +371,8 @@ const KitchenOrdersPage: React.FC = () => {
 
                                     <Box
                                         sx={{
-                                            mt: 1.5,
-                                            p: 1.25,
+                                            mt: { xs: 1, sm: 1.5 },
+                                            p: { xs: 0.9, sm: 1.25 },
                                             bgcolor: alpha(theme.palette.warning.main, 0.05),
                                             borderRadius: 1.5,
                                             display: 'flex',
@@ -375,10 +381,10 @@ const KitchenOrdersPage: React.FC = () => {
                                             border: `1px solid ${alpha(theme.palette.warning.main, 0.15)}`
                                         }}
                                     >
-                                        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.3, fontSize: '0.75rem' }}>
+                                        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.3, fontSize: bodyFontSize }}>
                                             Total Items
                                         </Typography>
-                                        <Typography variant="h6" color="warning.main" sx={{ fontWeight: 800, lineHeight: 1 }}>
+                                        <Typography variant="h6" color="warning.main" sx={{ fontWeight: 800, lineHeight: 1, fontSize: headingFontSize }}>
                                             {order.items?.length || 0}
                                         </Typography>
                                     </Box>

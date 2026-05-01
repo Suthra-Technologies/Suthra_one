@@ -120,6 +120,8 @@ export const usersAPI = {
   createUser: (userData: any) => api.post('/users', userData),
   updateUser: (id: string, userData: any) => api.put(`/users/${id}`, userData),
   deleteUser: (id: string) => api.delete(`/users/${id}`),
+  // Backward compatibility for older callers
+  delete: (id: string) => api.delete(`/users/${id}`),
   toggleUserStatus: (id: string) => api.patch(`/users/${id}/toggle-status`),
   resetPassword: (id: string, data: any) => api.put(`/users/${id}/reset-password`, data),
 };

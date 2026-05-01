@@ -75,6 +75,7 @@ const resolveImageUrl = (url: string | undefined | null): string => {
 
 const DRAWER_WIDTH_EXPANDED = 280;
 const DRAWER_WIDTH_COLLAPSED = 72;
+const MOBILE_DRAWER_WIDTH = 248;
 
 // ── Restaurant Open/Close Toggle ──────────────────────────────────────────────
 const RestaurantStatusToggle: React.FC = () => {
@@ -770,7 +771,10 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
             display: { xs: 'block', md: 'none' },
             '& .MuiDrawer-paper': {
               boxSizing: 'border-box',
-              width: DRAWER_WIDTH_EXPANDED,
+              width: MOBILE_DRAWER_WIDTH,
+              overflowY: 'hidden',
+              WebkitOverflowScrolling: 'touch',
+              overscrollBehavior: 'contain',
             },
           }}
         >
@@ -787,6 +791,9 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
               width: currentDrawerWidth,
               transition: 'width 0.3s ease',
               overflowX: 'hidden',
+              overflowY: 'hidden',
+              WebkitOverflowScrolling: 'touch',
+              overscrollBehavior: 'contain',
             },
           }}
           open

@@ -18,6 +18,8 @@ import {
     CircularProgress,
     Card,
     CardMedia,
+    useMediaQuery,
+    useTheme,
 } from '@mui/material';
 import {
     ArrowBack as BackIcon,
@@ -46,6 +48,10 @@ const PurchaseOrderDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { formatCurrency } = useSettings();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const headingFontSize = { xs: '1.12rem', sm: '1.4rem', md: '2.125rem' };
+    const bodyFontSize = { xs: '0.78rem', sm: '0.88rem', md: '0.95rem' };
     const [po, setPO] = useState<any>(null);
     const [loading, setLoading] = useState(true);
 
@@ -107,10 +113,10 @@ const PurchaseOrderDetailPage: React.FC = () => {
     }
 
     return (
-        <Box sx={{ p: 3 }}>
+        <Box sx={{ p: { xs: 1.2, sm: 3 } }}>
             {/* Header */}
-            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'flex-start', md: 'center' }, mb: 3, gap: 2, justifyContent: 'space-between' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', mb: { xs: 2, md: 0 } }}>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, alignItems: { xs: 'stretch', md: 'center' }, mb: { xs: 2, sm: 3 }, gap: { xs: 1.25, sm: 2 }, justifyContent: 'space-between' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', mb: { xs: 1, md: 0 } }}>
                     <Button
                         startIcon={<BackIcon />}
                         onClick={() => navigate('..', { relative: 'path' })} // Go back to list
@@ -118,8 +124,17 @@ const PurchaseOrderDetailPage: React.FC = () => {
                     >
                         Back
                     </Button>
-                    <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-                        <Typography variant="h4" fontWeight="bold" sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'center', sm: 'flex-start' }, flexWrap: 'wrap', gap: 1, width: '100%' }}>
+                        <Typography
+                            variant="h4"
+                            fontWeight="bold"
+                            sx={{
+                                fontSize: headingFontSize,
+                                color: { xs: '#000', sm: 'text.primary' },
+                                textAlign: { xs: 'center', sm: 'left' },
+                                width: { xs: '100%', sm: 'auto' }
+                            }}
+                        >
                             {po.poNumber}
                         </Typography>
                         <Chip
@@ -133,7 +148,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
                         />
                     </Box>
                 </Box>
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ width: { xs: '100%', md: 'auto' } }}>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 1, sm: 2 }} sx={{ width: { xs: '100%', md: 'auto' } }}>
                     {po.status === 'pending' && (
                         <Button
                             variant="contained"
@@ -164,35 +179,74 @@ const PurchaseOrderDetailPage: React.FC = () => {
                 </Stack>
             </Box>
 
-            <Grid container spacing={3}>
+            <Grid container spacing={{ xs: 1.5, sm: 3 }}>
                 {/* Vendor & Details */}
                 <Grid item xs={12} md={8}>
-                    <Paper sx={{ p: 3, mb: 3 }}>
-                        <Typography variant="h6" gutterBottom>
+                    <Paper sx={{ p: { xs: 1.4, sm: 3 }, mb: { xs: 1.5, sm: 3 } }}>
+                        <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '0.95rem', sm: '1.25rem' }, color: { xs: '#000', sm: 'text.primary' }, textAlign: { xs: 'center', sm: 'left' } }}>
                             {po.type === 'expense' ? 'Payee Details' : 'Vendor Information'}
                         </Typography>
                         <Grid container spacing={2}>
                             <Grid item xs={12} sm={6}>
-                                <Typography variant="subtitle2" color="textSecondary">Name</Typography>
-                                <Typography variant="body1" fontWeight="500">{po.vendor.name}</Typography>
+                                <Typography variant="subtitle2" color="textSecondary" sx={{ fontSize: bodyFontSize }}>Name</Typography>
+                                <Typography variant="body1" fontWeight="500" sx={{ fontSize: bodyFontSize }}>{po.vendor.name}</Typography>
                             </Grid>
                             <Grid item xs={12} sm={6}>
-                                <Typography variant="subtitle2" color="textSecondary">Contact</Typography>
-                                <Typography variant="body1">{po.vendor.contact || '-'}</Typography>
+                                <Typography variant="subtitle2" color="textSecondary" sx={{ fontSize: bodyFontSize }}>Contact</Typography>
+                                <Typography variant="body1" sx={{ fontSize: bodyFontSize }}>{po.vendor.contact || '-'}</Typography>
                             </Grid>
                             <Grid item xs={12} sm={6}>
-                                <Typography variant="subtitle2" color="textSecondary">Email</Typography>
-                                <Typography variant="body1" sx={{ wordBreak: 'break-all' }}>{po.vendor.email || '-'}</Typography>
+                                <Typography variant="subtitle2" color="textSecondary" sx={{ fontSize: bodyFontSize }}>Email</Typography>
+                                <Typography variant="body1" sx={{ wordBreak: 'break-all', fontSize: bodyFontSize }}>{po.vendor.email || '-'}</Typography>
                             </Grid>
                             <Grid item xs={12} sm={6}>
-                                <Typography variant="subtitle2" color="textSecondary">Address</Typography>
-                                <Typography variant="body1">{po.vendor.address || '-'}</Typography>
+                                <Typography variant="subtitle2" color="textSecondary" sx={{ fontSize: bodyFontSize }}>Address</Typography>
+                                <Typography variant="body1" sx={{ fontSize: bodyFontSize }}>{po.vendor.address || '-'}</Typography>
                             </Grid>
                         </Grid>
                     </Paper>
 
+                    {/* Items - Mobile Cards */}
+                    <Paper sx={{ display: { xs: 'block', md: 'none' }, p: 1.2, mb: 1.5 }}>
+                        <Stack spacing={1}>
+                            {po.items.map((item: any, index: number) => (
+                                <Paper key={index} variant="outlined" sx={{ p: 1.1, borderRadius: 2 }}>
+                                    <Typography variant="body2" sx={{ fontSize: bodyFontSize, fontWeight: 700 }}>
+                                        {item.description}
+                                    </Typography>
+                                    <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.5 }}>
+                                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: bodyFontSize }}>
+                                            Qty: {item.quantity} {item.unit}
+                                        </Typography>
+                                        <Typography variant="caption" sx={{ fontSize: bodyFontSize }}>
+                                            {formatCurrency(item.unitPrice)}
+                                        </Typography>
+                                    </Stack>
+                                    <Typography variant="body2" sx={{ mt: 0.5, fontWeight: 700, fontSize: bodyFontSize }}>
+                                        Total: {formatCurrency(item.total)}
+                                    </Typography>
+                                </Paper>
+                            ))}
+                            <Divider sx={{ my: 0.5 }} />
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Typography sx={{ fontSize: bodyFontSize, fontWeight: 700 }}>Subtotal</Typography>
+                                <Typography sx={{ fontSize: bodyFontSize }}>{formatCurrency(po.subtotal)}</Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Typography sx={{ fontSize: bodyFontSize, fontWeight: 700 }}>Tax</Typography>
+                                <Typography sx={{ fontSize: bodyFontSize }}>{formatCurrency(po.tax)}</Typography>
+                            </Box>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Typography sx={{ fontSize: bodyFontSize, fontWeight: 700 }}>Total Amount</Typography>
+                                <Typography sx={{ fontSize: { xs: '0.9rem', sm: '1rem' }, fontWeight: 800, color: 'primary.main' }}>
+                                    {formatCurrency(po.totalAmount)}
+                                </Typography>
+                            </Box>
+                        </Stack>
+                    </Paper>
+
                     {/* Items Table */}
-                    <TableContainer component={Paper} sx={{ mb: 3, overflowX: 'auto' }}>
+                    <TableContainer component={Paper} sx={{ mb: 3, overflowX: 'auto', display: { xs: 'none', md: 'block' } }}>
                         <Table sx={{ minWidth: { xs: 600, sm: '100%' } }}>
                             <TableHead sx={{ bgcolor: '#f5f5f5' }}>
                                 <TableRow>
@@ -245,26 +299,26 @@ const PurchaseOrderDetailPage: React.FC = () => {
 
                 {/* Sidebar Info */}
                 <Grid item xs={12} md={4}>
-                    <Paper sx={{ p: 3, mb: 3 }}>
-                        <Typography variant="h6" gutterBottom>Payment Info</Typography>
+                    <Paper sx={{ p: { xs: 1.4, sm: 3 }, mb: { xs: 1.5, sm: 3 } }}>
+                        <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '0.95rem', sm: '1.25rem' }, color: { xs: '#000', sm: 'text.primary' }, textAlign: { xs: 'center', sm: 'left' } }}>Payment Info</Typography>
                         <Stack spacing={1}>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <Typography variant="body2" color="textSecondary">Status</Typography>
+                                <Typography variant="body2" color="textSecondary" sx={{ fontSize: bodyFontSize }}>Status</Typography>
                                 <Chip label={po.paymentStatus.toUpperCase()} size="small" />
                             </Box>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <Typography variant="body2" color="textSecondary">Method</Typography>
-                                <Typography variant="body2">{po.paymentMethod.replace('_', ' ').toUpperCase()}</Typography>
+                                <Typography variant="body2" color="textSecondary" sx={{ fontSize: bodyFontSize }}>Method</Typography>
+                                <Typography variant="body2" sx={{ fontSize: bodyFontSize }}>{po.paymentMethod.replace('_', ' ').toUpperCase()}</Typography>
                             </Box>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                <Typography variant="body2" color="textSecondary">Source</Typography>
-                                <Typography variant="body2">{po.paymentSource?.replace('_', ' ').toUpperCase() || '-'}</Typography>
+                                <Typography variant="body2" color="textSecondary" sx={{ fontSize: bodyFontSize }}>Source</Typography>
+                                <Typography variant="body2" sx={{ fontSize: bodyFontSize }}>{po.paymentSource?.replace('_', ' ').toUpperCase() || '-'}</Typography>
                             </Box>
                         </Stack>
                     </Paper>
 
-                    <Paper sx={{ p: 3 }}>
-                        <Typography variant="h6" gutterBottom>Attachments</Typography>
+                    <Paper sx={{ p: { xs: 1.4, sm: 3 } }}>
+                        <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '0.95rem', sm: '1.25rem' }, color: { xs: '#000', sm: 'text.primary' }, textAlign: { xs: 'center', sm: 'left' } }}>Attachments</Typography>
                         {po.attachments && po.attachments.length > 0 ? (
                             <Stack spacing={2}>
                                 {po.attachments.map((att: any, index: number) => (
@@ -298,8 +352,8 @@ const PurchaseOrderDetailPage: React.FC = () => {
                     </Paper>
 
                     {/* History */}
-                    <Paper sx={{ p: 3, mt: 3 }}>
-                        <Typography variant="h6" gutterBottom>History</Typography>
+                    <Paper sx={{ p: { xs: 1.4, sm: 3 }, mt: { xs: 1.5, sm: 3 } }}>
+                        <Typography variant="h6" gutterBottom sx={{ fontSize: { xs: '0.95rem', sm: '1.25rem' }, color: { xs: '#000', sm: 'text.primary' }, textAlign: { xs: 'center', sm: 'left' } }}>History</Typography>
                         <ActionHistoryList history={po.actionHistory || []} emptyMessage="No history for this PO." />
                     </Paper>
                 </Grid>

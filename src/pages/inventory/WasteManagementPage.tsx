@@ -63,6 +63,8 @@ const WasteManagementPage: React.FC = () => {
     const [submitting, setSubmitting] = useState(false);
     const { enqueueSnackbar } = useSnackbar();
     const [isMobile, setIsMobile] = useState(false);
+    const headingFontSize = { xs: '1.12rem', sm: '1.4rem', md: '2.125rem' };
+    const bodyFontSize = { xs: '0.78rem', sm: '0.88rem', md: '0.95rem' };
 
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -215,7 +217,7 @@ const WasteManagementPage: React.FC = () => {
     }
 
     return (
-        <Container maxWidth="xl" sx={{ py: 4 }}>
+        <Container maxWidth="xl" sx={{ py: { xs: 2, sm: 4 }, px: { xs: 1.25, sm: 3 } }}>
             <Box
                 sx={{
                     display: 'flex',
@@ -230,6 +232,8 @@ const WasteManagementPage: React.FC = () => {
                     variant="h4"
                     fontWeight="bold"
                     sx={{
+                        fontSize: headingFontSize,
+                        color: { xs: '#000', sm: 'text.primary' },
                         textAlign: { xs: 'center', sm: 'left' },
                         width: { xs: '100%', sm: 'auto' }
                     }}
@@ -243,7 +247,8 @@ const WasteManagementPage: React.FC = () => {
                     onClick={handleOpenDialog}
                     sx={{
                         borderRadius: 2,
-                        width: { xs: '80%', sm: 'auto' }
+                        width: { xs: '100%', sm: 'auto' },
+                        fontSize: bodyFontSize
                     }}
                 >
                     Log Waste
@@ -251,36 +256,36 @@ const WasteManagementPage: React.FC = () => {
             </Box>
 
             {/* Summary Cards */}
-         <Grid container spacing={3} mb={4}>
+         <Grid container spacing={{ xs: 1.25, sm: 3 }} mb={{ xs: 2, sm: 4 }}>
     <Grid item xs={12} md={4}>
         <Card sx={{ 
             borderRadius: 3, 
             boxShadow: 3, 
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
             color: 'white',
-            height: '100%',
+            height: { xs: 'auto', sm: '100%' },
             display: 'flex',
             alignItems: 'center'
         }}>
             <CardContent sx={{ 
-                p: { xs: 2, sm: 3 },
+                p: { xs: 1.35, sm: 3 },
                 width: '100%',
                 textAlign: 'center'
             }}>
-                <Box display="flex" alignItems="center" justifyContent="center" mb={1}>
+                <Box display="flex" alignItems="center" justifyContent="center" mb={0.5}>
                     <TrendingDown sx={{ mr: 1, fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
-                    <Typography variant="h6" sx={{ fontSize: { xs: '0.95rem', sm: '1.25rem' } }}>
+                    <Typography variant="h6" sx={{ fontSize: headingFontSize }}>
                         Total Financial Loss
                     </Typography>
                 </Box>
                 <Typography
                     variant="h3"
                     fontWeight="bold"
-                    sx={{ fontSize: { xs: '1.75rem', sm: '2.5rem', md: '3rem' } }}
+                    sx={{ fontSize: { xs: '1.35rem', sm: '2.5rem', md: '3rem' }, lineHeight: 1.1 }}
                 >
                     ${summary?.totalLoss.toFixed(2) || '0.00'}
                 </Typography>
-                <Typography variant="body2" sx={{ opacity: 0.8, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                <Typography variant="body2" sx={{ opacity: 0.8, fontSize: bodyFontSize }}>
                     Across {summary?.count || 0} waste records
                 </Typography>
             </CardContent>
@@ -290,29 +295,29 @@ const WasteManagementPage: React.FC = () => {
         <Card sx={{ 
             borderRadius: 3, 
             boxShadow: 3,
-            height: '100%',
+            height: { xs: 'auto', sm: '100%' },
             display: 'flex',
             alignItems: 'center'
         }}>
             <CardContent sx={{ 
-                p: { xs: 2, sm: 3 },
+                p: { xs: 1.35, sm: 3 },
                 width: '100%',
                 textAlign: 'center'
             }}>
-                <Box display="flex" alignItems="center" justifyContent="center" mb={1} color="warning.main">
+                <Box display="flex" alignItems="center" justifyContent="center" mb={0.5} color="warning.main">
                     <Category sx={{ mr: 1, fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
-                    <Typography variant="h6" sx={{ fontSize: { xs: '0.95rem', sm: '1.25rem' } }}>
+                    <Typography variant="h6" sx={{ fontSize: headingFontSize }}>
                         Raw Material Loss
                     </Typography>
                 </Box>
                 <Typography
                     variant="h3"
                     fontWeight="bold"
-                    sx={{ fontSize: { xs: '1.75rem', sm: '2.5rem', md: '3rem' } }}
+                    sx={{ fontSize: { xs: '1.35rem', sm: '2.5rem', md: '3rem' }, lineHeight: 1.1 }}
                 >
                     ${summary?.byType?.raw_material.toFixed(2) || '0.00'}
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                <Typography variant="body2" color="text.secondary" sx={{ fontSize: bodyFontSize }}>
                     Ingredients and Supplies
                 </Typography>
             </CardContent>
@@ -322,29 +327,29 @@ const WasteManagementPage: React.FC = () => {
         <Card sx={{ 
             borderRadius: 3, 
             boxShadow: 3,
-            height: '100%',
+            height: { xs: 'auto', sm: '100%' },
             display: 'flex',
             alignItems: 'center'
         }}>
             <CardContent sx={{ 
-                p: { xs: 2, sm: 3 },
+                p: { xs: 1.35, sm: 3 },
                 width: '100%',
                 textAlign: 'center'
             }}>
-                <Box display="flex" alignItems="center" justifyContent="center" mb={1} color="error.main">
+                <Box display="flex" alignItems="center" justifyContent="center" mb={0.5} color="error.main">
                     <Fastfood sx={{ mr: 1, fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
-                    <Typography variant="h6" sx={{ fontSize: { xs: '0.95rem', sm: '1.25rem' } }}>
+                    <Typography variant="h6" sx={{ fontSize: headingFontSize }}>
                         Menu Item Loss
                     </Typography>
                 </Box>
                 <Typography
                     variant="h3"
                     fontWeight="bold"
-                    sx={{ fontSize: { xs: '1.75rem', sm: '2.5rem', md: '3rem' } }}
+                    sx={{ fontSize: { xs: '1.35rem', sm: '2.5rem', md: '3rem' }, lineHeight: 1.1 }}
                 >
                     ${summary?.byType?.menu_item.toFixed(2) || '0.00'}
                 </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
+                <Typography variant="body2" color="text.secondary" sx={{ fontSize: bodyFontSize }}>
                     Prepared Food Waste
                 </Typography>
             </CardContent>
@@ -364,9 +369,9 @@ const WasteManagementPage: React.FC = () => {
                         logs
                             .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                             .map((log) => (
-                                <Card key={log._id} sx={{ mb: 2, boxShadow: 2, borderRadius: 2 }}>
-                                    <CardContent>
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                                <Card key={log._id} sx={{ mb: 1.25, boxShadow: 2, borderRadius: 2 }}>
+                                    <CardContent sx={{ p: 1.35, '&:last-child': { pb: 1.35 } }}>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.2 }}>
                                             <Typography variant="caption" color="text.secondary">
                                                 {format(new Date(log.createdAt), 'MMM dd, yyyy HH:mm')}
                                             </Typography>
@@ -378,11 +383,11 @@ const WasteManagementPage: React.FC = () => {
                                             />
                                         </Box>
 
-                                        <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold' }}>
+                                        <Typography variant="h6" sx={{ mb: 1.1, fontWeight: 'bold', fontSize: '0.95rem', lineHeight: 1.2 }}>
                                             {log.itemName}
                                         </Typography>
 
-                                        <Box sx={{ display: 'grid', gap: 1.5 }}>
+                                        <Box sx={{ display: 'grid', gap: 0.85 }}>
                                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <Typography variant="body2" color="text.secondary">Quantity:</Typography>
                                                 <Typography variant="body2" fontWeight="medium">
@@ -392,7 +397,7 @@ const WasteManagementPage: React.FC = () => {
 
                                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <Typography variant="body2" color="text.secondary">Loss Value:</Typography>
-                                                <Typography variant="body1" sx={{ color: 'error.main', fontWeight: 'bold' }}>
+                                                <Typography variant="body1" sx={{ color: 'error.main', fontWeight: 'bold', fontSize: '0.85rem' }}>
                                                     -${log.cost.toFixed(2)}
                                                 </Typography>
                                             </Box>
@@ -408,7 +413,7 @@ const WasteManagementPage: React.FC = () => {
                                             </Box>
 
                                             {log.notes && log.notes !== '-' && (
-                                                <Box sx={{ mt: 1, pt: 1.5, borderTop: 1, borderColor: 'divider' }}>
+                                                <Box sx={{ mt: 0.7, pt: 1, borderTop: 1, borderColor: 'divider' }}>
                                                     <Typography variant="caption" color="text.secondary" display="block" gutterBottom>
                                                         Notes:
                                                     </Typography>
@@ -420,7 +425,7 @@ const WasteManagementPage: React.FC = () => {
                                 </Card>
                             ))
                     )}
-                    <Paper sx={{ mt: 2, borderRadius: 2 }}>
+                    <Paper sx={{ mt: 1.2, borderRadius: 2 }}>
                         <TablePagination
                             rowsPerPageOptions={[5, 10, 25]}
                             component="div"

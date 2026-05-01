@@ -253,6 +253,8 @@ const DashboardPage: React.FC = () => {
   const { formatCurrency } = useSettings();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const headingFontSize = { xs: '1.12rem', sm: '1.4rem', md: '2.125rem' };
+  const bodyFontSize = { xs: '0.78rem', sm: '0.88rem', md: '0.95rem' };
 
 
   // ---------- Responsive Pie Settings ----------
@@ -514,7 +516,7 @@ const DashboardPage: React.FC = () => {
         maxWidth: 1600,
         mx: "auto",
         px: { xs: 1.5, sm: 2.5, md: 3, lg: 4 },
-        py: { xs: 2, md: 3 }
+        py: { xs: 1.6, md: 3 }
       }}
     >
       {/* Header */}
@@ -524,12 +526,11 @@ const DashboardPage: React.FC = () => {
           flexDirection: { xs: 'column', sm: 'row' },
           justifyContent: 'space-between',
           alignItems: { xs: 'flex-start', sm: 'center' },
-          mb: 3,
-          gap: 2
+          mb: { xs: 2, sm: 3 },
+          gap: { xs: 1.25, sm: 2 }
         }}
       >
         <Box sx={{ width: { xs: '100%', sm: 'auto' }, textAlign: { xs: 'center', sm: 'left' } }}>
-
         </Box>
         <Stack
           direction={{ xs: "column", sm: "row" }}
@@ -606,7 +607,7 @@ const DashboardPage: React.FC = () => {
       </Box>
 
       {/* Main Stats Grid */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      <Grid container spacing={{ xs: 1.2, sm: 3 }} sx={{ mb: { xs: 2.2, sm: 4 } }}>
         <Grid item xs={6} sm={6} md={4} lg={3} xl={3}>
           {/* Today's / Week / Month Sales */}
           <StatCard
@@ -698,7 +699,7 @@ const DashboardPage: React.FC = () => {
       <Grid container spacing={3}>
         <Grid item xs={12}>
           <Box sx={{
-            p: 3,
+            p: { xs: 1.5, sm: 3 },
             borderRadius: 4,
             background: `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.8)} 0%, ${alpha(theme.palette.background.paper, 0.9)} 100%)`,
             backdropFilter: 'blur(10px)',
@@ -711,7 +712,7 @@ const DashboardPage: React.FC = () => {
               boxShadow: `0 12px 30px 0 ${alpha(theme.palette.primary.main, 0.1)}`,
             }
           }}>
-            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, fontSize: headingFontSize, color: { xs: '#000', sm: 'text.primary' }, textAlign: { xs: 'center', sm: 'left' } }}>
               Orders Activity (Hourly)
             </Typography>
             <OrdersChart data={dashboardData?.hourlyDistribution || []} />

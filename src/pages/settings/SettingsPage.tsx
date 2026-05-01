@@ -517,6 +517,8 @@ const SettingsPage: React.FC = () => {
     const { updateSettings: updateGlobalSettings } = useSettings();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const headingFontSize = { xs: '1.12rem', sm: '1.4rem', md: '2.125rem' };
+    const bodyFontSize = { xs: '0.78rem', sm: '0.86rem', md: '0.95rem' };
     const [tabValue, setTabValue] = useState(0);
     const [loading, setLoading] = useState(false);
     const [settings, setSettings] = useState<SettingsState>(() => createDefaultSettings());
@@ -1398,7 +1400,8 @@ const SettingsPage: React.FC = () => {
                     textAlign: { xs: 'center', md: 'left' },
                     fontWeight: 800,
                     fontFamily: "'Outfit', sans-serif",
-                    fontSize: { xs: '1.5rem', md: '2.125rem' }
+                    color: { xs: '#000', md: 'text.primary' },
+                    fontSize: headingFontSize
                 }}
             >
                 Settings
@@ -1413,11 +1416,18 @@ const SettingsPage: React.FC = () => {
                     variant="scrollable"
                     scrollButtons="auto"
                     sx={{
+                        '& .MuiTabs-flexContainer': {
+                            alignItems: 'center',
+                        },
                         '& .MuiTab-root': {
                             fontWeight: 800,
                             fontFamily: "'Outfit', sans-serif",
-                            fontSize: { xs: '0.75rem', sm: '0.875rem' },
-                            minHeight: { xs: 48, sm: 64 }
+                            fontSize: bodyFontSize,
+                            minHeight: { xs: 44, sm: 64 },
+                            px: { xs: 1.1, sm: 1.5 }
+                        },
+                        '& .MuiTab-iconWrapper, & .MuiTab-icon': {
+                            fontSize: { xs: '0.95rem', sm: '1.1rem' }
                         }
                     }}
                 >
@@ -1434,10 +1444,29 @@ const SettingsPage: React.FC = () => {
 
                 <TabPanel value={tabValue} index={0}>
                     <Box sx={{ mb: 3 }}>
-                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
+                        <Typography
+                            variant="h6"
+                            gutterBottom
+                            sx={{
+                                fontWeight: 800,
+                                fontFamily: "'Outfit', sans-serif",
+                                fontSize: headingFontSize,
+                                textAlign: { xs: 'center', sm: 'left' },
+                                color: { xs: '#000', sm: 'text.primary' },
+                            }}
+                        >
                             Restaurant Profile
                         </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, fontFamily: "'Outfit', sans-serif" }}>
+                        <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{
+                                fontWeight: 500,
+                                fontFamily: "'Outfit', sans-serif",
+                                fontSize: bodyFontSize,
+                                textAlign: { xs: 'center', sm: 'left' },
+                            }}
+                        >
                             Manage your restaurant's public information, location, and contact details.
                         </Typography>
                     </Box>

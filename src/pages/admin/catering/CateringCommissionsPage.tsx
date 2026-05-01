@@ -39,7 +39,9 @@ import {
     TableSortLabel,
     TextField,
     Tooltip,
-    Typography
+    Typography,
+    useMediaQuery,
+    useTheme
 } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
@@ -48,6 +50,10 @@ import { cateringAPI, commissionAPI, customersAPI, usersAPI } from '../../../ser
 
 const CateringCommissionsPage = () => {
     const { formatCurrency } = useSettings();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const headingFontSize = { xs: '1.12rem', sm: '1.4rem', md: '2.125rem' };
+    const bodyFontSize = { xs: '0.78rem', sm: '0.88rem', md: '0.95rem' };
     const [commissions, setCommissions] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [total, setTotal] = useState(0);
@@ -310,9 +316,18 @@ const CateringCommissionsPage = () => {
     }, [page, rowsPerPage, orderBy, order, debouncedSearchName]);
 
     return (
-        <Box p={3}>
-            <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} gap={{ xs: 1.5, sm: 0 }} mb={3}>
-                <Typography variant="h4" fontWeight="bold">
+        <Box sx={{ p: { xs: 1.2, sm: 3 } }}>
+            <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} gap={{ xs: 1.25, sm: 0 }} mb={{ xs: 2, sm: 3 }}>
+                <Typography
+                    variant="h4"
+                    fontWeight="bold"
+                    sx={{
+                        fontSize: headingFontSize,
+                        color: { xs: '#000', sm: 'text.primary' },
+                        textAlign: { xs: 'center', sm: 'left' },
+                        width: { xs: '100%', sm: 'auto' }
+                    }}
+                >
                     Catering Commissions
                 </Typography>
 
@@ -329,7 +344,11 @@ const CateringCommissionsPage = () => {
                             </InputAdornment>
                         ),
                     }}
-                    sx={{ width: { xs: '100%', sm: 250, md: 300 }, bgcolor: 'background.paper' }}
+                    sx={{
+                        width: { xs: '100%', sm: 250, md: 300 },
+                        bgcolor: 'background.paper',
+                        '& .MuiInputBase-input': { fontSize: bodyFontSize }
+                    }}
                 />
             </Box>
 
@@ -338,8 +357,8 @@ const CateringCommissionsPage = () => {
                     <CircularProgress />
                 </Box>
             ) : commissions.length === 0 ? (
-                <Box textAlign="center" p={4}>
-                    <Typography color="textSecondary">No commissions found.</Typography>
+                <Box textAlign="center" p={{ xs: 2, sm: 4 }}>
+                    <Typography color="textSecondary" sx={{ fontSize: bodyFontSize }}>No commissions found.</Typography>
                 </Box>
            ) : (
                 <Box>
@@ -513,9 +532,9 @@ const CateringCommissionsPage = () => {
                         const createdAt = item.createdAt || item.date || new Date().toISOString();
                         if (!comm) return null;
                         return (
-                            <Paper key={item._id || index} variant="outlined" sx={{ p: 2, mb: 1.5, borderRadius: 2 }}>
-                                <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                                    <Typography variant="subtitle2" fontWeight="bold">Order #{orderNumber}</Typography>
+                            <Paper key={item._id || index} variant="outlined" sx={{ p: 1.35, mb: 1, borderRadius: 2 }}>
+                                <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.75}>
+                                    <Typography variant="subtitle2" fontWeight="bold" sx={{ fontSize: { xs: '0.86rem', sm: '0.9rem' } }}>Order #{orderNumber}</Typography>
                                     <Chip
                                         label={comm.status?.toUpperCase() || 'PENDING'}
                                         color={
@@ -526,36 +545,36 @@ const CateringCommissionsPage = () => {
                                         size="small"
                                     />
                                 </Box>
-                                <Box display="flex" gap={1} alignItems="center" mb={1}>
+                                <Box display="flex" gap={0.75} alignItems="center" mb={0.75}>
                                     <Chip
                                         label={comm.reference?.type === 'internal_team' ? 'Internal' : 'External'}
                                         color={comm.reference?.type === 'internal_team' ? 'primary' : 'secondary'}
                                         size="small"
                                         variant="outlined"
                                     />
-                                    <Typography variant="caption" color="text.secondary">
+                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.68rem', sm: '0.75rem' } }}>
                                         {new Date(createdAt).toLocaleDateString()}
                                     </Typography>
                                 </Box>
-                                <Typography variant="body2"><strong>Referrer:</strong> {comm.reference?.name || '-'}{comm.reference?.contact ? ` (${comm.reference.contact})` : ''}</Typography>
-                                <Typography variant="body2"><strong>Type:</strong> {comm.type === 'fixed' || comm.commissionType === 'fixed' ? 'Fixed Amount' : 'Percentage'}</Typography>
-                                <Typography variant="body2">
+                                <Typography variant="body2" sx={{ fontSize: bodyFontSize }}><strong>Referrer:</strong> {comm.reference?.name || '-'}{comm.reference?.contact ? ` (${comm.reference.contact})` : ''}</Typography>
+                                <Typography variant="body2" sx={{ fontSize: bodyFontSize }}><strong>Type:</strong> {comm.type === 'fixed' || comm.commissionType === 'fixed' ? 'Fixed Amount' : 'Percentage'}</Typography>
+                                <Typography variant="body2" sx={{ fontSize: bodyFontSize }}>
                                     <strong>Value:</strong> {(comm.type === 'fixed' || comm.commissionType === 'fixed')
                                         ? formatCurrency(comm.amount || comm.commissionAmount || 0)
                                         : `${comm.percentage || comm.commissionPercentage || 0}%`}
                                 </Typography>
                                 {(comm.notes || item.notes) && (
-                                    <Typography variant="body2"><strong>Notes:</strong> {comm.notes || item.notes}</Typography>
+                                    <Typography variant="body2" sx={{ fontSize: bodyFontSize }}><strong>Notes:</strong> {comm.notes || item.notes}</Typography>
                                 )}
                                 {(comm.status === 'paid' || comm.status === 'cancelled') && (
-                                    <Typography variant="caption" color="text.secondary">
+                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.68rem', sm: '0.75rem' } }}>
                                         {comm.status === 'cancelled'
                                             ? `Reason: ${comm.actionHistory?.slice().reverse().find((h: any) => h.action === 'CANCELLED')?.details || 'No reason specified'}`
                                             : `Paid on ${comm.paymentDate ? new Date(comm.paymentDate).toLocaleDateString() : 'N/A'} via ${comm.paymentMethod?.replace('_', ' ') || 'N/A'}${comm.paymentReference ? ` (Ref: ${comm.paymentReference})` : ''}`
                                         }
                                     </Typography>
                                 )}
-                                <Box display="flex" justifyContent="flex-end" gap={0.5} mt={1}>
+                                <Box display="flex" justifyContent="flex-end" gap={0.25} mt={0.75}>
                                     <Tooltip title="Edit">
                                         <IconButton size="small" onClick={() => handleEditClick(item)} disabled={comm.status === 'paid'}>
                                             <Edit fontSize="small" />
@@ -606,6 +625,10 @@ const CateringCommissionsPage = () => {
                 onRowsPerPageChange={(e) => {
                     setRowsPerPage(parseInt(e.target.value, 10));
                     setPage(0);
+                }}
+                sx={{
+                    '& .MuiTablePagination-toolbar': { px: { xs: 0.5, sm: 2 }, minHeight: { xs: 44, sm: 52 } },
+                    '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': { fontSize: bodyFontSize, m: 0 }
                 }}
             />
 

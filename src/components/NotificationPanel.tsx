@@ -22,6 +22,8 @@ import {
   CheckCircle,
   Error,
   NotificationImportant,
+  DoneAll,
+  ClearAll,
 } from '@mui/icons-material';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
@@ -221,7 +223,13 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ open, onClose, no
       anchor="right"
       open={open}
       onClose={onClose}
-      PaperProps={{ sx: { width: 400, maxWidth: '90vw' } }}
+      PaperProps={{
+        sx: {
+          width: 400,
+          maxWidth: '90vw',
+          pt: { xs: 'env(safe-area-inset-top)', sm: 0 },
+        }
+      }}
     >
       <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Typography variant="h6" fontWeight="bold">
@@ -235,30 +243,55 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ open, onClose, no
       {sortedNotifications.length > 0 && (
         <Box sx={{
           px: 2,
-          pt: 1.5,
-          pb: 1.5,
-          mt: { xs: 2.5, sm: 1 },
+          py: 1.25,
+          mt: 0.5,
           display: 'flex',
           flexDirection: 'row',
-          gap: { xs: 0.5, sm: 1 },
+          gap: 1,
           borderBottom: '1px solid rgba(0,0,0,0.12)',
+          bgcolor: 'rgba(99, 102, 241, 0.03)',
         }}>
           <Button
             size="small"
-            variant="outlined"
+            variant="contained"
+            startIcon={<DoneAll sx={{ fontSize: { xs: 14, sm: 16 } }} />}
             onClick={handleMarkAllAsRead}
-            sx={{ flex: 1, fontSize: { xs: '0.62rem', sm: '0.8rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 0.5, sm: 1 }, textTransform: 'none', borderRadius: 2, minWidth: 0, whiteSpace: 'nowrap' }}
+            sx={{
+              flex: 1,
+              fontSize: { xs: '0.66rem', sm: '0.8rem' },
+              py: { xs: 0.65, sm: 0.9 },
+              px: { xs: 0.75, sm: 1.25 },
+              textTransform: 'none',
+              borderRadius: 2.5,
+              minWidth: 0,
+              whiteSpace: 'nowrap',
+              fontWeight: 700,
+              boxShadow: 'none',
+            }}
           >
-            Mark All Read
+            Mark as read
           </Button>
           <Button
             size="small"
             variant="outlined"
             color="error"
+            startIcon={<ClearAll sx={{ fontSize: { xs: 14, sm: 16 } }} />}
             onClick={handleClearAll}
-            sx={{ flex: 1, fontSize: { xs: '0.62rem', sm: '0.8rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 0.5, sm: 1 }, textTransform: 'none', borderRadius: 2, minWidth: 0, whiteSpace: 'nowrap' }}
+            sx={{
+              flex: 1,
+              fontSize: { xs: '0.66rem', sm: '0.8rem' },
+              py: { xs: 0.65, sm: 0.9 },
+              px: { xs: 0.75, sm: 1.25 },
+              textTransform: 'none',
+              borderRadius: 2.5,
+              minWidth: 0,
+              whiteSpace: 'nowrap',
+              fontWeight: 700,
+              borderWidth: 1.5,
+              '&:hover': { borderWidth: 1.5 },
+            }}
           >
-            Clear All
+            Clear all
           </Button>
         </Box>
       )}

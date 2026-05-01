@@ -61,6 +61,8 @@ const ITEMS_PER_PAGE = 10;
 const AttendancePage: React.FC = () => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+    const headingFontSize = { xs: '1.12rem', sm: '1.4rem', md: '2.125rem' };
+    const bodyFontSize = { xs: '0.78rem', sm: '0.88rem', md: '0.95rem' };
     const { formatCurrency } = useSettings();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -308,14 +310,14 @@ const AttendancePage: React.FC = () => {
     const roles = ['all', 'waiter', 'cashier', 'manager', 'kitchen_staff', 'delivery'];
 
     return (
-        <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 1600, mx: 'auto' }}>
+        <Box sx={{ p: { xs: 1.4, md: 4 }, maxWidth: 1600, mx: 'auto' }}>
             {/* Header Section */}
-            <Box sx={{ mb: 6, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: { md: 'flex-end' }, gap: 3 }}>
-                <Box>
-                    <Typography variant="h4" fontWeight="900" sx={{ letterSpacing: '-0.5px', mb: 1 }}>
+            <Box sx={{ mb: { xs: 2.5, md: 6 }, display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: { md: 'flex-end' }, gap: { xs: 1.5, md: 3 } }}>
+                <Box sx={{ textAlign: { xs: 'center', md: 'left' }, width: { xs: '100%', md: 'auto' } }}>
+                    <Typography variant="h4" fontWeight="900" sx={{ letterSpacing: '-0.5px', mb: 0.6, fontSize: headingFontSize, color: { xs: '#000', md: 'text.primary' } }}>
                         Staff Operations Center
                     </Typography>
-                    <Typography variant="body1" color="text.secondary" sx={{ opacity: 0.8 }}>
+                    <Typography variant="body1" color="text.secondary" sx={{ opacity: 0.8, fontSize: bodyFontSize }}>
                         Real-time shift cycle monitoring, geolocation tracking, and payroll aggregation.
                     </Typography>
                 </Box>
@@ -335,7 +337,7 @@ const AttendancePage: React.FC = () => {
             </Box>
 
             {/* Premium Stats Dashboard */}
-            <Grid container spacing={3} sx={{ mb: 6 }}>
+            <Grid container spacing={{ xs: 0.9, md: 3 }} sx={{ mb: { xs: 1.6, md: 6 } }}>
                 {[
                     { label: 'Active Personnel', value: backendStats.activeShifts, desc: 'Currently clocked in', icon: <PersonIcon />, color: theme.palette.success.main },
                     { label: filters.search ? 'Search Results' : 'Logged Shifts', value: totalRecords, desc: filters.search ? `Matches for "${filters.search}"` : 'Logged shift records', icon: <TodayIcon />, color: theme.palette.info.main },
@@ -343,27 +345,27 @@ const AttendancePage: React.FC = () => {
                     { label: 'Payroll Weight', value: formatCurrency(backendStats.totalEarnings), desc: 'Est. period expenditure', icon: <PayrollIcon />, color: theme.palette.error.main }
                 ].map((stat, i) => (
                     <Grid item xs={12} sm={6} md={3} key={i}>
-                        <Paper sx={{ p: 3, borderRadius: 0, bgcolor: alpha(stat.color, 0.04), border: '1px solid', borderColor: alpha(stat.color, 0.1), transition: '0.3s', '&:hover': { transform: 'translateY(-4px)', boxShadow: `0 10px 30px ${alpha(stat.color, 0.1)}` } }}>
-                            <Stack direction="row" spacing={2.5} alignItems="center">
-                                <Box sx={{ p: 2, borderRadius: 4, bgcolor: stat.color, color: 'white', display: 'flex', boxShadow: `0 5px 15px ${alpha(stat.color, 0.4)}` }}>
+                        <Paper sx={{ p: { xs: 1, md: 3 }, borderRadius: 0, bgcolor: alpha(stat.color, 0.04), border: '1px solid', borderColor: alpha(stat.color, 0.1), transition: '0.3s', '&:hover': { transform: 'translateY(-4px)', boxShadow: `0 10px 30px ${alpha(stat.color, 0.1)}` } }}>
+                            <Stack direction="row" spacing={{ xs: 1.2, md: 2.5 }} alignItems="center">
+                                <Box sx={{ p: { xs: 1.2, md: 2 }, borderRadius: 4, bgcolor: stat.color, color: 'white', display: 'flex', boxShadow: `0 5px 15px ${alpha(stat.color, 0.4)}` }}>
                                     {stat.icon}
                                 </Box>
                                 <Box sx={{ minWidth: 0, flexGrow: 1 }}>
                                     <Typography
                                         fontWeight="900"
                                         sx={{
-                                            fontSize: { xs: '1.1rem', md: '1.3rem', lg: '1.25rem' },
+                                            fontSize: { xs: '0.96rem', md: '1.3rem', lg: '1.25rem' },
                                             lineHeight: 1.1,
-                                            mb: 0.5,
+                                            mb: { xs: 0.2, md: 0.5 },
                                             wordBreak: 'break-word'
                                         }}
                                     >
                                         {stat.value}
                                     </Typography>
-                                    <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block' }}>{stat.label}</Typography>
+                                    <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', fontSize: bodyFontSize }}>{stat.label}</Typography>
                                 </Box>
                             </Stack>
-                            <Typography variant="caption" color="text.secondary" sx={{ mt: 2, display: 'block', fontStyle: 'italic' }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ mt: { xs: 0.55, md: 2 }, display: 'block', fontStyle: 'italic', fontSize: bodyFontSize }}>
                                 {stat.desc}
                             </Typography>
                         </Paper>
@@ -372,8 +374,8 @@ const AttendancePage: React.FC = () => {
             </Grid>
 
             {/* Filters Cockpit */}
-            <Paper sx={{ p: 3, mb: 4, borderRadius: 0, boxShadow: theme.palette.mode === 'light' ? '0 4px 15px rgba(0,0,0,0.05)' : '0 4px 15px rgba(0,0,0,0.4)', border: `1px solid ${theme.palette.divider}`, bgcolor: theme.palette.background.paper }}>
-                <Grid container spacing={3} alignItems="center">
+            <Paper sx={{ p: { xs: 1, md: 3 }, mb: { xs: 1.8, md: 4 }, borderRadius: 0, boxShadow: theme.palette.mode === 'light' ? '0 4px 15px rgba(0,0,0,0.05)' : '0 4px 15px rgba(0,0,0,0.4)', border: `1px solid ${theme.palette.divider}`, bgcolor: theme.palette.background.paper }}>
+                <Grid container spacing={{ xs: 1.2, md: 3 }} alignItems="center">
                     <Grid item xs={12} md={4}>
                         <TextField
                             fullWidth
@@ -425,12 +427,12 @@ const AttendancePage: React.FC = () => {
                     </Grid>
                 </Grid>
 
-                <Divider sx={{ my: 3 }} />
+                <Divider sx={{ my: { xs: 1, md: 3 } }} />
 
                 <Box
                     sx={{
                         display: 'flex',
-                        gap: 1.5,
+                        gap: 1,
                         overflowX: 'visible',
                         flexWrap: 'wrap',
                         pb: { xs: 2, md: 0 },
@@ -455,9 +457,9 @@ const AttendancePage: React.FC = () => {
                             sx={{
                                 borderRadius: 3,
                                 fontWeight: '900',
-                                px: 2,
-                                py: 2.5,
-                                fontSize: '0.75rem',
+                                px: { xs: 1.2, md: 2 },
+                                py: { xs: 1.9, md: 2.5 },
+                                fontSize: { xs: '0.68rem', md: '0.75rem' },
                                 letterSpacing: '0.5px',
                                 flexShrink: 0,
                                 transition: '0.2s',
@@ -487,12 +489,12 @@ const AttendancePage: React.FC = () => {
                 ) : (
                     <>
                         {isMobile ? (
-                            <Stack spacing={2}>
+                            <Stack spacing={1.15}>
                                 {attendance.map((row: any, index: number) => (
-                                    <Box key={`${row._id || 'card'}-${index}`} sx={{ mb: 2 }}>
+                                    <Box key={`${row._id || 'card'}-${index}`} sx={{ mb: 1 }}>
                                         <Card sx={{ borderRadius: 3, boxShadow: theme.palette.mode === 'light' ? '0 4px 12px rgba(0,0,0,0.05)' : '0 4px 12px rgba(0,0,0,0.4)', border: `1px solid ${theme.palette.divider}`, bgcolor: theme.palette.background.paper }}>
-                                            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
-                                                <Stack spacing={2}>
+                                            <CardContent sx={{ p: 1.2, '&:last-child': { pb: 1.2 } }}>
+                                                <Stack spacing={1.05}>
                                                     <Stack direction="row" justifyContent="space-between" alignItems="center">
                                                         <Stack direction="row" spacing={1.5} alignItems="center">
                                                             <Avatar src={row.user?.profileImage} sx={{ width: 40, height: 40, border: '1px solid', borderColor: 'divider' }}>
@@ -510,7 +512,7 @@ const AttendancePage: React.FC = () => {
 
                                                     <Divider />
 
-                                                    <Grid container spacing={2}>
+                                                    <Grid container spacing={1.1}>
                                                         <Grid item xs={6}>
                                                             <Typography variant="caption" color="text.secondary" display="block">TIMESTAMPS</Typography>
                                                             <Typography variant="body2" fontWeight="600">IN: {new Date(row.clockInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Typography>

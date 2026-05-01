@@ -144,7 +144,11 @@ const ThemedAppContent: React.FC = () => {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
+      <Toaster
+        position="top-right"
+        toastOptions={{ duration: 4000 }}
+        containerStyle={{ top: 'calc(env(safe-area-inset-top, 0px) + 64px)' }}
+      />
       <NotificationProvider>
         <ErrorBoundary>
           <SocketProvider>

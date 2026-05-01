@@ -69,6 +69,8 @@ import { useActiveTenant } from '../../hooks/useActiveTenant';
 const MenuPage: React.FC = () => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const headingFontSize = { xs: '1.12rem', sm: '1.4rem', md: '2.125rem' };
+    const bodyFontSize = { xs: '0.78rem', sm: '0.88rem', md: '0.95rem' };
     const navigate = useNavigate();
     const { formatCurrency } = useSettings();
     const { getRelativePath } = useActiveTenant();
@@ -806,7 +808,7 @@ const MenuPage: React.FC = () => {
     }, [menuItems, searchQuery, selectedCategory, selectedSubcategory, categories, subcategories]);
 
     return (
-        <Box sx={{ p: { xs: 1.5, md: 3 }, pt: { xs: 1, md: 3 } }}>
+        <Box sx={{ p: { xs: 1.2, md: 3 }, pt: { xs: 0.8, md: 3 } }}>
             {/* Header */}
             <Box sx={{ 
                 display: 'flex', 
@@ -822,7 +824,8 @@ const MenuPage: React.FC = () => {
                     variant="h4" 
                     sx={{ 
                         fontWeight: 800,
-                        fontSize: { xs: '1.35rem', sm: '1.75rem', md: '2.125rem' },
+                        fontSize: headingFontSize,
+                        color: { xs: '#000', sm: 'text.primary' },
                         textAlign: { xs: 'center', sm: 'left' },
                         width: { xs: '100%', sm: 'auto' }
                     }}
@@ -841,6 +844,10 @@ const MenuPage: React.FC = () => {
                     mb: { xs: 1, sm: 3 },
                     borderBottom: 1, 
                     borderColor: 'divider',
+                    '& .MuiTab-root': {
+                        fontSize: bodyFontSize,
+                        minHeight: { xs: 42, sm: 48 },
+                    },
                     '& .MuiTabs-indicator': { height: 3, borderRadius: '3px 3px 0 0' }
                 }}
             >
@@ -901,7 +908,7 @@ const MenuPage: React.FC = () => {
                         </Box>
                         
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, fontSize: bodyFontSize }}>
                                 {filteredMenuItems.length} Items Found
                             </Typography>
                             <Box sx={{ display: 'flex', gap: 1 }}>
@@ -943,7 +950,7 @@ const MenuPage: React.FC = () => {
                     {loading ? (
                         <Box sx={{ width: '100%' }}>
                             {/* Loading Skeleton */}
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 3 }}>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.2, sm: 2 }, mb: { xs: 2, sm: 3 } }}>
                                 <Typography variant="h6" color="text.secondary">
                                     Loading menu items...
                                 </Typography>
@@ -990,10 +997,10 @@ const MenuPage: React.FC = () => {
                             }}>
                                 <RestaurantIcon sx={{ fontSize: 40, color: 'text.disabled' }} />
                             </Box>
-                            <Typography variant="h6" color="text.primary" fontWeight="bold" gutterBottom>
+                            <Typography variant="h6" color="text.primary" fontWeight="bold" gutterBottom sx={{ fontSize: headingFontSize, textAlign: 'center', color: { xs: '#000', sm: 'text.primary' } }}>
                                 No menu items found
                             </Typography>
-                            <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 350, mb: 3 }}>
+                            <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 350, mb: 3, fontSize: bodyFontSize }}>
                                 {searchQuery.trim()
                                     ? `No results matched "${searchQuery.trim()}". Try another keyword or clear the search.`
                                     : categories.length === 0
@@ -1252,10 +1259,10 @@ const MenuPage: React.FC = () => {
                                     }}>
                                         <CategoryIcon sx={{ fontSize: 40, color: 'text.disabled' }} />
                                     </Box>
-                                    <Typography variant="h6" color="text.primary" fontWeight="bold" gutterBottom>
+                                    <Typography variant="h6" color="text.primary" fontWeight="bold" gutterBottom sx={{ fontSize: headingFontSize, textAlign: 'center', color: { xs: '#000', sm: 'text.primary' } }}>
                                         No categories found
                                     </Typography>
-                                    <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 350, mb: 3 }}>
+                                    <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 350, mb: 3, fontSize: bodyFontSize }}>
                                         Categories help you organize your menu items for better management and customer experience.
                                     </Typography>
                                     <Button

@@ -81,6 +81,8 @@ const KitchenInterface: React.FC = () => {
   const [activeTab, setActiveTab] = useState<number>(0); // 0: Live Orders, 1: Pre-Orders
   const [filterStatus, setFilterStatus] = useState<string>('all'); // 'all', 'urgent', 'pending', 'preparing', 'ready'
   const [filterType, setFilterType] = useState<string>('all'); // 'all', 'dine_in', 'takeaway', 'delivery'
+  const headingFontSize = { xs: '1.12rem', md: '1.6rem' };
+  const bodyFontSize = { xs: '0.7rem', sm: '0.88rem' };
 
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelItemRef, setCancelItemRef] = useState<{ orderId: string, itemIndex: number, itemName: string } | null>(null);
@@ -416,21 +418,21 @@ const KitchenInterface: React.FC = () => {
   return (
     <Box sx={{ p: 2, minHeight: '100vh', bgcolor: 'background.default' }}>
       {/* Header */}
-      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', md: 'center' }, mb: 3, gap: 2 }}>
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 'bold', color: 'text.primary', fontSize: { xs: '1.75rem', md: '2.125rem' } }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mb: 3, gap: 1.5 }}>
+        <Box sx={{ width: '100%', textAlign: 'center' }}>
+          <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#000', fontSize: headingFontSize, textAlign: 'center' }}>
             Kitchen Orders
           </Typography>
           <Tabs
             value={activeTab}
             onChange={(_, newValue) => setActiveTab(newValue)}
-            sx={{ mt: 1, minHeight: 36, '& .MuiTab-root': { minHeight: 36, py: 0.5 } }}
+            sx={{ mt: 1, minHeight: 36, justifyContent: 'center', '& .MuiTabs-flexContainer': { justifyContent: 'center' }, '& .MuiTab-root': { minHeight: 36, py: 0.5 } }}
           >
             <Tab label="Live Orders" id="kitchen-tab-0" aria-controls="kitchen-tabpanel-0" />
             <Tab label="Pre-Orders" id="kitchen-tab-1" aria-controls="kitchen-tabpanel-1" />
           </Tabs>
         </Box>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: { xs: 'flex-start', md: 'flex-end' } }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, alignItems: 'center', width: '100%' }}>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center' }}>
             {stats.urgentCount > 0 && (
               <Chip
@@ -520,11 +522,11 @@ const KitchenInterface: React.FC = () => {
           <CircularProgress size={60} />
         </Box>
       ) : filteredOrders.length === 0 ? (
-        <Paper sx={{ textAlign: 'center', p: 5, bgcolor: alpha(theme.palette.success.main, 0.1), borderRadius: 3 }}>
-          <Typography variant="h5" color="success.main" gutterBottom>
+        <Paper sx={{ textAlign: 'center', p: 4, bgcolor: alpha(theme.palette.success.main, 0.1), borderRadius: 3 }}>
+          <Typography variant="h5" color="success.main" gutterBottom sx={{ fontSize: headingFontSize }}>
             {filterStatus === 'all' ? '✅ Kitchen is Clear!' : 'No orders found for this filter'}
           </Typography>
-          <Typography variant="body1" color="text.secondary">
+          <Typography variant="body1" color="text.secondary" sx={{ fontSize: bodyFontSize }}>
             {filterStatus === 'all' ? 'No active orders. All caught up!' : 'Try selecting a different filter.'}
           </Typography>
         </Paper>
@@ -539,7 +541,8 @@ const KitchenInterface: React.FC = () => {
               <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={order._id}>
                 <Card
                   sx={{
-                    height: 480,
+                    height: { xs: 'auto', md: 470 },
+                    minHeight: { xs: 0, md: 470 },
                     display: 'flex',
                     flexDirection: 'column',
                     borderTop: `6px solid ${urgency === 'critical' ? theme.palette.error.main :
@@ -561,23 +564,23 @@ const KitchenInterface: React.FC = () => {
                   }}
                 >
                   <CardContent sx={{
-                    flexGrow: 1,
-                    p: 2,
+                    flexGrow: { xs: 0, md: 1 },
+                    p: { xs: 1.1, sm: 2 },
                     display: 'flex',
                     flexDirection: 'column',
                     overflow: 'hidden'
                   }}>
                     {/* Header Row */}
-                    <Box sx={{ mb: 1.5 }}>
+                    <Box sx={{ mb: { xs: 0.9, sm: 1.5 } }}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <Box>
-                          <Typography variant="h6" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1, lineHeight: 1.2 }}>
+                          <Typography variant="h6" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1, lineHeight: 1.2, fontSize: headingFontSize }}>
                             #{order.orderNumber?.split('-').pop() || order._id?.slice(-6)}
                             {urgency === 'critical' && (
                               <UrgentIcon color="error" sx={{ animation: 'pulse 0.5s infinite' }} />
                             )}
                           </Typography>
-                          <Typography variant="body2" fontWeight="600" color="primary.main" sx={{ mt: 0.5 }}>
+                          <Typography variant="body2" fontWeight="600" color="primary.main" sx={{ mt: 0.5, fontSize: bodyFontSize }}>
                             {order.customer?.name || 'Guest Customer'}
                           </Typography>
                         </Box>
@@ -589,6 +592,7 @@ const KitchenInterface: React.FC = () => {
                               variant="caption"
                               fontWeight="bold"
                               color={urgency === 'critical' ? 'error.main' : urgency === 'warning' ? 'warning.main' : 'text.secondary'}
+                              sx={{ fontSize: bodyFontSize }}
                             >
                               {order.isPreOrder && order.scheduledTime
                                 ? `Sch: ${new Date(order.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
@@ -607,29 +611,29 @@ const KitchenInterface: React.FC = () => {
                     </Box>
 
                     {/* Order Type & Status */}
-                    <Stack direction="row" spacing={1} sx={{ mb: 2 }} alignItems="center">
+                    <Stack direction="row" spacing={1} sx={{ mb: { xs: 1, sm: 2 } }} alignItems="center">
                       <Chip
                         icon={getOrderTypeIcon(order.orderType)}
                         label={order.orderType?.replace(/_/g, ' ').toUpperCase() || 'DINE IN'}
                         size="small"
                         variant="outlined"
-                        sx={{ fontSize: '0.65rem', height: 24 }}
+                        sx={{ fontSize: bodyFontSize, height: 24 }}
                       />
                       <Chip
                         label={order.status?.toUpperCase() || 'PENDING'}
                         color={getStatusColor(order.status) as any}
                         size="small"
-                        sx={{ fontSize: '0.65rem', height: 24, fontWeight: 'bold' }}
+                        sx={{ fontSize: bodyFontSize, height: 24, fontWeight: 'bold' }}
                       />
                     </Stack>
 
                     {/* Progress Bar */}
-                    <Box sx={{ mb: 2 }}>
+                    <Box sx={{ mb: { xs: 1, sm: 2 } }}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: bodyFontSize }}>
                           Items Ready
                         </Typography>
-                        <Typography variant="caption" fontWeight="bold" color={getProgressColor(progress)}>
+                        <Typography variant="caption" fontWeight="bold" color={getProgressColor(progress)} sx={{ fontSize: bodyFontSize }}>
                           {Math.round(progress)}%
                         </Typography>
                       </Box>
@@ -646,9 +650,10 @@ const KitchenInterface: React.FC = () => {
                     </Box>
 
                     {/* Items List with Checkboxes */}
-                    <Divider sx={{ mb: 1 }} />
+                    <Divider sx={{ mb: { xs: 0.5, sm: 1 } }} />
                     <Box sx={{
-                      flexGrow: 1,
+                      flexGrow: { xs: 0, md: 1 },
+                      maxHeight: { xs: 170, md: 'none' },
                       overflowY: 'auto',
                       '&::-webkit-scrollbar': {
                         width: '6px',
@@ -672,8 +677,8 @@ const KitchenInterface: React.FC = () => {
                             sx={{
                               display: 'flex',
                               alignItems: 'center',
-                              py: 0.5,
-                              px: 1,
+                              py: { xs: 0.25, sm: 0.5 },
+                              px: { xs: 0.5, sm: 1 },
                               borderBottom: idx < order.items.length - 1 ? '1px dashed' : 'none',
                               borderColor: 'divider',
                               bgcolor: isCancelled ? alpha(theme.palette.error.main, 0.03) : 'transparent',
@@ -706,12 +711,13 @@ const KitchenInterface: React.FC = () => {
                                       fontWeight={isReady ? 'normal' : 'medium'}
                                       sx={{
                                         color: isReady ? 'text.secondary' : 'text.primary',
+                                        fontSize: bodyFontSize,
                                       }}
                                     >
                                       <strong>{item.quantity}x</strong> {item.name}
                                     </Typography>
                                     {item.notes && (
-                                      <Typography variant="caption" color="warning.main" display="block">
+                                      <Typography variant="caption" color="warning.main" display="block" sx={{ fontSize: bodyFontSize }}>
                                         📝 {item.notes}
                                       </Typography>
                                     )}
@@ -720,7 +726,7 @@ const KitchenInterface: React.FC = () => {
                                         icon={<UrgentIcon sx={{ fontSize: 14 }} />}
                                         label={`Spice: ${formatSpiceLevelLabel(item.spiceLevel)}`}
                                         size="small"
-                                        sx={{ mt: 0.75, height: 22, fontSize: '0.72rem', fontWeight: 700 }}
+                                        sx={{ mt: 0.75, height: 22, fontSize: bodyFontSize, fontWeight: 700 }}
                                       />
                                     )}
                                   </Box>
@@ -736,6 +742,7 @@ const KitchenInterface: React.FC = () => {
                                       sx={{
                                         color: 'text.disabled',
                                         textDecoration: 'line-through',
+                                        fontSize: bodyFontSize,
                                       }}
                                     >
                                       <strong>{item.quantity}x</strong> {item.name}
@@ -744,11 +751,11 @@ const KitchenInterface: React.FC = () => {
                                       label="CANCELLED"
                                       size="small"
                                       color="error"
-                                      sx={{ height: 16, fontSize: '0.6rem', fontWeight: 'bold', px: 0.5 }}
+                                      sx={{ height: 16, fontSize: bodyFontSize, fontWeight: 'bold', px: 0.5 }}
                                     />
                                   </Box>
                                   {item.cancelReason && (
-                                    <Typography variant="caption" color="error.main" sx={{ display: 'block', mt: 0, fontSize: '0.65rem', opacity: 0.8 }}>
+                                    <Typography variant="caption" color="error.main" sx={{ display: 'block', mt: 0, fontSize: bodyFontSize, opacity: 0.8 }}>
                                       Reason: {item.cancelReason}
                                     </Typography>
                                   )}
@@ -758,7 +765,7 @@ const KitchenInterface: React.FC = () => {
                                       label={`Spice: ${formatSpiceLevelLabel(item.spiceLevel)}`}
                                       size="small"
                                       variant="outlined"
-                                      sx={{ ml: 1, mt: 0.5, height: 18, fontSize: '0.65rem', color: '#e65100', borderColor: '#ffb74d' }}
+                                      sx={{ ml: 1, mt: 0.5, height: 18, fontSize: bodyFontSize, color: '#e65100', borderColor: '#ffb74d' }}
                                     />
                                   )}
                                 </Box>
@@ -791,7 +798,7 @@ const KitchenInterface: React.FC = () => {
                   </CardContent>
 
                   {/* Action Buttons */}
-                  <CardActions sx={{ p: 2, pt: 0, flexDirection: 'column', gap: 1 }}>
+                  <CardActions sx={{ p: { xs: 1, sm: 2 }, pt: { xs: 0.1, sm: 0 }, flexDirection: { xs: 'row', sm: 'column' }, gap: { xs: 0.4, sm: 1 }, alignItems: 'stretch', mt: 0 }}>
                     <Button
                       fullWidth
                       variant="outlined"
@@ -799,7 +806,7 @@ const KitchenInterface: React.FC = () => {
                       size="small"
                       onClick={() => handlePrintKOT(order)}
                       startIcon={<PrintIcon />}
-                      sx={{ mb: 0.5 }}
+                      sx={{ mb: { xs: 0, sm: 0.5 }, flex: { xs: 1, sm: 'initial' }, minWidth: 0, fontSize: { xs: '0.62rem', sm: '0.78rem' }, py: { xs: 0.45, sm: 0.7 }, px: { xs: 0.5, sm: 1 }, minHeight: { xs: 28, sm: 34 }, '& .MuiButton-startIcon': { mr: { xs: 0.3, sm: 0.75 } } }}
                     >
                       Print KOT
                     </Button>
@@ -811,6 +818,7 @@ const KitchenInterface: React.FC = () => {
                         size="small"
                         onClick={() => handleMarkAllReady(order._id)}
                         startIcon={<DoneAllIcon />}
+                        sx={{ flex: { xs: 1, sm: 'initial' }, minWidth: 0, fontSize: { xs: '0.62rem', sm: '0.78rem' }, py: { xs: 0.45, sm: 0.7 }, px: { xs: 0.5, sm: 1 }, minHeight: { xs: 28, sm: 34 }, '& .MuiButton-startIcon': { mr: { xs: 0.3, sm: 0.75 } } }}
                       >
                         Mark All Ready
                       </Button>
@@ -824,6 +832,7 @@ const KitchenInterface: React.FC = () => {
                         onClick={() => handleOrderStatusUpdate(order._id, order.status, order.orderType)}
                         startIcon={isAllReady ? <CheckCircleIcon /> : <PlayArrowIcon />}
                         disabled={(!isAllReady && order.status === 'preparing')}
+                        sx={{ flex: { xs: 1, sm: 'initial' }, minWidth: 0, fontSize: { xs: '0.62rem', sm: '0.78rem' }, py: { xs: 0.45, sm: 0.7 }, px: { xs: 0.5, sm: 1 }, minHeight: { xs: 28, sm: 34 }, '& .MuiButton-startIcon': { mr: { xs: 0.3, sm: 0.75 } } }}
                       >
                         {order.status === 'pending' ? 'Confirm' :
                           order.status === 'confirmed' ? 'Start' :
