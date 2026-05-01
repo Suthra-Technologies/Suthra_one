@@ -441,7 +441,7 @@ const LoginPage: React.FC = () => {
           >
             {forgotPasswordView
               ? "Enter your email address and we'll send you a link to reset your password."
-              : 'Welcome back! Enter your details to continue.'}
+              : ''}
           </Typography>
 
           {/* Error Alert */}
