@@ -188,7 +188,7 @@ const AppRoutes: React.FC = () => {
         <>
           {TenantRoutes()}
           {/* Redirect from /mythri/dashboard to /dashboard if on mythri.localhost */}
-          <Route path="/:slug/*" element={<SubdomainRedirect contextSlug={hostnameSlug} />} />
+          <Route path={`/${hostnameSlug}/*`} element={<SubdomainRedirect contextSlug={hostnameSlug} />} />
         </>
       )}
 
@@ -234,7 +234,6 @@ const App: React.FC = () => {
  * e.g. mythri.localhost/mythri/menu -> mythri.localhost/menu
  */
 const SubdomainRedirect: React.FC<{ contextSlug: string }> = ({ contextSlug }) => {
-  const { slug } = useParams<{ slug: string }>();
   const location = useLocation();
 
   const redirectContent = (path: string) => (
@@ -254,15 +253,9 @@ const SubdomainRedirect: React.FC<{ contextSlug: string }> = ({ contextSlug }) =
     </Box>
   );
 
-  if (slug === contextSlug) {
-    // Remove the slug from the path but preserve query parameters
-    const newPath = (location.pathname.replace(`/${slug}`, '') || '/') + location.search;
-    return redirectContent(newPath);
-  }
-
-  // If the slug doesn't match the subdomain, fallback redirect
-  const fallbackPath = "/" + location.search;
-  return redirectContent(fallbackPath);
+  // Remove the slug from the path but preserve query parameters
+  const newPath = (location.pathname.replace(`/${contextSlug}`, '') || '/') + location.search;
+  return redirectContent(newPath);
 };
 
 export default App;

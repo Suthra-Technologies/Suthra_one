@@ -4,6 +4,7 @@ import CustomerLayout from '../components/CustomerLayout';
 import Layout from '../components/Layout';
 import { RequireFeature } from '../components/RequireFeature';
 import { RequireRole } from '../components/RequireRole';
+import { Box, Typography } from '@mui/material';
 import CouponsAdminPage from '../pages/admin/CouponsAdminPage';
 import PromoCodePage from '../pages/admin/PromoCodePage';
 import AuditLogsPage from '../pages/admin/AuditLogsPage';
@@ -50,6 +51,13 @@ import PurchaseOrdersPage from '../pages/purchase-orders/PurchaseOrdersPage';
 import CreatePOPage from '../pages/purchase-orders/CreatePOPage';
 import PurchaseOrderDetailPage from '../pages/purchase-orders/PurchaseOrderDetailPage';
 import VendorsPage from '../pages/vendors/VendorsPage';
+import AssetDashboard from '../pages/assets/AssetDashboard';
+import AssetList from '../pages/assets/AssetList';
+import AssetView from '../pages/assets/AssetView';
+import AssetForm from '../pages/assets/AssetForm';
+import ExpensesPage from '../pages/expenses/ExpensesPage';
+import CreateExpensePage from '../pages/expenses/CreateExpensePage';
+import ExpenseDetailPage from '../pages/expenses/ExpenseDetailPage';
 
 export const TenantRoutes = () => (
     <>
@@ -76,6 +84,10 @@ export const TenantRoutes = () => (
         <Route path="orders" element={<OrdersPage />} />
         <Route path="pos" element={<POSPage />} />
         <Route element={<RequireRole allowedRoles={['admin', 'manager']} />}>
+          <Route path="expenses" element={<ExpensesPage />} />
+          <Route path="expenses/:id" element={<ExpenseDetailPage />} />
+          <Route path="expenses/create" element={<CreateExpensePage />} />
+          <Route path="expenses/edit/:id" element={<CreateExpensePage />} />
           <Route path="menu" element={<MenuPage />} />
           <Route element={<RequireFeature feature="inventory" />}>
             <Route path="inventory" element={<InventoryPage />} />
@@ -105,6 +117,11 @@ export const TenantRoutes = () => (
           <Route path="customise-screens" element={<CustomiseScreensPage />} />
           <Route path="service-usage" element={<ServiceUsagePage />} />
           <Route path="audit-logs" element={<AuditLogsPage />} />
+          <Route path="assets" element={<AssetList />} />
+          <Route path="assets/:id" element={<AssetView />} />
+          <Route path="assets/new" element={<AssetForm />} />
+          <Route path="assets/:id/edit" element={<AssetForm />} />
+          <Route path="assets/:id/edit" element={<AssetForm />} />
         </Route>
 
         <Route element={<RequireRole allowedRoles={['admin', 'superadmin']} />}>

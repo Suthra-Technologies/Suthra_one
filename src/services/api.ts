@@ -669,4 +669,30 @@ export const smsAPI = {
   sendTest: (to: string, message: string) => api.post('/sms/test', { to, message }),
 };
 
+// -------------------- Assets API --------------------
+export const assetsAPI = {
+  getAll: (params?: { type?: string; status?: string; search?: string }) => api.get('/assets', { params }),
+  getOne: (id: string) => api.get(`/assets/${id}`),
+  create: (data: any) => api.post('/assets', data),
+  update: (id: string, data: any) => api.put(`/assets/${id}`, data),
+  delete: (id: string) => api.delete(`/assets/${id}`),
+  getInsights: () => api.get('/assets/insights'),
+  getCounts: () => api.get('/assets/counts'),
+  getHistory: (id: string) => api.get(`/assets/${id}/history`),
+  addHistory: (id: string, data: any) => api.post(`/assets/${id}/history`, data),
+  completeService: (id: string, data: { date: string; cost: number }) => api.post(`/assets/${id}/complete-service`, data),
+  completeRenewal: (id: string, data: { date: string; cost: number }) => api.post(`/assets/${id}/complete-renewal`, data),
+};
+
+// -------------------- Expenses API --------------------
+export const expensesAPI = {
+  create: (data: any) => api.post('/expenses', data),
+  getAll: (params?: any) => api.get('/expenses', { params }),
+  getOne: (id: string) => api.get(`/expenses/${id}`),
+  update: (id: string, data: any) => api.put(`/expenses/${id}`, data),
+  delete: (id: string) => api.delete(`/expenses/${id}`),
+  getStats: () => api.get('/expenses/stats'),
+  getSuggestions: () => api.get('/expenses/suggestions'),
+};
+
 export default api;

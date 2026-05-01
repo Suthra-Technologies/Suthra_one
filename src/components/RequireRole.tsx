@@ -20,6 +20,7 @@ export const RequireRole: React.FC<Props> = ({ allowedRoles }) => {
 
     // Not logged in → go to login page
     if (!user) {
+        console.log('RequireRole: No user found, redirecting to login');
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
@@ -28,11 +29,13 @@ export const RequireRole: React.FC<Props> = ({ allowedRoles }) => {
 
     // For non-superadmin users, require tenant
     if (!isSuperAdmin && !tenantSlug) {
+        console.log('RequireRole: No tenantSlug found for non-superadmin, redirecting to login. User:', user.email);
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
     // Role not permitted → unauthorized page. Use hasRole to check against the active role.
-    if (!hasRole(allowedRoles)) {
+    // Superadmin bypasses specific role checks within a tenant
+    if (!isSuperAdmin && !hasRole(allowedRoles)) {
         // Fallback: check if the user's static role matches if hasRole fails or activeRole isn't set yet (though it should be)
         if (!allowedRoles.includes(user.role)) {
             return <Navigate to="/unauthorized" replace />;
