@@ -397,7 +397,10 @@ export const settingsAPI = {
 
 // -------------------- Subscription API --------------------
 export const subscriptionAPI = {
+  getUsage: () => api.get('/subscription/usage'),
   getPlans: () => api.get('/subscription/plans'),
+  getTopups: () => api.get('/subscription/topups'),
+  purchaseTopup: (planId: string) => api.post('/subscription/purchase-topup', { planId }),
   subscribe: (planId: string) => api.post('/subscription/subscribe', { planId }),
   cancel: () => api.post('/subscription/cancel'),
   createCheckoutSession: (data: {
@@ -491,6 +494,10 @@ export const superAPI = {
   listSupportTickets: (params?: any) => api.get('/superadmin/support-tickets', { params }),
   replySupportTicket: (ticketId: string, payload: any) =>
     api.post(`/superadmin/support-tickets/${ticketId}/reply`, payload),
+  updateSupportTicket: (ticketId: string, payload: any) =>
+    api.patch(`/superadmin/support-tickets/${ticketId}`, payload),
+  deleteSupportTicket: (ticketId: string) =>
+    api.delete(`/superadmin/support-tickets/${ticketId}`),
 
   // Plans management
   listPlans: () => api.get('/superadmin/plans'),
@@ -520,6 +527,8 @@ export const supportAPI = {
   create: (payload: any) => api.post('/support', payload),
   reply: (id: string, payload: any) => api.post(`/support/${id}/reply`, payload),
   resolve: (id: string, payload: any) => api.post(`/support/${id}/resolve`, payload),
+  update: (id: string, payload: any) => api.patch(`/support/${id}`, payload),
+  delete: (id: string) => api.delete(`/support/${id}`),
 };
 
 
@@ -680,6 +689,9 @@ export const homepageAPI = {
   getContent: () => api.get('/homepage'),
   updateContent: (htmlContent: string, sections?: any[]) => api.put('/homepage', { htmlContent, sections }),
   getPublicContent: (tenantSlug: string) => api.get('/homepage/public', { params: { tenantSlug } }),
+  getAboutContent: () => api.get('/homepage/about'),
+  updateAboutContent: (aboutSections: any[]) => api.put('/homepage/about', { aboutSections }),
+  getPublicAboutContent: (tenantSlug: string) => api.get('/homepage/about/public', { params: { tenantSlug } }),
 };
 
 // -------------------- SMS API --------------------
@@ -690,4 +702,12 @@ export const smsAPI = {
   sendTest: (to: string, message: string) => api.post('/sms/test', { to, message }),
 };
 
+// -------------------- Email API --------------------
+export const emailAPI = {
+  getLogs: (params: { page: number; limit: number; type?: string; startDate?: string; endDate?: string }) =>
+    api.get('/email/logs', { params }),
+  getSummary: (params?: { startDate?: string; endDate?: string }) => api.get('/email/summary', { params }),
+};
+
 export default api;
+

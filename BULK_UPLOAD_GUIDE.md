@@ -37,7 +37,7 @@ The system supports multiple image formats:
 ## CSV Format
 ```
 Name, Price, Category, Subcategory, Description, ImageURL, FoodType, IsAvailable, IsCateringAvailable
-Burger, 10.99, Main Course, Burgers, Delicious cheese burger, https://example.com/burger.jpg, non-veg, true, true
+Burger, 10.99, Main Course, Burgers, Delicious cheese burger, https://example.com/burger.jpg, non-veg, yes, yes
 Pizza, 12.50, Main Course, Italian, Pizza Margherita, https://example.com/pizza.jpg, veg, true, true
 ```
 

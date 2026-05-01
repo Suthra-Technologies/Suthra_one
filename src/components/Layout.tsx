@@ -1,5 +1,6 @@
 import {
   Add,
+  ArrowBack,
   CancelOutlined,
   CheckCircleOutline,
   ChevronLeft,
@@ -55,6 +56,7 @@ import Sidebar from './Sidebar';
 import SubscriptionBanner from './SubscriptionBanner';
 import SubscriptionStatus from './SubscriptionStatus';
 import { Capacitor } from '@capacitor/core';
+import { usePullToRefresh } from '../hooks/usePullToRefresh';
 
 
 /**
@@ -87,7 +89,7 @@ const RestaurantStatusToggle: React.FC = () => {
   const [closeReason, setCloseReason] = useState('');
   const [customerMessage, setCustomerMessage] = useState('We are temporarily closed. Pre-orders for later slots are still open.');
 
-  const { tenantSlug } = useAuth() as any;
+  const { tenantSlug } = useAuth();
 
   const loadStatus = React.useCallback(async () => {
     if (!tenantSlug) return;
@@ -361,14 +363,19 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isNative = Capacitor.isNativePlatform();
+  const showMobileUI = isMobile || isNative;
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout, isLoading, availableTenants, switchTenant, activeRole } = useAuth(); // Added availableTenants, switchTenant, tenantSlug
+  const { user, logout, isLoading, availableTenants, switchTenant, activeRole, hasRole } = useAuth(); // Added availableTenants, switchTenant, tenantSlug
   const { slug, isSubdomain, getRelativePath } = useActiveTenant();
   const tenantSlug = slug;
   const { notifications } = useNotifications();
   const { settings, updateSettings } = useSettings();
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  // Pull-to-refresh for mobile apps
+  usePullToRefresh();
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
@@ -518,12 +525,44 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
         }}
       >
         <Toolbar sx={{ minHeight: { xs: 56, sm: 64 }, px: { xs: 1, sm: 2 } }}>
+          {/* Mobile Back Button - visible on non-dashboard pages for native apps & mobile screens */}
+          {showMobileUI && !location.pathname.match(/\/(dashboard)\/?$/) && (
+            <IconButton
+              color="inherit"
+              aria-label="go back"
+              edge="start"
+              onClick={() => {
+                if (window.history.length > 1) {
+                  navigate(-1);
+                } else {
+                  navigate(getRelativePath('/dashboard'), { replace: true });
+                }
+              }}
+              sx={{
+                ml: 0.5,
+                mr: 0.5,
+                display: { md: isNative ? 'flex' : 'none' },
+                bgcolor: 'action.hover',
+                borderRadius: '10px',
+                width: 44,
+                height: 44,
+                minWidth: 44,
+                '&:hover, &:active': {
+                  bgcolor: 'primary.main',
+                  color: 'white',
+                },
+                transition: 'all 0.2s ease',
+              }}
+            >
+              <ArrowBack />
+            </IconButton>
+          )}
           <IconButton
             color="inherit"
             aria-label="open drawer"
             edge="start"
             onClick={handleDrawerToggle}
-            sx={{ ml: 1, mr: 2, display: { md: 'none' } }}
+            sx={{ ml: 1, mr: 2, display: { md: isNative ? 'flex' : 'none' } }}
           >
             <MenuIcon />
           </IconButton>
@@ -558,7 +597,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
               <ShiftManager />
               {Capacitor.getPlatform() !== 'ios' && <SubscriptionStatus />}
             </Box>
-            <RestaurantStatusToggle />
+            {hasRole(['admin']) && activeRole !== 'customer' && <RestaurantStatusToggle />}
             <Tooltip title="Notifications">
               <IconButton color="inherit" onClick={handleNotificationToggle}>
                 <Badge badgeContent={unreadCount} color="error">

@@ -48,6 +48,8 @@ import {
     InputLabel,
     Select,
     MenuItem,
+    FormControlLabel,
+    Checkbox,
 } from '@mui/material';
 import AddressAutocomplete from '../../components/AddressAutocomplete';
 import { useAuth } from '../../context/AuthContext';
@@ -100,6 +102,13 @@ const ProfilePage: React.FC = () => {
         state: '',
         zipCode: '',
         landmark: '',
+        isDefault: false,
+    });
+    const [cardDialogOpen, setCardDialogOpen] = useState(false);
+    const [cardForm, setCardForm] = useState({
+        cardNumber: '',
+        cardExpiry: '',
+        cardCvc: '',
         isDefault: false,
     });
 
@@ -397,9 +406,10 @@ const ProfilePage: React.FC = () => {
     };
 
     const handleSetDefaultAddress = async (index: number) => {
+        const isCurrentlyDefault = savedAddresses[index].isDefault;
         const newAddresses = savedAddresses.map((addr, i) => ({
             ...addr,
-            isDefault: i === index,
+            isDefault: i === index ? !isCurrentlyDefault : false,
         }));
 
         try {
@@ -408,7 +418,7 @@ const ProfilePage: React.FC = () => {
             const updatedAddresses = response.data.savedAddresses || [];
             setSavedAddresses(updatedAddresses);
             updateUserData({ savedAddresses: updatedAddresses });
-            toast.success('Default address updated');
+            toast.success(isCurrentlyDefault ? 'Default address removed' : 'Default address updated');
         } catch (error) {
             console.error('Error setting default address:', error);
             toast.error('Failed to update default address');
@@ -428,6 +438,57 @@ const ProfilePage: React.FC = () => {
 
     const handleDeleteCard = (index: number) => {
         setCardDeleteConfirm({ open: true, index });
+    };
+
+    const handleOpenCardDialog = () => {
+        setCardForm({
+            cardNumber: '',
+            cardExpiry: '',
+            cardCvc: '',
+            isDefault: savedCards.length === 0,
+        });
+        setCardDialogOpen(true);
+    };
+
+    const handleSaveCard = async () => {
+        const { cardNumber, cardExpiry, cardCvc } = cardForm;
+        const cleanCardNum = cardNumber.replace(/\s/g, '');
+        
+        if (cleanCardNum.length < 15) {
+            toast.error('Invalid card number');
+            return;
+        }
+        if (cardExpiry.length < 5) {
+            toast.error('Invalid expiry date (MM/YY)');
+            return;
+        }
+        if (cardCvc.length < 3) {
+            toast.error('Invalid CVC');
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const cardData = {
+                brand: cleanCardNum.startsWith('4') ? 'Visa' : 
+                       cleanCardNum.startsWith('5') ? 'Mastercard' : 
+                       cleanCardNum.startsWith('3') ? 'Amex' : 'Card',
+                last4: cleanCardNum.slice(-4),
+                expMonth: cardExpiry.split('/')[0],
+                expYear: cardExpiry.split('/')[1],
+                isDefault: cardForm.isDefault
+            };
+
+            await authAPI.saveCustomerCard(cardData);
+            toast.success('Card saved successfully');
+            setCardDialogOpen(false);
+            fetchSavedCards();
+        } catch (error) {
+            console.error('Error saving card:', error);
+            toast.error('Failed to save card');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const confirmDeleteCard = async () => {
@@ -890,9 +951,20 @@ const ProfilePage: React.FC = () => {
                                 mb: 2 
                             }}>
                                 <Typography variant="h6" sx={{ fontSize: { xs: '1rem', md: '1.25rem' } }}>Saved Cards</Typography>
-                                <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center' }}>
-                                    Cards are saved for faster checkout
-                                </Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                    <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
+                                        Cards are saved for faster checkout
+                                    </Typography>
+                                    <Button
+                                        variant="contained"
+                                        startIcon={<AddIcon />}
+                                        size="small"
+                                        onClick={handleOpenCardDialog}
+                                        sx={{ borderRadius: 2 }}
+                                    >
+                                        Add Card
+                                    </Button>
+                                </Box>
                             </Box>
                             <Divider sx={{ mb: { xs: 2, md: 3 } }} />
                             {savedCards.length === 0 ? (
@@ -1141,6 +1213,80 @@ const ProfilePage: React.FC = () => {
                         sx={{ flex: 1 }}
                     >
                         Remove
+                    </Button>
+                </DialogActions>
+            </Dialog>
+            <Dialog open={cardDialogOpen} onClose={() => setCardDialogOpen(false)} maxWidth="xs" fullWidth>
+                <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pr: 1 }}>
+                    Add New Card
+                    <IconButton
+                        onClick={() => setCardDialogOpen(false)}
+                        sx={{
+                            bgcolor: 'error.main',
+                            color: '#fff',
+                            '&:hover': { bgcolor: 'error.dark' },
+                            borderRadius: 1,
+                            p: '3px',
+                            width: 24,
+                            height: 24,
+                        }}
+                    >
+                        <CloseIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                </DialogTitle>
+                <DialogContent dividers>
+                    <Box sx={{ mt: 1 }}>
+                        <TextField
+                            fullWidth
+                            label="Card Number"
+                            placeholder="0000 0000 0000 0000"
+                            sx={{ mb: 2 }}
+                            value={cardForm.cardNumber}
+                            onChange={(e) => {
+                                const val = e.target.value.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim();
+                                setCardForm({ ...cardForm, cardNumber: val.slice(0, 19) });
+                            }}
+                        />
+                        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                            <TextField
+                                fullWidth
+                                label="Expiry Date"
+                                placeholder="MM/YY"
+                                value={cardForm.cardExpiry}
+                                onChange={(e) => {
+                                    let val = e.target.value.replace(/\D/g, '');
+                                    if (val.length > 2) val = val.slice(0, 2) + '/' + val.slice(2, 4);
+                                    setCardForm({ ...cardForm, cardExpiry: val.slice(0, 5) });
+                                }}
+                            />
+                            <TextField
+                                fullWidth
+                                label="CVC"
+                                placeholder="123"
+                                value={cardForm.cardCvc}
+                                onChange={(e) => setCardForm({ ...cardForm, cardCvc: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+                            />
+                        </Box>
+                        <FormControlLabel
+                            control={
+                                <Checkbox 
+                                    checked={cardForm.isDefault} 
+                                    onChange={(e) => setCardForm({ ...cardForm, isDefault: e.target.checked })} 
+                                />
+                            }
+                            label="Set as default payment method"
+                        />
+                    </Box>
+                </DialogContent>
+                <DialogActions sx={{ p: 2 }}>
+                    <Button onClick={() => setCardDialogOpen(false)}>Cancel</Button>
+                    <Button 
+                        variant="contained" 
+                        onClick={handleSaveCard}
+                        disabled={loading}
+                        startIcon={loading && <CircularProgress size={20} color="inherit" />}
+                    >
+                        Save Card
                     </Button>
                 </DialogActions>
             </Dialog>

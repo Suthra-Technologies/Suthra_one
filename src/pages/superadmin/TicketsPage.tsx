@@ -32,7 +32,7 @@ import {
   IconButton,
   Stack,
 } from '@mui/material';
-import { Image as ImageIcon, Close as CloseIcon } from '@mui/icons-material';
+import { Image as ImageIcon, Close as CloseIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { superAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 
@@ -56,6 +56,12 @@ const TicketsPage: React.FC = () => {
   const [replyDialogOpen, setReplyDialogOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
   const [replyMessage, setReplyMessage] = useState('');
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingTicket, setEditingTicket] = useState<any | null>(null);
+  const [editSubject, setEditSubject] = useState('');
+  const [editCategory, setEditCategory] = useState('');
+  const [editPriority, setEditPriority] = useState('');
+  const [editMessage, setEditMessage] = useState('');
 
   const fetchTickets = async () => {
     setLoading(true);
@@ -105,6 +111,51 @@ const TicketsPage: React.FC = () => {
     }
   };
 
+  const handleEditClick = (ticket: any) => {
+    setEditingTicket(ticket);
+    setEditSubject(ticket.subject || '');
+    setEditCategory(ticket.category || 'technical');
+    setEditPriority(ticket.priority || 'medium');
+    setEditMessage(ticket.messages?.[0]?.message || '');
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdateTicket = async () => {
+    if (!editingTicket || !editSubject.trim() || !editMessage.trim()) {
+      toast.error('Subject and message are required');
+      return;
+    }
+
+    try {
+      await superAPI.updateSupportTicket(editingTicket._id, {
+        subject: editSubject,
+        category: editCategory,
+        priority: editPriority,
+        message: editMessage,
+      });
+      toast.success('Ticket updated successfully');
+      setEditDialogOpen(false);
+      setEditingTicket(null);
+      fetchTickets();
+    } catch (error: any) {
+      console.error('Error updating ticket:', error);
+      toast.error(error?.response?.data?.message || 'Failed to update ticket');
+    }
+  };
+
+  const handleDeleteTicket = async (ticket: any) => {
+    if (!window.confirm('Are you sure you want to delete this ticket?')) return;
+
+    try {
+      await superAPI.deleteSupportTicket(ticket._id);
+      toast.success('Ticket deleted successfully');
+      fetchTickets();
+    } catch (error: any) {
+      console.error('Error deleting ticket:', error);
+      toast.error(error?.response?.data?.message || 'Failed to delete ticket');
+    }
+  };
+
   const getStatusColor = (status: string): 'default' | 'warning' | 'info' | 'success' => {
     const colors: Record<string, 'default' | 'warning' | 'info' | 'success'> = {
       open: 'warning',
@@ -123,7 +174,7 @@ const TicketsPage: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: { xs: 1.5, sm: 3 } }}>
+    <Box sx={{ px: { xs: 1.5, sm: 3 }, pb: { xs: 1.5, sm: 3 }, pt: { xs: 0.5, sm: 3 } }}>
       <Typography
         variant="h4"
         gutterBottom
@@ -229,9 +280,17 @@ const TicketsPage: React.FC = () => {
                       </TableCell>
                       <TableCell>{new Date(ticket.lastUpdatedAt).toLocaleString()}</TableCell>
                       <TableCell>
-                        <Button size="small" variant="outlined" onClick={() => handleReplyClick(ticket)}>
-                          View & Reply
-                        </Button>
+                        <Stack direction="row" spacing={1}>
+                          <Button size="small" variant="outlined" onClick={() => handleReplyClick(ticket)}>
+                            View & Reply
+                          </Button>
+                          <IconButton size="small" color="primary" onClick={() => handleEditClick(ticket)}>
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton size="small" color="error" onClick={() => handleDeleteTicket(ticket)}>
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Stack>
                       </TableCell>
                     </TableRow>
                   );
@@ -339,11 +398,17 @@ const TicketsPage: React.FC = () => {
 
                     <Divider sx={{ mb: 2 }} />
 
-                    <Box display="flex" justifyContent="flex-end">
+                    <Stack direction="row" spacing={1}>
                       <Button size="small" variant="contained" onClick={() => handleReplyClick(ticket)} fullWidth>
                         View & Reply
                       </Button>
-                    </Box>
+                      <IconButton color="primary" onClick={() => handleEditClick(ticket)}>
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton color="error" onClick={() => handleDeleteTicket(ticket)}>
+                        <DeleteIcon />
+                      </IconButton>
+                    </Stack>
                   </CardContent>
                 </Card>
               );
@@ -474,6 +539,53 @@ const TicketsPage: React.FC = () => {
           <Button onClick={handleSendReply} variant="contained" disabled={!replyMessage.trim()}>
             Send Reply
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={editDialogOpen}
+        onClose={() => setEditDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Edit Ticket</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 2 }}>
+          <TextField
+            label="Subject"
+            value={editSubject}
+            onChange={(e) => setEditSubject(e.target.value)}
+            fullWidth
+          />
+          <TextField
+            label="Category"
+            value={editCategory}
+            onChange={(e) => setEditCategory(e.target.value)}
+            fullWidth
+          />
+          <FormControl fullWidth>
+            <Select
+              value={editPriority}
+              onChange={(e) => setEditPriority(e.target.value)}
+              displayEmpty
+            >
+              <MenuItem value="low">Low</MenuItem>
+              <MenuItem value="medium">Medium</MenuItem>
+              <MenuItem value="high">High</MenuItem>
+              <MenuItem value="urgent">Urgent</MenuItem>
+            </Select>
+          </FormControl>
+          <TextField
+            label="Message"
+            value={editMessage}
+            onChange={(e) => setEditMessage(e.target.value)}
+            multiline
+            rows={4}
+            fullWidth
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setEditDialogOpen(false)}>Cancel</Button>
+          <Button variant="contained" onClick={handleUpdateTicket}>Update</Button>
         </DialogActions>
       </Dialog>
     </Box>

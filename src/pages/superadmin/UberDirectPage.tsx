@@ -134,26 +134,33 @@ const UberDirectPage: React.FC = () => {
     };
 
     return (
-        <Box sx={{ p: 3 }}>
-            <Typography variant="h4" fontWeight="bold" gutterBottom>Uber Direct Management</Typography>
+        <Box sx={{ px: { xs: 1.5, sm: 2.5, md: 3 }, pb: { xs: 1.5, sm: 2.5, md: 3 }, pt: { xs: 0.5, sm: 2.5, md: 3 } }}>
+            <Typography
+                variant="h4"
+                fontWeight="bold"
+                gutterBottom
+                sx={{ textAlign: { xs: 'center', sm: 'left' }, fontSize: { xs: '1.5rem', sm: '2.125rem' } }}
+            >
+                Uber Direct Management
+            </Typography>
 
             {/* Customer ID Input */}
-            <Paper variant="outlined" sx={{ p: 3, mb: 4, borderRadius: 3 }}>
+            <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 3 }, mb: { xs: 2.5, sm: 4 }, borderRadius: 3 }}>
                 <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Uber Eats Customer ID</Typography>
-                <Stack direction="row" spacing={2} alignItems="center">
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', sm: 'center' }}>
                     <TextField
                         size="small"
                         label="Customer ID"
                         value={customerIdInput}
                         onChange={(e) => setCustomerIdInput(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleSetCustomerId()}
-                        sx={{ width: 320 }}
+                        sx={{ width: { xs: '100%', sm: 320 } }}
                     />
-                    <Button variant="contained" onClick={handleSetCustomerId} disabled={!customerIdInput.trim()}>
+                    <Button variant="contained" onClick={handleSetCustomerId} disabled={!customerIdInput.trim()} sx={{ width: { xs: '100%', sm: 'auto' } }}>
                         Set
                     </Button>
                     {customerId && (
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
                             Active: <strong>{customerId}</strong>
                         </Typography>
                     )}
@@ -163,9 +170,15 @@ const UberDirectPage: React.FC = () => {
             {/* Actions */}
             {customerId && (
                 <Box>
-                    <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                    <Stack
+                        direction={{ xs: 'column', md: 'row' }}
+                        justifyContent="space-between"
+                        alignItems={{ xs: 'stretch', md: 'center' }}
+                        spacing={1.5}
+                        sx={{ mb: 2 }}
+                    >
                         <Typography variant="h6" fontWeight="bold">Actions</Typography>
-                        <Stack direction="row" spacing={1}>
+                        <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', rowGap: 1 }}>
                             <Button
                                 size="small" variant="outlined"
                                 startIcon={uberOrgLoading ? <CircularProgress size={14} /> : <RefreshIcon />}
@@ -205,9 +218,9 @@ const UberDirectPage: React.FC = () => {
 
                     {/* Business Locations */}
                     {uberLocations.length > 0 && (
-                        <Paper variant="outlined" sx={{ p: 2, borderRadius: 3 }}>
+                        <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 2 }, borderRadius: 3 }}>
                             <Typography variant="subtitle2" fontWeight="bold" gutterBottom>Business Locations</Typography>
-                            <TableContainer>
+                            <TableContainer sx={{ display: { xs: 'none', md: 'block' } }}>
                                 <Table size="small">
                                     <TableHead>
                                         <TableRow>
@@ -235,6 +248,37 @@ const UberDirectPage: React.FC = () => {
                                     </TableBody>
                                 </Table>
                             </TableContainer>
+                            <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                                <Stack spacing={1.25}>
+                                    {uberLocations.map((loc: any) => (
+                                        <Paper key={loc.business_location_id} variant="outlined" sx={{ p: 1.25, borderRadius: 2 }}>
+                                            <Stack spacing={0.75}>
+                                                <Typography variant="subtitle2" fontWeight="bold" sx={{ wordBreak: 'break-word' }}>
+                                                    {loc.name || '—'}
+                                                </Typography>
+                                                <Typography variant="caption" color="text.secondary" sx={{ wordBreak: 'break-word' }}>
+                                                    {loc.address || '—'}
+                                                </Typography>
+                                                <Typography variant="body2" sx={{ wordBreak: 'break-word' }}>
+                                                    <strong>Phone:</strong> {loc.phone_number || '—'}
+                                                </Typography>
+                                                <Typography variant="body2" sx={{ wordBreak: 'break-word' }}>
+                                                    <strong>External ID:</strong> {loc.external_business_location_id || '—'}
+                                                </Typography>
+                                                <Button
+                                                    size="small"
+                                                    variant="outlined"
+                                                    startIcon={<EditIcon fontSize="small" />}
+                                                    onClick={() => setEditLocationDialog({ ...loc })}
+                                                    sx={{ alignSelf: 'flex-start' }}
+                                                >
+                                                    Edit
+                                                </Button>
+                                            </Stack>
+                                        </Paper>
+                                    ))}
+                                </Stack>
+                            </Box>
                         </Paper>
                     )}
                 </Box>
@@ -247,13 +291,13 @@ const UberDirectPage: React.FC = () => {
                     <Stack spacing={2.5} sx={{ mt: 1 }}>
                         <TextField fullWidth label="Organization Name" value={createOrgForm.name} onChange={(e) => setCreateOrgForm(f => ({ ...f, name: e.target.value }))} />
                         <TextField fullWidth label="Contact Email" value={createOrgForm.email} onChange={(e) => setCreateOrgForm(f => ({ ...f, email: e.target.value }))} />
-                        <Stack direction="row" spacing={2}>
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                             <TextField fullWidth label="First Name" value={createOrgForm.first_name} onChange={(e) => setCreateOrgForm(f => ({ ...f, first_name: e.target.value }))} />
                             <TextField fullWidth label="Last Name" value={createOrgForm.last_name} onChange={(e) => setCreateOrgForm(f => ({ ...f, last_name: e.target.value }))} />
                         </Stack>
                         <TextField fullWidth label="Phone" value={createOrgForm.phone} onChange={(e) => setCreateOrgForm(f => ({ ...f, phone: e.target.value }))} />
                         <TextField fullWidth label="Street Address" value={createOrgForm.street1} onChange={(e) => setCreateOrgForm(f => ({ ...f, street1: e.target.value }))} />
-                        <Stack direction="row" spacing={2}>
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                             <TextField fullWidth label="City" value={createOrgForm.city} onChange={(e) => setCreateOrgForm(f => ({ ...f, city: e.target.value }))} />
                             <TextField fullWidth label="State" value={createOrgForm.state} onChange={(e) => setCreateOrgForm(f => ({ ...f, state: e.target.value }))} />
                             <TextField fullWidth label="Zip" value={createOrgForm.zipcode} onChange={(e) => setCreateOrgForm(f => ({ ...f, zipcode: e.target.value }))} />
@@ -273,7 +317,7 @@ const UberDirectPage: React.FC = () => {
                 <DialogTitle>Invite Member</DialogTitle>
                 <DialogContent>
                     <Stack spacing={2.5} sx={{ mt: 1 }}>
-                        <Stack direction="row" spacing={2}>
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                             <TextField fullWidth label="First Name" value={inviteForm.first_name} onChange={(e) => setInviteForm(f => ({ ...f, first_name: e.target.value }))} />
                             <TextField fullWidth label="Last Name" value={inviteForm.last_name} onChange={(e) => setInviteForm(f => ({ ...f, last_name: e.target.value }))} />
                         </Stack>
@@ -299,7 +343,7 @@ const UberDirectPage: React.FC = () => {
                             <TextField fullWidth label="Phone" value={editLocationDialog.phone_number || ''} onChange={(e) => setEditLocationDialog((l: any) => ({ ...l, phone_number: e.target.value }))} />
                             <TextField fullWidth label="External Store ID" value={editLocationDialog.external_business_location_id || ''} onChange={(e) => setEditLocationDialog((l: any) => ({ ...l, external_business_location_id: e.target.value }))} />
                             <TextField fullWidth label="Street" value={editLocationDialog.detailed_address?.street_address_1 || ''} onChange={(e) => setEditLocationDialog((l: any) => ({ ...l, detailed_address: { ...l.detailed_address, street_address_1: e.target.value } }))} />
-                            <Stack direction="row" spacing={2}>
+                            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
                                 <TextField fullWidth label="City" value={editLocationDialog.detailed_address?.city || ''} onChange={(e) => setEditLocationDialog((l: any) => ({ ...l, detailed_address: { ...l.detailed_address, city: e.target.value } }))} />
                                 <TextField fullWidth label="State" value={editLocationDialog.detailed_address?.state || ''} onChange={(e) => setEditLocationDialog((l: any) => ({ ...l, detailed_address: { ...l.detailed_address, state: e.target.value } }))} />
                                 <TextField fullWidth label="Zip" value={editLocationDialog.detailed_address?.zip_code || ''} onChange={(e) => setEditLocationDialog((l: any) => ({ ...l, detailed_address: { ...l.detailed_address, zip_code: e.target.value } }))} />

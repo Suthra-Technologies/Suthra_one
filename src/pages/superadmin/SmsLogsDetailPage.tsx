@@ -52,7 +52,7 @@ const SmsLogsDetailPage: React.FC = () => {
     };
 
     return (
-        <Box sx={{ p: { xs: 2, md: 3 } }}>
+        <Box sx={{ px: { xs: 2, md: 3 }, pb: { xs: 2, md: 3 }, pt: { xs: 0.75, md: 3 } }}>
             <Box sx={{ mb: 4 }}>
                 <Button 
                     startIcon={<ArrowBackIcon />} 

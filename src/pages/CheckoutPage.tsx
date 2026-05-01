@@ -17,6 +17,7 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
+  DialogActions,
   Radio,
   RadioGroup,
   FormControlLabel,
@@ -80,7 +81,7 @@ const CheckoutPage: React.FC = () => {
   const { user } = useAuth();
   const { settings } = useSettings();
   const isAuthenticated = !!user;
-  const { cart, setOrderType, setDeliveryAddress, clearCart, updateQuantity, removeItem } = useGuestCart();
+  const { cart, setOrderType, setDeliveryAddress, clearCart, updateQuantity, removeItem, updateNote } = useGuestCart();
   const theme = useTheme();
   
   const taxRate = settings?.restaurant?.taxRate ?? 0;
@@ -106,6 +107,10 @@ const CheckoutPage: React.FC = () => {
   const [selectedAddressMode, setSelectedAddressMode] = useState<'saved' | 'new'>(
     user?.savedAddresses?.length ? 'saved' : 'new'
   );
+  const [customizeDialogOpen, setCustomizeDialogOpen] = useState(false);
+  const [customizeIndex, setCustomizeIndex] = useState<number>(-1);
+  const [customizeNote, setCustomizeNote] = useState('');
+
   const [error, setError] = useState<string>('');
   const [checkingDistance, setCheckingDistance] = useState<boolean>(false);
   const [deliveryFee, setDeliveryFee] = useState<number>(0);
@@ -616,28 +621,37 @@ const CheckoutPage: React.FC = () => {
                   {item.customizations.map((c: any) => c.name).join(', ')}
                 </Typography>
               )}
+              {item.notes && (
+                <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5, fontStyle: 'italic' }}>
+                  Note: {item.notes}
+                </Typography>
+              )}
               <Box sx={{ mt: 2, display: 'flex', gap: 2 }}>
-                <Typography 
-                  variant="caption" 
+                <Typography
+                  variant="caption"
                   onClick={() => navigate(getRelativePath('/customer/order'))}
-                  sx={{ 
-                    cursor: 'pointer', 
-                    color: 'primary.main', 
-                    fontWeight: 700, 
-                    display: 'flex', 
-                    alignItems: 'center', 
+                  sx={{
+                    cursor: 'pointer',
+                    color: 'primary.main',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
                     gap: 0.5,
-                    '&:hover': { textDecoration: 'underline' } 
+                    '&:hover': { textDecoration: 'underline' }
                   }}
                 >
                   + Add more items
                 </Typography>
-                <Typography 
-                  variant="caption" 
-                  onClick={() => navigate(getRelativePath('/customer/order'))}
-                  sx={{ 
-                    cursor: 'pointer', 
-                    color: 'text.secondary', 
+                <Typography
+                  variant="caption"
+                  onClick={() => {
+                    setCustomizeIndex(index);
+                    setCustomizeNote(item.notes || '');
+                    setCustomizeDialogOpen(true);
+                  }}
+                  sx={{
+                    cursor: 'pointer',
+                    color: 'text.secondary',
                     fontWeight: 600,
                     '&:hover': { color: 'primary.main', textDecoration: 'underline' }
                   }}
@@ -671,6 +685,47 @@ const CheckoutPage: React.FC = () => {
         </Typography>
       </Box>
     </Paper>
+  );
+
+  const renderCustomizeDialog = () => (
+    <Dialog
+      open={customizeDialogOpen}
+      onClose={() => setCustomizeDialogOpen(false)}
+      maxWidth="xs"
+      fullWidth
+    >
+      <DialogTitle sx={{ pb: 1 }}>
+        {customizeIndex >= 0 && cart.items[customizeIndex]
+          ? `Special instructions for ${cart.items[customizeIndex].name}`
+          : 'Special instructions'}
+      </DialogTitle>
+      <DialogContent>
+        <TextField
+          autoFocus
+          multiline
+          rows={3}
+          fullWidth
+          placeholder="e.g. No onions, extra sauce, allergies…"
+          value={customizeNote}
+          onChange={(e) => setCustomizeNote(e.target.value)}
+          sx={{ mt: 1 }}
+          inputProps={{ maxLength: 300 }}
+          helperText={`${customizeNote.length}/300`}
+        />
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={() => setCustomizeDialogOpen(false)}>Cancel</Button>
+        <Button
+          variant="contained"
+          onClick={() => {
+            if (customizeIndex >= 0) updateNote(customizeIndex, customizeNote.trim());
+            setCustomizeDialogOpen(false);
+          }}
+        >
+          Save
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 
   const renderAccountStep = () => (
@@ -776,7 +831,7 @@ const CheckoutPage: React.FC = () => {
                       </Card>
                     </Grid>
                   ))}
-                  <Grid size={{ xs: 12, sm: 6 }}>
+                  {/* <Grid size={{ xs: 12, sm: 6 }}>
                     <Card
                       variant={selectedAddressMode === 'new' ? 'outlined' : 'elevation'}
                       sx={{
@@ -797,7 +852,7 @@ const CheckoutPage: React.FC = () => {
                         <Typography variant="subtitle2">Add New Address</Typography>
                       </CardContent>
                     </Card>
-                  </Grid>
+                  </Grid> */}
                 </Grid>
               </Box>
             </Grid>
@@ -1496,12 +1551,12 @@ const CheckoutPage: React.FC = () => {
                   </Typography>
                 )}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                  <Typography>Tax ({taxRate}%)</Typography>
+                  <Typography>Tax </Typography>
                   <Typography>${(cart.totalAmount * (taxRate / 100)).toFixed(2)}</Typography>
                 </Box>
                 {processingFeeRate > 0 && (
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography>Processing Fee ({processingFeeRate}%)</Typography>
+                    <Typography>Processing Fee</Typography>
                     <Typography>${((cart.totalAmount * processingFeeRate) / 100).toFixed(2)}</Typography>
                   </Box>
                 )}
@@ -1652,6 +1707,7 @@ const CheckoutPage: React.FC = () => {
           </Stack>
         </DialogContent>
       </Dialog>
+      {renderCustomizeDialog()}
     </Container>
   );
 };

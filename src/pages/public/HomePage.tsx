@@ -22,6 +22,7 @@ import {
   Button,
   Card,
   CardContent,
+  CircularProgress,
   Dialog,
   DialogContent,
   Drawer,
@@ -784,12 +785,14 @@ const HomePage: React.FC = () => {
 
   // Fetch pricing plans from public API
   const [plans, setPlans] = useState<any[]>([]);
+  const [plansLoading, setPlansLoading] = useState(true);
   useEffect(() => {
     const apiUrl = (import.meta as any).env.VITE_API_URL || "http://localhost:5006";
     fetch(`${apiUrl}/api/superadmin/plans/public`)
       .then(res => res.json())
-      .then(data => { if (Array.isArray(data)) setPlans(data); })
-      .catch(() => { });
+      .then(data => { if (Array.isArray(data)) setPlans(data.filter((p: any) => p.isActive !== false)); })
+      .catch(() => { })
+      .finally(() => setPlansLoading(false));
   }, []);
 
   // Fetch available slots
@@ -859,12 +862,18 @@ const HomePage: React.FC = () => {
             disableGutters
             sx={{ justifyContent: "space-between", height: 80 }}
           >
-            <Stack direction="row" alignItems="center" spacing={1.5} sx={{ cursor: 'pointer' }} onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+            <Stack
+              direction="row"
+              alignItems="center"
+              spacing={1.5}
+              sx={{ cursor: "pointer", mr: { md: 4 } }}
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+            >
               <Box
                 component="img"
                 src="/logo.png"
                 alt="NexZen POS"
-                sx={{ height: 45, filter: 'brightness(0)' }}
+                sx={{ height: 45, filter: "brightness(0)" }}
               />
               <Typography
                 variant="h6"
@@ -877,8 +886,9 @@ const HomePage: React.FC = () => {
                 </Box>
               </Typography>
             </Stack>
+
             {/* Responsive Navigation */}
-            <Box sx={{ display: { xs: 'none', md: 'flex' } }}>
+            <Box sx={{ display: { xs: "none", md: "flex" } }}>
               <Stack direction="row" spacing={2} alignItems="center">
                 <Button
                   color="inherit"
@@ -925,23 +935,6 @@ const HomePage: React.FC = () => {
                   Login
                 </Button>
               </Stack>
-            </Box>
-            {/* Hamburger Icon for Mobile */}
-            <Box sx={{ display: { xs: 'flex', md: 'none' } }}>
-              <IconButton
-                edge="end"
-                color="default"
-                sx={{ color: "black" }}
-                aria-label="menu"
-                onClick={() => setMobileMenuOpen(true)}
-              >
-                {/* Custom 3-line Hamburger Icon */}
-                <Box component="span" sx={{ display: 'inline-flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', width: 22, height: 22 }}>
-                  <Box sx={{ width: 18, height: 2, bgcolor: 'black', borderRadius: 1, mb: 0.4 }} />
-                  <Box sx={{ width: 18, height: 2, bgcolor: 'black', borderRadius: 1, mb: 0.4 }} />
-                  <Box sx={{ width: 18, height: 2, bgcolor: 'black', borderRadius: 1 }} />
-                </Box>
-              </IconButton>
             </Box>
             {/* Mobile Drawer */}
             <Drawer
@@ -990,6 +983,52 @@ const HomePage: React.FC = () => {
                 </Button>
               </Stack>
             </Drawer>
+
+            {/* Hamburger Icon for Mobile - Moved back to the right */}
+            <Box sx={{ display: { xs: "flex", md: "none" } }}>
+              <IconButton
+                edge="end"
+                color="default"
+                sx={{ color: "black", ml: 1 }}
+                aria-label="menu"
+                onClick={() => setMobileMenuOpen(true)}
+              >
+                {/* Custom 3-line Hamburger Icon */}
+                <Box
+                  component="span"
+                  sx={{
+                    display: "inline-flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    width: 22,
+                    height: 22,
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 18,
+                      height: 2,
+                      bgcolor: "black",
+                      borderRadius: 1,
+                      mb: 0.4,
+                    }}
+                  />
+                  <Box
+                    sx={{
+                      width: 18,
+                      height: 2,
+                      bgcolor: "black",
+                      borderRadius: 1,
+                      mb: 0.4,
+                    }}
+                  />
+                  <Box
+                    sx={{ width: 18, height: 2, bgcolor: "black", borderRadius: 1 }}
+                  />
+                </Box>
+              </IconButton>
+            </Box>
           </Toolbar>
         </Container>
       </AppBar>
@@ -1947,102 +1986,149 @@ const HomePage: React.FC = () => {
             </Typography>
           </Box>
 
-          <Grid container spacing={4} justifyContent="center">
-            {(plans.length > 0 ? plans : [
-              { name: "Starter", price: 49, interval: "monthly", features: [], maxUsers: 5, maxTables: 5, maxOrders: 100 },
-              { name: "Professional", price: 99, interval: "monthly", features: ["catering", "inventory"], maxUsers: 10, maxTables: 15, maxOrders: 500 },
-              { name: "Enterprise", price: 149, interval: "monthly", features: ["catering", "inventory", "wastemanagement", "attendance"], maxUsers: 25, maxTables: 50, maxOrders: 2000 },
-            ]).map((plan: any, i: number) => {
-              const featureLabels: Record<string, string> = {
-                catering: "Catering Management",
-                inventory: "Inventory Management",
-                wastemanagement: "Waste Management",
-                attendance: "Staff Attendance",
-              };
-              const allItems = [
-                `Up to ${plan.maxUsers} Users`,
-                `Up to ${plan.maxTables} Tables`,
-                `Up to ${plan.maxOrders} Orders`,
-                ...(plan.features || []).map((f: string) => featureLabels[f] || f),
-              ];
-              return (
-                <Grid item xs={12} md={4} key={plan._id || i}>
-                  <Paper
-                    elevation={0}
-                    sx={{
-                      p: 5,
-                      height: "100%",
-                      borderRadius: 3,
-                      bgcolor: "#f7f6f4",
-                      border: "1px solid #eee",
-                      display: "flex",
-                      flexDirection: "column",
-                    }}
-                  >
-                    {/* PLAN NAME */}
-                    <Typography variant="h6" fontWeight={700} gutterBottom>
-                      {plan.name}
-                    </Typography>
-
-                    {/* PRICE */}
-                    <Typography variant="h3" fontWeight={900} mb={1}>
-                      ${plan.price}
-                      <Box
-                        component="span"
-                        sx={{ fontSize: "1.2rem", fontWeight: 500 }}
-                      >
-                        /{plan.interval === "yearly" ? "yr" : "mo"}
-                      </Box>
-                    </Typography>
-
-                    {/* DESCRIPTION */}
-                    <Typography variant="body2" color="text.secondary" mb={4}>
-                      {plan.description || `Everything you will get with the ${plan.name} plan.`}
-                    </Typography>
-
-                    {/* FEATURES */}
-                    <Stack spacing={1.5} mb={6}>
-                      {allItems.map((item: string, j: number) => (
-                        <Stack
-                          key={j}
-                          direction="row"
-                          spacing={1}
-                          alignItems="center"
-                        >
-                          <CheckIcon sx={{ fontSize: 18 }} />
-                          <Typography variant="body2">{item}</Typography>
-                        </Stack>
-                      ))}
-                    </Stack>
-
-                    {/* CTA */}
-                    <Button
-                      fullWidth
-                      variant="contained"
+          {plansLoading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+              <CircularProgress />
+            </Box>
+          ) : plans.length === 0 ? (
+            <Box textAlign="center" py={8}>
+              <Typography variant="body1" color="text.secondary">
+                No plans available at the moment. Please check back soon.
+              </Typography>
+            </Box>
+          ) : (
+            <Grid container spacing={4} justifyContent="center">
+              {plans.map((plan: any, i: number) => {
+                const featureLabels: Record<string, string> = {
+                  catering: "Catering Management",
+                  inventory: "Inventory Management",
+                  wastemanagement: "Waste Management",
+                  attendance: "Staff Attendance",
+                };
+                const systemItems = [
+                  plan.maxUsers ? `Up to ${plan.maxUsers} Users` : null,
+                  plan.maxTables ? `Up to ${plan.maxTables} Tables` : null,
+                  plan.maxOrders ? `Up to ${plan.maxOrders} Orders/month` : null,
+                  plan.maxSms !== undefined && plan.maxSms !== null ? (plan.maxSms === 0 || plan.maxSms === -1 ? `Unlimited SMS/month` : `Up to ${plan.maxSms} SMS/month`) : null,
+                ].filter(Boolean) as string[];
+                const featureItems = (plan.features || []).map(
+                  (f: string) => featureLabels[f] || f
+                );
+                const allItems = [...systemItems, ...featureItems];
+                const isPopular = i === Math.floor(plans.length / 2);
+                return (
+                  <Grid item xs={12} md={4} key={plan._id || i}>
+                    <Paper
+                      elevation={0}
                       sx={{
-                        mt: "auto",
-                        bgcolor: "#fff",
-                        color: "#000",
-                        border: "1px solid #ddd",
-                        borderRadius: 2,
-                        fontWeight: 600,
-                        boxShadow: "none",
-                        "&:hover": {
-                          bgcolor: "#f2f2f2",
-                          boxShadow: "none",
-                        },
-                      }}
-                      onClick={() => {
-                        document.getElementById("demo-form")?.scrollIntoView({ behavior: "smooth" });
+                        p: 5,
+                        height: "100%",
+                        borderRadius: 3,
+                        bgcolor: isPopular ? "#1a1a2e" : "#f7f6f4",
+                        border: isPopular ? "2px solid #6366f1" : "1px solid #eee",
+                        display: "flex",
+                        flexDirection: "column",
+                        position: "relative",
+                        overflow: "hidden",
                       }}
                     >
-                      CHOOSE THIS PLAN
-                    </Button>
-                  </Paper>
-                </Grid>
-              );
-            })}
-          </Grid>
+                      {isPopular && (
+                        <Box
+                          sx={{
+                            position: "absolute",
+                            top: 16,
+                            right: 16,
+                            bgcolor: "#6366f1",
+                            color: "#fff",
+                            fontSize: "0.65rem",
+                            fontWeight: 800,
+                            px: 1.5,
+                            py: 0.5,
+                            borderRadius: 2,
+                            textTransform: "uppercase",
+                            letterSpacing: 1,
+                          }}
+                        >
+                          Most Popular
+                        </Box>
+                      )}
+
+                      {/* PLAN NAME */}
+                      <Typography
+                        variant="h6"
+                        fontWeight={700}
+                        gutterBottom
+                        sx={{ color: isPopular ? "#fff" : "inherit" }}
+                      >
+                        {plan.name}
+                      </Typography>
+
+                      {/* PRICE */}
+                      <Typography
+                        variant="h3"
+                        fontWeight={900}
+                        mb={1}
+                        sx={{ color: isPopular ? "#fff" : "inherit" }}
+                      >
+                        ${plan.price}
+                        <Box component="span" sx={{ fontSize: "1.2rem", fontWeight: 500 }}>
+                          /{plan.interval === "yearly" ? "yr" : "mo"}
+                        </Box>
+                      </Typography>
+
+                      {/* DESCRIPTION */}
+                      <Typography
+                        variant="body2"
+                        mb={4}
+                        sx={{ color: isPopular ? "rgba(255,255,255,0.7)" : "text.secondary" }}
+                      >
+                        {plan.description || `Everything you will get with the ${plan.name} plan.`}
+                      </Typography>
+
+                      {/* FEATURES */}
+                      <Stack spacing={1.5} mb={6}>
+                        {allItems.map((item: string, j: number) => (
+                          <Stack key={j} direction="row" spacing={1} alignItems="center">
+                            <CheckIcon sx={{ fontSize: 18, color: isPopular ? "#6366f1" : "inherit" }} />
+                            <Typography
+                              variant="body2"
+                              sx={{ color: isPopular ? "rgba(255,255,255,0.85)" : "inherit" }}
+                            >
+                              {item}
+                            </Typography>
+                          </Stack>
+                        ))}
+                      </Stack>
+
+                      {/* CTA */}
+                      <Button
+                        fullWidth
+                        variant="contained"
+                        sx={{
+                          mt: "auto",
+                          bgcolor: isPopular ? "#6366f1" : "#fff",
+                          color: isPopular ? "#fff" : "#000",
+                          border: isPopular ? "none" : "1px solid #ddd",
+                          borderRadius: 2,
+                          fontWeight: 700,
+                          boxShadow: "none",
+                          "&:hover": {
+                            bgcolor: isPopular ? "#4f46e5" : "#f2f2f2",
+                            boxShadow: "none",
+                          },
+                        }}
+                        onClick={() => {
+                          document.getElementById("demo-form")?.scrollIntoView({ behavior: "smooth" });
+                        }}
+                      >
+                        CHOOSE THIS PLAN
+                      </Button>
+                    </Paper>
+                  </Grid>
+                );
+              })}
+            </Grid>
+          )}
         </Container>
       </Box>
 
@@ -2512,49 +2598,92 @@ const HomePage: React.FC = () => {
               mt: 4,
               pt: 4,
               borderTop: "1px solid rgba(255,255,255,0.1)",
-              textAlign: "center",
             }}
           >
-            <Typography variant="caption" sx={{ opacity: 0.4 }}>
-              © 2026 NexZen POS. Premium Restaurant Solutions. Proudly
-              powering dining worldwide.
-            </Typography>
-            <Box sx={{ mt: 1, display: 'flex', justifyContent: 'center', gap: 2 }}>
-              <Typography
-                variant="caption"
-                component={Link}
-                to="/privacy-policy"
-                sx={{
-                  color: "inherit",
-                  textDecoration: "none",
-                  opacity: 0.6,
-                  fontWeight: 500,
-                  transition: "color 0.2s, opacity 0.2s",
-                  "&:hover": {
-                    opacity: 1,
-                    color: "primary.light",
-                  },
-                }}
-              >
-                Privacy Policy
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: { xs: "column", md: "row" },
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: { xs: 2, md: 3 },
+                textAlign: { xs: "center", md: "left" },
+              }}
+            >
+              <Typography variant="caption" sx={{ opacity: 0.65, fontSize: { xs: "0.72rem", sm: "0.8rem" } }}>
+                © {new Date().getFullYear()} nexZentek. All rights reserved.
               </Typography>
-              <Typography
-                variant="caption"
-                component={Link}
-                to="/terms-and-conditions"
+              <Box
                 sx={{
-                  color: "inherit",
-                  textDecoration: "none",
-                  opacity: 0.6,
-                  fontWeight: 500,
-                  transition: "color 0.2s, opacity 0.2s",
-                  "&:hover": {
-                    opacity: 1,
-                    color: "primary.light",
-                  },
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexWrap: "wrap",
+                  gap: { xs: 1, sm: 1.5 },
                 }}
               >
-                Terms and Conditions
+                <Typography
+                  variant="caption"
+                  component={Link}
+                  to="/privacy-policy"
+                  sx={{
+                    color: "inherit",
+                    textDecoration: "none",
+                    opacity: 0.75,
+                    fontWeight: 600,
+                    fontSize: { xs: "0.72rem", sm: "0.8rem" },
+                    transition: "color 0.2s, opacity 0.2s",
+                    "&:hover": {
+                      opacity: 1,
+                      color: "primary.light",
+                    },
+                  }}
+                >
+                  Privacy Policy
+                </Typography>
+                <Typography
+                  component="span"
+                  variant="caption"
+                  sx={{ opacity: 0.35, userSelect: "none" }}
+                >
+                  |
+                </Typography>
+                <Typography
+                  variant="caption"
+                  component={Link}
+                  to="/terms-and-conditions"
+                  sx={{
+                    color: "inherit",
+                    textDecoration: "none",
+                    opacity: 0.75,
+                    fontWeight: 600,
+                    fontSize: { xs: "0.72rem", sm: "0.8rem" },
+                    transition: "color 0.2s, opacity 0.2s",
+                    "&:hover": {
+                      opacity: 1,
+                      color: "primary.light",
+                    },
+                  }}
+                >
+                  Terms & Conditions
+                </Typography>
+              </Box>
+              <Typography variant="caption" sx={{ opacity: 0.55, fontSize: { xs: "0.72rem", sm: "0.78rem" } }}>
+                Developed by{" "}
+                <Box
+                  component="a"
+                  href="https://suthratech.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{
+                    color: "primary.light",
+                    fontWeight: 700,
+                    textDecoration: "none",
+                    "&:hover": { textDecoration: "underline" },
+                  }}
+                >
+                  Suthra Technologies
+                </Box>
               </Typography>
             </Box>
           </Box>

@@ -6,6 +6,14 @@ import {
     Close,
     Visibility,
     RadioButtonUnchecked,
+    ChatBubble,
+    MoreVert,
+    Edit,
+    Print,
+    Email,
+    History,
+    FileDownload,
+    Send
 } from '@mui/icons-material';
 import {
     Alert,
@@ -59,6 +67,9 @@ import {
     Step,
     StepLabel,
     Tooltip,
+    Menu,
+    ListItemIcon,
+    Avatar,
 } from '@mui/material';
 
 const SPICE_LEVELS = [
@@ -88,7 +99,20 @@ const CateringManagementPage = () => {
     ].filter(m => settings.system?.posPaymentMethods?.[m.value as keyof typeof settings.system.posPaymentMethods] !== false), [settings.system?.posPaymentMethods]);
     const { getUserFullName, user } = useAuth();
     const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isTablet = useMediaQuery(theme.breakpoints.down('lg'));
+    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+    const [actionOrder, setActionOrder] = useState<any | null>(null);
+
+    const handleActionMenuOpen = (event: React.MouseEvent<HTMLElement>, order: any) => {
+        setAnchorEl(event.currentTarget);
+        setActionOrder(order);
+    };
+
+    const handleActionMenuClose = () => {
+        setAnchorEl(null);
+        setActionOrder(null);
+    };
     const [orders, setOrders] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
@@ -97,6 +121,7 @@ const CateringManagementPage = () => {
     const [viewDialogOpen, setViewDialogOpen] = useState(false);
     const [reqDialogOpen, setReqDialogOpen] = useState(false);
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
+    const [chatDialogOpen, setChatDialogOpen] = useState(false);
     const [menuItems, setMenuItems] = useState<any[]>([]);
     const [taxDetails, setTaxDetails] = useState<any>(null);
     const [isCalculatingTax, setIsCalculatingTax] = useState(false);
@@ -251,6 +276,9 @@ const CateringManagementPage = () => {
     const [editData, setEditData] = useState<any>(null);
     const [updating, setUpdating] = useState(false);
     const [creating, setCreating] = useState(false);
+    const [downloadingInvoice, setDownloadingInvoice] = useState(false);
+    const [sendingEmail, setSendingEmail] = useState(false);
+    const [updatingOrderId, setUpdatingOrderId] = useState<string | null>(null);
 
     // Admin custom-item (off-menu) state
     const [adminCustomItemName, setAdminCustomItemName] = useState('');
@@ -350,6 +378,7 @@ const CateringManagementPage = () => {
     };
 
     const handleDownloadPDF = async (orderId: string, orderNumber: string) => {
+        setDownloadingInvoice(true);
         try {
             const token = localStorage.getItem('jwt');
             const fullUrl = `${apiBaseUrl}/catering/${orderId}/pdf`;
@@ -358,15 +387,20 @@ const CateringManagementPage = () => {
             });
         } catch (error) {
             toast.error('Failed to download PDF');
+        } finally {
+            setDownloadingInvoice(false);
         }
     };
 
     const handleSendEmail = async (orderId: string) => {
+        setSendingEmail(true);
         try {
             await cateringAPI.sendEmail(orderId);
             toast.success('Email sent successfully');
         } catch (error) {
             toast.error('Failed to send email');
+        } finally {
+            setSendingEmail(false);
         }
     };
 
@@ -393,6 +427,7 @@ const CateringManagementPage = () => {
             processingPerson: selectedOrder?.processingPerson || fullName || ''
         });
         setOccasionInputValue(selectedOrder?.occasion || '');
+        setDialogTab(0); // Switch to Order Details tab where edit view is rendered
         setIsEditing(true);
     };
 
@@ -435,46 +470,24 @@ const CateringManagementPage = () => {
         }
     };
 
-    const handleRemoveItemFromEdit = (index: number) => {
-        const newItems = [...editData.items];
-        newItems.splice(index, 1);
-        setEditData({ ...editData, items: newItems });
-    };
-
-    const handleUpdateEditItemQty = (index: number, newQty: number) => {
-        const newItems = [...editData.items];
-        newItems[index] = { ...newItems[index], quantity: newQty, total: newItems[index].unitPrice * newQty };
-        
-        const subtotal = newItems.reduce((sum, item) => sum + item.total, 0);
+    const recalculateEditTotals = (newItems: any[], newServersAmount?: number) => {
+        const subtotal = newItems.reduce((sum, item) => sum + (item.total || 0), 0);
         let discountAmt = editData.discount?.type === 'percentage'
             ? (subtotal * (editData.discount?.value || 0)) / 100
             : (editData.discount?.value || 0);
         const taxRate = editData.tax?.rate || 0;
         const taxAmount = Math.max(0, subtotal - discountAmt) * (taxRate / 100);
-        const totalAmount = Math.max(0, subtotal - discountAmt) + taxAmount;
-
-        setEditData({ ...editData, items: newItems, subtotal, totalAmount, tax: { ...editData.tax, amount: taxAmount } });
-    };
-
-    const handleUpdateEditItemPrice = (index: number, newPrice: number) => {
-        const newItems = [...editData.items];
-        newItems[index] = { ...newItems[index], unitPrice: newPrice, total: newPrice * newItems[index].quantity };
         
-        const subtotal = newItems.reduce((sum, item) => sum + item.total, 0);
-        let discountAmt = editData.discount?.type === 'percentage'
-            ? (subtotal * (editData.discount?.value || 0)) / 100
-            : (editData.discount?.value || 0);
-        const taxRate = editData.tax?.rate || 0;
-        const taxAmount = Math.max(0, subtotal - discountAmt) * (taxRate / 100);
-        const totalAmount = Math.max(0, subtotal - discountAmt) + taxAmount;
+        const serversTotal = newServersAmount !== undefined ? newServersAmount : (parseFloat(editData.cateringServers?.amount) || 0);
+        const totalAmount = Math.max(0, subtotal - discountAmt) + taxAmount + serversTotal;
 
-        setEditData({ ...editData, items: newItems, subtotal, totalAmount, tax: { ...editData.tax, amount: taxAmount } });
-    };
-
-    const handleAddItemsToEdit = (finalizedItems: any[]) => {
         setEditData((prev: any) => ({
             ...prev,
-            items: [...prev.items, ...finalizedItems]
+            items: newItems,
+            cateringServers: { ...prev.cateringServers, amount: serversTotal },
+            subtotal,
+            totalAmount,
+            tax: { ...prev.tax, amount: taxAmount }
         }));
     };
 
@@ -726,6 +739,7 @@ const CateringManagementPage = () => {
     };
 
     const handleUpdateStatus = async (id: string, newStatus: string) => {
+        setUpdatingOrderId(id);
         try {
             await cateringAPI.updateStatus(id, newStatus);
             toast.success(`Order marked as ${newStatus}`);
@@ -735,6 +749,8 @@ const CateringManagementPage = () => {
             }
         } catch (error) {
             toast.error('Failed to update status');
+        } finally {
+            setUpdatingOrderId(null);
         }
     };
 
@@ -1439,18 +1455,15 @@ const CateringManagementPage = () => {
     };
 
     return (
-        <Box p={3}>
-            <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} mb={2} gap={2}>
+        <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
+            <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} mb={{ xs: 1.5, sm: 2 }} gap={2}>
                 <Typography
                     variant="h4"
                     fontWeight="bold"
                     sx={{
-                        whiteSpace: isMobile ? 'nowrap' : 'normal',
-                        fontSize: { xs: 'clamp(1.75rem, 7vw, 2.5rem)', md: '2.125rem' },
-                        overflow: isMobile ? 'hidden' : 'visible',
-                        textOverflow: isMobile ? 'ellipsis' : 'clip',
-                        width: isMobile ? '100%' : 'auto',
-                        textAlign: isMobile ? 'center' : 'left'
+                        fontSize: { xs: '1.5rem', sm: '1.8rem', md: '2.125rem' },
+                        textAlign: { xs: 'center', sm: 'left' },
+                        width: '100%'
                     }}
                 >
                     Catering Management
@@ -1529,92 +1542,123 @@ const CateringManagementPage = () => {
                 </Box>
             ) : isMobile ? (
                 // Mobile Card View
-                <Stack spacing={2}>
+                <Stack spacing={2} sx={{ px: 1 }}>
                     {orders.map((order) => (
-                        <Card key={order._id}>
-                            <CardContent>
-                                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-                                    <Typography variant="subtitle1" fontWeight="bold">
-                                        #{order.orderNumber}
-                                    </Typography>
+                        <Card 
+                            key={order._id} 
+                            elevation={0}
+                            sx={{ 
+                                borderRadius: 4, 
+                                border: '1px solid',
+                                borderColor: 'divider',
+                                overflow: 'hidden',
+                                transition: 'all 0.2s',
+                                '&:hover': {
+                                    boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+                                    transform: 'translateY(-2px)'
+                                }
+                            }}
+                        >
+                            <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                                <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1.5}>
+                                    <Box>
+                                        <Typography variant="caption" fontWeight="bold" sx={{ color: 'primary.main', textTransform: 'uppercase', letterSpacing: 0.5, fontSize: '0.7rem' }}>
+                                            #{order.orderNumber}
+                                        </Typography>
+                                        <Typography variant="subtitle1" fontWeight="800" sx={{ mt: 0.2, lineHeight: 1.2 }}>
+                                            {order.customerName}
+                                        </Typography>
+                                        <Typography variant="caption" color="textSecondary">
+                                            {order.customerPhone}
+                                        </Typography>
+                                    </Box>
                                     {getStatusChip(order.status)}
-                                </Stack>
+                                </Box>
 
-                                <Grid container spacing={1} mb={2}>
-                                    <Grid item xs={12}>
-                                        <Typography variant="subtitle2">{order.customerName}</Typography>
-                                        <Typography variant="caption" color="textSecondary">{order.customerPhone}</Typography>
+                                <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
+                                    <Grid item xs={6}>
+                                        <Box sx={{ p: 1, bgcolor: alpha(theme.palette.primary.main, 0.04), borderRadius: 2 }}>
+                                            <Typography variant="caption" color="textSecondary" display="block" sx={{ fontSize: '0.65rem' }}>Required Date</Typography>
+                                            <Typography variant="body2" fontWeight="600" sx={{ fontSize: '0.8rem' }}>
+                                                {new Date(order.requiredDate).toLocaleDateString()}
+                                            </Typography>
+                                            <Typography variant="caption" color="textSecondary" sx={{ fontSize: '0.65rem' }}>
+                                                {new Date(order.requiredDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </Typography>
+                                        </Box>
                                     </Grid>
                                     <Grid item xs={6}>
-                                        <Typography variant="caption" color="textSecondary">Required Date</Typography>
-                                        <Typography variant="body2">{new Date(order.requiredDate).toLocaleDateString()}</Typography>
-                                    </Grid>
-                                    <Grid item xs={6}>
-                                        <Typography variant="caption" color="textSecondary">Type</Typography>
-                                        <Typography variant="body2">
-                                            {getServiceTypeLabel(order.serviceType)}
-                                        </Typography>
+                                        <Box sx={{ p: 1, bgcolor: alpha(theme.palette.secondary.main, 0.04), borderRadius: 2 }}>
+                                            <Typography variant="caption" color="textSecondary" display="block" sx={{ fontSize: '0.65rem' }}>Service Type</Typography>
+                                            <Typography variant="body2" fontWeight="600" sx={{ fontSize: '0.8rem' }}>
+                                                {getServiceTypeLabel(order.serviceType)}
+                                            </Typography>
+                                        </Box>
                                     </Grid>
                                     <Grid item xs={12}>
-                                        <Typography variant="caption" color="textSecondary">Total Amount</Typography>
-                                        <Typography variant="body1" fontWeight="bold" color="primary">
-                                            {formatCurrency(order.totalAmount)}
-                                        </Typography>
+                                        <Box sx={{ 
+                                            p: 1, 
+                                            bgcolor: theme.palette.mode === 'light' ? '#f8fafc' : alpha(theme.palette.primary.main, 0.05), 
+                                            borderRadius: 2,
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center'
+                                        }}>
+                                            <Typography variant="caption" color="textSecondary">Total Amount</Typography>
+                                            <Typography variant="subtitle1" fontWeight="bold" color="primary">
+                                                {formatCurrency(order.totalAmount)}
+                                            </Typography>
+                                        </Box>
                                     </Grid>
                                 </Grid>
 
-                                <Stack direction="column" spacing={1} alignItems="flex-end" sx={{ mt: 1, borderTop: 1, borderColor: 'divider', pt: 2 }}>
-                                    <Stack direction="row" spacing={1} alignItems="center">
-                                        <Button
-                                            size="small"
-                                            startIcon={<Visibility />}
-                                            onClick={() => { setSelectedOrder(order); setViewDialogOpen(true); }}
-                                            sx={{ color: '#7c3aed' }} // Violet
-                                        >
-                                            Details
-                                        </Button>
-                                        {order.status === 'pending' && (
-                                            <Button
-                                                size="small"
-                                                variant="contained"
-                                                startIcon={<CheckCircle />}
-                                                onClick={() => handleUpdateStatus(order._id, 'confirmed')}
-                                                sx={{
-                                                    bgcolor: '#10b981',
-                                                    '&:hover': { bgcolor: '#059669' } // Emerald for confirm
-                                                }}
-                                            >
-                                                Confirm
-                                            </Button>
-                                        )}
-                                        {order.status === 'confirmed' && (
-                                            <Button
-                                                size="small"
-                                                variant="contained"
-                                                startIcon={<CheckCircle />}
-                                                onClick={() => handleUpdateStatus(order._id, 'completed')}
-                                                sx={{
-                                                    bgcolor: '#3730a3',
-                                                    '&:hover': { bgcolor: '#312e81' } // Indigo for complete
-                                                }}
-                                            >
-                                                Complete
-                                            </Button>
-                                        )}
-                                    </Stack>
+                                <Divider sx={{ my: 2, borderStyle: 'dashed' }} />
+
+                                <Box display="flex" gap={1}>
                                     <Button
+                                        variant="outlined"
                                         size="small"
-                                        variant="contained"
-                                        startIcon={<Assignment />}
-                                        onClick={() => handleViewRequirements(order._id)}
-                                        sx={{
-                                            bgcolor: '#db2777',
-                                            '&:hover': { bgcolor: '#be185d' } // Pink/Rose
+                                        startIcon={<Visibility sx={{ fontSize: '1rem !important' }} />}
+                                        onClick={() => { setIsEditing(false); setEditData(null); setSelectedOrder(order); setViewDialogOpen(true); setDialogTab(0); }}
+                                        sx={{ 
+                                            borderRadius: 2,
+                                            borderColor: alpha(theme.palette.primary.main, 0.2),
+                                            color: 'primary.main',
+                                            flex: 1,
+                                            fontSize: '0.75rem',
+                                            py: 0.8
                                         }}
                                     >
-                                        Inventory Estimation
+                                        Details
                                     </Button>
-                                </Stack>
+                                    <Button
+                                        variant="outlined"
+                                        size="small"
+                                        startIcon={<ChatBubble sx={{ fontSize: '1rem !important' }} />}
+                                        onClick={() => { setSelectedOrder(order); setChatDialogOpen(true); }}
+                                        sx={{ 
+                                            borderRadius: 2,
+                                            borderColor: alpha('#0ea5e9', 0.2),
+                                            color: '#0ea5e9',
+                                            flex: 1,
+                                            fontSize: '0.75rem',
+                                            py: 0.8
+                                        }}
+                                    >
+                                        Chat
+                                    </Button>
+                                    <IconButton
+                                        onClick={(e) => handleActionMenuOpen(e, order)}
+                                        sx={{ 
+                                            bgcolor: alpha(theme.palette.text.secondary, 0.05),
+                                            borderRadius: 2,
+                                            width: 36,
+                                            height: 36
+                                        }}
+                                    >
+                                        <MoreVert sx={{ fontSize: '1.2rem' }} />
+                                    </IconButton>
+                                </Box>
                             </CardContent>
                         </Card>
                     ))}
@@ -1651,47 +1695,70 @@ const CateringManagementPage = () => {
                                     </TableCell>
                                     <TableCell>{getStatusChip(order.status)}</TableCell>
                                     <TableCell align="center">
-                                        <Box display="flex" justifyContent="center" alignItems="center" gap={0.5} flexWrap="wrap">
-                                            <Tooltip title="View Details">
+                                        <Box display="flex" justifyContent="center" alignItems="center" gap={1}>
+                                            {!isTablet ? (
+                                                <>
+                                                    <Tooltip title="View Details">
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={() => { setIsEditing(false); setEditData(null); setSelectedOrder(order); setViewDialogOpen(true); setDialogTab(0); }}
+                                                            sx={{ color: '#7c3aed', bgcolor: alpha('#7c3aed', 0.08), '&:hover': { bgcolor: alpha('#7c3aed', 0.18) }, borderRadius: 1.5 }}
+                                                        >
+                                                            <Visibility fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="Chat Support">
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={() => { setSelectedOrder(order); setChatDialogOpen(true); }}
+                                                            sx={{ color: '#0ea5e9', bgcolor: alpha('#0ea5e9', 0.08), '&:hover': { bgcolor: alpha('#0ea5e9', 0.18) }, borderRadius: 1.5 }}
+                                                        >
+                                                            <ChatBubble fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    {order.status === 'pending' && (
+                                                        <Tooltip title="Confirm Order">
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={() => handleUpdateStatus(order._id, 'confirmed')}
+                                                                disabled={updatingOrderId === order._id}
+                                                                sx={{ color: '#10b981', bgcolor: alpha('#10b981', 0.08), '&:hover': { bgcolor: alpha('#10b981', 0.18) }, borderRadius: 1.5 }}
+                                                            >
+                                                                {updatingOrderId === order._id ? <CircularProgress size={20} color="inherit" /> : <CheckCircle fontSize="small" />}
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    )}
+                                                    {order.status === 'confirmed' && (
+                                                        <Tooltip title="Mark Complete">
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={() => handleUpdateStatus(order._id, 'completed')}
+                                                                disabled={updatingOrderId === order._id}
+                                                                sx={{ color: '#3730a3', bgcolor: alpha('#3730a3', 0.08), '&:hover': { bgcolor: alpha('#3730a3', 0.18) }, borderRadius: 1.5 }}
+                                                            >
+                                                                {updatingOrderId === order._id ? <CircularProgress size={20} color="inherit" /> : <CheckCircle fontSize="small" />}
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    )}
+                                                    <Tooltip title="Inventory Estimation">
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={() => handleViewRequirements(order._id)}
+                                                            sx={{ color: '#db2777', bgcolor: alpha('#db2777', 0.08), '&:hover': { bgcolor: alpha('#db2777', 0.18) }, borderRadius: 1.5 }}
+                                                        >
+                                                            <Assignment fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                </>
+                                            ) : (
                                                 <IconButton
                                                     size="small"
-                                                    onClick={() => { setSelectedOrder(order); setViewDialogOpen(true); }}
-                                                    sx={{ color: '#7c3aed', bgcolor: alpha('#7c3aed', 0.08), '&:hover': { bgcolor: alpha('#7c3aed', 0.18) }, borderRadius: 1.5 }}
+                                                    onClick={(e) => handleActionMenuOpen(e, order)}
+                                                    sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}
                                                 >
-                                                    <Visibility fontSize="small" />
+                                                    <MoreVert fontSize="small" />
                                                 </IconButton>
-                                            </Tooltip>
-                                            {order.status === 'pending' && (
-                                                <Tooltip title="Confirm Order">
-                                                    <IconButton
-                                                        size="small"
-                                                        onClick={() => handleUpdateStatus(order._id, 'confirmed')}
-                                                        sx={{ color: '#10b981', bgcolor: alpha('#10b981', 0.08), '&:hover': { bgcolor: alpha('#10b981', 0.18) }, borderRadius: 1.5 }}
-                                                    >
-                                                        <CheckCircle fontSize="small" />
-                                                    </IconButton>
-                                                </Tooltip>
                                             )}
-                                            {order.status === 'confirmed' && (
-                                                <Tooltip title="Mark Complete">
-                                                    <IconButton
-                                                        size="small"
-                                                        onClick={() => handleUpdateStatus(order._id, 'completed')}
-                                                        sx={{ color: '#3730a3', bgcolor: alpha('#3730a3', 0.08), '&:hover': { bgcolor: alpha('#3730a3', 0.18) }, borderRadius: 1.5 }}
-                                                    >
-                                                        <CheckCircle fontSize="small" />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            )}
-                                            <Tooltip title="Inventory Estimation">
-                                                <IconButton
-                                                    size="small"
-                                                    onClick={() => handleViewRequirements(order._id)}
-                                                    sx={{ color: '#db2777', bgcolor: alpha('#db2777', 0.08), '&:hover': { bgcolor: alpha('#db2777', 0.18) }, borderRadius: 1.5 }}
-                                                >
-                                                    <Assignment fontSize="small" />
-                                                </IconButton>
-                                            </Tooltip>
                                         </Box>
                                     </TableCell>
                                 </TableRow>
@@ -1720,8 +1787,8 @@ const CateringManagementPage = () => {
 
             {/* Inventory Requirements Dialog */}
             <Dialog open={reqDialogOpen} onClose={() => setReqDialogOpen(false)} maxWidth="md" fullWidth>
-                <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    Inventory Estimation Report
+                <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: { xs: 2, sm: 3 }, py: { xs: 1.5, sm: 2 } }}>
+                    <Typography variant="h6" sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>Inventory Estimation Report</Typography>
                     <IconButton
                         onClick={() => setReqDialogOpen(false)}
                         size="small"
@@ -1770,11 +1837,11 @@ const CateringManagementPage = () => {
                                 <Table size="small">
                                     <TableHead sx={{ bgcolor: theme.palette.mode === 'light' ? '#eee' : alpha(theme.palette.primary.main, 0.1) }}>
                                         <TableRow>
-                                            <TableCell><strong>Ingredient / Item</strong></TableCell>
-                                            <TableCell align="right"><strong>Qty Needed</strong></TableCell>
-                                            <TableCell align="right"><strong>Current Stock</strong></TableCell>
-                                            <TableCell align="right"><strong>Unit Cost</strong></TableCell>
-                                            <TableCell align="right"><strong>Total Cost</strong></TableCell>
+                                            <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}><strong>Ingredient / Item</strong></TableCell>
+                                            <TableCell align="right" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}><strong>Qty Needed</strong></TableCell>
+                                            <TableCell align="right" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 }, display: { xs: 'none', sm: 'table-cell' } }}><strong>Current Stock</strong></TableCell>
+                                            <TableCell align="right" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 }, display: { xs: 'none', md: 'table-cell' } }}><strong>Unit Cost</strong></TableCell>
+                                            <TableCell align="right" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}><strong>Total Cost</strong></TableCell>
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
@@ -1821,11 +1888,11 @@ const CateringManagementPage = () => {
             </Dialog>
 
             {/* Order Details Dialog */}
-            <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth>
+            <Dialog open={viewDialogOpen} onClose={() => { setViewDialogOpen(false); setIsEditing(false); setEditData(null); }} maxWidth="md" fullWidth>
                 <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     Order Details
                     <IconButton
-                        onClick={() => setViewDialogOpen(false)}
+                        onClick={() => { setViewDialogOpen(false); setIsEditing(false); setEditData(null); }}
                         size="small"
                         sx={{
                             bgcolor: 'error.main',
@@ -1848,14 +1915,6 @@ const CateringManagementPage = () => {
                             >
                                 <Tab label="Order Details" />
                                 <Tab label="Action History" />
-                                <Tab
-                                    label="Chat Support"
-                                    disabled={
-                                        selectedOrder.status === 'completed' ||
-                                        selectedOrder.status === 'cancelled' ||
-                                        (selectedOrder.requiredDate && new Date(selectedOrder.requiredDate) < new Date())
-                                    }
-                                />
                             </Tabs>
 
                             {dialogTab === 0 && (
@@ -1875,47 +1934,47 @@ const CateringManagementPage = () => {
                                                     <Typography>{selectedOrder.customerEmail}</Typography>
                                                 </Grid>
                                                 <Grid item xs={12} sm={6}>
-                                                    <Typography variant="subtitle2">Order Info</Typography>
-                                                    <Typography><strong>#:</strong> {selectedOrder.orderNumber}</Typography>
-                                                    <Typography><strong>Service:</strong> {getServiceTypeLabel(selectedOrder.serviceType)}</Typography>
-                                                    <Typography><strong>Occasion:</strong> {selectedOrder.occasion || 'N/A'}</Typography>
-                                                    {selectedOrder.occasionPersonName && (
-                                                        <Typography>
-                                                            <strong>Occasion Holder :</strong> {selectedOrder.occasionPersonName}
-                                                        </Typography>
-                                                    )}
-                                                    <Typography><strong>Date:</strong> {new Date(selectedOrder.requiredDate).toLocaleString()}</Typography>
-                                                    <Typography><strong>Status:</strong> {getStatusChip(selectedOrder.status)}</Typography>
+                                                    <Typography variant="subtitle2" sx={{ color: 'primary.main', mb: 1, borderBottom: '1px solid', borderColor: 'divider', pb: 0.5 }}>Order Info</Typography>
+                                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                                        <Typography variant="body2"><strong>#:</strong> {selectedOrder.orderNumber}</Typography>
+                                                        <Typography variant="body2"><strong>Service:</strong> {getServiceTypeLabel(selectedOrder.serviceType)}</Typography>
+                                                        <Typography variant="body2"><strong>Occasion:</strong> {selectedOrder.occasion || 'N/A'}</Typography>
+                                                        {selectedOrder.occasionPersonName && (
+                                                            <Typography variant="body2">
+                                                                <strong>Occasion Holder:</strong> {selectedOrder.occasionPersonName}
+                                                            </Typography>
+                                                        )}
+                                                        <Typography variant="body2"><strong>Date:</strong> {new Date(selectedOrder.requiredDate).toLocaleString()}</Typography>
+                                                        <Box sx={{ mt: 1 }}>{getStatusChip(selectedOrder.status)}</Box>
+                                                    </Box>
                                                 </Grid>
 
-                                                {selectedOrder.guests && (
-                                                    <Grid item xs={12}>
-                                                        <Typography variant="subtitle2" gutterBottom>Guest Requirements</Typography>
-                                                        <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 1 }}>
-                                                            <Table size="small">
-                                                                <TableHead sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}>
-                                                                    <TableRow>
-                                                                        <TableCell sx={{ fontWeight: 'bold' }}>Guests</TableCell>
-                                                                        <TableCell align="center" sx={{ fontWeight: 'bold' }}>Veg</TableCell>
-                                                                        <TableCell align="center" sx={{ fontWeight: 'bold' }}>Non-Veg</TableCell>
-                                                                    </TableRow>
-                                                                </TableHead>
-                                                                <TableBody>
-                                                                    <TableRow>
-                                                                        <TableCell sx={{ fontWeight: 'bold' }}>Adults</TableCell>
-                                                                        <TableCell align="center">{selectedOrder.guests.adults?.veg || 0}</TableCell>
-                                                                        <TableCell align="center">{selectedOrder.guests.adults?.nonVeg || 0}</TableCell>
-                                                                    </TableRow>
-                                                                    <TableRow>
-                                                                        <TableCell sx={{ fontWeight: 'bold' }}>Kids</TableCell>
-                                                                        <TableCell align="center">{selectedOrder.guests.kids?.veg || 0}</TableCell>
-                                                                        <TableCell align="center">{selectedOrder.guests.kids?.nonVeg || 0}</TableCell>
-                                                                    </TableRow>
-                                                                </TableBody>
-                                                            </Table>
-                                                        </TableContainer>
-                                                    </Grid>
-                                                )}
+                                                <Grid item xs={12}>
+                                                    <Typography variant="subtitle2" sx={{ color: 'primary.main', mb: 1, borderBottom: '1px solid', borderColor: 'divider', pb: 0.5 }}>Guest Requirements</Typography>
+                                                    <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, overflowX: 'auto' }}>
+                                                        <Table size="small">
+                                                            <TableHead sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}>
+                                                                <TableRow>
+                                                                    <TableCell sx={{ fontWeight: 'bold', py: 1.2, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Guests</TableCell>
+                                                                    <TableCell align="center" sx={{ fontWeight: 'bold', py: 1.2, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Veg</TableCell>
+                                                                    <TableCell align="center" sx={{ fontWeight: 'bold', py: 1.2, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Non-Veg</TableCell>
+                                                                </TableRow>
+                                                            </TableHead>
+                                                            <TableBody>
+                                                                <TableRow>
+                                                                    <TableCell sx={{ py: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Adults</TableCell>
+                                                                    <TableCell align="center" sx={{ py: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{selectedOrder.guests.adults?.veg || 0}</TableCell>
+                                                                    <TableCell align="center" sx={{ py: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{selectedOrder.guests.adults?.nonVeg || 0}</TableCell>
+                                                                </TableRow>
+                                                                <TableRow>
+                                                                    <TableCell sx={{ py: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Kids</TableCell>
+                                                                    <TableCell align="center" sx={{ py: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{selectedOrder.guests.kids?.veg || 0}</TableCell>
+                                                                    <TableCell align="center" sx={{ py: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{selectedOrder.guests.kids?.nonVeg || 0}</TableCell>
+                                                                </TableRow>
+                                                            </TableBody>
+                                                        </Table>
+                                                    </TableContainer>
+                                                </Grid>
 
                                                 {(selectedOrder.serviceType === 'delivery_service' || selectedOrder.serviceType === 'delivery') && (
                                                     <Grid item xs={12}>
@@ -1947,26 +2006,30 @@ const CateringManagementPage = () => {
                                             <Divider sx={{ my: 2 }} />
 
                                             <Typography variant="h6" gutterBottom>Items</Typography>
-                                            <List>
+                                            <List sx={{ py: 0 }}>
                                                 {selectedOrder.items.map((item: any, i: number) => (
-                                                    <ListItem key={i} divider>
+                                                    <ListItem key={i} divider sx={{ px: { xs: 0, sm: 2 }, py: { xs: 1, sm: 1.5 } }}>
                                                         <ListItemText
                                                             primary={
-                                                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                                                    {item.name}
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
+                                                                    <Typography variant="body2" fontWeight="bold">{item.name}</Typography>
                                                                     {item.spiceLevel && (
                                                                         <Chip
                                                                             size="small"
                                                                             label={SPICE_LEVELS.find(l => l.id === item.spiceLevel)?.label || item.spiceLevel}
                                                                             variant="outlined"
-                                                                            sx={{ ml: 1, height: 18, fontSize: '0.6rem', color: '#e65100', borderColor: '#ffb74d' }}
+                                                                            sx={{ height: 16, fontSize: '0.6rem', color: '#e65100', borderColor: '#ffb74d' }}
                                                                         />
                                                                     )}
                                                                 </Box>
                                                             }
-                                                            secondary={`${formatCurrency(item.unitPrice)} x ${item.quantity}`}
+                                                            secondary={
+                                                                <Typography variant="caption" color="textSecondary">
+                                                                    {formatCurrency(item.unitPrice)} x {item.quantity}
+                                                                </Typography>
+                                                            }
                                                         />
-                                                        <Typography fontWeight="bold">{formatCurrency(item.total)}</Typography>
+                                                        <Typography variant="body2" fontWeight="bold">{formatCurrency(item.total)}</Typography>
                                                     </ListItem>
                                                 ))}
                                             </List>
@@ -1989,6 +2052,19 @@ const CateringManagementPage = () => {
                                                         <Typography variant="body2">No payments recorded</Typography>
                                                     )}
 
+                                                    {selectedOrder.serviceType === 'delivery_service' && (
+                                                        <>
+                                                            <Typography variant="subtitle2" sx={{ color: 'text.secondary', mt: 2 }}>Catering Servers</Typography>
+                                                            {selectedOrder.cateringServers?.count > 0 ? (
+                                                                <Typography variant="body2">
+                                                                    <strong>{selectedOrder.cateringServers.count} Servers</strong> - {selectedOrder.cateringServers.time} ({formatCurrency(selectedOrder.cateringServers.amount || 0)})
+                                                                </Typography>
+                                                            ) : (
+                                                                <Typography variant="body2" sx={{ color: 'text.secondary' }}>No servers added</Typography>
+                                                            )}
+                                                        </>
+                                                    )}
+
                                                     <Typography variant="subtitle2" sx={{ color: 'text.secondary', mt: 2 }}>Additional Services</Typography>
                                                     <Typography variant="body2">{selectedOrder.additionalServices || 'No additional services'}</Typography>
                                                     <Typography variant="subtitle2" sx={{ color: 'text.secondary', mt: 1 }}>Processing Person</Typography>
@@ -2006,6 +2082,9 @@ const CateringManagementPage = () => {
                                                             </Typography>
                                                         )}
                                                         <Typography variant="body2">Tax ({selectedOrder.tax?.rate || 0}%): {formatCurrency(selectedOrder.tax?.amount || 0)}</Typography>
+                                                        {selectedOrder.serviceType === 'delivery_service' && (
+                                                            <Typography variant="body2">Service Amount: {formatCurrency(selectedOrder.cateringServers?.amount || 0)}</Typography>
+                                                        )}
                                                         <Divider sx={{ width: '100%', my: 1 }} />
                                                         <Typography variant="subtitle1" fontWeight="bold">Total: {formatCurrency(selectedOrder.totalAmount || 0)}</Typography>
                                                         <Typography variant="body2" color="success.main">Advance Paid: {formatCurrency(selectedOrder.advanceReceived || 0)}</Typography>
@@ -2116,12 +2195,12 @@ const CateringManagementPage = () => {
                                                 <Typography variant="h6">Edit Items</Typography>
                                             </Box>
 
-                                            <TableContainer component={Paper} variant="outlined">
+                                            <TableContainer component={Paper} variant="outlined" sx={{ overflowX: 'auto' }}>
                                                 <Table size="small">
                                                     <TableHead>
                                                         <TableRow>
-                                                            <TableCell>Item Name</TableCell>
-                                                            <TableCell align="center">Quantity</TableCell>
+                                                            <TableCell sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}>Item Name</TableCell>
+                                                            <TableCell align="center" sx={{ fontSize: { xs: '0.75rem', sm: '0.875rem' }, px: { xs: 1, sm: 2 } }}>Quantity</TableCell>
                                                             <TableCell align="right">Base / Unit Price</TableCell>
                                                             <TableCell align="right">Total</TableCell>
                                                             <TableCell align="center">Action</TableCell>
@@ -2272,6 +2351,48 @@ const CateringManagementPage = () => {
                                                 </TableContainer>
                                             </Box>
 
+                                            {editData.serviceType === 'delivery_service' && (
+                                                <Box sx={{ mt: 3, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+                                                    <Typography variant="h6" mb={2}>Catering Servers</Typography>
+                                                    <Grid container spacing={2}>
+                                                        <Grid item xs={12} sm={4}>
+                                                            <TextField
+                                                                fullWidth
+                                                                label="Servers Count"
+                                                                type="number"
+                                                                size="small"
+                                                                inputProps={{ min: 0 }}
+                                                                value={editData.cateringServers?.count || ''}
+                                                                onChange={(e) => setEditData({...editData, cateringServers: { ...editData.cateringServers, count: parseInt(e.target.value) || 0 }})}
+                                                            />
+                                                        </Grid>
+                                                        <Grid item xs={12} sm={4}>
+                                                            <TextField
+                                                                fullWidth
+                                                                label="Time (e.g. 4 hours)"
+                                                                size="small"
+                                                                value={editData.cateringServers?.time || ''}
+                                                                onChange={(e) => setEditData({...editData, cateringServers: { ...editData.cateringServers, time: e.target.value }})}
+                                                            />
+                                                        </Grid>
+                                                        <Grid item xs={12} sm={4}>
+                                                            <TextField
+                                                                fullWidth
+                                                                label="Amount ($)"
+                                                                type="number"
+                                                                size="small"
+                                                                inputProps={{ min: 0, step: "0.01" }}
+                                                                value={editData.cateringServers?.amount || ''}
+                                                                onChange={(e) => {
+                                                                    const newAmount = parseFloat(e.target.value) || 0;
+                                                                    recalculateEditTotals(editData.items, newAmount);
+                                                                }}
+                                                            />
+                                                        </Grid>
+                                                    </Grid>
+                                                </Box>
+                                            )}
+
                                             <Grid container spacing={2} sx={{ mt: 2 }}>
                                                 <Grid item xs={12} sm={6}>
                                                     <TextField
@@ -2322,68 +2443,7 @@ const CateringManagementPage = () => {
                                 </Box>
                             )}
 
-                            {dialogTab === 2 && (
-                                <Box mt={2}>
-                                    <Paper variant="outlined" sx={{ height: 400, display: 'flex', flexDirection: 'column' }}>
-                                        <Box sx={{ flexGrow: 1, p: 2, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, bgcolor: alpha(theme.palette.background.default, 0.5) }}>
-                                            {(!selectedOrder.messages || selectedOrder.messages.length === 0) && (
-                                                <Typography color="textSecondary" align="center" sx={{ mt: 4 }}>No messages yet.</Typography>
-                                            )}
-                                            {selectedOrder.messages?.map((msg: any, i: number) => (
-                                                <Box key={i} sx={{
-                                                    alignSelf: msg.role === 'customer' ? 'flex-start' : 'flex-end',
-                                                    maxWidth: '80%',
-                                                    bgcolor: msg.role === 'customer' ? 'background.paper' : 'primary.main',
-                                                    color: msg.role === 'customer' ? 'text.primary' : 'primary.contrastText',
-                                                    p: 1.5,
-                                                    borderRadius: 2,
-                                                    boxShadow: 1
-                                                }}>
-                                                    <Typography variant="caption" sx={{ display: 'block', mb: 0.5, opacity: 0.8 }}>
-                                                        {msg.sender} ({msg.role}) • {new Date(msg.timestamp).toLocaleString()}
-                                                    </Typography>
-                                                    <Typography variant="body2">{msg.message}</Typography>
-                                                </Box>
-                                            ))}
-                                        </Box>
-                                        <Divider />
-                                        <Box p={2}>
-                                            <Stack direction="row" spacing={1}>
-                                                <TextField
-                                                    fullWidth
-                                                    size="small"
-                                                    placeholder={
-                                                        (selectedOrder.status === 'completed' || selectedOrder.status === 'cancelled' || (selectedOrder.requiredDate && new Date(selectedOrder.requiredDate) < new Date()))
-                                                            ? "Chat is disabled for finalized orders"
-                                                            : "Type a message..."
-                                                    }
-                                                    value={newMessage}
-                                                    onChange={(e) => setNewMessage(e.target.value)}
-                                                    onKeyPress={(e) => {
-                                                        const isDatePassed = selectedOrder?.requiredDate && new Date(selectedOrder.requiredDate) < new Date();
-                                                        const isChatDisabled = selectedOrder.status === 'completed' || selectedOrder.status === 'cancelled' || isDatePassed;
-                                                        if (e.key === 'Enter' && !isChatDisabled) handleSendMessage();
-                                                    }}
-                                                    disabled={selectedOrder.status === 'completed' || selectedOrder.status === 'cancelled' || (selectedOrder.requiredDate && new Date(selectedOrder.requiredDate) < new Date())}
-                                                />
-                                                <Button
-                                                    variant="contained"
-                                                    onClick={handleSendMessage}
-                                                    disabled={
-                                                        !newMessage.trim() ||
-                                                        sendingMessage ||
-                                                        selectedOrder.status === 'completed' ||
-                                                        selectedOrder.status === 'cancelled' ||
-                                                        (selectedOrder.requiredDate && new Date(selectedOrder.requiredDate) < new Date())
-                                                    }
-                                                >
-                                                    {sendingMessage ? <CircularProgress size={20} /> : 'Send'}
-                                                </Button>
-                                            </Stack>
-                                        </Box>
-                                    </Paper>
-                                </Box>
-                            )}
+                            {/* Chat Support Tab removed as it is now a separate dialog */}
                         </Box>
                     )}
                 </DialogContent>
@@ -2397,28 +2457,33 @@ const CateringManagementPage = () => {
                                             size="small"
                                             variant="outlined"
                                             onClick={() => handleDownloadPDF(selectedOrder._id, selectedOrder.orderNumber)}
-                                            startIcon={<Assignment />}
+                                            startIcon={downloadingInvoice ? <CircularProgress size={16} /> : <Assignment />}
                                             sx={{ mr: 1 }}
+                                            disabled={downloadingInvoice}
                                         >
-                                            Download Invoice
+                                            {downloadingInvoice ? 'Downloading...' : 'Download Invoice'}
                                         </Button>
                                         <Button
                                             size="small"
                                             variant="outlined"
                                             onClick={() => handleSendEmail(selectedOrder._id)}
                                             color="secondary"
+                                            startIcon={sendingEmail ? <CircularProgress size={16} color="inherit" /> : null}
                                             sx={{ mr: 1 }}
+                                            disabled={sendingEmail}
                                         >
-                                            Email Receipt
+                                            {sendingEmail ? 'Sending...' : 'Email Receipt'}
                                         </Button>
-                                        <Button
-                                            size="small"
-                                            variant="contained"
-                                            onClick={handleEditOrder}
-                                            color="primary"
-                                        >
-                                            Edit Order
-                                        </Button>
+                                        {selectedOrder.status !== 'completed' && (
+                                            <Button
+                                                size="small"
+                                                variant="contained"
+                                                onClick={handleEditOrder}
+                                                color="primary"
+                                            >
+                                                Edit Order
+                                            </Button>
+                                        )}
                                     </>
                                 ) : (
                                     <>
@@ -2445,7 +2510,94 @@ const CateringManagementPage = () => {
                             </>
                         )}
                     </Box>
-                    <Button variant="contained" onClick={() => { setViewDialogOpen(false); setIsEditing(false); }}>Close</Button>
+                    <Button variant="contained" onClick={() => { setViewDialogOpen(false); setIsEditing(false); setEditData(null); }}>Close</Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Chat Support Dialog */}
+            <Dialog open={chatDialogOpen} onClose={() => setChatDialogOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    Chat Support - #{selectedOrder?.orderNumber}
+                    <IconButton
+                        onClick={() => setChatDialogOpen(false)}
+                        size="small"
+                        sx={{
+                            bgcolor: 'error.main',
+                            color: 'white',
+                            width: 24,
+                            height: 24,
+                            '&:hover': { bgcolor: 'error.dark' }
+                        }}
+                    >
+                        <Close sx={{ fontSize: '1rem' }} />
+                    </IconButton>
+                </DialogTitle>
+                <DialogContent dividers>
+                    {selectedOrder && (
+                        <Box>
+                            <Paper variant="outlined" sx={{ height: 400, display: 'flex', flexDirection: 'column' }}>
+                                <Box sx={{ flexGrow: 1, p: 2, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2, bgcolor: alpha(theme.palette.background.default, 0.5) }}>
+                                    {(!selectedOrder.messages || selectedOrder.messages.length === 0) && (
+                                        <Typography color="textSecondary" align="center" sx={{ mt: 4 }}>No messages yet.</Typography>
+                                    )}
+                                    {selectedOrder.messages?.map((msg: any, i: number) => (
+                                        <Box key={i} sx={{
+                                            alignSelf: msg.role === 'customer' ? 'flex-start' : 'flex-end',
+                                            maxWidth: '80%',
+                                            bgcolor: msg.role === 'customer' ? 'background.paper' : 'primary.main',
+                                            color: msg.role === 'customer' ? 'text.primary' : 'primary.contrastText',
+                                            p: 1.5,
+                                            borderRadius: 2,
+                                            boxShadow: 1
+                                        }}>
+                                            <Typography variant="caption" sx={{ display: 'block', mb: 0.5, opacity: 0.8 }}>
+                                                {msg.sender} ({msg.role}) • {new Date(msg.timestamp).toLocaleString()}
+                                            </Typography>
+                                            <Typography variant="body2">{msg.message}</Typography>
+                                        </Box>
+                                    ))}
+                                </Box>
+                                <Divider />
+                                <Box p={2}>
+                                    <Stack direction="row" spacing={1}>
+                                        <TextField
+                                            fullWidth
+                                            size="small"
+                                            placeholder={
+                                                (selectedOrder.status === 'completed' || selectedOrder.status === 'cancelled' || (selectedOrder.requiredDate && new Date(selectedOrder.requiredDate) < new Date()))
+                                                    ? "Chat is disabled for finalized orders"
+                                                    : "Type a message..."
+                                            }
+                                            value={newMessage}
+                                            onChange={(e) => setNewMessage(e.target.value)}
+                                            onKeyPress={(e) => {
+                                                const isDatePassed = selectedOrder?.requiredDate && new Date(selectedOrder.requiredDate) < new Date();
+                                                const isChatDisabled = selectedOrder.status === 'completed' || selectedOrder.status === 'cancelled' || isDatePassed;
+                                                if (e.key === 'Enter' && !isChatDisabled) handleSendMessage();
+                                            }}
+                                            disabled={selectedOrder.status === 'completed' || selectedOrder.status === 'cancelled' || (selectedOrder.requiredDate && new Date(selectedOrder.requiredDate) < new Date())}
+                                        />
+                                        <Button
+                                            variant="contained"
+                                            onClick={handleSendMessage}
+                                            disabled={
+                                                !newMessage.trim() ||
+                                                sendingMessage ||
+                                                selectedOrder.status === 'completed' ||
+                                                selectedOrder.status === 'cancelled' ||
+                                                (selectedOrder.requiredDate && new Date(selectedOrder.requiredDate) < new Date())
+                                            }
+                                        >
+                                            {sendingMessage ? <CircularProgress size={20} /> : 'Send'}
+                                        </Button>
+                                    </Stack>
+                                </Box>
+                            </Paper>
+                        </Box>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setChatDialogOpen(false)}>Close</Button>
                 </DialogActions>
             </Dialog>
 
@@ -2865,27 +3017,27 @@ const CateringManagementPage = () => {
                                                                 (Enter number of guests per category)
                                                             </Typography>
                                                         </Box>
-                                                        <TableContainer component={Paper} elevation={0} sx={{ overflow: 'auto' }}>
+                                                        <TableContainer component={Paper} elevation={0} sx={{ overflow: 'auto', border: '1px solid', borderColor: 'divider', borderRadius: 2 }}>
                                                             <Table size="small">
                                                                 <TableHead>
-                                                                    <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-                                                                        <TableCell sx={{ fontWeight: 700, fontSize: '0.82rem', letterSpacing: '0.04em', textTransform: 'uppercase', width: '34%', py: 1.4, borderBottom: '1px solid #e0e0e0' }}>
+                                                                    <TableRow sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}>
+                                                                        <TableCell sx={{ fontWeight: 700, fontSize: { xs: '0.7rem', sm: '0.82rem' }, py: 1.2, borderBottom: '1px solid #e0e0e0' }}>
                                                                             Category
                                                                         </TableCell>
-                                                                        <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.82rem', letterSpacing: '0.04em', textTransform: 'uppercase', width: '33%', py: 1.4, borderBottom: '1px solid #e0e0e0' }}>
+                                                                        <TableCell align="center" sx={{ fontWeight: 700, fontSize: { xs: '0.7rem', sm: '0.82rem' }, py: 1.2, borderBottom: '1px solid #e0e0e0' }}>
                                                                             Veg
                                                                         </TableCell>
-                                                                        <TableCell align="center" sx={{ fontWeight: 700, fontSize: '0.82rem', letterSpacing: '0.04em', textTransform: 'uppercase', width: '33%', py: 1.4, borderBottom: '1px solid #e0e0e0' }}>
+                                                                        <TableCell align="center" sx={{ fontWeight: 700, fontSize: { xs: '0.7rem', sm: '0.82rem' }, py: 1.2, borderBottom: '1px solid #e0e0e0' }}>
                                                                             Non-Veg
                                                                         </TableCell>
                                                                     </TableRow>
                                                                 </TableHead>
                                                                 <TableBody>
                                                                     <TableRow>
-                                                                        <TableCell sx={{ py: 1.5 }}>
-                                                                            <Typography variant="body2" fontWeight={600}>Adults</Typography>
+                                                                        <TableCell sx={{ py: 1 }}>
+                                                                            <Typography variant="body2" fontWeight={600} sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>Adults</Typography>
                                                                         </TableCell>
-                                                                        <TableCell align="center" sx={{ py: 1.5 }}>
+                                                                        <TableCell align="center" sx={{ py: 1 }}>
                                                                             <TextField 
                                                                                 size="small" 
                                                                                 type="number" 
@@ -2893,10 +3045,10 @@ const CateringManagementPage = () => {
                                                                                 onKeyDown={preventScientificNotation}
                                                                                 onChange={(e) => handleGuestCountChange('newOrder', 'adults', 'veg', e.target.value)} 
                                                                                 inputProps={{ min: 0, max: 9999 }} 
-                                                                                sx={{ width: { xs: 60, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} 
+                                                                                sx={{ width: { xs: 55, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600, fontSize: { xs: '0.8rem', sm: '0.875rem' }, p: { xs: 1, sm: 1.5 } } }} 
                                                                             />
                                                                         </TableCell>
-                                                                        <TableCell align="center" sx={{ py: 1.5 }}>
+                                                                        <TableCell align="center" sx={{ py: 1 }}>
                                                                             <TextField 
                                                                                 size="small" 
                                                                                 type="number" 
@@ -2904,15 +3056,15 @@ const CateringManagementPage = () => {
                                                                                 onKeyDown={preventScientificNotation}
                                                                                 onChange={(e) => handleGuestCountChange('newOrder', 'adults', 'nonVeg', e.target.value)} 
                                                                                 inputProps={{ min: 0, max: 9999 }} 
-                                                                                sx={{ width: { xs: 60, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} 
+                                                                                sx={{ width: { xs: 55, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600, fontSize: { xs: '0.8rem', sm: '0.875rem' }, p: { xs: 1, sm: 1.5 } } }} 
                                                                             />
                                                                         </TableCell>
                                                                     </TableRow>
                                                                     <TableRow>
-                                                                        <TableCell sx={{ py: 1.5 }}>
-                                                                            <Typography variant="body2" fontWeight={600}>Kids</Typography>
+                                                                        <TableCell sx={{ py: 1 }}>
+                                                                            <Typography variant="body2" fontWeight={600} sx={{ fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>Kids</Typography>
                                                                         </TableCell>
-                                                                        <TableCell align="center" sx={{ py: 1.5 }}>
+                                                                        <TableCell align="center" sx={{ py: 1 }}>
                                                                             <TextField 
                                                                                 size="small" 
                                                                                 type="number" 
@@ -2920,10 +3072,10 @@ const CateringManagementPage = () => {
                                                                                 onKeyDown={preventScientificNotation}
                                                                                 onChange={(e) => handleGuestCountChange('newOrder', 'kids', 'veg', e.target.value)} 
                                                                                 inputProps={{ min: 0, max: 9999 }} 
-                                                                                sx={{ width: { xs: 60, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} 
+                                                                                sx={{ width: { xs: 55, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600, fontSize: { xs: '0.8rem', sm: '0.875rem' }, p: { xs: 1, sm: 1.5 } } }} 
                                                                             />
                                                                         </TableCell>
-                                                                        <TableCell align="center" sx={{ py: 1.5 }}>
+                                                                        <TableCell align="center" sx={{ py: 1 }}>
                                                                             <TextField 
                                                                                 size="small" 
                                                                                 type="number" 
@@ -2931,7 +3083,7 @@ const CateringManagementPage = () => {
                                                                                 onKeyDown={preventScientificNotation}
                                                                                 onChange={(e) => handleGuestCountChange('newOrder', 'kids', 'nonVeg', e.target.value)} 
                                                                                 inputProps={{ min: 0, max: 9999 }} 
-                                                                                sx={{ width: { xs: 60, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600 } }} 
+                                                                                sx={{ width: { xs: 55, sm: 80 }, '& .MuiInputBase-input': { textAlign: 'center', fontWeight: 600, fontSize: { xs: '0.8rem', sm: '0.875rem' }, p: { xs: 1, sm: 1.5 } } }} 
                                                                             />
                                                                         </TableCell>
                                                                     </TableRow>
@@ -3182,15 +3334,15 @@ const CateringManagementPage = () => {
                                                         </Button>
                                                     </Box>
 
-                                                    <TableContainer component={Paper} variant="outlined" sx={{ overflowX: 'hidden' }}>
+                                                    <TableContainer component={Paper} variant="outlined" sx={{ overflowX: 'auto' }}>
                                                         <Table size="small">
                                                             <TableHead>
                                                                 <TableRow>
-                                                                    <TableCell sx={{ px: { xs: 0.5, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>Amount</TableCell>
-                                                                    <TableCell sx={{ px: { xs: 0.5, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>Method</TableCell>
-                                                                    <TableCell sx={{ px: { xs: 0.5, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>Date</TableCell>
-                                                                    <TableCell sx={{ px: { xs: 0.5, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>Notes</TableCell>
-                                                                    <TableCell align="center" sx={{ px: { xs: 0.5, sm: 1 }, fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>Action</TableCell>
+                                                                    <TableCell sx={{ px: { xs: 1, sm: 1.5 }, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Amount</TableCell>
+                                                                    <TableCell sx={{ px: { xs: 1, sm: 1.5 }, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Method</TableCell>
+                                                                    <TableCell sx={{ px: { xs: 1, sm: 1.5 }, fontSize: { xs: '0.75rem', sm: '0.875rem' }, display: { xs: 'none', sm: 'table-cell' } }}>Date</TableCell>
+                                                                    <TableCell sx={{ px: { xs: 1, sm: 1.5 }, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Notes</TableCell>
+                                                                    <TableCell align="center" sx={{ px: { xs: 1, sm: 1.5 }, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Action</TableCell>
                                                                 </TableRow>
                                                             </TableHead>
                                                             <TableBody>
@@ -3536,6 +3688,73 @@ const CateringManagementPage = () => {
                     <Button variant="contained" onClick={handleAddCustomOccasion} disabled={!customOccasion.trim()}>Add</Button>
                 </DialogActions>
             </Dialog>
+            {/* Action Menu for Table/Card */}
+            <Menu
+                anchorEl={anchorEl}
+                open={Boolean(anchorEl)}
+                onClose={handleActionMenuClose}
+                PaperProps={{
+                    elevation: 3,
+                    sx: { 
+                        borderRadius: 3, 
+                        minWidth: 220,
+                        mt: 1,
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
+                        border: '1px solid',
+                        borderColor: 'divider'
+                    }
+                }}
+            >
+                <MenuItem onClick={() => { handleActionMenuClose(); setIsEditing(false); setEditData(null); setSelectedOrder(actionOrder); setViewDialogOpen(true); setDialogTab(0); }}>
+                    <ListItemIcon><Visibility fontSize="small" sx={{ color: '#7c3aed' }} /></ListItemIcon>
+                    <Typography variant="body2" fontWeight="600">View Details</Typography>
+                </MenuItem>
+                <MenuItem onClick={() => { handleActionMenuClose(); setSelectedOrder(actionOrder); setChatDialogOpen(true); }}>
+                    <ListItemIcon><ChatBubble fontSize="small" sx={{ color: '#0ea5e9' }} /></ListItemIcon>
+                    <Typography variant="body2" fontWeight="600">Chat Support</Typography>
+                </MenuItem>
+                
+                <Divider sx={{ my: 1 }} />
+                
+                {actionOrder?.status === 'pending' && (
+                    <MenuItem 
+                        onClick={() => { handleUpdateStatus(actionOrder._id, 'confirmed'); handleActionMenuClose(); }}
+                        disabled={updatingOrderId === actionOrder?._id}
+                    >
+                        <ListItemIcon>
+                            {updatingOrderId === actionOrder?._id ? <CircularProgress size={20} color="inherit" /> : <CheckCircle fontSize="small" sx={{ color: '#10b981' }} />}
+                        </ListItemIcon>
+                        <Typography variant="body2" fontWeight="600" sx={{ color: '#10b981' }}>Confirm Order</Typography>
+                    </MenuItem>
+                )}
+                {actionOrder?.status === 'confirmed' && (
+                    <MenuItem 
+                        onClick={() => { handleUpdateStatus(actionOrder._id, 'completed'); handleActionMenuClose(); }}
+                        disabled={updatingOrderId === actionOrder?._id}
+                    >
+                        <ListItemIcon>
+                            {updatingOrderId === actionOrder?._id ? <CircularProgress size={20} color="inherit" /> : <CheckCircle fontSize="small" sx={{ color: '#3730a3' }} />}
+                        </ListItemIcon>
+                        <Typography variant="body2" fontWeight="600" sx={{ color: '#3730a3' }}>Mark Complete</Typography>
+                    </MenuItem>
+                )}
+                
+                <MenuItem onClick={() => { handleActionMenuClose(); handleViewRequirements(actionOrder?._id); }}>
+                    <ListItemIcon><Assignment fontSize="small" sx={{ color: '#db2777' }} /></ListItemIcon>
+                    <Typography variant="body2" fontWeight="600">Inventory Estimation</Typography>
+                </MenuItem>
+
+                <Divider sx={{ my: 1 }} />
+                
+                <MenuItem onClick={() => { handleActionMenuClose(); handleDownloadPDF(actionOrder?._id, actionOrder?.orderNumber); }}>
+                    <ListItemIcon><FileDownload fontSize="small" /></ListItemIcon>
+                    <Typography variant="body2">Download Invoice</Typography>
+                </MenuItem>
+                <MenuItem onClick={() => { handleActionMenuClose(); handleSendEmail(actionOrder?._id); }}>
+                    <ListItemIcon><Send fontSize="small" /></ListItemIcon>
+                    <Typography variant="body2">Send Email</Typography>
+                </MenuItem>
+            </Menu>
         </Box>
     );
 };

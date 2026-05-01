@@ -168,6 +168,8 @@ const CustomerOrderPage: React.FC = () => {
         return subtotal + processingFeeAmount + taxAmount;
     };
     const totalQuantity = cart.totalItems;
+    const mobileHeadingSize = '0.62rem';
+    const mobileBodySize = '0.62rem';
 
     const SpiceLevelDialog = () => {
         if (!spiceSelectionItem) return null;
@@ -229,26 +231,49 @@ const CustomerOrderPage: React.FC = () => {
     }
 
     return (
-        <Box sx={{ bgcolor: '#f8f9fa', minHeight: '100vh', pb: 12 }}>
+        <Box
+            sx={{
+                bgcolor: '#f8f9fa',
+                /* Height follows menu content; layout flex was stretching empty space above the footer */
+                pb: { xs: cart.items.length ? 14 : 5, sm: cart.items.length ? 12 : 8 },
+            }}
+        >
             <SpiceLevelDialog />
             {/* Elegant Hero Section */}
             <Box sx={{
                 position: 'relative',
-                height: { xs: '180px', sm: '220px' },
+                height: { xs: '170px', sm: '200px', md: '220px' },
                 width: '100%',
                 background: `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.7)), url(https://images.unsplash.com/photo-1543353071-873f17a7a088?auto=format&fit=crop&w=1200&q=80)`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
                 display: 'flex',
-                alignItems: 'center',
+                alignItems: { xs: 'flex-end', sm: 'center' },
                 justifyContent: 'center',
                 color: 'white',
-                mb: -4,
-                zIndex: 1
+                mb: { xs: -1, sm: -3, md: -4 },
+                zIndex: 1,
+                px: { xs: 1.5, sm: 0 },
+                pb: { xs: 2, sm: 0 },
             }}>
                 <Container maxWidth="lg">
                     <Box sx={{ textAlign: 'center' }}>
-                        <Typography variant={isMobile ? "h4" : "h2"} fontWeight="900" sx={{ mb: 1, textShadow: '0 4px 10px rgba(0,0,0,0.5)' }}>
+                        <Typography
+                            variant={isMobile ? "h4" : "h2"}
+                            fontWeight="900"
+                            sx={{
+                                mb: 0.5,
+                                textShadow: '0 4px 10px rgba(0,0,0,0.5)',
+                                fontSize: { xs: '1.6rem', sm: '2.2rem', md: '3.75rem' },
+                                lineHeight: 1.15,
+                                letterSpacing: '-0.02em',
+                                display: 'inline-block',
+                                px: { xs: 1.2, sm: 0 },
+                                py: { xs: 0.45, sm: 0 },
+                                borderRadius: { xs: 2, sm: 0 },
+                                bgcolor: { xs: 'rgba(0,0,0,0.28)', sm: 'transparent' },
+                            }}
+                        >
                             {settings?.restaurant?.name || 'Gourmet Dining'}
                         </Typography>
                     </Box>
@@ -258,18 +283,18 @@ const CustomerOrderPage: React.FC = () => {
             {/* Categorical Navigation - Elevated & Sticky */}
             <Paper sx={{
                 position: 'sticky',
-                top: 0,
+                top: { xs: 64, sm: 64, md: 72 },
                 zIndex: 100,
                 boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
-                borderRadius: '0 0 24px 24px',
+                borderRadius: { xs: '0 0 16px 16px', sm: '0 0 24px 24px' },
                 mx: { xs: 0, sm: 2 },
-                mb: 4
+                mb: { xs: 1, sm: 4 }
             }}>
                 <Box sx={{
                     display: 'flex',
                     overflowX: 'auto',
-                    gap: 1.5,
-                    p: 2,
+                    gap: { xs: 0.35, sm: 1.5 },
+                    p: { xs: 0.65, sm: 2 },
                     '&::-webkit-scrollbar': { display: 'none' },
                     '-ms-overflow-style': 'none',
                     scrollbarWidth: 'none',
@@ -281,11 +306,12 @@ const CustomerOrderPage: React.FC = () => {
                             variant={selectedCategory === cat ? "contained" : "text"}
                             sx={{
                                 minWidth: 'fit-content',
-                                px: 3,
+                                px: { xs: 1.1, sm: 3 },
+                                py: { xs: 0.35 },
                                 borderRadius: 10,
                                 fontWeight: '700',
                                 textTransform: 'none',
-                                fontSize: '0.9rem',
+                                fontSize: { xs: '0.58rem', sm: '0.9rem' },
                                 color: selectedCategory === cat ? 'white' : 'text.secondary',
                                 bgcolor: selectedCategory === cat ? 'primary.main' : 'transparent',
                                 '&:hover': {
@@ -301,53 +327,79 @@ const CustomerOrderPage: React.FC = () => {
 
             {/* Menu Items Showcase */}
             <Container maxWidth="lg">
-                <Box sx={{ mb: 2, px: 1 }}>
-                    <Typography variant="h5" fontWeight="800" color="text.primary">
+                <Box sx={{ mb: { xs: 0.75, sm: 2 }, px: { xs: 0.5, sm: 1 } }}>
+                    <Typography
+                        variant="h5"
+                        fontWeight="800"
+                        color="text.primary"
+                        sx={{ textAlign: { xs: 'center', sm: 'left' }, fontSize: { xs: '1.05rem', sm: '1.8rem' }, lineHeight: { xs: 1.25, sm: 1.3 } }}
+                    >
                         {selectedCategory === 'All' ? 'Our Menu Items' : selectedCategory}
                     </Typography>
                 </Box>
 
-                <Grid container spacing={3}>
+                <Grid container spacing={{ xs: 1.25, sm: 3 }}>
                     {menuItems.filter(item =>
                         (selectedCategory === 'All' || (typeof item.category === 'string' ? item.category : item.category?.name) === selectedCategory) &&
                         item.name.toLowerCase() !== 'cheese pizza'
                     ).map((item, index) => {
                         const qty = getItemQuantity(item._id);
                         return (
-                            <Grid item xs={12} sm={6} md={4} key={item._id}>
+                            <Grid item xs={6} sm={6} md={4} key={item._id}>
                                 <Fade in timeout={300 + (index * 50)}>
                                     <Card sx={{
-                                        borderRadius: 5,
+                                        borderRadius: { xs: 3, sm: 5 },
                                         display: 'flex',
                                         flexDirection: 'column',
                                         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                         boxShadow: '0 8px 30px rgba(0,0,0,0.04)',
                                         overflow: 'hidden',
                                         '&:hover': {
-                                            transform: 'translateY(-8px)',
+                                            transform: { xs: 'none', md: 'translateY(-8px)' },
                                             boxShadow: '0 12px 40px rgba(0,0,0,0.12)',
                                         }
                                     }}>
                                         <Box sx={{ position: 'relative' }}>
                                             <CardMedia
                                                 component="img"
-                                                height={isMobile ? "180" : "220"}
+                                                height={isMobile ? "120" : "220"}
                                                 image={item.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=500&q=80'}
                                                 alt={item.name}
                                                 sx={{ filter: item.isAvailable ? 'none' : 'grayscale(100%)' }}
                                             />
                                         </Box>
 
-                                        <CardContent sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 1, overflow: 'hidden' }}>
+                                        <CardContent sx={{ p: { xs: 0.75, sm: 2 }, display: 'flex', flexDirection: 'column', gap: { xs: 0.25 } }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 0.35, sm: 1 }, overflow: 'hidden' }}>
                                                 <DietarySymbol type={item.foodType} />
-                                                <Typography variant="h6" fontWeight="800" sx={{ color: 'text.primary', fontSize: '1rem', lineHeight: 1.1, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                                                <Typography
+                                                    variant={isMobile ? 'body2' : 'h6'}
+                                                    fontWeight="800"
+                                                    sx={{
+                                                        color: 'text.primary',
+                                                        fontSize: { xs: '0.58rem', sm: '1rem' },
+                                                        lineHeight: { xs: 1.2, sm: 1.15 },
+                                                        overflow: 'hidden',
+                                                        whiteSpace: 'nowrap',
+                                                        textOverflow: 'ellipsis'
+                                                    }}
+                                                >
                                                     {item.name}
                                                 </Typography>
                                             </Box>
 
-                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-                                                <Typography variant="h6" fontWeight="900" color="primary" sx={{ fontSize: '1.2rem' }}>
+                                            <Box
+                                                sx={{
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'center',
+                                                    mb: { xs: 0, sm: 1.5 },
+                                                    mt: { xs: 0.15, sm: 0 },
+                                                    gap: { xs: 0.5, sm: 1 },
+                                                    flexWrap: { xs: 'wrap', sm: 'nowrap' }
+                                                }}
+                                            >
+                                                <Typography variant={isMobile ? 'body2' : 'h6'} fontWeight="900" color="primary" sx={{ fontSize: { xs: '0.62rem', sm: '1.2rem' }, lineHeight: 1.2 }}>
                                                     {formatCurrency(item.price)}
                                                 </Typography>
 
@@ -355,22 +407,23 @@ const CustomerOrderPage: React.FC = () => {
                                                     <Box sx={{
                                                         display: 'flex',
                                                         alignItems: 'center',
-                                                        gap: 1.5,
+                                                        gap: { xs: 0.75, sm: 1.5 },
                                                         bgcolor: alpha(theme.palette.primary.main, 0.1),
                                                         borderRadius: 2,
-                                                        px: 1,
-                                                        py: 0.3,
+                                                        px: { xs: 0.65, sm: 1 },
+                                                        py: { xs: 0.2, sm: 0.3 },
                                                         border: '1px solid',
-                                                        borderColor: alpha(theme.palette.primary.main, 0.2)
+                                                        borderColor: alpha(theme.palette.primary.main, 0.2),
+                                                        ml: { xs: 'auto', sm: 0 }
                                                     }}>
                                                         <IconButton
                                                             size="small"
                                                             onClick={() => removeFromCart(item._id)}
                                                             sx={{ color: 'primary.main', p: 0.5 }}
                                                         >
-                                                            <RemoveIcon sx={{ fontSize: '1.2rem' }} />
+                                                            <RemoveIcon sx={{ fontSize: { xs: '0.85rem', sm: '1.2rem' } }} />
                                                         </IconButton>
-                                                        <Typography fontWeight="900" color="primary.main" sx={{ minWidth: '15px', textAlign: 'center', fontSize: '1rem' }}>
+                                                        <Typography fontWeight="900" color="primary.main" sx={{ minWidth: '14px', textAlign: 'center', fontSize: { xs: '0.72rem', sm: '1rem' } }}>
                                                             {qty}
                                                         </Typography>
                                                         <IconButton
@@ -378,7 +431,7 @@ const CustomerOrderPage: React.FC = () => {
                                                             onClick={() => addToCart(item)}
                                                             sx={{ color: 'primary.main', p: 0.5 }}
                                                         >
-                                                            <AddIcon sx={{ fontSize: '1.2rem' }} />
+                                                            <AddIcon sx={{ fontSize: { xs: '0.85rem', sm: '1.2rem' } }} />
                                                         </IconButton>
                                                     </Box>
                                                 ) : (
@@ -391,9 +444,13 @@ const CustomerOrderPage: React.FC = () => {
                                                             borderRadius: 2,
                                                             textTransform: 'none',
                                                             fontWeight: '800',
-                                                            minWidth: '85px',
+                                                            minWidth: { xs: '82px', sm: '85px' },
                                                             boxShadow: '0 4px 10px rgba(0,0,0,0.08)',
-                                                            py: 0.5
+                                                            py: { xs: 0.15, sm: 0.5 },
+                                                            minHeight: { xs: 26, sm: undefined },
+                                                            ml: { xs: 'auto', sm: 0 },
+                                                            fontSize: { xs: mobileBodySize, sm: '0.8125rem' },
+                                                            '& .MuiButton-startIcon': { mr: { xs: 0.35, sm: 1 } }
                                                         }}
                                                     >
                                                         Add
@@ -425,33 +482,35 @@ const CustomerOrderPage: React.FC = () => {
            {cart.items.length > 0 && (
     <Box sx={{
         position: 'fixed',
-        bottom: 24,
+        bottom: { xs: 12, sm: 24 },
         left: 0,
         right: 0,
         display: 'flex',
         justifyContent: 'center',
         zIndex: 1000,
-        px: 2,
+        px: { xs: 1, sm: 2 },
         pointerEvents: 'none', // let clicks pass through the wrapper
     }}>
         <Zoom in>
             <Paper
                 elevation={15}
                 sx={{
-                    p: 1.5,
+                    p: { xs: 1.25, sm: 1.5 },
                     bgcolor: '#1a1a1a',
                     color: 'white',
-                    borderRadius: 10,
+                    borderRadius: { xs: 4, sm: 10 },
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
+                    gap: { xs: 1, sm: 2 },
                     border: '1px solid rgba(255,255,255,0.1)',
                     backdropFilter: 'blur(20px)',
                     width: { xs: '100%', sm: '420px' },
+                    maxWidth: { xs: '100%', sm: 420 },
                     pointerEvents: 'auto', // re-enable clicks on the actual bar
                 }}
             >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, ml: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.25, sm: 2 }, ml: { xs: 0.25, sm: 1 }, minWidth: 0 }}>
                     <Badge
                         badgeContent={totalQuantity}
                         color="error"
@@ -480,8 +539,8 @@ const CustomerOrderPage: React.FC = () => {
                         </Box>
                     </Badge>
                     <Box>
-                        <Typography variant="caption" sx={{ opacity: 0.6, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 }}>Total Order</Typography>
-                        <Typography variant="h6" fontWeight="900" sx={{ lineHeight: 1.1 }}>{formatCurrency(calculateTotal())}</Typography>
+                        <Typography variant="caption" sx={{ opacity: 0.6, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, fontSize: { xs: mobileBodySize, sm: '0.75rem' } }}>Total Order</Typography>
+                        <Typography variant="h6" fontWeight="900" sx={{ lineHeight: 1.1, fontSize: { xs: mobileHeadingSize, sm: '1.25rem' } }}>{formatCurrency(calculateTotal())}</Typography>
                     </Box>
                 </Box>
                 <Button
@@ -492,11 +551,12 @@ const CustomerOrderPage: React.FC = () => {
                         bgcolor: 'primary.main',
                         color: 'white',
                         fontWeight: '900',
-                        borderRadius: 10,
-                        height: 52,
-                        px: 4,
+                        borderRadius: { xs: 3, sm: 10 },
+                        height: { xs: 44, sm: 52 },
+                        px: { xs: 2, sm: 4 },
                         textTransform: 'none',
-                        fontSize: '1rem',
+                        fontSize: { xs: mobileBodySize, sm: '1rem' },
+                        whiteSpace: 'nowrap',
                         '&:hover': { bgcolor: 'primary.dark' }
                     }}
                 >

@@ -837,6 +837,114 @@ const PromoCodePage: React.FC = () => {
                         );
                     })}
                 </Grid>
+            ) : isMobile ? (
+                <Stack spacing={1.5}>
+                    {filteredPromos.map((promo) => {
+                        const status = getStatusInfo(promo);
+                        return (
+                            <Card
+                                key={promo._id}
+                                sx={{
+                                    borderRadius: 3,
+                                    border: '1px solid',
+                                    borderColor: 'divider',
+                                    boxShadow: 'none',
+                                }}
+                            >
+                                <CardContent sx={{ p: 1.5 }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1, mb: 1 }}>
+                                        <Box
+                                            sx={{
+                                                display: 'inline-flex',
+                                                alignItems: 'center',
+                                                gap: 0.75,
+                                                px: 1.25,
+                                                py: 0.5,
+                                                borderRadius: 1.5,
+                                                bgcolor: alpha(theme.palette.primary.main, 0.05),
+                                                border: '1px dashed',
+                                                borderColor: alpha(theme.palette.primary.main, 0.3),
+                                                cursor: 'pointer'
+                                            }}
+                                            onClick={() => copyToClipboard(promo.code)}
+                                        >
+                                            <Typography sx={{ fontWeight: 700, color: 'primary.main', fontFamily: 'monospace', fontSize: '0.82rem' }}>
+                                                {promo.code}
+                                            </Typography>
+                                            <CopyIcon sx={{ fontSize: 14, color: 'primary.main' }} />
+                                        </Box>
+                                        <Chip
+                                            label={status.label}
+                                            color={status.color as any}
+                                            size="small"
+                                            sx={{ fontWeight: 700, height: 24 }}
+                                        />
+                                    </Box>
+
+                                    <Typography variant="body2" fontWeight={700} sx={{ mb: 0.25 }}>
+                                        {promo.name}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                                        {promo.description || 'No description'}
+                                    </Typography>
+
+                                    <Grid container spacing={1} sx={{ mb: 1 }}>
+                                        <Grid item xs={6}>
+                                            <Typography variant="caption" color="text.secondary">Discount</Typography>
+                                            <Typography variant="body2" fontWeight={700} color="secondary.main">
+                                                {promo.discountValue}{promo.discountType === 'percentage' ? '%' : '$'} OFF
+                                            </Typography>
+                                        </Grid>
+                                        <Grid item xs={6}>
+                                            <Typography variant="caption" color="text.secondary">Min Bill</Typography>
+                                            <Typography variant="body2" fontWeight={700}>
+                                                {formatCurrency(promo.minBillAmount)}
+                                            </Typography>
+                                        </Grid>
+                                        <Grid item xs={6}>
+                                            <Typography variant="caption" color="text.secondary">Usage</Typography>
+                                            <Typography variant="body2" fontWeight={700}>
+                                                {promo.currentUses || 0}/{promo.maxTotalUses || '∞'}
+                                            </Typography>
+                                        </Grid>
+                                        <Grid item xs={6}>
+                                            <Typography variant="caption" color="text.secondary">Ends</Typography>
+                                            <Typography variant="body2" fontWeight={700}>
+                                                {safeFormatDate(promo.validTo)}
+                                            </Typography>
+                                        </Grid>
+                                    </Grid>
+
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <Switch
+                                            checked={promo.active}
+                                            onChange={() => toggleStatus(promo)}
+                                            size="small"
+                                            color="success"
+                                        />
+                                        <Stack direction="row" spacing={0.5}>
+                                            <Tooltip title="Send Email">
+                                                <IconButton size="small" color="info" onClick={() => handleOpenEmailDialog(promo)}>
+                                                    <EmailIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                            <Tooltip title="Edit">
+                                                <IconButton size="small" onClick={() => handleOpenDialog(promo)}>
+                                                    <EditIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                            <Tooltip title="Delete">
+                                                <IconButton size="small" color="error" onClick={() => handleDelete(promo)}>
+                                                    <DeleteIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                        </Stack>
+                                    </Box>
+                                </CardContent>
+                            </Card>
+                        );
+                    })}
+                </Stack>
             ) : (
                 <TableContainer component={Paper} sx={{ borderRadius: 4, overflowX: 'auto', border: '1px solid', borderColor: 'divider', boxShadow: 'none' }}>
                     <Table sx={{ minWidth: 1000 }}>
@@ -1168,9 +1276,14 @@ const PromoCodePage: React.FC = () => {
                                             type="number"
                                             size="small"
                                             required
-                                            value={formData.discountValue}
+                                            value={formData.discountValue === 0 ? '' : formData.discountValue}
                                             onFocus={(e) => e.target.select()}
-                                            onChange={(e) => setFormData({ ...formData, discountValue: Math.max(0, Number(e.target.value)) })}
+                                            onChange={(e) =>
+                                                setFormData({
+                                                    ...formData,
+                                                    discountValue: e.target.value === '' ? 0 : Math.max(0, Number(e.target.value))
+                                                })
+                                            }
                                             inputProps={{ min: 0 }}
                                             InputProps={{
                                                 endAdornment: <InputAdornment position="end" sx={{ opacity: 0.5 }}>{formData.discountType === 'percentage' ? '%' : '$'}</InputAdornment>,
@@ -1184,9 +1297,14 @@ const PromoCodePage: React.FC = () => {
                                             label="Min Order"
                                             type="number"
                                             size="small"
-                                            value={formData.minBillAmount}
+                                            value={formData.minBillAmount === 0 ? '' : formData.minBillAmount}
                                             onFocus={(e) => e.target.select()}
-                                            onChange={(e) => setFormData({ ...formData, minBillAmount: Math.max(0, Number(e.target.value)) })}
+                                            onChange={(e) =>
+                                                setFormData({
+                                                    ...formData,
+                                                    minBillAmount: e.target.value === '' ? 0 : Math.max(0, Number(e.target.value))
+                                                })
+                                            }
                                             inputProps={{ min: 0 }}
                                             InputProps={{
                                                 startAdornment: <InputAdornment position="start" sx={{ opacity: 0.5 }}>$</InputAdornment>,
