@@ -605,7 +605,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                         {order.tax?.amount > 0 && (
                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                                 <Typography variant="body2" color="text.secondary">
-                                    Tax ({order.tax.rate}%):
+                                    Tax:
                                 </Typography>
                                 <Typography variant="body2" fontWeight="medium">
                                     {formatCurrency(order.tax.amount)}

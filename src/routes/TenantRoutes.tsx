@@ -71,6 +71,7 @@ export const TenantRoutes = () => (
         <Route path="customer/checkout" element={<CheckoutPage />} />
         <Route path="customer/book-table" element={<TableBookingPage />} />
         <Route path="customer/bookings" element={<MyBookingsPage />} />
+        <Route path="customer/profile" element={<ProfilePage />} />
         {/* Guest-accessible customer catering routes */}
         <Route element={<RequireFeature feature="catering" guestAllowed />}>
           <Route path="customer/catering" element={<CateringPage />} />

@@ -1,43 +1,43 @@
-import React, { useState, useEffect } from 'react';
 import {
-  Box,
-  Container,
-  Typography,
-  Grid,
-  Card,
-  CardMedia,
-  CardContent,
-  Button,
-  Chip,
-  TextField,
-  InputAdornment,
-  Tabs,
-  Tab,
-  Badge,
-  Fab,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  IconButton,
-  Rating,
-  Divider,
-  Paper,
-  Alert
-} from '@mui/material';
-import {
-  Search,
-  ShoppingCart,
   Add,
   Close,
-  Restaurant,
-  LocalOffer,
   Favorite,
-  FavoriteBorder
+  FavoriteBorder,
+  LocalOffer,
+  Restaurant,
+  Search,
+  ShoppingCart
 } from '@mui/icons-material';
+import {
+  Alert,
+  Badge,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  CardMedia,
+  Chip,
+  Container,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  Fab,
+  Grid,
+  IconButton,
+  InputAdornment,
+  Paper,
+  Rating,
+  Tab,
+  Tabs,
+  TextField,
+  Typography
+} from '@mui/material';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 import { useGuestCart } from '../context/GuestCartContext';
 import { menuAPI } from '../services/api';
-import LoadingSpinner from '../components/common/LoadingSpinner';
 
 interface MenuItem {
   _id: string;
@@ -104,7 +104,7 @@ const PublicMenuPage: React.FC = () => {
       setLoading(false);
     }
   };
-const getDayName = (date: Date): string => {
+  const getDayName = (date: Date): string => {
     return ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'][date.getDay()];
   };
 
@@ -140,7 +140,7 @@ const getDayName = (date: Date): string => {
     const isAvailable = item.isAvailable && isItemAvailableForDay(item, today);
     return matchesSearch && matchesCategory && isAvailable;
   });
-const todaysSpecials = filteredItems
+  const todaysSpecials = filteredItems
     .filter(item => isSpecialToday(item))
     .sort((a, b) => (b.priority || 0) - (a.priority || 0));
 

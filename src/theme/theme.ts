@@ -1,6 +1,9 @@
 import { alpha, createTheme, type Theme } from '@mui/material/styles';
 import { BRAND_CONFIG } from '../config/brandConfig';
 
+const MOBILE_HEADING_SIZE = '1.25rem';
+const MOBILE_BODY_SIZE = '0.875rem';
+
 const getPalette = (mode: 'light' | 'dark') => ({
     mode,
     primary: {
@@ -52,7 +55,7 @@ export const getTheme = (mode: 'light' | 'dark'): Theme => createTheme({
             lineHeight: 1.2,
             '@media (max-width:600px)': {
                 fontSize: '1.25rem',
-                color: '#000000',
+                color: mode === 'light' ? '#111827' : '#F8FAFC',
             }
         },
         h2: { 
@@ -61,7 +64,7 @@ export const getTheme = (mode: 'light' | 'dark'): Theme => createTheme({
             lineHeight: 1.2,
             '@media (max-width:600px)': {
                 fontSize: '1.25rem',
-                color: '#000000',
+                color: mode === 'light' ? '#111827' : '#F8FAFC',
             }
         },
         h3: { 
@@ -70,7 +73,7 @@ export const getTheme = (mode: 'light' | 'dark'): Theme => createTheme({
             lineHeight: 1.2,
             '@media (max-width:600px)': {
                 fontSize: '1.25rem',
-                color: '#000000',
+                color: mode === 'light' ? '#111827' : '#F8FAFC',
             }
         },
         h4: { 
@@ -79,7 +82,7 @@ export const getTheme = (mode: 'light' | 'dark'): Theme => createTheme({
             lineHeight: 1.2,
             '@media (max-width:600px)': {
                 fontSize: '1.25rem',
-                color: '#000000',
+                color: mode === 'light' ? '#111827' : '#F8FAFC',
             }
         },
         h5: { 
@@ -88,7 +91,7 @@ export const getTheme = (mode: 'light' | 'dark'): Theme => createTheme({
             lineHeight: 1.2,
             '@media (max-width:600px)': {
                 fontSize: '1.25rem',
-                color: '#000000',
+                color: mode === 'light' ? '#111827' : '#F8FAFC',
             }
         },
         h6: { 
@@ -97,7 +100,7 @@ export const getTheme = (mode: 'light' | 'dark'): Theme => createTheme({
             lineHeight: 1.2,
             '@media (max-width:600px)': {
                 fontSize: '1.25rem',
-                color: '#000000',
+                color: mode === 'light' ? '#111827' : '#F8FAFC',
             }
         },
         body1: {
@@ -160,6 +163,23 @@ export const getTheme = (mode: 'light' | 'dark'): Theme => createTheme({
                     },
                     '&::-webkit-scrollbar-thumb:hover': {
                         background: mode === 'light' ? '#a8a8a8' : '#475569',
+                    },
+                },
+            },
+        },
+        MuiTypography: {
+            styleOverrides: {
+                root: {
+                    '@media (max-width:600px)': {
+                        '&.MuiTypography-h1, &.MuiTypography-h2, &.MuiTypography-h3, &.MuiTypography-h4, &.MuiTypography-h5, &.MuiTypography-h6': {
+                            fontSize: `${MOBILE_HEADING_SIZE} !important`,
+                            color: `${mode === 'light' ? '#111827' : '#F8FAFC'} !important`,
+                            textAlign: 'center !important',
+                            width: '100%',
+                        },
+                        '&.MuiTypography-body1, &.MuiTypography-body2, &.MuiTypography-subtitle1, &.MuiTypography-subtitle2, &.MuiTypography-caption': {
+                            fontSize: `${MOBILE_BODY_SIZE} !important`,
+                        },
                     },
                 },
             },

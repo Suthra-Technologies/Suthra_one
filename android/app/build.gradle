@@ -4,11 +4,11 @@ android {
     namespace "com.nexzen.pos"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.mythri.pos"
+        applicationId "com.nexzen.pos"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 3
+        versionName "1.0.2"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -51,4 +51,10 @@ try {
     }
 } catch(Exception e) {
     logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}
+
+// Compatibility alias for older Android Studio/Gradle run configurations
+// that still invoke :app:unitTestClasses (removed in newer AGP versions).
+tasks.register("unitTestClasses") {
+    dependsOn("compileDebugUnitTestSources")
 }

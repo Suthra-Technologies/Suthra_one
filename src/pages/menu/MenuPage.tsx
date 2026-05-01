@@ -905,17 +905,6 @@ const MenuPage: React.FC = () => {
                                 {filteredMenuItems.length} Items Found
                             </Typography>
                             <Box sx={{ display: 'flex', gap: 1 }}>
-                                <IconButton 
-                                    size="small" 
-                                    color="primary" 
-                                    onClick={() => handleOpenMenuItemDialog()} 
-                                    sx={{ 
-                                        bgcolor: alpha(theme.palette.primary.main, 0.1),
-                                        p: isMobile ? 0.5 : 1
-                                    }}
-                                >
-                                    <AddIcon sx={{ fontSize: isMobile ? '1rem' : '1.25rem' }} />
-                                </IconButton>
                                 <Button
                                     variant="outlined"
                                     size={isMobile ? "small" : "medium"}
@@ -1540,7 +1529,7 @@ const MenuPage: React.FC = () => {
                         multiline
                         rows={6}
                         fullWidth
-                        placeholder="Burger, 10.99, Main Course, Burgers, Delicious cheese burger, https://example.com/burger.jpg, non-veg, true, true&#10;Pizza, 12.50, Main Course, Italian, Pizza Margherita, https://example.com/pizza.jpg, veg, true, true"
+                        placeholder="Burger, 10.99, Main Course, Burgers, Delicious cheese burger, https://example.com/burger.jpg, non-veg, yes, yes&#10;Pizza, 12.50, Main Course, Italian, Pizza Margherita, https://example.com/pizza.jpg, veg, yes, yes"
                         value={bulkCsv}
                         onChange={(e) => setBulkCsv(e.target.value)}
                         variant="outlined"

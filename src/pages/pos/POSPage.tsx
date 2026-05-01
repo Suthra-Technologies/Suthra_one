@@ -2,6 +2,7 @@ import {
     Add as AddIcon,
     ShoppingCart as CartIcon,
     Close as CloseIcon,
+    LocalOffer as CouponIcon,
     Delete as DeleteIcon,
     Remove as RemoveIcon,
     RestaurantMenu,
@@ -177,9 +178,16 @@ const MemoizedCartItem = React.memo(({
                     }
                     sx={{ m: 0, '& .MuiListItemText-primary': { fontWeight: 500, fontSize: '0.9rem' } }}
                 />
-                <Typography variant="body2" fontWeight="bold" sx={{ ml: 1, whiteSpace: 'nowrap' }}>
-                    {formatCurrency(item.price * item.quantity)}
-                </Typography>
+                <Box sx={{ textAlign: 'right', ml: 1 }}>
+                    <Typography variant="body2" fontWeight="bold">
+                        {formatCurrency(item.price * item.quantity)}
+                    </Typography>
+                    {item.quantity > 1 && (
+                        <Typography variant="caption" color="text.secondary" display="block">
+                            ({formatCurrency(item.price)} ea)
+                        </Typography>
+                    )}
+                </Box>
             </Box>
 
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 0.5 }}>
@@ -230,6 +238,7 @@ const POSPage: React.FC = () => {
     const [pointsToRedeem, setPointsToRedeem] = useState<number>(0);
     const [rewardDiscount, setRewardDiscount] = useState<number>(0);
     const [isFetchingRewards, setIsFetchingRewards] = useState(false);
+    const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
     const [suggestedPhone, setSuggestedPhone] = useState<string | null>(null);
     const [customerConflict, setCustomerConflict] = useState<boolean>(false);
 
@@ -504,6 +513,7 @@ const POSPage: React.FC = () => {
             return;
         }
         try {
+            setIsApplyingCoupon(true);
             const cartTotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
             console.log(`[Coupon] Validating "${codeToUse}" | Cart Total: $${cartTotal} | Silent: ${silent}`);
 
@@ -602,6 +612,8 @@ const POSPage: React.FC = () => {
                 }
                 // Otherwise: silently keep the code; discount stays 0 until cart total grows
             }
+        } finally {
+            setIsApplyingCoupon(false);
         }
     }, [couponCode, cart]);
 
@@ -621,7 +633,7 @@ const POSPage: React.FC = () => {
                     const res = await (rewardsAPI as any).getCustomerInfo({ email, phone });
                     const data = res.data;
                     setRewardPointsInfo(data);
-                    
+
                     if (data.customer) {
                         // Conflict Check: If both are entered but match different profiles
                         // The backend priorities phone, so if matchType is phone but email is different...
@@ -670,16 +682,6 @@ const POSPage: React.FC = () => {
         const timer = setTimeout(fetchRewards, 800);
         return () => clearTimeout(timer);
     }, [customerPhone, customerEmail, customerDialCode]);
-
-    // Calculate Reward Discount
-    useEffect(() => {
-        if (pointsToRedeem > 0 && rewardPointsInfo?.settings) {
-            const pointValue = Number(rewardPointsInfo.settings.pointValue) || 0;
-            setRewardDiscount(Number((pointsToRedeem * pointValue).toFixed(2)));
-        } else {
-            setRewardDiscount(0);
-        }
-    }, [pointsToRedeem, rewardPointsInfo]);
 
     const [searchParams, setSearchParams] = useSearchParams();
     const mode = searchParams.get("mode");   // 'edit' | null
@@ -1002,21 +1004,47 @@ const POSPage: React.FC = () => {
         });
     }, [menuItems, searchQuery, selectedCategory, foodTypeFilter]);
 
+    const comboCards = useMemo(() => {
+        if (searchQuery) return [];
+        return availableCoupons.filter(c =>
+            c.offerType === 'combo' &&
+            c.active &&
+            (c.comboConfig?.length > 0 || c.applicableItems?.length > 0)
+        ).map(c => ({
+            ...c,
+            _id: `combo-${c._id}`,
+            name: c.name || c.code,
+            isComboCard: true,
+            // Gather all images from items in the combo
+            images: (c.comboConfig || []).map((entry: any) => {
+                const itemId = entry.menuItem?._id || entry.menuItem;
+                const item = menuItems.find(i => i._id === itemId);
+                return item?.image;
+            }).filter(Boolean)
+        }));
+    }, [availableCoupons, menuItems, searchQuery]);
+
     const addToCart = React.useCallback((item: any) => {
         setCart((prev) => {
             const cartId = item.cartId || item._id;
             const existing = prev.find((i) => i.cartId === cartId);
             if (existing) {
+                toast.success(`${item.name} quantity updated`);
                 return prev.map((i) =>
                     i.cartId === cartId ? { ...i, quantity: i.quantity + (item.quantity || 1) } : i
                 );
             }
+            toast.success(`${item.name} added to cart`);
             return [...prev, { ...item, cartId, quantity: item.quantity || 1 }];
         });
     }, []);
 
     const removeFromCart = React.useCallback((cartId: string) => {
-        setCart((prev) => prev.filter((i) => i.cartId !== cartId));
+        setCart((prev) => {
+            const item = prev.find(i => i.cartId === cartId);
+            if (item) toast.success(`${item.name} removed`);
+            return prev.filter((i) => i.cartId !== cartId);
+        });
     }, []);
 
     const updateCartItemQuantity = React.useCallback((cartId: string, delta: number) => {
@@ -1106,9 +1134,47 @@ const POSPage: React.FC = () => {
         (orderType === 'dine_in' && guestCount > 3) ? Math.round(cartTotal * 0.18) : 0,
         [orderType, guestCount, cartTotal]);
 
-    const finalTotal = useMemo(() =>
-        cartTotal + taxAmount - discountAmount - couponDiscount + serviceChargeAmount + (Number(tip) || 0) - rewardDiscount,
-        [cartTotal, taxAmount, discountAmount, couponDiscount, serviceChargeAmount, tip, rewardDiscount]);
+    // Calculate Reward Discount
+    const totalBeforeRewards = useMemo(() => {
+        const subtotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
+        const disc = (subtotal * discountPercent) / 100;
+        return subtotal + taxAmount - disc - couponDiscount + serviceChargeAmount + (Number(tip) || 0);
+    }, [cart, taxAmount, discountPercent, couponDiscount, serviceChargeAmount, tip]);
+
+    const maxUsablePoints = useMemo(() => {
+        if (!rewardPointsInfo?.settings) return 0;
+        const pointValue = Number(rewardPointsInfo.settings.pointValue) || 0;
+        if (pointValue <= 0) return 0;
+
+        // Capped by available points AND by total order value
+        const pointsNeededForFullTotal = Math.ceil(totalBeforeRewards / pointValue);
+        return Math.min(rewardPointsInfo.points || 0, pointsNeededForFullTotal);
+    }, [rewardPointsInfo, totalBeforeRewards]);
+
+    useEffect(() => {
+        if (pointsToRedeem > 0 && rewardPointsInfo?.settings) {
+            const pointValue = Number(rewardPointsInfo.settings.pointValue) || 0;
+            const calculatedDiscount = Number((pointsToRedeem * pointValue).toFixed(2));
+
+            // Cap discount to totalBeforeRewards
+            setRewardDiscount(Math.min(calculatedDiscount, totalBeforeRewards));
+
+            // If pointsToRedeem exceeds what's needed for full total, adjust it (optional, but cleaner)
+            if (calculatedDiscount > totalBeforeRewards + 0.01) { // 0.01 for float buffer
+                const adjustedPoints = Math.ceil(totalBeforeRewards / pointValue);
+                if (adjustedPoints < pointsToRedeem) {
+                    setPointsToRedeem(adjustedPoints);
+                }
+            }
+        } else {
+            setRewardDiscount(0);
+        }
+    }, [pointsToRedeem, rewardPointsInfo, totalBeforeRewards]);
+
+    const finalTotal = useMemo(() => {
+        const total = totalBeforeRewards - rewardDiscount;
+        return Math.max(0, total);
+    }, [totalBeforeRewards, rewardDiscount]);
 
     const handlePlaceOrder = async () => {
         if (cart.length === 0) return;
@@ -1255,7 +1321,12 @@ const POSPage: React.FC = () => {
             let finalPaymentStatus = isManualCollectedPayment || isVerifiedStripePayment ? "paid" : "pending";
             let finalPaymentIntentId = paymentIntentId;
 
-            if (orderType === 'dine_in') {
+            // Handle fully paid by rewards
+            if (finalTotal === 0 && cart.length > 0) {
+                finalPaymentMethod = 'rewards';
+                finalPaymentStatus = 'paid';
+                console.log("[POS] Order fully covered by rewards/coupons. Setting status to PAID.");
+            } else if (orderType === 'dine_in') {
                 // For dine-in, always start with pending status
                 finalPaymentStatus = 'pending';
                 finalPaymentIntentId = undefined; // No payment intent for dine-in initially
@@ -1444,6 +1515,56 @@ const POSPage: React.FC = () => {
         }
     };
 
+    const handleSelectCombo = (coupon: any) => {
+        const comboConfig = coupon.comboConfig || [];
+        if (!comboConfig.length) return;
+
+        let itemsAdded = 0;
+        comboConfig.forEach((entry: any) => {
+            const itemId = entry.menuItem?._id || entry.menuItem;
+            const item = menuItems.find(i => i._id === itemId);
+            if (item) {
+                for (let i = 0; i < (entry.quantity || 1); i++) {
+                    // Add default version to cart
+                    const sanitizedItem = { ...item };
+                    // Set default modifiers if any
+                    const defaults: Record<string, ModifierOption[]> = {};
+                    if (item.modifierGroups) {
+                        item.modifierGroups.forEach(g => {
+                            const defs = g.options.filter(o => o.isDefault);
+                            if (defs.length > 0) {
+                                defaults[g.name] = g.selectionType === 'single' ? [defs[0]] : defs;
+                            }
+                        });
+                    }
+                    const spiceLevel = (item as any).isSpiceLevelAvailable ? (item as any).spiceLevels?.[0] : undefined;
+                    const modifiers = Object.values(defaults).flat();
+                    const modifiersStr = modifiers.sort((a, b) => a.name.localeCompare(b.name)).map(m => m.name).join(',');
+                    const cartId = `${item._id}::none::base::${spiceLevel || 'none'}::${modifiersStr}`;
+
+                    // Calculate price including default modifiers
+                    let itemPrice = item.price;
+                    modifiers.forEach(m => { itemPrice += m.price; });
+
+                    addToCart({
+                        ...sanitizedItem,
+                        cartId,
+                        price: itemPrice,
+                        modifiers,
+                        spiceLevel,
+                        quantity: 1
+                    });
+                    itemsAdded++;
+                }
+            }
+        });
+
+        if (itemsAdded > 0) {
+            setCouponCode(coupon.code);
+            toast.success(`${coupon.name} added to cart!`);
+        }
+    };
+
     // Helper to calculate current modal price
     const calculateModalTotal = () => {
         if (!selectedItem) return 0;
@@ -1603,6 +1724,7 @@ const POSPage: React.FC = () => {
                     suggestedPhone={suggestedPhone}
                     customerConflict={customerConflict}
                     cartTotal={cartTotal}
+                    finalTotal={finalTotal}
                     tableError={tableError}
                     setTableError={setTableError}
                     selectedTable={selectedTable}
@@ -1621,6 +1743,8 @@ const POSPage: React.FC = () => {
                     setScheduledDate={setScheduledDate}
                     scheduledTime={scheduledTime}
                     setScheduledTime={setScheduledTime}
+                    maxUsablePoints={maxUsablePoints}
+                    isApplyingCoupon={isApplyingCoupon}
                 />
                 {/* Table Group Actions (Clear Pending Merge) */}
                 {pendingMergeSecondaryIds.length > 0 && (
@@ -1825,6 +1949,32 @@ const POSPage: React.FC = () => {
                         '& .MuiTabs-indicator': {
                             height: { xs: 2, sm: 3 },
                         },
+                        // Visual indicators for scrollable edges
+                        position: 'relative',
+                        '&::after': {
+                            content: '""',
+                            position: 'absolute',
+                            right: 0,
+                            top: 0,
+                            bottom: 0,
+                            width: 40,
+                            background: 'linear-gradient(to left, rgba(255,255,255,0.9), transparent)',
+                            pointerEvents: 'none',
+                            zIndex: 1,
+                            display: { xs: 'block', sm: 'none' }
+                        },
+                        '&::before': {
+                            content: '""',
+                            position: 'absolute',
+                            left: 0,
+                            top: 0,
+                            bottom: 0,
+                            width: 40,
+                            background: 'linear-gradient(to right, rgba(255,255,255,0.9), transparent)',
+                            pointerEvents: 'none',
+                            zIndex: 1,
+                            display: { xs: 'block', sm: 'none' }
+                        }
                     }}
                 >
                     <Tab label="All Items" value="all" />
@@ -1841,6 +1991,99 @@ const POSPage: React.FC = () => {
                 ) : (
                     <Box sx={{ pb: 2 }}>
                         <Grid container spacing={2}>
+                            {/* Render Virtual Combo Cards first */}
+                            {(selectedCategory === 'all') && comboCards.map((combo, index) => (
+                                <Grid item xs={6} sm={6} md={4} lg={3} key={combo._id}>
+                                    <Box
+                                        onClick={() => handleSelectCombo(combo)}
+                                        sx={{
+                                            display: { xs: 'flex', md: 'block' },
+                                            flexDirection: 'column',
+                                            cursor: 'pointer',
+                                            height: '100%',
+                                            position: 'relative',
+                                            '&:active': { transform: { xs: 'scale(0.98)', md: 'none' } },
+                                            transition: 'transform 0.2s',
+                                            animation: 'fadeInSlideUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards',
+                                            animationDelay: `${index * 0.05}s`,
+                                        }}
+                                    >
+                                        <Card sx={{
+                                            display: 'flex',
+                                            height: { xs: 80, md: 230 },
+                                            flexDirection: { xs: 'row', md: 'column' },
+                                            transition: 'all 0.3s ease',
+                                            border: '2px solid',
+                                            borderColor: 'secondary.light',
+                                            bgcolor: 'rgba(156, 39, 176, 0.02)',
+                                            '&:hover': {
+                                                transform: 'translateY(-4px)',
+                                                boxShadow: '0 12px 20px rgba(156, 39, 176, 0.2)',
+                                                borderColor: 'secondary.main'
+                                            }
+                                        }}>
+                                            <CardActionArea sx={{ height: '100%', display: 'flex', flexDirection: { xs: 'row', md: 'column' }, alignItems: 'stretch' }}>
+                                                <Box sx={{
+                                                    position: 'relative',
+                                                    height: { xs: '100%', md: '70%' },
+                                                    width: { xs: 80, md: '100%' },
+                                                    overflow: 'hidden',
+                                                    bgcolor: 'grey.100'
+                                                }}>
+                                                    {/* Image Collage */}
+                                                    {combo.images && combo.images.length > 0 ? (
+                                                        <Box sx={{
+                                                            display: 'grid',
+                                                            gridTemplateColumns: combo.images.length > 1 ? '1fr 1fr' : '1fr',
+                                                            gridTemplateRows: combo.images.length > 2 ? '1fr 1fr' : '1fr',
+                                                            height: '100%',
+                                                            width: '100%',
+                                                            gap: 0.5,
+                                                            p: 0.5,
+                                                            bgcolor: 'white'
+                                                        }}>
+                                                            {combo.images.slice(0, 4).map((img: string, i: number) => (
+                                                                <Box
+                                                                    key={i}
+                                                                    component="img"
+                                                                    src={img}
+                                                                    sx={{
+                                                                        width: '100%',
+                                                                        height: '100%',
+                                                                        objectFit: 'cover',
+                                                                        borderRadius: 0.5,
+                                                                        gridColumn: combo.images.length === 3 && i === 0 ? '1 / span 2' : 'auto'
+                                                                    }}
+                                                                />
+                                                            ))}
+                                                        </Box>
+                                                    ) : (
+                                                        <Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'secondary.light', color: 'white' }}>
+                                                            <CouponIcon sx={{ fontSize: 40 }} />
+                                                        </Box>
+                                                    )}
+                                                    <Box sx={{
+                                                        position: 'absolute', top: 0, right: 0,
+                                                        bgcolor: 'secondary.main', color: 'white', px: 1, py: 0.5,
+                                                        borderBottomLeftRadius: 8, fontWeight: 'bold', fontSize: '0.65rem', zIndex: 2,
+                                                        boxShadow: 2
+                                                    }}>
+                                                        COMBO DEAL
+                                                    </Box>
+                                                </Box>
+                                                <CardContent sx={{ p: 1, flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'secondary.dark' }} noWrap>{combo.name}</Typography>
+                                                    <Typography variant="caption" color="text.secondary" sx={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                                        {combo.description || `Special combo offer: ${combo.code}`}
+                                                    </Typography>
+                                                </CardContent>
+                                            </CardActionArea>
+                                        </Card>
+                                    </Box>
+                                </Grid>
+                            ))}
+
+                            {/* Existing Items */}
                             {filteredItems.map((item, index) => (
                                 <Grid item xs={6} sm={6} md={4} lg={3} key={`${selectedCategory}-${item._id}`}>
                                     <Box
@@ -2252,14 +2495,14 @@ const POSPage: React.FC = () => {
             <Modal open={variantModalOpen} onClose={() => setVariantModalOpen(false)}>
                 <Box sx={{
                     p: 0,
-                    bgcolor: 'white',
+                    bgcolor: 'background.paper',
                     width: { xs: '95%', sm: 550 },
                     mx: 'auto',
                     mt: { xs: 2, sm: 8 },
                     borderRadius: '32px',
                     maxHeight: '95vh',
                     overflowY: 'auto',
-                    boxShadow: '0 20px 60px rgba(0,0,0,0.1)',
+                    boxShadow: theme => theme.palette.mode === 'dark' ? 'none' : '0 20px 60px rgba(0,0,0,0.1)',
                     position: 'relative',
                     border: 'none',
                     outline: 'none'
@@ -2272,7 +2515,7 @@ const POSPage: React.FC = () => {
                                     width: 48,
                                     height: 48,
                                     borderRadius: '50%',
-                                    bgcolor: alpha('#4F46E5', 0.1),
+                                    bgcolor: alpha(theme.palette.primary.main, 0.1),
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
@@ -2292,10 +2535,10 @@ const POSPage: React.FC = () => {
                                     }}>
                                         Choose Spice Level
                                     </Typography>
-                                    <Typography variant="h4" sx={{ fontWeight: 900, fontSize: '1.75rem', color: '#1a1a1a', lineHeight: 1.2, mb: 1 }}>
+                                    <Typography variant="h4" sx={{ fontWeight: 900, fontSize: '1.75rem', color: 'text.primary', lineHeight: 1.2, mb: 1 }}>
                                         {selectedItem.name}
                                     </Typography>
-                                    <Typography variant="body2" sx={{ color: '#757575', fontSize: '0.9rem' }}>
+                                    <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>
                                         Pick the spice level you want before adding this dish to cart.
                                     </Typography>
                                 </Box>
@@ -2322,7 +2565,7 @@ const POSPage: React.FC = () => {
                             <Box sx={{ px: 4, pb: 4 }}>
                                 {/* Item Info Card */}
                                 <Box sx={{
-                                    bgcolor: alpha('#4F46E5', 0.05),
+                                    bgcolor: alpha(theme.palette.primary.main, 0.05),
                                     borderRadius: '24px',
                                     p: 2,
                                     display: 'flex',
@@ -2377,7 +2620,7 @@ const POSPage: React.FC = () => {
                                                 label={tempSelectedSpiceLevel || (selectedItem as any).spiceLevels[0]}
                                                 size="small"
                                                 sx={{
-                                                    bgcolor: alpha('#4F46E5', 0.1),
+                                                    bgcolor: alpha(theme.palette.primary.main, 0.1),
                                                     color: 'primary.main',
                                                     fontWeight: 900,
                                                     fontSize: '0.65rem',
@@ -2402,16 +2645,17 @@ const POSPage: React.FC = () => {
                                                     color: 'primary.main',
                                                     height: 8,
                                                     '& .MuiSlider-track': { border: 'none', transition: 'none' },
-                                                    '& .MuiSlider-rail': { opacity: 1, bgcolor: alpha('#4F46E5', 0.1) },
+                                                    '& .MuiSlider-rail': { opacity: 1, bgcolor: alpha(theme.palette.primary.main, 0.1) },
                                                     '& .MuiSlider-thumb': {
                                                         height: 28,
                                                         width: 28,
                                                         bgcolor: 'primary.main',
-                                                        border: '4px solid white',
-                                                        boxShadow: '0 4px 12px rgba(79, 70, 229, 0.25)',
+                                                        border: '4px solid',
+                                                        borderColor: 'background.paper',
+                                                        boxShadow: theme => theme.palette.mode === 'dark' ? 'none' : '0 4px 12px rgba(79, 70, 229, 0.25)',
                                                         transition: 'none',
                                                         '&:hover, &.Mui-active': {
-                                                            boxShadow: '0 0 0 8px rgba(79, 70, 229, 0.16)',
+                                                            boxShadow: (theme) => `0 0 0 8px ${alpha(theme.palette.primary.main, 0.16)}`,
                                                         },
                                                         '&::after': {
                                                             content: '"🌶️"',
@@ -2480,10 +2724,10 @@ const POSPage: React.FC = () => {
                                 {/* Footer Selection Display & Actions */}
                                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                     <Box>
-                                        <Typography sx={{ color: '#bfbfbf', fontSize: '0.75rem', fontWeight: 900, letterSpacing: '0.5px' }}>
+                                        <Typography sx={{ color: 'text.disabled', fontSize: '0.75rem', fontWeight: 900, letterSpacing: '0.5px' }}>
                                             SELECTED
                                         </Typography>
-                                        <Typography variant="h6" sx={{ fontWeight: 900, color: '#1a1a1a' }}>
+                                        <Typography variant="h6" sx={{ fontWeight: 900, color: 'text.primary' }}>
                                             {tempSelectedSpiceLevel || (selectedItem as any).spiceLevels?.[0] || 'None'}
                                         </Typography>
                                     </Box>
@@ -2499,7 +2743,7 @@ const POSPage: React.FC = () => {
                                                 color: 'primary.main',
                                                 fontWeight: 900,
                                                 textTransform: 'none',
-                                                '&:hover': { borderColor: 'primary.main', bgcolor: alpha('#4F46E5', 0.04) }
+                                                '&:hover': { borderColor: 'primary.main', bgcolor: alpha(theme.palette.primary.main, 0.04) }
                                             }}
                                         >
                                             Cancel

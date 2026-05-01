@@ -1,40 +1,38 @@
-import React, { useState, useEffect } from 'react';
+import {
+    GetApp as DownloadIcon,
+    Email as EmailIcon,
+    Search as SearchIcon,
+    Visibility as VisibilityIcon,
+} from '@mui/icons-material';
 import {
     Box,
-    Typography,
+    Card,
+    CardContent,
+    Chip,
+    CircularProgress,
+    IconButton,
+    InputAdornment,
+    Pagination,
     Paper,
+    Stack,
     Table,
     TableBody,
     TableCell,
     TableContainer,
     TableHead,
     TableRow,
-    Chip,
-    IconButton,
-    Tooltip,
-    Button,
     TextField,
-    InputAdornment,
-    CircularProgress,
-    Pagination,
-    useTheme,
+    Tooltip,
+    Typography,
     useMediaQuery,
-    Stack,
-    Card,
-    CardContent,
+    useTheme
 } from '@mui/material';
-import {
-    Visibility as VisibilityIcon,
-    GetApp as DownloadIcon,
-    Email as EmailIcon,
-    Search as SearchIcon,
-} from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
-import { invoicesAPI } from '../../services/api';
-import { useSettings } from '../../context/SettingsContext';
+import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
+import { useSettings } from '../../context/SettingsContext';
+import { apiBaseUrl, invoicesAPI } from '../../services/api';
 import { downloadFromUrl } from '../../utils/fileDownload';
-import { apiBaseUrl } from '../../services/api';
 
 const InvoicesPage = () => {
     const navigate = useNavigate();
@@ -44,15 +42,17 @@ const InvoicesPage = () => {
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [search, setSearch] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
     const [resending, setResending] = useState<string | null>(null);
 
     const fetchInvoices = async () => {
         setLoading(true);
         try {
-            const response = await invoicesAPI.getAll({ page, limit: 10, search, requirePlan: true });
+            const response = await invoicesAPI.getAll({ page, limit: 10, search: debouncedSearch, requirePlan: true });
             const fetchedInvoices = Array.isArray(response.data.invoices) ? response.data.invoices : [];
+            const total = response.data.total || 0;
             setInvoices(fetchedInvoices);
-            setTotalPages(Math.ceil((response.data.total || fetchedInvoices.length) / 10));
+            setTotalPages(Math.max(1, Math.ceil(total / 10)));
         } catch (error) {
             console.error('Error fetching invoices:', error);
             toast.error('Failed to load invoices');
@@ -62,8 +62,19 @@ const InvoicesPage = () => {
     };
 
     useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(search);
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [search]);
+
+    useEffect(() => {
+        setPage(1);
+    }, [debouncedSearch]);
+
+    useEffect(() => {
         fetchInvoices();
-    }, [page, search]);
+    }, [page, debouncedSearch]);
 
     const handleDownload = async (id: string, invoiceNumber: string) => {
         try {
@@ -105,18 +116,18 @@ const InvoicesPage = () => {
 
     return (
         <Box p={isMobile ? 2 : 3}>
-            <Box 
-                display="flex" 
-                flexDirection={isMobile ? 'column' : 'row'} 
-                justifyContent="space-between" 
-                alignItems={isMobile ? 'center' : 'center'} 
-                mb={{ xs: 1.5, sm: 3 }} 
+            <Box
+                display="flex"
+                flexDirection={isMobile ? 'column' : 'row'}
+                justifyContent="space-between"
+                alignItems={isMobile ? 'center' : 'center'}
+                mb={{ xs: 1.5, sm: 3 }}
                 gap={{ xs: 1.5, md: 2 }}
             >
-                <Typography 
-                    variant="h4" 
+                <Typography
+                    variant="h4"
                     fontWeight="bold"
-                    sx={{ 
+                    sx={{
                         fontSize: { xs: '1.45rem', sm: '2.125rem' },
                         color: { xs: '#000', sm: 'inherit' },
                         textAlign: { xs: 'center', sm: 'left' },

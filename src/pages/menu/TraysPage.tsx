@@ -333,7 +333,7 @@ const TraysPage: React.FC<TraysPageProps> = ({ hideHeader = false }) => {
                                     value={formData.name}
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                     placeholder="e.g., Half Tray, Full Tray"
-                                    sx={{ '& .MuiInputBase-input': { fontSize: '0.875rem' }, '& .MuiInputLabel-root': { fontSize: '0.875rem' } }}
+                                    sx={{ '& .MuiInputBase-input': { fontSize: '0.875rem' }, '& .MuiInputLabel-root': { fontSize: '0.875rem' }, '& .MuiFormLabel-asterisk': { color: 'red' } }}
                                 />
                             </Grid>
                             <Grid item xs={12}>
@@ -353,10 +353,11 @@ const TraysPage: React.FC<TraysPageProps> = ({ hideHeader = false }) => {
                                     fullWidth
                                     size="small"
                                     label="Width"
+                                    required
                                     value={formData.width}
                                     onChange={(e) => setFormData({ ...formData, width: e.target.value })}
                                     placeholder="12 inch"
-                                    sx={{ '& .MuiInputBase-input': { fontSize: '0.875rem' }, '& .MuiInputLabel-root': { fontSize: '0.875rem' } }}
+                                    sx={{ '& .MuiInputBase-input': { fontSize: '0.875rem' }, '& .MuiInputLabel-root': { fontSize: '0.875rem' }, '& .MuiFormLabel-asterisk': { color: 'red' } }}
                                 />
                             </Grid>
                             <Grid item xs={4}>
@@ -364,10 +365,11 @@ const TraysPage: React.FC<TraysPageProps> = ({ hideHeader = false }) => {
                                     fullWidth
                                     size="small"
                                     label="Length"
+                                    required
                                     value={formData.length}
                                     onChange={(e) => setFormData({ ...formData, length: e.target.value })}
                                     placeholder="16 inch"
-                                    sx={{ '& .MuiInputBase-input': { fontSize: '0.875rem' }, '& .MuiInputLabel-root': { fontSize: '0.875rem' } }}
+                                    sx={{ '& .MuiInputBase-input': { fontSize: '0.875rem' }, '& .MuiInputLabel-root': { fontSize: '0.875rem' }, '& .MuiFormLabel-asterisk': { color: 'red' } }}
                                 />
                             </Grid>
                             <Grid item xs={4}>
@@ -375,10 +377,11 @@ const TraysPage: React.FC<TraysPageProps> = ({ hideHeader = false }) => {
                                     fullWidth
                                     size="small"
                                     label="Depth"
+                                    required
                                     value={formData.depth}
                                     onChange={(e) => setFormData({ ...formData, depth: e.target.value })}
                                     placeholder="2 inch"
-                                    sx={{ '& .MuiInputBase-input': { fontSize: '0.875rem' }, '& .MuiInputLabel-root': { fontSize: '0.875rem' } }}
+                                    sx={{ '& .MuiInputBase-input': { fontSize: '0.875rem' }, '& .MuiInputLabel-root': { fontSize: '0.875rem' }, '& .MuiFormLabel-asterisk': { color: 'red' } }}
                                 />
                             </Grid>
                         </Grid>

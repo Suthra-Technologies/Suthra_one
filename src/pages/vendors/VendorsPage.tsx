@@ -33,6 +33,7 @@ import {
     TablePagination,
     CircularProgress,
     useMediaQuery,
+    Switch,
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -459,7 +460,7 @@ const VendorsPage: React.FC = () => {
                 boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.05)' : alpha(theme.palette.divider, 0.1),
                 border: isMobile ? `1px solid ${alpha(theme.palette.divider, 0.1)}` : 'none'
             }}>
-                <Grid container spacing={2} alignItems="center" justifyContent="center">
+                <Grid container spacing={2} alignItems="center" justifyContent={isMobile ? "center" : "space-between"}>
                     <Grid item xs={12} md={6}>
                         <TextField
                             fullWidth
@@ -574,13 +575,27 @@ const VendorsPage: React.FC = () => {
                                             ))}
                                             {vendor.categories?.length > 2 && <Chip label={`+${vendor.categories.length - 2}`} size="small" sx={{ height: 20, fontSize: '0.65rem' }} />}
                                         </Box>
-                                        <Chip 
-                                            label={vendor.status} 
-                                            color={vendor.status === 'active' ? 'success' : 'default'} 
-                                            size="small" 
-                                            onClick={() => handleToggleStatus(vendor)} 
-                                            sx={{ fontWeight: 900, fontSize: '0.65rem', height: 24, textTransform: 'uppercase' }} 
-                                        />
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                            <Typography
+                                                variant="caption"
+                                                sx={{
+                                                    fontWeight: 800,
+                                                    color: vendor.status === 'active' ? 'success.main' : 'text.secondary',
+                                                    textTransform: 'uppercase',
+                                                    minWidth: 54,
+                                                    textAlign: 'right',
+                                                }}
+                                            >
+                                                {vendor.status}
+                                            </Typography>
+                                            <Switch
+                                                size="small"
+                                                checked={vendor.status === 'active'}
+                                                onChange={() => handleToggleStatus(vendor)}
+                                                color="success"
+                                                inputProps={{ 'aria-label': `Toggle ${vendor.name} status` }}
+                                            />
+                                        </Box>
                                     </Box>
                                 </Paper>
                             </Grid>
@@ -671,41 +686,56 @@ const VendorsPage: React.FC = () => {
                                         </Box>
                                     </TableCell>
                                     <TableCell>
-                                        <Chip
-                                            label={vendor.status}
-                                            color={vendor.status === 'active' ? 'success' : 'default'}
-                                            size="small"
-                                            onClick={() => handleToggleStatus(vendor)}
-                                            sx={{ cursor: 'pointer', textTransform: 'capitalize' }}
-                                        />
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                                            <Typography
+                                                variant="caption"
+                                                sx={{
+                                                    fontWeight: 800,
+                                                    color: vendor.status === 'active' ? 'success.main' : 'text.secondary',
+                                                    textTransform: 'uppercase',
+                                                    minWidth: 54,
+                                                }}
+                                            >
+                                                {vendor.status}
+                                            </Typography>
+                                            <Switch
+                                                size="small"
+                                                checked={vendor.status === 'active'}
+                                                onChange={() => handleToggleStatus(vendor)}
+                                                color="success"
+                                                inputProps={{ 'aria-label': `Toggle ${vendor.name} status` }}
+                                            />
+                                        </Box>
                                     </TableCell>
                                      <TableCell align="center">
-                                        <Tooltip title="Edit">
-                                            <IconButton onClick={() => handleOpenDialog(vendor)} size="small">
-                                                <EditIcon />
-                                            </IconButton>
-                                        </Tooltip>
-                                        <Tooltip title="Reorder Needed Items">
-                                            <IconButton 
-                                                onClick={() => handleReorderClick(vendor)} 
-                                                size="small" 
-                                                sx={{ color: 'warning.main' }}
-                                            >
-                                                <InventoryIcon />
-                                            </IconButton>
-                                        </Tooltip>
-                                        <Tooltip title="Delete">
-                                            <IconButton
-                                                onClick={() => {
-                                                    setSelectedVendor(vendor);
-                                                    setDeleteDialogOpen(true);
-                                                }}
-                                                size="small"
-                                                color="error"
-                                            >
-                                                <DeleteIcon />
-                                            </IconButton>
-                                        </Tooltip>
+                                        <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+                                            <Tooltip title="Edit">
+                                                <IconButton onClick={() => handleOpenDialog(vendor)} size="small" sx={{ color: 'primary.main' }}>
+                                                    <EditIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                            <Tooltip title="Reorder Needed Items">
+                                                <IconButton 
+                                                    onClick={() => handleReorderClick(vendor)} 
+                                                    size="small" 
+                                                    sx={{ color: 'warning.main' }}
+                                                >
+                                                    <InventoryIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                            <Tooltip title="Delete">
+                                                <IconButton
+                                                    onClick={() => {
+                                                        setSelectedVendor(vendor);
+                                                        setDeleteDialogOpen(true);
+                                                    }}
+                                                    size="small"
+                                                    color="error"
+                                                >
+                                                    <DeleteIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                        </Box>
                                     </TableCell>
                                 </TableRow>
                             ))
@@ -739,7 +769,7 @@ const VendorsPage: React.FC = () => {
             >
                 <DialogTitle sx={{ 
                     p: isMobile ? 2 : 2.5,
-                    pt: isMobile ? '60px' : 2.5, // More space for mobile notches
+                    pt: isMobile ? '60px' : 2.5, 
                     display: 'flex', 
                     justifyContent: 'space-between', 
                     alignItems: 'center', 
@@ -789,12 +819,12 @@ const VendorsPage: React.FC = () => {
                 }}>
                     <Grid container spacing={isMobile ? 1.5 : 3}>
                         {/* Basic Info */}
-                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center' }}>
+                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: isMobile ? 'center' : 'stretch' }}>
                             <Paper sx={{ 
                                 p: isMobile ? 2 : 3, 
                                 borderRadius: 3, 
                                 width: '100%', 
-                                maxWidth: 500,
+                                maxWidth: isMobile ? 500 : 'none',
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                                 border: '1px solid',
                                 borderColor: alpha(theme.palette.divider, 0.05),
@@ -905,12 +935,12 @@ const VendorsPage: React.FC = () => {
 
 
                         {/* Categories */}
-                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center' }}>
+                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: isMobile ? 'center' : 'stretch' }}>
                             <Paper sx={{ 
                                 p: isMobile ? 2 : 3, 
                                 borderRadius: 3, 
                                 width: '100%', 
-                                maxWidth: 500,
+                                maxWidth: isMobile ? 500 : 'none',
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                                 border: '1px solid',
                                 borderColor: alpha(theme.palette.divider, 0.05),
@@ -949,12 +979,12 @@ const VendorsPage: React.FC = () => {
                         </Grid>
 
                         {/* Bank Details */}
-                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center' }}>
+                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: isMobile ? 'center' : 'stretch' }}>
                             <Paper sx={{ 
                                 p: isMobile ? 2 : 3, 
                                 borderRadius: 3, 
                                 width: '100%', 
-                                maxWidth: 500,
+                                maxWidth: isMobile ? 500 : 'none',
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                                 border: '1px solid',
                                 borderColor: alpha(theme.palette.divider, 0.05),
@@ -1031,12 +1061,12 @@ const VendorsPage: React.FC = () => {
                         </Grid>
 
                         {/* Notes */}
-                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'center' }}>
+                        <Grid item xs={12} sx={{ display: 'flex', justifyContent: isMobile ? 'center' : 'stretch' }}>
                             <Paper sx={{ 
                                 p: isMobile ? 2 : 3, 
                                 borderRadius: 3, 
                                 width: '100%', 
-                                maxWidth: 500,
+                                maxWidth: isMobile ? 500 : 'none',
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                                 border: '1px solid',
                                 borderColor: alpha(theme.palette.divider, 0.05),
@@ -1069,6 +1099,7 @@ const VendorsPage: React.FC = () => {
                         </Grid>
                     </Grid>
                 </DialogContent>
+                
                 <DialogActions sx={{ p: isMobile ? 2 : 3, bgcolor: 'white', borderTop: '1px solid', borderColor: 'divider', gap: 1.5 }}>
                     <Button 
                         onClick={handleCloseDialog} 

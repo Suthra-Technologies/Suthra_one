@@ -29,8 +29,11 @@ import {
     Menu as MenuIcon,
     LocalShipping as DeliveryIcon,
     ContactPage as DemoIcon,
+    DirectionsBike as UberDirectIcon,
+    Email as EmailIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
+import { usePullToRefresh } from '../hooks/usePullToRefresh';
 
 const DRAWER_WIDTH = 280;
 
@@ -40,6 +43,9 @@ const SuperAdminLayout: React.FC = () => {
     const { logout, user } = useAuth();
     const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
     const [mobileOpen, setMobileOpen] = React.useState(false);
+
+    // Pull-to-refresh for mobile apps
+    usePullToRefresh();
 
     const handleDrawerToggle = () => {
         setMobileOpen(!mobileOpen);
@@ -67,6 +73,8 @@ const SuperAdminLayout: React.FC = () => {
         { path: '/superadmin/delivery-reports', label: 'Delivery Reports', icon: <DeliveryIcon /> },
         { path: '/superadmin/demo-requests', label: 'Demo Requests', icon: <DemoIcon /> },
         { path: '/superadmin/sms-logs', label: 'SMS Logs', icon: <ReceiptIcon /> },
+        { path: '/superadmin/email-logs', label: 'Email Logs', icon: <EmailIcon /> },
+        { path: '/superadmin/uber-direct', label: 'Uber Direct', icon: <UberDirectIcon /> },
         { path: '/superadmin/tickets', label: 'Support Tickets', icon: <SupportIcon /> },
     ];
 
@@ -234,7 +242,9 @@ const SuperAdminLayout: React.FC = () => {
                 component="main"
                 sx={{
                     flexGrow: 1,
-                    p: 3,
+                    px: { xs: 1, sm: 2, md: 3 },
+                    pb: { xs: 1.5, sm: 2, md: 3 },
+                    pt: { xs: 0.25, sm: 0.75, md: 3 },
                     width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
                     mt: '64px',
                     minHeight: 'calc(100vh - 64px)',

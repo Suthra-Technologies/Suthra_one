@@ -445,9 +445,19 @@ const CateringTrackPage = () => {
                                     </Box>
                                     {order.discount?.value > 0 && (
                                         <Box display="flex" justifyContent="space-between">
-                                            <Typography color="error">Discount</Typography>
-                                            <Typography color="error">
+                                            <Typography color="textSecondary">Discount</Typography>
+                                            <Typography color="error" fontWeight="500">
                                                 -{formatCurrency(order.discount.type === 'percentage' ? (order.subtotal * order.discount.value / 100) : order.discount.value)}
+                                            </Typography>
+                                        </Box>
+                                    )}
+                                    {order.cateringServers?.amount > 0 && (
+                                        <Box display="flex" justifyContent="space-between">
+                                            <Typography color="textSecondary">
+                                                Service Amount{order.cateringServers.count ? ` (${order.cateringServers.count} servers)` : ''}
+                                            </Typography>
+                                            <Typography fontWeight="500">
+                                                {formatCurrency(order.cateringServers.amount)}
                                             </Typography>
                                         </Box>
                                     )}

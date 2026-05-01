@@ -343,13 +343,26 @@ const BookingsAdminPage: React.FC = () => {
     const totalHours = timelineEndHour - timelineStartHour;
 
     const getBookingPosition = (booking: any) => {
-        const date = new Date(booking.date);
-        const start = new Date(booking.timeSlot?.start || date);
-
-        // Ensure start time is valid
-        if (isNaN(start.getTime())) return { left: '0%', width: '0%' };
-
-        const startHour = start.getHours() + (start.getMinutes() / 60);
+        let startHour = 0;
+        const requestedTime = booking.timeSlot?.requested || booking.bookingTime || booking.time;
+        
+        if (requestedTime) {
+            const timeStr = String(requestedTime).trim();
+            const timeParts = timeStr.split(':');
+            if (timeParts.length >= 2) {
+                let h = parseInt(timeParts[0], 10);
+                const m = parseInt(timeParts[1].replace(/[^0-9]/g, ''), 10);
+                if (timeStr.toLowerCase().includes('pm') && h < 12) h += 12;
+                if (timeStr.toLowerCase().includes('am') && h === 12) h = 0;
+                startHour = h + (isNaN(m) ? 0 : m) / 60;
+            }
+        } else {
+            const date = new Date(booking.date);
+            const start = new Date(booking.timeSlot?.start || date);
+            if (!isNaN(start.getTime())) {
+                startHour = start.getHours() + (start.getMinutes() / 60);
+            }
+        }
 
         // Normalize booking start relative to timeline start
         let relativeStart = startHour - timelineStartHour;
@@ -393,7 +406,7 @@ const BookingsAdminPage: React.FC = () => {
                     alignItems: 'center', 
                     mb: { xs: 2, sm: 3 }, 
                     gap: 2,
-                    mt: { xs: 1.5, sm: 0 }
+                    mt: { xs: 0, sm: 0 }
                 }}>
                     <Typography 
                         variant="h4" 
@@ -832,10 +845,10 @@ const BookingsAdminPage: React.FC = () => {
                             <Box sx={{ minWidth: 800 }}>
 
                                 {/* Time Header */}
-                                <Box sx={{ display: 'flex', ml: '150px', borderBottom: 1, borderColor: 'divider', pb: 1, mb: 2 }}>
+                                <Box sx={{ position: 'relative', ml: '150px', height: 28, borderBottom: 1, borderColor: 'divider', mb: 2 }}>
                                     {Array.from({ length: totalHours + 1 }).map((_, i) => (
-                                        <Box key={i} sx={{ flex: 1, textAlign: 'left', borderLeft: 1, borderColor: 'divider', pl: 0.5 }}>
-                                            <Typography variant="caption" color="text.secondary">
+                                        <Box key={i} sx={{ position: 'absolute', left: `${(i / totalHours) * 100}%`, transform: 'translateX(-50%)', bottom: 4 }}>
+                                            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold' }}>
                                                 {timelineStartHour + i}:00
                                             </Typography>
                                         </Box>
@@ -851,7 +864,7 @@ const BookingsAdminPage: React.FC = () => {
                                     tables.map(table => (
                                         <Box key={table._id} sx={{ display: 'flex', mb: 2, alignItems: 'center', height: 50 }}>
                                             {/* Table Label */}
-                                            <Box sx={{ width: '150px', pr: 2, borderRight: 1, borderColor: 'divider' }}>
+                                            <Box sx={{ width: '150px', minWidth: '150px', flexShrink: 0, pr: 2, borderRight: 1, borderColor: 'divider' }}>
                                                 <Typography variant="subtitle2" noWrap>
                                                     {table.tableName}
                                                 </Typography>
@@ -861,11 +874,14 @@ const BookingsAdminPage: React.FC = () => {
                                             </Box>
 
                                             {/* Timeline Track */}
-                                            <Box sx={{ flex: 1, position: 'relative', height: '100%', bgcolor: '#f5f5f5', borderRadius: 1 }}>
+                                            <Box sx={{ flex: 1, position: 'relative', height: '100%', bgcolor: 'transparent', borderRadius: 1, display: 'flex', alignItems: 'center' }}>
+                                                {/* Horizontal Graph Line */}
+                                                <Box sx={{ position: 'absolute', left: 0, right: 0, height: '2px', bgcolor: '#e0e0e0', zIndex: 0 }} />
+
                                                 {/* Grid Lines */}
-                                                <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex' }}>
+                                                <Box sx={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
                                                     {Array.from({ length: totalHours + 1 }).map((_, i) => (
-                                                        <Box key={i} sx={{ flex: 1, borderLeft: '1px dashed #e0e0e0' }} />
+                                                        <Box key={i} sx={{ position: 'absolute', left: `${(i / totalHours) * 100}%`, top: 0, bottom: 0, borderLeft: '1px dashed #e0e0e0' }} />
                                                     ))}
                                                 </Box>
 
@@ -877,35 +893,43 @@ const BookingsAdminPage: React.FC = () => {
                                                         return (
                                                             <Tooltip
                                                                 key={booking._id}
-                                                                title={`${booking.guestInfo?.firstName || booking.customer?.name || 'Guest'} (${booking.guests}p) - ${booking.timeSlot?.requested}`}
+                                                                arrow
+                                                                title={
+                                                                    <Box sx={{ p: 0.5 }}>
+                                                                        <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                                                                            {booking.guestInfo?.firstName || booking.customer?.name || 'Guest'}
+                                                                        </Typography>
+                                                                        <Typography variant="caption" display="block">
+                                                                            Time: {booking.timeSlot?.requested}
+                                                                        </Typography>
+                                                                        <Typography variant="caption" display="block">
+                                                                            Guests: {booking.guests}
+                                                                        </Typography>
+                                                                        <Typography variant="caption" display="block" sx={{ textTransform: 'capitalize' }}>
+                                                                            Status: {booking.status}
+                                                                        </Typography>
+                                                                    </Box>
+                                                                }
                                                             >
                                                                 <Box
                                                                     onClick={() => openDetailsDialog(booking)}
                                                                     sx={{
                                                                         position: 'absolute',
                                                                         left: pos.left,
-                                                                        width: pos.width,
-                                                                        top: 4,
-                                                                        bottom: 4,
-                                                                        bgcolor: booking.status === 'confirmed' ? 'success.light' : 'warning.light',
-                                                                        border: 1,
-                                                                        borderColor: booking.status === 'confirmed' ? 'success.main' : 'warning.main',
-                                                                        borderRadius: 1,
+                                                                        top: '50%',
+                                                                        transform: 'translate(-50%, -50%)',
+                                                                        width: 16,
+                                                                        height: 16,
+                                                                        bgcolor: booking.status === 'confirmed' ? 'success.main' : 'warning.main',
+                                                                        border: '2px solid white',
+                                                                        borderRadius: '50%',
                                                                         zIndex: 1,
                                                                         cursor: 'pointer',
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        justifyContent: 'center',
-                                                                        overflow: 'hidden',
-                                                                        px: 0.5,
-                                                                        opacity: 0.9,
-                                                                        '&:hover': { opacity: 1, boxShadow: 2 }
+                                                                        boxShadow: 1,
+                                                                        transition: 'all 0.2s',
+                                                                        '&:hover': { transform: 'translate(-50%, -50%) scale(1.5)', boxShadow: 3, zIndex: 2 }
                                                                     }}
-                                                                >
-                                                                    <Typography variant="caption" noWrap sx={{ fontSize: '0.7rem', color: '#000' }}>
-                                                                        {booking.guestInfo?.firstName || booking.customer?.name || 'Guest'}
-                                                                    </Typography>
-                                                                </Box>
+                                                                />
                                                             </Tooltip>
                                                         );
                                                     })}
@@ -915,11 +939,11 @@ const BookingsAdminPage: React.FC = () => {
                                 )}
                                 <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <Box sx={{ width: 16, height: 16, bgcolor: 'warning.light', border: 1, borderColor: 'warning.main', borderRadius: 1 }} />
+                                        <Box sx={{ width: 16, height: 16, bgcolor: 'warning.main', border: '2px solid white', borderRadius: '50%', boxShadow: 1 }} />
                                         <Typography variant="caption">Pending</Typography>
                                     </Box>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <Box sx={{ width: 16, height: 16, bgcolor: 'success.light', border: 1, borderColor: 'success.main', borderRadius: 1 }} />
+                                        <Box sx={{ width: 16, height: 16, bgcolor: 'success.main', border: '2px solid white', borderRadius: '50%', boxShadow: 1 }} />
                                         <Typography variant="caption">Confirmed</Typography>
                                     </Box>
                                 </Box>

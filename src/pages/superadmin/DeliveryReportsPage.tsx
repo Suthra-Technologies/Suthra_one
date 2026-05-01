@@ -114,21 +114,32 @@ const DeliveryReportsPage: React.FC = () => {
     ];
 
     return (
-        <Box sx={{ p: { xs: 2, md: 3 } }}>
+        <Box sx={{ px: { xs: 1.5, sm: 2, md: 3 }, pb: { xs: 1.5, sm: 2, md: 3 }, pt: { xs: 0.5, sm: 2, md: 3 }, overflowX: 'hidden' }}>
             <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'stretch', sm: 'center' }} spacing={2} sx={{ mb: 3 }}>
                 <Box>
-                    <Typography variant="h4" fontWeight="bold">Delivery Reports</Typography>
+                    <Typography
+                        variant="h4"
+                        fontWeight="bold"
+                        sx={{ textAlign: { xs: 'center', sm: 'left' }, fontSize: { xs: '1.5rem', sm: '2.125rem' } }}
+                    >
+                        Delivery Reports
+                    </Typography>
                     <Typography variant="body2" color="text.secondary">
                         All DoorDash & Uber Eats deliveries across all stores
                     </Typography>
                 </Box>
-                <Button variant="contained" startIcon={<DownloadIcon />} onClick={handleExport} sx={{ bgcolor: '#d32f2f', '&:hover': { bgcolor: '#b71c1c' } }}>
+                <Button
+                    variant="contained"
+                    startIcon={<DownloadIcon />}
+                    onClick={handleExport}
+                    sx={{ bgcolor: '#d32f2f', '&:hover': { bgcolor: '#b71c1c' }, width: { xs: '100%', sm: 'auto' } }}
+                >
                     Export Excel
                 </Button>
             </Stack>
 
             {/* Filters */}
-            <Paper sx={{ p: 2, mb: 3 }}>
+            <Paper sx={{ p: { xs: 1.5, sm: 2 }, mb: 3 }}>
                 <Grid container spacing={2} alignItems="center">
                     <Grid item xs={12} sm={6} md={3}>
                         <FormControl fullWidth size="small">
@@ -170,18 +181,18 @@ const DeliveryReportsPage: React.FC = () => {
             </Paper>
 
             {/* Summary Cards */}
-            <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid container spacing={{ xs: 1.5, sm: 2 }} sx={{ mb: 3 }}>
                 {summaryCards.map((card) => (
-                    <Grid item xs={6} sm={3} md={3} key={card.label}>
-                        <Card variant="outlined" sx={{ height: 110, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 3, borderColor: alpha(card.color, 0.3), bgcolor: alpha(card.color, 0.04) }}>
+                    <Grid item xs={6} sm={4} md={3} key={card.label}>
+                        <Card variant="outlined" sx={{ height: { xs: 116, sm: 110 }, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 3, borderColor: alpha(card.color, 0.3), bgcolor: alpha(card.color, 0.04) }}>
                             <CardContent sx={{ p: '12px !important', textAlign: 'center', width: '100%' }}>
-                                <Box sx={{ color: card.color, mb: 0.5, display: 'flex', justifyContent: 'center', '& svg': { fontSize: 28 } }}>
+                                <Box sx={{ color: card.color, mb: 0.5, display: 'flex', justifyContent: 'center', '& svg': { fontSize: { xs: 24, sm: 28 } } }}>
                                     {card.icon}
                                 </Box>
-                                <Typography variant="caption" color="text.secondary" display="block" sx={{ lineHeight: 1.2, mb: 0.5 }}>
+                                <Typography variant="caption" color="text.secondary" display="block" sx={{ lineHeight: 1.2, mb: 0.5, fontSize: { xs: '0.68rem', sm: '0.75rem' } }}>
                                     {card.label}
                                 </Typography>
-                                <Typography variant="h6" fontWeight="bold" sx={{ color: card.color, lineHeight: 1 }}>
+                                <Typography variant="h6" fontWeight="bold" sx={{ color: card.color, lineHeight: 1, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
                                     {card.isCurrency ? formatCurrency(card.value) : card.value}
                                 </Typography>
                             </CardContent>
@@ -191,15 +202,15 @@ const DeliveryReportsPage: React.FC = () => {
             </Grid>
 
             {/* Orders Table */}
-            <Paper>
+            <Paper sx={{ overflowX: 'hidden' }}>
                 {loading ? (
                     <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
                         <CircularProgress />
                     </Box>
                 ) : (
                     <>
-                        <TableContainer>
-                            <Table size="small">
+                        <TableContainer sx={{ display: { xs: 'none', md: 'block' } }}>
+                            <Table size="small" sx={{ minWidth: 1200 }}>
                                 <TableHead>
                                     <TableRow sx={{ bgcolor: 'grey.100' }}>
                                         <TableCell><strong>Store</strong></TableCell>
@@ -277,6 +288,63 @@ const DeliveryReportsPage: React.FC = () => {
                                 </TableBody>
                             </Table>
                         </TableContainer>
+                        <Box sx={{ display: { xs: 'block', md: 'none' }, p: 1.5 }}>
+                            <Stack spacing={1.5}>
+                                {orders.map((order: any, idx: number) => (
+                                    <Card key={`${order.storeSlug}-${order.orderNumber}-${idx}`} variant="outlined" sx={{ borderRadius: 2 }}>
+                                        <CardContent sx={{ p: 1.5 }}>
+                                            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
+                                                <Typography variant="subtitle2" fontWeight="bold">
+                                                    {order.orderNumber}
+                                                </Typography>
+                                                <Chip label={providerLabel(order.provider)} size="small" sx={{ bgcolor: providerColor(order.provider), color: '#fff', fontWeight: 'bold' }} />
+                                            </Stack>
+
+                                            <Typography variant="body2" fontWeight="medium" sx={{ wordBreak: 'break-word' }}>
+                                                {order.storeName}
+                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                                                {order.date ? new Date(order.date).toLocaleString() : '-'}
+                                            </Typography>
+
+                                            <Grid container spacing={1}>
+                                                <Grid item xs={6}>
+                                                    <Typography variant="caption" color="text.secondary">Customer</Typography>
+                                                    <Typography variant="body2" sx={{ wordBreak: 'break-word' }}>
+                                                        {order.customerName || '-'}
+                                                    </Typography>
+                                                </Grid>
+                                                <Grid item xs={6}>
+                                                    <Typography variant="caption" color="text.secondary">Total</Typography>
+                                                    <Typography variant="body2" fontWeight="bold">{formatCurrency(order.totalAmount)}</Typography>
+                                                </Grid>
+                                                <Grid item xs={6}>
+                                                    <Typography variant="caption" color="text.secondary">Payment</Typography>
+                                                    <Typography variant="body2" sx={{ wordBreak: 'break-word' }}>
+                                                        {order.paymentMethod || '-'}
+                                                    </Typography>
+                                                </Grid>
+                                                <Grid item xs={6}>
+                                                    <Typography variant="caption" color="text.secondary">Status</Typography>
+                                                    <Box>
+                                                        <Chip label={order.status} size="small" color={order.status === 'delivered' ? 'success' : order.status === 'cancelled' ? 'error' : 'warning'} />
+                                                    </Box>
+                                                </Grid>
+                                            </Grid>
+
+                                            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1, wordBreak: 'break-word' }}>
+                                                {order.deliveryAddress || '-'}
+                                            </Typography>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                                {orders.length === 0 && (
+                                    <Typography variant="body2" color="text.secondary" textAlign="center" sx={{ py: 3 }}>
+                                        No delivery orders found for the selected period
+                                    </Typography>
+                                )}
+                            </Stack>
+                        </Box>
                         <TablePagination
                             component="div"
                             count={data?.total || 0}
@@ -285,6 +353,21 @@ const DeliveryReportsPage: React.FC = () => {
                             rowsPerPage={rowsPerPage}
                             onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
                             rowsPerPageOptions={[10, 25, 50, 100]}
+                            sx={{
+                                '& .MuiTablePagination-toolbar': {
+                                    px: { xs: 1, sm: 2 },
+                                    flexWrap: { xs: 'wrap', sm: 'nowrap' },
+                                    rowGap: { xs: 1, sm: 0 },
+                                    justifyContent: { xs: 'center', sm: 'flex-end' },
+                                },
+                                '& .MuiTablePagination-spacer': {
+                                    display: { xs: 'none', sm: 'block' },
+                                },
+                                '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+                                    m: 0,
+                                    fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                },
+                            }}
                         />
                     </>
                 )}

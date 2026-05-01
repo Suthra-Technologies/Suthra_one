@@ -237,16 +237,17 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ open, onClose, no
           px: 2,
           pt: 1.5,
           pb: 1.5,
-          mt: 5,
+          mt: { xs: 2.5, sm: 1 },
           display: 'flex',
-          gap: 1,
+          flexDirection: 'row',
+          gap: { xs: 0.5, sm: 1 },
           borderBottom: '1px solid rgba(0,0,0,0.12)',
         }}>
           <Button
             size="small"
             variant="outlined"
             onClick={handleMarkAllAsRead}
-            sx={{ flex: 1, fontSize: { xs: '0.72rem', sm: '0.8rem' }, py: { xs: 0.75, sm: 1 }, textTransform: 'none', borderRadius: 2 }}
+            sx={{ flex: 1, fontSize: { xs: '0.62rem', sm: '0.8rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 0.5, sm: 1 }, textTransform: 'none', borderRadius: 2, minWidth: 0, whiteSpace: 'nowrap' }}
           >
             Mark All Read
           </Button>
@@ -255,7 +256,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ open, onClose, no
             variant="outlined"
             color="error"
             onClick={handleClearAll}
-            sx={{ flex: 1, fontSize: { xs: '0.72rem', sm: '0.8rem' }, py: { xs: 0.75, sm: 1 }, textTransform: 'none', borderRadius: 2 }}
+            sx={{ flex: 1, fontSize: { xs: '0.62rem', sm: '0.8rem' }, py: { xs: 0.5, sm: 1 }, px: { xs: 0.5, sm: 1 }, textTransform: 'none', borderRadius: 2, minWidth: 0, whiteSpace: 'nowrap' }}
           >
             Clear All
           </Button>
@@ -293,13 +294,14 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ open, onClose, no
 
                         return (
                       <Box sx={{
-                        p: 1.75,
+                        p: { xs: 1.25, sm: 1.75 },
                         borderRadius: '16px',
                         background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
                         color: 'white',
                         boxShadow: '0 4px 15px rgba(99, 102, 241, 0.25)',
                         position: 'relative',
-                        overflow: 'hidden'
+                        overflow: 'hidden',
+                        width: '100%'
                       }}>
                         {/* Decorative background element */}
                         <Box sx={{
@@ -317,9 +319,9 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ open, onClose, no
                             <Typography sx={{ fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', opacity: 0.9, mb: 0.25 }}>
                               Order Update
                             </Typography>
-                            <Typography sx={{ fontSize: '0.9rem', fontWeight: 900, letterSpacing: '0.02em' }}>
-                              Order ID: {displayOrderId}
-                            </Typography>
+                             <Typography sx={{ fontSize: '0.68rem', opacity: 0.95, fontWeight: 700 }}>
+                            Token No: <Box component="span" sx={{ fontWeight: 900 }}>{displayTokenNo}</Box>
+                          </Typography>
                           </Box>
                           {!notification.read && (
                             <IconButton
@@ -332,12 +334,12 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ open, onClose, no
                           )}
                         </Box>
 
-                        <Box sx={{ display: 'flex', gap: 1.25, flexWrap: 'wrap', mb: 1.25 }}>
+                        <Box sx={{ display: 'flex', gap: { xs: 0.75, sm: 1.25 }, flexWrap: 'wrap', mb: 1.25, alignItems: 'center' }}>
              
-                          <Typography sx={{ fontSize: '0.68rem', opacity: 0.95, fontWeight: 700 }}>
-                            Token No: <Box component="span" sx={{ fontWeight: 900 }}>{displayTokenNo}</Box>
-                          </Typography>
-                          <Typography sx={{ fontSize: '0.68rem', opacity: 0.95, fontWeight: 700 }}>
+                          <Typography sx={{ fontSize: { xs: '0.75rem', sm: '0.9rem' }, fontWeight: 900, letterSpacing: '0.02em' }}>
+                              Order ID: {displayOrderId}
+                            </Typography>
+                          <Typography sx={{ fontSize: { xs: '0.6rem', sm: '0.68rem' }, opacity: 0.95, fontWeight: 700 }}>
                             Type: <Box component="span" sx={{ fontWeight: 900 }}>{displayOrderType}</Box>
                           </Typography>
                         </Box>
@@ -357,10 +359,11 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ open, onClose, no
                             py: 0.6,
                             borderRadius: '8px',
                             fontWeight: 950,
-                            fontSize: '0.7rem',
+                            fontSize: { xs: '0.6rem', sm: '0.7rem' },
                             textTransform: 'uppercase',
                             letterSpacing: '0.05em',
-                            boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
+                            boxShadow: '0 4px 10px rgba(0,0,0,0.1)',
+                            whiteSpace: 'nowrap'
                           }}>
                             {String(displayStatus).replace(/_/g, ' ')}
                           </Box>

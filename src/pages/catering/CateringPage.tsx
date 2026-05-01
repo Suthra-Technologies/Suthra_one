@@ -60,6 +60,7 @@ interface CartItem {
     trayName?: string;
     taxRate?: number | null;
     spiceLevel?: string;
+    isCustom?: boolean;
 }
 
 const SPICE_LEVELS = [
@@ -160,6 +161,10 @@ const CateringPage = () => {
     const [occasionInputValue, setOccasionInputValue] = useState('');
     const [addCustomOccasionOpen, setAddCustomOccasionOpen] = useState(false);
     const [customOccasion, setCustomOccasion] = useState('');
+    
+    // Custom item state
+    const [customItemName, setCustomItemName] = useState('');
+    const [customItemQty, setCustomItemQty] = useState<number>(1);
     
     // Check if the occasion is a celebratory one that needs a person's name
     const isCelebratoryOccasion = [
@@ -433,6 +438,29 @@ const CateringPage = () => {
         setSelectedSpice('mild');
     };
 
+    const handleAddCustomItem = () => {
+        if (!customItemName.trim()) {
+            toast.error('Please enter a custom item name');
+            return;
+        }
+        if (customItemQty < 1) {
+            toast.error('Quantity must be at least 1');
+            return;
+        }
+        
+        setCart(prev => [...prev, {
+            menuItem: '', // empty for custom item
+            name: customItemName.trim(),
+            quantity: customItemQty,
+            unitPrice: 0,
+            total: 0,
+            isCustom: true
+        }]);
+        setCustomItemName('');
+        setCustomItemQty(1);
+        toast.success('Custom item added. Admin will quote a price later.');
+    };
+
     const updateQuantity = (cartKey: string, change: number) => {
         setCart(prev =>
             prev.map(item => {
@@ -559,54 +587,160 @@ const CateringPage = () => {
     );
 
     return (
-        <Container maxWidth="lg" sx={{ py: { xs: 2, md: 4 } }}>
+        <Container
+            maxWidth="lg"
+            sx={{
+                py: { xs: 1.5, md: 4 },
+                px: { xs: 1.5, sm: 3 },
+                background: { xs: 'linear-gradient(180deg, #f8f9ff 0%, #f5f6fa 100%)', sm: 'transparent' },
+                borderRadius: { xs: 3, sm: 0 },
+            }}
+        >
             {/* Hero Banner */}
             <Box sx={{
-                background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)',
-                borderRadius: 4, p: { xs: 3, md: 5 }, mb: 4, position: 'relative', overflow: 'hidden', color: 'white',
+                background: 'linear-gradient(135deg, #fff7ed 0%, #ffedd5 45%, #fde68a 100%)',
+                borderRadius: 4,
+                p: { xs: 1.5, sm: 3, md: 5 },
+                mb: { xs: 2, sm: 4 },
+                position: 'relative',
+                overflow: 'hidden',
+                color: '#312e2b',
+                border: '1px solid rgba(251, 191, 36, 0.28)',
+                boxShadow: '0 14px 36px rgba(180, 83, 9, 0.12)',
             }}>
-                <Box sx={{ position: 'absolute', top: -40, right: -40, width: 200, height: 200, borderRadius: '50%', bgcolor: 'rgba(79,70,229,0.15)' }} />
-                <Box display="flex" alignItems="center" gap={1.5} mb={1}>
-                    <LocalDining sx={{ fontSize: 32 }} />
-                    <Typography variant="h4" fontWeight={800}>Catering & Bulk Orders</Typography>
+                <Box
+                    sx={{
+                        display: { xs: 'none', sm: 'block' },
+                        position: 'absolute',
+                        top: -40,
+                        right: -40,
+                        width: 200,
+                        height: 200,
+                        borderRadius: '50%',
+                        bgcolor: 'rgba(251, 191, 36, 0.18)'
+                    }}
+                />
+                <Box display="flex" alignItems={{ xs: 'flex-start', sm: 'center' }} gap={1.25} mb={1} sx={{ flexDirection: { xs: 'column', sm: 'row' }, position: 'relative', zIndex: 1 }}>
+                    <LocalDining sx={{ fontSize: { xs: 22, sm: 32 }, color: '#c2410c' }} />
+                    <Typography variant="h4" fontWeight={800} sx={{ fontSize: { xs: '1.2rem', sm: '2.125rem' }, lineHeight: 1.25 }}>
+                        Catering & Bulk Orders
+                    </Typography>
                 </Box>
-                <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '1.1rem' }}>
+                <Typography sx={{ color: 'rgba(68, 64, 60, 0.88)', fontSize: { xs: '0.86rem', sm: '1.1rem' }, lineHeight: 1.45, maxWidth: { xs: '100%', md: '80%' }, position: 'relative', zIndex: 1 }}>
                     Plan your next event with our delicious menu. Professional catering for any size.
                 </Typography>
             </Box>
 
             {user && (
-                <Tabs value={activeTab} onChange={(e, val) => setActiveTab(val)} sx={{ mb: 4 }}>
+                <Tabs
+                    value={activeTab}
+                    onChange={(e, val) => setActiveTab(val)}
+                    sx={{
+                        mb: { xs: 1.5, md: 4 },
+                        bgcolor: 'background.paper',
+                        borderRadius: 2.5,
+                        px: 0.5,
+                        boxShadow: '0 4px 18px rgba(0,0,0,0.06)',
+                        '& .MuiTabs-indicator': { height: 3, borderRadius: 3 },
+                        '& .MuiTab-root': {
+                            minHeight: { xs: 40, sm: 44 },
+                            py: { xs: 0.75, sm: 1 },
+                            textTransform: 'none',
+                            fontWeight: 700,
+                            fontSize: { xs: '0.82rem', sm: '1rem' },
+                            color: 'text.secondary',
+                            borderRadius: 2,
+                        },
+                        '& .Mui-selected': { color: 'primary.main' },
+                    }}
+                >
                     <Tab label="✨ New Order" />
                     <Tab label="📋 My Orders" />
                 </Tabs>
             )}
 
             {activeTab === 0 && (
-                <Grid container spacing={4}>
+                <Grid container spacing={{ xs: 2, sm: 4 }}>
                     {/* Menu Items */}
                     <Grid item xs={12} md={7}>
-                        <Typography variant="h6" fontWeight={700} mb={3}>Select Items</Typography>
-                        <Grid container spacing={2}>
+                        <Typography
+                            variant="h5"
+                            fontWeight={800}
+                            mb={{ xs: 1, sm: 2.5 }}
+                            sx={{ fontSize: { xs: '1.05rem', sm: '1.5rem' }, textAlign: { xs: 'center', sm: 'left' }, lineHeight: { xs: 1.25, sm: 1.3 } }}
+                        >
+                            Select Items
+                        </Typography>
+                        <Grid container spacing={{ xs: 1, sm: 2 }}>
                             {menuItems.filter(item => item.isCateringAvailable).map((item) => {
                                 const qty = cart.filter(i => i.menuItem === item._id).reduce((sum, i) => sum + i.quantity, 0);
                                 return (
                                     <Grid item xs={12} sm={6} key={item._id}>
-                                        <Card sx={{ borderRadius: 3, border: qty > 0 ? '2px solid' : '1px solid', borderColor: qty > 0 ? 'primary.main' : 'divider' }}>
-                                            <CardContent sx={{ p: 2 }}>
-                                                <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
-                                                    <Typography variant="subtitle1" fontWeight={700}>{item.name}</Typography>
+                                        <Card
+                                            sx={{
+                                                borderRadius: { xs: 2.5, sm: 4 },
+                                                border: qty > 0 ? '2px solid' : '1px solid',
+                                                borderColor: qty > 0 ? 'primary.main' : 'rgba(0,0,0,0.06)',
+                                                bgcolor: qty > 0 ? alpha('#4F46E5', 0.03) : 'background.paper',
+                                                boxShadow: qty > 0 ? '0 10px 24px rgba(79,70,229,0.16)' : '0 6px 18px rgba(0,0,0,0.06)',
+                                            }}
+                                        >
+                                            <CardContent sx={{ p: { xs: 1, sm: 2.25 }, '&:last-child': { pb: { xs: 1, sm: 2.25 } } }}>
+                                                <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={{ xs: 0.35, sm: 1 }}>
+                                                    <Typography
+                                                        variant="subtitle1"
+                                                        fontWeight={800}
+                                                        sx={{
+                                                            letterSpacing: 0.2,
+                                                            fontSize: { xs: '0.72rem', sm: '1rem' },
+                                                            lineHeight: { xs: 1.2, sm: 1.43 },
+                                                        }}
+                                                    >
+                                                        {item.name}
+                                                    </Typography>
                                                 </Box>
-                                                <Box display="flex" justifyContent="space-between" alignItems="center">
-                                                    <Typography variant="h6" color="primary.main">{formatCurrency(item.price)}</Typography>
+                                                <Box display="flex" justifyContent="space-between" alignItems="center" gap={{ xs: 0.75, sm: 1 }}>
+                                                    <Typography
+                                                        variant="h6"
+                                                        color="text.primary"
+                                                        fontWeight={900}
+                                                        sx={{ fontSize: { xs: '0.78rem', sm: '1.35rem' }, lineHeight: 1.2 }}
+                                                    >
+                                                        {formatCurrency(item.price)}
+                                                    </Typography>
                                                     {qty === 0 ? (
-                                                        <Button variant="contained" size="small" onClick={() => handleOpenAddItem(item)} startIcon={<Add />}
-                                                            sx={{ borderRadius: 2, fontWeight: 700, textTransform: 'none' }}>
+                                                        <Button
+                                                            variant="contained"
+                                                            size="small"
+                                                            onClick={() => handleOpenAddItem(item)}
+                                                            startIcon={<Add sx={{ fontSize: { xs: '0.95rem', sm: '1.25rem' } }} />}
+                                                            sx={{
+                                                                borderRadius: 999,
+                                                                fontWeight: 800,
+                                                                textTransform: 'none',
+                                                                px: { xs: 1.25, sm: 2 },
+                                                                py: { xs: 0.35, sm: 0.5 },
+                                                                minHeight: { xs: 28, sm: undefined },
+                                                                fontSize: { xs: '0.68rem', sm: '0.8125rem' },
+                                                                boxShadow: '0 4px 12px rgba(79,70,229,0.3)',
+                                                                '& .MuiButton-startIcon': { mr: { xs: 0.35, sm: 1 } },
+                                                            }}
+                                                        >
                                                             Add
                                                         </Button>
                                                     ) : (
-                                                        <Box display="flex" alignItems="center" gap={0.5}
-                                                            sx={{ bgcolor: 'primary.main', borderRadius: 2, px: 0.5, py: 0.25 }}>
+                                                        <Box
+                                                            display="flex"
+                                                            alignItems="center"
+                                                            gap={0.5}
+                                                            sx={{
+                                                                bgcolor: 'primary.main',
+                                                                borderRadius: 999,
+                                                                px: { xs: 0.35, sm: 0.5 },
+                                                                py: { xs: 0.15, sm: 0.25 },
+                                                                boxShadow: '0 4px 12px rgba(79,70,229,0.3)',
+                                                            }}
+                                                        >
                                                             <IconButton
                                                                 size="small"
                                                                 onClick={() => {
@@ -616,19 +750,19 @@ const CateringPage = () => {
                                                                         updateQuantity(k, -1);
                                                                     }
                                                                 }}
-                                                                sx={{ color: 'white', p: 0.5, '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' } }}
+                                                                sx={{ color: 'white', p: { xs: 0.35, sm: 0.5 }, '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' } }}
                                                             >
-                                                                <Remove fontSize="small" />
+                                                                <Remove sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }} />
                                                             </IconButton>
-                                                            <Typography variant="body2" fontWeight={800} sx={{ color: 'white', minWidth: 20, textAlign: 'center' }}>
+                                                            <Typography variant="body2" fontWeight={800} sx={{ color: 'white', minWidth: 18, textAlign: 'center', fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>
                                                                 {qty}
                                                             </Typography>
                                                             <IconButton
                                                                 size="small"
                                                                 onClick={() => handleOpenAddItem(item)}
-                                                                sx={{ color: 'white', p: 0.5, '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' } }}
+                                                                sx={{ color: 'white', p: { xs: 0.35, sm: 0.5 }, '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' } }}
                                                             >
-                                                                <Add fontSize="small" />
+                                                                <Add sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }} />
                                                             </IconButton>
                                                         </Box>
                                                     )}
@@ -639,19 +773,81 @@ const CateringPage = () => {
                                 );
                             })}
                         </Grid>
+
+                        {/* Custom Item Section */}
+                        <Box mt={{ xs: 2, sm: 4 }}>
+                            <Typography variant="h6" fontWeight={700} mb={{ xs: 1, sm: 2 }} sx={{ fontSize: { xs: '0.95rem', sm: '1.25rem' } }}>
+                                Need something else?
+                            </Typography>
+                            <Card sx={{ borderRadius: 3, border: '1px dashed', borderColor: 'primary.main', bgcolor: alpha('#4F46E5', 0.02) }}>
+                                <CardContent sx={{ p: 3 }}>
+                                    <Typography variant="body2" color="text.secondary" mb={2}>
+                                        Don't see what you're looking for? Add a custom item and our admin will provide a quote.
+                                    </Typography>
+                                    <Grid container spacing={2} alignItems="center">
+                                        <Grid item xs={12} sm={6}>
+                                            <TextField 
+                                                label="Custom Item Name / Description" 
+                                                fullWidth 
+                                                size="small"
+                                                value={customItemName}
+                                                onChange={e => setCustomItemName(e.target.value)}
+                                            />
+                                        </Grid>
+                                        <Grid item xs={12} sm={3}>
+                                            <TextField 
+                                                label="Quantity" 
+                                                type="number"
+                                                fullWidth 
+                                                size="small"
+                                                value={customItemQty}
+                                                onChange={e => setCustomItemQty(Math.max(1, parseInt(e.target.value) || 1))}
+                                                inputProps={{ min: 1 }}
+                                            />
+                                        </Grid>
+                                        <Grid item xs={12} sm={3}>
+                                            <Button 
+                                                variant="outlined" 
+                                                fullWidth 
+                                                onClick={handleAddCustomItem}
+                                                startIcon={<Add />}
+                                            >
+                                                Add Request
+                                            </Button>
+                                        </Grid>
+                                    </Grid>
+                                </CardContent>
+                            </Card>
+                        </Box>
                     </Grid>
 
                     {/* Order Summary Form */}
                     <Grid item xs={12} md={5}>
-                        <Paper sx={{ p: 3, borderRadius: 3, position: 'sticky', top: 20 }}>
-                            <Typography variant="h6" fontWeight={700} mb={3}>Order Details</Typography>
+                        <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, position: 'sticky', top: 20, mx: 'auto' }}>
+                            <Typography variant="h6" fontWeight={700} mb={3} sx={{ textAlign: { xs: 'center', sm: 'left' } }}>
+                                Order Details
+                            </Typography>
                             <form onSubmit={handleSubmit}>
-                                <Stack spacing={2.5}>
+                                <Stack
+                                    spacing={2.5}
+                                    sx={{
+                                        alignItems: { xs: 'center', sm: 'stretch' },
+                                        '& > *': { width: '100%' },
+                                    }}
+                                >
                                     <TextField label="Full Name" fullWidth required value={formData.customerName} onChange={e => setFormData({ ...formData, customerName: e.target.value })} InputLabelProps={{ sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }} />
                                     <TextField label="Phone Number" fullWidth required value={formData.customerPhone} onChange={e => setFormData({ ...formData, customerPhone: e.target.value })} InputLabelProps={{ sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }} />
                                     <TextField label="Email" fullWidth value={formData.customerEmail} onChange={e => setFormData({ ...formData, customerEmail: e.target.value })} />
 
-                                    <Grid container spacing={2}>
+                                    <Grid
+                                        container
+                                        spacing={2}
+                                        sx={{
+                                            width: '100%',
+                                            m: 0,
+                                            '& > .MuiGrid-item': { pl: { xs: 0, sm: 2 } },
+                                        }}
+                                    >
                                         <Grid item xs={12} sm={6}>
                                             <TextField select fullWidth required label="Service Type" value={formData.serviceType} onChange={e => setFormData({ ...formData, serviceType: e.target.value })} InputLabelProps={{ sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }}>
                                                 <MenuItem value="takeaway">Online Takeaway</MenuItem>
@@ -709,7 +905,15 @@ const CateringPage = () => {
                                         </Grid>
                                     </Grid>
 
-                                    <Grid container spacing={2}>
+                                    <Grid
+                                        container
+                                        spacing={2}
+                                        sx={{
+                                            width: '100%',
+                                            m: 0,
+                                            '& > .MuiGrid-item': { pl: { xs: 0, sm: 2 } },
+                                        }}
+                                    >
                                         <Grid item xs={12} sm={6}>
                                             <TextField label="Occasion Date" type="date" fullWidth required value={formData.occasionDate} onChange={e => setFormData({ ...formData, occasionDate: e.target.value })} InputLabelProps={{ shrink: true, sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }} inputProps={{ min: new Date().toISOString().split('T')[0] }} />
                                         </Grid>
@@ -723,7 +927,7 @@ const CateringPage = () => {
                                         )}
                                     </Grid>
 
-                                    <Box sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 3, bgcolor: alpha('#4F46E5', 0.02) }}>
+                                    <Box sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 3, bgcolor: alpha('#4F46E5', 0.02), width: '100%' }}>
                                         <Typography variant="subtitle2" fontWeight={700} color="primary.main" mb={2}>Guest Counts</Typography>
                                         <Grid container spacing={3}>
                                             <Grid item xs={12} sm={6}>
@@ -794,7 +998,11 @@ const CateringPage = () => {
                                                                         )}
                                                                     </Box>
                                                                 }
-                                                                secondary={`${item.quantity} x ${formatCurrency(item.unitPrice)}`}
+                                                                secondary={
+                                                                    item.isCustom 
+                                                                    ? `${item.quantity} x (Price TBD by Admin)` 
+                                                                    : `${item.quantity} x ${formatCurrency(item.unitPrice)}`
+                                                                }
                                                             />
                                                         </ListItem>
                                                     );

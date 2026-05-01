@@ -380,7 +380,7 @@ const TableBookingPage = () => {
                                             label="Number of Guests"
                                             type="number"
                                             value={guestCount}
-                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGuestCount(parseInt(e.target.value) || 2)}
+                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGuestCount(parseInt(e.target.value) || 0)}
                                             InputProps={{
                                                 inputProps: { min: 1, max: 20 },
                                                 startAdornment: <PeopleIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />
@@ -530,20 +530,20 @@ const TableBookingPage = () => {
                                         gap: 2,
                                         opacity: 0.7
                                     }}>
-                                        <Box sx={{
+                                        {/* <Box sx={{
                                             p: 3,
                                             bgcolor: (theme) => alpha(theme.palette.grey[200], 0.5),
                                             borderRadius: '50%',
                                             mb: 1
                                         }}>
                                             <TableIcon sx={{ fontSize: 60, color: 'text.disabled' }} />
-                                        </Box>
-                                        <Typography variant="h6" color="text.secondary" fontWeight="600">
+                                        </Box> */}
+                                        {/* <Typography variant="h6" color="text.secondary" fontWeight="600">
                                             Searching for options...
                                         </Typography>
                                         <Typography variant="body2" color="text.secondary" align="center" sx={{ maxWidth: 300 }}>
                                             Please provide your reservation details on the left to explore our available tables.
-                                        </Typography>
+                                        </Typography> */}
                                     </Box>
                                 ) : (
                                     <Grid container spacing={2}>

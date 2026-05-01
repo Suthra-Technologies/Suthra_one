@@ -3,6 +3,7 @@ import type { AxiosInstance, AxiosRequestConfig, AxiosResponse, InternalAxiosReq
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { BRAND_CONFIG } from '../config/brandConfig';
+import { Capacitor } from '@capacitor/core';
 
 const envApiBase = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
 const brandApiBase = (BRAND_CONFIG.apiBaseUrl as string | undefined)?.trim();
@@ -55,6 +56,12 @@ api.interceptors.response.use(
   (error) => {
     const message = error.response?.data?.message || error.message || 'An error occurred';
     if (error.response?.status === 401) {
+      // Mobile-only: keep local session until explicit logout.
+      // Some transient 401s should not force users back to login.
+      if (Capacitor.isNativePlatform()) {
+        return Promise.reject(error);
+      }
+
       localStorage.removeItem('jwt');
       localStorage.removeItem('user');
 
@@ -102,6 +109,7 @@ export const authAPI = {
   getCustomerCards: () => api.get('/auth/customer/cards'),
   saveCustomerCard: (cardData: any) => api.post('/auth/customer/cards', cardData),
   deleteCustomerCard: (index: number) => api.delete(`/auth/customer/cards/${index}`),
+  deleteAccount: () => api.delete('/auth/delete-account'),
 };
 
 
@@ -193,6 +201,7 @@ export const ordersAPI = {
 
   // Bill generation
   getBillData: (id: string) => api.get(`/orders/${id}/bill`),
+  downloadPDF: (id: string) => api.get(`/orders/${id}/pdf`, { responseType: 'blob' }),
 
   // Coupon management
   validateCoupon: (code: string) => api.post('/orders/validate-coupon', { code }),
@@ -388,7 +397,10 @@ export const settingsAPI = {
 
 // -------------------- Subscription API --------------------
 export const subscriptionAPI = {
+  getUsage: () => api.get('/subscription/usage'),
   getPlans: () => api.get('/subscription/plans'),
+  getTopups: () => api.get('/subscription/topups'),
+  purchaseTopup: (planId: string) => api.post('/subscription/purchase-topup', { planId }),
   subscribe: (planId: string) => api.post('/subscription/subscribe', { planId }),
   cancel: () => api.post('/subscription/cancel'),
   createCheckoutSession: (data: {
@@ -417,7 +429,7 @@ export const couponsAPI = {
 
 // New Promos API – separate endpoints for promo codes
 export const promosAPI = {
-  getAll: (params?: { page: number; limit: number }) => api.get('/promos', { params }),
+  getAll: (params?: { page: number; limit: number; search?: string }) => api.get('/promos', { params }),
   getActive: (orderType?: string, billAmount?: number) =>
     api.get('/promos/active', { params: { orderType, billAmount } }),
   validate: (code: string, orderType: string, billAmount: number, customerId?: string) =>
@@ -427,6 +439,10 @@ export const promosAPI = {
   update: (id: string, promoData: any) => api.put(`/promos/${id}`, promoData),
   delete: (id: string) => api.delete(`/promos/${id}`),
   // apply endpoint can be added if needed
+  sendBulkEmail: (data: { promoId: string; subject: string; message: string; recipients: string[] }) => 
+    api.post('/promos/send-bulk-email', data),
+  sendBulkSms: (data: { promoId: string; phoneNumbers: string[] }) => 
+    api.post('/promos/send-sms', data),
 };
 
 // -------------------- Bookings API --------------------
@@ -478,6 +494,10 @@ export const superAPI = {
   listSupportTickets: (params?: any) => api.get('/superadmin/support-tickets', { params }),
   replySupportTicket: (ticketId: string, payload: any) =>
     api.post(`/superadmin/support-tickets/${ticketId}/reply`, payload),
+  updateSupportTicket: (ticketId: string, payload: any) =>
+    api.patch(`/superadmin/support-tickets/${ticketId}`, payload),
+  deleteSupportTicket: (ticketId: string) =>
+    api.delete(`/superadmin/support-tickets/${ticketId}`),
 
   // Plans management
   listPlans: () => api.get('/superadmin/plans'),
@@ -488,7 +508,15 @@ export const superAPI = {
   // Demo requests management
   listDemoRequests: (params?: any) => api.get('/superadmin/demo-requests', { params }),
   updateDemoRequest: (id: string, data: any) => api.patch(`/superadmin/demo-requests/${id}`, data),
+  confirmDemoRequest: (id: string, data: any) => api.patch(`/superadmin/demo-requests/${id}/confirm`, data),
   deleteDemoRequest: (id: string) => api.delete(`/superadmin/demo-requests/${id}`),
+  adminRescheduleDemo: (id: string, data: { newDate: string; newTime: string; requestedBy: string }) => api.put(`/superadmin/demo-requests/${id}/reschedule`, data),
+};
+
+export const publicDemoAPI = {
+  getDemoByToken: (token: string) => api.get(`/email/demo-requests/reschedule/${token}`),
+  rescheduleDemo: (token: string, newDateTime: string) => api.patch(`/email/demo-requests/reschedule/${token}`, { newDateTime }),
+  getAvailableSlots: (date: string) => api.get('/email/demo-requests/slots', { params: { date } }),
 };
 
 export const superAdminAPI = superAPI; // alias for compatibility
@@ -499,6 +527,8 @@ export const supportAPI = {
   create: (payload: any) => api.post('/support', payload),
   reply: (id: string, payload: any) => api.post(`/support/${id}/reply`, payload),
   resolve: (id: string, payload: any) => api.post(`/support/${id}/resolve`, payload),
+  update: (id: string, payload: any) => api.patch(`/support/${id}`, payload),
+  delete: (id: string) => api.delete(`/support/${id}`),
 };
 
 
@@ -659,19 +689,28 @@ export const homepageAPI = {
   getContent: () => api.get('/homepage'),
   updateContent: (htmlContent: string, sections?: any[]) => api.put('/homepage', { htmlContent, sections }),
   getPublicContent: (tenantSlug: string) => api.get('/homepage/public', { params: { tenantSlug } }),
+  getAboutContent: () => api.get('/homepage/about'),
+  updateAboutContent: (aboutSections: any[]) => api.put('/homepage/about', { aboutSections }),
+  getPublicAboutContent: (tenantSlug: string) => api.get('/homepage/about/public', { params: { tenantSlug } }),
 };
 
 // -------------------- SMS API --------------------
 export const smsAPI = {
   getLogs: (params: { page: number; limit: number; type?: string; startDate?: string; endDate?: string }) =>
     api.get('/sms/logs', { params }),
-  getSummary: () => api.get('/sms/summary'),
+  getSummary: (params?: { startDate?: string; endDate?: string }) => api.get('/sms/summary', { params }),
   sendTest: (to: string, message: string) => api.post('/sms/test', { to, message }),
+};
+
+export const emailAPI = {
+  getLogs: (params: { page: number; limit: number; type?: string; startDate?: string; endDate?: string }) =>
+    api.get('/email/logs', { params }),
+  getSummary: (params?: { startDate?: string; endDate?: string }) => api.get('/email/summary', { params }),
 };
 
 // -------------------- Assets API --------------------
 export const assetsAPI = {
-  getAll: (params?: { type?: string; status?: string; search?: string }) => api.get('/assets', { params }),
+  getAll: (params?: { type?: string; status?: string; search?: string; page?: number; limit?: number }) => api.get('/assets', { params }),
   getOne: (id: string) => api.get(`/assets/${id}`),
   create: (data: any) => api.post('/assets', data),
   update: (id: string, data: any) => api.put(`/assets/${id}`, data),
@@ -696,3 +735,4 @@ export const expensesAPI = {
 };
 
 export default api;
+

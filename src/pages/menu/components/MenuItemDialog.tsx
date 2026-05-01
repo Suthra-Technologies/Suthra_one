@@ -31,8 +31,8 @@ import {
     TextField,
     Typography,
     alpha,
-    useTheme,
-    useMediaQuery
+    useMediaQuery,
+    useTheme
 } from '@mui/material';
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
@@ -80,6 +80,8 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
     const navigate = useNavigate();
     const { formatCurrency } = useSettings();
     const [dialogTab, setDialogTab] = useState(0);
+    const todayStr = new Date().toISOString().split('T')[0];
+
 
     // Form State
     const [menuItemForm, setMenuItemForm] = useState({
@@ -110,7 +112,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
         displayOption: 'normal' as 'normal' | 'weekly_special' | 'todays_special',
         validFrom: null as Date | null,
         validTo: null as Date | null,
-        priority: 0,
+        priority: '' as string | number,
     });
 
     const [menuItemTouched, setMenuItemTouched] = useState({
@@ -168,9 +170,8 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                     isWeeklyScheduleEnabled: !!item.isWeeklyScheduleEnabled,
                     availabilityType: item.availabilityType || 'highlight',
                     displayOption: item.displayOption || 'normal',
-                    validFrom: item.validFrom ? new Date(item.validFrom) : null,
                     validTo: item.validTo ? new Date(item.validTo) : null,
-                    priority: item.priority || 0,
+                    priority: item.priority || '',
                 });
             } else {
                 // Reset for new item
@@ -202,7 +203,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                     displayOption: 'normal',
                     validFrom: null,
                     validTo: null,
-                    priority: 0,
+                    priority: '',
                 });
             }
             setMenuItemTouched({
@@ -277,6 +278,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                 ...menuItemForm,
                 price: parsedPrice,
                 taxRate: menuItemForm.taxRate ? parseFloat(menuItemForm.taxRate) : null,
+                priority: parseInt(menuItemForm.priority as any) || 0,
                 spiceLevelData
             };
 
@@ -314,11 +316,11 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
     };
 
     return (
-        <Dialog 
-            open={open} 
-            onClose={onClose} 
-            maxWidth="lg" 
-            fullWidth 
+        <Dialog
+            open={open}
+            onClose={onClose}
+            maxWidth="lg"
+            fullWidth
             PaperProps={{
                 sx: {
                     borderRadius: 3,
@@ -329,11 +331,11 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                 }
             }}
         >
-            <DialogTitle sx={{ 
-                m: 0, 
-                p: { xs: 1.25, sm: 2.5 }, 
-                display: 'flex', 
-                alignItems: 'center', 
+            <DialogTitle sx={{
+                m: 0,
+                p: { xs: 1.25, sm: 2.5 },
+                display: 'flex',
+                alignItems: 'center',
                 justifyContent: isMobile ? 'center' : 'flex-start',
                 borderBottom: isMobile ? 1 : 0,
                 borderColor: 'divider',
@@ -355,7 +357,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                         width: 32,
                         height: 32,
                         transition: 'all 0.2s',
-                        '&:hover': { 
+                        '&:hover': {
                             bgcolor: theme.palette.error.main,
                             color: '#fff',
                             transform: 'rotate(90deg)'
@@ -365,17 +367,17 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                     <CloseIcon sx={{ fontSize: 18 }} />
                 </IconButton>
             </DialogTitle>
-            <DialogContent sx={{ 
+            <DialogContent sx={{
                 p: { xs: 1, sm: 3 },
                 pt: { xs: 0, sm: 1 },
-                '& .MuiFormLabel-asterisk': { color: 'red' } 
+                '& .MuiFormLabel-asterisk': { color: 'red' }
             }}>
-                <Tabs 
-                    value={dialogTab} 
-                    onChange={(_, v) => setDialogTab(v)} 
-                    sx={{ 
-                        mb: { xs: 1, sm: 2 }, 
-                        borderBottom: 1, 
+                <Tabs
+                    value={dialogTab}
+                    onChange={(_, v) => setDialogTab(v)}
+                    sx={{
+                        mb: { xs: 1, sm: 2 },
+                        borderBottom: 1,
                         borderColor: 'divider',
                         minHeight: { xs: 36, sm: 48 },
                         '& .MuiTab-root': { py: 0.5, minHeight: { xs: 36, sm: 48 } }
@@ -614,9 +616,47 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                                     value={menuItemForm.availabilityType || 'available_only'}
                                                     label="Availability Type"
                                                     onChange={(e) => setMenuItemForm({ ...menuItemForm, availabilityType: e.target.value as any })}
+                                                    sx={{
+                                                        '& .MuiSelect-select': {
+                                                            pr: '48px !important',
+                                                        }
+                                                    }}
+                                                    renderValue={(selected) => (
+                                                        <Box sx={{ 
+                                                            overflowX: 'auto', 
+                                                            whiteSpace: 'nowrap', 
+                                                            width: '100%',
+                                                            '&::-webkit-scrollbar': { height: '2px' },
+                                                            '&::-webkit-scrollbar-thumb': { backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 1 }
+                                                        }}>
+                                                            {selected === 'highlight' 
+                                                                ? 'Highlight Only (Available Everyday, Highlighted on specific days)' 
+                                                                : 'Available Only on Selected Days'}
+                                                        </Box>
+                                                    )}
                                                 >
-                                                    <MenuItem value="highlight">Highlight Only (Available Everyday, Highlighted on specific days)</MenuItem>
-                                                    <MenuItem value="available_only">Available Only on Selected Days</MenuItem>
+                                                    <MenuItem value="highlight">
+                                                        <Box sx={{ 
+                                                            overflowX: 'auto', 
+                                                            whiteSpace: 'nowrap', 
+                                                            width: '100%',
+                                                            '&::-webkit-scrollbar': { height: '2px' },
+                                                            '&::-webkit-scrollbar-thumb': { backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 1 }
+                                                        }}>
+                                                            Highlight Only (Available Everyday, Highlighted on specific days)
+                                                        </Box>
+                                                    </MenuItem>
+                                                    <MenuItem value="available_only">
+                                                        <Box sx={{ 
+                                                            overflowX: 'auto', 
+                                                            whiteSpace: 'nowrap', 
+                                                            width: '100%',
+                                                            '&::-webkit-scrollbar': { height: '2px' },
+                                                            '&::-webkit-scrollbar-thumb': { backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 1 }
+                                                        }}>
+                                                            Available Only on Selected Days
+                                                        </Box>
+                                                    </MenuItem>
                                                 </Select>
                                             </FormControl>
                                         </Grid>
@@ -707,6 +747,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                                 onChange={(e) => setMenuItemForm({ ...menuItemForm, validFrom: e.target.value ? new Date(e.target.value) : null })}
                                                 fullWidth
                                                 InputLabelProps={{ shrink: true }}
+                                                inputProps={{ min: todayStr }}
                                             />
                                         </Grid>
                                         <Grid item xs={12} sm={4}>
@@ -718,16 +759,18 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                                 onChange={(e) => setMenuItemForm({ ...menuItemForm, validTo: e.target.value ? new Date(e.target.value) : null })}
                                                 fullWidth
                                                 InputLabelProps={{ shrink: true }}
+                                                inputProps={{ min: menuItemForm.validFrom ? new Date(menuItemForm.validFrom).toISOString().split('T')[0] : todayStr }}
                                             />
                                         </Grid>
                                         <Grid item xs={12} sm={4}>
                                             <TextField
-                                                label="Priority (Higher first)"
+                                                label="Position (Order)"
                                                 type="number"
                                                 size="small"
-                                                value={menuItemForm.priority || 0}
-                                                onChange={(e) => setMenuItemForm({ ...menuItemForm, priority: parseInt(e.target.value) || 0 })}
+                                                value={menuItemForm.priority}
+                                                onChange={(e) => setMenuItemForm({ ...menuItemForm, priority: e.target.value === '' ? '' : Math.max(0, parseInt(e.target.value) || 0) })}
                                                 fullWidth
+                                                inputProps={{ min: 0 }}
                                             />
                                         </Grid>
                                     </Grid>
@@ -742,36 +785,36 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                     </Box>
                 )}
             </DialogContent>
-            <DialogActions sx={{ 
-                p: { xs: 1, sm: 2 }, 
+            <DialogActions sx={{
+                p: { xs: 1, sm: 2 },
                 flexDirection: isMobile ? 'column-reverse' : 'row',
                 gap: 1,
                 borderTop: 1,
                 borderColor: 'divider',
                 bgcolor: isMobile ? alpha(theme.palette.primary.main, 0.03) : 'transparent'
             }}>
-                <Button 
-                    onClick={onClose} 
-                    variant="outlined" 
+                <Button
+                    onClick={onClose}
+                    variant="outlined"
                     fullWidth={isMobile}
-                    sx={{ 
-                        borderRadius: 2, 
-                        px: 3, 
-                        color: 'text.secondary', 
+                    sx={{
+                        borderRadius: 2,
+                        px: 3,
+                        color: 'text.secondary',
                         borderColor: 'divider',
                         order: isMobile ? 2 : 1
                     }}
                 >
                     Cancel
                 </Button>
-                <Button 
-                    onClick={handleSaveMenuItem} 
-                    variant="contained" 
-                    disabled={isSaving} 
+                <Button
+                    onClick={handleSaveMenuItem}
+                    variant="contained"
+                    disabled={isSaving}
                     fullWidth={isMobile}
-                    sx={{ 
-                        borderRadius: 2, 
-                        px: 3, 
+                    sx={{
+                        borderRadius: 2,
+                        px: 3,
                         boxShadow: theme.shadows[4],
                         order: isMobile ? 1 : 2
                     }}
