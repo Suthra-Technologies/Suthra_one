@@ -10,7 +10,8 @@ import {
   Refresh as RefreshIcon,
   TakeoutDining as TakeawayIcon,
   LocalFireDepartment as UrgentIcon,
-  Print as PrintIcon
+  Print as PrintIcon,
+  CurrencyExchange as RefundIcon
 } from '@mui/icons-material';
 import {
   alpha,
@@ -39,6 +40,8 @@ import {
   Tooltip,
   Typography,
   useTheme,
+  Pagination,
+  useMediaQuery,
 } from '@mui/material';
 import Grid from '@mui/material/Grid2';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -55,6 +58,7 @@ interface OrderItem {
   preparationStatus?: 'pending' | 'preparing' | 'ready' | 'cancelled';
   cancelReason?: string;
   preparedAt?: Date;
+  cancelledAt?: Date;
 }
 
 interface Order {
@@ -81,6 +85,8 @@ const KitchenInterface: React.FC = () => {
   const [activeTab, setActiveTab] = useState<number>(0); // 0: Live Orders, 1: Pre-Orders
   const [filterStatus, setFilterStatus] = useState<string>('all'); // 'all', 'urgent', 'pending', 'preparing', 'ready'
   const [filterType, setFilterType] = useState<string>('all'); // 'all', 'dine_in', 'takeaway', 'delivery'
+  const [page, setPage] = useState(1);
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const headingFontSize = { xs: '1.12rem', md: '1.6rem' };
   const bodyFontSize = { xs: '0.7rem', sm: '0.88rem' };
 
@@ -183,8 +189,10 @@ const KitchenInterface: React.FC = () => {
 
   const getOrderProgress = (items: OrderItem[]) => {
     if (!items || items.length === 0) return 0;
-    const readyCount = items.filter(item => item.preparationStatus === 'ready').length;
-    return (readyCount / items.length) * 100;
+    const activeItems = items.filter(item => item.preparationStatus !== 'cancelled');
+    if (activeItems.length === 0) return 100;
+    const readyCount = activeItems.filter(item => item.preparationStatus === 'ready').length;
+    return (readyCount / activeItems.length) * 100;
   };
 
   const getProgressColor = (progress: number): 'error' | 'warning' | 'info' | 'success' => {
@@ -333,6 +341,28 @@ const KitchenInterface: React.FC = () => {
     }
   };
 
+  const handleRefundItem = async (orderId: string, itemIndex: number) => {
+    if (!window.confirm('Are you sure you want to refund this item? This will remove it from the bill.')) return;
+
+    const key = `${orderId}-${itemIndex}`;
+    setUpdatingItems(prev => new Set(prev).add(key));
+
+    try {
+      await ordersAPI.refundItem(orderId, itemIndex);
+      toast.success('Item refunded successfully');
+      fetchOrders();
+    } catch (error: any) {
+      console.error('Error refunding item:', error);
+      toast.error(error.response?.data?.message || 'Failed to refund item');
+    } finally {
+      setUpdatingItems(prev => {
+        const updated = new Set(prev);
+        updated.delete(key);
+        return updated;
+      });
+    }
+  };
+
   // Handle marking all items as ready
   const handleMarkAllReady = async (orderId: string) => {
     try {
@@ -340,7 +370,11 @@ const KitchenInterface: React.FC = () => {
 
       setOrders(prev => prev.map(order => {
         if (order._id === orderId) {
-          const updatedItems = order.items.map(item => ({ ...item, preparationStatus: 'ready' as any }));
+          const updatedItems = order.items.map(item =>
+            item.preparationStatus !== 'cancelled'
+              ? { ...item, preparationStatus: 'ready' as any }
+              : item
+          );
           // Note: Backend might auto-update order status to 'ready' too
           return { ...order, items: updatedItems };
         }
@@ -403,6 +437,14 @@ const KitchenInterface: React.FC = () => {
 
     return result;
   }, [orders, filterStatus, filterType, activeTab]);
+
+  const ITEMS_PER_PAGE = isMobile ? 5 : (filteredOrders.length || 1);
+  const totalPages = isMobile ? Math.ceil(filteredOrders.length / 5) : 1;
+  const paginatedOrders = isMobile ? filteredOrders.slice((page - 1) * 5, page * 5) : filteredOrders;
+
+  useEffect(() => {
+    setPage(1);
+  }, [filterType, filterStatus, activeTab]);
 
   // Statistics
   const stats = useMemo(() => {
@@ -532,7 +574,7 @@ const KitchenInterface: React.FC = () => {
         </Paper>
       ) : (
         <Grid container spacing={2}>
-          {filteredOrders.map((order) => {
+          {paginatedOrders.map((order) => {
             const progress = getOrderProgress(order.items);
             const urgency = getUrgencyLevel(order.createdAt);
             const isAllReady = progress === 100;
@@ -772,7 +814,7 @@ const KitchenInterface: React.FC = () => {
                               </Box>
                             )}
 
-                            {!isCancelled && !isReady && (
+                            {!isCancelled && (
                               <Tooltip title="Cancel Item">
                                 <IconButton
                                   size="small"
@@ -788,6 +830,22 @@ const KitchenInterface: React.FC = () => {
                                   <CancelIcon fontSize="small" />
                                 </IconButton>
                               </Tooltip>
+                            )}
+
+                            {isCancelled && (
+                              <Stack direction="row" spacing={0.5} sx={{ ml: 1 }}>
+                                <Tooltip title="Refund Item">
+                                  <IconButton
+                                    size="small"
+                                    color="error"
+                                    onClick={() => handleRefundItem(order._id, idx)}
+                                    disabled={updatingItems.has(`${order._id}-${idx}`)}
+                                    sx={{ p: 0.5 }}
+                                  >
+                                    <RefundIcon sx={{ fontSize: 18 }} />
+                                  </IconButton>
+                                </Tooltip>
+                              </Stack>
                             )}
 
                             {isUpdating && <CircularProgress size={16} sx={{ ml: 1 }} />}
@@ -806,7 +864,7 @@ const KitchenInterface: React.FC = () => {
                       size="small"
                       onClick={() => handlePrintKOT(order)}
                       startIcon={<PrintIcon />}
-                      sx={{ mb: { xs: 0, sm: 0.5 }, flex: { xs: 1, sm: 'initial' }, minWidth: 0, fontSize: { xs: '0.62rem', sm: '0.78rem' }, py: { xs: 0.45, sm: 0.7 }, px: { xs: 0.5, sm: 1 }, minHeight: { xs: 28, sm: 34 }, '& .MuiButton-startIcon': { mr: { xs: 0.3, sm: 0.75 } } }}
+                      sx={{ display: { xs: 'none', sm: 'inline-flex' }, mb: { xs: 0, sm: 0.5 }, flex: { xs: 1, sm: 'initial' }, minWidth: 0, fontSize: { xs: '0.62rem', sm: '0.78rem' }, py: { xs: 0.45, sm: 0.7 }, px: { xs: 0.5, sm: 1 }, minHeight: { xs: 28, sm: 34 }, '& .MuiButton-startIcon': { mr: { xs: 0.3, sm: 0.75 } } }}
                     >
                       Print KOT
                     </Button>
@@ -847,40 +905,52 @@ const KitchenInterface: React.FC = () => {
         </Grid>
       )}
 
-      {/* Dialog for canceling item */}
-      <Dialog open={cancelDialogOpen} onClose={() => setCancelDialogOpen(false)}>
-        <DialogTitle>Cancel Item</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            You are about to cancel <strong>{cancelItemRef?.itemName}</strong>. Please provide a reason (e.g., "Out of Stock", "Customer Changed Mind").
-          </Typography>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Cancellation Reason"
-            type="text"
-            fullWidth
-            variant="outlined"
-            value={cancelReason}
-            onChange={(e) => setCancelReason(e.target.value)}
+      {!loading && isMobile && totalPages > 1 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+          <Pagination 
+            count={totalPages} 
+            page={page} 
+            onChange={(_, value) => setPage(value)} 
+            color="primary" 
+            size="large"
           />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCancelDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleCancelItemProcess} color="error" variant="contained" disabled={!cancelReason.trim()}>
-            Confirm Cancellation
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </Box>
+      )}
 
-      {/* Pulse Animation Style */}
-      <style>{`
+{/* Dialog for canceling item */ }
+<Dialog open={cancelDialogOpen} onClose={() => setCancelDialogOpen(false)}>
+  <DialogTitle>Cancel Item</DialogTitle>
+  <DialogContent>
+    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      You are about to cancel <strong>{cancelItemRef?.itemName}</strong>. Please provide a reason (e.g., "Out of Stock", "Customer Changed Mind").
+    </Typography>
+    <TextField
+      autoFocus
+      margin="dense"
+      label="Cancellation Reason"
+      type="text"
+      fullWidth
+      variant="outlined"
+      value={cancelReason}
+      onChange={(e) => setCancelReason(e.target.value)}
+    />
+  </DialogContent>
+  <DialogActions>
+    <Button onClick={() => setCancelDialogOpen(false)}>Cancel</Button>
+    <Button onClick={handleCancelItemProcess} color="error" variant="contained" disabled={!cancelReason.trim()}>
+      Confirm Cancellation
+    </Button>
+  </DialogActions>
+</Dialog>
+
+{/* Pulse Animation Style */ }
+<style>{`
         @keyframes pulse {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.5; }
         }
       `}</style>
-    </Box>
+    </Box >
   );
 };
 
