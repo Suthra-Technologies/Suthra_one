@@ -229,7 +229,7 @@ const POSPage: React.FC = () => {
     const [placingOrder, setPlacingOrder] = useState(false);
     const [nextCursor, setNextCursor] = useState<string | null>(null);
     const [isFetchingMore, setIsFetchingMore] = useState(false);
-    const PAGE_LIMIT = 24;
+    const PAGE_LIMIT = 48;
 
 
     // Coupon handling
@@ -427,7 +427,8 @@ const POSPage: React.FC = () => {
                 // This ensures items always load even if the backend category filter is unreliable.
                 foodType: foodTypeFilter !== 'all' ? foodTypeFilter : undefined,
                 cursor: cursor || undefined,
-                limit: PAGE_LIMIT,
+                // Load all items without pagination to avoid conflicts with client-side availability filters
+                limit: 1000,
                 isAvailable: true
             });
 
