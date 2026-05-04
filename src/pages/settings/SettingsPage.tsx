@@ -3775,7 +3775,7 @@ const SettingsPage: React.FC = () => {
         </Table>
     </TableContainer>
 )}
-                                )
+                                
                             </Box>
                         </Grid>
 
