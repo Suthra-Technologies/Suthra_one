@@ -10,7 +10,8 @@ import {
   Refresh as RefreshIcon,
   TakeoutDining as TakeawayIcon,
   LocalFireDepartment as UrgentIcon,
-  Print as PrintIcon
+  Print as PrintIcon,
+  CurrencyExchange as RefundIcon
 } from '@mui/icons-material';
 import {
   alpha,
@@ -57,6 +58,7 @@ interface OrderItem {
   preparationStatus?: 'pending' | 'preparing' | 'ready' | 'cancelled';
   cancelReason?: string;
   preparedAt?: Date;
+  cancelledAt?: Date;
 }
 
 interface Order {
@@ -187,8 +189,10 @@ const KitchenInterface: React.FC = () => {
 
   const getOrderProgress = (items: OrderItem[]) => {
     if (!items || items.length === 0) return 0;
-    const readyCount = items.filter(item => item.preparationStatus === 'ready').length;
-    return (readyCount / items.length) * 100;
+    const activeItems = items.filter(item => item.preparationStatus !== 'cancelled');
+    if (activeItems.length === 0) return 100;
+    const readyCount = activeItems.filter(item => item.preparationStatus === 'ready').length;
+    return (readyCount / activeItems.length) * 100;
   };
 
   const getProgressColor = (progress: number): 'error' | 'warning' | 'info' | 'success' => {
@@ -337,6 +341,28 @@ const KitchenInterface: React.FC = () => {
     }
   };
 
+  const handleRefundItem = async (orderId: string, itemIndex: number) => {
+    if (!window.confirm('Are you sure you want to refund this item? This will remove it from the bill.')) return;
+
+    const key = `${orderId}-${itemIndex}`;
+    setUpdatingItems(prev => new Set(prev).add(key));
+
+    try {
+      await ordersAPI.refundItem(orderId, itemIndex);
+      toast.success('Item refunded successfully');
+      fetchOrders();
+    } catch (error: any) {
+      console.error('Error refunding item:', error);
+      toast.error(error.response?.data?.message || 'Failed to refund item');
+    } finally {
+      setUpdatingItems(prev => {
+        const updated = new Set(prev);
+        updated.delete(key);
+        return updated;
+      });
+    }
+  };
+
   // Handle marking all items as ready
   const handleMarkAllReady = async (orderId: string) => {
     try {
@@ -344,7 +370,11 @@ const KitchenInterface: React.FC = () => {
 
       setOrders(prev => prev.map(order => {
         if (order._id === orderId) {
-          const updatedItems = order.items.map(item => ({ ...item, preparationStatus: 'ready' as any }));
+          const updatedItems = order.items.map(item =>
+            item.preparationStatus !== 'cancelled'
+              ? { ...item, preparationStatus: 'ready' as any }
+              : item
+          );
           // Note: Backend might auto-update order status to 'ready' too
           return { ...order, items: updatedItems };
         }
@@ -784,7 +814,7 @@ const KitchenInterface: React.FC = () => {
                               </Box>
                             )}
 
-                            {!isCancelled && !isReady && (
+                            {!isCancelled && (
                               <Tooltip title="Cancel Item">
                                 <IconButton
                                   size="small"
@@ -800,6 +830,22 @@ const KitchenInterface: React.FC = () => {
                                   <CancelIcon fontSize="small" />
                                 </IconButton>
                               </Tooltip>
+                            )}
+
+                            {isCancelled && (
+                              <Stack direction="row" spacing={0.5} sx={{ ml: 1 }}>
+                                <Tooltip title="Refund Item">
+                                  <IconButton
+                                    size="small"
+                                    color="error"
+                                    onClick={() => handleRefundItem(order._id, idx)}
+                                    disabled={updatingItems.has(`${order._id}-${idx}`)}
+                                    sx={{ p: 0.5 }}
+                                  >
+                                    <RefundIcon sx={{ fontSize: 18 }} />
+                                  </IconButton>
+                                </Tooltip>
+                              </Stack>
                             )}
 
                             {isUpdating && <CircularProgress size={16} sx={{ ml: 1 }} />}
@@ -871,40 +917,40 @@ const KitchenInterface: React.FC = () => {
         </Box>
       )}
 
-      {/* Dialog for canceling item */}
-      <Dialog open={cancelDialogOpen} onClose={() => setCancelDialogOpen(false)}>
-        <DialogTitle>Cancel Item</DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            You are about to cancel <strong>{cancelItemRef?.itemName}</strong>. Please provide a reason (e.g., "Out of Stock", "Customer Changed Mind").
-          </Typography>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Cancellation Reason"
-            type="text"
-            fullWidth
-            variant="outlined"
-            value={cancelReason}
-            onChange={(e) => setCancelReason(e.target.value)}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setCancelDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleCancelItemProcess} color="error" variant="contained" disabled={!cancelReason.trim()}>
-            Confirm Cancellation
-          </Button>
-        </DialogActions>
-      </Dialog>
+{/* Dialog for canceling item */ }
+<Dialog open={cancelDialogOpen} onClose={() => setCancelDialogOpen(false)}>
+  <DialogTitle>Cancel Item</DialogTitle>
+  <DialogContent>
+    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      You are about to cancel <strong>{cancelItemRef?.itemName}</strong>. Please provide a reason (e.g., "Out of Stock", "Customer Changed Mind").
+    </Typography>
+    <TextField
+      autoFocus
+      margin="dense"
+      label="Cancellation Reason"
+      type="text"
+      fullWidth
+      variant="outlined"
+      value={cancelReason}
+      onChange={(e) => setCancelReason(e.target.value)}
+    />
+  </DialogContent>
+  <DialogActions>
+    <Button onClick={() => setCancelDialogOpen(false)}>Cancel</Button>
+    <Button onClick={handleCancelItemProcess} color="error" variant="contained" disabled={!cancelReason.trim()}>
+      Confirm Cancellation
+    </Button>
+  </DialogActions>
+</Dialog>
 
-      {/* Pulse Animation Style */}
-      <style>{`
+{/* Pulse Animation Style */ }
+<style>{`
         @keyframes pulse {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.5; }
         }
       `}</style>
-    </Box>
+    </Box >
   );
 };
 

@@ -188,6 +188,8 @@ export const ordersAPI = {
   // Remove item from order
   removeItem: (id: string, itemIndex: number) =>
     api.delete(`/orders/${id}/items/${itemIndex}`),
+  refundItem: (id: string, itemIndex: number) =>
+    api.post(`/orders/${id}/items/${itemIndex}/refund`),
 
   // Kitchen item-wise status updates
   updateItemStatus: (orderId: string, itemIndex: number, status: string, cancelReason?: string) =>
