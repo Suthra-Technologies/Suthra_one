@@ -1519,35 +1519,9 @@ const MenuPage: React.FC = () => {
                             Download Template
                         </Button>
                     </Box>
-
-                    <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>Or Paste CSV Data manually</Typography>
-                    <Typography variant="body2" color="text.secondary" paragraph>
-                        Format: <strong>Name, Price, Category, Subcategory, Description, ImageURL, FoodType, IsAvailable, IsCateringAvailable</strong>
-                        <br />
-                        You can use comma (,) or pipe (|) or tab as separator.
-                        <br />
-                        <strong>ImageURL:</strong> Can be a full URL (https://...) or relative path
-                        <br />
-                        <strong>FoodType:</strong> "veg" or "non-veg" (optional)
-                        <br />
-                        <strong>IsAvailable/IsCateringAvailable:</strong> "true"/"false" (optional, defaults to true)
-                    </Typography>
-                    <TextField
-                        multiline
-                        rows={6}
-                        fullWidth
-                        placeholder="Burger, 10.99, Main Course, Burgers, Delicious cheese burger, https://example.com/burger.jpg, non-veg, yes, yes&#10;Pizza, 12.50, Main Course, Italian, Pizza Margherita, https://example.com/pizza.jpg, veg, yes, yes"
-                        value={bulkCsv}
-                        onChange={(e) => setBulkCsv(e.target.value)}
-                        variant="outlined"
-                        sx={{ fontFamily: 'monospace' }}
-                    />
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setBulkDialogOpen(false)}>Cancel</Button>
-                    <Button variant="contained" onClick={handleBulkUpload} disabled={!bulkCsv.trim()}>
-                        Upload Manual Data
-                    </Button>
                 </DialogActions>
             </Dialog>
 

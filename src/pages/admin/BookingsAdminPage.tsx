@@ -63,7 +63,7 @@ const BookingsAdminPage: React.FC = () => {
     const navigate = useNavigate();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-    const { tenantSlug } = useAuth();
+    const { tenantSlug, activeRole } = useAuth();
     const { settings } = useSettings();
 
     const handleCreateOrder = async (booking: any) => {
@@ -443,22 +443,24 @@ const BookingsAdminPage: React.FC = () => {
                                 }}
                             />
                         )}
-                        <Button
-                            variant="contained"
-                            startIcon={<BookIcon />}
-                            onClick={() => {
-                                setBookingStep(1);
-                                setCreateDialogOpen(true);
-                            }}
-                            sx={{ 
-                                borderRadius: 2,
-                                textTransform: 'none',
-                                fontWeight: 'bold',
-                                px: 2
-                            }}
-                        >
-                            New Booking
-                        </Button>
+                        {activeRole !== 'waiter' && (
+                            <Button
+                                variant="contained"
+                                startIcon={<BookIcon />}
+                                onClick={() => {
+                                    setBookingStep(1);
+                                    setCreateDialogOpen(true);
+                                }}
+                                sx={{ 
+                                    borderRadius: 2,
+                                    textTransform: 'none',
+                                    fontWeight: 'bold',
+                                    px: 2
+                                }}
+                            >
+                                New Booking
+                            </Button>
+                        )}
                         <IconButton 
                             onClick={fetchData} 
                             color="primary" 
@@ -601,7 +603,7 @@ const BookingsAdminPage: React.FC = () => {
                                                         Checkout
                                                     </Button>
                                                 )}
-                                                {booking.status === 'pending' && !booking.checkedIn && (
+                                                {booking.status === 'pending' && !booking.checkedIn && activeRole !== 'waiter' && (
                                                     <Stack direction="row" spacing={1}>
                                                         <IconButton
                                                             size="small"
@@ -715,7 +717,7 @@ const BookingsAdminPage: React.FC = () => {
                                                             </span>
                                                         </Tooltip>
                                                     )}
-                                                    {booking.status === 'pending' && !booking.checkedIn && (
+                                                    {booking.status === 'pending' && !booking.checkedIn && activeRole !== 'waiter' && (
                                                         <>
                                                             <Tooltip title="Approve">
                                                                 <IconButton
@@ -1175,7 +1177,7 @@ const BookingsAdminPage: React.FC = () => {
                                 Order Food
                             </Button>
                         )}
-                        {selectedBooking?.status === 'pending' && (
+                        {selectedBooking?.status === 'pending' && activeRole !== 'waiter' && (
                             <>
                                 <Button
                                     color="error"

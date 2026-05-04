@@ -210,18 +210,6 @@ const TraysPage: React.FC<TraysPageProps> = ({ hideHeader = false }) => {
         ) : (
           <Typography variant="body2" color="text.secondary">No dimensions</Typography>
         )}
-        <Typography
-          variant="caption"
-          sx={{
-            px: 1, py: 0.25, borderRadius: 1, fontWeight: 600,
-            bgcolor: tray.isActive ? 'success.50' : 'error.50',
-            color: tray.isActive ? 'success.main' : 'error.main',
-            border: '1px solid',
-            borderColor: tray.isActive ? 'success.200' : 'error.200',
-          }}
-        >
-          {tray.isActive ? 'Active' : 'Inactive'}
-        </Typography>
       </Box>
     </Paper>
   ))}
@@ -234,7 +222,6 @@ const TraysPage: React.FC<TraysPageProps> = ({ hideHeader = false }) => {
                             <TableRow>
                                 <TableCell sx={{ py: 1.5, fontWeight: 600 }}>Name & Description</TableCell>
                                 <TableCell sx={{ py: 1.5, fontWeight: 600 }}>Dimensions (W×L×D)</TableCell>
-                                <TableCell sx={{ py: 1.5, fontWeight: 600 }} align="center">Status</TableCell>
                                 <TableCell sx={{ py: 1.5, fontWeight: 600 }} align="right">Actions</TableCell>
                             </TableRow>
                         </TableHead>
@@ -261,23 +248,6 @@ const TraysPage: React.FC<TraysPageProps> = ({ hideHeader = false }) => {
                                         ) : (
                                             <Typography variant="body2" color="text.secondary">-</Typography>
                                         )}
-                                    </TableCell>
-                                    <TableCell sx={{ py: 1, width: '15%' }} align="center">
-                                        <Typography
-                                            variant="caption"
-                                            sx={{
-                                                px: 1,
-                                                py: 0.25,
-                                                borderRadius: 1,
-                                                fontWeight: 600,
-                                                bgcolor: tray.isActive ? 'success.50' : 'error.50',
-                                                color: tray.isActive ? 'success.main' : 'error.main',
-                                                border: '1px solid',
-                                                borderColor: tray.isActive ? 'success.200' : 'error.200',
-                                            }}
-                                        >
-                                            {tray.isActive ? 'Active' : 'Inactive'}
-                                        </Typography>
                                     </TableCell>
                                     <TableCell sx={{ py: 1, whiteSpace: 'nowrap', width: '15%' }} align="right">
                                         <Tooltip title="Edit">
