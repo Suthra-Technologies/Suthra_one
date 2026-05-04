@@ -594,9 +594,13 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
           </Typography> */}
           <Box sx={{ flexGrow: 1 }} />
           <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
-            <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 0.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <ShiftManager />
-              {Capacitor.getPlatform() !== 'ios' && <SubscriptionStatus />}
+              {Capacitor.getPlatform() !== 'ios' && (
+                <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+                  <SubscriptionStatus />
+                </Box>
+              )}
             </Box>
             {hasRole(['admin']) && activeRole !== 'customer' && <RestaurantStatusToggle />}
             <Tooltip title="Notifications">
@@ -657,7 +661,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
               </Button>
             ) : (
               <Tooltip title="Account">
-                <IconButton onClick={handleProfileMenuOpen} color="inherit" sx={{ ml: 1 }}>
+                <IconButton onClick={handleProfileMenuOpen} color="inherit" sx={{ ml: { xs: 0, sm: 1 } }}>
                   <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }} src={user?.avatar}>
                     {user?.name?.charAt(0)?.toUpperCase() || 'U'}
                   </Avatar>

@@ -40,6 +40,8 @@ import {
   Tooltip,
   Typography,
   useTheme,
+  Pagination,
+  useMediaQuery,
 } from '@mui/material';
 import Grid from '@mui/material/Grid2';
 import React, { useEffect, useMemo, useState } from 'react';
@@ -83,6 +85,8 @@ const KitchenInterface: React.FC = () => {
   const [activeTab, setActiveTab] = useState<number>(0); // 0: Live Orders, 1: Pre-Orders
   const [filterStatus, setFilterStatus] = useState<string>('all'); // 'all', 'urgent', 'pending', 'preparing', 'ready'
   const [filterType, setFilterType] = useState<string>('all'); // 'all', 'dine_in', 'takeaway', 'delivery'
+  const [page, setPage] = useState(1);
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const headingFontSize = { xs: '1.12rem', md: '1.6rem' };
   const bodyFontSize = { xs: '0.7rem', sm: '0.88rem' };
 
@@ -434,6 +438,14 @@ const KitchenInterface: React.FC = () => {
     return result;
   }, [orders, filterStatus, filterType, activeTab]);
 
+  const ITEMS_PER_PAGE = isMobile ? 5 : (filteredOrders.length || 1);
+  const totalPages = isMobile ? Math.ceil(filteredOrders.length / 5) : 1;
+  const paginatedOrders = isMobile ? filteredOrders.slice((page - 1) * 5, page * 5) : filteredOrders;
+
+  useEffect(() => {
+    setPage(1);
+  }, [filterType, filterStatus, activeTab]);
+
   // Statistics
   const stats = useMemo(() => {
     const currentOrders = orders.filter((o) => (activeTab === 0 ? !o.isPreOrder : o.isPreOrder));
@@ -562,7 +574,7 @@ const KitchenInterface: React.FC = () => {
         </Paper>
       ) : (
         <Grid container spacing={2}>
-          {filteredOrders.map((order) => {
+          {paginatedOrders.map((order) => {
             const progress = getOrderProgress(order.items);
             const urgency = getUrgencyLevel(order.createdAt);
             const isAllReady = progress === 100;
@@ -852,7 +864,7 @@ const KitchenInterface: React.FC = () => {
                       size="small"
                       onClick={() => handlePrintKOT(order)}
                       startIcon={<PrintIcon />}
-                      sx={{ mb: { xs: 0, sm: 0.5 }, flex: { xs: 1, sm: 'initial' }, minWidth: 0, fontSize: { xs: '0.62rem', sm: '0.78rem' }, py: { xs: 0.45, sm: 0.7 }, px: { xs: 0.5, sm: 1 }, minHeight: { xs: 28, sm: 34 }, '& .MuiButton-startIcon': { mr: { xs: 0.3, sm: 0.75 } } }}
+                      sx={{ display: { xs: 'none', sm: 'inline-flex' }, mb: { xs: 0, sm: 0.5 }, flex: { xs: 1, sm: 'initial' }, minWidth: 0, fontSize: { xs: '0.62rem', sm: '0.78rem' }, py: { xs: 0.45, sm: 0.7 }, px: { xs: 0.5, sm: 1 }, minHeight: { xs: 28, sm: 34 }, '& .MuiButton-startIcon': { mr: { xs: 0.3, sm: 0.75 } } }}
                     >
                       Print KOT
                     </Button>
@@ -891,6 +903,18 @@ const KitchenInterface: React.FC = () => {
             );
           })}
         </Grid>
+      )}
+
+      {!loading && isMobile && totalPages > 1 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+          <Pagination 
+            count={totalPages} 
+            page={page} 
+            onChange={(_, value) => setPage(value)} 
+            color="primary" 
+            size="large"
+          />
+        </Box>
       )}
 
 {/* Dialog for canceling item */ }

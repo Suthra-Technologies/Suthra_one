@@ -17,7 +17,10 @@ import {
     Menu,
     MenuItem,
     Typography,
-    useTheme
+    useTheme,
+    Pagination,
+    Stack,
+    useMediaQuery
 } from '@mui/material';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
@@ -36,6 +39,8 @@ const KitchenOrdersPage: React.FC = () => {
     const theme = useTheme();
     const [orderTypeFilter, setOrderTypeFilter] = useState<string>('all');
     const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [page, setPage] = useState(1);
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const headingFontSize = { xs: '1.2rem', sm: '1.45rem' };
     const bodyFontSize = { xs: '0.76rem', sm: '0.88rem' };
 
@@ -130,16 +135,22 @@ const KitchenOrdersPage: React.FC = () => {
         return matchType && matchStatus;
     });
 
+    const ITEMS_PER_PAGE = isMobile ? 5 : (filteredOrders.length || 1);
+    const totalPages = isMobile ? Math.ceil(filteredOrders.length / 5) : 1;
+    const paginatedOrders = isMobile ? filteredOrders.slice((page - 1) * 5, page * 5) : filteredOrders;
 
+    useEffect(() => {
+        setPage(1);
+    }, [orderTypeFilter, statusFilter]);
 
     return (
         <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
             <Box
                 sx={{
                     display: 'flex',
-                    flexDirection: { xs: 'column', md: 'row' },
+                    flexDirection: { xs: 'column', md: 'column' },
                     justifyContent: 'space-between',
-                    alignItems: { xs: 'flex-start', md: 'flex-start' },
+                    alignItems: { xs: 'flex-start', md: 'stretch' },
                     gap: 2,   // 🔥 NEW
                     mb: 4
                 }}
@@ -164,7 +175,7 @@ const KitchenOrdersPage: React.FC = () => {
                     sx={{
                         display: 'flex',
                         flexDirection: 'column',
-                        alignItems: 'flex-end',
+                        alignItems: { xs: 'flex-end', md: 'center' },
                         gap: 1.5
                     }}
                 >
@@ -174,7 +185,7 @@ const KitchenOrdersPage: React.FC = () => {
                             display: 'flex',
                             flexWrap: 'wrap',
                             gap: 1,
-                            justifyContent: { xs: 'flex-start', md: 'flex-end' },
+                            justifyContent: { xs: 'flex-start', md: 'center' },
                             width: '100%'
                         }}
                     >
@@ -222,7 +233,7 @@ const KitchenOrdersPage: React.FC = () => {
                             display: 'flex',
                             flexWrap: 'wrap',
                             gap: 1,
-                            justifyContent: { xs: 'flex-start', md: 'flex-end' },  // 🔥 NEW
+                            justifyContent: { xs: 'flex-start', md: 'center' },  // 🔥 NEW
                             width: '100%'  // 🔥 NEW
                         }}
                     >
@@ -272,7 +283,7 @@ const KitchenOrdersPage: React.FC = () => {
                 </Box>
             ) : (
                 <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
-                    {filteredOrders.map((order) => (
+                    {paginatedOrders.map((order) => (
                         <Grid
                             item
                             xs={12}
@@ -407,6 +418,18 @@ const KitchenOrdersPage: React.FC = () => {
                         </Grid>
                     ))}
                 </Grid>
+            )}
+
+            {!loading && isMobile && totalPages > 1 && (
+                <Stack spacing={2} alignItems="center" sx={{ mt: 4 }}>
+                    <Pagination 
+                        count={totalPages} 
+                        page={page} 
+                        onChange={(_, value) => setPage(value)} 
+                        color="primary" 
+                        size="large"
+                    />
+                </Stack>
             )}
 
             <Menu
