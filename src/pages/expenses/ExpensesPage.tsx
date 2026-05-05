@@ -42,7 +42,8 @@ import {
     Notifications as NotifyIcon,
     TrendingUp as TrendIcon,
     AccountBalanceWallet as WalletIcon,
-    Warning as AlertIcon
+    Warning as AlertIcon,
+    History as HistoryIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { expensesAPI } from '../../services/api';
@@ -313,6 +314,9 @@ const ExpensesPage: React.FC = () => {
                                             <Stack direction="row" spacing={1} justifyContent="flex-end">
                                                 <Tooltip title="View Details">
                                                     <IconButton size="small" onClick={() => navigate(`${exp._id}`)}><ViewIcon color="primary" /></IconButton>
+                                                </Tooltip>
+                                                <Tooltip title="View History">
+                                                    <IconButton size="small" onClick={() => navigate(`${exp._id}#history`)}><HistoryIcon color="info" /></IconButton>
                                                 </Tooltip>
                                                 <Tooltip title="Edit">
                                                     <IconButton size="small" onClick={() => navigate(`edit/${exp._id}`)}><EditIcon color="secondary" /></IconButton>

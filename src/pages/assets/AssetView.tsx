@@ -52,7 +52,7 @@ import {
   CalendarMonth,
 } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
-import { assetsAPI } from '../../services/api';
+import { assetsAPI, usersAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 
 interface TabPanelProps {
@@ -79,6 +79,7 @@ const AssetView: React.FC = () => {
   const [asset, setAsset] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
   const [tabValue, setTabValue] = useState(0);
+  const [userEmails, setUserEmails] = useState<{[key: string]: string}>({});
   
   // Completion Dialog State
   const [completionDialog, setCompletionDialog] = useState({
@@ -92,6 +93,33 @@ const AssetView: React.FC = () => {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState('');
 
+  const getUserEmail = async (userId: string): Promise<string> => {
+    // Return cached email if already fetched
+    if (userEmails[userId]) {
+      return userEmails[userId];
+    }
+
+    // Skip if userId is empty or null
+    if (!userId || userId === 'undefined' || userId === 'null') {
+      return 'System';
+    }
+
+    try {
+      const res = await usersAPI.getUser(userId);
+      const email = res.data?.email || 'Unknown';
+      
+      // Cache the email for future use
+      setUserEmails(prev => ({ ...prev, [userId]: email }));
+      
+      return email;
+    } catch (error) {
+      console.error('Error fetching user email:', error);
+      // Cache the failure to avoid repeated failed requests
+      setUserEmails(prev => ({ ...prev, [userId]: 'Unknown' }));
+      return 'Unknown';
+    }
+  };
+
   const fetchAssetDetails = async () => {
     setLoading(true);
     try {
@@ -100,6 +128,17 @@ const AssetView: React.FC = () => {
       
       const historyRes = await assetsAPI.getHistory(id!);
       setHistory(historyRes.data);
+
+      // Pre-fetch user emails for all history items
+      const userIds = [...new Set(historyRes.data.map((item: any) => item.performedBy).filter(Boolean))];
+      const emailPromises = userIds.map(async (userId) => {
+        if (userId && userId !== 'undefined' && userId !== 'null') {
+          await getUserEmail(userId);
+        }
+      });
+      
+      // Wait for all email fetches to complete (but don't block the UI)
+      Promise.allSettled(emailPromises);
     } catch (error) {
       toast.error('Failed to load asset details');
       navigate('/assets');
@@ -287,7 +326,26 @@ const AssetView: React.FC = () => {
               </Tabs>
             </Box>
             
-            <Box sx={{ p: 3 }}>
+            <Box sx={{
+              p: 3,
+              maxHeight: 400, 
+              overflowY: 'auto',
+              pr: 1,
+              '&::-webkit-scrollbar': {
+                width: '6px',
+              },
+              '&::-webkit-scrollbar-track': {
+                background: alpha(theme.palette.divider, 0.05),
+                borderRadius: '4px',
+              },
+              '&::-webkit-scrollbar-thumb': {
+                background: alpha(theme.palette.text.secondary, 0.3),
+                borderRadius: '4px',
+                '&:hover': {
+                  background: alpha(theme.palette.text.secondary, 0.5),
+                },
+              },
+            }}>
               <TabPanel value={tabValue} index={0}>
                 <Typography variant="h6" fontWeight="700" mb={2}>Description</Typography>
                 <Typography variant="body1" color="text.secondary" paragraph>
@@ -316,50 +374,50 @@ const AssetView: React.FC = () => {
 
               <TabPanel value={tabValue} index={1}>
                 <List disablePadding>
-                  {history.map((item, idx) => (
-                    <React.Fragment key={idx}>
-                      <ListItem alignItems="flex-start" sx={{ px: 0 }}>
-                        <ListItemIcon sx={{ mt: 1 }}>
-                          {item.type === 'service' ? <Build color="info" /> : item.type === 'renewal' ? <CheckCircle color="warning" /> : <History />}
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={
-                            <Stack direction="row" justifyContent="space-between" alignItems="center">
-                              <Typography variant="subtitle1" fontWeight="700">
-                                {item.type === 'service' ? 'Maintenance Performed' : item.type === 'renewal' ? 'Renewal Completed' : 'Status Update'}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary">
-                                {new Date(item.date).toLocaleDateString()}
-                              </Typography>
-                            </Stack>
-                          }
-                          secondary={
-                            <Box mt={0.5}>
-                              <Typography variant="body2" color="text.primary">{item.description}</Typography>
-                              {item.cost > 0 && (
-                                <Chip 
-                                  icon={<AttachMoney fontSize="small" />} 
-                                  label={`Cost: ${item.cost}`} 
-                                  size="small" 
-                                  sx={{ mt: 1, height: 24 }} 
-                                />
-                              )}
-                              <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'text.secondary' }}>
-                                Performed by: {item.performedBy || 'Unknown'}
-                              </Typography>
-                            </Box>
-                          }
-                        />
-                      </ListItem>
-                      {idx < history.length - 1 && <Divider variant="inset" component="li" />}
-                    </React.Fragment>
-                  ))}
-                  {history.length === 0 && (
-                    <Box textAlign="center" py={5}>
-                      <Typography color="text.secondary">No history recorded for this asset yet.</Typography>
-                    </Box>
-                  )}
-                </List>
+                    {history.map((item, idx) => (
+                      <React.Fragment key={idx}>
+                        <ListItem alignItems="flex-start" sx={{ px: 0 }}>
+                          <ListItemIcon sx={{ mt: 1 }}>
+                            {item.type === 'service' ? <Build color="info" /> : item.type === 'renewal' ? <CheckCircle color="warning" /> : <History />}
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={
+                              <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                <Typography variant="subtitle1" fontWeight="700">
+                                  {item.type === 'service' ? 'Maintenance Performed' : item.type === 'renewal' ? 'Renewal Completed' : 'Status Update'}
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                  {new Date(item.date).toLocaleDateString()}
+                                </Typography>
+                              </Stack>
+                            }
+                            secondary={
+                              <Box mt={0.5}>
+                                <Typography variant="body2" color="text.primary">{item.description}</Typography>
+                                {item.cost > 0 && (
+                                  <Chip 
+                                    icon={<AttachMoney fontSize="small" />} 
+                                    label={`Cost: ${item.cost}`} 
+                                    size="small" 
+                                    sx={{ mt: 1, height: 24 }} 
+                                  />
+                                )}
+                                <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'text.secondary' }}>
+                                  Performed by: {userEmails[item.performedBy] || 'Loading...'}
+                                </Typography>
+                              </Box>
+                            }
+                          />
+                        </ListItem>
+                        {idx < history.length - 1 && <Divider variant="inset" component="li" />}
+                      </React.Fragment>
+                    ))}
+                    {history.length === 0 && (
+                      <Box textAlign="center" py={5}>
+                        <Typography color="text.secondary">No history recorded for this asset yet.</Typography>
+                      </Box>
+                    )}
+                  </List>
               </TabPanel>
 
               <TabPanel value={tabValue} index={2}>
