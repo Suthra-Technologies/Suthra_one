@@ -119,11 +119,12 @@ const CustomerLayout: React.FC = () => {
           borderBottom: '1px solid',
           borderColor: 'rgba(0,0,0,0.06)',
           color: 'text.primary',
+          pt: showMobileUI && isNative ? { xs: 'env(safe-area-inset-top)', md: 0 } : 0,
         }}
       >
-        <Container maxWidth="lg">
-          <Toolbar disableGutters sx={{ minHeight: { xs: 64, md: 72 }, gap: 2 }}>
-            {/* Mobile Back Button + Hamburger */}
+        <Container maxWidth="lg" disableGutters sx={{ px: { xs: 1, sm: 2, md: 3 } }}>
+          <Toolbar disableGutters sx={{ minHeight: { xs: 64, md: 72 }, gap: { xs: 0.75, md: 2 } }}>
+            {/* Mobile Back Button */}
             {showMobileUI && (
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 {!location.pathname.match(/\/customer\/order\/?$/) && (
@@ -152,9 +153,6 @@ const CustomerLayout: React.FC = () => {
                     <ArrowBack sx={{ color: 'primary.main' }} />
                   </IconButton>
                 )}
-                <IconButton onClick={() => setMobileOpen(true)} sx={{ mr: 1 }}>
-                  <MenuIcon />
-                </IconButton>
               </Box>
             )}
 
@@ -165,8 +163,10 @@ const CustomerLayout: React.FC = () => {
                 alignItems: 'center',
                 gap: 1.5,
                 cursor: 'pointer',
+                flexGrow: { xs: 1, md: 0 },
                 mr: { md: 4 },
-                pl: { xs: 2, md: 0 },
+                pl: { xs: 0, md: 0 },
+                minWidth: 0,
               }}
               onClick={() => navigate(getRelativePath('/customer/order'))}
             >
@@ -175,8 +175,8 @@ const CustomerLayout: React.FC = () => {
                   src={restaurant.logo}
                   alt={restaurant.name}
                   sx={{
-                    width: { xs: 46, sm: 46 },
-                    height: { xs: 46, sm: 46 },
+                    width: { xs: 40, sm: 46 },
+                    height: { xs: 40, sm: 46 },
                     border: '2px solid',
                     borderColor: 'primary.main',
                     boxShadow: '0 2px 8px rgba(79,70,229,0.15)',
@@ -185,8 +185,8 @@ const CustomerLayout: React.FC = () => {
               ) : (
                 <Avatar
                   sx={{
-                    width: { xs: 46, sm: 46 },
-                    height: { xs: 46, sm: 46 },
+                    width: { xs: 40, sm: 46 },
+                    height: { xs: 40, sm: 46 },
                     bgcolor: 'primary.main',
                     boxShadow: '0 2px 8px rgba(79,70,229,0.25)',
                   }}
@@ -194,22 +194,25 @@ const CustomerLayout: React.FC = () => {
                   <RestaurantIcon />
                 </Avatar>
               )}
-              <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+              <Box sx={{ display: 'block', minWidth: 0, maxWidth: { xs: 'calc(100vw - 170px)', sm: 'none' } }}>
                 <Typography
                   variant="h6"
                   sx={{
                     fontWeight: 800,
-                    fontSize: '1.1rem',
+                    fontSize: { xs: '0.85rem', sm: '1.1rem' },
                     letterSpacing: '-0.02em',
                     background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent',
                     lineHeight: 1.2,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
                   }}
                 >
                   {restaurant?.name || 'Restaurant'}
                 </Typography>
-                <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary', fontWeight: 500 }}>
+                <Typography sx={{ fontSize: { xs: '0.62rem', sm: '0.7rem' }, color: 'text.secondary', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   Order Online
                 </Typography>
               </Box>
@@ -248,7 +251,7 @@ const CustomerLayout: React.FC = () => {
 
             {/* Auth Buttons */}
             {!user ? (
-              <Box sx={{ display: 'flex', gap: 1 }}>
+              <Box sx={{ display: { xs: 'none', sm: 'flex' }, gap: 1 }}>
                 <Button
                   variant="outlined"
                   size="small"
@@ -343,9 +346,9 @@ const CustomerLayout: React.FC = () => {
               </Box>
             )}
 
-            {/* Mobile hamburger - ON FAR RIGHT */}
-            {isMobile && (
-              <IconButton onClick={() => setMobileOpen(true)} sx={{ ml: 1 }}>
+            {/* Mobile hamburger - on far right */}
+            {showMobileUI && (
+              <IconButton onClick={() => setMobileOpen(true)} sx={{ ml: 0.5 }}>
                 <MenuIcon />
               </IconButton>
             )}
@@ -363,11 +366,12 @@ const CustomerLayout: React.FC = () => {
             width: 280,
             borderRadius: '0 20px 20px 0',
             bgcolor: 'background.paper',
+            pt: showMobileUI && isNative ? 'env(safe-area-inset-top)' : 0,
           },
         }}
       >
         <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0, flex: 1 }}>
             {restaurant?.logo ? (
               <Avatar src={restaurant.logo} alt={restaurant.name} sx={{ width: 36, height: 36 }} />
             ) : (
@@ -375,7 +379,9 @@ const CustomerLayout: React.FC = () => {
                 <RestaurantIcon fontSize="small" />
               </Avatar>
             )}
-            <Typography fontWeight={700} fontSize="1rem">{restaurant?.name || 'Restaurant'}</Typography>
+            <Typography fontWeight={700} fontSize="1rem" noWrap sx={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {restaurant?.name || 'Restaurant'}
+            </Typography>
           </Box>
           <IconButton onClick={() => setMobileOpen(false)} size="small">
             <Close />
@@ -442,7 +448,7 @@ const CustomerLayout: React.FC = () => {
             }}
           >
             {/* Restaurant Info */}
-            <Box sx={{ pl: { xs: 2, md: 0 }, width: '100%', textAlign: 'left !important' }}>
+            <Box sx={{ pl: { xs: 0, md: 0 }, width: '100%', textAlign: 'left !important' }}>
               {/* Mobile: strict vertical stack (logo -> title -> subtitle) */}
               <Box 
                 sx={{ 

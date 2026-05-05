@@ -120,6 +120,8 @@ export const usersAPI = {
   createUser: (userData: any) => api.post('/users', userData),
   updateUser: (id: string, userData: any) => api.put(`/users/${id}`, userData),
   deleteUser: (id: string) => api.delete(`/users/${id}`),
+  // Backward compatibility for older callers
+  delete: (id: string) => api.delete(`/users/${id}`),
   toggleUserStatus: (id: string) => api.patch(`/users/${id}/toggle-status`),
   resetPassword: (id: string, data: any) => api.put(`/users/${id}/reset-password`, data),
 };
@@ -186,6 +188,8 @@ export const ordersAPI = {
   // Remove item from order
   removeItem: (id: string, itemIndex: number) =>
     api.delete(`/orders/${id}/items/${itemIndex}`),
+  refundItem: (id: string, itemIndex: number) =>
+    api.post(`/orders/${id}/items/${itemIndex}/refund`),
 
   // Kitchen item-wise status updates
   updateItemStatus: (orderId: string, itemIndex: number, status: string, cancelReason?: string) =>

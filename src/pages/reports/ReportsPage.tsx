@@ -5393,7 +5393,8 @@ const ReportsPage: React.FC = () => {
                     <Tab label="Category Performance" />
                     <Tab label="Cancellation Analysis" />
                     <Tab label="Profit & Loss" />
-                    <Tab label="Customer Analytics" />
+                    {/* <Tab label="Customer Analytics" /> */}
+                    <Tab label="Customer Analytics" disabled sx={{ display: 'none' }} />
                     <Tab label="Inventory Stock" />
                     <Tab label="Coupon Analytics" />
                     <Tab label="Table Performance" />
@@ -5424,7 +5425,7 @@ const ReportsPage: React.FC = () => {
                         {activeTab === 8 && renderCategoryPerformance()}
                         {activeTab === 9 && renderCancellationAnalysis()}
                         {activeTab === 10 && renderProfitLoss()}
-                        {activeTab === 11 && renderCustomerAnalytics()}
+                        {/* {activeTab === 11 && renderCustomerAnalytics()} */}
                         {activeTab === 12 && renderInventoryStock()}
                         {activeTab === 13 && renderCouponAnalytics()}
                         {activeTab === 14 && renderTableStats()}

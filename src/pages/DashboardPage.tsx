@@ -296,6 +296,8 @@ const DashboardPage: React.FC = () => {
   const { formatCurrency } = useSettings();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const headingFontSize = { xs: '1.12rem', sm: '1.4rem', md: '2.125rem' };
+  const bodyFontSize = { xs: '0.78rem', sm: '0.88rem', md: '0.95rem' };
 
 
   // ---------- Responsive Pie Settings ----------
@@ -626,7 +628,7 @@ const DashboardPage: React.FC = () => {
         maxWidth: 1600,
         mx: "auto",
         px: { xs: 1.5, sm: 2.5, md: 3, lg: 4 },
-        py: { xs: 2, md: 3 }
+        py: { xs: 1.6, md: 3 }
       }}
     >
       {/* Header */}
@@ -636,12 +638,11 @@ const DashboardPage: React.FC = () => {
           flexDirection: { xs: 'column', sm: 'row' },
           justifyContent: 'space-between',
           alignItems: { xs: 'flex-start', sm: 'center' },
-          mb: 3,
-          gap: 2
+          mb: { xs: 2, sm: 3 },
+          gap: { xs: 1.25, sm: 2 }
         }}
       >
         <Box sx={{ width: { xs: '100%', sm: 'auto' }, textAlign: { xs: 'center', sm: 'left' } }}>
-
         </Box>
         <Stack
           direction={{ xs: "column", sm: "row" }}
@@ -718,7 +719,7 @@ const DashboardPage: React.FC = () => {
       </Box>
 
       {/* Main Stats Grid */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
+      <Grid container spacing={{ xs: 1.2, sm: 3 }} sx={{ mb: { xs: 2.2, sm: 4 } }}>
         <Grid item xs={6} sm={6} md={4} lg={3} xl={3}>
           {/* Today's / Week / Month Sales */}
           <StatCard
@@ -810,7 +811,7 @@ const DashboardPage: React.FC = () => {
       <Grid container spacing={3}>
         <Grid item xs={12}>
           <Box sx={{
-            p: 3,
+            p: { xs: 1.5, sm: 3 },
             borderRadius: 4,
             background: `linear-gradient(135deg, ${alpha(theme.palette.background.paper, 0.8)} 0%, ${alpha(theme.palette.background.paper, 0.9)} 100%)`,
             backdropFilter: 'blur(10px)',
@@ -823,7 +824,7 @@ const DashboardPage: React.FC = () => {
               boxShadow: `0 12px 30px 0 ${alpha(theme.palette.primary.main, 0.1)}`,
             }
           }}>
-            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
+            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, fontSize: headingFontSize, color: { xs: '#000', sm: 'text.primary' }, textAlign: { xs: 'center', sm: 'left' } }}>
               Orders Activity (Hourly)
             </Typography>
             <OrdersChart data={dashboardData?.hourlyDistribution || []} />
@@ -1176,22 +1177,27 @@ const DashboardPage: React.FC = () => {
         </Stack>
 
         {/* Asset Stat Cards */}
-        <Grid container spacing={2} mb={3}>
+        <Grid container spacing={{ xs: 1.5, sm: 2 }} mb={3}>
           <Grid item xs={6} sm={3}>
             <Card 
               onClick={() => setAssetTabValue(0)}
               sx={{ 
                 cursor: 'pointer', 
-                p: 2, 
-                borderRadius: 3, 
+                p: { xs: 1.25, sm: 2 }, 
+                borderRadius: { xs: 6, sm: 3 }, 
                 bgcolor: alpha(theme.palette.error.main, 0.05),
                 border: assetTabValue === 0 ? `2px solid ${theme.palette.error.main}` : 'none',
                 transition: 'all 0.2s',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center',
                 '&:hover': { transform: 'translateY(-4px)', boxShadow: theme.shadows[2] }
               }}
             >
-              <Typography variant="caption" color="error" fontWeight="700">EXPIRED</Typography>
-              <Typography variant="h4" fontWeight="800" color="error">{assetInsights?.summary?.expired || 0}</Typography>
+              <Typography variant="caption" color="error" fontWeight="700" sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' }, lineHeight: 1.2, mb: 0.5 }}>EXPIRED</Typography>
+              <Typography variant="h4" fontWeight="800" color="error" sx={{ fontSize: { xs: '1.4rem', sm: '2.125rem' } }}>{assetInsights?.summary?.expired || 0}</Typography>
             </Card>
           </Grid>
           <Grid item xs={6} sm={3}>
@@ -1199,16 +1205,21 @@ const DashboardPage: React.FC = () => {
               onClick={() => setAssetTabValue(1)}
               sx={{ 
                 cursor: 'pointer', 
-                p: 2, 
-                borderRadius: 3, 
+                p: { xs: 1.25, sm: 2 }, 
+                borderRadius: { xs: 6, sm: 3 }, 
                 bgcolor: alpha(theme.palette.warning.main, 0.05),
                 border: assetTabValue === 1 ? `2px solid ${theme.palette.warning.main}` : 'none',
                 transition: 'all 0.2s',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center',
                 '&:hover': { transform: 'translateY(-4px)', boxShadow: theme.shadows[2] }
               }}
             >
-              <Typography variant="caption" color="warning.main" fontWeight="700">EXPIRING SOON</Typography>
-              <Typography variant="h4" fontWeight="800" color="warning.main">{assetInsights?.summary?.expiringSoon || 0}</Typography>
+              <Typography variant="caption" color="warning.main" fontWeight="700" sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' }, lineHeight: 1.2, mb: 0.5 }}>EXPIRING SOON</Typography>
+              <Typography variant="h4" fontWeight="800" color="warning.main" sx={{ fontSize: { xs: '1.4rem', sm: '2.125rem' } }}>{assetInsights?.summary?.expiringSoon || 0}</Typography>
             </Card>
           </Grid>
           <Grid item xs={6} sm={3}>
@@ -1216,16 +1227,21 @@ const DashboardPage: React.FC = () => {
               onClick={() => setAssetTabValue(2)}
               sx={{ 
                 cursor: 'pointer', 
-                p: 2, 
-                borderRadius: 3, 
+                p: { xs: 1.25, sm: 2 }, 
+                borderRadius: { xs: 6, sm: 3 }, 
                 bgcolor: alpha(theme.palette.info.main, 0.05),
                 border: assetTabValue === 2 ? `2px solid ${theme.palette.info.main}` : 'none',
                 transition: 'all 0.2s',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center',
                 '&:hover': { transform: 'translateY(-4px)', boxShadow: theme.shadows[2] }
               }}
             >
-              <Typography variant="caption" color="info.main" fontWeight="700">SERVICE DUE</Typography>
-              <Typography variant="h4" fontWeight="800" color="info.main">{assetInsights?.summary?.maintenanceDue || 0}</Typography>
+              <Typography variant="caption" color="info.main" fontWeight="700" sx={{ fontSize: { xs: '0.65rem', sm: '0.75rem' }, lineHeight: 1.2, mb: 0.5 }}>SERVICE DUE</Typography>
+              <Typography variant="h4" fontWeight="800" color="info.main" sx={{ fontSize: { xs: '1.4rem', sm: '2.125rem' } }}>{assetInsights?.summary?.maintenanceDue || 0}</Typography>
             </Card>
           </Grid>
           <Grid item xs={6} sm={3}>
@@ -1233,16 +1249,21 @@ const DashboardPage: React.FC = () => {
               onClick={() => setAssetTabValue(3)}
               sx={{ 
                 cursor: 'pointer', 
-                p: 2, 
-                borderRadius: 3, 
+                p: { xs: 1.25, sm: 2 }, 
+                borderRadius: { xs: 6, sm: 3 }, 
                 bgcolor: alpha(theme.palette.success.main, 0.05),
                 border: assetTabValue === 3 ? `2px solid ${theme.palette.success.main}` : 'none',
                 transition: 'all 0.2s',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                textAlign: 'center',
                 '&:hover': { transform: 'translateY(-4px)', boxShadow: theme.shadows[2] }
               }}
             >
-              <Typography variant="caption" color="success.main" fontWeight="700">UPCOMING SERVICES</Typography>
-              <Typography variant="h4" fontWeight="800" color="success.main">{assetInsights?.summary?.upcomingServices || 0}</Typography>
+              <Typography variant="caption" color="success.main" fontWeight="700" sx={{ fontSize: { xs: '0.6rem', sm: '0.75rem' }, lineHeight: 1.2, mb: 0.5 }}>UPCOMING SERVICES</Typography>
+              <Typography variant="h4" fontWeight="800" color="success.main" sx={{ fontSize: { xs: '1.4rem', sm: '2.125rem' } }}>{assetInsights?.summary?.upcomingServices || 0}</Typography>
             </Card>
           </Grid>
         </Grid>
@@ -1255,7 +1276,8 @@ const DashboardPage: React.FC = () => {
               onChange={(_, newValue) => setAssetTabValue(newValue)}
               variant="scrollable"
               scrollButtons="auto"
-              sx={{ px: 2 }}
+              allowScrollButtonsMobile
+              sx={{ px: { xs: 0, sm: 2 } }}
             >
               <Tab label={`Expired (${assetInsights?.summary?.expired || 0})`} />
               <Tab label={`Expiring Soon (${assetInsights?.summary?.expiringSoon || 0})`} />
@@ -1270,108 +1292,199 @@ const DashboardPage: React.FC = () => {
               </Box>
             ) : (
               <>
-                <TableContainer>
-                  <Table size="small">
-                    <TableHead sx={{ bgcolor: alpha(theme.palette.primary.main, 0.02) }}>
-                      <TableRow>
-                        <TableCell sx={{ fontWeight: 700 }}>Asset Name</TableCell>
-                        <TableCell sx={{ fontWeight: 700 }}>Type</TableCell>
-                        <TableCell sx={{ fontWeight: 700 }}>Relevant Date</TableCell>
-                        <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
-                        <TableCell sx={{ fontWeight: 700 }} align="right">Actions</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {assetTabData.data.length === 0 ? (
+                {!isMobile ? (
+                  <TableContainer>
+                    <Table size="small">
+                      <TableHead sx={{ bgcolor: alpha(theme.palette.primary.main, 0.02) }}>
                         <TableRow>
-                          <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
-                            <Typography variant="body2" color="text.secondary">No assets found in this category</Typography>
-                          </TableCell>
+                          <TableCell sx={{ fontWeight: 700 }}>Asset Name</TableCell>
+                          <TableCell sx={{ fontWeight: 700 }}>Type</TableCell>
+                          <TableCell sx={{ fontWeight: 700 }}>Relevant Date</TableCell>
+                          <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
+                          <TableCell sx={{ fontWeight: 700 }} align="right">Actions</TableCell>
                         </TableRow>
-                      ) : (
-                        assetTabData.data.map((asset: any) => (
-                          <TableRow key={asset._id} hover>
-                            <TableCell>
-                              <Typography variant="subtitle2" fontWeight="700">{asset.name}</Typography>
+                      </TableHead>
+                      <TableBody>
+                        {assetTabData.data.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                              <Typography variant="body2" color="text.secondary">No assets found in this category</Typography>
                             </TableCell>
-                            <TableCell>
-                              <Chip
-                                icon={getAssetIcon(asset.type)}
-                                label={asset.type}
-                                size="small"
-                                sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), color: theme.palette.primary.main }}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              {assetTabValue < 2 ? (
-                                asset.lifecycle?.expiryDate ? new Date(asset.lifecycle.expiryDate).toLocaleDateString() : 'N/A'
-                              ) : (
-                                asset.lifecycle?.nextServiceDate ? new Date(asset.lifecycle.nextServiceDate).toLocaleDateString() : 'N/A'
-                              )}
-                            </TableCell>
-                            <TableCell>
+                          </TableRow>
+                        ) : (
+                          assetTabData.data.map((asset: any) => (
+                            <TableRow key={asset._id} hover>
+                              <TableCell>
+                                <Typography variant="subtitle2" fontWeight="700">{asset.name}</Typography>
+                              </TableCell>
+                              <TableCell>
+                                <Chip
+                                  icon={getAssetIcon(asset.type)}
+                                  label={asset.type}
+                                  size="small"
+                                  sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), color: theme.palette.primary.main }}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                {assetTabValue < 2 ? (
+                                  asset.lifecycle?.expiryDate ? new Date(asset.lifecycle.expiryDate).toLocaleDateString() : 'N/A'
+                                ) : (
+                                  asset.lifecycle?.nextServiceDate ? new Date(asset.lifecycle.nextServiceDate).toLocaleDateString() : 'N/A'
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <Chip
+                                  label={assetTabValue === 0 ? 'Expired' : assetTabValue === 2 ? 'Overdue' : 'Due Soon'}
+                                  size="small"
+                                  color={assetTabValue % 2 === 0 ? 'error' : 'warning'}
+                                  variant="outlined"
+                                />
+                              </TableCell>
+                              <TableCell align="right">
+                                <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                  {asset.lifecycle?.serviceRequired && (
+                                    <MuiTooltip title="Record Service">
+                                      <IconButton
+                                        size="small"
+                                        color="info"
+                                        onClick={() => setCompletionDialog({
+                                          open: true,
+                                          type: 'service',
+                                          assetId: asset._id,
+                                          assetName: asset.name,
+                                          date: new Date().toISOString().split('T')[0],
+                                          cost: 0
+                                        })}
+                                      >
+                                        <BuildIcon fontSize="small" />
+                                      </IconButton>
+                                    </MuiTooltip>
+                                  )}
+                                  {(asset.type === 'Document' || asset.type === 'License') && asset.lifecycle?.renewalRequired && (
+                                    <MuiTooltip title="Record Renewal">
+                                      <IconButton
+                                        size="small"
+                                        color="warning"
+                                        onClick={() => setCompletionDialog({
+                                          open: true,
+                                          type: 'renewal',
+                                          assetId: asset._id,
+                                          assetName: asset.name,
+                                          date: new Date().toISOString().split('T')[0],
+                                          cost: 0
+                                        })}
+                                      >
+                                        <CheckCircle fontSize="small" />
+                                      </IconButton>
+                                    </MuiTooltip>
+                                  )}
+                                  <MuiTooltip title="View/Edit">
+                                    <IconButton
+                                      size="small"
+                                      color="primary"
+                                      onClick={() => navigate(`/assets/${asset._id}/edit`)}
+                                    >
+                                      <Assessment fontSize="small" />
+                                    </IconButton>
+                                  </MuiTooltip>
+                                </Stack>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                ) : (
+                  <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {assetTabData.data.length === 0 ? (
+                      <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 2 }}>
+                        No assets found in this category
+                      </Typography>
+                    ) : (
+                      assetTabData.data.map((asset: any) => (
+                        <Card key={asset._id} variant="outlined" sx={{ borderRadius: 2, bgcolor: alpha(theme.palette.background.default, 0.5) }}>
+                          <CardContent sx={{ p: 2, pb: "16px !important" }}>
+                            <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={1}>
+                              <Box>
+                                <Typography variant="subtitle2" fontWeight="700">{asset.name}</Typography>
+                                <Chip
+                                  icon={getAssetIcon(asset.type)}
+                                  label={asset.type}
+                                  size="small"
+                                  sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), color: theme.palette.primary.main, mt: 0.5 }}
+                                />
+                              </Box>
                               <Chip
                                 label={assetTabValue === 0 ? 'Expired' : assetTabValue === 2 ? 'Overdue' : 'Due Soon'}
                                 size="small"
                                 color={assetTabValue % 2 === 0 ? 'error' : 'warning'}
                                 variant="outlined"
                               />
-                            </TableCell>
-                            <TableCell align="right">
-                              <Stack direction="row" spacing={1} justifyContent="flex-end">
+                            </Stack>
+                            <Divider sx={{ my: 1.5 }} />
+                            <Stack direction="row" justifyContent="space-between" alignItems="center">
+                              <Box>
+                                <Typography variant="caption" color="text.secondary">Relevant Date</Typography>
+                                <Typography variant="body2" fontWeight="600">
+                                  {assetTabValue < 2 ? (
+                                    asset.lifecycle?.expiryDate ? new Date(asset.lifecycle.expiryDate).toLocaleDateString() : 'N/A'
+                                  ) : (
+                                    asset.lifecycle?.nextServiceDate ? new Date(asset.lifecycle.nextServiceDate).toLocaleDateString() : 'N/A'
+                                  )}
+                                </Typography>
+                              </Box>
+                              <Stack direction="row" spacing={1}>
                                 {asset.lifecycle?.serviceRequired && (
-                                  <MuiTooltip title="Record Service">
-                                    <IconButton
-                                      size="small"
-                                      color="info"
-                                      onClick={() => setCompletionDialog({
-                                        open: true,
-                                        type: 'service',
-                                        assetId: asset._id,
-                                        assetName: asset.name,
-                                        date: new Date().toISOString().split('T')[0],
-                                        cost: 0
-                                      })}
-                                    >
-                                      <BuildIcon fontSize="small" />
-                                    </IconButton>
-                                  </MuiTooltip>
-                                )}
-                                {(asset.type === 'Document' || asset.type === 'License') && asset.lifecycle?.renewalRequired && (
-                                  <MuiTooltip title="Record Renewal">
-                                    <IconButton
-                                      size="small"
-                                      color="warning"
-                                      onClick={() => setCompletionDialog({
-                                        open: true,
-                                        type: 'renewal',
-                                        assetId: asset._id,
-                                        assetName: asset.name,
-                                        date: new Date().toISOString().split('T')[0],
-                                        cost: 0
-                                      })}
-                                    >
-                                      <CheckCircle fontSize="small" />
-                                    </IconButton>
-                                  </MuiTooltip>
-                                )}
-                                <MuiTooltip title="View/Edit">
                                   <IconButton
                                     size="small"
-                                    color="primary"
-                                    onClick={() => navigate(`/assets/${asset._id}/edit`)}
+                                    color="info"
+                                    onClick={() => setCompletionDialog({
+                                      open: true,
+                                      type: 'service',
+                                      assetId: asset._id,
+                                      assetName: asset.name,
+                                      date: new Date().toISOString().split('T')[0],
+                                      cost: 0
+                                    })}
+                                    sx={{ bgcolor: alpha(theme.palette.info.main, 0.1) }}
                                   >
-                                    <Assessment fontSize="small" />
+                                    <BuildIcon fontSize="small" />
                                   </IconButton>
-                                </MuiTooltip>
+                                )}
+                                {(asset.type === 'Document' || asset.type === 'License') && asset.lifecycle?.renewalRequired && (
+                                  <IconButton
+                                    size="small"
+                                    color="warning"
+                                    onClick={() => setCompletionDialog({
+                                      open: true,
+                                      type: 'renewal',
+                                      assetId: asset._id,
+                                      assetName: asset.name,
+                                      date: new Date().toISOString().split('T')[0],
+                                      cost: 0
+                                    })}
+                                    sx={{ bgcolor: alpha(theme.palette.warning.main, 0.1) }}
+                                  >
+                                    <CheckCircle fontSize="small" />
+                                  </IconButton>
+                                )}
+                                <IconButton
+                                  size="small"
+                                  color="primary"
+                                  onClick={() => navigate(`/assets/${asset._id}/edit`)}
+                                  sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1) }}
+                                >
+                                  <Assessment fontSize="small" />
+                                </IconButton>
                               </Stack>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                            </Stack>
+                          </CardContent>
+                        </Card>
+                      ))
+                    )}
+                  </Box>
+                )}
                 {assetTabData.total > 5 && (
                   <Box sx={{ p: 1, display: 'flex', justifyContent: 'center', borderTop: 1, borderColor: 'divider' }}>
                     <Pagination

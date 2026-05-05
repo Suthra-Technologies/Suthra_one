@@ -75,6 +75,8 @@ const TableBookingPage = () => {
     const [occasion, setOccasion] = useState('');
     const reservationFee = Number(selectedTable?.reservationFee || 0);
     const requiresReservationPayment = reservationFee > 0;
+    const headingFontSize = { xs: '1rem', sm: '1.2rem' };
+    const bodyFontSize = { xs: '0.8rem', sm: '0.95rem' };
 
 
     // Generate time slots with 30-minute intervals
@@ -290,10 +292,10 @@ const TableBookingPage = () => {
     return (
         <LocalizationProvider dateAdapter={AdapterDateFns}>
             <Box sx={{ p: 3 }}>
-                <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1 }}>
+                <Typography variant="h4" sx={{ fontWeight: 'bold', mb: 1, fontSize: headingFontSize }}>
                     Book Your Dining Experience
                 </Typography>
-                <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+                <Typography variant="body1" color="text.secondary" sx={{ mb: 4, fontSize: bodyFontSize }}>
                     Reserve your preferred table in seconds. Whether it's a romantic evening, a business lunch, or a gathering with friends, we ensure a memorable dining experience.
                 </Typography>
                 <Grid container spacing={3}>
@@ -330,11 +332,11 @@ const TableBookingPage = () => {
                                     }}>
                                         <BookingIcon />
                                     </Box>
-                                    <Typography variant="h6" fontWeight="bold">
+                                    <Typography variant="h6" fontWeight="bold" sx={{ fontSize: headingFontSize }}>
                                         Reservation Details
                                     </Typography>
                                 </Box>
-                                <Typography variant="body2" sx={{ opacity: 0.9, ml: 0.5 }}>
+                                <Typography variant="body2" sx={{ opacity: 0.9, ml: 0.5, fontSize: bodyFontSize }}>
                                     Tell us when you'd like to join us and for how many guests.
                                 </Typography>
                             </Box>
@@ -448,7 +450,7 @@ const TableBookingPage = () => {
                                             py: 1.5,
                                             fontWeight: 'bold',
                                             textTransform: 'none',
-                                            fontSize: '1rem',
+                                            fontSize: bodyFontSize,
                                             borderRadius: 2,
                                             background: loading ? 'grey' : 'linear-gradient(45deg, #6366f1 30%, #4f46e5 90%)',
                                             boxShadow: '0 4px 14px 0 rgba(99, 102, 241, 0.39)',
@@ -491,10 +493,10 @@ const TableBookingPage = () => {
                                 bgcolor: (theme) => alpha(theme.palette.background.default, 0.4)
                             }}>
                                 <Box>
-                                    <Typography variant="h6" fontWeight="bold">
+                                    <Typography variant="h6" fontWeight="bold" sx={{ fontSize: headingFontSize }}>
                                         Choose Your Table
                                     </Typography>
-                                    <Typography variant="body2" color="text.secondary">
+                                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: bodyFontSize }}>
                                         Select from our available seating options
                                     </Typography>
                                 </Box>
@@ -587,7 +589,7 @@ const TableBookingPage = () => {
                                                             justifyContent: 'space-between', // Name left, Icon right
                                                             alignItems: 'center'
                                                         }}>
-                                                            <Typography variant="subtitle1" fontWeight="bold" sx={{ textAlign: 'left', flex: 1, mr: 1 }}>
+                                                            <Typography variant="subtitle1" fontWeight="bold" sx={{ textAlign: 'left', flex: 1, mr: 1, fontSize: headingFontSize }}>
                                                                 {table.tableName || (table.tableNumber ? `Table ${table.tableNumber}` : 'Table')}
                                                             </Typography>
                                                             {isSelected ? <ConfirmIcon fontSize="small" /> : <TableIcon fontSize="small" />}
@@ -600,7 +602,7 @@ const TableBookingPage = () => {
                                                                     size="small"
                                                                     sx={{
                                                                         height: 20,
-                                                                        fontSize: '0.65rem',
+                                                                        fontSize: bodyFontSize,
                                                                         fontWeight: 700,
                                                                         bgcolor: (theme) => alpha(theme.palette.info.main, 0.1),
                                                                         color: 'info.main'
@@ -611,7 +613,7 @@ const TableBookingPage = () => {
                                                                     size="small"
                                                                     sx={{
                                                                         height: 20,
-                                                                        fontSize: '0.65rem',
+                                                                        fontSize: bodyFontSize,
                                                                         fontWeight: 700,
                                                                         bgcolor: (theme) => alpha(theme.palette.success.main, 0.1),
                                                                         color: 'success.main'
@@ -621,7 +623,7 @@ const TableBookingPage = () => {
 
                                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary' }}>
                                                                 <PeopleIcon fontSize="small" sx={{ opacity: 0.7 }} />
-                                                                <Typography variant="body2" fontWeight="500">
+                                                                <Typography variant="body2" fontWeight="500" sx={{ fontSize: bodyFontSize }}>
                                                                     Up to {table.capacity} Guests
                                                                 </Typography>
                                                             </Box>
@@ -662,10 +664,10 @@ const TableBookingPage = () => {
                             }}>
                                 <ConfirmIcon sx={{ fontSize: 48, color: 'success.main' }} />
                             </Box>
-                            <Typography variant="h5" fontWeight="bold" gutterBottom>
+                            <Typography variant="h5" fontWeight="bold" gutterBottom sx={{ fontSize: headingFontSize }}>
                                 Reservation Requested!
                             </Typography>
-                            <Typography variant="body1" color="text.secondary" sx={{ mb: 4, px: 2 }}>
+                            <Typography variant="body1" color="text.secondary" sx={{ mb: 4, px: 2, fontSize: bodyFontSize }}>
                                 We've received your request for <strong>{selectedTable?.tableName || `Table ${selectedTable?.tableNumber}`}</strong> on <strong>{selectedDate?.toLocaleDateString()}</strong> at <strong>{selectedTimeSlot}</strong>.
                                 <br /><br />
                                 {requiresReservationPayment
@@ -727,40 +729,40 @@ const TableBookingPage = () => {
                             </DialogTitle>
                             <DialogContent dividers>
                                 <Box sx={{ mb: 2 }}>
-                                    <Typography variant="subtitle1" gutterBottom fontWeight="bold">
+                                    <Typography variant="subtitle1" gutterBottom fontWeight="bold" sx={{ fontSize: headingFontSize }}>
                                         Reservation Summary:
                                     </Typography>
                                     <Grid container spacing={2} sx={{ mt: 1 }}>
                                         <Grid size={{ xs: 6 }}>
-                                            <Typography variant="caption" color="text.secondary">Table</Typography>
-                                            <Typography variant="body2" fontWeight="600">
+                                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: bodyFontSize }}>Table</Typography>
+                                            <Typography variant="body2" fontWeight="600" sx={{ fontSize: bodyFontSize }}>
                                                 {selectedTable?.tableName || `Table ${selectedTable?.tableNumber}`}
                                             </Typography>
                                         </Grid>
                                         <Grid size={{ xs: 6 }}>
-                                            <Typography variant="caption" color="text.secondary">Date & Time</Typography>
-                                            <Typography variant="body2" fontWeight="600">
+                                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: bodyFontSize }}>Date & Time</Typography>
+                                            <Typography variant="body2" fontWeight="600" sx={{ fontSize: bodyFontSize }}>
                                                 {selectedDate?.toLocaleDateString()} at {selectedTimeSlot}
                                             </Typography>
                                         </Grid>
                                         <Grid size={{ xs: 6 }}>
-                                            <Typography variant="caption" color="text.secondary">Guests</Typography>
-                                            <Typography variant="body2" fontWeight="600">{guestCount} People</Typography>
+                                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: bodyFontSize }}>Guests</Typography>
+                                            <Typography variant="body2" fontWeight="600" sx={{ fontSize: bodyFontSize }}>{guestCount} People</Typography>
                                         </Grid>
                                         <Grid size={{ xs: 6 }}>
-                                            <Typography variant="caption" color="text.secondary">Duration</Typography>
-                                            <Typography variant="body2" fontWeight="600">{duration} minutes</Typography>
+                                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: bodyFontSize }}>Duration</Typography>
+                                            <Typography variant="body2" fontWeight="600" sx={{ fontSize: bodyFontSize }}>{duration} minutes</Typography>
                                         </Grid>
                                     </Grid>
                                 </Box>
 
                                 {occasion && (
-                                    <Typography variant="body2" sx={{ mt: 2 }}>
+                                    <Typography variant="body2" sx={{ mt: 2, fontSize: bodyFontSize }}>
                                         <strong>Occasion:</strong> {occasion}
                                     </Typography>
                                 )}
                                 {specialRequests && (
-                                    <Typography variant="body2" sx={{ mt: 1 }}>
+                                    <Typography variant="body2" sx={{ mt: 1, fontSize: bodyFontSize }}>
                                         <strong>Special Requests:</strong> {specialRequests}
                                     </Typography>
                                 )}
@@ -849,10 +851,10 @@ const TableBookingPage = () => {
                         }}>
                             <LockIcon />
                         </Box>
-                        <Typography variant="h5" fontWeight="bold">
+                        <Typography variant="h5" fontWeight="bold" sx={{ fontSize: headingFontSize }}>
                             {loginDialogMode === 'login' ? 'Login Required' : 'Create Account'}
                         </Typography>
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: bodyFontSize }}>
                             {loginDialogMode === 'login'
                                 ? 'Please login to confirm your table booking.'
                                 : 'Sign up to start booking tables and managing your orders.'}
@@ -921,14 +923,14 @@ const TableBookingPage = () => {
                                     borderRadius: 2,
                                     fontWeight: 'bold',
                                     textTransform: 'none',
-                                    fontSize: '1rem'
+                                    fontSize: bodyFontSize
                                 }}
                             >
                                 {loginLoading ? <CircularProgress size={24} color="inherit" /> : (loginDialogMode === 'login' ? 'Login & Continue' : 'Register & Continue')}
                             </Button>
 
                             <Box sx={{ textAlign: 'center', mt: 1 }}>
-                                <Typography variant="body2">
+                                <Typography variant="body2" sx={{ fontSize: bodyFontSize }}>
                                     {loginDialogMode === 'login' ? (
                                         <>
                                             Don't have an account?{' '}

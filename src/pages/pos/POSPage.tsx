@@ -213,6 +213,8 @@ const MemoizedCartItem = React.memo(({
 const POSPage: React.FC = () => {
     const { user, getUserFullName, tenantSlug } = useAuth();
     const { formatCurrency, settings } = useSettings();
+    const headingFontSize = { xs: '1.1rem', sm: '1.35rem', md: '1.75rem' };
+    const bodyFontSize = { xs: '0.78rem', sm: '0.88rem', md: '0.95rem' };
 
     // Basic data
     const [menuItems, setMenuItems] = useState<any[]>([]);
@@ -227,7 +229,7 @@ const POSPage: React.FC = () => {
     const [placingOrder, setPlacingOrder] = useState(false);
     const [nextCursor, setNextCursor] = useState<string | null>(null);
     const [isFetchingMore, setIsFetchingMore] = useState(false);
-    const PAGE_LIMIT = 24;
+    const PAGE_LIMIT = 48;
 
 
     // Coupon handling
@@ -425,7 +427,8 @@ const POSPage: React.FC = () => {
                 // This ensures items always load even if the backend category filter is unreliable.
                 foodType: foodTypeFilter !== 'all' ? foodTypeFilter : undefined,
                 cursor: cursor || undefined,
-                limit: PAGE_LIMIT,
+                // Load all items without pagination to avoid conflicts with client-side availability filters
+                limit: 1000,
                 isAvailable: true
             });
 
@@ -1653,7 +1656,7 @@ const POSPage: React.FC = () => {
     };
 
     return (
-        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, height: { xs: 'auto', md: 'calc(100vh - 100px)' }, gap: 2 }}>
+        <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, height: { xs: 'auto', md: 'calc(100vh - 100px)' }, gap: { xs: 1.25, md: 2 } }}>
             {/* Left side – menu */}
             {/* Left side – menu */}
             <Box sx={{
@@ -1663,7 +1666,7 @@ const POSPage: React.FC = () => {
                 overflowY: 'auto',
                 height: { xs: 'auto', md: '100%' },
                 mb: { xs: 2, md: 0 },
-                pr: { xs: 1, md: 2 }, // Space between content and scrollbar
+                pr: { xs: 0, md: 2 }, // Space between content and scrollbar
                 '&::-webkit-scrollbar': {
                     width: '6px',
                 },
@@ -1765,7 +1768,7 @@ const POSPage: React.FC = () => {
                     </Box>
                 )}
                 {/* Search & category tabs */}
-                <Box sx={{ mb: 2, display: 'flex', gap: 2 }}>
+                <Box sx={{ mb: 2, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 1, sm: 2 } }}>
                     <Box sx={{ position: 'relative', flexGrow: 1 }}>
                         <TextField
                             variant="outlined"
@@ -1802,7 +1805,7 @@ const POSPage: React.FC = () => {
                                     overflow: 'hidden'
                                 }}
                             >
-                                <Typography variant="body2" sx={{ mr: 0.5, flexShrink: 0, lineHeight: '24px' }}>Search for</Typography>
+                                <Typography variant="body2" sx={{ mr: 0.5, flexShrink: 0, lineHeight: '24px', fontSize: bodyFontSize }}>Search for</Typography>
                                 <Box sx={{ position: 'relative', height: '24px', flexGrow: 1, overflow: 'hidden' }}>
                                     <Typography
                                         key={placeholderIndex}
@@ -1821,6 +1824,7 @@ const POSPage: React.FC = () => {
                                             textOverflow: 'ellipsis',
                                             lineHeight: '24px',
                                             animation: 'dynamicTextSlide 3s ease-in-out forwards',
+                                            fontSize: bodyFontSize,
                                         }}
                                     >
                                         '{placeholderItems[placeholderIndex]}'
@@ -1930,7 +1934,7 @@ const POSPage: React.FC = () => {
                             gap: 0, // ← removed gap causing trailing space
                         },
                         '& .MuiTab-root': {
-                            fontSize: { xs: '0.72rem', sm: '0.8rem', md: '0.875rem' },
+                            fontSize: bodyFontSize,
                             minWidth: { xs: 'auto', sm: 80, md: 90 }, // ← auto on mobile to shrink-fit
                             maxWidth: { xs: 120, sm: 160, md: 200 },
                             minHeight: { xs: 40, sm: 48 },
@@ -2431,10 +2435,15 @@ const POSPage: React.FC = () => {
                                                 <RestaurantMenu sx={{ fontSize: 40, color: 'text.disabled' }} />
                                             )}
                                         </Box>
-                                        <Typography variant="h6" color="text.primary" fontWeight="bold" gutterBottom>
+                                        <Typography
+                                            variant="h6"
+                                            fontWeight="bold"
+                                            gutterBottom
+                                            sx={{ textAlign: 'center', color: { xs: '#000', md: 'text.primary' }, fontSize: headingFontSize }}
+                                        >
                                             {searchQuery ? 'No results found' : 'Menu is empty'}
                                         </Typography>
-                                        <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 350, mb: 3 }}>
+                                        <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 350, mb: 3, fontSize: bodyFontSize }}>
                                             {searchQuery
                                                 ? `We couldn't find any dishes matching "${searchQuery}". Please check the spelling or try a different term.`
                                                 : "There are currently no items available in this category. Please check back later or select another category."}

@@ -53,6 +53,8 @@ const PurchaseOrdersPage: React.FC = () => {
     const { formatCurrency } = useSettings();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const headingFontSize = { xs: '1.12rem', sm: '1.4rem', md: '2.125rem' };
+    const bodyFontSize = { xs: '0.78rem', sm: '0.88rem', md: '0.95rem' };
     const [pos, setPOs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
@@ -142,7 +144,7 @@ const PurchaseOrdersPage: React.FC = () => {
     };
 
     return (
-        <Box sx={{ p: { xs: 1.5, md: 4 }, maxWidth: 1600, mx: 'auto' }}>
+        <Box sx={{ p: { xs: 1.2, md: 4 }, maxWidth: 1600, mx: 'auto' }}>
             {/* Header Section */}
             <Stack
                 direction={{ xs: 'column', sm: 'row' }}
@@ -152,10 +154,19 @@ const PurchaseOrdersPage: React.FC = () => {
                 mb={{ xs: 2, md: 5 }}
             >
                 <Box sx={{ textAlign: { xs: 'center', sm: 'left' }, width: { xs: '100%', sm: 'auto' } }}>
-                    <Typography variant="h4" fontWeight={800} sx={{ mb: 0.5, fontSize: { xs: '1.5rem', md: '2.125rem' } }}>
+                    <Typography
+                        variant="h4"
+                        fontWeight={800}
+                        sx={{
+                            mb: 0.5,
+                            fontSize: headingFontSize,
+                            color: { xs: '#000', sm: 'text.primary' },
+                            textAlign: { xs: 'center', sm: 'left' },
+                        }}
+                    >
                         Financial Ledger
                     </Typography>
-                    <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' } }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' }, fontSize: bodyFontSize }}>
                         Comprehensive tracking of procurement, salaries, and operational costs.
                     </Typography>
                 </Box>
@@ -169,7 +180,7 @@ const PurchaseOrdersPage: React.FC = () => {
                         px: { xs: 2.5, md: 4 },
                         py: { xs: 1, md: 1.8 },
                         fontWeight: 'bold',
-                        fontSize: { xs: '0.875rem', md: '1rem' },
+                        fontSize: bodyFontSize,
                         boxShadow: '0 8px 25px rgba(0,0,0,0.1)',
                         textTransform: 'none',
                         width: { xs: '100%', sm: 'auto' }
@@ -180,7 +191,7 @@ const PurchaseOrdersPage: React.FC = () => {
             </Stack>
 
             <Paper sx={{
-                p: { xs: 1, md: 1 },
+                p: { xs: 0.8, md: 1 },
                 mb: { xs: 2, md: 4 },
                 borderRadius: { xs: 3, md: 4 },
                 bgcolor: '#111827',
@@ -225,7 +236,7 @@ const PurchaseOrdersPage: React.FC = () => {
                             value={(filters as any)[f.key]}
                             onChange={(e) => setFilters({ ...filters, [f.key]: e.target.value })}
                             sx={{
-                                minWidth: { xs: 'calc(33.33% - 8px)', sm: 150 },
+                                minWidth: { xs: 'calc(33.33% - 6px)', sm: 150 },
                                 flexGrow: 1,
                                 '& .MuiOutlinedInput-root': { 
                                     color: 'white', 
@@ -259,7 +270,7 @@ const PurchaseOrdersPage: React.FC = () => {
                     <Typography variant="h5" color="text.secondary">No transactions found matching your criteria</Typography>
                 </Paper>
             ) : isMobile ? (
-                <Grid container spacing={isMobile ? 0 : 2} justifyContent="center" sx={{ width: '100%', m: 0, px: 1 }}>
+                <Grid container spacing={isMobile ? 0.75 : 2} justifyContent="center" sx={{ width: '100%', m: 0, px: 0.4 }}>
                     {pos.map((po) => {
                         const catStyle = getCategoryStyles(po.category);
                         const statusStyle = getStatusStyles(po.status);
@@ -270,11 +281,11 @@ const PurchaseOrdersPage: React.FC = () => {
                                         width: '100%',
                                         maxWidth: 500,
                                         mx: 'auto',
-                                        p: 1.5,
+                                        p: 1.1,
                                         borderRadius: 3,
                                         display: 'flex',
                                         flexDirection: 'column',
-                                        gap: 1.5,
+                                        gap: 0.9,
                                         position: 'relative',
                                         border: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
                                         boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
@@ -285,26 +296,26 @@ const PurchaseOrdersPage: React.FC = () => {
                                             {catStyle.icon}
                                         </Avatar>
                                         <Box sx={{ flexGrow: 1 }}>
-                                            <Stack direction="row" spacing={1} alignItems="center" mb={0.2}>
-                                                <Typography variant="body2" fontWeight={800} sx={{ fontSize: '0.9rem' }}>#{po.poNumber}</Typography>
+                                            <Stack direction="row" spacing={0.7} alignItems="center" mb={0.1}>
+                                                <Typography variant="body2" fontWeight={800} sx={{ fontSize: '0.82rem' }}>#{po.poNumber}</Typography>
                                                 <Chip
                                                     label={statusStyle.label}
                                                     size="small"
                                                     sx={{ bgcolor: statusStyle.bg, color: statusStyle.color, fontSize: '0.625rem', height: 20, fontWeight: 800 }}
                                                 />
                                             </Stack>
-                                            <Typography variant="body2" fontWeight="600" sx={{ mb: 0.2, fontSize: '0.8rem' }}>{po.vendor?.name || 'Manual Entry'}</Typography>
-                                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                                            <Typography variant="body2" fontWeight="600" sx={{ mb: 0.1, fontSize: '0.74rem' }}>{po.vendor?.name || 'Manual Entry'}</Typography>
+                                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.62rem' }}>
                                                 {po.category?.replace('_', ' ').toUpperCase() || 'OTHER'} • {po.createdAt ? new Date(po.createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' }) : 'N/A'}
                                             </Typography>
                                         </Box>
                                     </Box>
 
-                                    <Divider sx={{ my: 0.5, borderStyle: 'dashed', opacity: 0.5 }} />
+                                    <Divider sx={{ my: 0.35, borderStyle: 'dashed', opacity: 0.5 }} />
 
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <Box>
-                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2, fontSize: '0.65rem' }}>Payment</Typography>
+                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.1, fontSize: '0.62rem' }}>Payment</Typography>
                                             <Chip
                                                 label={po.paymentStatus.toUpperCase()}
                                                 size="small"
@@ -314,14 +325,14 @@ const PurchaseOrdersPage: React.FC = () => {
                                             />
                                         </Box>
                                         <Box sx={{ textAlign: 'right' }}>
-                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.2, fontSize: '0.65rem' }}>Grand Total</Typography>
-                                            <Typography variant="h6" fontWeight={900} color="primary.main" sx={{ fontSize: '1.1rem' }}>
+                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.1, fontSize: '0.62rem' }}>Grand Total</Typography>
+                                            <Typography variant="h6" fontWeight={900} color="primary.main" sx={{ fontSize: '1rem' }}>
                                                 {formatCurrency ? formatCurrency(po.totalAmount || 0) : `$${(po.totalAmount || 0).toFixed(2)}`}
                                             </Typography>
                                         </Box>
                                     </Box>
 
-                                    <Divider sx={{ my: 0.5, opacity: 0.3 }} />
+                                    <Divider sx={{ my: 0.35, opacity: 0.3 }} />
 
                                     <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end' }}>
                                         <Tooltip title="View Details">
@@ -427,7 +438,7 @@ const PurchaseOrdersPage: React.FC = () => {
             )}
 
             {/* Pagination Sidebar */}
-            <Box sx={{ mt: 6, display: 'flex', justifyContent: 'center' }}>
+            <Box sx={{ mt: { xs: 2.5, sm: 6 }, display: 'flex', justifyContent: 'center' }}>
                 <Pagination
                     count={totalPages}
                     page={page}

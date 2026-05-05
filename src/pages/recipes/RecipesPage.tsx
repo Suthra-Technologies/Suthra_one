@@ -51,6 +51,8 @@ const RecipesPage: React.FC<RecipesPageProps> = ({ hideHeader }) => {
     const { formatCurrency } = useSettings();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+    const headingFontSize = { xs: '1.12rem', sm: '1.4rem', md: '2.125rem' };
+    const bodyFontSize = { xs: '0.78rem', sm: '0.88rem', md: '0.95rem' };
     const [recipes, setRecipes] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
@@ -121,14 +123,18 @@ const RecipesPage: React.FC<RecipesPageProps> = ({ hideHeader }) => {
     };
 
     return (
-        <Box sx={{ p: hideHeader ? 0 : 3 }}>
+        <Box sx={{ p: hideHeader ? 0 : { xs: 1.25, sm: 3 } }}>
             {!hideHeader && (
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                    <Box>
-                        <Typography variant="h4" fontWeight="bold">
+                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: 'center', mb: { xs: 2, sm: 3 }, gap: { xs: 1.25, sm: 0 } }}>
+                    <Box sx={{ textAlign: { xs: 'center', sm: 'left' }, width: { xs: '100%', sm: 'auto' } }}>
+                        <Typography
+                            variant="h4"
+                            fontWeight="bold"
+                            sx={{ fontSize: headingFontSize, color: { xs: '#000', sm: 'text.primary' } }}
+                        >
                             Recipes
                         </Typography>
-                        <Typography variant="body2" color="textSecondary">
+                        <Typography variant="body2" color="textSecondary" sx={{ fontSize: bodyFontSize }}>
                             Total Records: {totalRecipes}
                         </Typography>
                     </Box>
@@ -136,6 +142,7 @@ const RecipesPage: React.FC<RecipesPageProps> = ({ hideHeader }) => {
                         variant="contained"
                         startIcon={<AddIcon />}
                         onClick={() => navigate(getRelativePath('/recipes/create'))}
+                        sx={{ width: { xs: '100%', sm: 'auto' }, fontSize: bodyFontSize }}
                     >
                         Create Recipe
                     </Button>
@@ -143,7 +150,7 @@ const RecipesPage: React.FC<RecipesPageProps> = ({ hideHeader }) => {
             )}
 
             {/* Search */}
-            <Paper sx={{ p: 2, mb: 3 }}>
+            <Paper sx={{ p: { xs: 1.25, sm: 2 }, mb: { xs: 2, sm: 3 } }}>
                 <TextField
                     label="Search Recipes"
                     value={search}
@@ -159,26 +166,26 @@ const RecipesPage: React.FC<RecipesPageProps> = ({ hideHeader }) => {
                     <CircularProgress />
                 </Box>
             ) : recipes.length === 0 ? (
-                <Box sx={{ textAlign: 'center', py: 5 }}>
-                    <Typography color="textSecondary">No recipes found</Typography>
+                <Box sx={{ textAlign: 'center', py: { xs: 3.5, sm: 5 } }}>
+                    <Typography color="textSecondary" sx={{ fontSize: bodyFontSize }}>No recipes found</Typography>
                     <Button
                         startIcon={<AddIcon />}
                         onClick={() => navigate(getRelativePath('/recipes/create'))}
-                        sx={{ mt: 2 }}
+                        sx={{ mt: 2, fontSize: bodyFontSize }}
                     >
                         Create Your First Recipe
                     </Button>
                 </Box>
             ) : isMobile ? (
                 // Mobile Card View
-                <Stack spacing={2}>
+                <Stack spacing={1.2}>
                     {recipes.map((recipe) => (
                         <Card key={recipe._id}>
-                            <CardContent>
-                                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+                            <CardContent sx={{ p: 1.25, '&:last-child': { pb: 1.25 } }}>
+                                <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1.1}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                         <RestaurantIcon color="action" fontSize="small" />
-                                        <Typography variant="subtitle1" fontWeight="bold">
+                                        <Typography variant="subtitle1" fontWeight="bold" sx={{ fontSize: '0.9rem' }}>
                                             {recipe.name}
                                         </Typography>
                                     </Box>
@@ -189,28 +196,28 @@ const RecipesPage: React.FC<RecipesPageProps> = ({ hideHeader }) => {
                                     />
                                 </Stack>
 
-                                <Grid container spacing={1} mb={2}>
+                                <Grid container spacing={0.8} mb={1.2}>
                                     <Grid item xs={6}>
-                                        <Typography variant="caption" color="text.secondary">Menu Item</Typography>
-                                        <Typography variant="body2">{recipe.menuItem?.name || 'N/A'}</Typography>
+                                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.68rem' }}>Menu Item</Typography>
+                                        <Typography variant="body2" sx={{ fontSize: '0.78rem' }}>{recipe.menuItem?.name || 'N/A'}</Typography>
                                     </Grid>
                                     <Grid item xs={6}>
-                                        <Typography variant="caption" color="text.secondary">Total Cost</Typography>
-                                        <Typography variant="body2" fontWeight="bold" color="primary">
+                                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.68rem' }}>Total Cost</Typography>
+                                        <Typography variant="body2" fontWeight="bold" color="primary" sx={{ fontSize: '0.78rem' }}>
                                             {formatCurrency(recipe.totalCost || 0)}
                                         </Typography>
                                     </Grid>
                                     <Grid item xs={6}>
-                                        <Typography variant="caption" color="text.secondary">Serving Size</Typography>
-                                        <Typography variant="body2">{recipe.servingSize}</Typography>
+                                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.68rem' }}>Serving Size</Typography>
+                                        <Typography variant="body2" sx={{ fontSize: '0.78rem' }}>{recipe.servingSize}</Typography>
                                     </Grid>
                                     <Grid item xs={6}>
-                                        <Typography variant="caption" color="text.secondary">Ingredients</Typography>
-                                        <Typography variant="body2">{recipe.ingredients?.length || 0}</Typography>
+                                        <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.68rem' }}>Ingredients</Typography>
+                                        <Typography variant="body2" sx={{ fontSize: '0.78rem' }}>{recipe.ingredients?.length || 0}</Typography>
                                     </Grid>
                                 </Grid>
 
-                                <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ mt: 1, borderTop: 1, borderColor: 'divider', pt: 2 }}>
+                                <Stack direction="row" spacing={0.6} justifyContent="flex-end" sx={{ mt: 0.6, borderTop: 1, borderColor: 'divider', pt: 1 }}>
                                     <Tooltip title="Recalculate Cost">
                                         <IconButton
                                             size="small"

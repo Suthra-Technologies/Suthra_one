@@ -168,8 +168,8 @@ const CustomerOrderPage: React.FC = () => {
         return subtotal + processingFeeAmount + taxAmount;
     };
     const totalQuantity = cart.totalItems;
-    const mobileHeadingSize = '0.62rem';
-    const mobileBodySize = '0.62rem';
+    const headingFontSize = { xs: '1rem', sm: '1.2rem' };
+    const bodyFontSize = { xs: '0.8rem', sm: '0.95rem' };
 
     const SpiceLevelDialog = () => {
         if (!spiceSelectionItem) return null;
@@ -187,8 +187,8 @@ const CustomerOrderPage: React.FC = () => {
                 }}
             >
                 <DialogTitle sx={{ textAlign: 'center', pb: 1 }}>
-                    <Typography variant="h6" fontWeight="900">Select Spice Level</Typography>
-                    <Typography variant="body2" color="text.secondary">{spiceSelectionItem?.name}</Typography>
+                    <Typography variant="h6" fontWeight="900" sx={{ fontSize: headingFontSize }}>Select Spice Level</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: bodyFontSize }}>{spiceSelectionItem?.name}</Typography>
                 </DialogTitle>
                 <DialogContent>
                     <Stack spacing={1.5} sx={{ mt: 1 }}>
@@ -225,7 +225,7 @@ const CustomerOrderPage: React.FC = () => {
         return (
             <Box sx={{ minHeight: '80vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 2 }}>
                 <CircularProgress size={40} thickness={4} />
-                <Typography variant="h6" color="text.secondary" fontWeight="500">Preparing Menu...</Typography>
+                <Typography variant="h6" color="text.secondary" fontWeight="500" sx={{ fontSize: headingFontSize }}>Preparing Menu...</Typography>
             </Box>
         );
     }
@@ -311,7 +311,7 @@ const CustomerOrderPage: React.FC = () => {
                                 borderRadius: 10,
                                 fontWeight: '700',
                                 textTransform: 'none',
-                                fontSize: { xs: '0.58rem', sm: '0.9rem' },
+                                fontSize: bodyFontSize,
                                 color: selectedCategory === cat ? 'white' : 'text.secondary',
                                 bgcolor: selectedCategory === cat ? 'primary.main' : 'transparent',
                                 '&:hover': {
@@ -332,7 +332,7 @@ const CustomerOrderPage: React.FC = () => {
                         variant="h5"
                         fontWeight="800"
                         color="text.primary"
-                        sx={{ textAlign: { xs: 'center', sm: 'left' }, fontSize: { xs: '1.05rem', sm: '1.8rem' }, lineHeight: { xs: 1.25, sm: 1.3 } }}
+                        sx={{ textAlign: { xs: 'center', sm: 'left' }, fontSize: headingFontSize, lineHeight: { xs: 1.25, sm: 1.3 } }}
                     >
                         {selectedCategory === 'All' ? 'Our Menu Items' : selectedCategory}
                     </Typography>
@@ -377,7 +377,7 @@ const CustomerOrderPage: React.FC = () => {
                                                     fontWeight="800"
                                                     sx={{
                                                         color: 'text.primary',
-                                                        fontSize: { xs: '0.58rem', sm: '1rem' },
+                                                        fontSize: headingFontSize,
                                                         lineHeight: { xs: 1.2, sm: 1.15 },
                                                         overflow: 'hidden',
                                                         whiteSpace: 'nowrap',
@@ -399,7 +399,7 @@ const CustomerOrderPage: React.FC = () => {
                                                     flexWrap: { xs: 'wrap', sm: 'nowrap' }
                                                 }}
                                             >
-                                                <Typography variant={isMobile ? 'body2' : 'h6'} fontWeight="900" color="primary" sx={{ fontSize: { xs: '0.62rem', sm: '1.2rem' }, lineHeight: 1.2 }}>
+                                                <Typography variant={isMobile ? 'body2' : 'h6'} fontWeight="900" color="primary" sx={{ fontSize: headingFontSize, lineHeight: 1.2 }}>
                                                     {formatCurrency(item.price)}
                                                 </Typography>
 
@@ -423,7 +423,7 @@ const CustomerOrderPage: React.FC = () => {
                                                         >
                                                             <RemoveIcon sx={{ fontSize: { xs: '0.85rem', sm: '1.2rem' } }} />
                                                         </IconButton>
-                                                        <Typography fontWeight="900" color="primary.main" sx={{ minWidth: '14px', textAlign: 'center', fontSize: { xs: '0.72rem', sm: '1rem' } }}>
+                                                        <Typography fontWeight="900" color="primary.main" sx={{ minWidth: '14px', textAlign: 'center', fontSize: bodyFontSize }}>
                                                             {qty}
                                                         </Typography>
                                                         <IconButton
@@ -449,7 +449,7 @@ const CustomerOrderPage: React.FC = () => {
                                                             py: { xs: 0.15, sm: 0.5 },
                                                             minHeight: { xs: 26, sm: undefined },
                                                             ml: { xs: 'auto', sm: 0 },
-                                                            fontSize: { xs: mobileBodySize, sm: '0.8125rem' },
+                                                            fontSize: bodyFontSize,
                                                             '& .MuiButton-startIcon': { mr: { xs: 0.35, sm: 1 } }
                                                         }}
                                                     >
@@ -539,8 +539,8 @@ const CustomerOrderPage: React.FC = () => {
                         </Box>
                     </Badge>
                     <Box>
-                        <Typography variant="caption" sx={{ opacity: 0.6, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, fontSize: { xs: mobileBodySize, sm: '0.75rem' } }}>Total Order</Typography>
-                        <Typography variant="h6" fontWeight="900" sx={{ lineHeight: 1.1, fontSize: { xs: mobileHeadingSize, sm: '1.25rem' } }}>{formatCurrency(calculateTotal())}</Typography>
+                        <Typography variant="caption" sx={{ opacity: 0.6, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, fontSize: bodyFontSize }}>Total Order</Typography>
+                        <Typography variant="h6" fontWeight="900" sx={{ lineHeight: 1.1, fontSize: headingFontSize }}>{formatCurrency(calculateTotal())}</Typography>
                     </Box>
                 </Box>
                 <Button
@@ -555,7 +555,7 @@ const CustomerOrderPage: React.FC = () => {
                         height: { xs: 44, sm: 52 },
                         px: { xs: 2, sm: 4 },
                         textTransform: 'none',
-                        fontSize: { xs: mobileBodySize, sm: '1rem' },
+                        fontSize: bodyFontSize,
                         whiteSpace: 'nowrap',
                         '&:hover': { bgcolor: 'primary.dark' }
                     }}

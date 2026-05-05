@@ -68,6 +68,8 @@ const LoginPage: React.FC = () => {
     logo?: string;
   } | null>(null);
   const [tenantLoading, setTenantLoading] = useState(false);
+  const headingFontSize = { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' };
+  const bodyFontSize = { xs: '0.95rem', sm: '0.95rem', md: '0.95rem' };
 
   // Multi-tenant switching support
   const searchParams = new URLSearchParams(location.search);
@@ -366,10 +368,10 @@ const LoginPage: React.FC = () => {
           })}
         </Box>
 
-        <Typography variant="h4" sx={{ mt: { sm: 3, md: 5 }, color: '#fff', fontWeight: 'bold', textShadow: '0 2px 4px rgba(0,0,0,0.5)', fontSize: { sm: '1.1rem', md: '1.6rem', lg: '2.125rem' }, textAlign: 'center', px: 2 }}>
+        <Typography variant="h4" sx={{ mt: { sm: 3, md: 5 }, color: '#fff', fontWeight: 'bold', textShadow: '0 2px 4px rgba(0,0,0,0.5)', fontSize: headingFontSize, textAlign: 'center', px: 2 }}>
           {activeTenant ? `Welcome to ${displayName}` : 'Welcome to a World of Great Taste'}
         </Typography>
-        <Typography variant="subtitle1" sx={{ color: 'rgba(255,255,255,0.7)', mt: 1, fontSize: { sm: '0.75rem', md: '0.9rem', lg: '1rem' }, textAlign: 'center', px: 2 }}>
+        <Typography variant="subtitle1" sx={{ color: 'rgba(255,255,255,0.7)', mt: 1, fontSize: bodyFontSize, textAlign: 'center', px: 2 }}>
           {activeTenant ? 'Log in to manage your kitchen and orders' : 'Manage your orders with ease'}
         </Typography>
       </Grid>
@@ -425,17 +427,21 @@ const LoginPage: React.FC = () => {
             variant="h4" 
             fontWeight="900" 
             sx={{ 
-              fontSize: { xs: '1.4rem', sm: '1.75rem', md: '2.125rem' },
+              fontSize: headingFontSize,
               color: '#1a1a1a',
               letterSpacing: '-0.5px'
             }}
           >
             {forgotPasswordView ? 'Reset Password' : 'Sign In'}
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 4, textAlign: 'center', px: 2 }}>
+          <Typography
+            variant="body2"
+            color="text.secondary"
+            sx={{ mb: 4, textAlign: 'center', px: 2, fontSize: bodyFontSize }}
+          >
             {forgotPasswordView
               ? "Enter your email address and we'll send you a link to reset your password."
-              : 'Welcome back! Enter your details to continue.'}
+              : ''}
           </Typography>
 
           {/* Error Alert */}
@@ -494,6 +500,7 @@ const LoginPage: React.FC = () => {
                   <Link
                     component="button"
                     variant="body2"
+                  sx={{ fontSize: bodyFontSize }}
                     onClick={() => {
                       setForgotPasswordView(false);
                       setIsSuccess(false);
@@ -572,6 +579,7 @@ const LoginPage: React.FC = () => {
               />
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
                 <FormControlLabel
+                  sx={{ '& .MuiFormControlLabel-label': { fontSize: bodyFontSize } }}
                   control={
                     <Checkbox
                       value="remember"
@@ -585,6 +593,7 @@ const LoginPage: React.FC = () => {
                 <Link
                   component="button"
                   variant="body2"
+                  sx={{ fontSize: bodyFontSize }}
                   onClick={() => setForgotPasswordView(true)}
                   type="button"
                 >
@@ -618,6 +627,7 @@ const LoginPage: React.FC = () => {
                     component={RouterLink}
                     to={activeTenant?.slug ? `/${activeTenant.slug}/register` : (targetTenant ? `/${targetTenant}/register` : "/register")}
                     variant="body2"
+                    sx={{ fontSize: bodyFontSize }}
                   >
                     {"Don't have an account? Sign Up"}
                   </Link>
@@ -649,10 +659,10 @@ const LoginPage: React.FC = () => {
         open={loading}
       >
         <CircularProgress color="inherit" size={60} thickness={4} />
-        <Typography variant="h6" color="inherit" sx={{ fontWeight: 500 }}>
+        <Typography variant="h6" color="inherit" sx={{ fontWeight: 500, fontSize: headingFontSize }}>
           {forgotPasswordView ? 'Sending reset link...' : 'Signing you in...'}
         </Typography>
-        <Typography variant="body2" color="inherit" sx={{ opacity: 0.8 }}>
+        <Typography variant="body2" color="inherit" sx={{ opacity: 0.8, fontSize: bodyFontSize }}>
           Please wait a moment
         </Typography>
       </Backdrop>

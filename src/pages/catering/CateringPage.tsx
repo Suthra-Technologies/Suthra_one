@@ -98,6 +98,8 @@ const CateringPage = () => {
     const { user, tenantSlug, login } = useAuth();
     const { formatCurrency, settings, refreshSettings } = useSettings();
     const currentSlug = routeSlug || tenantSlug || '';
+    const headingFontSize = { xs: '1rem', sm: '1.2rem' };
+    const bodyFontSize = { xs: '0.8rem', sm: '0.95rem' };
     const [menuItems, setMenuItems] = useState<any[]>([]);
     const [trays, setTrays] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -582,7 +584,7 @@ const CateringPage = () => {
     if (loading) return (
         <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh" flexDirection="column" gap={2}>
             <CircularProgress size={40} />
-            <Typography color="text.secondary">Loading catering menu...</Typography>
+            <Typography color="text.secondary" sx={{ fontSize: bodyFontSize }}>Loading catering menu...</Typography>
         </Box>
     );
 
@@ -622,11 +624,11 @@ const CateringPage = () => {
                 />
                 <Box display="flex" alignItems={{ xs: 'flex-start', sm: 'center' }} gap={1.25} mb={1} sx={{ flexDirection: { xs: 'column', sm: 'row' }, position: 'relative', zIndex: 1 }}>
                     <LocalDining sx={{ fontSize: { xs: 22, sm: 32 }, color: '#c2410c' }} />
-                    <Typography variant="h4" fontWeight={800} sx={{ fontSize: { xs: '1.2rem', sm: '2.125rem' }, lineHeight: 1.25 }}>
+                    <Typography variant="h4" fontWeight={800} sx={{ fontSize: headingFontSize, lineHeight: 1.25 }}>
                         Catering & Bulk Orders
                     </Typography>
                 </Box>
-                <Typography sx={{ color: 'rgba(68, 64, 60, 0.88)', fontSize: { xs: '0.86rem', sm: '1.1rem' }, lineHeight: 1.45, maxWidth: { xs: '100%', md: '80%' }, position: 'relative', zIndex: 1 }}>
+                <Typography sx={{ color: 'rgba(68, 64, 60, 0.88)', fontSize: bodyFontSize, lineHeight: 1.45, maxWidth: { xs: '100%', md: '80%' }, position: 'relative', zIndex: 1 }}>
                     Plan your next event with our delicious menu. Professional catering for any size.
                 </Typography>
             </Box>
@@ -647,7 +649,7 @@ const CateringPage = () => {
                             py: { xs: 0.75, sm: 1 },
                             textTransform: 'none',
                             fontWeight: 700,
-                            fontSize: { xs: '0.82rem', sm: '1rem' },
+                            fontSize: bodyFontSize,
                             color: 'text.secondary',
                             borderRadius: 2,
                         },
@@ -667,7 +669,7 @@ const CateringPage = () => {
                             variant="h5"
                             fontWeight={800}
                             mb={{ xs: 1, sm: 2.5 }}
-                            sx={{ fontSize: { xs: '1.05rem', sm: '1.5rem' }, textAlign: { xs: 'center', sm: 'left' }, lineHeight: { xs: 1.25, sm: 1.3 } }}
+                            sx={{ fontSize: headingFontSize, textAlign: { xs: 'center', sm: 'left' }, lineHeight: { xs: 1.25, sm: 1.3 } }}
                         >
                             Select Items
                         </Typography>
@@ -692,7 +694,7 @@ const CateringPage = () => {
                                                         fontWeight={800}
                                                         sx={{
                                                             letterSpacing: 0.2,
-                                                            fontSize: { xs: '0.72rem', sm: '1rem' },
+                                                            fontSize: headingFontSize,
                                                             lineHeight: { xs: 1.2, sm: 1.43 },
                                                         }}
                                                     >
@@ -704,7 +706,7 @@ const CateringPage = () => {
                                                         variant="h6"
                                                         color="text.primary"
                                                         fontWeight={900}
-                                                        sx={{ fontSize: { xs: '0.78rem', sm: '1.35rem' }, lineHeight: 1.2 }}
+                                                        sx={{ fontSize: headingFontSize, lineHeight: 1.2 }}
                                                     >
                                                         {formatCurrency(item.price)}
                                                     </Typography>
@@ -721,7 +723,7 @@ const CateringPage = () => {
                                                                 px: { xs: 1.25, sm: 2 },
                                                                 py: { xs: 0.35, sm: 0.5 },
                                                                 minHeight: { xs: 28, sm: undefined },
-                                                                fontSize: { xs: '0.68rem', sm: '0.8125rem' },
+                                                                fontSize: bodyFontSize,
                                                                 boxShadow: '0 4px 12px rgba(79,70,229,0.3)',
                                                                 '& .MuiButton-startIcon': { mr: { xs: 0.35, sm: 1 } },
                                                             }}
@@ -754,7 +756,7 @@ const CateringPage = () => {
                                                             >
                                                                 <Remove sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }} />
                                                             </IconButton>
-                                                            <Typography variant="body2" fontWeight={800} sx={{ color: 'white', minWidth: 18, textAlign: 'center', fontSize: { xs: '0.7rem', sm: '0.875rem' } }}>
+                                                            <Typography variant="body2" fontWeight={800} sx={{ color: 'white', minWidth: 18, textAlign: 'center', fontSize: bodyFontSize }}>
                                                                 {qty}
                                                             </Typography>
                                                             <IconButton
@@ -776,12 +778,12 @@ const CateringPage = () => {
 
                         {/* Custom Item Section */}
                         <Box mt={{ xs: 2, sm: 4 }}>
-                            <Typography variant="h6" fontWeight={700} mb={{ xs: 1, sm: 2 }} sx={{ fontSize: { xs: '0.95rem', sm: '1.25rem' } }}>
+                            <Typography variant="h6" fontWeight={700} mb={{ xs: 1, sm: 2 }} sx={{ fontSize: headingFontSize }}>
                                 Need something else?
                             </Typography>
                             <Card sx={{ borderRadius: 3, border: '1px dashed', borderColor: 'primary.main', bgcolor: alpha('#4F46E5', 0.02) }}>
                                 <CardContent sx={{ p: 3 }}>
-                                    <Typography variant="body2" color="text.secondary" mb={2}>
+                                    <Typography variant="body2" color="text.secondary" mb={2} sx={{ fontSize: bodyFontSize }}>
                                         Don't see what you're looking for? Add a custom item and our admin will provide a quote.
                                     </Typography>
                                     <Grid container spacing={2} alignItems="center">
@@ -824,7 +826,7 @@ const CateringPage = () => {
                     {/* Order Summary Form */}
                     <Grid item xs={12} md={5}>
                         <Paper sx={{ p: { xs: 2, sm: 3 }, borderRadius: 3, position: 'sticky', top: 20, mx: 'auto' }}>
-                            <Typography variant="h6" fontWeight={700} mb={3} sx={{ textAlign: { xs: 'center', sm: 'left' } }}>
+                            <Typography variant="h6" fontWeight={700} mb={3} sx={{ textAlign: { xs: 'center', sm: 'left' }, fontSize: headingFontSize }}>
                                 Order Details
                             </Typography>
                             <form onSubmit={handleSubmit}>
@@ -928,17 +930,17 @@ const CateringPage = () => {
                                     </Grid>
 
                                     <Box sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 3, bgcolor: alpha('#4F46E5', 0.02), width: '100%' }}>
-                                        <Typography variant="subtitle2" fontWeight={700} color="primary.main" mb={2}>Guest Counts</Typography>
+                                        <Typography variant="subtitle2" fontWeight={700} color="primary.main" mb={2} sx={{ fontSize: headingFontSize }}>Guest Counts</Typography>
                                         <Grid container spacing={3}>
                                             <Grid item xs={12} sm={6}>
-                                                <Typography variant="caption" fontWeight={700} sx={{ display: 'block', mb: 1 }}>Adults</Typography>
+                                                <Typography variant="caption" fontWeight={700} sx={{ display: 'block', mb: 1, fontSize: bodyFontSize }}>Adults</Typography>
                                                 <Box display="flex" gap={1}>
                                                     <TextField label="Veg" size="small" type="number" value={guests.adults.veg} onChange={e => setGuests({ ...guests, adults: { ...guests.adults, veg: Math.max(0, parseInt(e.target.value) || 0) } })} inputProps={{ min: 0 }} />
                                                     <TextField label="Non-Veg" size="small" type="number" value={guests.adults.nonVeg} onChange={e => setGuests({ ...guests, adults: { ...guests.adults, nonVeg: Math.max(0, parseInt(e.target.value) || 0) } })} inputProps={{ min: 0 }} />
                                                 </Box>
                                             </Grid>
                                             <Grid item xs={12} sm={6}>
-                                                <Typography variant="caption" fontWeight={700} sx={{ display: 'block', mb: 1 }}>Kids</Typography>
+                                                <Typography variant="caption" fontWeight={700} sx={{ display: 'block', mb: 1, fontSize: bodyFontSize }}>Kids</Typography>
                                                 <Box display="flex" gap={1}>
                                                     <TextField label="Veg" size="small" type="number" value={guests.kids.veg} onChange={e => setGuests({ ...guests, kids: { ...guests.kids, veg: Math.max(0, parseInt(e.target.value) || 0) } })} inputProps={{ min: 0 }} />
                                                     <TextField label="Non-Veg" size="small" type="number" value={guests.kids.nonVeg} onChange={e => setGuests({ ...guests, kids: { ...guests.kids, nonVeg: Math.max(0, parseInt(e.target.value) || 0) } })} inputProps={{ min: 0 }} />
@@ -965,9 +967,9 @@ const CateringPage = () => {
 
                                     <Divider />
                                     <Box>
-                                        <Typography variant="subtitle2" fontWeight={700} mb={1}>Cart Summary</Typography>
+                                        <Typography variant="subtitle2" fontWeight={700} mb={1} sx={{ fontSize: headingFontSize }}>Cart Summary</Typography>
                                         {cart.length === 0 ? (
-                                            <Typography variant="body2" color="text.secondary">Your cart is empty</Typography>
+                                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: bodyFontSize }}>Your cart is empty</Typography>
                                         ) : (
                                             <List dense>
                                                 {cart.map((item, idx) => {
@@ -981,7 +983,7 @@ const CateringPage = () => {
                                                             <ListItemText
                                                                 primary={
                                                                     <Box display="flex" alignItems="center" gap={1}>
-                                                                        <Typography variant="body2" fontWeight={700}>{item.name}</Typography>
+                                                                        <Typography variant="body2" fontWeight={700} sx={{ fontSize: bodyFontSize }}>{item.name}</Typography>
                                                                         {item.spiceLevel && (
                                                                             <Chip
                                                                                 label={item.spiceLevel}
@@ -1013,21 +1015,21 @@ const CateringPage = () => {
 
                                     <Box sx={{ p: 2, bgcolor: alpha('#4F46E5', 0.05), borderRadius: 2 }}>
                                         <Box display="flex" justifyContent="space-between" mb={1}>
-                                            <Typography variant="body2" color="text.secondary">Subtotal</Typography>
-                                            <Typography variant="body2" fontWeight={700}>{formatCurrency(subtotal)}</Typography>
+                                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: bodyFontSize }}>Subtotal</Typography>
+                                            <Typography variant="body2" fontWeight={700} sx={{ fontSize: bodyFontSize }}>{formatCurrency(subtotal)}</Typography>
                                         </Box>
                                         <Box display="flex" justifyContent="space-between" mb={1}>
-                                            <Typography variant="body2" color="text.secondary">
+                                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: bodyFontSize }}>
                                                 Tax {taxAmount > 0 && `(${(taxAmount / subtotal * 100).toFixed(1)}%)`}
                                             </Typography>
-                                            <Typography variant="body2" fontWeight={700} color={taxAmount > 0 ? 'warning.dark' : 'text.secondary'}>
+                                            <Typography variant="body2" fontWeight={700} color={taxAmount > 0 ? 'warning.dark' : 'text.secondary'} sx={{ fontSize: bodyFontSize }}>
                                                 {formatCurrency(taxAmount)}
                                             </Typography>
                                         </Box>
                                         <Divider sx={{ my: 1 }} />
                                         <Box display="flex" justifyContent="space-between">
-                                            <Typography variant="h6" fontWeight={800}>Total</Typography>
-                                            <Typography variant="h6" fontWeight={800} color="primary.main">{formatCurrency(totalAmount)}</Typography>
+                                            <Typography variant="h6" fontWeight={800} sx={{ fontSize: headingFontSize }}>Total</Typography>
+                                            <Typography variant="h6" fontWeight={800} color="primary.main" sx={{ fontSize: headingFontSize }}>{formatCurrency(totalAmount)}</Typography>
                                         </Box>
                                     </Box>
 
@@ -1198,7 +1200,7 @@ const CateringPage = () => {
                 PaperProps={{ sx: { mt: { xs: '80px', md: 'auto' }, mb: { xs: 2, md: 'auto' } } }}
             >
                 <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="h6" fontWeight="bold">Order: {viewOrder?.orderNumber}</Typography>
+                    <Typography variant="h6" fontWeight="bold" sx={{ fontSize: headingFontSize }}>Order: {viewOrder?.orderNumber}</Typography>
                     <IconButton 
                         onClick={() => setViewDialogOpen(false)} 
                         size="small"
@@ -1223,32 +1225,32 @@ const CateringPage = () => {
                             <ListItem><ListItemText primary="Total" secondary={formatCurrency(viewOrder.totalAmount || 0)} /></ListItem>
                             <Divider sx={{ my: 1 }} />
                             <Box sx={{ px: 2, mb: 1 }}>
-                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>Occasion Details</Typography>
-                                <Typography variant="body2" sx={{ textTransform: 'capitalize' }}><b>Occasion:</b> {viewOrder.occasion || 'N/A'}</Typography>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, fontSize: bodyFontSize }}>Occasion Details</Typography>
+                                <Typography variant="body2" sx={{ textTransform: 'capitalize', fontSize: bodyFontSize }}><b>Occasion:</b> {viewOrder.occasion || 'N/A'}</Typography>
                                 {viewOrder.occasionPersonName && (
-                                    <Typography variant="body2"><b>For:</b> {viewOrder.occasionPersonName}</Typography>
+                                    <Typography variant="body2" sx={{ fontSize: bodyFontSize }}><b>For:</b> {viewOrder.occasionPersonName}</Typography>
                                 )}
-                                <Typography variant="body2"><b>Occasion Date:</b> {viewOrder.occasionDate ? new Date(viewOrder.occasionDate).toLocaleDateString() : 'N/A'}</Typography>
+                                <Typography variant="body2" sx={{ fontSize: bodyFontSize }}><b>Occasion Date:</b> {viewOrder.occasionDate ? new Date(viewOrder.occasionDate).toLocaleDateString() : 'N/A'}</Typography>
 
-                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, mt: 1 }}>Guest Counts</Typography>
-                                <Typography variant="body2"><b>Adults:</b> {viewOrder.guests?.adults?.veg + viewOrder.guests?.adults?.nonVeg === 0 ? 'N/A' : `Veg: ${viewOrder.guests?.adults?.veg}, Non-Veg: ${viewOrder.guests?.adults?.nonVeg}`}</Typography>
-                                <Typography variant="body2"><b>Kids:</b> {viewOrder.guests?.kids?.veg + viewOrder.guests?.kids?.nonVeg === 0 ? 'N/A' : `Veg: ${viewOrder.guests?.kids?.veg}, Non-Veg: ${viewOrder.guests?.kids?.nonVeg}`}</Typography>
+                                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, mt: 1, fontSize: bodyFontSize }}>Guest Counts</Typography>
+                                <Typography variant="body2" sx={{ fontSize: bodyFontSize }}><b>Adults:</b> {viewOrder.guests?.adults?.veg + viewOrder.guests?.adults?.nonVeg === 0 ? 'N/A' : `Veg: ${viewOrder.guests?.adults?.veg}, Non-Veg: ${viewOrder.guests?.adults?.nonVeg}`}</Typography>
+                                <Typography variant="body2" sx={{ fontSize: bodyFontSize }}><b>Kids:</b> {viewOrder.guests?.kids?.veg + viewOrder.guests?.kids?.nonVeg === 0 ? 'N/A' : `Veg: ${viewOrder.guests?.kids?.veg}, Non-Veg: ${viewOrder.guests?.kids?.nonVeg}`}</Typography>
 
                                 {viewOrder.additionalServices && (
                                     <>
-                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, mt: 1 }}>Special Instructions</Typography>
-                                        <Typography variant="body2">{viewOrder.additionalServices}</Typography>
+                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5, mt: 1, fontSize: bodyFontSize }}>Special Instructions</Typography>
+                                        <Typography variant="body2" sx={{ fontSize: bodyFontSize }}>{viewOrder.additionalServices}</Typography>
                                     </>
                                 )}
                             </Box>
                             <Divider sx={{ my: 1 }} />
-                            <Typography variant="subtitle2" fontWeight="bold" sx={{ px: 2, mt: 1 }}>Items:</Typography>
+                            <Typography variant="subtitle2" fontWeight="bold" sx={{ px: 2, mt: 1, fontSize: headingFontSize }}>Items:</Typography>
                             {viewOrder.items?.map((item: any, i: number) => (
                                 <ListItem key={i}>
                                     <ListItemText
                                         primary={
                                             <Box display="flex" alignItems="center" gap={1}>
-                                                <Typography variant="body2" fontWeight={700}>{item.name}</Typography>
+                                                <Typography variant="body2" fontWeight={700} sx={{ fontSize: bodyFontSize }}>{item.name}</Typography>
                                                 {item.spiceLevel && (
                                                     <Chip
                                                         label={item.spiceLevel}
@@ -1284,7 +1286,7 @@ const CateringPage = () => {
                     <Box sx={{ display: 'inline-flex', p: 2, borderRadius: '20px', background: 'linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)', color: 'white', mb: 2 }}>
                         <Person sx={{ fontSize: 32 }} />
                     </Box>
-                    <Typography variant="h5" fontWeight={800}>{loginDialogMode === 'login' ? 'Welcome Back' : 'Create Account'}</Typography>
+                    <Typography variant="h5" fontWeight={800} sx={{ fontSize: headingFontSize }}>{loginDialogMode === 'login' ? 'Welcome Back' : 'Create Account'}</Typography>
                 </DialogTitle>
                 <DialogContent>
                     <Stack spacing={2.5} sx={{ mt: 1 }}>

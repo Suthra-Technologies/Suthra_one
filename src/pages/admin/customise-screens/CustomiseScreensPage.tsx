@@ -262,6 +262,8 @@ const getServiceIcon = (iconName: string) => {
 const CustomiseScreensPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const headingFontSize = { xs: '1.15rem', sm: '1.5rem', md: '2.125rem' };
+  const bodyFontSize = { xs: '0.78rem', sm: '0.85rem', md: '0.875rem' };
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sections, setSections] = useState<SectionData[]>([]);
@@ -445,20 +447,20 @@ const CustomiseScreensPage: React.FC = () => {
         spacing={{ xs: 2, md: 2 }} 
         mb={{ xs: 2.5, md: 4 }}
       >
-        <Box sx={{ textAlign: { xs: 'left', md: 'left' }, width: { xs: '100%', md: 'auto' } }}>
+        <Box sx={{ textAlign: { xs: 'center', md: 'left' }, width: { xs: '100%', md: 'auto' } }}>
           <Typography 
             variant="h4" 
             sx={{ 
                 fontWeight: 800,
                 fontFamily: "'Outfit', sans-serif",
-                fontSize: { xs: '1.5rem', md: '2.125rem' },
-                color: 'text.primary',
+                fontSize: headingFontSize,
+                color: { xs: '#000', md: 'text.primary' },
                 mb: { xs: 0.5, md: 0 }
             }}
           >
             Customise Screens
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, fontSize: { xs: '0.75rem', md: '0.875rem' } }}>
+          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, fontSize: bodyFontSize }}>
             Manage and personalize your application's public screens.
           </Typography>
         </Box>
@@ -467,7 +469,7 @@ const CustomiseScreensPage: React.FC = () => {
           spacing={{ xs: 1, md: 2 }} 
           sx={{ 
             width: { xs: '100%', md: 'auto' }, 
-            justifyContent: { xs: 'flex-start', md: 'flex-end' },
+            justifyContent: { xs: 'center', md: 'flex-end' },
             flexWrap: { xs: 'nowrap', md: 'nowrap' },
             gap: { xs: 1, md: 0 },
             overflowX: { xs: 'auto', md: 'visible' },
@@ -488,7 +490,7 @@ const CustomiseScreensPage: React.FC = () => {
                   borderRadius: 2.5,
                   fontWeight: 700,
                   fontFamily: "'Outfit', sans-serif",
-                  fontSize: { xs: '0.75rem', md: '0.875rem' }, 
+                  fontSize: bodyFontSize, 
                   whiteSpace: 'nowrap' 
                 }}
               >
@@ -504,7 +506,7 @@ const CustomiseScreensPage: React.FC = () => {
                   borderRadius: 2.5,
                   fontWeight: 700,
                   fontFamily: "'Outfit', sans-serif",
-                  fontSize: { xs: '0.75rem', md: '0.875rem' }, 
+                  fontSize: bodyFontSize, 
                   whiteSpace: 'nowrap' 
                 }}
               >
@@ -523,7 +525,7 @@ const CustomiseScreensPage: React.FC = () => {
               borderRadius: 2.5,
               fontWeight: 800,
               fontFamily: "'Outfit', sans-serif",
-              fontSize: { xs: '0.75rem', md: '0.875rem' }, 
+              fontSize: bodyFontSize, 
               whiteSpace: 'nowrap',
               boxShadow: `0 4px 12px ${alpha(theme.palette.primary.main, 0.2)}`
             }}
@@ -547,7 +549,7 @@ const CustomiseScreensPage: React.FC = () => {
             '& .MuiTabs-indicator': { height: 3, borderRadius: '3px 3px 0 0' },
             '& .MuiTab-root': {
                 minHeight: { xs: 44, md: 48 },
-                fontSize: { xs: '0.85rem', md: '0.875rem' },
+                fontSize: bodyFontSize,
                 fontWeight: 800,
                 fontFamily: "'Outfit', sans-serif",
                 textTransform: 'none',

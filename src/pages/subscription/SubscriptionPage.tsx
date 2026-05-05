@@ -39,6 +39,9 @@ interface Plan {
     maxUsers?: number;
     maxTables?: number;
     maxOrders?: number;
+    maxSms?: number;
+    maxEmail?: number;
+    maxEmails?: number;
 }
 
 const SubscriptionPage: React.FC = () => {
@@ -284,19 +287,35 @@ const SubscriptionPage: React.FC = () => {
                                             <ListItemIcon sx={{ minWidth: 36 }}>
                                                 <Check color="success" fontSize="small" />
                                             </ListItemIcon>
-                                            <ListItemText primary={plan.maxUsers ? `Max Users: ${plan.maxUsers}` : 'Unlimited Users'} />
+                                            <ListItemText primary={typeof plan.maxUsers === 'number' && plan.maxUsers > 0 ? `Max Users: ${plan.maxUsers}` : 'Unlimited Users'} />
                                         </ListItem>
                                         <ListItem>
                                             <ListItemIcon sx={{ minWidth: 36 }}>
                                                 <Check color="success" fontSize="small" />
                                             </ListItemIcon>
-                                            <ListItemText primary={plan.maxTables ? `Max Tables: ${plan.maxTables}` : 'Unlimited Tables'} />
+                                            <ListItemText primary={typeof plan.maxTables === 'number' && plan.maxTables > 0 ? `Max Tables: ${plan.maxTables}` : 'Unlimited Tables'} />
                                         </ListItem>
                                         <ListItem>
                                             <ListItemIcon sx={{ minWidth: 36 }}>
                                                 <Check color="success" fontSize="small" />
                                             </ListItemIcon>
-                                            <ListItemText primary={plan.maxOrders ? `Max Orders/mo: ${plan.maxOrders}` : 'Unlimited Orders'} />
+                                            <ListItemText primary={typeof plan.maxOrders === 'number' && plan.maxOrders > 0 ? `Max Orders/mo: ${plan.maxOrders}` : 'Unlimited Orders'} />
+                                        </ListItem>
+                                        <ListItem>
+                                            <ListItemIcon sx={{ minWidth: 36 }}>
+                                                <Check color="success" fontSize="small" />
+                                            </ListItemIcon>
+                                            <ListItemText primary={typeof plan.maxSms === 'number' && plan.maxSms > 0 ? `Max SMS/mo: ${plan.maxSms}` : 'Unlimited SMS'} />
+                                        </ListItem>
+                                        <ListItem>
+                                            <ListItemIcon sx={{ minWidth: 36 }}>
+                                                <Check color="success" fontSize="small" />
+                                            </ListItemIcon>
+                                            <ListItemText
+                                                primary={typeof (plan.maxEmail ?? plan.maxEmails) === 'number' && (plan.maxEmail ?? plan.maxEmails)! > 0
+                                                    ? `Max Emails/mo: ${plan.maxEmail ?? plan.maxEmails}`
+                                                    : 'Unlimited Emails'}
+                                            />
                                         </ListItem>
                                         {(plan.features || []).map((feature, index) => (
                                             <ListItem key={index}>

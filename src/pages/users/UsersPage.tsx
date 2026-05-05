@@ -52,6 +52,7 @@ import {
   PersonOff as DeactivateIcon,
   Person as CustomerIcon,
   Search as SearchIcon,
+  DinnerDining as RunnerIcon,
 } from '@mui/icons-material';
 import { settingsAPI, usersAPI, supportAPI } from '../../services/api';
 import { validateEmail, validatePhone, validateName, validatePassword, validateRequired, getHelperText, hasError } from '../../utils/validation';
@@ -250,6 +251,8 @@ const extractUsersFromResponse = (payload: unknown): User[] => {
 const UsersPage = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const headingFontSize = { xs: '1.12rem', sm: '1.4rem', md: '2.125rem' };
+  const bodyFontSize = { xs: '0.78rem', sm: '0.88rem', md: '0.95rem' };
   const { settings } = useSettings();
   const { activeRole, user: currentUser } = useAuth();
   const [tabValue, setTabValue] = useState(0);
@@ -315,7 +318,7 @@ const UsersPage = () => {
     { value: 'cashier', label: 'Cashier', icon: CashierIcon, color: '#2196f3' },
     { value: 'waiter', label: 'Waiter', icon: WaiterIcon, color: '#4caf50' },
     { value: 'kitchen_staff', label: 'Kitchen Staff', icon: KitchenIcon, color: '#9c27b0' },
-    { value: 'food_runner', label: 'Food Runner', icon: KitchenIcon, color: '#8bc34a' },
+    { value: 'food_runner', label: 'Food Runner', icon: RunnerIcon, color: '#8bc34a' },
     { value: 'delivery', label: 'Delivery', icon: DeliveryDiningIcon, color: '#795548' },
     { value: 'customer', label: 'Customer', icon: CustomerIcon, color: '#607d8b' },
   ];
@@ -573,7 +576,7 @@ const UsersPage = () => {
 
       if (isSuperAdmin || (isAdmin && !targetIsAdmin)) {
         // DELETE DIRECTLY
-        await usersAPI.delete(deleteTarget.id);
+        await usersAPI.deleteUser(deleteTarget.id);
         toast.success(`User "${deleteTarget.name}" deleted successfully`);
         await fetchUsers();
       } else {
@@ -767,14 +770,15 @@ const UsersPage = () => {
             sx={{
               fontWeight: 800,
               fontFamily: "'Outfit', sans-serif",
-              fontSize: { xs: '1.75rem', sm: '2.125rem' },
+              fontSize: headingFontSize,
+              color: { xs: '#000', sm: 'text.primary' },
               letterSpacing: '-0.02em',
               mb: 0.5
             }}
           >
             User Management
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 500, fontSize: bodyFontSize }}>
             Manage staff members and their permissions
           </Typography>
         </Box>
@@ -800,7 +804,7 @@ const UsersPage = () => {
             textTransform: 'none',
             fontWeight: 800,
             fontFamily: "'Outfit', sans-serif",
-            fontSize: { xs: '0.8rem', sm: '1rem' },
+            fontSize: bodyFontSize,
             boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.25)}`,
             '&:hover': {
               boxShadow: `0 12px 20px ${alpha(theme.palette.primary.main, 0.35)}`,
@@ -827,9 +831,9 @@ const UsersPage = () => {
             '&.Mui-disabled': { opacity: 0.3 },
           },
           '& .MuiTab-root': {
-            fontSize: { xs: '0.8rem', sm: '0.875rem' },
-            minHeight: { xs: 44, sm: 48 },
-            px: { xs: 2, sm: 2 },
+            fontSize: bodyFontSize,
+            minHeight: { xs: 42, sm: 48 },
+            px: { xs: 1.4, sm: 2 },
             textTransform: 'none',
             fontWeight: 700,
             fontFamily: "'Outfit', sans-serif",
@@ -855,7 +859,7 @@ const UsersPage = () => {
       {/* Users Display */}
       <Box>
         {loading && (
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontSize: bodyFontSize }}>
             Loading users...
           </Typography>
         )}
@@ -870,9 +874,10 @@ const UsersPage = () => {
             variant="h6" 
             sx={{ 
               fontWeight: 800, 
-              color: 'text.primary',
+              color: { xs: '#000', sm: 'text.primary' },
               fontFamily: "'Outfit', sans-serif",
-              fontSize: { xs: '1.1rem', sm: '1.25rem' }
+              fontSize: headingFontSize,
+              textAlign: { xs: 'center', sm: 'left' }
             }}
           >
             {tabValue === 0 && 'All Staff Members'}
@@ -881,9 +886,25 @@ const UsersPage = () => {
             {tabValue === 3 && 'Customers'}
             {tabValue === 4 && 'Inactive Users'}
           </Typography>
-          <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', bgcolor: alpha(theme.palette.divider, 0.1), px: 1, py: 0.5, borderRadius: 1.5 }}>
+          <Box
+            sx={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 800,
+              color: 'primary.main',
+              bgcolor: alpha(theme.palette.primary.main, 0.08),
+              border: `1px solid ${alpha(theme.palette.primary.main, 0.18)}`,
+              px: { xs: 1.1, sm: 1.4 },
+              py: { xs: 0.45, sm: 0.55 },
+              borderRadius: 999,
+              fontSize: { xs: '0.7rem', sm: '0.75rem' },
+              minWidth: { xs: 74, sm: 88 },
+              lineHeight: 1.1,
+            }}
+          >
             {users.length} Total
-          </Typography>
+          </Box>
         </Box>
 
         <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ px: { xs: 2, sm: 0 } }}>
@@ -1722,17 +1743,19 @@ const UsersPage = () => {
                   </Grid>
                 </>
               )}
-              <Grid size={{ xs: 12 }}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={userForm.isActive}
-                      onChange={(e) => setUserForm({ ...userForm, isActive: e.target.checked })}
-                    />
-                  }
-                  label="Active User"
-                />
-              </Grid>
+              {editingUser && (
+                <Grid size={{ xs: 12 }}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={userForm.isActive}
+                        onChange={(e) => setUserForm({ ...userForm, isActive: e.target.checked })}
+                      />
+                    }
+                    label="Active User"
+                  />
+                </Grid>
+              )}
             </Grid>
           )}
 

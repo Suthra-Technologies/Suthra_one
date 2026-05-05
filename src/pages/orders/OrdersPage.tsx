@@ -33,6 +33,7 @@ import {
   TextField,
   Tooltip,
   Typography,
+  useMediaQuery,
   useTheme
 } from '@mui/material';
 import Grid from '@mui/material/Grid2';
@@ -95,6 +96,9 @@ const OrdersPage = () => {
   const [printDialogOpen, setPrintDialogOpen] = useState(false);
 
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const headingFontSize = { xs: '1.15rem', sm: '1.4rem', md: '2.125rem' };
+  const bodyFontSize = { xs: '0.78rem', sm: '0.88rem', md: '0.95rem' };
   const navigate = useNavigate();
   const { user, tenantSlug } = useAuth();
   const isCustomer = user?.role === 'customer';
@@ -450,8 +454,8 @@ const OrdersPage = () => {
           <CircularProgress />
         </Box>
       ) : bookings.length === 0 ? (
-        <Paper sx={{ p: 5, textAlign: 'center' }}>
-          <Typography variant="h6" color="text.secondary" gutterBottom>
+        <Paper sx={{ p: { xs: 2.5, sm: 5 }, textAlign: 'center' }}>
+          <Typography variant="h6" color="text.secondary" gutterBottom sx={{ fontSize: headingFontSize }}>
             You haven't made any table bookings yet.
           </Typography>
           <Button
@@ -464,8 +468,8 @@ const OrdersPage = () => {
           </Button>
         </Paper>
       ) : (
-        <TableContainer component={Paper}>
-          <Table>
+        <TableContainer component={Paper} sx={{ overflowX: 'auto' }}>
+          <Table size={isMobile ? 'small' : 'medium'} sx={{ minWidth: { xs: 680, sm: 760 } }}>
             <TableHead>
               <TableRow>
                 <TableCell>Booking ID</TableCell>
@@ -480,10 +484,10 @@ const OrdersPage = () => {
               {bookings.map((booking) => (
                 <TableRow key={booking._id} hover>
                   <TableCell>
-                    <Typography variant="body2" fontWeight="bold">
+                    <Typography variant="body2" fontWeight="bold" sx={{ fontSize: bodyFontSize }}>
                       {booking.bookingId}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.72rem', sm: '0.78rem' } }}>
                       Booked on {formatDate(booking.createdAt)}
                     </Typography>
                   </TableCell>
@@ -501,7 +505,7 @@ const OrdersPage = () => {
                     {booking.table ? (
                       <Chip label={booking.table.name} size="small" variant="outlined" />
                     ) : (
-                      <Typography variant="body2" color="error">Table Removed</Typography>
+                      <Typography variant="body2" color="error" sx={{ fontSize: bodyFontSize }}>Table Removed</Typography>
                     )}
                   </TableCell>
                   <TableCell>
@@ -557,7 +561,9 @@ const OrdersPage = () => {
             variant="h4" 
             sx={{ 
               fontWeight: 800,
-              fontSize: { xs: '1.35rem', sm: '1.75rem', md: '2.125rem' }
+              fontSize: headingFontSize,
+              textAlign: { xs: 'center', sm: 'left' },
+              color: { xs: '#000', sm: 'text.primary' }
             }}
           >
             {isCustomer ? 'My Orders & Bookings' : 'Orders Management'}
@@ -619,8 +625,8 @@ const OrdersPage = () => {
       {isCustomer && (
         <Paper sx={{ mb: { xs: 1.5, sm: 3 } }}>
           <Tabs value={activeTab} onChange={handleTabChange} variant="fullWidth">
-            <Tab label="My Orders" icon={<MenuIcon />} iconPosition="start" />
-            <Tab label="My Bookings" icon={<TableIcon />} iconPosition="start" />
+            <Tab label="My Orders" icon={<MenuIcon />} iconPosition="start" sx={{ fontSize: bodyFontSize, minHeight: { xs: 42, sm: 48 } }} />
+            <Tab label="My Bookings" icon={<TableIcon />} iconPosition="start" sx={{ fontSize: bodyFontSize, minHeight: { xs: 42, sm: 48 } }} />
           </Tabs>
         </Paper>
       )}
@@ -629,8 +635,8 @@ const OrdersPage = () => {
       {!isCustomer && (
         <Paper sx={{ mb: { xs: 1.5, sm: 3 } }}>
           <Tabs value={posActiveTab} onChange={(_, newVal) => setPosActiveTab(newVal)} variant="fullWidth">
-            <Tab label="Current Orders" icon={<TimeIcon />} iconPosition="start" />
-            <Tab label="Pre Orders" icon={<EventIcon />} iconPosition="start" />
+            <Tab label="Current Orders" icon={<TimeIcon />} iconPosition="start" sx={{ fontSize: bodyFontSize, minHeight: { xs: 42, sm: 48 } }} />
+            <Tab label="Pre Orders" icon={<EventIcon />} iconPosition="start" sx={{ fontSize: bodyFontSize, minHeight: { xs: 42, sm: 48 } }} />
           </Tabs>
         </Paper>
       )}

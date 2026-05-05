@@ -92,6 +92,8 @@ const VendorsPage: React.FC = () => {
     const theme = useTheme();
     const navigate = useNavigate();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const headingFontSize = { xs: '1.12rem', sm: '1.4rem', md: '2.125rem' };
+    const bodyFontSize = { xs: '0.78rem', sm: '0.88rem', md: '0.95rem' };
     const [vendors, setVendors] = useState<Vendor[]>([]);
     const [loading, setLoading] = useState(true);
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -406,7 +408,7 @@ const VendorsPage: React.FC = () => {
 
     return (
         <Box sx={{ 
-            p: isMobile ? 2 : 4, 
+            p: isMobile ? 1.4 : 4, 
             pt: isMobile ? '20px' : 4, // Minimize top gap on phones only
             maxWidth: 1600, 
             mx: 'auto' 
@@ -414,12 +416,13 @@ const VendorsPage: React.FC = () => {
             {/* Header */}
             <Box sx={{ 
                 display: 'flex', 
+                flexDirection: { xs: 'column', sm: 'row' },
                 justifyContent: 'space-between', 
-                alignItems: 'center', 
-                mb: isMobile ? 3 : 5,
-                gap: 2
+                alignItems: { xs: 'stretch', sm: 'center' }, 
+                mb: isMobile ? 2 : 5,
+                gap: { xs: 1.25, sm: 2 }
             }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'center', sm: 'flex-start' }, gap: 1.5 }}>
                     <Box sx={{ 
                         p: isMobile ? 1 : 1.5, 
                         borderRadius: 2, 
@@ -429,7 +432,16 @@ const VendorsPage: React.FC = () => {
                     }}>
                         <VendorIcon fontSize={isMobile ? "small" : "medium"} />
                     </Box>
-                    <Typography variant="h4" fontWeight={900} sx={{ fontSize: { xs: '1.25rem', md: '2.125rem' }, letterSpacing: '-0.04em' }}>
+                    <Typography
+                        variant="h4"
+                        fontWeight={900}
+                        sx={{
+                            fontSize: headingFontSize,
+                            color: { xs: '#000', sm: 'text.primary' },
+                            textAlign: { xs: 'center', sm: 'left' },
+                            letterSpacing: '-0.04em'
+                        }}
+                    >
                         Vendors
                     </Typography>
                 </Box>
@@ -440,12 +452,13 @@ const VendorsPage: React.FC = () => {
                     sx={{ 
                         borderRadius: 2, 
                         whiteSpace: 'nowrap', 
-                        fontSize: { xs: '0.75rem', sm: '0.875rem' }, 
-                        px: { xs: 2.5, sm: 3 },
+                        fontSize: bodyFontSize, 
+                            px: { xs: 2, sm: 3 },
                         py: isMobile ? 0.75 : 1,
                         textTransform: 'none',
                         fontWeight: 'bold',
-                        boxShadow: '0 4px 14px 0 rgba(0,0,0,0.1)'
+                            boxShadow: '0 4px 14px 0 rgba(0,0,0,0.1)',
+                            width: { xs: '100%', sm: 'auto' }
                     }}
                 >
                     Add {isMobile ? '' : 'New'} Vendor
@@ -454,7 +467,7 @@ const VendorsPage: React.FC = () => {
 
             {/* Filters */}
             <Paper sx={{ 
-                p: isMobile ? 1.5 : 2, 
+                p: isMobile ? 1.25 : 2, 
                 mb: isMobile ? 2 : 4, 
                 borderRadius: isMobile ? 3 : 2,
                 boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.05)' : alpha(theme.palette.divider, 0.1),
@@ -485,7 +498,7 @@ const VendorsPage: React.FC = () => {
                                 value={statusFilter}
                                 label="Status"
                                 onChange={(e) => setStatusFilter(e.target.value)}
-                                sx={{ borderRadius: 2, fontSize: '0.875rem' }}
+                                sx={{ borderRadius: 2, fontSize: bodyFontSize }}
                             >
                                 <MenuItem value="">All Statuses</MenuItem>
                                 <MenuItem value="active">Active</MenuItem>
@@ -502,17 +515,17 @@ const VendorsPage: React.FC = () => {
                 {loading ? (
                     <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}><CircularProgress thickness={2} size={50} /></Box>
                 ) : vendors.length === 0 ? (
-                    <Paper sx={{ p: 10, textAlign: 'center', borderRadius: 4, border: '2px dashed', borderColor: 'divider', bgcolor: 'transparent', width: '100%', maxWidth: 500 }}>
-                        <Typography color="text.secondary" fontWeight={900}>No vendors found</Typography>
+                    <Paper sx={{ p: 3, textAlign: 'center', borderRadius: 4, border: '2px dashed', borderColor: 'divider', bgcolor: 'transparent', width: '100%', maxWidth: 500 }}>
+                        <Typography color="text.secondary" fontWeight={900} sx={{ fontSize: headingFontSize, color: { xs: '#000', sm: 'text.secondary' } }}>No vendors found</Typography>
                         <Button variant="outlined" startIcon={<AddIcon />} onClick={() => handleOpenDialog()} sx={{ mt: 2, borderRadius: 2 }}>Add First Vendor</Button>
                     </Paper>
                 ) : (
-                    <Grid container spacing={isMobile ? 0 : 2} justifyContent="center" sx={{ width: '100%', m: 0 }}>
+                    <Grid container spacing={isMobile ? 0.75 : 2} justifyContent="center" sx={{ width: '100%', m: 0 }}>
                         {vendors.map((vendor) => (
                             <Grid item xs={12} key={vendor._id} sx={{ display: 'flex', justifyContent: 'center' }}>
                                 <Paper 
                                     sx={{ 
-                                        p: 2, 
+                                        p: 1.15, 
                                         borderRadius: 3, 
                                         width: '100%', 
                                         maxWidth: 500,
@@ -521,14 +534,14 @@ const VendorsPage: React.FC = () => {
                                         boxShadow: '0 2px 12px rgba(0,0,0,0.04)'
                                     }}
                                 >
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 0.75 }}>
                                         <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
                                             <Box sx={{ p: 1, borderRadius: 1.5, bgcolor: alpha(theme.palette.primary.main, 0.05), color: 'primary.main' }}>
                                                 <VendorIcon fontSize="small" />
                                             </Box>
                                             <Box>
-                                                <Typography fontWeight={900} sx={{ fontSize: '1rem', letterSpacing: '-0.02em' }}>{vendor.name}</Typography>
-                                                {vendor.shopName && <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>{vendor.shopName}</Typography>}
+                                                <Typography fontWeight={900} sx={{ fontSize: '0.9rem', letterSpacing: '-0.02em' }}>{vendor.name}</Typography>
+                                                {vendor.shopName && <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.68rem' }}>{vendor.shopName}</Typography>}
                                             </Box>
                                         </Box>
                                         <Box sx={{ display: 'flex', gap: 0.5 }}>
@@ -537,32 +550,32 @@ const VendorsPage: React.FC = () => {
                                         </Box>
                                     </Box>
 
-                                    <Divider sx={{ my: 1.5, borderStyle: 'dashed', opacity: 0.5 }} />
+                                    <Divider sx={{ my: 0.75, borderStyle: 'dashed', opacity: 0.5 }} />
 
-                                    <Grid container spacing={1.5}>
+                                    <Grid container spacing={1}>
                                         <Grid item xs={12}>
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                                 <PhoneIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                                                <Typography variant="body2" fontWeight={500}>{vendor.contact}</Typography>
+                                                <Typography variant="body2" fontWeight={500} sx={{ fontSize: '0.78rem' }}>{vendor.contact}</Typography>
                                             </Box>
                                         </Grid>
                                         <Grid item xs={12}>
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                                 <EmailIcon sx={{ fontSize: 16, color: 'text.secondary' }} />
-                                                <Typography variant="body2" sx={{ wordBreak: 'break-all', opacity: 0.8 }}>{vendor.email}</Typography>
+                                                <Typography variant="body2" sx={{ wordBreak: 'break-all', opacity: 0.8, fontSize: '0.74rem' }}>{vendor.email}</Typography>
                                             </Box>
                                         </Grid>
                                         {vendor.address && (
                                             <Grid item xs={12}>
                                                 <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                                                     <AddressIcon sx={{ fontSize: 16, color: 'text.secondary', mt: 0.2 }} />
-                                                    <Typography variant="caption" sx={{ opacity: 0.7 }}>{vendor.address}</Typography>
+                                                    <Typography variant="caption" sx={{ opacity: 0.7, fontSize: '0.68rem' }}>{vendor.address}</Typography>
                                                 </Box>
                                             </Grid>
                                         )}
                                     </Grid>
 
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1.25 }}>
                                         <Box sx={{ display: 'flex', gap: 0.5 }}>
                                             {vendor.categories?.slice(0, 2).map((cat) => (
                                                 <Chip 

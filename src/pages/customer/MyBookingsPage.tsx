@@ -115,6 +115,8 @@ const MyBookingsPage: React.FC = () => {
     const { user, isAuthenticated, tenantSlug } = useAuth();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const headingFontSize = { xs: '1rem', sm: '1.2rem' };
+    const bodyFontSize = { xs: '0.74rem', sm: '0.88rem' };
 
     const [tabValue, setTabValue] = useState<number>(0);
     // ... rest of state stays same ...
@@ -340,7 +342,7 @@ const MyBookingsPage: React.FC = () => {
             <CardContent sx={{ p: { xs: 2, sm: 2.5 }, '&:last-child': { pb: { xs: 2, sm: 2.5 } } }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: { xs: 1.75, sm: 2 } }}>
                     <Box>
-                        <Typography variant="h6" fontWeight={800} sx={{ lineHeight: 1.2, fontSize: { xs: '0.92rem', sm: '1rem' } }}>
+                        <Typography variant="h6" fontWeight={800} sx={{ lineHeight: 1.2, fontSize: headingFontSize }}>
                             Table {booking.tableNumber}
                         </Typography>
                         <Typography variant="caption" sx={{ fontWeight: 800, display: 'block', mt: 0.5, letterSpacing: 0.5, color: 'primary.main', fontSize: { xs: '0.62rem', sm: '0.68rem' } }}>
@@ -373,7 +375,7 @@ const MyBookingsPage: React.FC = () => {
                             <DateRange sx={{ fontSize: { xs: 15, sm: 16 }, mr: { xs: 1, sm: 1.25 }, color: 'primary.main' }} />
                             <Box>
                                 <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" sx={{ fontSize: { xs: '0.58rem', sm: '0.62rem' } }}>DATE</Typography>
-                                <Typography variant="body2" fontWeight={700} sx={{ fontSize: { xs: '0.72rem', sm: '0.78rem' } }}>{booking.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</Typography>
+                                <Typography variant="body2" fontWeight={700} sx={{ fontSize: bodyFontSize }}>{booking.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</Typography>
                             </Box>
                         </Box>
                     </Grid>
@@ -382,7 +384,7 @@ const MyBookingsPage: React.FC = () => {
                             <AccessTime sx={{ fontSize: { xs: 15, sm: 16 }, mr: { xs: 1, sm: 1.25 }, color: 'primary.main' }} />
                             <Box>
                                 <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" sx={{ fontSize: { xs: '0.58rem', sm: '0.62rem' } }}>TIME</Typography>
-                                <Typography variant="body2" fontWeight={700} sx={{ fontSize: { xs: '0.72rem', sm: '0.78rem' } }}>{booking.time}</Typography>
+                                <Typography variant="body2" fontWeight={700} sx={{ fontSize: bodyFontSize }}>{booking.time}</Typography>
                             </Box>
                         </Box>
                     </Grid>
@@ -391,7 +393,7 @@ const MyBookingsPage: React.FC = () => {
                             <People sx={{ fontSize: { xs: 15, sm: 16 }, mr: { xs: 1, sm: 1.25 }, color: 'primary.main' }} />
                             <Box>
                                 <Typography variant="caption" color="text.secondary" fontWeight={600} display="block" sx={{ fontSize: { xs: '0.58rem', sm: '0.62rem' } }}>GUESTS</Typography>
-                                <Typography variant="body2" fontWeight={700} sx={{ fontSize: { xs: '0.72rem', sm: '0.78rem' } }}>{booking.guests} {booking.guests === 1 ? 'Person' : 'People'}</Typography>
+                                <Typography variant="body2" fontWeight={700} sx={{ fontSize: bodyFontSize }}>{booking.guests} {booking.guests === 1 ? 'Person' : 'People'}</Typography>
                             </Box>
                         </Box>
                     </Grid>
@@ -401,7 +403,7 @@ const MyBookingsPage: React.FC = () => {
                     <Box sx={{ mt: { xs: 1.75, sm: 2 }, p: { xs: 1.25, sm: 1.5 }, bgcolor: 'rgba(0,0,0,0.025)', borderRadius: 2.5 }}>
                         {booking.reservationFee?.refunded && getRefundAmount(booking) > 0 ? (
                             <>
-                                <Typography variant="body2" fontWeight={800} sx={{ fontSize: { xs: '0.72rem', sm: '0.78rem' } }}>
+                                <Typography variant="body2" fontWeight={800} sx={{ fontSize: bodyFontSize }}>
                                     Refund sent: {formatCurrency(getRefundAmount(booking))}
                                 </Typography>
                                 <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem' } }}>
@@ -410,7 +412,7 @@ const MyBookingsPage: React.FC = () => {
                             </>
                         ) : booking.reservationFee?.paid ? (
                             <>
-                                <Typography variant="body2" fontWeight={800} sx={{ fontSize: { xs: '0.72rem', sm: '0.78rem' } }}>
+                                <Typography variant="body2" fontWeight={800} sx={{ fontSize: bodyFontSize }}>
                                     Refund in progress
                                 </Typography>
                                 <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem' } }}>
@@ -419,7 +421,7 @@ const MyBookingsPage: React.FC = () => {
                             </>
                         ) : (
                             <>
-                                <Typography variant="body2" fontWeight={800} sx={{ fontSize: { xs: '0.72rem', sm: '0.78rem' } }}>
+                                <Typography variant="body2" fontWeight={800} sx={{ fontSize: bodyFontSize }}>
                                     Booking cancelled
                                 </Typography>
                                 <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.6rem', sm: '0.65rem' } }}>
@@ -439,7 +441,7 @@ const MyBookingsPage: React.FC = () => {
             <Container maxWidth="md" sx={{ py: 4 }}>
                 <Paper sx={{ p: 4, textAlign: 'center' }}>
                     <Restaurant sx={{ fontSize: 64, color: 'text.secondary', mb: 2 }} />
-                    <Typography variant="h5" gutterBottom>Sign In Required</Typography>
+                    <Typography variant="h5" gutterBottom sx={{ fontSize: headingFontSize }}>Sign In Required</Typography>
                     <Button variant="contained" onClick={() => navigate('/customer-auth')} sx={{ mr: 2 }}>Sign In</Button>
                     <Button variant="outlined" onClick={() => navigate(`/${tenantSlug}/book-table`)}>Book as Guest</Button>
                 </Paper>
@@ -453,10 +455,10 @@ const MyBookingsPage: React.FC = () => {
             <Box sx={{
                 background: { xs: 'linear-gradient(135deg, #1d4ed8 0%, #2563eb 55%, #3b82f6 100%)', md: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)' },
                 color: 'white',
-                pt: { xs: 3, md: 8 },
-                pb: { xs: 5.5, md: 10 },
+                pt: { xs: 2.5, md: 6 },
+                pb: { xs: 4.5, md: 8 },
                 px: { xs: 2, sm: 3, md: 4 },
-                mb: { xs: -4, md: -6 },
+                mb: { xs: -3, md: -5 },
                 position: 'relative',
                 overflow: 'hidden',
                 borderRadius: { xs: 0, md: '0 0 40px 40px' },
@@ -476,7 +478,7 @@ const MyBookingsPage: React.FC = () => {
                                     fontWeight={800}
                                     sx={{
                                         letterSpacing: '-0.02em',
-                                        fontSize: { xs: '1.38rem', md: '2.5rem' },
+                                        fontSize: headingFontSize,
                                         lineHeight: 1.15,
                                         color: '#ffffff',
                                     }}
@@ -489,7 +491,7 @@ const MyBookingsPage: React.FC = () => {
                                 sx={{
                                     color: 'rgba(255,255,255,0.92)',
                                     fontWeight: 400,
-                                    fontSize: { xs: '0.84rem', md: '1.25rem' },
+                                    fontSize: bodyFontSize,
                                     maxWidth: { xs: '95%', md: 620 },
                                     lineHeight: 1.35
                                 }}
@@ -526,11 +528,11 @@ const MyBookingsPage: React.FC = () => {
                 {loading ? (
                     <Paper sx={{ p: 6, textAlign: 'center', borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
                         <CircularProgress size={40} thickness={4} />
-                        <Typography sx={{ mt: 2, fontWeight: 500, color: 'text.secondary' }}>Loading your history...</Typography>
+                        <Typography sx={{ mt: 1.25, fontWeight: 500, color: 'text.secondary', fontSize: bodyFontSize }}>Loading your history...</Typography>
                     </Paper>
                 ) : (
                     <>
-                        <Box sx={{ mb: 4, bgcolor: 'white', p: { xs: 0.75, sm: 1 }, borderRadius: { xs: '16px', sm: '20px' }, boxShadow: '0 4px 20px rgba(0,0,0,0.06)' }}>
+                        <Box sx={{ mb: 2.5, bgcolor: 'white', p: { xs: 0.6, sm: 0.9 }, borderRadius: { xs: '14px', sm: '18px' }, boxShadow: '0 4px 16px rgba(0,0,0,0.05)' }}>
                             <Tabs
                                 value={tabValue}
                                 onChange={(e, n) => setTabValue(n)}
@@ -547,13 +549,13 @@ const MyBookingsPage: React.FC = () => {
                                         px: { xs: 0.55, sm: 1.75 },
                                         textTransform: 'none',
                                         fontWeight: 700,
-                                        fontSize: { xs: '0.54rem', sm: '0.875rem' },
+                                        fontSize: { xs: '0.5rem', sm: '0.78rem' },
                                         lineHeight: { xs: 1.15, sm: 1.25 },
                                         letterSpacing: { xs: '-0.01em', sm: 'normal' },
                                         minWidth: { xs: 'fit-content', sm: 120 },
                                         '& .MuiTab-iconWrapper': {
                                             mr: { xs: 0.3, sm: 1 },
-                                            '& svg': { fontSize: { xs: 14, sm: 20 } },
+                                            '& svg': { fontSize: { xs: 13, sm: 18 } },
                                         },
                                         '&.Mui-selected': {
                                             background: 'linear-gradient(135deg, #4F46E5, #7C3AED)',
@@ -575,8 +577,8 @@ const MyBookingsPage: React.FC = () => {
                             orders.length === 0 ? (
                                 <Paper sx={{ p: 4, textAlign: 'center' }}>
                                     <Fastfood sx={{ fontSize: 48, color: 'text.secondary', mb: 2, opacity: 0.5 }} />
-                                    <Typography variant="h6">No Orders Yet</Typography>
-                                    <Typography color="text.secondary">Your recent food orders will appear here.</Typography>
+                                    <Typography variant="h6" sx={{ fontSize: headingFontSize }}>No Orders Yet</Typography>
+                                    <Typography color="text.secondary" sx={{ fontSize: bodyFontSize }}>Your recent food orders will appear here.</Typography>
                                     <Button
                                         variant="outlined"
                                         sx={{ mt: 2 }}
@@ -591,7 +593,7 @@ const MyBookingsPage: React.FC = () => {
                                         <Card
                                             key={o._id}
                                             sx={{
-                                                mb: 2.5, borderRadius: 4, overflow: 'hidden',
+                                                mb: 1.75, borderRadius: 4, overflow: 'hidden',
                                                 boxShadow: '0 2px 12px rgba(0,0,0,0.04)',
                                                 border: '1px solid rgba(0,0,0,0.06)',
                                                 transition: 'all 0.3s ease',
@@ -601,7 +603,7 @@ const MyBookingsPage: React.FC = () => {
                                             <CardContent sx={{ p: 3 }}>
                                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                                                     <Box>
-                                                        <Typography variant="h6" fontWeight={800} color="primary.main">
+                                                        <Typography variant="h6" fontWeight={800} color="primary.main" sx={{ fontSize: headingFontSize }}>
                                                             {getOrderDisplayId(o)}
                                                         </Typography>
                                                         <Typography variant="caption" fontWeight={600} color="text.secondary">
@@ -626,7 +628,7 @@ const MyBookingsPage: React.FC = () => {
                                                             <Fastfood sx={{ fontSize: 20 }} />
                                                         </Avatar>
                                                         <Box>
-                                                            <Typography variant="body2" fontWeight={700} sx={{ textTransform: 'capitalize' }}>
+                                                            <Typography variant="body2" fontWeight={700} sx={{ textTransform: 'capitalize', fontSize: bodyFontSize }}>
                                                                 {o.orderType.replace(/_/g, ' ')}
                                                             </Typography>
                                                             <Typography variant="caption" color="text.secondary">
@@ -634,16 +636,16 @@ const MyBookingsPage: React.FC = () => {
                                                             </Typography>
                                                         </Box>
                                                     </Box>
-                                                    <Typography variant="h6" fontWeight={900}>
+                                                    <Typography variant="h6" fontWeight={900} sx={{ fontSize: headingFontSize }}>
                                                         {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(o.totalAmount)}
                                                     </Typography>
                                                 </Box>
 
                                                 {o.status === 'cancelled' && (
-                                                    <Box sx={{ mt: 2.5, p: 1.75, bgcolor: 'rgba(0,0,0,0.025)', borderRadius: 2.5 }}>
+                                                    <Box sx={{ mt: 1.75, p: 1.25, bgcolor: 'rgba(0,0,0,0.025)', borderRadius: 2.5 }}>
                                                         {o.paymentStatus === 'refunded' && getRefundAmount(o) > 0 ? (
                                                             <>
-                                                                <Typography variant="body2" fontWeight={800}>
+                                                                <Typography variant="body2" fontWeight={800} sx={{ fontSize: bodyFontSize }}>
                                                                     Refund sent: {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(getRefundAmount(o))}
                                                                 </Typography>
                                                                 <Typography variant="caption" color="text.secondary">
@@ -652,7 +654,7 @@ const MyBookingsPage: React.FC = () => {
                                                             </>
                                                         ) : o.paymentStatus === 'paid' ? (
                                                             <>
-                                                                <Typography variant="body2" fontWeight={800}>
+                                                                <Typography variant="body2" fontWeight={800} sx={{ fontSize: bodyFontSize }}>
                                                                     Refund in progress
                                                                 </Typography>
                                                                 <Typography variant="caption" color="text.secondary">
@@ -661,7 +663,7 @@ const MyBookingsPage: React.FC = () => {
                                                             </>
                                                         ) : (
                                                             <>
-                                                                <Typography variant="body2" fontWeight={800}>
+                                                                <Typography variant="body2" fontWeight={800} sx={{ fontSize: bodyFontSize }}>
                                                                     Order cancelled
                                                                 </Typography>
                                                                 <Typography variant="caption" color="text.secondary">
@@ -673,7 +675,7 @@ const MyBookingsPage: React.FC = () => {
                                                 )}
 
                                                 {o.canCancel && (
-                                                    <Box sx={{ mt: 3, display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid rgba(0,0,0,0.05)', pt: 2 }}>
+                                                    <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid rgba(0,0,0,0.05)', pt: 1.5 }}>
                                                         <Button
                                                             variant="outlined"
                                                             color="error"
@@ -708,7 +710,7 @@ const MyBookingsPage: React.FC = () => {
                                         </Card>
                                     ))}
                                     {orders.length > 0 && (
-                                        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3, mb: 2 }}>
+                                        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, mb: 1.5 }}>
                                             <Pagination
                                                 count={Math.ceil(orders.length / itemsPerPage)}
                                                 page={page}
@@ -722,10 +724,10 @@ const MyBookingsPage: React.FC = () => {
                         ) : tabValue === 1 ? (
                             /* ── Table Bookings Tab ── */
                             bookings.length === 0 ? (
-                                <Paper sx={{ p: 5, textAlign: 'center', borderRadius: 4 }}>
+                                <Paper sx={{ p: { xs: 3, sm: 4 }, textAlign: 'center', borderRadius: 4 }}>
                                     <EventSeat sx={{ fontSize: 56, color: 'text.disabled', mb: 2 }} />
-                                    <Typography variant="h6" fontWeight={700}>No Table Bookings Yet</Typography>
-                                    <Typography color="text.secondary" sx={{ mb: 3 }}>Your table reservations will appear here.</Typography>
+                                    <Typography variant="h6" fontWeight={700} sx={{ fontSize: headingFontSize }}>No Table Bookings Yet</Typography>
+                                    <Typography color="text.secondary" sx={{ mb: 3, fontSize: bodyFontSize }}>Your table reservations will appear here.</Typography>
                                     <Button variant="contained" onClick={() => navigate(`/${tenantSlug}/customer/book-table`)} sx={{ borderRadius: 2, fontWeight: 700, textTransform: 'none', px: 4 }}>Book a Table</Button>
                                 </Paper>
                             ) : (
@@ -794,8 +796,8 @@ const MyBookingsPage: React.FC = () => {
                                         ))}
                                     </Box>
 
-                                    <Box sx={{ display: { xs: 'block', md: 'none' }, p: 1.5 }}>
-                                        <Stack spacing={1.5}>
+                                    <Box sx={{ display: { xs: 'block', md: 'none' }, p: 1 }}>
+                                        <Stack spacing={1}>
                                             {bookings.slice((page - 1) * itemsPerPage, page * itemsPerPage).map((b) => (
                                                 <Card
                                                     key={b.id}
@@ -862,8 +864,8 @@ const MyBookingsPage: React.FC = () => {
                         ) : tabValue === 4 ? (
                             (filterBookingsByTab(bookings, 4).length + cancelledOrders.length) === 0 ? (
                                 <Paper sx={{ p: 4, textAlign: 'center' }}>
-                                    <Typography variant="h6">No Cancelled Items</Typography>
-                                    <Typography color="text.secondary">You don't have any cancelled bookings or orders.</Typography>
+                                    <Typography variant="h6" sx={{ fontSize: headingFontSize }}>No Cancelled Items</Typography>
+                                    <Typography color="text.secondary" sx={{ fontSize: bodyFontSize }}>You don't have any cancelled bookings or orders.</Typography>
                                 </Paper>
                             ) : (
                                 <>
@@ -879,7 +881,7 @@ const MyBookingsPage: React.FC = () => {
                                             <CardContent sx={{ p: 3 }}>
                                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                                                     <Box>
-                                                        <Typography variant="h6" fontWeight={800} color="primary.main" sx={{ fontSize: { xs: '1.02rem', sm: '1.25rem' } }}>
+                                                        <Typography variant="h6" fontWeight={800} color="primary.main" sx={{ fontSize: headingFontSize }}>
                                                             {getOrderDisplayId(o)}
                                                         </Typography>
                                                         <Typography variant="caption" fontWeight={600} color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
@@ -894,7 +896,7 @@ const MyBookingsPage: React.FC = () => {
                                                             <Fastfood sx={{ fontSize: 20 }} />
                                                         </Avatar>
                                                         <Box>
-                                                            <Typography variant="body2" fontWeight={700} sx={{ textTransform: 'capitalize', fontSize: { xs: '0.82rem', sm: '0.875rem' } }}>
+                                                            <Typography variant="body2" fontWeight={700} sx={{ textTransform: 'capitalize', fontSize: bodyFontSize }}>
                                                                 {o.orderType.replace(/_/g, ' ')}
                                                             </Typography>
                                                             <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}>
@@ -902,7 +904,7 @@ const MyBookingsPage: React.FC = () => {
                                                             </Typography>
                                                         </Box>
                                                     </Box>
-                                                    <Typography variant="h6" fontWeight={900} sx={{ fontSize: { xs: '1.12rem', sm: '1.25rem' } }}>
+                                                    <Typography variant="h6" fontWeight={900} sx={{ fontSize: headingFontSize }}>
                                                         {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(o.totalAmount)}
                                                     </Typography>
                                                 </Box>
@@ -910,7 +912,7 @@ const MyBookingsPage: React.FC = () => {
                                         </Card>
                                     ))}
                                     {filterBookingsByTab(bookings, 4).slice((page - 1) * itemsPerPage, page * itemsPerPage).map(b => renderBookingCard(b))}
-                                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3, mb: 2 }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, mb: 1.5 }}>
                                         <Pagination
                                             count={Math.ceil((filterBookingsByTab(bookings, 4).length + cancelledOrders.length) / itemsPerPage)}
                                             page={page}
@@ -929,7 +931,7 @@ const MyBookingsPage: React.FC = () => {
                             <>
                                 {filteredBookings.slice((page - 1) * itemsPerPage, page * itemsPerPage).map(b => renderBookingCard(b))}
                                 {filteredBookings.length > 0 && (
-                                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3, mb: 2 }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2, mb: 1.5 }}>
                                         <Pagination
                                             count={Math.ceil(filteredBookings.length / itemsPerPage)}
                                             page={page}

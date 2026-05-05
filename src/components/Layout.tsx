@@ -75,6 +75,7 @@ const resolveImageUrl = (url: string | undefined | null): string => {
 
 const DRAWER_WIDTH_EXPANDED = 280;
 const DRAWER_WIDTH_COLLAPSED = 72;
+const MOBILE_DRAWER_WIDTH = 248;
 
 // ── Restaurant Open/Close Toggle ──────────────────────────────────────────────
 const RestaurantStatusToggle: React.FC = () => {
@@ -593,9 +594,13 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
           </Typography> */}
           <Box sx={{ flexGrow: 1 }} />
           <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
-            <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 0.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
               <ShiftManager />
-              {Capacitor.getPlatform() !== 'ios' && <SubscriptionStatus />}
+              {Capacitor.getPlatform() !== 'ios' && (
+                <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+                  <SubscriptionStatus />
+                </Box>
+              )}
             </Box>
             {hasRole(['admin']) && activeRole !== 'customer' && <RestaurantStatusToggle />}
             <Tooltip title="Notifications">
@@ -656,7 +661,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
               </Button>
             ) : (
               <Tooltip title="Account">
-                <IconButton onClick={handleProfileMenuOpen} color="inherit" sx={{ ml: 1 }}>
+                <IconButton onClick={handleProfileMenuOpen} color="inherit" sx={{ ml: { xs: 0, sm: 1 } }}>
                   <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }} src={user?.avatar}>
                     {user?.name?.charAt(0)?.toUpperCase() || 'U'}
                   </Avatar>
@@ -770,7 +775,10 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
             display: { xs: 'block', md: 'none' },
             '& .MuiDrawer-paper': {
               boxSizing: 'border-box',
-              width: DRAWER_WIDTH_EXPANDED,
+              width: MOBILE_DRAWER_WIDTH,
+              overflowY: 'hidden',
+              WebkitOverflowScrolling: 'touch',
+              overscrollBehavior: 'contain',
             },
           }}
         >
@@ -787,6 +795,9 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
               width: currentDrawerWidth,
               transition: 'width 0.3s ease',
               overflowX: 'hidden',
+              overflowY: 'hidden',
+              WebkitOverflowScrolling: 'touch',
+              overscrollBehavior: 'contain',
             },
           }}
           open

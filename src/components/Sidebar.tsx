@@ -158,8 +158,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
       items: [
         { path: '/orders', label: 'Orders', icon: <ShoppingCart />, roles: ['admin', 'manager', 'waiter', 'cashier', 'delivery', 'food_runner'] },
         { path: '/pos', label: 'Point of Sale', icon: <PointOfSale />, roles: ['admin', 'manager', 'waiter', 'cashier'] },
-        { path: '/tables', label: 'Tables', icon: <TableRestaurant />, roles: ['admin', 'manager', 'waiter', 'cashier'] },
-        { path: '/bookings', label: 'Bookings', icon: <EventIcon />, roles: ['admin', 'manager'] },
+        { path: '/tables', label: 'Tables', icon: <TableRestaurant />, roles: ['admin', 'manager', 'cashier'] },
+        { path: '/bookings', label: 'Bookings', icon: <EventIcon />, roles: ['admin', 'manager', 'waiter'] },
         {
           label: 'Catering',
           icon: <Celebration />,
@@ -244,7 +244,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
   };
 
   return (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', position: 'relative' }}>
+    <Box sx={{ height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', position: 'relative' }}>
 
       <Box
         sx={{
@@ -252,7 +252,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
           top: { xs: 'calc(56px + env(safe-area-inset-top))', sm: 'calc(64px + env(safe-area-inset-top))', md: 0 },
           zIndex: { xs: 2, md: 'auto' },
           bgcolor: 'background.paper',
-          pb: { xs: 1, md: 0 },
+          pb: { xs: 0.5, md: 0 },
         }}
       >
         {/* Logo / Header */}
@@ -340,7 +340,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
           <Box
             sx={{
               mx: collapsed ? 1 : 2,
-              mb: 2,
+              mb: { xs: 0.75, md: 1.25 },
               p: collapsed ? 1 : 2,
               borderRadius: 3,
               bgcolor: alpha(activeRole === 'admin' ? '#4F46E5' : '#111827', 0.05),
@@ -389,11 +389,13 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
             overflow: 'visible',
             filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
             mt: 1.5,
+            minWidth: 150,
+            borderRadius: 2,
             '& .MuiAvatar-root': {
-              width: 32,
-              height: 32,
+              width: 26,
+              height: 26,
               ml: -0.5,
-              mr: 1,
+              mr: 0.75,
             },
           },
         }}
@@ -402,14 +404,34 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
       >
         {user?.roles?.map((role) => (
           <MenuItem key={role} onClick={() => handleRoleSwitch(role)} selected={role === activeRole}>
-            <Typography variant="body2" sx={{ textTransform: 'capitalize', fontWeight: role === activeRole ? 'bold' : 'normal' }}>
+            <Typography variant="body2" sx={{ textTransform: 'capitalize', fontWeight: role === activeRole ? 'bold' : 'normal', fontSize: { xs: '0.78rem', sm: '0.85rem' } }}>
               {role}
             </Typography>
           </MenuItem>
         ))}
       </Menu>
 
-      <Box sx={{ flexGrow: 1, overflow: 'auto' }}>
+      <Box
+        sx={{
+          flexGrow: 1,
+          minHeight: 0,
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          WebkitOverflowScrolling: 'touch',
+          overscrollBehavior: 'contain',
+          touchAction: 'pan-y',
+          scrollBehavior: 'smooth',
+          pb: { xs: 1.25, md: 2 },
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+          '&::-webkit-scrollbar': { width: 0, height: 0, display: 'none' },
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: alpha(theme.palette.text.primary, 0.2),
+            borderRadius: 8,
+          },
+          '&::-webkit-scrollbar-track': { backgroundColor: 'transparent' },
+        }}
+      >
         {navigationGroups.map((group, groupIndex) => {
           const filteredItems = (group.items as any[]).filter(item => {
             const isSuperAdmin = activeRole === 'superadmin' || user?.roles?.includes('superadmin');
@@ -423,7 +445,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
           if (filteredItems.length === 0) return null;
 
           return (
-            <Box key={groupIndex} sx={{ mb: 2 }}>
+            <Box key={groupIndex} sx={{ mb: { xs: 1, md: 2 } }}>
               {!collapsed && (
                 <Box sx={{ px: 3, pt: 1, pb: 1 }}>
                   <Typography
@@ -473,7 +495,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
                           selected={navActive && !navItem.isAction}
                           sx={{
                             borderRadius: '12px',
-                            py: isChild ? 0.8 : 1.2,
+                            py: isChild ? { xs: 0.65, sm: 0.8 } : { xs: 0.9, sm: 1.2 },
                             px: collapsed ? 1.5 : (isChild ? 4 : 2),
                             transition: 'all 0.3s ease',
                             position: 'relative',
@@ -510,7 +532,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
                                 primary={navItem.label}
                                 sx={{
                                   '& .MuiListItemText-primary': {
-                                    fontSize: isChild ? '0.85rem' : '0.9rem',
+                                    fontSize: isChild ? { xs: '0.78rem', sm: '0.85rem' } : { xs: '0.82rem', sm: '0.9rem' },
                                     fontWeight: navActive ? 600 : 500,
                                     color: navActive ? 'inherit' : 'text.primary',
                                   },

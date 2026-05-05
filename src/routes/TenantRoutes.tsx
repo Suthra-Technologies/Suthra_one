@@ -139,9 +139,13 @@ export const TenantRoutes = () => (
         <Route path="subscription/cancel" element={<SubscriptionCancel />} />
       </Route>
 
-      <Route element={<RequireRole allowedRoles={['admin', 'manager', 'waiter', 'cashier']} />}>
-        <Route path="tables" element={<TablesPage />} />
-      </Route>
+        <Route element={<RequireRole allowedRoles={['admin', 'manager', 'cashier']} />}>
+          <Route path="tables" element={<TablesPage />} />
+        </Route>
+
+        <Route element={<RequireRole allowedRoles={['admin', 'manager', 'waiter']} />}>
+          <Route path="bookings" element={<BookingsAdminPage />} />
+        </Route>
 
       <Route path="profile" element={<ProfilePage />} />
 
