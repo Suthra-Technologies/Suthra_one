@@ -188,6 +188,8 @@ export const ordersAPI = {
   // Remove item from order
   removeItem: (id: string, itemIndex: number) =>
     api.delete(`/orders/${id}/items/${itemIndex}`),
+  refundItem: (id: string, itemIndex: number) =>
+    api.post(`/orders/${id}/items/${itemIndex}/refund`),
 
   // Kitchen item-wise status updates
   updateItemStatus: (orderId: string, itemIndex: number, status: string, cancelReason?: string) =>
@@ -734,6 +736,15 @@ export const expensesAPI = {
   delete: (id: string) => api.delete(`/expenses/${id}`),
   getStats: () => api.get('/expenses/stats'),
   getSuggestions: () => api.get('/expenses/suggestions'),
+};
+
+// -------------------- Disputes API --------------------
+export const disputesAPI = {
+  getAll: (params?: { status?: string; orderId?: string; search?: string }) => api.get('/disputes', { params }),
+  getOne: (id: string) => api.get(`/disputes/${id}`),
+  create: (data: any) => api.post('/disputes', data),
+  updateStatus: (id: string, status: string, notes?: string) => api.patch(`/disputes/${id}/status`, { status, notes }),
+  resolve: (id: string, resolutionData: { type: string; amount?: number; notes?: string }) => api.patch(`/disputes/${id}/resolve`, resolutionData),
 };
 
 export default api;

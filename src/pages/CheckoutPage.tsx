@@ -257,9 +257,10 @@ const CheckoutPage: React.FC = () => {
     const end = new Date(`${dateString}T${closeStr}`);
     
     const now = new Date();
-    // Allow for 60 mins preparation/delivery time buffer
+    // Allow for preparation/delivery time buffer (60 mins for delivery, 20 mins for takeaway)
+    const bufferMinutes = orderType === 'delivery' ? 60 : 20;
     if (date.toDateString() === now.toDateString()) {
-       const earliest = new Date(now.getTime() + 60 * 60 * 1000);
+       const earliest = new Date(now.getTime() + bufferMinutes * 60 * 1000);
        if (current < earliest) current = earliest;
        
        const mins = current.getMinutes();
@@ -1158,12 +1159,6 @@ const CheckoutPage: React.FC = () => {
       )}
       {orderType === 'takeaway' && (
         <Box>
-          <Alert severity="info" sx={{ mb: 3 }}>
-            <Typography variant="subtitle2">Takeaway Information</Typography>
-            <Typography variant="body2">
-              Your order will be ready for online takeaway in 15-20 minutes. We'll send you a notification when it's ready.
-            </Typography>
-          </Alert>
           <Grid container spacing={2}>
             <Grid size={{ xs: 12, sm: 6 }}>
               <TextField
@@ -1177,6 +1172,97 @@ const CheckoutPage: React.FC = () => {
                 placeholder="10-digit mobile number"
                 required
               />
+            </Grid>
+
+            <Grid size={{ xs: 12 }}>
+              <FormControl fullWidth>
+                <FormLabel sx={{ fontWeight: 600, mb: 1 }}>Pickup Time</FormLabel>
+                <RadioGroup
+                  value={deliveryInfo.deliveryTime}
+                  onChange={(e) => setDeliveryInfo((prev) => ({ ...prev, deliveryTime: e.target.value }))}
+                  row
+                >
+                  <FormControlLabel 
+                    value="asap" 
+                    control={<Radio />} 
+                    label={<Typography variant="body2" fontWeight="700">ASAP (15-20 mins)</Typography>} 
+                  />
+                  <FormControlLabel 
+                    value="later" 
+                    control={<Radio />} 
+                    label={<Typography variant="body2" fontWeight="700">Schedule for later</Typography>} 
+                  />
+                </RadioGroup>
+                
+                {deliveryInfo.deliveryTime === 'asap' && (
+                  <Alert severity="info" sx={{ mt: 1, borderRadius: 3 }}>
+                    <Typography variant="body2">
+                      Your order will be ready for online takeaway in 15-20 minutes. We'll send you a notification when it's ready.
+                    </Typography>
+                  </Alert>
+                )}
+
+                {deliveryInfo.deliveryTime === 'later' && (
+                  <Stack spacing={2} sx={{ mt: 2, p: 2, bgcolor: alpha(theme.palette.primary.main, 0.03), borderRadius: 3, border: '1px dashed', borderColor: 'divider' }}>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" fontWeight="700" sx={{ mb: 1, display: 'block', textTransform: 'uppercase' }}>Select Date</Typography>
+                      <Stack direction="row" spacing={1} sx={{ overflowX: 'auto', pb: 1 }}>
+                        {[0, 1].map((offset) => {
+                          const date = new Date();
+                          date.setDate(date.getDate() + offset);
+                          const dateStr = date.toISOString().split('T')[0];
+                          const isSelected = scheduledDate === dateStr;
+                          return (
+                            <Chip
+                              key={dateStr}
+                              label={offset === 0 ? 'Today' : 'Tomorrow'}
+                              onClick={() => setScheduledDate(dateStr)}
+                              color={isSelected ? 'primary' : 'default'}
+                              variant={isSelected ? 'filled' : 'outlined'}
+                              sx={{ borderRadius: 2, fontWeight: 'bold' }}
+                            />
+                          );
+                        })}
+                      </Stack>
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" color="text.secondary" fontWeight="700" sx={{ mb: 1, display: 'block', textTransform: 'uppercase' }}>Available Slots</Typography>
+                      <Grid container spacing={1}>
+                        {generateTimeSlots(scheduledDate).length > 0 ? (
+                          generateTimeSlots(scheduledDate).map((time) => (
+                            <Grid size={{ xs: 4, sm: 3, md: 2 }} key={time}>
+                              <Button
+                                variant={scheduledTime === time ? "contained" : "outlined"}
+                                fullWidth
+                                size="small"
+                                onClick={() => setScheduledTime(time)}
+                                sx={{
+                                  borderRadius: 2,
+                                  fontSize: '0.75rem',
+                                  fontWeight: 'bold',
+                                  py: 0.5,
+                                  textTransform: 'none',
+                                  ...(scheduledTime !== time && {
+                                    color: 'text.primary',
+                                    borderColor: 'divider',
+                                    '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.05) }
+                                  })
+                                }}
+                              >
+                                {new Date(`2000-01-01T${time}:00`).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                              </Button>
+                            </Grid>
+                          ))
+                        ) : (
+                          <Grid size={{ xs: 12 }}>
+                            <Typography variant="body2" color="error">No available slots for this date.</Typography>
+                          </Grid>
+                        )}
+                      </Grid>
+                    </Box>
+                  </Stack>
+                )}
+              </FormControl>
             </Grid>
           </Grid>
         </Box>
@@ -1400,7 +1486,7 @@ const CheckoutPage: React.FC = () => {
         const isTimeValid = deliveryInfo.deliveryTime === 'asap' || (deliveryInfo.deliveryTime === 'later' && scheduledTime !== '');
         const isContactlessValid = !deliveryInfo.isContactless || (deliveryInfo.isContactless && deliveryInfo.dropOffInstructions.trim() !== '');
         const isAgeValid = !hasAlcohol || ageVerification === 'above';
-        return (orderType === 'takeaway' || (orderType === 'delivery' && deliveryInfo.address && deliveryInfo.phone)) && isTimeValid && isContactlessValid && isAgeValid;
+        return (deliveryInfo.phone && (orderType === 'takeaway' || (orderType === 'delivery' && deliveryInfo.address))) && isTimeValid && isContactlessValid && isAgeValid;
       case 3:
         if (paymentMethod === 'card') {
           const isSavedCardSelected = selectedSavedCard !== null;

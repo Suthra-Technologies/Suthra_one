@@ -52,6 +52,7 @@ import {
   PersonOff as DeactivateIcon,
   Person as CustomerIcon,
   Search as SearchIcon,
+  DinnerDining as RunnerIcon,
 } from '@mui/icons-material';
 import { settingsAPI, usersAPI, supportAPI } from '../../services/api';
 import { validateEmail, validatePhone, validateName, validatePassword, validateRequired, getHelperText, hasError } from '../../utils/validation';
@@ -317,7 +318,7 @@ const UsersPage = () => {
     { value: 'cashier', label: 'Cashier', icon: CashierIcon, color: '#2196f3' },
     { value: 'waiter', label: 'Waiter', icon: WaiterIcon, color: '#4caf50' },
     { value: 'kitchen_staff', label: 'Kitchen Staff', icon: KitchenIcon, color: '#9c27b0' },
-    { value: 'food_runner', label: 'Food Runner', icon: KitchenIcon, color: '#8bc34a' },
+    { value: 'food_runner', label: 'Food Runner', icon: RunnerIcon, color: '#8bc34a' },
     { value: 'delivery', label: 'Delivery', icon: DeliveryDiningIcon, color: '#795548' },
     { value: 'customer', label: 'Customer', icon: CustomerIcon, color: '#607d8b' },
   ];
@@ -1742,17 +1743,19 @@ const UsersPage = () => {
                   </Grid>
                 </>
               )}
-              <Grid size={{ xs: 12 }}>
-                <FormControlLabel
-                  control={
-                    <Switch
-                      checked={userForm.isActive}
-                      onChange={(e) => setUserForm({ ...userForm, isActive: e.target.checked })}
-                    />
-                  }
-                  label="Active User"
-                />
-              </Grid>
+              {editingUser && (
+                <Grid size={{ xs: 12 }}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={userForm.isActive}
+                        onChange={(e) => setUserForm({ ...userForm, isActive: e.target.checked })}
+                      />
+                    }
+                    label="Active User"
+                  />
+                </Grid>
+              )}
             </Grid>
           )}
 

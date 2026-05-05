@@ -212,15 +212,15 @@ const AppRoutes: React.FC = () => {
   const isNative = Capacitor.isNativePlatform();
   const storedToken = typeof window !== 'undefined' ? localStorage.getItem('jwt') : null;
   const storedTenantSlug = typeof window !== 'undefined' ? localStorage.getItem('tenantSlug') : null;
-  
+
   // Use user context if available, fallback to localStorage for initial render/handover
   const role = activeRole || (typeof window !== 'undefined' ? localStorage.getItem('activeRole') : null);
   const isSuperAdmin = role === 'superadmin';
 
-  const defaultAuthedPath = isSuperAdmin 
-    ? '/superadmin' 
+  const defaultAuthedPath = isSuperAdmin
+    ? '/superadmin'
     : (hostnameSlug ? '/dashboard' : (storedTenantSlug ? `/${storedTenantSlug}/dashboard` : '/dashboard'));
-  
+
   const hasStoredSession = isAuthenticated || !!storedToken;
   console.log('AppRoutes: Rendering. Token present:', hasStoredSession, 'Role:', role, 'Tenant:', storedTenantSlug, 'AuthedPath:', defaultAuthedPath);
 

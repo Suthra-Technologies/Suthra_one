@@ -58,101 +58,108 @@ import AssetForm from '../pages/assets/AssetForm';
 import ExpensesPage from '../pages/expenses/ExpensesPage';
 import CreateExpensePage from '../pages/expenses/CreateExpensePage';
 import ExpenseDetailPage from '../pages/expenses/ExpenseDetailPage';
+import DisputeList from '../pages/disputes/DisputeList';
+import DisputeDetails from '../pages/disputes/DisputeDetails';
 
 export const TenantRoutes = () => (
-    <>
-      <Route index element={<GuestPOSPage />} />
-      <Route path="register" element={<CustomerRegisterPage />} />
-      <Route path="feedback/:orderId" element={<FeedbackPage />} />
+  <>
+    <Route index element={<GuestPOSPage />} />
+    <Route path="register" element={<CustomerRegisterPage />} />
+    <Route path="feedback/:orderId" element={<FeedbackPage />} />
 
-      {/* ─── Customer Routes (No Sidebar, Single Page Layout) ─── */}
-      <Route element={<CustomerLayout />}>
-        <Route path="customer/order" element={<CustomerOrderPage />} />
-        <Route path="customer/checkout" element={<CheckoutPage />} />
-        <Route path="customer/book-table" element={<TableBookingPage />} />
-        <Route path="customer/bookings" element={<MyBookingsPage />} />
-        <Route path="customer/profile" element={<ProfilePage />} />
-        {/* Guest-accessible customer catering routes */}
-        <Route element={<RequireFeature feature="catering" guestAllowed />}>
-          <Route path="customer/catering" element={<CateringPage />} />
-          <Route path="customer/catering/track/:id" element={<CateringTrackPage />} />
+    {/* ─── Customer Routes (No Sidebar, Single Page Layout) ─── */}
+    <Route element={<CustomerLayout />}>
+      <Route path="customer/order" element={<CustomerOrderPage />} />
+      <Route path="customer/checkout" element={<CheckoutPage />} />
+      <Route path="customer/book-table" element={<TableBookingPage />} />
+      <Route path="customer/bookings" element={<MyBookingsPage />} />
+      <Route path="customer/profile" element={<ProfilePage />} />
+      {/* Guest-accessible customer catering routes */}
+      <Route element={<RequireFeature feature="catering" guestAllowed />}>
+        <Route path="customer/catering" element={<CateringPage />} />
+        <Route path="customer/catering/track/:id" element={<CateringTrackPage />} />
+      </Route>
+    </Route>
+
+    {/* ─── Admin/Staff Routes (With Sidebar Layout) ─── */}
+    <Route element={<Layout />}>
+      <Route path="dashboard" element={<DashboardPage />} />
+      <Route path="orders" element={<OrdersPage />} />
+      <Route path="pos" element={<POSPage />} />
+      <Route element={<RequireRole allowedRoles={['admin', 'manager']} />}>
+        <Route path="expenses" element={<ExpensesPage />} />
+        <Route path="expenses/:id" element={<ExpenseDetailPage />} />
+        <Route path="expenses/create" element={<CreateExpensePage />} />
+        <Route path="expenses/edit/:id" element={<CreateExpensePage />} />
+        <Route path="menu" element={<MenuPage />} />
+        <Route element={<RequireFeature feature="inventory" />}>
+          <Route path="inventory" element={<InventoryPage />} />
         </Route>
+        <Route element={<RequireFeature feature="wastemanagement" />}>
+          <Route path="inventory/waste" element={<WasteManagementPage />} />
+        </Route>
+        <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
+        <Route path="purchase-orders/create" element={<CreatePOPage />} />
+        <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
+        <Route path="vendors" element={<VendorsPage />} />
+        <Route path="recipes" element={<RecipesPage />} />
+        <Route path="recipes/create" element={<CreateRecipePage />} />
+        <Route path="recipes/:id/edit" element={<CreateRecipePage />} />
+        <Route path="reports" element={<ReportsPage />} />
+        <Route path="users" element={<UsersPage />} />
+        <Route path="customers" element={<CustomersPage />} />
+        <Route path="settings" element={<SettingsPage />} />
+        <Route path="support" element={<AdminSupportPage />} />
+        <Route path="customer-support" element={<CustomerSupportPage />} />
+        <Route path="promocode" element={<PromoCodePage />} />
+        <Route path="coupons" element={< CouponsAdminPage />} />
+        <Route element={<RequireFeature feature="attendance" />}>
+          <Route path="attendance" element={<AttendancePage />} />
+        </Route>
+        <Route path="bookings" element={<BookingsAdminPage />} />
+        <Route path="customise-screens" element={<CustomiseScreensPage />} />
+        <Route path="service-usage" element={<ServiceUsagePage />} />
+        <Route path="audit-logs" element={<AuditLogsPage />} />
+        <Route path="assets" element={<AssetList />} />
+        <Route path="assets/:id" element={<AssetView />} />
+        <Route path="assets/new" element={<AssetForm />} />
+        <Route path="assets/:id/edit" element={<AssetForm />} />
+        <Route path="disputes" element={<DisputeList />} />
+        <Route path="disputes/:id" element={<DisputeDetails />} />
       </Route>
 
-      {/* ─── Admin/Staff Routes (With Sidebar Layout) ─── */}
-      <Route element={<Layout />}>
-        <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="orders" element={<OrdersPage />} />
-        <Route path="pos" element={<POSPage />} />
-        <Route element={<RequireRole allowedRoles={['admin', 'manager']} />}>
-          <Route path="expenses" element={<ExpensesPage />} />
-          <Route path="expenses/:id" element={<ExpenseDetailPage />} />
-          <Route path="expenses/create" element={<CreateExpensePage />} />
-          <Route path="expenses/edit/:id" element={<CreateExpensePage />} />
-          <Route path="menu" element={<MenuPage />} />
-          <Route element={<RequireFeature feature="inventory" />}>
-            <Route path="inventory" element={<InventoryPage />} />
-          </Route>
-          <Route element={<RequireFeature feature="wastemanagement" />}>
-            <Route path="inventory/waste" element={<WasteManagementPage />} />
-          </Route>
-          <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
-          <Route path="purchase-orders/create" element={<CreatePOPage />} />
-          <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
-          <Route path="vendors" element={<VendorsPage />} />
-          <Route path="recipes" element={<RecipesPage />} />
-          <Route path="recipes/create" element={<CreateRecipePage />} />
-          <Route path="recipes/:id/edit" element={<CreateRecipePage />} />
-          <Route path="reports" element={<ReportsPage />} />
-          <Route path="users" element={<UsersPage />} />
-          <Route path="customers" element={<CustomersPage />} />
-          <Route path="settings" element={<SettingsPage />} />
-          <Route path="support" element={<AdminSupportPage />} />
-          <Route path="customer-support" element={<CustomerSupportPage />} />
-          <Route path="promocode" element={<PromoCodePage />} />
-          <Route path="coupons" element={< CouponsAdminPage />} />
-          <Route element={<RequireFeature feature="attendance" />}>
-            <Route path="attendance" element={<AttendancePage />} />
-          </Route>
-          <Route path="bookings" element={<BookingsAdminPage />} />
-          <Route path="customise-screens" element={<CustomiseScreensPage />} />
-          <Route path="service-usage" element={<ServiceUsagePage />} />
-          <Route path="audit-logs" element={<AuditLogsPage />} />
-          <Route path="assets" element={<AssetList />} />
-          <Route path="assets/:id" element={<AssetView />} />
-          <Route path="assets/new" element={<AssetForm />} />
-          <Route path="assets/:id/edit" element={<AssetForm />} />
-          <Route path="assets/:id/edit" element={<AssetForm />} />
-        </Route>
+      <Route element={<RequireRole allowedRoles={['admin', 'superadmin']} />}>
+        <Route path="invoices" element={<InvoicesPage />} />
+        <Route path="invoices/:id" element={<InvoiceDetailPage />} />
+      </Route>
 
-        <Route element={<RequireRole allowedRoles={['admin', 'superadmin']} />}>
-          <Route path="invoices" element={<InvoicesPage />} />
-          <Route path="invoices/:id" element={<InvoiceDetailPage />} />
-        </Route>
+      <Route element={<RequireRole allowedRoles={['admin']} />}>
+        <Route path="subscription" element={<SubscriptionPage />} />
+        <Route path="subscription/success" element={<SubscriptionSuccess />} />
+        <Route path="subscription/cancel" element={<SubscriptionCancel />} />
+      </Route>
 
-        <Route element={<RequireRole allowedRoles={['admin']} />}>
-          <Route path="subscription" element={<SubscriptionPage />} />
-          <Route path="subscription/success" element={<SubscriptionSuccess />} />
-          <Route path="subscription/cancel" element={<SubscriptionCancel />} />
-        </Route>
-
-        <Route element={<RequireRole allowedRoles={['admin', 'manager', 'waiter', 'cashier']} />}>
+        <Route element={<RequireRole allowedRoles={['admin', 'manager', 'cashier']} />}>
           <Route path="tables" element={<TablesPage />} />
         </Route>
 
-        <Route path="profile" element={<ProfilePage />} />
-
-        {/* Kitchen Routes */}
-        <Route element={<RequireRole allowedRoles={['admin', 'manager', 'kitchen_staff']} />}>
-          <Route path="kitchen" element={<KitchenInterface />} />
-          <Route path="kot" element={<KitchenOrdersPage />} />
+        <Route element={<RequireRole allowedRoles={['admin', 'manager', 'waiter']} />}>
+          <Route path="bookings" element={<BookingsAdminPage />} />
         </Route>
 
-        {/* Protected admin catering routes */}
-        <Route element={<RequireFeature feature="catering" />}>
-          <Route path="catering-admin" element={<CateringManagementPage />} />
-          <Route path="catering-commissions" element={<CateringCommissionsPage />} />
-        </Route>
+      <Route path="profile" element={<ProfilePage />} />
+
+      {/* Kitchen Routes */}
+      <Route element={<RequireRole allowedRoles={['admin', 'manager', 'kitchen_staff']} />}>
+        <Route path="kitchen" element={<KitchenInterface />} />
+        <Route path="kot" element={<KitchenOrdersPage />} />
       </Route>
-    </>
-  );
+
+      {/* Protected admin catering routes */}
+      <Route element={<RequireFeature feature="catering" />}>
+        <Route path="catering-admin" element={<CateringManagementPage />} />
+        <Route path="catering-commissions" element={<CateringCommissionsPage />} />
+      </Route>
+    </Route>
+  </>
+);

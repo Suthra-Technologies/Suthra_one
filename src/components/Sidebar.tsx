@@ -53,6 +53,7 @@ import {
   Forum,
   Public as WebIcon,
   DashboardCustomize,
+  Gavel,
 } from '@mui/icons-material';
 import { Collapse } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
@@ -157,8 +158,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
       items: [
         { path: '/orders', label: 'Orders', icon: <ShoppingCart />, roles: ['admin', 'manager', 'waiter', 'cashier', 'delivery', 'food_runner'] },
         { path: '/pos', label: 'Point of Sale', icon: <PointOfSale />, roles: ['admin', 'manager', 'waiter', 'cashier'] },
-        { path: '/tables', label: 'Tables', icon: <TableRestaurant />, roles: ['admin', 'manager', 'waiter', 'cashier'] },
-        { path: '/bookings', label: 'Bookings', icon: <EventIcon />, roles: ['admin', 'manager'] },
+        { path: '/tables', label: 'Tables', icon: <TableRestaurant />, roles: ['admin', 'manager', 'cashier'] },
+        { path: '/bookings', label: 'Bookings', icon: <EventIcon />, roles: ['admin', 'manager', 'waiter'] },
         {
           label: 'Catering',
           icon: <Celebration />,
@@ -193,6 +194,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
         { path: '/attendance', label: 'Attendance', icon: <AccessTimeIcon />, roles: ['admin', 'manager'], feature: 'attendance' },
         { path: '/assets', label: 'Asset Management', icon: <Assignment />, roles: ['admin', 'manager', 'superadmin'] },
         { path: '/expenses', label: 'Expenses', icon: <MonetizationOn />, roles: ['admin', 'manager'] },
+        { path: '/disputes', label: 'Disputes', icon: <Gavel />, roles: ['admin', 'manager'] },
       ]
     },
     {

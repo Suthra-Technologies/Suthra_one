@@ -147,20 +147,23 @@ const ShiftManager: React.FC = () => {
 
     return (
         <>
-            <Box sx={{ display: 'flex', alignItems: 'center', ml: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', ml: { xs: 0, sm: 1, md: 2 } }}>
                 {activeShift ? (
                     <Tooltip title={`Shift started at ${new Date(activeShift.clockInTime).toLocaleTimeString()}`}>
                         <Chip
-                            icon={<TimeIcon sx={{ color: 'white !important' }} />}
+                            icon={<TimeIcon sx={{ color: 'white !important', fontSize: { xs: '1rem', sm: '1.25rem' } }} />}
                             label="ON SHIFT"
                             onClick={handleClockOut}
                             onDelete={handleClockOut}
-                            deleteIcon={<StopIcon />}
+                            deleteIcon={<StopIcon sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }} />}
                             color="success"
                             disabled={submitting}
                             sx={{
                                 fontWeight: 'bold',
-                                '& .MuiChip-label': { px: 2 },
+                                fontSize: { xs: '0.65rem', sm: '0.8125rem' },
+                                height: { xs: 24, sm: 32 },
+                                '& .MuiChip-label': { px: { xs: 1, sm: 2 } },
+                                '& .MuiChip-deleteIcon': { margin: { xs: '0 4px 0 -4px', sm: '0 5px 0 -6px' } },
                                 animation: 'pulse-green 2s infinite'
                             }}
                         />
@@ -169,14 +172,19 @@ const ShiftManager: React.FC = () => {
                     <Button
                         variant="contained"
                         size="small"
-                        startIcon={<StartIcon />}
+                        startIcon={<StartIcon sx={{ margin: { xs: '0 -2px 0 0', sm: '0' }, fontSize: { xs: '1rem !important', sm: '1.25rem !important' } }} />}
                         onClick={() => setOpenDialog(true)}
                         sx={{
                             borderRadius: 2,
                             fontWeight: 'bold',
+                            fontSize: { xs: '0.65rem', sm: '0.8125rem' },
+                            py: { xs: 0.25, sm: 0.5 },
+                            px: { xs: 1, sm: 2 },
+                            minWidth: { xs: 64, sm: 'auto' },
                             bgcolor: (theme) => alpha(theme.palette.primary.main, 0.1),
                             color: 'primary.main',
-                            '&:hover': { bgcolor: 'primary.main', color: 'white' }
+                            '&:hover': { bgcolor: 'primary.main', color: 'white' },
+                            boxShadow: 'none'
                         }}
                     >
                         CLOCK IN
