@@ -229,7 +229,8 @@ const POSPage: React.FC = () => {
     const [placingOrder, setPlacingOrder] = useState(false);
     const [nextCursor, setNextCursor] = useState<string | null>(null);
     const [isFetchingMore, setIsFetchingMore] = useState(false);
-    const PAGE_LIMIT = 24;
+    const PAGE_LIMIT = 50;
+    const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
 
     // Coupon handling
@@ -368,6 +369,25 @@ const POSPage: React.FC = () => {
             }
         };
     }, []);
+
+    // Auto-load more menu items when reaching list bottom
+    useEffect(() => {
+        if (!nextCursor || loading) return;
+        const target = loadMoreRef.current;
+        if (!target) return;
+
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting && nextCursor && !isFetchingMore) {
+                    fetchMenu(nextCursor);
+                }
+            },
+            { root: null, rootMargin: '320px 0px', threshold: 0.01 }
+        );
+
+        observer.observe(target);
+        return () => observer.disconnect();
+    }, [nextCursor, isFetchingMore, loading]);
 
     // Synchronize selectedTable with latest data from tables array (e.g. after a merge)
     useEffect(() => {
@@ -2466,33 +2486,11 @@ const POSPage: React.FC = () => {
                             )}
                         </Grid>
 
-                        {/* Load More Button */}
-                        {nextCursor && (
-                            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4, mb: 2 }}>
-                                <Button
-                                    variant="outlined"
-                                    onClick={() => fetchMenu(nextCursor)}
-                                    disabled={isFetchingMore}
-                                    sx={{
-                                        borderRadius: '50px',
-                                        px: 4,
-                                        py: 1,
-                                        fontWeight: 'bold',
-                                        textTransform: 'none',
-                                        '&:hover': {
-                                            bgcolor: 'action.hover'
-                                        }
-                                    }}
-                                >
-                                    {isFetchingMore ? (
-                                        <>
-                                            <CircularProgress size={20} sx={{ mr: 1, color: 'inherit' }} />
-                                            Loading...
-                                        </>
-                                    ) : (
-                                        'Load More Items'
-                                    )}
-                                </Button>
+                        {/* Infinite scroll sentinel */}
+                        <Box ref={loadMoreRef} sx={{ height: 1, width: '100%' }} />
+                        {isFetchingMore && (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3, mb: 2 }}>
+                                <CircularProgress size={24} />
                             </Box>
                         )}
 
