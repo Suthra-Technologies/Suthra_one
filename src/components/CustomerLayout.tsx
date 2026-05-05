@@ -609,7 +609,7 @@ const CustomerLayout: React.FC = () => {
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 3 }}>
                 {restaurant?.address && (
                   <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
-                    <PlaceIcon sx={{ fontSize: 20, color: 'rgba(255,255,255,0.5)', mt: 0.3 }} />
+                    <PlaceIcon sx={{ fontSize: 20, color: 'primary.main', mt: 0.3 }} />
                     <Typography sx={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.85rem', lineHeight: 1.6 }}>
                       {restaurant.address}
                     </Typography>
@@ -617,7 +617,7 @@ const CustomerLayout: React.FC = () => {
                 )}
                 {restaurant?.phone && (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <PhoneIcon sx={{ fontSize: 20, color: 'rgba(255,255,255,0.5)' }} />
+                    <PhoneIcon sx={{ fontSize: 20, color: 'primary.main' }} />
                     <Link
                       href={`tel:+${restaurant.dialCode || '1'}${restaurant.phone}`}
                       sx={{
@@ -634,7 +634,7 @@ const CustomerLayout: React.FC = () => {
                 )}
                 {restaurant?.email && (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                    <EmailIcon sx={{ fontSize: 20, color: 'rgba(255,255,255,0.5)' }} />
+                    <EmailIcon sx={{ fontSize: 20, color: 'primary.main' }} />
                     <Link
                       href={`mailto:${restaurant.email}`}
                       sx={{
@@ -765,7 +765,7 @@ const CustomerLayout: React.FC = () => {
               </Box>
               <Typography
                 sx={{
-                  color: 'rgba(255,255,255,0.38)',
+                  color: 'rgba(255,255,255,0.8)',
                   fontSize: { xs: '0.7rem', sm: '0.75rem' },
                   order: { xs: 2, md: 3 },
                 }}
@@ -776,7 +776,11 @@ const CustomerLayout: React.FC = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                   underline="hover"
-                  sx={{ color: 'primary.light', fontWeight: 600 }}
+                  sx={{ 
+                    color: '#818cf8 !important',
+                    fontWeight: 800,
+                    '&:hover': { color: '#a5b4fc !important' }
+                  }}
                 >
                   Suthra Technologies
                 </Link>

@@ -246,9 +246,7 @@ const RestaurantRegisterPage: React.FC = () => {
             </Typography>
           </Box>
 
-          <Typography component="h2" variant="h5" sx={{ mb: 4, fontWeight: 500 }}>
-            Join our growing network
-          </Typography>
+       
 
           <Box component="form" noValidate onSubmit={onSubmit} sx={{ width: '100%' }}>
             <Grid container spacing={2}>

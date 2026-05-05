@@ -35,11 +35,14 @@ import { expensesAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { useEffect } from 'react';
 import { addDays, addMonths, addYears, format } from 'date-fns';
+import { useSettings } from '../../context/SettingsContext';
+import { settingsAPI } from '../../services/api';
 
 const CreateExpensePage: React.FC = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const theme = useTheme();
+    const { settings, refreshSettings } = useSettings();
     const [loading, setLoading] = useState(false);
     const [isEdit, setIsEdit] = useState(false);
 
@@ -55,19 +58,35 @@ const CreateExpensePage: React.FC = () => {
         payments: [] as any[]
     });
 
-    const [suggestions, setSuggestions] = useState<{ payees: string[], categories: string[] }>({ payees: [], categories: [] });
+    const [suggestions, setSuggestions] = useState<{ payees: string[], categories: string[] }>({ 
+        payees: settings.restaurant.expensePayees || [], 
+        categories: settings.restaurant.expenseCategories || ['salaries', 'rent', 'utilities', 'maintenance', 'supplies', 'marketing', 'other'] 
+    });
 
-    // Fetch suggestions
     useEffect(() => {
-        const fetchSuggestions = async () => {
+        if (settings.restaurant) {
+            setSuggestions({
+                payees: settings.restaurant.expensePayees || [],
+                categories: settings.restaurant.expenseCategories || ['salaries', 'rent', 'utilities', 'maintenance', 'supplies', 'marketing', 'other']
+            });
+        }
+    }, [settings.restaurant]);
+
+    // Fetch suggestions from existing expenses too if needed, but merge them
+    useEffect(() => {
+        const fetchExistingSuggestions = async () => {
             try {
                 const res = await expensesAPI.getSuggestions();
-                setSuggestions(res.data.data);
+                const existing = res.data.data;
+                setSuggestions(prev => ({
+                    categories: [...new Set([...prev.categories, ...(existing.categories || [])])],
+                    payees: [...new Set([...prev.payees, ...(existing.payees || [])])]
+                }));
             } catch (error) {
                 console.error('Failed to fetch suggestions', error);
             }
         };
-        fetchSuggestions();
+        fetchExistingSuggestions();
     }, []);
 
     // Auto-calculate Due Date for recurring expenses
@@ -112,13 +131,13 @@ const CreateExpensePage: React.FC = () => {
             });
         } catch (error) {
             toast.error('Failed to load expense details');
-            navigate('/expenses');
+            navigate('..');
         } finally {
             setLoading(false);
         }
     };
 
-    const categories = ['salaries', 'rent', 'utilities', 'maintenance', 'supplies', 'marketing', 'other'];
+    const categories = suggestions.categories;
     const paymentMethods = ['cash', 'card', /* 'upi', */ 'bank_transfer', 'cheque'];
 
 
@@ -149,7 +168,7 @@ const CreateExpensePage: React.FC = () => {
                 await expensesAPI.create(dataToSave);
                 toast.success('Expense recorded successfully');
             }
-            navigate('/expenses');
+            navigate('..');
         } catch (error: any) {
             toast.error(error.response?.data?.message || 'Failed to save expense');
         } finally {
@@ -219,21 +238,97 @@ const CreateExpensePage: React.FC = () => {
                                 )}
 
                                 <Grid item xs={12} sm={6}>
-                                    <Autocomplete
-                                        freeSolo
-                                        options={[...new Set([...categories, ...suggestions.categories])]}
-                                        value={formData.category}
-                                        onChange={(_e, val) => setFormData({ ...formData, category: val || '' })}
-                                        onInputChange={(_e, val) => setFormData({ ...formData, category: val })}
-                                        renderInput={(params) => (
-                                            <TextField
-                                                {...params}
-                                                fullWidth
-                                                label="Category"
-                                                placeholder="Select or type category"
-                                            />
-                                        )}
-                                    />
+                                    <Box sx={{ display: 'flex', alignItems: 'stretch' }}>
+                                        <Autocomplete
+                                            freeSolo
+                                            fullWidth
+                                            options={[...new Set([...categories, ...suggestions.categories])]}
+                                            value={formData.category}
+                                            onChange={(_e, val) => setFormData({ ...formData, category: val || '' })}
+                                            onInputChange={(_e, val) => setFormData({ ...formData, category: val })}
+                                            sx={{
+                                                '& .MuiOutlinedInput-root': {
+                                                    borderTopRightRadius: 0,
+                                                    borderBottomRightRadius: 0,
+                                                },
+                                            }}
+                                            renderInput={(params) => (
+                                                <TextField
+                                                    {...params}
+                                                    label="Category"
+                                                    placeholder="Select or type category"
+                                                    required
+                                                />
+                                            )}
+                                            renderOption={(props, option) => (
+                                                <Box component="li" {...props} sx={{ display: 'flex !important', justifyContent: 'space-between !important', alignItems: 'center !important', width: '100%' }}>
+                                                    <Typography variant="body2">{option}</Typography>
+                                                    {suggestions.categories.includes(option) && (
+                                                        <IconButton 
+                                                            size="small" 
+                                                            onClick={async (e) => {
+                                                                e.stopPropagation();
+                                                                const updatedCategories = suggestions.categories.filter(c => c !== option);
+                                                                setSuggestions(prev => ({
+                                                                    ...prev,
+                                                                    categories: updatedCategories
+                                                                }));
+                                                                
+                                                                try {
+                                                                    await settingsAPI.update('restaurant', {
+                                                                        ...settings.restaurant,
+                                                                        expenseCategories: updatedCategories
+                                                                    });
+                                                                    await refreshSettings();
+                                                                    toast.success(`Removed "${option}" from categories`);
+                                                                } catch (err) {
+                                                                    console.error('Failed to persist category deletion', err);
+                                                                    toast.error('Removed locally but failed to save to database');
+                                                                }
+                                                            }}
+                                                        >
+                                                            <DeleteIcon sx={{ fontSize: 18 }} color="error" />
+                                                        </IconButton>
+                                                    )}
+                                                </Box>
+                                            )}
+                                        />
+                                        <Button
+                                            variant="contained"
+                                            color="primary"
+                                            sx={{
+                                                borderTopLeftRadius: 0,
+                                                borderBottomLeftRadius: 0,
+                                                minWidth: '56px',
+                                                boxShadow: 'none',
+                                                '&:hover': { boxShadow: 'none' }
+                                            }}
+                                            onClick={async () => {
+                                                const val = formData.category.trim();
+                                                if (val && !suggestions.categories.includes(val)) {
+                                                    const updatedCategories = [val, ...suggestions.categories];
+                                                    setSuggestions(prev => ({
+                                                        ...prev,
+                                                        categories: updatedCategories
+                                                    }));
+
+                                                    try {
+                                                        await settingsAPI.update('restaurant', {
+                                                            ...settings.restaurant,
+                                                            expenseCategories: updatedCategories
+                                                        });
+                                                        await refreshSettings();
+                                                        toast.success(`Added "${val}" to categories`);
+                                                    } catch (err) {
+                                                        console.error('Failed to persist new category', err);
+                                                        toast.error('Added locally but failed to save to database');
+                                                    }
+                                                }
+                                            }}
+                                        >
+                                            <AddIcon />
+                                        </Button>
+                                    </Box>
                                 </Grid>
 
                                 <Grid item xs={12} sm={6}>
@@ -277,22 +372,97 @@ const CreateExpensePage: React.FC = () => {
                                     </TextField>
                                 </Grid>
                                 <Grid item xs={12} sm={8}>
-                                    <Autocomplete
-                                        freeSolo
-                                        options={suggestions.payees}
-                                        value={formData.payee.name}
-                                        onChange={(_e, val) => setFormData({ ...formData, payee: { ...formData.payee, name: val || '' } })}
-                                        onInputChange={(_e, val) => setFormData({ ...formData, payee: { ...formData.payee, name: val } })}
-                                        renderInput={(params) => (
-                                            <TextField
-                                                {...params}
-                                                fullWidth
-                                                required
-                                                label="Payee Name"
-                                                placeholder="Select or type payee"
-                                            />
-                                        )}
-                                    />
+                                    <Box sx={{ display: 'flex', alignItems: 'stretch' }}>
+                                        <Autocomplete
+                                            freeSolo
+                                            fullWidth
+                                            options={suggestions.payees}
+                                            value={formData.payee.name}
+                                            onChange={(_e, val) => setFormData({ ...formData, payee: { ...formData.payee, name: val || '' } })}
+                                            onInputChange={(_e, val) => setFormData({ ...formData, payee: { ...formData.payee, name: val } })}
+                                            sx={{
+                                                '& .MuiOutlinedInput-root': {
+                                                    borderTopRightRadius: 0,
+                                                    borderBottomRightRadius: 0,
+                                                },
+                                            }}
+                                            renderInput={(params) => (
+                                                <TextField
+                                                    {...params}
+                                                    required
+                                                    label="Payee Name"
+                                                    placeholder="Select or type payee"
+                                                />
+                                            )}
+                                            renderOption={(props, option) => (
+                                                <Box component="li" {...props} sx={{ display: 'flex !important', justifyContent: 'space-between !important', alignItems: 'center !important', width: '100%' }}>
+                                                    <Typography variant="body2">{option}</Typography>
+                                                    {suggestions.payees.includes(option) && (
+                                                        <IconButton 
+                                                            size="small" 
+                                                            onClick={async (e) => {
+                                                                e.stopPropagation();
+                                                                const updatedPayees = suggestions.payees.filter(p => p !== option);
+                                                                setSuggestions(prev => ({
+                                                                    ...prev,
+                                                                    payees: updatedPayees
+                                                                }));
+                                                                
+                                                                try {
+                                                                    await settingsAPI.update('restaurant', {
+                                                                        ...settings.restaurant,
+                                                                        expensePayees: updatedPayees
+                                                                    });
+                                                                    await refreshSettings();
+                                                                    toast.success(`Removed "${option}" from payees`);
+                                                                } catch (err) {
+                                                                    console.error('Failed to persist payee deletion', err);
+                                                                    toast.error('Removed locally but failed to save to database');
+                                                                }
+                                                            }}
+                                                        >
+                                                            <DeleteIcon sx={{ fontSize: 18 }} color="error" />
+                                                        </IconButton>
+                                                    )}
+                                                </Box>
+                                            )}
+                                        />
+                                        <Button
+                                            variant="contained"
+                                            color="primary"
+                                            sx={{
+                                                borderTopLeftRadius: 0,
+                                                borderBottomLeftRadius: 0,
+                                                minWidth: '56px',
+                                                boxShadow: 'none',
+                                                '&:hover': { boxShadow: 'none' }
+                                            }}
+                                            onClick={async () => {
+                                                const val = formData.payee.name.trim();
+                                                if (val && !suggestions.payees.includes(val)) {
+                                                    const updatedPayees = [val, ...suggestions.payees];
+                                                    setSuggestions(prev => ({
+                                                        ...prev,
+                                                        payees: updatedPayees
+                                                    }));
+
+                                                    try {
+                                                        await settingsAPI.update('restaurant', {
+                                                            ...settings.restaurant,
+                                                            expensePayees: updatedPayees
+                                                        });
+                                                        await refreshSettings();
+                                                        toast.success(`Added "${val}" to payees`);
+                                                    } catch (err) {
+                                                        console.error('Failed to persist new payee', err);
+                                                        toast.error('Added locally but failed to save to database');
+                                                    }
+                                                }
+                                            }}
+                                        >
+                                            <AddIcon />
+                                        </Button>
+                                    </Box>
                                 </Grid>
                                 <Grid item xs={12}>
                                     <TextField

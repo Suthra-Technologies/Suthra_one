@@ -102,7 +102,7 @@ const AssetView: React.FC = () => {
       setHistory(historyRes.data);
     } catch (error) {
       toast.error('Failed to load asset details');
-      navigate('/assets');
+      navigate('..');
     } finally {
       setLoading(false);
     }
@@ -179,7 +179,7 @@ const AssetView: React.FC = () => {
       {/* Header */}
       <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={4}>
         <Stack direction="row" spacing={2} alignItems="center">
-          <IconButton onClick={() => navigate('/assets')}>
+          <IconButton onClick={() => navigate('..')}>
             <ArrowBack />
           </IconButton>
           <Avatar 
@@ -202,7 +202,7 @@ const AssetView: React.FC = () => {
         </Stack>
         
         <Stack direction="row" spacing={1}>
-          <Button startIcon={<Edit />} variant="outlined" onClick={() => navigate(`/assets/${id}/edit`)}>Edit</Button>
+          <Button startIcon={<Edit />} variant="outlined" onClick={() => navigate('edit')}>Edit</Button>
           <Button startIcon={<Delete />} variant="outlined" color="error">Delete</Button>
         </Stack>
       </Stack>
