@@ -82,6 +82,8 @@ export interface RestaurantSettings {
     };
     units?: UnitConfig[];
     occasions?: string[];
+    expenseCategories?: string[];
+    expensePayees?: string[];
     deliveryRadius: number;
     businessHours?: BusinessHourDay[];
     mailing?: RestaurantMailingSettings;
@@ -225,6 +227,8 @@ const defaultSettings: SettingsState = {
             "Baby Shower",
             "Business Meeting",
         ],
+        expenseCategories: ['salaries', 'rent', 'utilities', 'maintenance', 'supplies', 'marketing', 'other'],
+        expensePayees: [],
         deliveryRadius: 15,
         businessHours: [
             { day: 'Monday', isOpen: true, slots: [{ openTime: '11:00', closeTime: '22:00' }] },

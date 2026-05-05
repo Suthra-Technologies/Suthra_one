@@ -13,7 +13,8 @@ import {
     Email,
     History,
     FileDownload,
-    Send
+    Send,
+    Delete
 } from '@mui/icons-material';
 import {
     Alert,
@@ -301,16 +302,14 @@ const CateringManagementPage = () => {
             setOccasionsList(settings.restaurant.occasions.filter(o => o !== 'Others' && o !== 'Other'));
         }
     }, [settings?.restaurant?.occasions]);
-    const [addCustomOccasionOpen, setAddCustomOccasionOpen] = useState(false);
-    const [customOccasion, setCustomOccasion] = useState('');
     const [occasionInputValue, setOccasionInputValue] = useState('');
 
     const handleAddCustomOccasion = async () => {
-        if (customOccasion.trim()) {
-            const newOcc = customOccasion.trim();
+        const val = occasionInputValue.trim();
+        if (val) {
             let updatedList = occasionsList;
-            if (!occasionsList.includes(newOcc)) {
-                updatedList = [...occasionsList, newOcc];
+            if (!occasionsList.includes(val)) {
+                updatedList = [...occasionsList, val];
                 setOccasionsList(updatedList);
 
                 // Persist to backend
@@ -320,20 +319,35 @@ const CateringManagementPage = () => {
                         occasions: updatedList
                     });
                     await refreshSettings();
-                    toast.success('New occasion added and saved');
+                    toast.success(`Added "${val}" to occasions`);
                 } catch (error) {
                     console.error('Failed to save custom occasion:', error);
                     toast.error('Occasion added locally but failed to save to settings');
                 }
             }
             if (isEditing) {
-                setEditData({ ...editData, occasion: newOcc });
+                setEditData({ ...editData, occasion: val });
             } else {
-                setNewOrder({ ...newOrder, occasion: newOcc });
+                setNewOrder({ ...newOrder, occasion: val });
             }
             setOccasionTouched(true);
-            setCustomOccasion('');
-            setAddCustomOccasionOpen(false);
+        }
+    };
+
+    const handleDeleteOccasion = async (occasionToDelete: string) => {
+        const updatedList = occasionsList.filter(o => o !== occasionToDelete);
+        setOccasionsList(updatedList);
+        
+        try {
+            await settingsAPI.update('restaurant', {
+                ...settings.restaurant,
+                occasions: updatedList
+            });
+            await refreshSettings();
+            toast.success('Occasion removed successfully');
+        } catch (error) {
+            console.error('Failed to delete occasion:', error);
+            toast.error('Failed to save changes to settings');
         }
     };
 
@@ -2110,6 +2124,22 @@ const CateringManagementPage = () => {
                                                             onChange={(e, newValue) => {
                                                                 setEditData({ ...editData, occasion: newValue || '' });
                                                             }}
+                                                            renderOption={(props, option) => (
+                                                                <Box component="li" {...props} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                                                                    <Typography variant="body2">{option}</Typography>
+                                                                    <IconButton
+                                                                        size="small"
+                                                                        color="error"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleDeleteOccasion(option);
+                                                                        }}
+                                                                        sx={{ ml: 1, '&:hover': { bgcolor: 'error.lighter' } }}
+                                                                    >
+                                                                        <Delete sx={{ fontSize: '1rem' }} />
+                                                                    </IconButton>
+                                                                </Box>
+                                                            )}
                                                             renderInput={(params) => (
                                                                 <TextField
                                                                     {...params}
@@ -2126,7 +2156,7 @@ const CateringManagementPage = () => {
                                                         <Button
                                                             variant="contained"
                                                             color="primary"
-                                                            onClick={() => setAddCustomOccasionOpen(true)}
+                                                            onClick={() => handleAddCustomOccasion()}
                                                             sx={{
                                                                 minWidth: 40,
                                                                 height: 40,
@@ -2826,6 +2856,22 @@ const CateringManagementPage = () => {
                                                                 setOccasionTouched(true);
                                                             }}
                                                             onBlur={() => setOccasionTouched(true)}
+                                                            renderOption={(props, option) => (
+                                                                <Box component="li" {...props} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                                                                    <Typography variant="body2">{option}</Typography>
+                                                                    <IconButton
+                                                                        size="small"
+                                                                        color="error"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleDeleteOccasion(option);
+                                                                        }}
+                                                                        sx={{ ml: 1, '&:hover': { bgcolor: 'error.lighter' } }}
+                                                                    >
+                                                                        <Delete sx={{ fontSize: '1rem' }} />
+                                                                    </IconButton>
+                                                                </Box>
+                                                            )}
                                                             renderInput={(params) => (
                                                                 <TextField
                                                                     {...params}
@@ -2848,7 +2894,7 @@ const CateringManagementPage = () => {
                                                         <Button
                                                             variant="contained"
                                                             color="primary"
-                                                            onClick={() => setAddCustomOccasionOpen(true)}
+                                                            onClick={() => handleAddCustomOccasion()}
                                                             sx={{
                                                                 minWidth: 40,
                                                                 height: 40,
@@ -3669,25 +3715,6 @@ const CateringManagementPage = () => {
                 </DialogActions>
             </Dialog>
 
-            {/* Custom Occasion Dialog */}
-            <Dialog open={addCustomOccasionOpen} onClose={() => setAddCustomOccasionOpen(false)} maxWidth="xs" fullWidth>
-                <DialogTitle>Add Custom Occasion</DialogTitle>
-                <DialogContent>
-                    <TextField
-                        autoFocus
-                        margin="dense"
-                        label="Occasion Name"
-                        fullWidth
-                        size="small"
-                        value={customOccasion}
-                        onChange={(e) => setCustomOccasion(e.target.value)}
-                    />
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setAddCustomOccasionOpen(false)}>Cancel</Button>
-                    <Button variant="contained" onClick={handleAddCustomOccasion} disabled={!customOccasion.trim()}>Add</Button>
-                </DialogActions>
-            </Dialog>
             {/* Action Menu for Table/Card */}
             <Menu
                 anchorEl={anchorEl}

@@ -2611,7 +2611,7 @@ const HomePage: React.FC = () => {
               }}
             >
               <Typography variant="caption" sx={{ opacity: 0.65, fontSize: { xs: "0.72rem", sm: "0.8rem" } }}>
-                © {new Date().getFullYear()} nexZentek. All rights reserved.
+                © {new Date().getFullYear()} NexZentek. All rights reserved.
               </Typography>
               <Box
                 sx={{
@@ -2668,7 +2668,7 @@ const HomePage: React.FC = () => {
                   Terms & Conditions
                 </Typography>
               </Box>
-              <Typography variant="caption" sx={{ opacity: 0.55, fontSize: { xs: "0.72rem", sm: "0.78rem" } }}>
+              <Typography variant="caption" sx={{ opacity: 0.8, color: "white", fontSize: { xs: "0.72rem", sm: "0.78rem" } }}>
                 Developed by{" "}
                 <Box
                   component="a"
@@ -2676,10 +2676,10 @@ const HomePage: React.FC = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                   sx={{
-                    color: "primary.light",
-                    fontWeight: 700,
+                    color: "#818cf8 !important",
+                    fontWeight: 800,
                     textDecoration: "none",
-                    "&:hover": { textDecoration: "underline" },
+                    "&:hover": { textDecoration: "underline", color: "#a5b4fc !important" },
                   }}
                 >
                   Suthra Technologies
