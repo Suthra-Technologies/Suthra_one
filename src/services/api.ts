@@ -381,6 +381,7 @@ export const reportsAPI = {
 // -------------------- Printer API --------------------
 export const printersAPI = {
   testPrint: (config: any) => api.post('/printers/test-print', config),
+  printKOT: (order: any) => api.post('/printers/print-kot', { order }),
 
   // Print Agent Pairing
   createAgent: (data: { name: string; roles?: string[] }) => api.post('/printers/agents', data),
@@ -736,6 +737,15 @@ export const expensesAPI = {
   delete: (id: string) => api.delete(`/expenses/${id}`),
   getStats: () => api.get('/expenses/stats'),
   getSuggestions: () => api.get('/expenses/suggestions'),
+};
+
+// -------------------- Disputes API --------------------
+export const disputesAPI = {
+  getAll: (params?: { status?: string; orderId?: string; search?: string }) => api.get('/disputes', { params }),
+  getOne: (id: string) => api.get(`/disputes/${id}`),
+  create: (data: any) => api.post('/disputes', data),
+  updateStatus: (id: string, status: string, notes?: string) => api.patch(`/disputes/${id}/status`, { status, notes }),
+  resolve: (id: string, resolutionData: { type: string; amount?: number; notes?: string }) => api.patch(`/disputes/${id}/resolve`, resolutionData),
 };
 
 export default api;

@@ -229,8 +229,7 @@ const POSPage: React.FC = () => {
     const [placingOrder, setPlacingOrder] = useState(false);
     const [nextCursor, setNextCursor] = useState<string | null>(null);
     const [isFetchingMore, setIsFetchingMore] = useState(false);
-    const PAGE_LIMIT = 50;
-    const loadMoreRef = useRef<HTMLDivElement | null>(null);
+    const PAGE_LIMIT = 48;
 
 
     // Coupon handling
@@ -280,6 +279,7 @@ const POSPage: React.FC = () => {
     const [isCalculatingTax, setIsCalculatingTax] = useState(false);
     const [isCartVisible, setIsCartVisible] = useState(false);
     const cartSectionRef = useRef<HTMLDivElement | null>(null);
+    const loadMoreRef = useRef<HTMLDivElement | null>(null);
     // Guard to prevent re-loading stale order data after an order is submitted
     const orderSubmittedRef = useRef(false);
     const [trays, setTrays] = useState<any[]>([]);
@@ -447,7 +447,8 @@ const POSPage: React.FC = () => {
                 // This ensures items always load even if the backend category filter is unreliable.
                 foodType: foodTypeFilter !== 'all' ? foodTypeFilter : undefined,
                 cursor: cursor || undefined,
-                limit: PAGE_LIMIT,
+                // Load all items without pagination to avoid conflicts with client-side availability filters
+                limit: 1000,
                 isAvailable: true
             });
 
