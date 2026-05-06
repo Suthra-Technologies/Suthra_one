@@ -188,8 +188,8 @@ export const ordersAPI = {
   // Remove item from order
   removeItem: (id: string, itemIndex: number) =>
     api.delete(`/orders/${id}/items/${itemIndex}`),
-  refundItem: (id: string, itemIndex: number) =>
-    api.post(`/orders/${id}/items/${itemIndex}/refund`),
+  refundItem: (id: string, itemIndex: number, refundMethod: 'original' | 'cash') =>
+    api.post(`/orders/${id}/items/${itemIndex}/refund`, { refundMethod }),
 
   // Kitchen item-wise status updates
   updateItemStatus: (orderId: string, itemIndex: number, status: string, cancelReason?: string) =>
@@ -283,7 +283,7 @@ export const menuAPI = {
   bulkCreate: (items: any[]) => api.post('/menu/bulk', items),
   update: (id: string, menuData: any) => api.put(`/menu/${id}`, menuData),
   delete: (id: string) => api.delete(`/menu/${id}`),
-  getPublicMenu: (tenantSlug?: string, search?: string) => api.get('/menu/public', { params: { tenantSlug, search } }),
+  getPublicMenu: (tenantSlug?: string, search?: string, cursor?: string | null, limit?: number) => api.get('/menu/public', { params: { tenantSlug, search, cursor: cursor || undefined, limit } }),
 
   // Category management
   createCategory: (categoryData: any) => api.post('/menu/categories', categoryData),
