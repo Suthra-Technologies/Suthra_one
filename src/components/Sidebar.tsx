@@ -53,6 +53,7 @@ import {
   Forum,
   Public as WebIcon,
   DashboardCustomize,
+  Gavel,
 } from '@mui/icons-material';
 import { Collapse } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
@@ -191,8 +192,9 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
         { path: '/users', label: 'Users', icon: <People />, roles: ['admin', 'manager'] },
         { path: '/customers', label: 'Customers', icon: <AccountBox />, roles: ['admin', 'manager'] },
         { path: '/attendance', label: 'Attendance', icon: <AccessTimeIcon />, roles: ['admin', 'manager'], feature: 'attendance' },
-        { path: '/assets', label: 'Asset Management', icon: <Assignment />, roles: ['admin', 'manager', 'superadmin'] },
+        { path: '/assets', label: 'Asset & Document Management', icon: <Assignment />, roles: ['admin', 'manager', 'superadmin'] },
         { path: '/expenses', label: 'Expenses', icon: <MonetizationOn />, roles: ['admin', 'manager'] },
+        { path: '/disputes', label: 'Disputes', icon: <Gavel />, roles: ['admin', 'manager'] },
       ]
     },
     {

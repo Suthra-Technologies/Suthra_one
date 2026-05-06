@@ -9,6 +9,7 @@ import {
     List,
     ListItemButton,
     ListItemText,
+    Divider,
 } from '@mui/material';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 
@@ -271,7 +272,12 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
 
     const filtered = useMemo(() => {
         const q = search.toLowerCase().trim();
-        if (!q) return COUNTRIES;
+        if (!q) {
+            // Show USA and India at the top, then rest of countries
+            const priorityCountries = COUNTRIES.filter(c => c.iso2 === 'US' || c.iso2 === 'IN');
+            const otherCountries = COUNTRIES.filter(c => c.iso2 !== 'US' && c.iso2 !== 'IN');
+            return [...priorityCountries, ...otherCountries];
+        }
         return COUNTRIES.filter(
             (c) =>
                 c.name.toLowerCase().includes(q) ||
@@ -413,32 +419,47 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
                             </Typography>
                         </Box>
                     ) : (
-                        filtered.map((country) => (
-                            <ListItemButton
-                                key={`${country.iso2}-${country.dialCode}`}
-                                selected={
-                                    country.dialCode === selectedCountry.dialCode &&
-                                    country.iso2 === selectedCountry.iso2
-                                }
-                                onClick={() => handleSelect(country)}
-                                sx={{
-                                    py: 0.75,
-                                    px: 1.5,
-                                    gap: 1.5,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'flex-start',
-                                    '&.Mui-selected': { bgcolor: 'action.selected' },
-                                }}
-                            >
-                                {/* Flag image in dropdown */}
-                                <FlagImg iso2={country.iso2} size={22} />
+                        filtered.map((country, index) => {
+                            const isSearching = search.trim() !== '';
+                            const shouldShowDivider = !isSearching && index === 1; // After USA and India
+                            
+                            return (
+                                <React.Fragment key={`${country.iso2}-${country.dialCode}`}>
+                                    <ListItemButton
+                                        selected={
+                                            country.dialCode === selectedCountry.dialCode &&
+                                            country.iso2 === selectedCountry.iso2
+                                        }
+                                        onClick={() => handleSelect(country)}
+                                        sx={{
+                                            py: 0.75,
+                                            px: 1.5,
+                                            gap: 1.5,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'flex-start',
+                                            '&.Mui-selected': { bgcolor: 'action.selected' },
+                                        }}
+                                    >
+                                        {/* Flag image in dropdown */}
+                                        <FlagImg iso2={country.iso2} size={22} />
 
-                                <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                                    +{country.dialCode}
-                                </Typography>
-                            </ListItemButton>
-                        ))
+                                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                                            +{country.dialCode}
+                                        </Typography>
+                                    </ListItemButton>
+                                    {shouldShowDivider && (
+                                    <Divider 
+                                        sx={{ 
+                                            my: 1,
+                                            mx: 1.5,
+                                            borderColor: 'grey.300'
+                                        }} 
+                                    />
+                                )}
+                                </React.Fragment>
+                            );
+                        })
                     )}
                 </List>
             </Popover>

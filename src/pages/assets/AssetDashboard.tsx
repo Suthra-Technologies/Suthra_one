@@ -177,7 +177,7 @@ const AssetDashboard: React.FC = () => {
       <Stack direction="row" justifyContent="space-between" alignItems="center" mb={4}>
         <Box>
           <Typography variant="h4" fontWeight="800" gutterBottom>
-            Asset Management
+            Asset & Document Management
           </Typography>
           <Typography variant="body1" color="text.secondary">
             Actionable insights and lifecycle tracking

@@ -8,6 +8,7 @@ import {
     LocalFireDepartment as SpiceIcon,
     LocationOn as LocationOnIcon,
     StickyNote2 as NoteIcon,
+    Gavel as DisputeIcon,
 } from '@mui/icons-material';
 import {
     Box,
@@ -52,6 +53,7 @@ import {
 import { formatSpiceLevelLabel } from '../utils/spiceLevel';
 import AddItemsDialog from './AddItemsDialog';
 import PaymentCollectionDialog from './PaymentCollectionDialog';
+import DisputeInitiationDialog from './DisputeInitiationDialog';
 
 interface OrderDetailsDialogProps {
     open: boolean;
@@ -78,6 +80,7 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
         items_missing: '',
         refund_amount: '',
     });
+    const [disputeDialogOpen, setDisputeDialogOpen] = useState(false);
 
     if (!order) return null;
 
@@ -730,9 +733,29 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                         </Button>
                     )}
                     <Box sx={{ flex: 1 }} />
+                    {(user?.role === 'admin' || user?.role === 'manager') && (
+                        <Button
+                            startIcon={<DisputeIcon />}
+                            onClick={() => setDisputeDialogOpen(true)}
+                            color="error"
+                        >
+                            Dispute Order
+                        </Button>
+                    )}
                     <Button onClick={onClose}>Close</Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Dispute Initiation Dialog */}
+            <DisputeInitiationDialog
+                open={disputeDialogOpen}
+                order={order}
+                onClose={() => setDisputeDialogOpen(false)}
+                onSuccess={() => {
+                    setDisputeDialogOpen(false);
+                    if (onUpdate) onUpdate();
+                }}
+            />
 
             {/* Add Items Dialog */}
             <AddItemsDialog
