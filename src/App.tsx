@@ -75,6 +75,7 @@ import InvoicesAdminPage from './pages/superadmin/InvoicesAdminPage';
 import PlansPage from './pages/superadmin/PlansPage';
 import SuperAdminPortal from './pages/superadmin/SuperAdminPortal';
 import TenantsPage from './pages/superadmin/TenantsPage';
+import TenantDetailsPage from './pages/superadmin/TenantDetailsPage';
 import TicketsPage from './pages/superadmin/TicketsPage';
 import DeliveryReportsPage from './pages/superadmin/DeliveryReportsPage';
 import UberDirectPage from './pages/superadmin/UberDirectPage';
@@ -227,7 +228,7 @@ const AppRoutes: React.FC = () => {
   return (
     <Routes>
       {/* Public routes (no layout, no slug) */}
-      <Route path="/" element={isNative ? <Navigate to={hasStoredSession ? defaultAuthedPath : '/login'} replace /> : <HomePage />} />
+      <Route path="/" element={hasStoredSession ? <Navigate to={defaultAuthedPath} replace /> : (isNative ? <Navigate to="/login" replace /> : <HomePage />)} />
       <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
       <Route path="/terms-and-conditions" element={<TermsConditionsPage />} />
       <Route path="/reschedule-demo/:token" element={<RescheduleDemoPage />} />
@@ -240,6 +241,7 @@ const AppRoutes: React.FC = () => {
         <Route element={<SuperAdminLayout />}>
           <Route path="/superadmin" element={<SuperAdminPortal />} />
           <Route path="/superadmin/tenants" element={<TenantsPage />} />
+          <Route path="/superadmin/tenants/:tenantId" element={<TenantDetailsPage />} />
           <Route path="/superadmin/plans" element={<PlansPage />} />
           <Route path="/superadmin/invoices" element={<InvoicesAdminPage />} />
           <Route path="/superadmin/tickets" element={<TicketsPage />} />

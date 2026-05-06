@@ -56,10 +56,10 @@ const SmsLogsDetailPage: React.FC = () => {
             <Box sx={{ mb: 4 }}>
                 <Button 
                     startIcon={<ArrowBackIcon />} 
-                    onClick={() => navigate('/superadmin/sms-logs')}
+                    onClick={() => navigate(`/superadmin/tenants/${tenantId}`)}
                     sx={{ mb: 2 }}
                 >
-                    Back to Overview
+                    Back to Details
                 </Button>
                 <Typography variant="h4" fontWeight="bold">
                     SMS Logs: {storeName}

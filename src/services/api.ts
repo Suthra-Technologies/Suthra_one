@@ -737,6 +737,7 @@ export const expensesAPI = {
   delete: (id: string) => api.delete(`/expenses/${id}`),
   getStats: () => api.get('/expenses/stats'),
   getSuggestions: () => api.get('/expenses/suggestions'),
+  getHistory: (id: string) => api.get(`/expenses/${id}/history`),
 };
 
 // -------------------- Disputes API --------------------

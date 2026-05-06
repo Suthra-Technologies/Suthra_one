@@ -229,7 +229,9 @@ const POSPage: React.FC = () => {
     const [placingOrder, setPlacingOrder] = useState(false);
     const [nextCursor, setNextCursor] = useState<string | null>(null);
     const [isFetchingMore, setIsFetchingMore] = useState(false);
-    const PAGE_LIMIT = 48;
+    const PAGE_LIMIT = 100;
+    const LOAD_MORE_LIMIT = 50;
+    const [totalMenuCount, setTotalMenuCount] = useState(0);
 
 
     // Coupon handling
@@ -443,19 +445,17 @@ const POSPage: React.FC = () => {
 
             const res = await menuAPI.getAll({
                 search: searchQuery || undefined,
-                // Do NOT pass category here — we fetch all items and filter client-side.
-                // This ensures items always load even if the backend category filter is unreliable.
+                category: selectedCategory !== 'all' ? selectedCategory : undefined,
                 foodType: foodTypeFilter !== 'all' ? foodTypeFilter : undefined,
                 cursor: cursor || undefined,
-                // Load all items without pagination to avoid conflicts with client-side availability filters
-                limit: 1000,
+                limit: cursor ? LOAD_MORE_LIMIT : PAGE_LIMIT,
                 isAvailable: true
             });
 
-            // Handle both array response and { items, nextCursor } object response
             const data = res.data;
             const fetchedItems: any[] = Array.isArray(data) ? data : (data?.items ?? []);
             const newCursor = Array.isArray(data) ? null : (data?.nextCursor ?? null);
+            const totalCount = Array.isArray(data) ? fetchedItems.length : (data?.totalCount ?? 0);
 
             if (fresh) {
                 setMenuItems(fetchedItems);
@@ -463,6 +463,7 @@ const POSPage: React.FC = () => {
                 setMenuItems(prev => [...prev, ...fetchedItems]);
             }
             setNextCursor(newCursor);
+            setTotalMenuCount(totalCount);
         } catch (error) {
             console.error('Error fetching menuItems:', error);
             // toast.error('Failed to load menu');
@@ -2487,11 +2488,36 @@ const POSPage: React.FC = () => {
                             )}
                         </Grid>
 
-                        {/* Infinite scroll sentinel */}
-                        <Box ref={loadMoreRef} sx={{ height: 1, width: '100%' }} />
-                        {isFetchingMore && (
-                            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3, mb: 2 }}>
-                                <CircularProgress size={24} />
+                        {/* Load More Button */}
+                        {nextCursor && (
+                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mt: 4, mb: 2, gap: 1 }}>
+                                <Typography variant="caption" color="text.secondary">
+                                    Showing {menuItems.length} of {totalMenuCount} items
+                                </Typography>
+                                <Button
+                                    variant="outlined"
+                                    onClick={() => fetchMenu(nextCursor)}
+                                    disabled={isFetchingMore}
+                                    sx={{
+                                        borderRadius: '50px',
+                                        px: 4,
+                                        py: 1,
+                                        fontWeight: 'bold',
+                                        textTransform: 'none',
+                                        '&:hover': {
+                                            bgcolor: 'action.hover'
+                                        }
+                                    }}
+                                >
+                                    {isFetchingMore ? (
+                                        <>
+                                            <CircularProgress size={20} sx={{ mr: 1, color: 'inherit' }} />
+                                            Loading...
+                                        </>
+                                    ) : (
+                                        'Load More Items'
+                                    )}
+                                </Button>
                             </Box>
                         )}
 

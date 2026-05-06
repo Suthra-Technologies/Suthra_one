@@ -95,7 +95,8 @@ const MenuPage: React.FC = () => {
     const [nextCursor, setNextCursor] = useState<string | null>(null);
     const [isFetchingMore, setIsFetchingMore] = useState(false);
     const [totalMenuCount, setTotalMenuCount] = useState(0);
-    const PAGE_LIMIT = 24;
+    const PAGE_LIMIT = 100;
+    const LOAD_MORE_LIMIT = 50;
 
     // Dialogs State
     const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
@@ -238,6 +239,7 @@ const MenuPage: React.FC = () => {
             // Fetch data with individual timeout handling
             const menuPromise = Promise.race([
                 menuAPI.getAll({
+                    limit: PAGE_LIMIT,
                     search: activeSearch.trim() || undefined,
                     category: category !== 'all' ? category : undefined,
                     subcategory: subcategory !== 'all' ? subcategory : undefined,
@@ -372,7 +374,7 @@ const MenuPage: React.FC = () => {
                 category: selectedCategory !== 'all' ? selectedCategory : undefined,
                 subcategory: selectedSubcategory !== 'all' ? selectedSubcategory : undefined,
                 cursor: nextCursor,
-                limit: PAGE_LIMIT
+                limit: LOAD_MORE_LIMIT
             });
 
             const data = res.data;
@@ -1161,7 +1163,10 @@ const MenuPage: React.FC = () => {
 
                             {/* Pagination footer */}
                             {nextCursor && (
-                                <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
+                                <Box sx={{ mt: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+                                    <Typography variant="caption" color="text.secondary">
+                                        Showing {filteredMenuItems.length} of {totalMenuCount} items
+                                    </Typography>
                                     <Button
                                         variant="outlined"
                                         onClick={handleLoadMore}

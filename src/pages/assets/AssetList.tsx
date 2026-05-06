@@ -184,13 +184,13 @@ const AssetList: React.FC = () => {
       {/* Header */}
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={2} mb={4}>
         <Box>
-          <Typography variant="h4" fontWeight="800">Asset Management</Typography>
+          <Typography variant="h4" fontWeight="800">Asset & Document Management</Typography>
           <Typography variant="body2" color="text.secondary">Manage and track your business assets</Typography>
         </Box>
         <Button
           variant="contained"
           startIcon={<Add />}
-          onClick={() => navigate('/assets/new')}
+          onClick={() => navigate('new')}
           sx={{ borderRadius: 2 }}
         >
           Add Asset
@@ -335,7 +335,7 @@ const AssetList: React.FC = () => {
                   <TableRow 
                     key={asset._id} 
                     hover 
-                    onClick={() => navigate(`/assets/${asset._id}`)}
+                    onClick={() => navigate(asset._id)}
                     sx={{ cursor: 'pointer' }}
                   >
                     <TableCell>
@@ -416,7 +416,7 @@ const AssetList: React.FC = () => {
                             color="primary" 
                             onClick={(e) => {
                               e.stopPropagation();
-                              navigate(`/assets/${asset._id}`);
+                              navigate(asset._id);
                             }}
                           >
                             <History />
@@ -427,7 +427,7 @@ const AssetList: React.FC = () => {
                             size="small" 
                             onClick={(e) => {
                               e.stopPropagation();
-                              navigate(`/assets/${asset._id}/edit`);
+                              navigate(`${asset._id}/edit`);
                             }}
                           >
                             <Edit />
