@@ -1,14 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Typography,
   Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Button,
   Chip,
   IconButton,
@@ -29,11 +24,12 @@ import {
   Divider,
 } from '@mui/material';
 import Grid from '@mui/material/Grid2';
-import { Edit as EditIcon, Search as SearchIcon, Close as CloseIcon } from '@mui/icons-material';
+import { Edit as EditIcon, Search as SearchIcon, Close as CloseIcon, Visibility as VisibilityIcon } from '@mui/icons-material';
 import { superAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 
 const TenantsPage: React.FC = () => {
+  const navigate = useNavigate();
   const [tenants, setTenants] = useState<any[]>([]);
   const [plans, setPlans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -125,11 +121,11 @@ const TenantsPage: React.FC = () => {
             whiteSpace: 'nowrap'
           }}
         >
-          Tenant Management
+          Stores Management
         </Typography>
 
         <TextField
-          label="Search Tenants"
+          label="Search Stores"
           variant="outlined"
           size="small"
           value={search}
@@ -141,177 +137,141 @@ const TenantsPage: React.FC = () => {
         />
       </Box>
 
-      {/* Desktop View */}
-      <Box sx={{ display: { xs: 'none', md: 'block' } }}>
-        <TableContainer
-          component={Paper}
-          sx={{
-            overflow: 'auto',
-            maxWidth: '100%',
-            maxHeight: { xs: 500, sm: 'none' },
-            borderRadius: 2,
-            boxShadow: 2,
-            '&::-webkit-scrollbar': {
-              height: '6px',
-              width: '6px',
-            },
-            '&::-webkit-scrollbar-thumb': {
-              backgroundColor: 'rgba(0,0,0,0.1)',
-              borderRadius: '10px',
-            }
-          }}
-        >
-          <Table stickyHeader sx={{ minWidth: 800 }}>
-            <TableHead>
-              <TableRow>
-                <TableCell sx={{ fontWeight: 'bold', bgcolor: 'background.paper', whiteSpace: 'nowrap' }}>Name</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', bgcolor: 'background.paper', whiteSpace: 'nowrap' }}>Domain</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', bgcolor: 'background.paper', whiteSpace: 'nowrap' }}>Owner</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', bgcolor: 'background.paper', whiteSpace: 'nowrap' }}>Status</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', bgcolor: 'background.paper', whiteSpace: 'nowrap' }}>Plan</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', bgcolor: 'background.paper', whiteSpace: 'nowrap' }}>Subscription</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', bgcolor: 'background.paper', whiteSpace: 'nowrap' }}>Expires</TableCell>
-                <TableCell sx={{ fontWeight: 'bold', bgcolor: 'background.paper', whiteSpace: 'nowrap' }}>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 3 }}>
-                    <CircularProgress />
-                  </TableCell>
-                </TableRow>
-              ) : (
-                tenants.map((tenant) => (
-                  <TableRow key={tenant._id} hover>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{tenant.name}</TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>{tenant.slug}</TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                      <Typography variant="body2">{tenant.ownerUser?.firstName} {tenant.ownerUser?.lastName}</Typography>
-                      <Typography variant="caption" color="textSecondary">{tenant.ownerUser?.email}</Typography>
-                    </TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                      <Chip label={tenant.status} color={tenant.status === 'active' ? 'success' : 'default'} size="small" />
-                    </TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                      {tenant.currentPlan?.name || 'No Plan'}
-                    </TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                      <Chip
-                        label={tenant.subscriptionStatus}
-                        color={tenant.subscriptionStatus === 'active' ? 'primary' : 'warning'}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                      {tenant.subscriptionEndsAt ? new Date(tenant.subscriptionEndsAt).toLocaleDateString() : 'N/A'}
-                    </TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                      <IconButton onClick={() => handleEditClick(tenant)} size="small">
-                        <EditIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-        <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
-          component="div"
-          count={totalTenants}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-        />
-      </Box>
-
-      {/* Mobile View */}
-      <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-        {loading ? (
-          <Box display="flex" justifyContent="center" p={4}>
-            <CircularProgress />
-          </Box>
-        ) : (
-          <Stack spacing={2}>
+      {loading ? (
+        <Box display="flex" justifyContent="center" p={4}>
+          <CircularProgress />
+        </Box>
+      ) : (
+        <>
+          <Grid container spacing={3}>
             {tenants.map((tenant) => (
-              <Card key={tenant._id} elevation={0} sx={{ border: '1px solid #e0e0e0' }}>
-                <CardContent>
-                  <Box display="flex" justifyContent="space-between" alignItems="start" mb={2}>
-                    <Box>
-                      <Typography variant="subtitle1" fontWeight="bold">
-                        {tenant.name}
-                      </Typography>
-                      <Typography variant="caption" color="textSecondary">
-                        {tenant.slug}
-                      </Typography>
+              <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={tenant._id}>
+                <Card 
+                  elevation={2} 
+                  sx={{ 
+                    height: '100%', 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    borderRadius: 3,
+                    transition: 'transform 0.2s, box-shadow 0.2s',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: 6,
+                    }
+                  }}
+                >
+                  <CardContent sx={{ flexGrow: 1, p: 2, pb: 1 }}>
+                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5}>
+                      <Box sx={{ overflow: 'hidden', mr: 1 }}>
+                        <Typography variant="subtitle1" fontWeight="bold" noWrap title={tenant.name} sx={{ lineHeight: 1.2 }}>
+                          {tenant.name}
+                        </Typography>
+                        <Typography variant="caption" color="primary" sx={{ fontWeight: 600 }} noWrap>
+                          {tenant.slug}
+                        </Typography>
+                      </Box>
+                      <Chip
+                        label={tenant.status}
+                        color={tenant.status === 'active' ? 'success' : 'default'}
+                        size="small"
+                        sx={{ fontWeight: 'bold', height: 22, fontSize: '0.7rem' }}
+                      />
                     </Box>
-                    <Chip
-                      label={tenant.status}
-                      color={tenant.status === 'active' ? 'success' : 'default'}
-                      size="small"
-                    />
+
+                    <Divider sx={{ mb: 1.5, borderStyle: 'dashed' }} />
+
+                    <Box mb={1.5}>
+                      <Typography variant="caption" color="textSecondary" sx={{ display: 'block', textTransform: 'uppercase', fontWeight: 'bold', fontSize: '0.65rem', letterSpacing: 0.5, mb: 0.25 }}>
+                        Owner
+                      </Typography>
+                      {tenant.ownerUser ? (
+                        <>
+                          <Typography variant="body2" fontWeight={600} noWrap title={`${tenant.ownerUser?.firstName} ${tenant.ownerUser?.lastName}`} sx={{ lineHeight: 1.2 }}>
+                            {tenant.ownerUser?.firstName} {tenant.ownerUser?.lastName}
+                          </Typography>
+                          <Typography variant="caption" color="textSecondary" noWrap title={tenant.ownerUser?.email} sx={{ display: 'block' }}>
+                            {tenant.ownerUser?.email}
+                          </Typography>
+                        </>
+                      ) : (
+                        <Typography variant="body2" color="textSecondary" fontStyle="italic">No Owner</Typography>
+                      )}
+                    </Box>
+
+                    <Grid container spacing={1.5}>
+                      <Grid size={{ xs: 6 }}>
+                        <Typography variant="caption" color="textSecondary" sx={{ textTransform: 'uppercase', fontWeight: 'bold', fontSize: '0.65rem', letterSpacing: 0.5 }}>Plan</Typography>
+                        <Typography variant="body2" fontWeight={600} noWrap>{tenant.currentPlan?.name || 'No Plan'}</Typography>
+                      </Grid>
+                      <Grid size={{ xs: 6 }}>
+                        <Typography variant="caption" color="textSecondary" sx={{ textTransform: 'uppercase', fontWeight: 'bold', fontSize: '0.65rem', letterSpacing: 0.5 }}>Subscription</Typography>
+                        <Box mt={0.25}>
+                          <Chip
+                            label={tenant.subscriptionStatus}
+                            color={tenant.subscriptionStatus === 'active' ? 'primary' : 'warning'}
+                            size="small"
+                            sx={{ height: 20, fontSize: '0.7rem', fontWeight: 600 }}
+                          />
+                        </Box>
+                      </Grid>
+                      {tenant.subscriptionEndsAt && (
+                        <Grid size={{ xs: 12 }}>
+                          <Typography variant="caption" color="textSecondary" sx={{ textTransform: 'uppercase', fontWeight: 'bold', fontSize: '0.65rem', letterSpacing: 0.5 }}>Expires</Typography>
+                          <Typography variant="body2" fontWeight={600}>
+                            {new Date(tenant.subscriptionEndsAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                          </Typography>
+                        </Grid>
+                      )}
+                    </Grid>
+                  </CardContent>
+
+                  <Divider />
+                  
+                  <Box p={1.5} bgcolor="rgba(0,0,0,0.01)">
+                    <Stack direction="row" spacing={1}>
+                      <Button
+                        startIcon={<VisibilityIcon fontSize="small" />}
+                        fullWidth
+                        variant="outlined"
+                        size="small"
+                        sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, py: 0.5 }}
+                        onClick={() => navigate(`/superadmin/tenants/${tenant._id}`, { state: { tenant } })}
+                      >
+                        Details
+                      </Button>
+                      <Button
+                        startIcon={<EditIcon fontSize="small" />}
+                        onClick={() => handleEditClick(tenant)}
+                        fullWidth
+                        variant="contained"
+                        size="small"
+                        disableElevation
+                        sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, py: 0.5 }}
+                      >
+                        Manage
+                      </Button>
+                    </Stack>
                   </Box>
-
-                  <Divider sx={{ mb: 2 }} />
-
-                  <Grid container spacing={2} mb={2}>
-                    <Grid size={{ xs: 12 }}>
-                      <Typography variant="caption" color="textSecondary">Owner</Typography>
-                      <Box>
-                        <Typography variant="body2">{tenant.ownerUser?.firstName} {tenant.ownerUser?.lastName}</Typography>
-                        <Typography variant="caption" color="textSecondary">{tenant.ownerUser?.email}</Typography>
-                      </Box>
-                    </Grid>
-                    <Grid size={{ xs: 6 }}>
-                      <Typography variant="caption" color="textSecondary">Plan</Typography>
-                      <Typography variant="body2">{tenant.currentPlan?.name || 'No Plan'}</Typography>
-                    </Grid>
-                    <Grid size={{ xs: 6 }}>
-                      <Typography variant="caption" color="textSecondary">Subscription</Typography>
-                      <Box>
-                        <Chip
-                          label={tenant.subscriptionStatus}
-                          color={tenant.subscriptionStatus === 'active' ? 'primary' : 'warning'}
-                          size="small"
-                          sx={{ height: 20, fontSize: '0.75rem' }}
-                        />
-                      </Box>
-                    </Grid>
-                    <Grid size={{ xs: 6 }}>
-                      <Typography variant="caption" color="textSecondary">Expires</Typography>
-                      <Typography variant="body2">{tenant.subscriptionEndsAt ? new Date(tenant.subscriptionEndsAt).toLocaleDateString() : 'N/A'}</Typography>
-                    </Grid>
-                  </Grid>
-
-                  <Divider sx={{ mb: 2 }} />
-
-                  <Button
-                    startIcon={<EditIcon />}
-                    onClick={() => handleEditClick(tenant)}
-                    fullWidth
-                    variant="outlined"
-                    size="small"
-                  >
-                    Edit Subscription
-                  </Button>
-                </CardContent>
-              </Card>
+                </Card>
+              </Grid>
             ))}
-            <TablePagination
-              rowsPerPageOptions={[5, 10, 25]}
-              component="div"
-              count={totalTenants}
-              rowsPerPage={rowsPerPage}
-              page={page}
-              onPageChange={handleChangePage}
-              onRowsPerPageChange={handleChangeRowsPerPage}
-            />
-          </Stack>
-        )}
-      </Box>
+          </Grid>
+          
+          <Box display="flex" justifyContent="center" mt={4} mb={2}>
+            <Paper elevation={1} sx={{ borderRadius: 2 }}>
+              <TablePagination
+                rowsPerPageOptions={[6, 12, 24, 48]}
+                component="div"
+                count={totalTenants}
+                rowsPerPage={rowsPerPage}
+                page={page}
+                onPageChange={handleChangePage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
+              />
+            </Paper>
+          </Box>
+        </>
+      )}
 
       <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)}>
         <DialogTitle sx={{ m: 0, p: 2, pr: 6, position: 'relative' }}>

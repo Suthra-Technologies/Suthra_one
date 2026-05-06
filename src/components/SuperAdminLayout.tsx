@@ -67,7 +67,7 @@ const SuperAdminLayout: React.FC = () => {
 
     const menuItems = [
         { path: '/superadmin', label: 'Dashboard', icon: <DashboardIcon /> },
-        { path: '/superadmin/tenants', label: 'Manage Tenants', icon: <StoreIcon /> },
+        { path: '/superadmin/tenants', label: 'Stores', icon: <StoreIcon /> },
         { path: '/superadmin/plans', label: 'Subscription Plans', icon: <PlansIcon /> },
         { path: '/superadmin/invoices', label: 'Invoices', icon: <ReceiptIcon /> },
         { path: '/superadmin/delivery-reports', label: 'Delivery Reports', icon: <DeliveryIcon /> },

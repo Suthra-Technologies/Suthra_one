@@ -66,10 +66,10 @@ const EmailLogsDetailPage: React.FC = () => {
             <Box sx={{ mb: 4 }}>
                 <Button
                     startIcon={<ArrowBackIcon />}
-                    onClick={() => navigate('/superadmin/email-logs')}
+                    onClick={() => navigate(`/superadmin/tenants/${tenantId}`)}
                     sx={{ mb: 2 }}
                 >
-                    Back to Overview
+                    Back to Details
                 </Button>
                 <Typography variant="h4" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                     <EmailIcon sx={{ color: '#6366f1' }} /> Email Logs: {storeName}

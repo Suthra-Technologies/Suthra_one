@@ -75,6 +75,7 @@ import InvoicesAdminPage from './pages/superadmin/InvoicesAdminPage';
 import PlansPage from './pages/superadmin/PlansPage';
 import SuperAdminPortal from './pages/superadmin/SuperAdminPortal';
 import TenantsPage from './pages/superadmin/TenantsPage';
+import TenantDetailsPage from './pages/superadmin/TenantDetailsPage';
 import TicketsPage from './pages/superadmin/TicketsPage';
 import DeliveryReportsPage from './pages/superadmin/DeliveryReportsPage';
 import UberDirectPage from './pages/superadmin/UberDirectPage';
@@ -240,6 +241,7 @@ const AppRoutes: React.FC = () => {
         <Route element={<SuperAdminLayout />}>
           <Route path="/superadmin" element={<SuperAdminPortal />} />
           <Route path="/superadmin/tenants" element={<TenantsPage />} />
+          <Route path="/superadmin/tenants/:tenantId" element={<TenantDetailsPage />} />
           <Route path="/superadmin/plans" element={<PlansPage />} />
           <Route path="/superadmin/invoices" element={<InvoicesAdminPage />} />
           <Route path="/superadmin/tickets" element={<TicketsPage />} />
