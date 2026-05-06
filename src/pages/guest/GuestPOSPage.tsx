@@ -22,6 +22,7 @@ import {
     Divider,
     ToggleButton,
     ToggleButtonGroup,
+    CircularProgress,
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -64,9 +65,15 @@ const GuestPOSPage: React.FC = () => {
     const theme = useTheme();
     const { formatCurrency } = useSettings();
 
+    const PAGE_LIMIT = 50;
+    const LOAD_MORE_LIMIT = 10;
+
     const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
     const [categories, setCategories] = useState<string[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string>('All');
+    const [nextCursor, setNextCursor] = useState<string | null>(null);
+    const [isFetchingMore, setIsFetchingMore] = useState(false);
+    const [totalMenuCount, setTotalMenuCount] = useState(0);
     const [cart, setCart] = useState<CartItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [cartOpen, setCartOpen] = useState(false);
@@ -83,7 +90,7 @@ const GuestPOSPage: React.FC = () => {
 
     useEffect(() => {
         if (slug) {
-            fetchMenu(slug);
+            fetchMenu(slug, null, false);
             fetchPublicInfo(slug);
         }
     }, [slug]);
@@ -107,27 +114,48 @@ const GuestPOSPage: React.FC = () => {
         }
     };
 
-    const fetchMenu = async (tenantSlug: string) => {
+    const fetchMenu = async (tenantSlug: string, cursor?: string | null, loadMore = false) => {
         try {
-            setLoading(true);
-            const response = await menuAPI.getPublicMenu(tenantSlug);
-            const items = response.data?.items || [];
-            const availableItems = items.filter((item: any) => item.isAvailable);
-            setMenuItems(availableItems);
+            if (loadMore) {
+                setIsFetchingMore(true);
+            } else {
+                setLoading(true);
+            }
 
-            const uniqueCategories = Array.from(
-                new Set(
-                    availableItems.map((item: any) =>
-                        typeof item.category === 'string' ? item.category : item.category?.name
-                    ).filter(Boolean)
-                )
-            );
-            setCategories(['All', ...uniqueCategories as string[]]);
+            const limit = loadMore ? LOAD_MORE_LIMIT : PAGE_LIMIT;
+            const response = await menuAPI.getPublicMenu(tenantSlug, undefined, cursor, limit);
+            const data = response.data;
+            const items: any[] = data?.items || [];
+            const newCursor: string | null = data?.nextCursor ?? null;
+            const totalCount: number = data?.totalCount ?? 0;
+
+            if (loadMore) {
+                setMenuItems(prev => [...prev, ...items]);
+            } else {
+                setMenuItems(items);
+
+                // Build category list from API response or fallback to items
+                const apiCategories: any[] = data?.categories || [];
+                if (apiCategories.length > 0) {
+                    setCategories(['All', ...apiCategories.map((c: any) => c.name).filter(Boolean)]);
+                } else {
+                    const uniqueCategories = Array.from(
+                        new Set(items.map((item: any) =>
+                            typeof item.category === 'string' ? item.category : item.category?.name
+                        ).filter(Boolean))
+                    );
+                    setCategories(['All', ...uniqueCategories as string[]]);
+                }
+            }
+
+            setNextCursor(newCursor);
+            setTotalMenuCount(totalCount);
         } catch (error) {
             console.error('Error fetching menu:', error);
             toast.error('Failed to load menu. Please check the URL.');
         } finally {
             setLoading(false);
+            setIsFetchingMore(false);
         }
     };
 
@@ -566,6 +594,23 @@ const GuestPOSPage: React.FC = () => {
                             </Grid>
                         ))}
                     </Grid>
+                )}
+
+                {/* Load More */}
+                {nextCursor && !loading && (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 2, mt: 4 }}>
+                        <Typography variant="body2" color="text.secondary">
+                            Showing {menuItems.length} of {totalMenuCount} items
+                        </Typography>
+                        <Button
+                            variant="outlined"
+                            onClick={() => fetchMenu(slug!, nextCursor, true)}
+                            disabled={isFetchingMore}
+                            startIcon={isFetchingMore ? <CircularProgress size={16} /> : undefined}
+                        >
+                            {isFetchingMore ? 'Loading...' : 'Load More'}
+                        </Button>
+                    </Box>
                 )}
             </Box>
 
