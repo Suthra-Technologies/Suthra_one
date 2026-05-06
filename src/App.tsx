@@ -228,7 +228,7 @@ const AppRoutes: React.FC = () => {
   return (
     <Routes>
       {/* Public routes (no layout, no slug) */}
-      <Route path="/" element={isNative ? <Navigate to={hasStoredSession ? defaultAuthedPath : '/login'} replace /> : <HomePage />} />
+      <Route path="/" element={hasStoredSession ? <Navigate to={defaultAuthedPath} replace /> : (isNative ? <Navigate to="/login" replace /> : <HomePage />)} />
       <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
       <Route path="/terms-and-conditions" element={<TermsConditionsPage />} />
       <Route path="/reschedule-demo/:token" element={<RescheduleDemoPage />} />

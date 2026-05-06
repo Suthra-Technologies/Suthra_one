@@ -74,6 +74,7 @@ const AssetView: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const theme = useTheme();
+  const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
   
   const [loading, setLoading] = useState(true);
   const [asset, setAsset] = useState<any>(null);
@@ -124,13 +125,15 @@ const AssetView: React.FC = () => {
     setLoading(true);
     try {
       const res = await assetsAPI.getOne(id!);
-      setAsset(res.data);
+      const assetData = res.data;
+      setAsset(assetData);
       
-      const historyRes = await assetsAPI.getHistory(id!);
-      setHistory(historyRes.data);
+      // Use history from the main asset data
+      const assetHistory = assetData.history || [];
+      setHistory(assetHistory);
 
       // Pre-fetch user emails for all history items
-      const userIds = [...new Set(historyRes.data.map((item: any) => item.performedBy).filter(Boolean))];
+      const userIds = [...new Set(assetHistory.map((item: any) => item.performedBy).filter(Boolean))];
       const emailPromises = userIds.map(async (userId) => {
         if (userId && userId !== 'undefined' && userId !== 'null') {
           await getUserEmail(userId);
@@ -141,7 +144,7 @@ const AssetView: React.FC = () => {
       Promise.allSettled(emailPromises);
     } catch (error) {
       toast.error('Failed to load asset details');
-      navigate('..');
+      navigate('/assets');
     } finally {
       setLoading(false);
     }
@@ -177,7 +180,31 @@ const AssetView: React.FC = () => {
     }
   };
 
-  const getStatusDisplay = (asset: any) => {
+  const getChangeCount = (details: any) => {
+  let count = 0;
+  if (details.oldValues && details.newValues) {
+    if (details.oldValues.name !== details.newValues.name) count++;
+    if (details.oldValues.type !== details.newValues.type) count++;
+    if (details.oldValues.status !== details.newValues.status) count++;
+    if (details.oldValues.location !== details.newValues.location) count++;
+    if (details.oldValues.cost !== details.newValues.cost) count++;
+  }
+  return count;
+};
+
+const toggleExpanded = (index: number) => {
+  setExpandedItems(prev => {
+    const newSet = new Set(prev);
+    if (newSet.has(index)) {
+      newSet.delete(index);
+    } else {
+      newSet.add(index);
+    }
+    return newSet;
+  });
+};
+
+const getStatusDisplay = (asset: any) => {
     const now = new Date();
     
     // Check Expiry (Only if expires is true)
@@ -218,7 +245,7 @@ const AssetView: React.FC = () => {
       {/* Header */}
       <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={4}>
         <Stack direction="row" spacing={2} alignItems="center">
-          <IconButton onClick={() => navigate('..')}>
+          <IconButton onClick={() => navigate('/mythri/assets')}>
             <ArrowBack />
           </IconButton>
           <Avatar 
@@ -394,6 +421,58 @@ const AssetView: React.FC = () => {
                             secondary={
                               <Box mt={0.5}>
                                 <Typography variant="body2" color="text.primary">{item.description}</Typography>
+                                {(item.details?.oldValues && item.details?.newValues && (
+    (item.details.oldValues.name !== item.details.newValues.name ||
+    item.details.oldValues.type !== item.details.newValues.type ||
+    item.details.oldValues.status !== item.details.newValues.status ||
+    item.details.oldValues.location !== item.details.newValues.location ||
+    item.details.oldValues.cost !== item.details.newValues.cost)
+)) && (
+                                  <Box sx={{ mt: 1 }}>
+                                    <Typography variant="caption" sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, alignItems: 'center', color: 'text.secondary' }}>
+                                      {item.details.oldValues.name !== item.details.newValues.name && (
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, bgcolor: 'grey.50', px: 1, py: 0.5, borderRadius: 1 }}>
+                                          <Typography component="span" sx={{ fontWeight: '600', color: 'text.primary' }}>Name:</Typography>
+                                          <Typography component="span" sx={{ color: 'text.secondary' }}>{item.details.oldValues.name || 'N/A'}</Typography>
+                                          <Typography component="span" sx={{ color: 'primary.main', fontWeight: 'bold' }}>→</Typography>
+                                          <Typography component="span" sx={{ color: 'primary.dark', fontWeight: '500' }}>{item.details.newValues.name || 'N/A'}</Typography>
+                                        </Box>
+                                      )}
+                                      {item.details.oldValues.type !== item.details.newValues.type && (
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, bgcolor: 'grey.50', px: 1, py: 0.5, borderRadius: 1 }}>
+                                          <Typography component="span" sx={{ fontWeight: '600', color: 'text.primary' }}>Type:</Typography>
+                                          <Typography component="span" sx={{ color: 'text.secondary' }}>{item.details.oldValues.type || 'N/A'}</Typography>
+                                          <Typography component="span" sx={{ color: 'primary.main', fontWeight: 'bold' }}>→</Typography>
+                                          <Typography component="span" sx={{ color: 'primary.dark', fontWeight: '500' }}>{item.details.newValues.type || 'N/A'}</Typography>
+                                        </Box>
+                                      )}
+                                      {item.details.oldValues.status !== item.details.newValues.status && (
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, bgcolor: 'grey.50', px: 1, py: 0.5, borderRadius: 1 }}>
+                                          <Typography component="span" sx={{ fontWeight: '600', color: 'text.primary' }}>Status:</Typography>
+                                          <Typography component="span" sx={{ color: 'text.secondary' }}>{item.details.oldValues.status || 'N/A'}</Typography>
+                                          <Typography component="span" sx={{ color: 'primary.main', fontWeight: 'bold' }}>→</Typography>
+                                          <Typography component="span" sx={{ color: 'primary.dark', fontWeight: '500' }}>{item.details.newValues.status || 'N/A'}</Typography>
+                                        </Box>
+                                      )}
+                                      {item.details.oldValues.location !== item.details.newValues.location && (
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, bgcolor: 'grey.50', px: 1, py: 0.5, borderRadius: 1 }}>
+                                          <Typography component="span" sx={{ fontWeight: '600', color: 'text.primary' }}>Type:</Typography>
+                                          <Typography component="span" sx={{ color: 'text.secondary' }}>{item.details.oldValues.location || 'N/A'}</Typography>
+                                          <Typography component="span" sx={{ color: 'primary.main', fontWeight: 'bold' }}>→</Typography>
+                                          <Typography component="span" sx={{ color: 'primary.dark', fontWeight: '500' }}>{item.details.newValues.location || 'N/A'}</Typography>
+                                        </Box>
+                                      )}
+                                      {item.details.oldValues.cost !== item.details.newValues.cost && (
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, bgcolor: 'grey.50', px: 1, py: 0.5, borderRadius: 1 }}>
+                                          <Typography component="span" sx={{ fontWeight: '600', color: 'text.primary' }}>Cost:</Typography>
+                                          <Typography component="span" sx={{ color: 'text.secondary' }}>${item.details.oldValues.cost?.toFixed(2) || '0.00'}</Typography>
+                                          <Typography component="span" sx={{ color: 'primary.main', fontWeight: 'bold' }}>→</Typography>
+                                          <Typography component="span" sx={{ color: 'primary.dark', fontWeight: '500' }}>${item.details.newValues.cost?.toFixed(2) || '0.00'}</Typography>
+                                        </Box>
+                                      )}
+                                    </Typography>
+                                  </Box>
+                                )}
                                 {item.cost > 0 && (
                                   <Chip 
                                     icon={<AttachMoney fontSize="small" />} 

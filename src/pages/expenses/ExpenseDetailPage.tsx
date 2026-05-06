@@ -41,6 +41,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
 import { expensesAPI, usersAPI } from '../../services/api';
+import { getCurrentUser } from '../../services/authService';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
 
@@ -113,64 +114,15 @@ const ExpenseDetailPage: React.FC = () => {
                 const expenseRes = await expensesAPI.getOne(id!);
                 setExpense(expenseRes.data.data);
 
-                // Create history logs from existing expense data (no API call needed)
-                setHistoryLoading(true);
+                // Use history from the main expense data (no separate API call)
                 const expenseData = expenseRes.data.data;
-                const generatedHistory = [];
-
-                // Add creation log
-                generatedHistory.push({
-                    type: 'create',
-                    description: `Expense created for ${expenseData.payee.name} - ${expenseData.category}`,
-                    date: expenseData.createdAt || new Date().toISOString(),
-                    performedBy: expenseData.createdBy || 'system',
-                    amount: expenseData.amount
-                });
-
-                // Add status change if not pending
-                if (expenseData.status && expenseData.status !== 'pending') {
-                    generatedHistory.push({
-                        type: 'status_change',
-                        description: `Expense status changed to ${expenseData.status}`,
-                        date: expenseData.updatedAt || expenseData.createdAt || new Date().toISOString(),
-                        performedBy: expenseData.updatedBy || 'system',
-                        amount: 0
-                    });
-                }
-
-                // Add payment logs if payments exist
-                if (expenseData.payments && expenseData.payments.length > 0) {
-                    expenseData.payments.forEach((payment: any) => {
-                        generatedHistory.push({
-                            type: 'payment',
-                            description: `Payment recorded via ${payment.method}`,
-                            date: payment.date || new Date().toISOString(),
-                            performedBy: payment.performedBy || 'system',
-                            amount: payment.amount
-                        });
-                    });
-                }
-
-                // Add update log if expense was updated
-                if (expenseData.updatedAt && expenseData.updatedAt !== expenseData.createdAt) {
-                    generatedHistory.push({
-                        type: 'edit',
-                        description: 'Expense details updated',
-                        date: expenseData.updatedAt,
-                        performedBy: expenseData.updatedBy || 'system',
-                        amount: 0
-                    });
-                }
-
-                // Sort by date (newest first)
-                generatedHistory.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-                setHistory(generatedHistory);
+                const expenseHistory = expenseData.history || [];
+                setHistory(expenseHistory);
                 setUsingSampleData(false);
                 setHistoryLoading(false);
 
-                // Pre-fetch user emails for all history items
-                const userIds = [...new Set(generatedHistory.map((item: any) => item.performedBy).filter(Boolean))];
+                // Pre-fetch user emails for all history items (only if performedByName is not available)
+                const userIds = [...new Set(expenseHistory.map((item: any) => item.performedBy).filter(Boolean))];
                 const emailPromises = userIds.map(async (userId) => {
                     if (userId && userId !== 'undefined' && userId !== 'null') {
                         await getUserEmail(userId);
@@ -335,7 +287,7 @@ const ExpenseDetailPage: React.FC = () => {
                                                     primary={
                                                         <Stack direction="row" justifyContent="space-between" alignItems="center">
                                                             <Typography variant="subtitle1" fontWeight="700">
-                                                                {item.type === 'create' ? 'Expense Created' : item.type === 'status_change' ? 'Status Changed' : item.type === 'payment' ? 'Payment Recorded' : item.type === 'edit' ? 'Expense Edited' : 'Action Update'}
+                                                                {item.type === 'create' ? 'Expense Created' : item.type === 'status_change' ? 'Status Changed' : item.type === 'payment' ? 'Payment Recorded' : 'Action Update'}
                                                             </Typography>
                                                             <Typography variant="caption" color="text.secondary">
                                                                 {new Date(item.date).toLocaleDateString()}
@@ -345,16 +297,34 @@ const ExpenseDetailPage: React.FC = () => {
                                                     secondary={
                                                         <Box mt={0.5}>
                                                             <Typography variant="body2" color="text.primary">{item.description}</Typography>
-                                                            {item.amount > 0 && (
-                                                                <Chip 
-                                                                    icon={<MoneyIcon fontSize="small" />} 
-                                                                    label={`Amount: ${formatCurrency ? formatCurrency(item.amount) : `$${item.amount.toFixed(2)}`} `} 
-                                                                    size="small" 
-                                                                    sx={{ mt: 1, height: 24 }} 
-                                                                />
+                                                            {(item.details?.oldValues && item.details?.newValues && (
+    (item.details.oldValues.amount !== item.details.newValues.amount ||
+    item.details.oldValues.category !== item.details.newValues.category ||
+    item.details.oldValues.payeeName !== item.details.newValues.payeeName)
+)) && (
+                                                                <Box sx={{ mt: 1 }}>
+                                                                    <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'text.secondary' }}>
+                                                                        Changes:
+                                                                    </Typography>
+                                                                    {item.details.oldValues.amount !== item.details.newValues.amount && (
+                                                                        <Typography variant="caption" display="block" sx={{ ml: 2, color: 'text.secondary' }}>
+                                                                            Amount: ${formatCurrency ? formatCurrency(item.details.oldValues.amount) : `$${item.details.oldValues.amount?.toFixed(2) || '0.00'}`} → ${formatCurrency ? formatCurrency(item.details.newValues.amount) : `$${item.details.newValues.amount?.toFixed(2) || '0.00'}`}
+                                                                        </Typography>
+                                                                    )}
+                                                                    {item.details.oldValues.category !== item.details.newValues.category && (
+                                                                        <Typography variant="caption" display="block" sx={{ ml: 2, color: 'text.secondary' }}>
+                                                                            Category: {item.details.oldValues.category || 'N/A'} → {item.details.newValues.category || 'N/A'}
+                                                                        </Typography>
+                                                                    )}
+                                                                    {item.details.oldValues.payeeName !== item.details.newValues.payeeName && (
+                                                                        <Typography variant="caption" display="block" sx={{ ml: 2, color: 'text.secondary' }}>
+                                                                            Payee: {item.details.oldValues.payeeName || 'N/A'} → {item.details.newValues.payeeName || 'N/A'}
+                                                                        </Typography>
+                                                                    )}
+                                                                </Box>
                                                             )}
                                                             <Typography variant="caption" display="block" sx={{ mt: 0.5, color: 'text.secondary' }}>
-                                                                Performed by: {item.performedBy === 'system' ? 'System' : (userEmails[item.performedBy] || 'Loading...')}
+                                                                Performed by: {item.performedBy === 'system' ? 'System' : getCurrentUser()?.email || 'Unknown'}
                                                             </Typography>
                                                         </Box>
                                                     }
