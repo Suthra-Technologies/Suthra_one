@@ -1579,7 +1579,6 @@ const CouponsAdminPage: React.FC = () => {
                         flex: 1,
                         overflowY: 'auto',
                         px: 2.5, pb: 2,
-                        pb: 2,
                         '&::-webkit-scrollbar': {
                             width: '6px',
                         },

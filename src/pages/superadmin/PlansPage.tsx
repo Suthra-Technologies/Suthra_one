@@ -92,7 +92,7 @@ const PlansPage: React.FC = () => {
         fetchPlans();
     }, []);
 
-    const handleOpenDialog = (plan?: SubscriptionPlan) => {
+    const handleOpenDialog = (plan?: SubscriptionPlan, defaultType: 'subscription' | 'topup' = 'subscription') => {
         if (plan) {
             setEditingPlan(plan);
             const hasCatering = plan.features.includes('catering');
@@ -125,8 +125,8 @@ const PlansPage: React.FC = () => {
             setFormData({
                 name: '',
                 price: 0,
-                interval: 'monthly',
-                type: 'subscription',
+                interval: defaultType === 'topup' ? 'one-time' : 'monthly',
+                type: defaultType,
                 resourceType: 'none',
                 resourceCount: 0,
                 features: '',
@@ -220,6 +220,102 @@ const PlansPage: React.FC = () => {
         }
     };
 
+    const renderPlanCard = (plan: SubscriptionPlan) => (
+        <Grid size={{ xs: 12, md: 6, lg: 4 }} key={plan._id}>
+            <Paper sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 2 }}>
+                    <Box>
+                        <Typography variant="h5" gutterBottom>
+                            {plan.name}
+                        </Typography>
+                        <Typography variant="h4" color="primary" gutterBottom>
+                            ${plan.price}
+                            <Typography component="span" variant="body2" color="text.secondary">
+                                /{plan.type === 'topup' ? 'one-time' : plan.interval}
+                            </Typography>
+                        </Typography>
+                        {plan.type !== 'topup' && (
+                            <Typography
+                                component="span"
+                                variant="body2"
+                                sx={{ ml: 1, color: "success.main", fontWeight: "bold" }}
+                            >
+                                • Save 25%
+                            </Typography>
+                        )}
+                    </Box>
+                    <Box>
+                        <IconButton size="small" onClick={() => handleOpenDialog(plan)}>
+                            <EditIcon fontSize="small" />
+                        </IconButton>
+                        <IconButton size="small" color="error" onClick={() => handleDelete(plan._id)}>
+                            <DeleteIcon fontSize="small" />
+                        </IconButton>
+                    </Box>
+                </Box>
+
+                <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+                    <Chip
+                        label={plan.isActive ? 'Active' : 'Inactive'}
+                        color={plan.isActive ? 'success' : 'default'}
+                        size="small"
+                        sx={{ fontWeight: 600 }}
+                    />
+                    <Chip
+                        label={plan.type === 'topup' ? 'Top-up' : 'Subscription'}
+                        color={plan.type === 'topup' ? 'secondary' : 'primary'}
+                        variant="outlined"
+                        size="small"
+                        sx={{ fontWeight: 600 }}
+                    />
+                </Stack>
+
+                {plan.type === 'topup' && (
+                    <Box sx={{ mb: 2, p: 1.5, bgcolor: alpha(theme.palette.secondary.main, 0.05), borderRadius: 2, border: '1px dashed', borderColor: 'secondary.main' }}>
+                        <Typography variant="subtitle2" color="secondary.main" fontWeight="bold">
+                            Resource Credit:
+                        </Typography>
+                        <Typography variant="body1" fontWeight={800}>
+                            {plan.resourceCount?.toLocaleString()} {plan.resourceType?.toUpperCase()} Credits
+                        </Typography>
+                    </Box>
+                )}
+
+                {plan.type !== 'topup' && (
+                    <Box sx={{ mb: 2 }}>
+                        <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                            Limits:
+                        </Typography>
+                        <Typography variant="body2">• Max Users: {plan.maxUsers || 'Unlimited'}</Typography>
+                        <Typography variant="body2">• Max Tables: {plan.maxTables || 'Unlimited'}</Typography>
+                        <Typography variant="body2">• Max Orders/month: {plan.maxOrders || 'Unlimited'}</Typography>
+                        <Typography variant="body2">• Max SMS/month: {plan.maxSms || 'Unlimited'}</Typography>
+                        <Typography variant="body2">• Max Emails/month: {plan.maxEmail || 'Unlimited'}</Typography>
+                    </Box>
+                )}
+
+                <Box sx={{ flexGrow: 1 }}>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                        Features:
+                    </Typography>
+                    {plan.features.map((feature, index) => {
+                        const featureLabels: Record<string, string> = {
+                            catering: 'Catering Management',
+                            inventory: 'Inventory Management',
+                            wastemanagement: 'Waste Management',
+                            attendance: 'Staff Attendance',
+                        };
+                        return (
+                            <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
+                                ✓ {featureLabels[feature] || feature}
+                            </Typography>
+                        );
+                    })}
+                </Box>
+            </Paper>
+        </Grid>
+    );
+
     return (
         <Box sx={{ px: { xs: 1.5, sm: 3 }, pb: { xs: 1.5, sm: 3 }, pt: { xs: 0.5, sm: 3 } }}>
             <Box sx={{
@@ -242,14 +338,24 @@ const PlansPage: React.FC = () => {
                 >
                     Subscription Plans
                 </Typography>
-                <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={() => handleOpenDialog()}
-                    sx={{ width: { xs: '100%', sm: 'auto' } }}
-                >
-                    Create Plan
-                </Button>
+                <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+                    <Button
+                        variant="outlined"
+                        startIcon={<AddIcon />}
+                        onClick={() => handleOpenDialog(undefined, 'topup')}
+                        sx={{ width: { xs: '100%', sm: 'auto' } }}
+                    >
+                        Create Top-Up
+                    </Button>
+                    <Button
+                        variant="contained"
+                        startIcon={<AddIcon />}
+                        onClick={() => handleOpenDialog(undefined, 'subscription')}
+                        sx={{ width: { xs: '100%', sm: 'auto' } }}
+                    >
+                        Create Subscription
+                    </Button>
+                </Box>
             </Box>
 
             {loading ? (
@@ -257,105 +363,25 @@ const PlansPage: React.FC = () => {
                     <CircularProgress />
                 </Box>
             ) : (
-                <Grid container spacing={3}>
-                    {plans.map((plan) => (
-                        <Grid size={{ xs: 12, md: 6, lg: 4 }} key={plan._id}>
-                            <Paper sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 2 }}>
-                                    <Box>
-                                        <Typography variant="h5" gutterBottom>
-                                            {plan.name}
-                                        </Typography>
-                                        <Typography variant="h4" color="primary" gutterBottom>
-                                            ${plan.price}
-                                            <Typography component="span" variant="body2" color="text.secondary">
-                                                /{plan.type === 'topup' ? 'one-time' : plan.interval}
-                                            </Typography>
-
-
-                                        </Typography>
-                                        <Typography
-                                            component="span"
-                                            variant="body2"
-                                            sx={{
-                                                ml: 1,
-                                                color: "success.main",
-                                                fontWeight: "bold"
-                                            }}
-                                        >
-                                            • Save 25%
-                                        </Typography>
-                                    </Box>
-                                    <Box>
-                                        <IconButton size="small" onClick={() => handleOpenDialog(plan)}>
-                                            <EditIcon fontSize="small" />
-                                        </IconButton>
-                                        <IconButton size="small" color="error" onClick={() => handleDelete(plan._id)}>
-                                            <DeleteIcon fontSize="small" />
-                                        </IconButton>
-                                    </Box>
-                                </Box>
-
-                                <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-                                    <Chip
-                                        label={plan.isActive ? 'Active' : 'Inactive'}
-                                        color={plan.isActive ? 'success' : 'default'}
-                                        size="small"
-                                        sx={{ fontWeight: 600 }}
-                                    />
-                                    <Chip
-                                        label={plan.type === 'topup' ? 'Top-up' : 'Subscription'}
-                                        color={plan.type === 'topup' ? 'secondary' : 'primary'}
-                                        variant="outlined"
-                                        size="small"
-                                        sx={{ fontWeight: 600 }}
-                                    />
-                                </Stack>
-
-                                {plan.type === 'topup' && (
-                                    <Box sx={{ mb: 2, p: 1.5, bgcolor: alpha(theme.palette.secondary.main, 0.05), borderRadius: 2, border: '1px dashed', borderColor: 'secondary.main' }}>
-                                        <Typography variant="subtitle2" color="secondary.main" fontWeight="bold">
-                                            Resource Credit:
-                                        </Typography>
-                                        <Typography variant="body1" fontWeight={800}>
-                                            {plan.resourceCount?.toLocaleString()} {plan.resourceType?.toUpperCase()} Credits
-                                        </Typography>
-                                    </Box>
-                                )}
-
-                                <Box sx={{ mb: 2 }}>
-                                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                                        Limits:
-                                    </Typography>
-                                    <Typography variant="body2">• Max Users: {plan.maxUsers || 'Unlimited'}</Typography>
-                                    <Typography variant="body2">• Max Tables: {plan.maxTables || 'Unlimited'}</Typography>
-                                    <Typography variant="body2">• Max Orders/month: {plan.maxOrders || 'Unlimited'}</Typography>
-                                    <Typography variant="body2">• Max SMS/month: {plan.maxSms || 'Unlimited'}</Typography>
-                                    <Typography variant="body2">• Max Emails/month: {plan.maxEmail || 'Unlimited'}</Typography>
-                                </Box>
-
-                                <Box sx={{ flexGrow: 1 }}>
-                                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                                        Features:
-                                    </Typography>
-                                    {plan.features.map((feature, index) => {
-                                        const featureLabels: Record<string, string> = {
-                                            catering: 'Catering Management',
-                                            inventory: 'Inventory Management',
-                                            wastemanagement: 'Waste Management',
-                                            attendance: 'Staff Attendance',
-                                        };
-                                        return (
-                                            <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
-                                                ✓ {featureLabels[feature] || feature}
-                                            </Typography>
-                                        );
-                                    })}
-                                </Box>
-                            </Paper>
+                <>
+                    <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>Subscription Plans</Typography>
+                    {plans.filter(p => p.type !== 'topup').length === 0 ? (
+                        <Typography color="text.secondary" sx={{ mb: 4 }}>No subscription plans found.</Typography>
+                    ) : (
+                        <Grid container spacing={3} sx={{ mb: 5 }}>
+                            {plans.filter(p => p.type !== 'topup').map((plan) => renderPlanCard(plan))}
                         </Grid>
-                    ))}
-                </Grid>
+                    )}
+
+                    <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>Top-Up Plans</Typography>
+                    {plans.filter(p => p.type === 'topup').length === 0 ? (
+                        <Typography color="text.secondary" sx={{ mb: 4 }}>No top-up plans found.</Typography>
+                    ) : (
+                        <Grid container spacing={3} sx={{ mb: 4 }}>
+                            {plans.filter(p => p.type === 'topup').map((plan) => renderPlanCard(plan))}
+                        </Grid>
+                    )}
+                </>
             )}
 
             {/* Create/Edit Dialog */}
@@ -403,7 +429,7 @@ const PlansPage: React.FC = () => {
                         />
 
                         <Grid container spacing={2}>
-                            <Grid size={{ xs: 6 }}>
+                            <Grid size={{ xs: 12 }}>
                                 <TextField
                                     label="Price"
                                     type="number"
@@ -418,33 +444,23 @@ const PlansPage: React.FC = () => {
                                     inputProps={{ min: 0, step: "0.01" }}
                                 />
                             </Grid>
-                            <Grid size={{ xs: 6 }}>
-                                <TextField
-                                    label="Interval"
-                                    select
-                                    value={formData.interval}
-                                    onChange={(e) => setFormData({ ...formData, interval: e.target.value as any })}
-                                    fullWidth
-                                    SelectProps={{ native: true }}
-                                >
-                                    <option value="monthly">Monthly</option>
-                                    <option value="yearly">Yearly</option>
-                                    <option value="one-time">One-Time</option>
-                                </TextField>
-                            </Grid>
-                            <Grid size={{ xs: 6 }}>
-                                <TextField
-                                    select
-                                    label="Plan Type"
-                                    value={formData.type}
-                                    onChange={(e) => setFormData({ ...formData, type: e.target.value as any })}
-                                    fullWidth
-                                    SelectProps={{ native: true }}
-                                >
-                                    <option value="subscription">Subscription</option>
-                                    <option value="topup">Top-Up</option>
-                                </TextField>
-                            </Grid>
+                            
+                            {formData.type === 'subscription' && (
+                                <Grid size={{ xs: 12 }}>
+                                    <TextField
+                                        label="Interval"
+                                        select
+                                        value={formData.interval}
+                                        onChange={(e) => setFormData({ ...formData, interval: e.target.value as any })}
+                                        fullWidth
+                                        SelectProps={{ native: true }}
+                                    >
+                                        <option value="monthly">Monthly</option>
+                                        <option value="yearly">Yearly</option>
+                                        <option value="one-time">One-Time</option>
+                                    </TextField>
+                                </Grid>
+                            )}
                         </Grid>
 
                         {formData.type === 'topup' && (
@@ -481,173 +497,157 @@ const PlansPage: React.FC = () => {
                             </Grid>
                         )}
 
-                        <Grid container spacing={2}>
-                            <Grid size={{ xs: 6 }}>
-                                <TextField
-                                    label="Max Users"
-                                    type="number"
-                                    value={formData.maxUsers}
-                                    onChange={(e) => {
-                                        const val = parseInt(e.target.value);
-                                        setFormData({ ...formData, maxUsers: isNaN(val) ? 0 : (val < 0 ? 0 : val) });
-                                    }}
-                                    onFocus={(e) => e.target.select()}
-                                    fullWidth
-                                    inputProps={{ min: 0 }}
-                                />
-                            </Grid>
-                            <Grid size={{ xs: 6 }}>
-                                <TextField
-                                    label="Max Tables"
-                                    type="number"
-                                    value={formData.maxTables}
-                                    onChange={(e) => {
-                                        const val = parseInt(e.target.value);
-                                        setFormData({ ...formData, maxTables: isNaN(val) ? 0 : (val < 0 ? 0 : val) });
-                                    }}
-                                    onFocus={(e) => e.target.select()}
-                                    fullWidth
-                                    inputProps={{ min: 0 }}
-                                />
-                            </Grid>
-                            <Grid size={{ xs: 6 }}>
-                                <TextField
-                                    label="Max Orders / Month"
-                                    type="number"
-                                    value={formData.maxOrders}
-                                    onChange={(e) => {
-                                        const val = parseInt(e.target.value);
-                                        setFormData({ ...formData, maxOrders: isNaN(val) ? 0 : (val < 0 ? 0 : val) });
-                                    }}
-                                    onFocus={(e) => e.target.select()}
-                                    fullWidth
-                                    inputProps={{ min: 0 }}
-                                />
-                            </Grid>
-                            <Grid size={{ xs: 6 }}>
-                                <TextField
-                                    label="Max SMS / Month"
-                                    type="number"
-                                    value={formData.maxSms}
-                                    onChange={(e) => {
-                                        const val = parseInt(e.target.value);
-                                        setFormData({ ...formData, maxSms: isNaN(val) ? 0 : (val < 0 ? 0 : val) });
-                                    }}
-                                    onFocus={(e) => e.target.select()}
-                                    fullWidth
-                                    inputProps={{ min: 0 }}
-                                    helperText="0 = unlimited"
-                                />
-                            </Grid>
-                            <Grid size={{ xs: 6 }}>
-                                <TextField
-                                    label="Max Emails / Month"
-                                    type="number"
-                                    value={formData.maxEmail}
-                                    onChange={(e) => {
-                                        const val = parseInt(e.target.value);
-                                        setFormData({ ...formData, maxEmail: isNaN(val) ? 0 : (val < 0 ? 0 : val) });
-                                    }}
-                                    onFocus={(e) => e.target.select()}
-                                    fullWidth
-                                    inputProps={{ min: 0 }}
-                                    helperText="0 = unlimited"
-                                />
-                            </Grid>
-                        </Grid>
-
-                        <TextField
-                            label="Features (one per line)"
-                            multiline
-                            rows={6}
-                            value={formData.features}
-                            onChange={(e) => setFormData({ ...formData, features: e.target.value })}
-                            fullWidth
-                            placeholder="Feature 1&#10;Feature 2&#10;Feature 3"
-                        />
-
-                        <FormControlLabel
-                            control={
-                                <Switch
-                                    checked={formData.isActive}
-                                    onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                                />
-                            }
-                            label="Active"
-                        />
-
-                        <Divider sx={{ my: 1 }} />
-                        <Typography variant="subtitle2" color="primary">System Modules</Typography>
-                        <Grid container spacing={2}>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                                <FormControlLabel
-                                    control={
-                                        <Switch
-                                            checked={formData.cateringEnabled}
-                                            onChange={(e) => setFormData({ ...formData, cateringEnabled: e.target.checked })}
-                                            color="secondary"
+                        {formData.type === 'subscription' && (
+                            <>
+                                <Grid container spacing={2}>
+                                    <Grid size={{ xs: 6 }}>
+                                        <TextField
+                                            label="Max Users"
+                                            type="number"
+                                            value={formData.maxUsers}
+                                            onChange={(e) => {
+                                                const val = parseInt(e.target.value);
+                                                setFormData({ ...formData, maxUsers: isNaN(val) ? 0 : (val < 0 ? 0 : val) });
+                                            }}
+                                            onFocus={(e) => e.target.select()}
+                                            fullWidth
+                                            inputProps={{ min: 0 }}
                                         />
-                                    }
-                                    label={
-                                        <Box>
-                                            <Typography variant="body2" fontWeight="bold">Catering Service</Typography>
-                                            <Typography variant="caption" color="text.secondary">Enable Catering Management Module</Typography>
-                                        </Box>
-                                    }
-                                />
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                                <FormControlLabel
-                                    control={
-                                        <Switch
-                                            checked={formData.inventoryEnabled}
-                                            onChange={(e) => setFormData({ ...formData, inventoryEnabled: e.target.checked })}
-                                            color="secondary"
+                                    </Grid>
+                                    <Grid size={{ xs: 6 }}>
+                                        <TextField
+                                            label="Max Tables"
+                                            type="number"
+                                            value={formData.maxTables}
+                                            onChange={(e) => {
+                                                const val = parseInt(e.target.value);
+                                                setFormData({ ...formData, maxTables: isNaN(val) ? 0 : (val < 0 ? 0 : val) });
+                                            }}
+                                            onFocus={(e) => e.target.select()}
+                                            fullWidth
+                                            inputProps={{ min: 0 }}
                                         />
-                                    }
-                                    label={
-                                        <Box>
-                                            <Typography variant="body2" fontWeight="bold">Inventory</Typography>
-                                            <Typography variant="caption" color="text.secondary">Enable Inventory Management Module</Typography>
-                                        </Box>
-                                    }
-                                />
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                                <FormControlLabel
-                                    control={
-                                        <Switch
-                                            checked={formData.wasteManagementEnabled}
-                                            onChange={(e) => setFormData({ ...formData, wasteManagementEnabled: e.target.checked })}
-                                            color="secondary"
+                                    </Grid>
+                                    <Grid size={{ xs: 6 }}>
+                                        <TextField
+                                            label="Max Orders / Month"
+                                            type="number"
+                                            value={formData.maxOrders}
+                                            onChange={(e) => {
+                                                const val = parseInt(e.target.value);
+                                                setFormData({ ...formData, maxOrders: isNaN(val) ? 0 : (val < 0 ? 0 : val) });
+                                            }}
+                                            onFocus={(e) => e.target.select()}
+                                            fullWidth
+                                            inputProps={{ min: 0 }}
                                         />
-                                    }
-                                    label={
-                                        <Box>
-                                            <Typography variant="body2" fontWeight="bold">Waste Management</Typography>
-                                            <Typography variant="caption" color="text.secondary">Enable Waste Management Module</Typography>
-                                        </Box>
-                                    }
-                                />
-                            </Grid>
-                            <Grid size={{ xs: 12, sm: 6 }}>
-                                <FormControlLabel
-                                    control={
-                                        <Switch
-                                            checked={formData.attendanceEnabled}
-                                            onChange={(e) => setFormData({ ...formData, attendanceEnabled: e.target.checked })}
-                                            color="secondary"
+                                    </Grid>
+                                    <Grid size={{ xs: 6 }}>
+                                        <TextField
+                                            label="Max SMS / Month"
+                                            type="number"
+                                            value={formData.maxSms}
+                                            onChange={(e) => {
+                                                const val = parseInt(e.target.value);
+                                                setFormData({ ...formData, maxSms: isNaN(val) ? 0 : (val < 0 ? 0 : val) });
+                                            }}
+                                            onFocus={(e) => e.target.select()}
+                                            fullWidth
+                                            inputProps={{ min: 0 }}
+                                            helperText="0 = unlimited"
                                         />
-                                    }
-                                    label={
-                                        <Box>
-                                            <Typography variant="body2" fontWeight="bold">Attendance</Typography>
-                                            <Typography variant="caption" color="text.secondary">Enable Staff Attendance Module</Typography>
-                                        </Box>
-                                    }
-                                />
-                            </Grid>
-                        </Grid>
+                                    </Grid>
+                                    <Grid size={{ xs: 6 }}>
+                                        <TextField
+                                            label="Max Emails / Month"
+                                            type="number"
+                                            value={formData.maxEmail}
+                                            onChange={(e) => {
+                                                const val = parseInt(e.target.value);
+                                                setFormData({ ...formData, maxEmail: isNaN(val) ? 0 : (val < 0 ? 0 : val) });
+                                            }}
+                                            onFocus={(e) => e.target.select()}
+                                            fullWidth
+                                            inputProps={{ min: 0 }}
+                                            helperText="0 = unlimited"
+                                        />
+                                    </Grid>
+                                </Grid>
+                                
+                                <Divider sx={{ my: 1 }} />
+                                <Typography variant="subtitle2" color="primary">System Modules</Typography>
+                                <Grid container spacing={2}>
+                                    <Grid size={{ xs: 12, sm: 6 }}>
+                                        <FormControlLabel
+                                            control={
+                                                <Switch
+                                                    checked={formData.cateringEnabled}
+                                                    onChange={(e) => setFormData({ ...formData, cateringEnabled: e.target.checked })}
+                                                    color="secondary"
+                                                />
+                                            }
+                                            label={
+                                                <Box>
+                                                    <Typography variant="body2" fontWeight="bold">Catering Service</Typography>
+                                                    <Typography variant="caption" color="text.secondary">Enable Catering Management Module</Typography>
+                                                </Box>
+                                            }
+                                        />
+                                    </Grid>
+                                    <Grid size={{ xs: 12, sm: 6 }}>
+                                        <FormControlLabel
+                                            control={
+                                                <Switch
+                                                    checked={formData.inventoryEnabled}
+                                                    onChange={(e) => setFormData({ ...formData, inventoryEnabled: e.target.checked })}
+                                                    color="secondary"
+                                                />
+                                            }
+                                            label={
+                                                <Box>
+                                                    <Typography variant="body2" fontWeight="bold">Inventory</Typography>
+                                                    <Typography variant="caption" color="text.secondary">Enable Inventory Management Module</Typography>
+                                                </Box>
+                                            }
+                                        />
+                                    </Grid>
+                                    <Grid size={{ xs: 12, sm: 6 }}>
+                                        <FormControlLabel
+                                            control={
+                                                <Switch
+                                                    checked={formData.wasteManagementEnabled}
+                                                    onChange={(e) => setFormData({ ...formData, wasteManagementEnabled: e.target.checked })}
+                                                    color="secondary"
+                                                />
+                                            }
+                                            label={
+                                                <Box>
+                                                    <Typography variant="body2" fontWeight="bold">Waste Management</Typography>
+                                                    <Typography variant="caption" color="text.secondary">Enable Waste Management Module</Typography>
+                                                </Box>
+                                            }
+                                        />
+                                    </Grid>
+                                    <Grid size={{ xs: 12, sm: 6 }}>
+                                        <FormControlLabel
+                                            control={
+                                                <Switch
+                                                    checked={formData.attendanceEnabled}
+                                                    onChange={(e) => setFormData({ ...formData, attendanceEnabled: e.target.checked })}
+                                                    color="secondary"
+                                                />
+                                            }
+                                            label={
+                                                <Box>
+                                                    <Typography variant="body2" fontWeight="bold">Attendance</Typography>
+                                                    <Typography variant="caption" color="text.secondary">Enable Staff Attendance Module</Typography>
+                                                </Box>
+                                            }
+                                        />
+                                    </Grid>
+                                </Grid>
+                            </>
+                        )}
                     </Box>
                 </DialogContent>
                 <DialogActions>
