@@ -1,24 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { alpha } from '@mui/material/styles';
 import {
+  Assessment,
+  CheckCircle,
   Refresh
 } from '@mui/icons-material';
 import {
-  useTheme,
   Box,
+  Button,
   Card,
   CardContent,
   Chip,
+  CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
   Grid,
   IconButton,
+  InputAdornment,
+  Tooltip as MuiTooltip,
+  Pagination,
   Stack,
-  TextField,
-  ToggleButton,
-  Button,
-  ToggleButtonGroup,
-  Typography,
-  useMediaQuery,
-  Tabs,
   Tab,
   Table,
   TableBody,
@@ -26,56 +28,43 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper,
-  Pagination,
-  CircularProgress,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Tooltip as MuiTooltip,
-  InputAdornment,
+  Tabs,
+  TextField,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
-import {
-  AttachMoney,
-  ShoppingCart,
-  TableRestaurant,
-  Kitchen,
-  Inventory,
-  ShoppingBag,
-  Event as EventIcon,
-  Assessment,
-  CheckCircle,
-} from '@mui/icons-material';
+import { alpha } from '@mui/material/styles';
+import React, { useEffect, useState } from 'react';
 
 
-import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import AssignmentLateOutlinedIcon from '@mui/icons-material/AssignmentLateOutlined';
+import BadgeIcon from '@mui/icons-material/Badge';
+import BuildIcon from '@mui/icons-material/Build';
+import DescriptionIcon from '@mui/icons-material/Description';
+import DevicesIcon from '@mui/icons-material/Devices';
+import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined';
 import EventSeatIcon from '@mui/icons-material/EventSeat';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import RestaurantMenuOutlinedIcon from '@mui/icons-material/RestaurantMenuOutlined';
-import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
-import DescriptionIcon from '@mui/icons-material/Description';
-import BadgeIcon from '@mui/icons-material/Badge';
-import DevicesIcon from '@mui/icons-material/Devices';
-import BuildIcon from '@mui/icons-material/Build';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 
 import { toast } from 'react-hot-toast';
 import { Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useAuth } from '../context/AuthContext';
-import { 
-  reportsAPI, 
-  ordersAPI, 
-  billingAPI, 
-  tenantAPI, 
-  inventoryAPI, 
-  purchaseOrdersAPI, 
-  bookingsAPI, 
-  assetsAPI 
-} from '../services/api';
 import { useSettings } from '../context/SettingsContext';
+import {
+  assetsAPI,
+  billingAPI,
+  bookingsAPI,
+  inventoryAPI,
+  purchaseOrdersAPI,
+  reportsAPI
+} from '../services/api';
 
 // ---------------------------------------------------------------------------
 // StatCard – reusable card used throughout the dashboard
@@ -443,7 +432,7 @@ const DashboardPage: React.FC = () => {
       }
       toast.success(`${completionDialog.type === 'service' ? 'Service' : 'Renewal'} recorded successfully`);
       setCompletionDialog({ ...completionDialog, open: false });
-      
+
       // Refresh both insights and current tab data
       fetchDashboardData();
       const statuses = ['expired', 'expiring', 'service_due', 'upcoming_service'];
@@ -650,10 +639,10 @@ const DashboardPage: React.FC = () => {
           alignItems={{ xs: "stretch", sm: "center" }}
           sx={{ width: { xs: "100%", sm: "auto" } }}
         >
-          <Box sx={{ 
-            display: 'flex', 
-            flexWrap: 'wrap', 
-            alignItems: 'center', 
+          <Box sx={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
             gap: { xs: 2, sm: 1 },
             justifyContent: { xs: 'center', sm: 'flex-start' },
             width: '100%'
@@ -682,9 +671,9 @@ const DashboardPage: React.FC = () => {
             </ToggleButtonGroup>
 
             {timeRange === 'custom' && (
-              <Box sx={{ 
-                display: 'flex', 
-                gap: 1, 
+              <Box sx={{
+                display: 'flex',
+                gap: 1,
                 alignItems: 'center',
                 width: { xs: '100%', sm: 'auto' },
                 justifyContent: 'center'
@@ -706,9 +695,9 @@ const DashboardPage: React.FC = () => {
                 />
               </Box>
             )}
-            <IconButton 
-              onClick={fetchDashboardData} 
-              color="primary" 
+            <IconButton
+              onClick={fetchDashboardData}
+              color="primary"
               disabled={loading}
               sx={{ ml: { xs: 0, sm: 1 } }}
             >
@@ -1166,9 +1155,9 @@ const DashboardPage: React.FC = () => {
           <Typography variant="h5" fontWeight="700">
             Asset Lifecycle Management
           </Typography>
-          <Button 
-            variant="outlined" 
-            size="small" 
+          <Button
+            variant="outlined"
+            size="small"
             onClick={() => navigate('/assets')}
             sx={{ borderRadius: 2 }}
           >
@@ -1179,12 +1168,12 @@ const DashboardPage: React.FC = () => {
         {/* Asset Stat Cards */}
         <Grid container spacing={{ xs: 1.5, sm: 2 }} mb={3}>
           <Grid item xs={6} sm={3}>
-            <Card 
+            <Card
               onClick={() => setAssetTabValue(0)}
-              sx={{ 
-                cursor: 'pointer', 
-                p: { xs: 1.25, sm: 2 }, 
-                borderRadius: { xs: 6, sm: 3 }, 
+              sx={{
+                cursor: 'pointer',
+                p: { xs: 1.25, sm: 2 },
+                borderRadius: { xs: 6, sm: 3 },
                 bgcolor: alpha(theme.palette.error.main, 0.05),
                 border: assetTabValue === 0 ? `2px solid ${theme.palette.error.main}` : 'none',
                 transition: 'all 0.2s',
@@ -1201,12 +1190,12 @@ const DashboardPage: React.FC = () => {
             </Card>
           </Grid>
           <Grid item xs={6} sm={3}>
-            <Card 
+            <Card
               onClick={() => setAssetTabValue(1)}
-              sx={{ 
-                cursor: 'pointer', 
-                p: { xs: 1.25, sm: 2 }, 
-                borderRadius: { xs: 6, sm: 3 }, 
+              sx={{
+                cursor: 'pointer',
+                p: { xs: 1.25, sm: 2 },
+                borderRadius: { xs: 6, sm: 3 },
                 bgcolor: alpha(theme.palette.warning.main, 0.05),
                 border: assetTabValue === 1 ? `2px solid ${theme.palette.warning.main}` : 'none',
                 transition: 'all 0.2s',
@@ -1223,12 +1212,12 @@ const DashboardPage: React.FC = () => {
             </Card>
           </Grid>
           <Grid item xs={6} sm={3}>
-            <Card 
+            <Card
               onClick={() => setAssetTabValue(2)}
-              sx={{ 
-                cursor: 'pointer', 
-                p: { xs: 1.25, sm: 2 }, 
-                borderRadius: { xs: 6, sm: 3 }, 
+              sx={{
+                cursor: 'pointer',
+                p: { xs: 1.25, sm: 2 },
+                borderRadius: { xs: 6, sm: 3 },
                 bgcolor: alpha(theme.palette.info.main, 0.05),
                 border: assetTabValue === 2 ? `2px solid ${theme.palette.info.main}` : 'none',
                 transition: 'all 0.2s',
@@ -1245,12 +1234,12 @@ const DashboardPage: React.FC = () => {
             </Card>
           </Grid>
           <Grid item xs={6} sm={3}>
-            <Card 
+            <Card
               onClick={() => setAssetTabValue(3)}
-              sx={{ 
-                cursor: 'pointer', 
-                p: { xs: 1.25, sm: 2 }, 
-                borderRadius: { xs: 6, sm: 3 }, 
+              sx={{
+                cursor: 'pointer',
+                p: { xs: 1.25, sm: 2 },
+                borderRadius: { xs: 6, sm: 3 },
                 bgcolor: alpha(theme.palette.success.main, 0.05),
                 border: assetTabValue === 3 ? `2px solid ${theme.palette.success.main}` : 'none',
                 transition: 'all 0.2s',
@@ -1513,7 +1502,7 @@ const DashboardPage: React.FC = () => {
         <DialogContent>
           <Box sx={{ mt: 1 }}>
             <Typography variant="body2" mb={2}>
-              Recording completion for <strong>{completionDialog.assetName}</strong>. 
+              Recording completion for <strong>{completionDialog.assetName}</strong>.
               The next {completionDialog.type} date will be automatically calculated.
             </Typography>
             <Stack spacing={2}>
