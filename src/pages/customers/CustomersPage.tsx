@@ -141,7 +141,7 @@ const CustomersPage: React.FC = () => {
         setSelectedCustomer(customer);
         setRewardsDialogOpen(true);
         setRewardTab(0);
-        
+
         try {
             setLoadingRewards(true);
             const res = await customersAPI.getRewardDetails(customer._id);
@@ -156,7 +156,7 @@ const CustomersPage: React.FC = () => {
 
     const handleAdjustPoints = async () => {
         if (!selectedCustomer?._id || !adjustAmount || isAdjusting) return;
-        
+
         const points = parseInt(adjustAmount);
         if (isNaN(points)) {
             toast.error('Please enter a valid number');
@@ -170,16 +170,16 @@ const CustomersPage: React.FC = () => {
             setAdjustDialogOpen(false);
             setAdjustAmount('');
             setAdjustReason('');
-            
+
             // Refresh details
             const res = await customersAPI.getRewardDetails(selectedCustomer._id);
             setRewardDetails(res.data);
-            
+
             // Update in main list
-            setCustomers(prev => prev.map(c => 
-                c._id === selectedCustomer._id 
-                ? { ...c, rewardPoints: res.data.points } 
-                : c
+            setCustomers(prev => prev.map(c =>
+                c._id === selectedCustomer._id
+                    ? { ...c, rewardPoints: res.data.points }
+                    : c
             ));
         } catch (error) {
             console.error('Failed to adjust points:', error);
@@ -379,17 +379,17 @@ const CustomersPage: React.FC = () => {
                                             </Box>
                                         </TableCell>
                                         <TableCell>
-                                            <Chip 
-                                                label={`${customer.rewardPoints || 0} pts`} 
-                                                size="small" 
-                                                color="primary" 
-                                                variant="outlined" 
+                                            <Chip
+                                                label={`${customer.rewardPoints || 0} pts`}
+                                                size="small"
+                                                color="primary"
+                                                variant="outlined"
                                                 icon={<MoneyIcon fontSize="small" />}
                                                 onClick={() => handleViewRewards(customer)}
-                                                sx={{ 
-                                                    cursor: 'pointer', 
+                                                sx={{
+                                                    cursor: 'pointer',
                                                     fontWeight: 'bold',
-                                                    '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.1) } 
+                                                    '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.1) }
                                                 }}
                                             />
                                         </TableCell>
@@ -471,12 +471,12 @@ const CustomersPage: React.FC = () => {
                                             </CardContent>
                                         </Card>
                                     </Grid>
-                                    
+
                                     <Grid item xs={12}>
                                         <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
-                                            <Button 
-                                                variant="contained" 
-                                                startIcon={<EditIcon />} 
+                                            <Button
+                                                variant="contained"
+                                                startIcon={<EditIcon />}
                                                 onClick={() => setAdjustDialogOpen(true)}
                                             >
                                                 Adjust Points Balance
@@ -564,9 +564,9 @@ const CustomersPage: React.FC = () => {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setAdjustDialogOpen(false)}>Cancel</Button>
-                    <Button 
-                        onClick={handleAdjustPoints} 
-                        variant="contained" 
+                    <Button
+                        onClick={handleAdjustPoints}
+                        variant="contained"
                         disabled={!adjustAmount || !adjustReason || isAdjusting}
                         startIcon={isAdjusting && <CircularProgress size={16} color="inherit" />}
                     >

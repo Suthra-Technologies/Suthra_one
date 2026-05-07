@@ -74,11 +74,26 @@ interface Coupon {
 }
 
 interface Customer {
+    _id?: string;
     name: string;
     email: string;
     phone: string;
     totalOrders: number;
     totalSpent?: number;
+    emailUnsubscribed?: boolean;
+    emailUnsubscribedAt?: string;
+    emailUnsubscribeReason?: string;
+}
+
+interface UnsubscribeDetail {
+    _id?: string;
+    name?: string;
+    email: string;
+    phone?: string;
+    emailUnsubscribedAt?: string;
+    emailUnsubscribeReason?: string;
+    emailUnsubscribeSource?: string;
+    emailUnsubscribedCouponId?: string;
 }
 
 const CouponsAdminPage: React.FC = () => {
@@ -88,6 +103,9 @@ const CouponsAdminPage: React.FC = () => {
     const [coupons, setCoupons] = useState<Coupon[]>([]);
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [allCustomers, setAllCustomers] = useState<Customer[]>([]);
+    const [unsubscribedCustomers, setUnsubscribedCustomers] = useState<Customer[]>([]);
+    const [couponUnsubscribeDetails, setCouponUnsubscribeDetails] = useState<UnsubscribeDetail[]>([]);
+    const [unsubscribeDetailsLoading, setUnsubscribeDetailsLoading] = useState(false);
     const [loading, setLoading] = useState(false);
     // Pagination
     const [page, setPage] = useState(0);
@@ -103,6 +121,10 @@ const CouponsAdminPage: React.FC = () => {
     const [smsSearch, setSmsSearch] = useState('');
     const [openSmsDialog, setOpenSmsDialog] = useState(false);
     const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+    const [openUnsubscribesDialog, setOpenUnsubscribesDialog] = useState(false);
+    const [allUnsubscribeDetails, setAllUnsubscribeDetails] = useState<UnsubscribeDetail[]>([]);
+    const [unsubscribeSearch, setUnsubscribeSearch] = useState('');
+    const [allUnsubscribeLoading, setAllUnsubscribeLoading] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<{ id: string; code: string } | null>(null);
 
     // Search
@@ -192,6 +214,7 @@ const CouponsAdminPage: React.FC = () => {
             setAllCustomers(fetched);
             const customersWithEmail = fetched.filter((c: any) => c.email);
             setCustomers(customersWithEmail);
+            setUnsubscribedCustomers(customersWithEmail.filter((c: any) => c.emailUnsubscribed));
         } catch (error) {
             console.error('Error fetching customers:', error);
         }
@@ -325,7 +348,21 @@ const CouponsAdminPage: React.FC = () => {
         }
     };
 
-    const handleOpenEmailDialog = (coupon: Coupon) => {
+    const loadCouponUnsubscribeDetails = async (couponId: string) => {
+        try {
+            setUnsubscribeDetailsLoading(true);
+            const response = await couponsAPI.getUnsubscribeDetails(couponId);
+            const list = response?.data?.unsubscribed || [];
+            setCouponUnsubscribeDetails(Array.isArray(list) ? list : []);
+        } catch (error) {
+            console.error('Error fetching unsubscribe details:', error);
+            setCouponUnsubscribeDetails([]);
+        } finally {
+            setUnsubscribeDetailsLoading(false);
+        }
+    };
+
+    const handleOpenEmailDialog = async (coupon: Coupon) => {
         setSelectedCoupon(coupon);
         setEmailData({
             subject: `Special Offer: ${coupon.discountValue}${coupon.discountType === 'percentage' ? '%' : settings.restaurant.currencySymbol} OFF with Code ${coupon.code}`,
@@ -334,11 +371,13 @@ const CouponsAdminPage: React.FC = () => {
             selectAll: false,
         });
         setOpenEmailDialog(true);
+        await loadCouponUnsubscribeDetails(coupon._id);
     };
 
     const handleCloseEmailDialog = () => {
         setOpenEmailDialog(false);
         setSelectedCoupon(null);
+        setCouponUnsubscribeDetails([]);
         setSelectedSmsPhones([]);
         setSelectAllSms(false);
         setEmailData({
@@ -403,10 +442,13 @@ const CouponsAdminPage: React.FC = () => {
     };
 
     const handleSelectAllCustomers = (checked: boolean) => {
+        const subscribedEmails = customers
+            .filter((c: any) => c.email && !c.emailUnsubscribed)
+            .map(c => c.email);
         setEmailData(prev => ({
             ...prev,
             selectAll: checked,
-            selectedCustomers: checked ? customers.map(c => c.email) : [],
+            selectedCustomers: checked ? subscribedEmails : [],
         }));
     };
 
@@ -459,6 +501,63 @@ const CouponsAdminPage: React.FC = () => {
         } finally {
             setEmailLoading(false);
         }
+    };
+
+    const fetchAllUnsubscribeDetails = async () => {
+        try {
+            setAllUnsubscribeLoading(true);
+            const response = await couponsAPI.getUnsubscribeDetails();
+            const list = response?.data?.unsubscribed || [];
+            setAllUnsubscribeDetails(Array.isArray(list) ? list : []);
+        } catch (error) {
+            console.error('Error fetching all unsubscribe details:', error);
+            toast.error('Failed to load unsubscribe details');
+        } finally {
+            setAllUnsubscribeLoading(false);
+        }
+    };
+
+    const handleOpenUnsubscribesDialog = async () => {
+        setOpenUnsubscribesDialog(true);
+        await fetchAllUnsubscribeDetails();
+    };
+
+    const handleExportUnsubscribesCsv = () => {
+        const rows = allUnsubscribeDetails.filter((record) => {
+            const q = unsubscribeSearch.trim().toLowerCase();
+            if (!q) return true;
+            return (
+                (record.name || '').toLowerCase().includes(q) ||
+                (record.email || '').toLowerCase().includes(q) ||
+                (record.phone || '').toLowerCase().includes(q) ||
+                (record.emailUnsubscribeSource || '').toLowerCase().includes(q)
+            );
+        });
+
+        const escapeCsv = (value: any) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+        const header = ['Name', 'Email', 'Phone', 'Unsubscribed At', 'Reason', 'Source'];
+        const csvRows = rows.map((record) => [
+            record.name || 'Guest',
+            record.email || '',
+            record.phone || '',
+            record.emailUnsubscribedAt ? new Date(record.emailUnsubscribedAt).toISOString() : '',
+            record.emailUnsubscribeReason || '',
+            record.emailUnsubscribeSource || '',
+        ]);
+
+        const csvContent = [header, ...csvRows]
+            .map((line) => line.map(escapeCsv).join(','))
+            .join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `coupon-unsubscribes-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
     };
 
 
@@ -558,6 +657,21 @@ const CouponsAdminPage: React.FC = () => {
                     }}
                 >
                     {isMobile ? "Create Coupon" : "New Coupon"}
+                </Button>
+                <Button
+                    variant="outlined"
+                    color="warning"
+                    onClick={handleOpenUnsubscribesDialog}
+                    sx={{
+                        borderRadius: 3,
+                        px: 3,
+                        py: 1,
+                        textTransform: 'none',
+                        fontWeight: 'bold',
+                        width: { xs: '100%', sm: 'auto' }
+                    }}
+                >
+                    Unsubscribes
                 </Button>
             </Box>
 
@@ -1329,18 +1443,74 @@ const CouponsAdminPage: React.FC = () => {
                                                 <Checkbox
                                                     size="small"
                                                     checked={emailData.selectedCustomers.includes(customer.email)}
+                                                    disabled={!!customer.emailUnsubscribed}
                                                     onChange={(e) => handleSelectCustomer(customer.email, e.target.checked)}
                                                 />
                                             }
                                             label={
                                                 <Box>
-                                                    <Typography variant="body2" fontWeight={600}>{customer.name || 'Guest'}</Typography>
-                                                    <Typography variant="caption" color="text.secondary">{customer.email}</Typography>
+                                                    <Typography variant="body2" fontWeight={600}>
+                                                        {customer.name || 'Guest'}
+                                                        {customer.emailUnsubscribed && (
+                                                            <Chip
+                                                                size="small"
+                                                                label="Unsubscribed"
+                                                                color="warning"
+                                                                sx={{ ml: 1, height: 18, fontSize: '0.65rem' }}
+                                                            />
+                                                        )}
+                                                    </Typography>
+                                                    <Typography variant="caption" color="text.secondary">
+                                                        {customer.email}
+                                                    </Typography>
+                                                    {customer.emailUnsubscribedAt && (
+                                                        <Typography variant="caption" color="warning.main" display="block">
+                                                            Unsubscribed on {new Date(customer.emailUnsubscribedAt).toLocaleString()}
+                                                        </Typography>
+                                                    )}
                                                 </Box>
                                             }
                                             sx={{ display: 'flex', mb: 0.5, alignItems: 'flex-start' }}
                                         />
                                     ))}
+                                </Box>
+                                <Box sx={{ mt: 1 }}>
+                                    <Typography variant="caption" color="text.secondary">
+                                        Unsubscribed customers: {unsubscribedCustomers.length} (automatically excluded from email sends)
+                                    </Typography>
+                                </Box>
+                                <Box sx={{ mt: 2, borderTop: '1px solid', borderColor: 'divider', pt: 1.5 }}>
+                                    <Typography variant="caption" fontWeight={700} color="warning.main" sx={{ display: 'block', mb: 1 }}>
+                                        Unsubscribe Details ({couponUnsubscribeDetails.length})
+                                    </Typography>
+                                    <Box sx={{ maxHeight: 170, overflow: 'auto', border: '1px dashed', borderColor: 'divider', borderRadius: 2, p: 1 }}>
+                                        {unsubscribeDetailsLoading ? (
+                                            <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                                                <CircularProgress size={18} />
+                                            </Box>
+                                        ) : couponUnsubscribeDetails.length === 0 ? (
+                                            <Typography variant="caption" color="text.secondary">
+                                                No unsubscribe activity for this coupon yet.
+                                            </Typography>
+                                        ) : (
+                                            couponUnsubscribeDetails.map((record) => (
+                                                <Box key={record._id || record.email} sx={{ mb: 1, pb: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+                                                    <Typography variant="caption" sx={{ fontWeight: 700, display: 'block' }}>
+                                                        {record.name || 'Guest'} - {record.email}
+                                                    </Typography>
+                                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                                        {record.phone || 'No phone'}
+                                                    </Typography>
+                                                    <Typography variant="caption" color="warning.main" sx={{ display: 'block' }}>
+                                                        {record.emailUnsubscribedAt ? `Unsubscribed on ${new Date(record.emailUnsubscribedAt).toLocaleString()}` : 'Unsubscribed'}
+                                                    </Typography>
+                                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+                                                        {record.emailUnsubscribeReason || 'Reason not provided'} | {record.emailUnsubscribeSource || 'source: unknown'}
+                                                    </Typography>
+                                                </Box>
+                                            ))
+                                        )}
+                                    </Box>
                                 </Box>
                             </Paper>
                         </Grid>
@@ -1766,6 +1936,91 @@ const CouponsAdminPage: React.FC = () => {
                         Delete
                     </Button>
                 </DialogActions>
+            </Dialog>
+
+            {/* Unsubscribes Dialog */}
+            <Dialog
+                open={openUnsubscribesDialog}
+                onClose={() => setOpenUnsubscribesDialog(false)}
+                maxWidth="lg"
+                fullWidth
+                fullScreen={isMobile}
+                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 3 } }}
+            >
+                <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Typography variant="h6" fontWeight={700}>Coupon Email Unsubscribes</Typography>
+                    <IconButton onClick={() => setOpenUnsubscribesDialog(false)}>
+                        <CloseIcon />
+                    </IconButton>
+                </DialogTitle>
+                <DialogContent>
+                    <Box sx={{ display: 'flex', gap: 1, flexDirection: { xs: 'column', sm: 'row' }, mb: 2 }}>
+                        <TextField
+                            fullWidth
+                            size="small"
+                            placeholder="Search by name, email, phone, or source..."
+                            value={unsubscribeSearch}
+                            onChange={(e) => setUnsubscribeSearch(e.target.value)}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <SearchIcon fontSize="small" />
+                                    </InputAdornment>
+                                )
+                            }}
+                        />
+                        <Button variant="outlined" onClick={fetchAllUnsubscribeDetails}>
+                            Refresh
+                        </Button>
+                        <Button variant="contained" color="warning" onClick={handleExportUnsubscribesCsv}>
+                            Export CSV
+                        </Button>
+                    </Box>
+
+                    {allUnsubscribeLoading ? (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                            <CircularProgress />
+                        </Box>
+                    ) : (
+                        <Paper variant="outlined" sx={{ overflowX: 'auto' }}>
+                            <Table size="small">
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>Name</TableCell>
+                                        <TableCell>Email</TableCell>
+                                        <TableCell>Phone</TableCell>
+                                        <TableCell>Unsubscribed At</TableCell>
+                                        <TableCell>Reason</TableCell>
+                                        <TableCell>Source</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {allUnsubscribeDetails
+                                        .filter((record) => {
+                                            const q = unsubscribeSearch.trim().toLowerCase();
+                                            if (!q) return true;
+                                            return (
+                                                (record.name || '').toLowerCase().includes(q) ||
+                                                (record.email || '').toLowerCase().includes(q) ||
+                                                (record.phone || '').toLowerCase().includes(q) ||
+                                                (record.emailUnsubscribeSource || '').toLowerCase().includes(q)
+                                            );
+                                        })
+                                        .map((record) => (
+                                            <TableRow key={record._id || record.email}>
+                                                <TableCell>{record.name || 'Guest'}</TableCell>
+                                                <TableCell>{record.email}</TableCell>
+                                                <TableCell>{record.phone || 'N/A'}</TableCell>
+                                                <TableCell>{record.emailUnsubscribedAt ? new Date(record.emailUnsubscribedAt).toLocaleString() : 'N/A'}</TableCell>
+                                                <TableCell>{record.emailUnsubscribeReason || 'N/A'}</TableCell>
+                                                <TableCell>{record.emailUnsubscribeSource || 'N/A'}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                </TableBody>
+                            </Table>
+                        </Paper>
+                    )}
+                </DialogContent>
             </Dialog>
         </Box >
     );
