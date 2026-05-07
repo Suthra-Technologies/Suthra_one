@@ -481,6 +481,11 @@ export const paymentsAPI = {
   createTerminalConnectionToken: () => api.post('/payments/terminal/connection-token'),
   verifyIntent: (intentId: string) => api.get(`/payments/verify-intent/${intentId}`),
   checkTerminalReader: () => api.get('/payments/terminal/reader-check'),
+  getTransactions: (params?: { limit?: number; startingAfter?: string; startDate?: string; endDate?: string }) =>
+    api.get('/payments/transactions', { params }),
+  syncTransactions: () => api.post('/payments/transactions/sync'),
+  verifyTransactionsInDb: (paymentIntentIds: string[]) =>
+    api.post('/payments/transactions/verify-db', { paymentIntentIds }),
 };
 
 // -------------------- Invoices API --------------------
