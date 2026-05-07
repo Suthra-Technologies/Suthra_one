@@ -188,8 +188,8 @@ export const ordersAPI = {
   // Remove item from order
   removeItem: (id: string, itemIndex: number) =>
     api.delete(`/orders/${id}/items/${itemIndex}`),
-  refundItem: (id: string, itemIndex: number) =>
-    api.post(`/orders/${id}/items/${itemIndex}/refund`),
+  refundItem: (id: string, itemIndex: number, refundMethod: 'original' | 'cash') =>
+    api.post(`/orders/${id}/items/${itemIndex}/refund`, { refundMethod }),
 
   // Kitchen item-wise status updates
   updateItemStatus: (orderId: string, itemIndex: number, status: string, cancelReason?: string) =>
@@ -283,7 +283,7 @@ export const menuAPI = {
   bulkCreate: (items: any[]) => api.post('/menu/bulk', items),
   update: (id: string, menuData: any) => api.put(`/menu/${id}`, menuData),
   delete: (id: string) => api.delete(`/menu/${id}`),
-  getPublicMenu: (tenantSlug?: string, search?: string) => api.get('/menu/public', { params: { tenantSlug, search } }),
+  getPublicMenu: (tenantSlug?: string, search?: string, cursor?: string | null, limit?: number) => api.get('/menu/public', { params: { tenantSlug, search, cursor: cursor || undefined, limit } }),
 
   // Category management
   createCategory: (categoryData: any) => api.post('/menu/categories', categoryData),
@@ -478,6 +478,11 @@ export const paymentsAPI = {
   createTerminalConnectionToken: () => api.post('/payments/terminal/connection-token'),
   verifyIntent: (intentId: string) => api.get(`/payments/verify-intent/${intentId}`),
   checkTerminalReader: () => api.get('/payments/terminal/reader-check'),
+  getTransactions: (params?: { limit?: number; startingAfter?: string; startDate?: string; endDate?: string }) =>
+    api.get('/payments/transactions', { params }),
+  syncTransactions: () => api.post('/payments/transactions/sync'),
+  verifyTransactionsInDb: (paymentIntentIds: string[]) =>
+    api.post('/payments/transactions/verify-db', { paymentIntentIds }),
 };
 
 // -------------------- Invoices API --------------------

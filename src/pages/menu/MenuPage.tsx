@@ -95,8 +95,8 @@ const MenuPage: React.FC = () => {
     const [nextCursor, setNextCursor] = useState<string | null>(null);
     const [isFetchingMore, setIsFetchingMore] = useState(false);
     const [totalMenuCount, setTotalMenuCount] = useState(0);
-    const PAGE_LIMIT = 100;
-    const LOAD_MORE_LIMIT = 50;
+    const PAGE_LIMIT = 50;
+    const LOAD_MORE_LIMIT = 10;
 
     // Dialogs State
     const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);

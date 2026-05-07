@@ -142,6 +142,8 @@ const ReportsPage: React.FC = () => {
     const [cancelledOrdersRowsPerPage, setCancelledOrdersRowsPerPage] = useState(10);
     const [topCancelledItemsPage, setTopCancelledItemsPage] = useState(0);
     const [topCancelledItemsRowsPerPage, setTopCancelledItemsRowsPerPage] = useState(10);
+    const [refundRecordsPage, setRefundRecordsPage] = useState(0);
+    const [refundRecordsRowsPerPage, setRefundRecordsRowsPerPage] = useState(10);
 
     const { socket } = useSocket();
 
@@ -3639,7 +3641,10 @@ const ReportsPage: React.FC = () => {
             totalItemCancellations = 0,
             byOrderType = [],
             cancelledOrders = [],
-            topCancelledItems = []
+            topCancelledItems = [],
+            totalRefunds = 0,
+            totalRefundAmount = 0,
+            refundRecords = [],
         } = cancellationAnalysis;
 
         return (
@@ -3684,6 +3689,22 @@ const ReportsPage: React.FC = () => {
                                     <CardContent sx={{ p: isMobile ? 1.5 : 2 }}>
                                         <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.7rem' }}>Loss</Typography>
                                         <Typography variant={isMobile ? "subtitle2" : "h4"} sx={{ color: 'white', fontWeight: 800, mt: 0.5 }}>{formatCurrency(revenueLoss)}</Typography>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+                            <Grid item xs={6} md={2.4}>
+                                <Card sx={{ background: 'linear-gradient(135deg, #f7971e 0%, #ffd200 100%)', borderRadius: 3, height: '100%' }}>
+                                    <CardContent sx={{ p: isMobile ? 1.5 : 2 }}>
+                                        <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.7rem' }}>Refunds</Typography>
+                                        <Typography variant={isMobile ? "subtitle2" : "h4"} sx={{ color: 'white', fontWeight: 800, mt: 0.5 }}>{totalRefunds}</Typography>
+                                    </CardContent>
+                                </Card>
+                            </Grid>
+                            <Grid item xs={6} md={2.4}>
+                                <Card sx={{ background: 'linear-gradient(135deg, #11998e 0%, #38ef7d 100%)', borderRadius: 3, height: '100%' }}>
+                                    <CardContent sx={{ p: isMobile ? 1.5 : 2 }}>
+                                        <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.7rem' }}>Refunded</Typography>
+                                        <Typography variant={isMobile ? "subtitle2" : "h4"} sx={{ color: 'white', fontWeight: 800, mt: 0.5 }}>{formatCurrency(totalRefundAmount)}</Typography>
                                     </CardContent>
                                 </Card>
                             </Grid>
@@ -3962,6 +3983,128 @@ const ReportsPage: React.FC = () => {
                                 onRowsPerPageChange={(e) => {
                                     setCancelledOrdersRowsPerPage(parseInt(e.target.value, 10));
                                     setCancelledOrdersPage(0);
+                                }}
+                            />
+                        </Paper>
+                    </Grid>
+                    {/* Refund Records */}
+                    <Grid item xs={12}>
+                        <Paper sx={{ p: 3, borderRadius: 4 }}>
+                            <Typography variant="subtitle1" fontWeight={600} mb={3}>
+                                Refund Records
+                            </Typography>
+                            <Box>
+                                {/* Mobile Card View */}
+                                <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                                    {refundRecords
+                                        .slice(refundRecordsPage * refundRecordsRowsPerPage, refundRecordsPage * refundRecordsRowsPerPage + refundRecordsRowsPerPage)
+                                        .map((r: any, index: number) => (
+                                            <Paper key={index} sx={{ p: 2, mb: 2, borderRadius: 2 }}>
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
+                                                    <Typography variant="body2" fontWeight="bold">{r.orderNumber}</Typography>
+                                                    <Chip label={r.refundMethod === 'cash' ? 'Cash' : 'Original'} size="small" color={r.refundMethod === 'cash' ? 'warning' : 'info'} variant="outlined" />
+                                                </Box>
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                                    <Typography variant="body2" color="text.secondary">Item:</Typography>
+                                                    <Typography variant="body2" fontWeight={600}>{r.itemName}</Typography>
+                                                </Box>
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                                    <Typography variant="body2" color="text.secondary">Item Price:</Typography>
+                                                    <Typography variant="body2">{formatCurrency(r.itemSubtotal)}</Typography>
+                                                </Box>
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                                    <Typography variant="body2" color="text.secondary">Tax:</Typography>
+                                                    <Typography variant="body2">{formatCurrency(r.taxAmount)}</Typography>
+                                                </Box>
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, pt: 1, borderTop: '1px solid #f0f0f0' }}>
+                                                    <Typography variant="body2" color="text.secondary">Total Refund:</Typography>
+                                                    <Typography variant="body2" fontWeight={700} color="success.main">{formatCurrency(r.totalRefundAmount)}</Typography>
+                                                </Box>
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                                    <Typography variant="body2" color="text.secondary">By:</Typography>
+                                                    <Typography variant="body2">{r.refundedByName || '—'}</Typography>
+                                                </Box>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    {new Date(r.refundedAt).toLocaleString()}
+                                                </Typography>
+                                            </Paper>
+                                        ))}
+                                    {refundRecords.length === 0 && (
+                                        <Paper sx={{ p: 3, textAlign: 'center' }}>
+                                            <Typography variant="body2" color="text.secondary">No refunds found for this period</Typography>
+                                        </Paper>
+                                    )}
+                                </Box>
+
+                                {/* Desktop Table View */}
+                                <TableContainer sx={{ display: { xs: 'none', md: 'block' } }}>
+                                    <Table>
+                                        <TableHead sx={{ bgcolor: '#f8fafc' }}>
+                                            <TableRow>
+                                                <TableCell sx={{ fontWeight: 600 }}>Date</TableCell>
+                                                <TableCell sx={{ fontWeight: 600 }}>Order #</TableCell>
+                                                <TableCell sx={{ fontWeight: 600 }}>Item</TableCell>
+                                                <TableCell sx={{ fontWeight: 600 }}>Order Type</TableCell>
+                                                <TableCell align="right" sx={{ fontWeight: 600 }}>Item Price</TableCell>
+                                                <TableCell align="right" sx={{ fontWeight: 600 }}>Tax</TableCell>
+                                                <TableCell align="right" sx={{ fontWeight: 600 }}>Total Refund</TableCell>
+                                                <TableCell sx={{ fontWeight: 600 }}>Method</TableCell>
+                                                <TableCell sx={{ fontWeight: 600 }}>Processed By</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {refundRecords
+                                                .slice(refundRecordsPage * refundRecordsRowsPerPage, refundRecordsPage * refundRecordsRowsPerPage + refundRecordsRowsPerPage)
+                                                .map((r: any, index: number) => (
+                                                    <TableRow key={index} hover>
+                                                        <TableCell>
+                                                            <Typography variant="body2">{new Date(r.refundedAt).toLocaleDateString()}</Typography>
+                                                            <Typography variant="caption" color="text.secondary">{new Date(r.refundedAt).toLocaleTimeString()}</Typography>
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Typography variant="body2" fontWeight="bold">{r.orderNumber}</Typography>
+                                                        </TableCell>
+                                                        <TableCell>{r.itemName}</TableCell>
+                                                        <TableCell>
+                                                            <Chip label={formatOrderType(r.orderType)} size="small" variant="outlined" />
+                                                        </TableCell>
+                                                        <TableCell align="right">{formatCurrency(r.itemSubtotal)}</TableCell>
+                                                        <TableCell align="right">{formatCurrency(r.taxAmount)}</TableCell>
+                                                        <TableCell align="right" sx={{ fontWeight: 700, color: 'success.main' }}>
+                                                            {formatCurrency(r.totalRefundAmount)}
+                                                        </TableCell>
+                                                        <TableCell>
+                                                            <Chip
+                                                                label={r.refundMethod === 'cash' ? 'Cash' : 'Original'}
+                                                                size="small"
+                                                                color={r.refundMethod === 'cash' ? 'warning' : 'info'}
+                                                                variant="outlined"
+                                                            />
+                                                        </TableCell>
+                                                        <TableCell>{r.refundedByName || '—'}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            {refundRecords.length === 0 && (
+                                                <TableRow>
+                                                    <TableCell colSpan={9} align="center" sx={{ py: 3, color: 'text.secondary' }}>
+                                                        No refunds found for this period
+                                                    </TableCell>
+                                                </TableRow>
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            </Box>
+                            <TablePagination
+                                rowsPerPageOptions={[10, 25, 50]}
+                                component="div"
+                                count={refundRecords.length}
+                                rowsPerPage={refundRecordsRowsPerPage}
+                                page={refundRecordsPage}
+                                onPageChange={(_, newPage) => setRefundRecordsPage(newPage)}
+                                onRowsPerPageChange={(e) => {
+                                    setRefundRecordsRowsPerPage(parseInt(e.target.value, 10));
+                                    setRefundRecordsPage(0);
                                 }}
                             />
                         </Paper>

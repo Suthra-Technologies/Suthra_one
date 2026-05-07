@@ -1299,7 +1299,7 @@ const CreatePOPage: React.FC = () => {
                                                 <CardMedia component="img" height={isMobile ? "60" : "80"} image={att.url} sx={{ objectFit: 'cover' }} />
                                                 <IconButton
                                                     size="small"
-                                                    sx={{ position: 'absolute', top: 2, right: 2, bgcolor: alpha('red', 0.8), color: 'white', '&:hover': { bgcolor: 'red' }, width: 14, height: 14, p: 0 }}
+                                                    sx={{ position: 'absolute', top: 2, right: 2, bgcolor: alpha('#f44336', 0.8), color: 'white', '&:hover': { bgcolor: '#f44336' }, width: 14, height: 14, p: 0 }}
                                                     onClick={() => removeAttachment(idx)}
                                                 >
                                                     <DeleteIcon sx={{ fontSize: 10 }} />

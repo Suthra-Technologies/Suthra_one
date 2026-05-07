@@ -229,8 +229,8 @@ const POSPage: React.FC = () => {
     const [placingOrder, setPlacingOrder] = useState(false);
     const [nextCursor, setNextCursor] = useState<string | null>(null);
     const [isFetchingMore, setIsFetchingMore] = useState(false);
-    const PAGE_LIMIT = 100;
-    const LOAD_MORE_LIMIT = 50;
+    const PAGE_LIMIT = 50;
+    const LOAD_MORE_LIMIT = 10;
     const [totalMenuCount, setTotalMenuCount] = useState(0);
 
 
