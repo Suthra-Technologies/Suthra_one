@@ -60,6 +60,7 @@ import CreateExpensePage from '../pages/expenses/CreateExpensePage';
 import ExpenseDetailPage from '../pages/expenses/ExpenseDetailPage';
 import DisputeList from '../pages/disputes/DisputeList';
 import DisputeDetails from '../pages/disputes/DisputeDetails';
+import StripeTransactionsPage from '../pages/payments/StripeTransactionsPage';
 
 export const TenantRoutes = () => (
   <>
@@ -131,6 +132,7 @@ export const TenantRoutes = () => (
       <Route element={<RequireRole allowedRoles={['admin', 'superadmin']} />}>
         <Route path="invoices" element={<InvoicesPage />} />
         <Route path="invoices/:id" element={<InvoiceDetailPage />} />
+        <Route path="stripe-transactions" element={<StripeTransactionsPage />} />
       </Route>
 
       <Route element={<RequireRole allowedRoles={['admin']} />}>

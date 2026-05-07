@@ -54,6 +54,7 @@ import {
   Public as WebIcon,
   DashboardCustomize,
   Gavel,
+  CreditScore,
 } from '@mui/icons-material';
 import { Collapse } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
@@ -209,6 +210,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
         { path: '/reports', label: 'Reports', icon: <Assessment />, roles: ['admin', 'manager'] },
         { path: '/service-usage', label: 'Service Usage', icon: <WebIcon />, roles: ['admin', 'manager'] },
         { path: '/invoices', label: 'Invoices', icon: <Receipt />, roles: ['admin', 'superadmin'], laptopOnly: true },
+        { path: '/stripe-transactions', label: 'Stripe Transactions', icon: <CreditScore />, roles: ['admin', 'superadmin'] },
       ]
     },
     {
