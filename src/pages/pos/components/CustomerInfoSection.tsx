@@ -4,6 +4,7 @@ import {
     LinkOff as LinkOffIcon
 } from '@mui/icons-material';
 import {
+    Alert,
     Box,
     Button,
     Chip,
@@ -20,8 +21,7 @@ import {
     Stack,
     TextField,
     Tooltip,
-    Typography,
-    Alert
+    Typography
 } from '@mui/material';
 import React from 'react';
 import AddressAutocomplete from '../../../components/AddressAutocomplete';
@@ -309,9 +309,9 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                         helperText={suggestedPhone ? (
                             <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
                                 <Typography variant="caption" color="primary">Previously used: {suggestedPhone}</Typography>
-                                <Button 
-                                    size="small" 
-                                    variant="outlined" 
+                                <Button
+                                    size="small"
+                                    variant="outlined"
                                     sx={{ height: 20, px: 1, minWidth: 0, textTransform: 'none', fontSize: '0.65rem' }}
                                     onClick={() => {
                                         const clean = suggestedPhone.replace(/\D/g, '').slice(-10);
@@ -365,12 +365,12 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
 
             {/* Rewards Section */}
             {(rewardPointsInfo || isFetchingRewards) && (
-                <Box sx={{ 
-                    mb: 2, 
-                    p: 2, 
-                    bgcolor: isFetchingRewards ? 'transparent' : 'rgba(25, 118, 210, 0.04)', 
-                    borderRadius: 1, 
-                    border: '1px dashed', 
+                <Box sx={{
+                    mb: 2,
+                    p: 2,
+                    bgcolor: isFetchingRewards ? 'transparent' : 'rgba(25, 118, 210, 0.04)',
+                    borderRadius: 1,
+                    border: '1px dashed',
                     borderColor: 'primary.main',
                     transition: 'all 0.3s ease'
                 }}>
@@ -387,12 +387,12 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                 </Typography>
                                 <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                     Available Balance: <strong>{rewardPointsInfo.points || 0} pts</strong>
-                                    <Chip 
-                                        label={`$${rewardPointsInfo.dollarValue || 0} Value`} 
-                                        size="small" 
-                                        color="success" 
-                                        variant="outlined" 
-                                        sx={{ height: 20, fontSize: '0.65rem' }} 
+                                    <Chip
+                                        label={`$${rewardPointsInfo.dollarValue || 0} Value`}
+                                        size="small"
+                                        color="success"
+                                        variant="outlined"
+                                        sx={{ height: 20, fontSize: '0.65rem' }}
                                     />
                                 </Typography>
                                 {rewardPointsInfo.settings?.minPointsToRedeem > 0 && (
@@ -402,7 +402,7 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                 )}
                             </Grid>
                             <Grid item xs={12} sm={5}>
-                                <Stack direction="row" spacing={1} alignItems="center">
+                                <Stack direction="row" spacing={1} alignItems="flex-start">
                                     <TextField
                                         label="Redeem Points"
                                         type="number"
@@ -416,14 +416,28 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                         inputProps={{ min: 0, max: maxUsablePoints }}
                                         fullWidth
                                         disabled={!rewardPointsInfo.points || rewardPointsInfo.points < (rewardPointsInfo.settings?.minPointsToRedeem || 0) || maxUsablePoints === 0}
-                                        helperText={pointsToRedeem > 0 ? `-$${(pointsToRedeem * (rewardPointsInfo.settings?.pointValue || 0)).toFixed(2)} discount` : `Max usable: ${maxUsablePoints} pts`}
+                                        helperText={
+                                            <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span>{pointsToRedeem > 0 ? `-$${(pointsToRedeem * (rewardPointsInfo.settings?.pointValue || 0)).toFixed(2)} discount` : `Max usable: ${maxUsablePoints} pts`}</span>
+                                                {pointsToRedeem > 0 && (
+                                                    <span 
+                                                        onClick={(e) => { e.preventDefault(); setPointsToRedeem(0); }} 
+                                                        style={{ color: '#d32f2f', cursor: 'pointer', fontWeight: 'bold' }}
+                                                    >
+                                                        Clear
+                                                    </span>
+                                                )}
+                                            </span>
+                                        }
+                                        FormHelperTextProps={{ component: 'div' } as any}
                                     />
-                                    <Button 
-                                        variant="contained" 
+                                    <Button
+                                        variant="contained"
                                         size="small"
                                         disableElevation
                                         onClick={() => setPointsToRedeem(maxUsablePoints)}
                                         disabled={!rewardPointsInfo.points || rewardPointsInfo.points < (rewardPointsInfo.settings?.minPointsToRedeem || 0) || maxUsablePoints === 0 || pointsToRedeem === maxUsablePoints}
+                                        sx={{ mt: 0.5 }}
                                     >
                                         MAX
                                     </Button>
@@ -464,7 +478,7 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                             <RadioGroup
                                 value={finalTotal === 0 ? '' : paymentMethod}
                                 onChange={(e) => setPaymentMethod(e.target.value as any)}
-                                sx={{ 
+                                sx={{
                                     display: { xs: 'grid', sm: 'flex' },
                                     gridTemplateColumns: { xs: '1fr 1fr', sm: 'none' },
                                     flexDirection: { sm: 'row' },
