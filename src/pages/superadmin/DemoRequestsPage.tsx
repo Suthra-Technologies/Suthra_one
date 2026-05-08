@@ -49,11 +49,9 @@ import { toast } from 'react-hot-toast';
 import { superAPI, publicDemoAPI } from '../../services/api';
 
 const STATUS_OPTIONS = [
-  { value: 'pending', label: 'Pending', color: 'warning' as const },
-  { value: 'contacted', label: 'Contacted', color: 'info' as const },
   { value: 'demo_scheduled', label: 'Demo Scheduled', color: 'primary' as const },
-  { value: 'completed', label: 'Completed', color: 'success' as const },
-  { value: 'rejected', label: 'Rejected', color: 'error' as const },
+  { value: 'pending', label: 'Pending', color: 'warning' as const },
+  { value: 'contacted', label: 'Contacted', color: 'info' as const }
 ];
 
 const getStatusChipColor = (status: string): 'default' | 'warning' | 'info' | 'primary' | 'success' | 'error' => {
@@ -320,7 +318,7 @@ const DemoRequestsPage: React.FC = () => {
                   </InputAdornment>
                 }
               >
-                <MenuItem value="all">All Statuses</MenuItem>
+                <MenuItem value="all">Focused</MenuItem>
                 {STATUS_OPTIONS.map((opt) => (
                   <MenuItem key={opt.value} value={opt.value}>
                     {opt.label}
@@ -376,85 +374,85 @@ const DemoRequestsPage: React.FC = () => {
                 requests.map((req) => {
                   const isRecentlyUpdated = req.updatedAt && (new Date().getTime() - new Date(req.updatedAt).getTime() < 5 * 60000); // 5 mins
                   return (
-                  <TableRow
-                    key={req._id}
-                    hover
-                    sx={{ 
-                      '&:last-child td, &:last-child th': { border: 0 },
-                      bgcolor: isRecentlyUpdated ? alpha('#4caf50', 0.05) : 'inherit',
-                    }}
-                  >
-                    <TableCell>
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <BusinessIcon fontSize="small" color="action" />
-                        <Typography variant="subtitle2">{req.businessName}</Typography>
-                      </Stack>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" color="primary" component="a" href={`mailto:${req.email}`} sx={{ textDecoration: 'none' }}>
-                        {req.email}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">
-                        {req.phonePrefix} {req.phoneNumber}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" color={req.preferredDateTime ? "primary" : "text.secondary"}>
-                        {req.preferredDateTime ? formatDate(req.preferredDateTime) : 'N/A'}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <FormControl size="small" sx={{ minWidth: 140 }}>
-                        <Select
-                          value={req.status}
-                          onChange={(e) => handleStatusChange(req._id, e.target.value)}
-                          size="small"
-                        >
-                          {STATUS_OPTIONS.map((opt) => (
-                            <MenuItem key={opt.value} value={opt.value}>
-                              {opt.label}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" color="text.secondary">
-                        {formatDate(req.createdAt)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" color="text.secondary">
-                        {req.updatedAt ? formatDate(req.updatedAt) : '-'}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" color="text.secondary">
-                        {req.rescheduledBy || '-'}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Stack direction="row" spacing={0.5}>
-                        <Tooltip title="View Details">
-                          <IconButton size="small" onClick={() => handleViewDetails(req)} color="primary">
-                            <ViewIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Reschedule">
-                          <IconButton size="small" onClick={() => handleRescheduleClick(req)} color="secondary">
-                            <EventIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Delete">
-                          <IconButton size="small" onClick={() => handleDeleteClick(req._id)} color="error">
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </Stack>
-                    </TableCell>
-                  </TableRow>
+                    <TableRow
+                      key={req._id}
+                      hover
+                      sx={{
+                        '&:last-child td, &:last-child th': { border: 0 },
+                        bgcolor: isRecentlyUpdated ? alpha('#4caf50', 0.05) : 'inherit',
+                      }}
+                    >
+                      <TableCell>
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <BusinessIcon fontSize="small" color="action" />
+                          <Typography variant="subtitle2">{req.businessName}</Typography>
+                        </Stack>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="primary" component="a" href={`mailto:${req.email}`} sx={{ textDecoration: 'none' }}>
+                          {req.email}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {req.phonePrefix} {req.phoneNumber}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color={req.preferredDateTime ? "primary" : "text.secondary"}>
+                          {req.preferredDateTime ? formatDate(req.preferredDateTime) : 'N/A'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <FormControl size="small" sx={{ minWidth: 140 }}>
+                          <Select
+                            value={req.status}
+                            onChange={(e) => handleStatusChange(req._id, e.target.value)}
+                            size="small"
+                          >
+                            {STATUS_OPTIONS.map((opt) => (
+                              <MenuItem key={opt.value} value={opt.value}>
+                                {opt.label}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">
+                          {formatDate(req.createdAt)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">
+                          {req.updatedAt ? formatDate(req.updatedAt) : '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" color="text.secondary">
+                          {req.rescheduledBy || '-'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Stack direction="row" spacing={0.5}>
+                          <Tooltip title="View Details">
+                            <IconButton size="small" onClick={() => handleViewDetails(req)} color="primary">
+                              <ViewIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Reschedule">
+                            <IconButton size="small" onClick={() => handleRescheduleClick(req)} color="secondary">
+                              <EventIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Delete">
+                            <IconButton size="small" onClick={() => handleDeleteClick(req._id)} color="error">
+                              <DeleteIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
                   )
                 })
               )}
@@ -755,8 +753,8 @@ const DemoRequestsPage: React.FC = () => {
                           Changed by: <strong>{history.changedBy || 'Unknown'}</strong>
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          <strike>{history.oldSlot ? formatDate(history.oldSlot) : 'N/A'}</strike> 
-                          {' \u2192 '} 
+                          <strike>{history.oldSlot ? formatDate(history.oldSlot) : 'N/A'}</strike>
+                          {' \u2192 '}
                           <strong style={{ color: '#1976d2' }}>{history.newSlot ? formatDate(history.newSlot) : 'N/A'}</strong>
                         </Typography>
                       </Box>
@@ -844,9 +842,9 @@ const DemoRequestsPage: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setRescheduleDialogOpen(false)} disabled={rescheduling}>Cancel</Button>
-          <Button 
-            onClick={handleRescheduleSubmit} 
-            variant="contained" 
+          <Button
+            onClick={handleRescheduleSubmit}
+            variant="contained"
             color="primary"
             disabled={rescheduling || !rescheduleData.preferredDate || !rescheduleData.preferredTime}
           >
