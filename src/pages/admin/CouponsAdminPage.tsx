@@ -1165,7 +1165,7 @@ const CouponsAdminPage: React.FC = () => {
                                             </Select>
                                         </FormControl>
                                     </Grid>
-                                    {formData.offerType !== 'cart_total' && (
+                                    {formData.offerType === 'menu_item' && (
                                         <Grid item xs={12}>
                                             <FormControl fullWidth size="small">
                                                 <InputLabel>Applicable Items</InputLabel>
@@ -1193,16 +1193,111 @@ const CouponsAdminPage: React.FC = () => {
                                             </FormControl>
                                         </Grid>
                                     )}
+
+                                    {formData.offerType === 'combo' && (
+                                        <Grid item xs={12}>
+                                            <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main', display: 'block', mb: 1, textTransform: 'uppercase', fontSize: '0.7rem' }}>
+                                                Combo Configuration (Items & Quantities)
+                                            </Typography>
+                                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                                                {(formData.comboConfig || []).map((config, index) => (
+                                                    <Paper key={index} variant="outlined" sx={{ p: 1.5, borderRadius: 2, bgcolor: alpha(theme.palette.background.default, 0.5), borderStyle: 'dashed' }}>
+                                                        <Grid container spacing={1} alignItems="center">
+                                                            <Grid item xs={7}>
+                                                                <FormControl fullWidth size="small">
+                                                                    <InputLabel>Menu Item</InputLabel>
+                                                                    <Select
+                                                                        value={config.menuItem}
+                                                                        label="Menu Item"
+                                                                        onChange={(e) => {
+                                                                            const newConfig = [...(formData.comboConfig || [])];
+                                                                            newConfig[index].menuItem = e.target.value as string;
+                                                                            setFormData({ ...formData, comboConfig: newConfig });
+                                                                        }}
+                                                                        sx={{ borderRadius: 1.5 }}
+                                                                    >
+                                                                        {menuItems.map(item => (
+                                                                            <MenuItem key={item._id} value={item._id}>{item.name}</MenuItem>
+                                                                        ))}
+                                                                    </Select>
+                                                                </FormControl>
+                                                            </Grid>
+                                                            <Grid item xs={3}>
+                                                                <TextField
+                                                                    fullWidth
+                                                                    size="small"
+                                                                    type="number"
+                                                                    label="Qty"
+                                                                    value={config.quantity}
+                                                                    onChange={(e) => {
+                                                                        const newConfig = [...(formData.comboConfig || [])];
+                                                                        newConfig[index].quantity = Math.max(1, parseInt(e.target.value) || 1);
+                                                                        setFormData({ ...formData, comboConfig: newConfig });
+                                                                    }}
+                                                                    onFocus={(e) => e.target.select()}
+                                                                    InputProps={{ sx: { borderRadius: 1.5, fontWeight: 700 } }}
+                                                                />
+                                                            </Grid>
+                                                            <Grid item xs={2}>
+                                                                <IconButton
+                                                                    color="error"
+                                                                    size="small"
+                                                                    onClick={() => {
+                                                                        const newConfig = (formData.comboConfig || []).filter((_, i) => i !== index);
+                                                                        setFormData({ ...formData, comboConfig: newConfig });
+                                                                    }}
+                                                                >
+                                                                    <DeleteIcon fontSize="small" />
+                                                                </IconButton>
+                                                            </Grid>
+                                                        </Grid>
+                                                    </Paper>
+                                                ))}
+                                                <Button
+                                                    size="small"
+                                                    variant="outlined"
+                                                    startIcon={<AddIcon />}
+                                                    onClick={() => {
+                                                        setFormData({
+                                                            ...formData,
+                                                            comboConfig: [...(formData.comboConfig || []), { menuItem: '', quantity: 1 }]
+                                                        });
+                                                    }}
+                                                    sx={{
+                                                        borderRadius: 2,
+                                                        alignSelf: 'flex-start',
+                                                        textTransform: 'none',
+                                                        fontWeight: 'bold',
+                                                        borderStyle: 'dashed',
+                                                        px: 2
+                                                    }}
+                                                >
+                                                    Add Item to Combo
+                                                </Button>
+                                            </Box>
+                                        </Grid>
+                                    )}
                                     <Grid item xs={6}>
                                         <TextField
                                             fullWidth
                                             size="small"
                                             type="number"
-                                            label="Value"
+                                            label={formData.discountType === 'percentage' ? "Discount Percentage" : "Discount Amount"}
                                             value={formData.discountValue}
                                             onChange={(e) => setFormData({ ...formData, discountValue: Number(e.target.value) })}
                                             onFocus={(e) => e.target.select()}
-                                            InputProps={{ sx: { borderRadius: 2, fontWeight: 700 } }}
+                                            InputProps={{ 
+                                                sx: { borderRadius: 2, fontWeight: 700 },
+                                                endAdornment: (
+                                                    <InputAdornment position="end">
+                                                        <Typography variant="body2" sx={{ fontWeight: 800, color: 'primary.main' }}>
+                                                            {formData.discountType === 'percentage' ? '%' : settings.restaurant.currencySymbol}
+                                                        </Typography>
+                                                    </InputAdornment>
+                                                )
+                                            }}
+                                            helperText={formData.discountType === 'percentage' ? "e.g. 10 for 10% off" : `Fixed amount off in ${settings.restaurant.currencySymbol}`}
+                                            FormHelperTextProps={{ sx: { fontSize: '0.65rem', fontWeight: 500 } }}
                                         />
                                     </Grid>
                                     <Grid item xs={6}>
