@@ -173,6 +173,13 @@ const TicketsPage: React.FC = () => {
     return firstMessage.attachments || [];
   };
 
+  const getCreatorName = (ticket: any) => {
+    const firstName = ticket?.createdBy?.firstName || '';
+    const lastName = ticket?.createdBy?.lastName || '';
+    const fullName = `${firstName} ${lastName}`.trim();
+    return fullName || 'N/A';
+  };
+
   return (
     <Box sx={{ px: { xs: 1.5, sm: 3 }, pb: { xs: 1.5, sm: 3 }, pt: { xs: 0.5, sm: 3 } }}>
       <Typography
@@ -248,7 +255,19 @@ const TicketsPage: React.FC = () => {
                       </TableCell>
                       <TableCell>{ticket.tenant?.name || 'N/A'}</TableCell>
                       <TableCell>
-                        {ticket.createdBy?.firstName} {ticket.createdBy?.lastName}
+                        <Typography variant="body2" fontWeight={500}>
+                          {getCreatorName(ticket)}
+                        </Typography>
+                        {ticket.createdBy?.email && (
+                          <Typography variant="caption" display="block" color="text.secondary">
+                            {ticket.createdBy.email}
+                          </Typography>
+                        )}
+                        {ticket.createdBy?.phone && (
+                          <Typography variant="caption" display="block" color="text.secondary">
+                            {ticket.createdBy.phone}
+                          </Typography>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Chip
@@ -346,7 +365,19 @@ const TicketsPage: React.FC = () => {
                       <Grid item xs={12}>
                         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 1 }}>
                           <Typography variant="caption" color="textSecondary">Created By:</Typography>
-                          <Typography variant="body2">{ticket.createdBy?.firstName} {ticket.createdBy?.lastName}</Typography>
+                          <Box>
+                            <Typography variant="body2">{getCreatorName(ticket)}</Typography>
+                            {ticket.createdBy?.email && (
+                              <Typography variant="caption" color="text.secondary" display="block">
+                                {ticket.createdBy.email}
+                              </Typography>
+                            )}
+                            {ticket.createdBy?.phone && (
+                              <Typography variant="caption" color="text.secondary" display="block">
+                                {ticket.createdBy.phone}
+                              </Typography>
+                            )}
+                          </Box>
                         </Box>
                       </Grid>
                       <Grid item xs={12}>

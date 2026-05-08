@@ -9,7 +9,7 @@ const envApiBase = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
 const brandApiBase = (BRAND_CONFIG.apiBaseUrl as string | undefined)?.trim();
 
 const rawApiBase =
- envApiBase ||
+  envApiBase ||
   brandApiBase ||
   (typeof window !== 'undefined' ? window.location.origin : '') ||
   'http://localhost:5006';
@@ -188,8 +188,8 @@ export const ordersAPI = {
   // Remove item from order
   removeItem: (id: string, itemIndex: number) =>
     api.delete(`/orders/${id}/items/${itemIndex}`),
-  refundItem: (id: string, itemIndex: number) =>
-    api.post(`/orders/${id}/items/${itemIndex}/refund`),
+  refundItem: (id: string, itemIndex: number, refundMethod: 'original' | 'cash') =>
+    api.post(`/orders/${id}/items/${itemIndex}/refund`, { refundMethod }),
 
   // Kitchen item-wise status updates
   updateItemStatus: (orderId: string, itemIndex: number, status: string, cancelReason?: string) =>
@@ -283,7 +283,7 @@ export const menuAPI = {
   bulkCreate: (items: any[]) => api.post('/menu/bulk', items),
   update: (id: string, menuData: any) => api.put(`/menu/${id}`, menuData),
   delete: (id: string) => api.delete(`/menu/${id}`),
-  getPublicMenu: (tenantSlug?: string, search?: string) => api.get('/menu/public', { params: { tenantSlug, search } }),
+  getPublicMenu: (tenantSlug?: string, search?: string, cursor?: string | null, limit?: number) => api.get('/menu/public', { params: { tenantSlug, search, cursor: cursor || undefined, limit } }),
 
   // Category management
   createCategory: (categoryData: any) => api.post('/menu/categories', categoryData),
@@ -381,6 +381,7 @@ export const reportsAPI = {
 // -------------------- Printer API --------------------
 export const printersAPI = {
   testPrint: (config: any) => api.post('/printers/test-print', config),
+  printKOT: (order: any) => api.post('/printers/print-kot', { order }),
 
   // Print Agent Pairing
   createAgent: (data: { name: string; roles?: string[] }) => api.post('/printers/agents', data),
@@ -429,6 +430,8 @@ export const couponsAPI = {
   delete: (id: string) => api.delete(`/coupons/${id}`),
   apply: (id: string, orderId: string, customerId?: string) =>
     api.post(`/coupons/${id}/apply`, { orderId, customerId }),
+  getUnsubscribeDetails: (couponId?: string) =>
+    api.get('/coupons/unsubscribe-details', { params: { couponId } }),
 };
 
 // New Promos API – separate endpoints for promo codes
@@ -443,9 +446,9 @@ export const promosAPI = {
   update: (id: string, promoData: any) => api.put(`/promos/${id}`, promoData),
   delete: (id: string) => api.delete(`/promos/${id}`),
   // apply endpoint can be added if needed
-  sendBulkEmail: (data: { promoId: string; subject: string; message: string; recipients: string[] }) => 
+  sendBulkEmail: (data: { promoId: string; subject: string; message: string; recipients: string[] }) =>
     api.post('/promos/send-bulk-email', data),
-  sendBulkSms: (data: { promoId: string; phoneNumbers: string[] }) => 
+  sendBulkSms: (data: { promoId: string; phoneNumbers: string[] }) =>
     api.post('/promos/send-sms', data),
 };
 
@@ -478,6 +481,11 @@ export const paymentsAPI = {
   createTerminalConnectionToken: () => api.post('/payments/terminal/connection-token'),
   verifyIntent: (intentId: string) => api.get(`/payments/verify-intent/${intentId}`),
   checkTerminalReader: () => api.get('/payments/terminal/reader-check'),
+  getTransactions: (params?: { limit?: number; startingAfter?: string; startDate?: string; endDate?: string }) =>
+    api.get('/payments/transactions', { params }),
+  syncTransactions: () => api.post('/payments/transactions/sync'),
+  verifyTransactionsInDb: (paymentIntentIds: string[]) =>
+    api.post('/payments/transactions/verify-db', { paymentIntentIds }),
 };
 
 // -------------------- Invoices API --------------------
@@ -515,6 +523,9 @@ export const superAPI = {
   confirmDemoRequest: (id: string, data: any) => api.patch(`/superadmin/demo-requests/${id}/confirm`, data),
   deleteDemoRequest: (id: string) => api.delete(`/superadmin/demo-requests/${id}`),
   adminRescheduleDemo: (id: string, data: { newDate: string; newTime: string; requestedBy: string }) => api.put(`/superadmin/demo-requests/${id}/reschedule`, data),
+
+  // Admin activity logs
+  getAdminLogs: (params?: any) => api.get('/superadmin/admin-logs', { params }),
 };
 
 export const publicDemoAPI = {
@@ -553,12 +564,12 @@ export const tenantAPI = {
   getBranding: (slug: string) => api.get(`/tenants/${slug}/branding`),
   /** Admin — saves brand colors from the Settings page. */
   updateBranding: (data: {
-    primaryColor?:   string;
+    primaryColor?: string;
     secondaryColor?: string;
-    accentColor?:    string;
-    splashBg?:       string;
-    fontFamily?:     string;
-    appName?:        string;
+    accentColor?: string;
+    splashBg?: string;
+    fontFamily?: string;
+    appName?: string;
   }) => api.patch('/tenants/branding', data),
 };
 

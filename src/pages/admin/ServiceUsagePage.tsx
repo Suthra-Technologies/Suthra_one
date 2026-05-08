@@ -440,77 +440,110 @@ const ServiceUsagePage: React.FC = () => {
                     </Grid>
                 ))}
 
-                {/* SMS Quota tile */}
+                {/* SMS Quota tiles */}
                 {(() => {
                     const quotaColor = '#8b5cf6';
                     const hasQuota = smsMaxQuota > 0;
                     const pct = hasQuota ? Math.min(Math.round((smsQuotaUsed / smsMaxQuota) * 100), 100) : 0;
                     const barColor = pct >= 90 ? '#ef4444' : pct >= 70 ? '#f59e0b' : quotaColor;
                     return (
-                        <Grid size={{ xs: 12, sm: 6 }}>
-                            <Paper
-                                elevation={0}
-                                sx={{
-                                    p: 2.5,
-                                    borderRadius: 3,
-                                    border: '1px solid',
-                                    borderColor: 'divider',
-                                    borderLeft: `4px solid ${quotaColor}`,
-                                }}
-                            >
-                                <Stack direction="row" alignItems="flex-start" spacing={1.5}>
-                                    <Box sx={{ color: quotaColor, display: 'flex', alignItems: 'center', pt: 0.25 }}>
-                                        <DataUsageIcon />
-                                    </Box>
-                                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block' }}>
-                                            SMS Quota
-                                        </Typography>
-                                        <Stack direction="row" alignItems="baseline" spacing={0.5}>
-                                            <Typography variant="h6" fontWeight={800} sx={{ lineHeight: 1.1 }}>
-                                                {smsQuotaUsed}
+                        <>
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                                <Paper
+                                    elevation={0}
+                                    sx={{
+                                        p: 2.5,
+                                        borderRadius: 3,
+                                        border: '1px solid',
+                                        borderColor: 'divider',
+                                        borderLeft: `4px solid ${quotaColor}`,
+                                        height: '100%',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        justifyContent: 'center'
+                                    }}
+                                >
+                                    <Stack direction="row" alignItems="flex-start" spacing={1.5}>
+                                        <Box sx={{ color: quotaColor, display: 'flex', alignItems: 'center', pt: 0.25 }}>
+                                            <DataUsageIcon />
+                                        </Box>
+                                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                                            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block' }}>
+                                                Monthly Allowance (SMS)
                                             </Typography>
-                                            <Typography variant="body2" color="text.secondary" fontWeight={600}>
-                                                / {hasQuota ? smsMaxQuota : '∞'}
+                                            <Stack direction="row" alignItems="baseline" spacing={0.5}>
+                                                <Typography variant="h6" fontWeight={800} sx={{ lineHeight: 1.1 }}>
+                                                    {smsQuotaUsed}
+                                                </Typography>
+                                                <Typography variant="body2" color="text.secondary" fontWeight={600}>
+                                                    / {hasQuota ? smsMaxQuota : '∞'}
+                                                </Typography>
+                                            </Stack>
+                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+                                                {hasQuota ? `${pct}% used (failed excluded)` : 'No limit set by admin'}
                                             </Typography>
-                                        </Stack>
-                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
-                                            {hasQuota ? `${pct}% of monthly allowance used (failed msgs excluded)` : 'No limit set by admin'}
-                                        </Typography>
-                                        <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 1 }}>
-                                            <Chip 
-                                                label={`Top-up Balance: ${smsBalance}`} 
-                                                size="small" 
-                                                variant="outlined" 
-                                                color={smsBalance > 0 ? "success" : "default"}
-                                                sx={{ fontWeight: 600, fontSize: '0.7rem' }}
-                                            />
-                                            <Button 
-                                                size="small" 
-                                                startIcon={<AddIcon />} 
-                                                variant="contained" 
-                                                onClick={() => handleOpenTopUp('sms')}
-                                                sx={{ height: 24, fontSize: '0.65rem', borderRadius: 1.5, bgcolor: quotaColor }}
-                                            >
-                                                Top Up
-                                            </Button>
-                                        </Stack>
-                                        {hasQuota && (
-                                            <LinearProgress
-                                                variant="determinate"
-                                                value={pct}
-                                                sx={{
-                                                    height: 6,
-                                                    borderRadius: 3,
-                                                    bgcolor: alpha(barColor, 0.15),
-                                                    '& .MuiLinearProgress-bar': { bgcolor: barColor, borderRadius: 3 },
-                                                }}
-                                            />
-                                        )}
-                                    </Box>
-                                </Stack>
-                            </Paper>
-                        </Grid>
+                                            {hasQuota && (
+                                                <LinearProgress
+                                                    variant="determinate"
+                                                    value={pct}
+                                                    sx={{
+                                                        height: 6,
+                                                        borderRadius: 3,
+                                                        bgcolor: alpha(barColor, 0.15),
+                                                        '& .MuiLinearProgress-bar': { bgcolor: barColor, borderRadius: 3 },
+                                                    }}
+                                                />
+                                            )}
+                                        </Box>
+                                    </Stack>
+                                </Paper>
+                            </Grid>
+
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                                <Paper
+                                    elevation={0}
+                                    sx={{
+                                        p: 2.5,
+                                        borderRadius: 3,
+                                        border: '1px solid',
+                                        borderColor: 'divider',
+                                        borderLeft: `4px solid ${quotaColor}`,
+                                        height: '100%',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        justifyContent: 'center'
+                                    }}
+                                >
+                                    <Stack direction="row" alignItems="flex-start" spacing={1.5}>
+                                        <Box sx={{ color: quotaColor, display: 'flex', alignItems: 'center', pt: 0.25 }}>
+                                            <SavingsIcon />
+                                        </Box>
+                                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                                            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block' }}>
+                                                Top-up Balance
+                                            </Typography>
+                                            <Typography variant="h6" fontWeight={800} sx={{ lineHeight: 1.1, mb: 1 }}>
+                                                {smsBalance}
+                                            </Typography>
+                                            <Stack direction="row" alignItems="center" spacing={1}>
+                                                <Button 
+                                                    size="small" 
+                                                    startIcon={<AddIcon />} 
+                                                    variant="contained" 
+                                                    onClick={() => handleOpenTopUp('sms')}
+                                                    sx={{ height: 28, fontSize: '0.7rem', px: 2, borderRadius: 1.5, bgcolor: quotaColor }}
+                                                >
+                                                    Add SMS Credits
+                                                </Button>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    Never expires
+                                                </Typography>
+                                            </Stack>
+                                        </Box>
+                                    </Stack>
+                                </Paper>
+                            </Grid>
+                        </>
                     );
                 })()}
             </Grid>
@@ -853,77 +886,110 @@ const ServiceUsagePage: React.FC = () => {
                     </Grid>
                 ))}
 
-                {/* Email Quota tile */}
+                {/* Email Quota tiles */}
                 {(() => {
                     const quotaColor = '#6366f1';
                     const hasQuota = emailMaxQuota > 0;
                     const pct = hasQuota ? Math.min(Math.round((emailQuotaUsed / emailMaxQuota) * 100), 100) : 0;
                     const barColor = pct >= 90 ? '#ef4444' : pct >= 70 ? '#f59e0b' : quotaColor;
                     return (
-                        <Grid size={{ xs: 12 }}>
-                            <Paper
-                                elevation={0}
-                                sx={{
-                                    p: 2.5,
-                                    borderRadius: 3,
-                                    border: '1px solid',
-                                    borderColor: 'divider',
-                                    borderLeft: `4px solid ${quotaColor}`,
-                                }}
-                            >
-                                <Stack direction="row" alignItems="flex-start" spacing={1.5}>
-                                    <Box sx={{ color: quotaColor, display: 'flex', alignItems: 'center', pt: 0.25 }}>
-                                        <DataUsageIcon />
-                                    </Box>
-                                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                                        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block' }}>
-                                            Email Quota
-                                        </Typography>
-                                        <Stack direction="row" alignItems="baseline" spacing={0.5}>
-                                            <Typography variant="h6" fontWeight={800} sx={{ lineHeight: 1.1 }}>
-                                                {emailQuotaUsed}
+                        <>
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                                <Paper
+                                    elevation={0}
+                                    sx={{
+                                        p: 2.5,
+                                        borderRadius: 3,
+                                        border: '1px solid',
+                                        borderColor: 'divider',
+                                        borderLeft: `4px solid ${quotaColor}`,
+                                        height: '100%',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        justifyContent: 'center'
+                                    }}
+                                >
+                                    <Stack direction="row" alignItems="flex-start" spacing={1.5}>
+                                        <Box sx={{ color: quotaColor, display: 'flex', alignItems: 'center', pt: 0.25 }}>
+                                            <DataUsageIcon />
+                                        </Box>
+                                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                                            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block' }}>
+                                                Monthly Allowance (Email)
                                             </Typography>
-                                            <Typography variant="body2" color="text.secondary" fontWeight={600}>
-                                                / {hasQuota ? emailMaxQuota : '∞'}
+                                            <Stack direction="row" alignItems="baseline" spacing={0.5}>
+                                                <Typography variant="h6" fontWeight={800} sx={{ lineHeight: 1.1 }}>
+                                                    {emailQuotaUsed}
+                                                </Typography>
+                                                <Typography variant="body2" color="text.secondary" fontWeight={600}>
+                                                    / {hasQuota ? emailMaxQuota : '∞'}
+                                                </Typography>
+                                            </Stack>
+                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
+                                                {hasQuota ? `${pct}% used (failed excluded)` : 'No limit set by admin'}
                                             </Typography>
-                                        </Stack>
-                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.75 }}>
-                                            {hasQuota ? `${pct}% of monthly allowance used (failed emails excluded)` : 'No limit set by admin'}
-                                        </Typography>
-                                        <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 1 }}>
-                                            <Chip 
-                                                label={`Top-up Balance: ${emailBalance}`} 
-                                                size="small" 
-                                                variant="outlined" 
-                                                color={emailBalance > 0 ? "success" : "default"}
-                                                sx={{ fontWeight: 600, fontSize: '0.7rem' }}
-                                            />
-                                            <Button 
-                                                size="small" 
-                                                startIcon={<AddIcon />} 
-                                                variant="contained" 
-                                                onClick={() => handleOpenTopUp('email')}
-                                                sx={{ height: 24, fontSize: '0.65rem', borderRadius: 1.5, bgcolor: quotaColor }}
-                                            >
-                                                Top Up
-                                            </Button>
-                                        </Stack>
-                                        {hasQuota && (
-                                            <LinearProgress
-                                                variant="determinate"
-                                                value={pct}
-                                                sx={{
-                                                    height: 6,
-                                                    borderRadius: 3,
-                                                    bgcolor: alpha(barColor, 0.15),
-                                                    '& .MuiLinearProgress-bar': { bgcolor: barColor, borderRadius: 3 },
-                                                }}
-                                            />
-                                        )}
-                                    </Box>
-                                </Stack>
-                            </Paper>
-                        </Grid>
+                                            {hasQuota && (
+                                                <LinearProgress
+                                                    variant="determinate"
+                                                    value={pct}
+                                                    sx={{
+                                                        height: 6,
+                                                        borderRadius: 3,
+                                                        bgcolor: alpha(barColor, 0.15),
+                                                        '& .MuiLinearProgress-bar': { bgcolor: barColor, borderRadius: 3 },
+                                                    }}
+                                                />
+                                            )}
+                                        </Box>
+                                    </Stack>
+                                </Paper>
+                            </Grid>
+
+                            <Grid size={{ xs: 12, sm: 6 }}>
+                                <Paper
+                                    elevation={0}
+                                    sx={{
+                                        p: 2.5,
+                                        borderRadius: 3,
+                                        border: '1px solid',
+                                        borderColor: 'divider',
+                                        borderLeft: `4px solid ${quotaColor}`,
+                                        height: '100%',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        justifyContent: 'center'
+                                    }}
+                                >
+                                    <Stack direction="row" alignItems="flex-start" spacing={1.5}>
+                                        <Box sx={{ color: quotaColor, display: 'flex', alignItems: 'center', pt: 0.25 }}>
+                                            <SavingsIcon />
+                                        </Box>
+                                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                                            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block' }}>
+                                                Top-up Balance
+                                            </Typography>
+                                            <Typography variant="h6" fontWeight={800} sx={{ lineHeight: 1.1, mb: 1 }}>
+                                                {emailBalance}
+                                            </Typography>
+                                            <Stack direction="row" alignItems="center" spacing={1}>
+                                                <Button 
+                                                    size="small" 
+                                                    startIcon={<AddIcon />} 
+                                                    variant="contained" 
+                                                    onClick={() => handleOpenTopUp('email')}
+                                                    sx={{ height: 28, fontSize: '0.7rem', px: 2, borderRadius: 1.5, bgcolor: quotaColor }}
+                                                >
+                                                    Add Email Credits
+                                                </Button>
+                                                <Typography variant="caption" color="text.secondary">
+                                                    Never expires
+                                                </Typography>
+                                            </Stack>
+                                        </Box>
+                                    </Stack>
+                                </Paper>
+                            </Grid>
+                        </>
                     );
                 })()}
 

@@ -168,7 +168,7 @@ const CreateExpensePage: React.FC = () => {
                 await expensesAPI.create(dataToSave);
                 toast.success('Expense recorded successfully');
             }
-            navigate('..');
+            navigate('/mythri/expenses');
         } catch (error: any) {
             toast.error(error.response?.data?.message || 'Failed to save expense');
         } finally {
@@ -178,7 +178,7 @@ const CreateExpensePage: React.FC = () => {
 
     return (
         <Box sx={{ p: { xs: 2, md: 3 }, maxWidth: '100%', mx: 0 }}>
-            <Button startIcon={<BackIcon />} onClick={() => navigate(-1)} sx={{ mb: 2 }}>Back to List</Button>
+            <Button startIcon={<BackIcon />} onClick={() => navigate('/mythri/expenses')} sx={{ mb: 2 }}>Back to List</Button>
             
             <Typography variant="h4" fontWeight={900} mb={0.5}>{isEdit ? 'Edit Expense' : 'Record New Expense'}</Typography>
             <Typography variant="body2" color="text.secondary" mb={3}>
