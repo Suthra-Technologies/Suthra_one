@@ -3639,6 +3639,7 @@ const ReportsPage: React.FC = () => {
             revenueLoss = 0,
             totalOrders = 0,
             totalItemCancellations = 0,
+            cancelledItemsLoss = 0,
             byOrderType = [],
             cancelledOrders = [],
             topCancelledItems = [],
@@ -3671,8 +3672,9 @@ const ReportsPage: React.FC = () => {
                             <Grid item xs={6} md={2.4}>
                                 <Card sx={{ background: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)', borderRadius: 3, height: '100%' }}>
                                     <CardContent sx={{ p: isMobile ? 1.5 : 2 }}>
-                                        <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.7rem' }}>Items</Typography>
+                                        <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '0.7rem' }}>Items Cancelled</Typography>
                                         <Typography variant={isMobile ? "subtitle2" : "h4"} sx={{ color: 'white', fontWeight: 800, mt: 0.5 }}>{totalItemCancellations}</Typography>
+                                        {cancelledItemsLoss > 0 && <Typography sx={{ color: 'rgba(255,255,255,0.75)', fontSize: '0.65rem' }}>Loss: {formatCurrency(cancelledItemsLoss)}</Typography>}
                                     </CardContent>
                                 </Card>
                             </Grid>

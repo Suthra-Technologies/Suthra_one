@@ -22,7 +22,6 @@ import {
     Store as StoreIcon,
     SupportAgent as SupportIcon,
     Logout,
-    Person,
     CardMembership as PlansIcon,
     Dashboard as DashboardIcon,
     Receipt as ReceiptIcon,
@@ -31,6 +30,8 @@ import {
     ContactPage as DemoIcon,
     DirectionsBike as UberDirectIcon,
     Email as EmailIcon,
+    Assessment as LogIcon,
+    History as HistoryIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
@@ -76,10 +77,16 @@ const SuperAdminLayout: React.FC = () => {
         { path: '/superadmin/email-logs', label: 'Email Logs', icon: <EmailIcon /> },
         { path: '/superadmin/uber-direct', label: 'Uber Direct', icon: <UberDirectIcon /> },
         { path: '/superadmin/tickets', label: 'Support Tickets', icon: <SupportIcon /> },
+        { path: '/superadmin/logs/stores', label: 'Stores Log', icon: <LogIcon /> },
+        { path: '/superadmin/logs/plans', label: 'Plans Log', icon: <LogIcon /> },
+        { path: '/superadmin/logs/demo-requests', label: 'Demo Requests Log', icon: <LogIcon /> },
+        { path: '/superadmin/logs/tickets', label: 'Tickets Log', icon: <LogIcon /> },
+        { path: '/superadmin/admin-logs', label: 'Activity Log', icon: <HistoryIcon /> },
     ];
 
     const isActiveRoute = (path: string) => {
-        return location.pathname === path;
+        if (path === '/superadmin') return location.pathname === path;
+        return location.pathname.startsWith(path);
     };
 
     const drawer = (

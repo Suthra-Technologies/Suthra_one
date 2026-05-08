@@ -1,16 +1,19 @@
 import React from 'react';
-import { Box, Typography, Grid, Card, CardContent, IconButton, Button } from '@mui/material';
+import { Box, Typography, Grid, Card, IconButton } from '@mui/material';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SmsIcon from '@mui/icons-material/Sms';
 import EmailIcon from '@mui/icons-material/Email';
 import ReceiptIcon from '@mui/icons-material/Receipt';
+import StoreIcon from '@mui/icons-material/Store';
+import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 
 const TenantDetailsPage: React.FC = () => {
   const { tenantId } = useParams<{ tenantId: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const tenant = location.state?.tenant;
+  const storeName = tenant?.name ? encodeURIComponent(tenant.name) : '';
 
   const tiles = [
     {
@@ -28,8 +31,20 @@ const TenantDetailsPage: React.FC = () => {
     {
       title: 'Orders',
       icon: <ReceiptIcon sx={{ fontSize: 40, color: '#ed6c02' }} />,
-      path: `/superadmin/tenants/${tenantId}/orders`, // To be discussed / implemented later
+      path: `/superadmin/tenants/${tenantId}/orders`,
       color: '#fff3e0',
+    },
+    {
+      title: 'Store Log',
+      icon: <StoreIcon sx={{ fontSize: 40, color: '#7c3aed' }} />,
+      path: `/superadmin/logs/stores?tenantId=${tenantId}&name=${storeName}`,
+      color: '#f3e8ff',
+    },
+    {
+      title: 'Tickets Log',
+      icon: <SupportAgentIcon sx={{ fontSize: 40, color: '#0891b2' }} />,
+      path: `/superadmin/logs/tickets?tenantId=${tenantId}&name=${storeName}`,
+      color: '#e0f2fe',
     },
   ];
 

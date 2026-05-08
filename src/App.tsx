@@ -84,6 +84,11 @@ import SmsOverviewPage from './pages/superadmin/SmsOverviewPage';
 import SmsLogsDetailPage from './pages/superadmin/SmsLogsDetailPage';
 import EmailOverviewPage from './pages/superadmin/EmailOverviewPage';
 import EmailLogsDetailPage from './pages/superadmin/EmailLogsDetailPage';
+import StoresLogPage from './pages/superadmin/StoresLogPage';
+import PlansLogPage from './pages/superadmin/PlansLogPage';
+import DemoRequestsLogPage from './pages/superadmin/DemoRequestsLogPage';
+import TicketsLogPage from './pages/superadmin/TicketsLogPage';
+import AdminLogsPage from './pages/superadmin/AdminLogsPage';
 import VendorsPage from './pages/vendors/VendorsPage';
 
 import { SettingsProvider, useSettings } from './context/SettingsContext';
@@ -252,6 +257,11 @@ const AppRoutes: React.FC = () => {
           <Route path="/superadmin/email-logs" element={<EmailOverviewPage />} />
           <Route path="/superadmin/email-logs/:tenantId" element={<EmailLogsDetailPage />} />
           <Route path="/superadmin/uber-direct" element={<UberDirectPage />} />
+          <Route path="/superadmin/logs/stores" element={<StoresLogPage />} />
+          <Route path="/superadmin/logs/plans" element={<PlansLogPage />} />
+          <Route path="/superadmin/logs/demo-requests" element={<DemoRequestsLogPage />} />
+          <Route path="/superadmin/logs/tickets" element={<TicketsLogPage />} />
+          <Route path="/superadmin/admin-logs" element={<AdminLogsPage />} />
         </Route>
       </Route>
 
