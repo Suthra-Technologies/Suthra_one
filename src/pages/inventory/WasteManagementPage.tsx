@@ -63,7 +63,7 @@ const WasteManagementPage: React.FC = () => {
     const [submitting, setSubmitting] = useState(false);
     const { enqueueSnackbar } = useSnackbar();
     const [isMobile, setIsMobile] = useState(false);
-    const headingFontSize = { xs: '1.12rem', sm: '1.4rem', md: '2.125rem' };
+    const headingFontSize = { xs: '0.9rem', sm: '1rem', md: '1.15rem' };
     const bodyFontSize = { xs: '0.78rem', sm: '0.88rem', md: '0.95rem' };
 
     useEffect(() => {
@@ -268,7 +268,7 @@ const WasteManagementPage: React.FC = () => {
             alignItems: 'center'
         }}>
             <CardContent sx={{ 
-                p: { xs: 1.35, sm: 3 },
+                p: { xs: 0.75, sm: 1.5 },
                 width: '100%',
                 textAlign: 'center'
             }}>
@@ -279,9 +279,9 @@ const WasteManagementPage: React.FC = () => {
                     </Typography>
                 </Box>
                 <Typography
-                    variant="h3"
+                    variant="h6"
                     fontWeight="bold"
-                    sx={{ fontSize: { xs: '1.35rem', sm: '2.5rem', md: '3rem' }, lineHeight: 1.1 }}
+                    sx={{ fontSize: { xs: '1rem', sm: '1.4rem', md: '1.7rem' }, lineHeight: 1.1 }}
                 >
                     ${summary?.totalLoss.toFixed(2) || '0.00'}
                 </Typography>
@@ -300,7 +300,7 @@ const WasteManagementPage: React.FC = () => {
             alignItems: 'center'
         }}>
             <CardContent sx={{ 
-                p: { xs: 1.35, sm: 3 },
+                p: { xs: 0.75, sm: 1.5 },
                 width: '100%',
                 textAlign: 'center'
             }}>
@@ -311,9 +311,9 @@ const WasteManagementPage: React.FC = () => {
                     </Typography>
                 </Box>
                 <Typography
-                    variant="h3"
+                    variant="h6"
                     fontWeight="bold"
-                    sx={{ fontSize: { xs: '1.35rem', sm: '2.5rem', md: '3rem' }, lineHeight: 1.1 }}
+                    sx={{ fontSize: { xs: '1rem', sm: '1.4rem', md: '1.7rem' }, lineHeight: 1.1 }}
                 >
                     ${summary?.byType?.raw_material.toFixed(2) || '0.00'}
                 </Typography>
@@ -332,7 +332,7 @@ const WasteManagementPage: React.FC = () => {
             alignItems: 'center'
         }}>
             <CardContent sx={{ 
-                p: { xs: 1.35, sm: 3 },
+                p: { xs: 0.75, sm: 1.5 },
                 width: '100%',
                 textAlign: 'center'
             }}>
@@ -343,9 +343,9 @@ const WasteManagementPage: React.FC = () => {
                     </Typography>
                 </Box>
                 <Typography
-                    variant="h3"
+                    variant="h6"
                     fontWeight="bold"
-                    sx={{ fontSize: { xs: '1.35rem', sm: '2.5rem', md: '3rem' }, lineHeight: 1.1 }}
+                    sx={{ fontSize: { xs: '1rem', sm: '1.4rem', md: '1.7rem' }, lineHeight: 1.1 }}
                 >
                     ${summary?.byType?.menu_item.toFixed(2) || '0.00'}
                 </Typography>

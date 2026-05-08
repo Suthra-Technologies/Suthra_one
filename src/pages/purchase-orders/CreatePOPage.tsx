@@ -1120,20 +1120,36 @@ const CreatePOPage: React.FC = () => {
                                                     <TableRow key={index}>
                                                         <TableCell>
                                                             {isInventory ? (
-                                                                <Autocomplete
-                                                                    options={inventoryItems}
-                                                                    size="small"
-                                                                    freeSolo
-                                                                    getOptionLabel={(o) => typeof o === 'string' ? o : (o.name || '')}
-                                                                    value={item.description}
-                                                                    onInputChange={(_, val) => handleItemChange(index, 'description', val)}
-                                                                    onChange={(_, val: any) => {
-                                                                        if (val && typeof val !== 'string') {
-                                                                            handleItemChange(index, 'inventoryItem', val._id);
-                                                                        }
-                                                                    }}
-                                                                    renderInput={(p) => <TextField {...p} size="small" fullWidth placeholder="Search..." />}
-                                                                />
+                                                                <Box>
+                                                                    <Autocomplete
+                                                                        options={inventoryItems}
+                                                                        size="small"
+                                                                        freeSolo
+                                                                        getOptionLabel={(o) => typeof o === 'string' ? o : (o.name || '')}
+                                                                        value={item.description}
+                                                                        onInputChange={(_, val) => handleItemChange(index, 'description', val)}
+                                                                        onChange={(_, val: any) => {
+                                                                            if (val && typeof val !== 'string') {
+                                                                                handleItemChange(index, 'inventoryItem', val._id);
+                                                                            }
+                                                                        }}
+                                                                        renderInput={(p) => <TextField {...p} size="small" fullWidth placeholder="Search..." />}
+                                                                    />
+                                                                    <Box sx={{ mt: 0.5, display: 'flex', gap: 1, alignItems: 'center' }}>
+                                                                        {item.inventoryItem && item.inventoryItem !== 'verified' && (
+                                                                            <Chip label="MATCHED" size="small" color="success" variant="outlined" sx={{ fontSize: '0.6rem', height: 16, fontWeight: 800 }} />
+                                                                        )}
+                                                                        {!item.inventoryItem && item.description && (
+                                                                            <Button 
+                                                                                size="small" 
+                                                                                onClick={() => handleCreateInventoryItem(index)}
+                                                                                sx={{ fontSize: '0.65rem', height: 20, p: 0, textTransform: 'none', minWidth: 'auto', color: 'orange', fontWeight: 'bold' }}
+                                                                            >
+                                                                                + INVENTORY
+                                                                            </Button>
+                                                                        )}
+                                                                    </Box>
+                                                                </Box>
                                                             ) : (
                                                                 <TextField fullWidth size="small" value={item.description} onChange={(e) => handleItemChange(index, 'description', e.target.value)} />
                                                             )}
