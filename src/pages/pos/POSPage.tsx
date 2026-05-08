@@ -281,6 +281,7 @@ const POSPage: React.FC = () => {
     const [isCalculatingTax, setIsCalculatingTax] = useState(false);
     const [isCartVisible, setIsCartVisible] = useState(false);
     const cartSectionRef = useRef<HTMLDivElement | null>(null);
+    const loadMoreRef = useRef<HTMLDivElement | null>(null);
     // Guard to prevent re-loading stale order data after an order is submitted
     const orderSubmittedRef = useRef(false);
     const [trays, setTrays] = useState<any[]>([]);
@@ -370,6 +371,25 @@ const POSPage: React.FC = () => {
             }
         };
     }, []);
+
+    // Auto-load more menu items when reaching list bottom
+    useEffect(() => {
+        if (!nextCursor || loading) return;
+        const target = loadMoreRef.current;
+        if (!target) return;
+
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                if (entry.isIntersecting && nextCursor && !isFetchingMore) {
+                    fetchMenu(nextCursor);
+                }
+            },
+            { root: null, rootMargin: '320px 0px', threshold: 0.01 }
+        );
+
+        observer.observe(target);
+        return () => observer.disconnect();
+    }, [nextCursor, isFetchingMore, loading]);
 
     // Synchronize selectedTable with latest data from tables array (e.g. after a merge)
     useEffect(() => {

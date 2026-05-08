@@ -26,7 +26,12 @@ import {
     Divider,
     useMediaQuery,
     Card,
-    CardContent
+    CardContent,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    Slider
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -66,16 +71,55 @@ const ExpensesPage: React.FC = () => {
         type: '',
         category: '',
         search: '',
+        minAmount: undefined,
+        maxAmount: undefined,
     });
     const [search, setSearch] = useState('');
+    const [timeFilter, setTimeFilter] = useState<'daily' | 'weekly' | 'monthly' | 'custom'>('monthly');
+    const [showTimeFilterModal, setShowTimeFilterModal] = useState(false);
+    const [customAmountRange, setCustomAmountRange] = useState({ min: 0, max: 5000 });
+    const [amountRange, setAmountRange] = useState({ min: 0, max: 5000 });
+    const [inputValues, setInputValues] = useState({ min: '', max: '' });
 
     const fetchData = async () => {
         setLoading(true);
         try {
+            // Get all expenses for min/max calculation
+            const allExpensesRes = await expensesAPI.getAll({ page: 1, limit: 1000 });
+            const allExpenses = allExpensesRes.data.data || [];
+            const amounts = allExpenses.map(expense => expense.amount);
+            const minAmount = amounts.length > 0 ? Math.min(...amounts) : 0;
+            const maxAmount = amounts.length > 0 ? Math.max(...amounts) : 0;
+            
+            // Update amount range state for slider
+            setAmountRange({ min: minAmount, max: maxAmount });
+            
+            // Initialize custom range if not set
+            if (customAmountRange.min === 0 && customAmountRange.max === 5000) {
+                setCustomAmountRange({ min: minAmount, max: maxAmount });
+            }
+            
+            // Clean up filters before sending to API
+            const cleanFilters = {
+                page,
+                limit: 10,
+                ...Object.fromEntries(
+                    Object.entries(filters).filter(([_, value]) => 
+                        value !== undefined && value !== null && value !== ''
+                    )
+                )
+            };
+            
+            console.log('Clean filters being sent to API:', cleanFilters);
+            
+            // Get filtered data with current filters
             const [listRes, statsRes] = await Promise.all([
-                expensesAPI.getAll({ page, limit: 10, ...filters }),
+                expensesAPI.getAll(cleanFilters),
                 expensesAPI.getStats()
             ]);
+            
+            console.log('API response:', listRes.data);
+            
             setExpenses(listRes.data.data || []);
             setTotalPages(Math.ceil((listRes.data.total || 0) / 10));
             setStats(statsRes.data.data);
@@ -124,6 +168,65 @@ const ExpensesPage: React.FC = () => {
         return type === 'recurring' ? <RecurringIcon fontSize="small" /> : <OneTimeIcon fontSize="small" />;
     };
 
+    const getTimeFilterDates = (filter: 'daily' | 'weekly' | 'monthly') => {
+        const now = new Date();
+        let startDate: Date;
+        let endDate: Date;
+
+        if (filter === 'daily') {
+            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        } else if (filter === 'weekly') {
+            const dayOfWeek = now.getDay();
+            startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek);
+            startDate.setHours(0, 0, 0, 0);
+            endDate = new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+        } else if (filter === 'monthly') {
+            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            endDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        }
+
+        return { startDate, endDate };
+    };
+
+    const handleTimeFilterClick = (filter: 'daily' | 'weekly' | 'monthly' | 'custom') => {
+        if (filter === 'custom') {
+            // Initialize input values when opening dialog
+            setInputValues({
+                min: customAmountRange.min.toString(),
+                max: customAmountRange.max.toString()
+            });
+            setShowTimeFilterModal(true);
+        } else {
+            if (timeFilter === filter) {
+                // Clear filter - reset to monthly
+                setTimeFilter('monthly');
+                setFilters(prev => ({ 
+                    ...prev, 
+                    startDate: undefined, 
+                    endDate: undefined, 
+                    minAmount: undefined, 
+                    maxAmount: undefined 
+                }));
+                // Reset custom range to API defaults
+                setCustomAmountRange({ min: amountRange.min, max: amountRange.max });
+            } else {
+                setTimeFilter(filter);
+                const dates = getTimeFilterDates(filter);
+                setFilters(prev => ({ 
+                    ...prev, 
+                    startDate: dates.startDate, 
+                    endDate: dates.endDate, 
+                    minAmount: undefined, 
+                    maxAmount: undefined 
+                }));
+                // Reset custom range to API defaults
+                setCustomAmountRange({ min: amountRange.min, max: amountRange.max });
+            }
+            setPage(1);
+        }
+    };
+
     return (
         <Box sx={{ p: { xs: 2, md: 4 }, maxWidth: 1600, mx: 'auto' }}>
             {/* Header */}
@@ -142,64 +245,141 @@ const ExpensesPage: React.FC = () => {
                 </Button>
             </Stack>
 
-            {/* Stats Cards */}
+            {/* Time Period Filter */}
+            <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems="center" spacing={2} mb={3}>
+                <Box>
+                    <Typography variant="body2" fontWeight={600} color="text.secondary">
+                        Time Period:
+                    </Typography>
+                </Box>
+                <TextField
+                    select
+                    value={timeFilter}
+                    onChange={(e) => handleTimeFilterClick(e.target.value as 'daily' | 'weekly' | 'monthly' | 'custom')}
+                    size="small"
+                    sx={{ 
+                        minWidth: 150,
+                        '& .MuiOutlinedInput-root': { 
+                            borderRadius: 2,
+                            bgcolor: 'white',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                        },
+                        '& .MuiInputLabel-root': { color: 'text.secondary' },
+                    }}
+                >
+                    <MenuItem value="daily">Daily</MenuItem>
+                    <MenuItem value="weekly">Weekly</MenuItem>
+                    <MenuItem value="monthly">Monthly</MenuItem>
+                    <MenuItem value="custom">Custom</MenuItem>
+                </TextField>
+            </Stack>
+
+            {/* Header with Filter and Dynamic Card */}
             <Grid container spacing={3} mb={4}>
-                <Grid item xs={12} sm={6} md={3}>
-                    <Card sx={{ borderRadius: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+                {/* Dynamic Card */}
+                <Grid item xs={12} sm={6} md={4} lg={3}>
+                    <Card sx={{ borderRadius: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', height: '100%' }}>
                         <CardContent>
-                            <Stack direction="row" spacing={2} alignItems="center">
-                                <Avatar sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), color: theme.palette.primary.main }}>
-                                    <TrendIcon />
+                            <Stack direction="row" spacing={2} alignItems="flex-start">
+                                <Avatar sx={{ 
+                                    bgcolor: timeFilter === 'daily' ? alpha('#f59e0b', 0.1) : 
+                                             timeFilter === 'weekly' ? alpha('#10b981', 0.1) : 
+                                             timeFilter === 'monthly' ? alpha(theme.palette.primary.main, 0.1) : 
+                                             alpha('#6366f1', 0.1),
+                                    color: timeFilter === 'daily' ? '#f59e0b' : 
+                                           timeFilter === 'weekly' ? '#10b981' : 
+                                           timeFilter === 'monthly' ? theme.palette.primary.main : 
+                                           '#6366f1'
+                                }}>
+                                    {timeFilter === 'daily' ? <ExpenseIcon /> : 
+                                     timeFilter === 'weekly' ? <HistoryIcon /> : 
+                                     timeFilter === 'monthly' ? <TrendIcon /> : 
+                                     <TrendIcon />}
                                 </Avatar>
-                                <Box>
-                                    <Typography variant="caption" color="text.secondary">Monthly Total</Typography>
-                                    <Typography variant="h6" fontWeight="bold">{formatCurrency ? formatCurrency(stats?.monthlyTotal || 0) : `$${(stats?.monthlyTotal || 0).toFixed(2)}`}</Typography>
+                                <Box sx={{ flex: 1 }}>
+                                    <Typography variant="caption" color="text.secondary">
+                                        {timeFilter === 'daily' ? 'Daily Total' : 
+                                         timeFilter === 'weekly' ? 'Weekly Total' : 
+                                         timeFilter === 'monthly' ? 'Monthly Total' : 
+                                         'Custom Range Total'}
+                                    </Typography>
+                                    <Typography variant="h6" fontWeight="bold">
+                                        {formatCurrency ? 
+                                            formatCurrency(
+                                                timeFilter === 'daily' ? (stats?.dailyTotal || 0) : 
+                                                timeFilter === 'weekly' ? (stats?.weeklyTotal || 0) : 
+                                                (stats?.monthlyTotal || 0)
+                                            ) : 
+                                            `${
+                                                timeFilter === 'daily' ? (stats?.dailyTotal || 0) : 
+                                                timeFilter === 'weekly' ? (stats?.weeklyTotal || 0) : 
+                                                (stats?.monthlyTotal || 0)
+                                            }`
+                                        }
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        {timeFilter === 'daily' ? `${stats?.dailyCount || 0} expenses` : 
+                                         timeFilter === 'weekly' ? `${stats?.weeklyCount || 0} expenses` : 
+                                         timeFilter === 'monthly' ? `${stats?.monthlyCount || 0} expenses` : 
+                                         `${filters.minAmount || amountRange.min} - ${filters.maxAmount || amountRange.max} range`}
+                                    </Typography>
                                 </Box>
                             </Stack>
                         </CardContent>
                     </Card>
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
-                    <Card sx={{ borderRadius: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+
+                {/* Pending Approval Card */}
+                <Grid item xs={12} sm={6} md={4} lg={3}>
+                    <Card sx={{ borderRadius: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', height: '100%' }}>
                         <CardContent>
-                            <Stack direction="row" spacing={2} alignItems="center">
+                            <Stack direction="row" spacing={2} alignItems="flex-start">
                                 <Avatar sx={{ bgcolor: alpha('#f59e0b', 0.1), color: '#f59e0b' }}>
                                     <WalletIcon />
                                 </Avatar>
-                                <Box>
+                                <Box sx={{ flex: 1 }}>
                                     <Typography variant="caption" color="text.secondary">Pending Approval</Typography>
                                     <Typography variant="h6" fontWeight="bold">{formatCurrency ? formatCurrency(stats?.pendingTotal || 0) : `$${(stats?.pendingTotal || 0).toFixed(2)}`}</Typography>
+                                    <Typography variant="caption" color="text.secondary">{stats?.pendingCount || 0} expenses</Typography>
                                 </Box>
                             </Stack>
                         </CardContent>
                     </Card>
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
-                    <Card sx={{ borderRadius: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+
+                {/* Overdue Bills Card */}
+                <Grid item xs={12} sm={6} md={4} lg={3}>
+                    <Card sx={{ borderRadius: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', height: '100%' }}>
                         <CardContent>
-                            <Stack direction="row" spacing={2} alignItems="center">
+                            <Stack direction="row" spacing={2} alignItems="flex-start">
                                 <Avatar sx={{ bgcolor: alpha('#ef4444', 0.1), color: '#ef4444' }}>
                                     <AlertIcon />
                                 </Avatar>
-                                <Box>
+                                <Box sx={{ flex: 1 }}>
                                     <Typography variant="caption" color="text.secondary">Overdue Bills</Typography>
                                     <Typography variant="h6" fontWeight="bold">{stats?.overdueCount || 0}</Typography>
+                                    <Typography variant="caption" color="text.secondary">Require attention</Typography>
                                 </Box>
                             </Stack>
                         </CardContent>
                     </Card>
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
-                    <Card sx={{ borderRadius: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+
+                {/* Top Category Card */}
+                <Grid item xs={12} sm={6} md={4} lg={3}>
+                    <Card sx={{ borderRadius: 4, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', height: '100%' }}>
                         <CardContent>
-                            <Stack direction="row" spacing={2} alignItems="center">
+                            <Stack direction="row" spacing={2} alignItems="flex-start">
                                 <Avatar sx={{ bgcolor: alpha('#6366f1', 0.1), color: '#6366f1' }}>
                                     <NotifyIcon />
                                 </Avatar>
-                                <Box>
+                                <Box sx={{ flex: 1 }}>
                                     <Typography variant="caption" color="text.secondary">Top Category</Typography>
                                     <Typography variant="h6" fontWeight="bold" sx={{ textTransform: 'capitalize' }}>
                                         {stats?.categoryBreakdown?.[0]?._id || 'N/A'}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        {formatCurrency ? formatCurrency(stats?.categoryBreakdown?.[0]?.total || 0) : `$${(stats?.categoryBreakdown?.[0]?.total || 0).toFixed(2)}`}
                                     </Typography>
                                 </Box>
                             </Stack>
@@ -207,6 +387,36 @@ const ExpensesPage: React.FC = () => {
                     </Card>
                 </Grid>
             </Grid>
+
+            {/* Time Filter Status */}
+            {timeFilter !== 'monthly' && (
+                <Paper sx={{ p: 2, mb: 3, borderRadius: 4, bgcolor: alpha(theme.palette.primary.main, 0.1), border: `1px solid ${theme.palette.primary.main}` }}>
+                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                        <Box>
+                            <Typography variant="body2" fontWeight={600} color="primary.main">
+                                {timeFilter === 'daily' && '📅 Daily Expenses'}
+                                {timeFilter === 'weekly' && '📅 Weekly Expenses'}
+                                {timeFilter === 'monthly' && '📅 Monthly Expenses'}
+                                {timeFilter === 'custom' && '💰 Custom Amount Range'}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                                {timeFilter === 'daily' && `Showing expenses from today (${new Date().toLocaleDateString()})`}
+                                {timeFilter === 'weekly' && `Showing expenses from this week`}
+                                {timeFilter === 'monthly' && `Showing expenses from ${new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`}
+                                {timeFilter === 'custom' && `Showing expenses between $${filters.minAmount || amountRange.min} and $${filters.maxAmount || amountRange.max}`}
+                            </Typography>
+                        </Box>
+                        <Button 
+                            size="small" 
+                            variant="outlined" 
+                            onClick={() => handleTimeFilterClick('monthly')}
+                            sx={{ borderColor: theme.palette.primary.main, color: theme.palette.primary.main }}
+                        >
+                            Clear Filter
+                        </Button>
+                    </Stack>
+                </Paper>
+            )}
 
             {/* Filters */}
             <Paper sx={{ p: 2, mb: 4, borderRadius: 4, bgcolor: '#111827', display: 'flex', gap: 2, flexWrap: 'wrap' }}>
@@ -337,6 +547,233 @@ const ExpensesPage: React.FC = () => {
             <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
                 <Pagination count={totalPages} page={page} onChange={(_, p) => setPage(p)} color="primary" />
             </Box>
+
+            {/* Custom Amount Filter Dialog */}
+            <Dialog 
+                open={showTimeFilterModal} 
+                onClose={() => setShowTimeFilterModal(false)}
+                maxWidth="sm"
+                fullWidth
+                PaperProps={{
+                    sx: {
+                        borderRadius: 4,
+                        boxShadow: '0 20px 40px rgba(0,0,0,0.15)'
+                    }
+                }}
+            >
+                <DialogTitle sx={{ pb: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+                    <Typography variant="h6" fontWeight={600}>Custom Amount Filter</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                        Set your custom amount range to filter expenses
+                    </Typography>
+                </DialogTitle>
+                <DialogContent sx={{ py: 3 }}>
+                    <Box sx={{ mb: 4 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                            Amount Range: ${amountRange.min} - ${amountRange.max}
+                        </Typography>
+                        
+                        {/* Input Fields for Direct Entry */}
+                        <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
+                            <TextField
+                                label="Min Amount"
+                                type="number"
+                                value={inputValues.min}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    setInputValues(prev => ({ ...prev, min: value }));
+                                    
+                                    // Only update the actual range if it's a valid number
+                                    if (value === '' || value === '-') {
+                                        setCustomAmountRange(prev => ({ ...prev, min: 0 }));
+                                    } else {
+                                        const numValue = Number(value);
+                                        if (!isNaN(numValue)) {
+                                            setCustomAmountRange(prev => ({ 
+                                                ...prev, 
+                                                min: Math.min(numValue, prev.max) 
+                                            }));
+                                        }
+                                    }
+                                }}
+                                onBlur={(e) => {
+                                    const value = Number(e.target.value);
+                                    let finalValue = value;
+                                    
+                                    if (isNaN(value) || value < amountRange.min) {
+                                        finalValue = amountRange.min;
+                                    } else if (value > amountRange.max) {
+                                        finalValue = amountRange.max;
+                                    }
+                                    
+                                    setCustomAmountRange(prev => ({ ...prev, min: finalValue }));
+                                    setInputValues(prev => ({ ...prev, min: finalValue.toString() }));
+                                }}
+                                onFocus={() => {
+                                    // Set input value to current range value when focused
+                                    setInputValues(prev => ({ ...prev, min: customAmountRange.min.toString() }));
+                                }}
+                                InputProps={{
+                                    startAdornment: <Typography sx={{ mr: 1 }}>$</Typography>,
+                                }}
+                                size="small"
+                                sx={{ flex: 1 }}
+                            />
+                            <TextField
+                                label="Max Amount"
+                                type="number"
+                                value={inputValues.max}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    setInputValues(prev => ({ ...prev, max: value }));
+                                    
+                                    // Only update the actual range if it's a valid number
+                                    if (value === '' || value === '-') {
+                                        setCustomAmountRange(prev => ({ ...prev, max: amountRange.max }));
+                                    } else {
+                                        const numValue = Number(value);
+                                        if (!isNaN(numValue)) {
+                                            setCustomAmountRange(prev => ({ 
+                                                ...prev, 
+                                                max: Math.max(numValue, prev.min) 
+                                            }));
+                                        }
+                                    }
+                                }}
+                                onBlur={(e) => {
+                                    const value = Number(e.target.value);
+                                    let finalValue = value;
+                                    
+                                    if (isNaN(value) || value < amountRange.min) {
+                                        finalValue = amountRange.min;
+                                    } else if (value > amountRange.max) {
+                                        finalValue = amountRange.max;
+                                    }
+                                    
+                                    setCustomAmountRange(prev => ({ ...prev, max: finalValue }));
+                                    setInputValues(prev => ({ ...prev, max: finalValue.toString() }));
+                                }}
+                                onFocus={() => {
+                                    // Set input value to current range value when focused
+                                    setInputValues(prev => ({ ...prev, max: customAmountRange.max.toString() }));
+                                }}
+                                InputProps={{
+                                    startAdornment: <Typography sx={{ mr: 1 }}>$</Typography>,
+                                }}
+                                size="small"
+                                sx={{ flex: 1 }}
+                            />
+                        </Stack>
+                        
+                        <Slider
+                            value={[customAmountRange.min, customAmountRange.max]}
+                            onChange={(event, newValue) => {
+                                if (Array.isArray(newValue)) {
+                                    setCustomAmountRange({ min: newValue[0], max: newValue[1] });
+                                    // Sync input values when slider changes
+                                    setInputValues({ 
+                                        min: newValue[0].toString(), 
+                                        max: newValue[1].toString() 
+                                    });
+                                }
+                            }}
+                            valueLabelDisplay="auto"
+                            valueLabelFormat={(value) => `$${value}`}
+                            min={amountRange.min}
+                            max={amountRange.max}
+                            sx={{
+                                '& .MuiSlider-thumb': {
+                                    width: 20,
+                                    height: 20,
+                                    '&:hover, &.Mui-focusVisible': {
+                                        boxShadow: '0 0 0 8px rgba(25, 118, 210, 0.16)',
+                                    },
+                                },
+                                '& .MuiSlider-track': {
+                                    height: 6,
+                                    borderRadius: 3,
+                                },
+                                '& .MuiSlider-rail': {
+                                    height: 6,
+                                    borderRadius: 3,
+                                },
+                            }}
+                        />
+                        
+                        <Stack direction="row" justifyContent="space-between" sx={{ mt: 2 }}>
+                            <Typography variant="caption" color="text.secondary">
+                                Min: ${customAmountRange.min}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                                Max: ${customAmountRange.max}
+                            </Typography>
+                        </Stack>
+                    </Box>
+
+                    <Box sx={{ 
+                        p: 2, 
+                        borderRadius: 2, 
+                        bgcolor: alpha(theme.palette.primary.main, 0.05),
+                        border: '1px solid',
+                        borderColor: alpha(theme.palette.primary.main, 0.2)
+                    }}>
+                        <Typography variant="body2" fontWeight={500} color="primary.main">
+                            Filter Preview
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
+                            Showing expenses between $${customAmountRange.min} and $${customAmountRange.max}
+                        </Typography>
+                    </Box>
+                </DialogContent>
+                <DialogActions sx={{ p: 3, borderTop: '1px solid', borderColor: 'divider' }}>
+                    <Button 
+                        onClick={() => {
+                            // Reset slider to API default values
+                            setCustomAmountRange({ min: amountRange.min, max: amountRange.max });
+                        }}
+                        variant="outlined"
+                        sx={{ borderRadius: 2 }}
+                    >
+                        Reset
+                    </Button>
+                    <Button 
+                        onClick={() => setShowTimeFilterModal(false)}
+                        variant="text"
+                        sx={{ borderRadius: 2 }}
+                    >
+                        Cancel
+                    </Button>
+                    <Button 
+                        onClick={() => {
+                            // Validate range before applying
+                            const minVal = customAmountRange.min;
+                            const maxVal = customAmountRange.max;
+                            
+                            if (minVal === undefined || maxVal === undefined || minVal > maxVal) {
+                                toast.error('Please select a valid amount range');
+                                return;
+                            }
+                            
+                            // Apply custom amount filter
+                            setTimeFilter('custom');
+                            setFilters(prev => ({ 
+                                ...prev, 
+                                startDate: undefined, 
+                                endDate: undefined,
+                                minAmount: minVal,
+                                maxAmount: maxVal
+                            }));
+                            setPage(1);
+                            setShowTimeFilterModal(false);
+                            toast.success(`Filter applied: $${minVal} - $${maxVal}`);
+                        }}
+                        variant="contained"
+                        sx={{ borderRadius: 2, px: 3 }}
+                    >
+                        Apply Filter
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };

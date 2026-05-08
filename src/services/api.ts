@@ -9,7 +9,7 @@ const envApiBase = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
 const brandApiBase = (BRAND_CONFIG.apiBaseUrl as string | undefined)?.trim();
 
 const rawApiBase =
- envApiBase ||
+  envApiBase ||
   brandApiBase ||
   (typeof window !== 'undefined' ? window.location.origin : '') ||
   'http://localhost:5006';
@@ -381,6 +381,7 @@ export const reportsAPI = {
 // -------------------- Printer API --------------------
 export const printersAPI = {
   testPrint: (config: any) => api.post('/printers/test-print', config),
+  printKOT: (order: any) => api.post('/printers/print-kot', { order }),
 
   // Print Agent Pairing
   createAgent: (data: { name: string; roles?: string[] }) => api.post('/printers/agents', data),
@@ -429,6 +430,8 @@ export const couponsAPI = {
   delete: (id: string) => api.delete(`/coupons/${id}`),
   apply: (id: string, orderId: string, customerId?: string) =>
     api.post(`/coupons/${id}/apply`, { orderId, customerId }),
+  getUnsubscribeDetails: (couponId?: string) =>
+    api.get('/coupons/unsubscribe-details', { params: { couponId } }),
 };
 
 // New Promos API – separate endpoints for promo codes
@@ -443,9 +446,9 @@ export const promosAPI = {
   update: (id: string, promoData: any) => api.put(`/promos/${id}`, promoData),
   delete: (id: string) => api.delete(`/promos/${id}`),
   // apply endpoint can be added if needed
-  sendBulkEmail: (data: { promoId: string; subject: string; message: string; recipients: string[] }) => 
+  sendBulkEmail: (data: { promoId: string; subject: string; message: string; recipients: string[] }) =>
     api.post('/promos/send-bulk-email', data),
-  sendBulkSms: (data: { promoId: string; phoneNumbers: string[] }) => 
+  sendBulkSms: (data: { promoId: string; phoneNumbers: string[] }) =>
     api.post('/promos/send-sms', data),
 };
 
@@ -561,12 +564,12 @@ export const tenantAPI = {
   getBranding: (slug: string) => api.get(`/tenants/${slug}/branding`),
   /** Admin — saves brand colors from the Settings page. */
   updateBranding: (data: {
-    primaryColor?:   string;
+    primaryColor?: string;
     secondaryColor?: string;
-    accentColor?:    string;
-    splashBg?:       string;
-    fontFamily?:     string;
-    appName?:        string;
+    accentColor?: string;
+    splashBg?: string;
+    fontFamily?: string;
+    appName?: string;
   }) => api.patch('/tenants/branding', data),
 };
 
