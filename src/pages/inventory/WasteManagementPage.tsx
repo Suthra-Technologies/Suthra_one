@@ -260,23 +260,32 @@ const WasteManagementPage: React.FC = () => {
     <Grid item xs={12} md={4}>
         <Card sx={{ 
             borderRadius: 3, 
-            boxShadow: 3, 
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
-            color: 'white',
+            boxShadow: 2, 
             height: { xs: 'auto', sm: '100%' },
             display: 'flex',
-            alignItems: 'center'
+            alignItems: 'center',
+            bgcolor: 'background.paper'
         }}>
             <CardContent sx={{ 
                 p: { xs: 0.75, sm: 1.5 },
                 width: '100%',
                 textAlign: 'center'
             }}>
-                <Box display="flex" alignItems="center" justifyContent="center" mb={0.5}>
-                    <TrendingDown sx={{ mr: 1, fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
-                    <Typography variant="h6" sx={{ fontSize: headingFontSize }}>
-                        Total Financial Loss
-                    </Typography>
+                <Box display="flex" alignItems="center" justifyContent="center" mb={1.5}>
+                    <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        bgcolor: '#eef2ff', 
+                        color: '#4f46e5',
+                        px: 1.5,
+                        py: 0.5,
+                        borderRadius: '12px'
+                    }}>
+                        <TrendingDown sx={{ mr: 1, fontSize: { xs: '1rem', sm: '1.2rem' } }} />
+                        <Typography variant="h6" sx={{ fontSize: headingFontSize, fontWeight: 600 }}>
+                            Total Financial Loss
+                        </Typography>
+                    </Box>
                 </Box>
                 <Typography
                     variant="h6"
@@ -285,7 +294,7 @@ const WasteManagementPage: React.FC = () => {
                 >
                     ${summary?.totalLoss.toFixed(2) || '0.00'}
                 </Typography>
-                <Typography variant="body2" sx={{ opacity: 0.8, fontSize: bodyFontSize }}>
+                <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: bodyFontSize, mt: 0.5 }}>
                     Across {summary?.count || 0} waste records
                 </Typography>
             </CardContent>

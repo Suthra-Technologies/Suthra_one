@@ -164,7 +164,7 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
                         onClick={() => {
                             if (couponDiscount > 0) {
                                 setCouponCode('');
-                                handleValidateCoupon(false);
+                                handleValidateCoupon(false, '');
                             } else {
                                 handleValidateCoupon(false);
                             }
