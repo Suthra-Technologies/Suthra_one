@@ -180,6 +180,10 @@ const TicketsPage: React.FC = () => {
     return fullName || 'N/A';
   };
 
+  const getCreatorPhone = (ticket: any) => {
+    return ticket?.createdBy?.phone || ticket?.customerDetails?.phone || '';
+  };
+
   return (
     <Box sx={{ px: { xs: 1.5, sm: 3 }, pb: { xs: 1.5, sm: 3 }, pt: { xs: 0.5, sm: 3 } }}>
       <Typography
@@ -263,9 +267,9 @@ const TicketsPage: React.FC = () => {
                             {ticket.createdBy.email}
                           </Typography>
                         )}
-                        {ticket.createdBy?.phone && (
+                        {getCreatorPhone(ticket) && (
                           <Typography variant="caption" display="block" color="text.secondary">
-                            {ticket.createdBy.phone}
+                            {getCreatorPhone(ticket)}
                           </Typography>
                         )}
                       </TableCell>
@@ -372,9 +376,9 @@ const TicketsPage: React.FC = () => {
                                 {ticket.createdBy.email}
                               </Typography>
                             )}
-                            {ticket.createdBy?.phone && (
+                            {getCreatorPhone(ticket) && (
                               <Typography variant="caption" color="text.secondary" display="block">
-                                {ticket.createdBy.phone}
+                                {getCreatorPhone(ticket)}
                               </Typography>
                             )}
                           </Box>

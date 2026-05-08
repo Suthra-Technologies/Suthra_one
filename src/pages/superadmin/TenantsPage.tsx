@@ -192,6 +192,11 @@ const TenantsPage: React.FC = () => {
                           <Typography variant="caption" color="textSecondary" noWrap title={tenant.ownerUser?.email} sx={{ display: 'block' }}>
                             {tenant.ownerUser?.email}
                           </Typography>
+                          {tenant.ownerUser?.phone && (
+                            <Typography variant="caption" color="textSecondary" noWrap title={tenant.ownerUser?.phone} sx={{ display: 'block' }}>
+                              {tenant.ownerUser?.phone}
+                            </Typography>
+                          )}
                         </>
                       ) : (
                         <Typography variant="body2" color="textSecondary" fontStyle="italic">No Owner</Typography>
