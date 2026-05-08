@@ -520,6 +520,9 @@ export const superAPI = {
   confirmDemoRequest: (id: string, data: any) => api.patch(`/superadmin/demo-requests/${id}/confirm`, data),
   deleteDemoRequest: (id: string) => api.delete(`/superadmin/demo-requests/${id}`),
   adminRescheduleDemo: (id: string, data: { newDate: string; newTime: string; requestedBy: string }) => api.put(`/superadmin/demo-requests/${id}/reschedule`, data),
+
+  // Admin activity logs
+  getAdminLogs: (params?: any) => api.get('/superadmin/admin-logs', { params }),
 };
 
 export const publicDemoAPI = {
