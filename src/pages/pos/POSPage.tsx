@@ -1040,11 +1040,22 @@ const POSPage: React.FC = () => {
             name: c.name || c.code,
             isComboCard: true,
             // Gather all images from items in the combo
-            images: (c.comboConfig || []).map((entry: any) => {
-                const itemId = entry.menuItem?._id || entry.menuItem;
-                const item = menuItems.find(i => i._id === itemId);
-                return item?.image;
-            }).filter(Boolean)
+            images: [
+                ...(c.comboConfig || []).map((entry: any) => {
+                    // Try to get image from populated menuItem first
+                    if (entry.menuItem && typeof entry.menuItem === 'object' && entry.menuItem.image) {
+                        return entry.menuItem.image;
+                    }
+                    // Fallback to searching in local menuItems state
+                    const itemId = entry.menuItem?._id || entry.menuItem;
+                    const item = menuItems.find(i => i._id === itemId);
+                    return item?.image;
+                }),
+                ...(c.comboConfig?.length ? [] : (c.applicableItems || []).map((itemId: string) => {
+                    const item = menuItems.find(i => i._id === itemId);
+                    return item?.image;
+                }))
+            ].filter(Boolean)
         }));
     }, [availableCoupons, menuItems, searchQuery]);
 
@@ -1170,22 +1181,29 @@ const POSPage: React.FC = () => {
         const pointValue = Number(rewardPointsInfo.settings.pointValue) || 0;
         if (pointValue <= 0) return 0;
 
-        // Capped by available points AND by total order value
-        const pointsNeededForFullTotal = Math.ceil(totalBeforeRewards / pointValue);
-        return Math.min(rewardPointsInfo.points || 0, pointsNeededForFullTotal);
-    }, [rewardPointsInfo, totalBeforeRewards]);
+        const maxPercentage = (rewardPointsInfo.settings.maxRedemptionPercentage ?? 100) / 100;
+        const maxDiscountAllowed = cartTotal * maxPercentage;
+
+        // Capped by available points AND by max allowed discount based on subtotal
+        const maxPointsByBill = Math.floor(maxDiscountAllowed / pointValue);
+        return Math.min(rewardPointsInfo.points || 0, maxPointsByBill);
+    }, [rewardPointsInfo, cartTotal]);
 
     useEffect(() => {
         if (pointsToRedeem > 0 && rewardPointsInfo?.settings) {
             const pointValue = Number(rewardPointsInfo.settings.pointValue) || 0;
+            const maxPercentage = (rewardPointsInfo.settings.maxRedemptionPercentage ?? 100) / 100;
+            const maxDiscountAllowed = cartTotal * maxPercentage;
+
             const calculatedDiscount = Number((pointsToRedeem * pointValue).toFixed(2));
 
-            // Cap discount to totalBeforeRewards
-            setRewardDiscount(Math.min(calculatedDiscount, totalBeforeRewards));
+            // Cap discount to maxDiscountAllowed (or totalBeforeRewards)
+            const effectiveDiscount = Math.min(calculatedDiscount, maxDiscountAllowed, totalBeforeRewards);
+            setRewardDiscount(effectiveDiscount);
 
-            // If pointsToRedeem exceeds what's needed for full total, adjust it (optional, but cleaner)
-            if (calculatedDiscount > totalBeforeRewards + 0.01) { // 0.01 for float buffer
-                const adjustedPoints = Math.ceil(totalBeforeRewards / pointValue);
+            // If pointsToRedeem exceeds what's allowed, adjust it
+            if (calculatedDiscount > effectiveDiscount + 0.01) { // 0.01 for float buffer
+                const adjustedPoints = Math.floor(effectiveDiscount / pointValue);
                 if (adjustedPoints < pointsToRedeem) {
                     setPointsToRedeem(adjustedPoints);
                 }
@@ -1193,7 +1211,7 @@ const POSPage: React.FC = () => {
         } else {
             setRewardDiscount(0);
         }
-    }, [pointsToRedeem, rewardPointsInfo, totalBeforeRewards]);
+    }, [pointsToRedeem, rewardPointsInfo, totalBeforeRewards, cartTotal]);
 
     const finalTotal = useMemo(() => {
         const total = totalBeforeRewards - rewardDiscount;
@@ -1539,53 +1557,88 @@ const POSPage: React.FC = () => {
         }
     };
 
-    const handleSelectCombo = (coupon: any) => {
-        const comboConfig = coupon.comboConfig || [];
-        if (!comboConfig.length) return;
+    const handleSelectCombo = async (coupon: any) => {
+        let comboConfig = coupon.comboConfig || [];
+        
+        // Fallback: if comboConfig is empty but applicableItems is not, treat it as a combo of those items (qty 1)
+        if (!comboConfig.length && coupon.applicableItems?.length > 0) {
+            comboConfig = coupon.applicableItems.map((id: string) => ({
+                menuItem: id,
+                quantity: 1
+            }));
+        }
 
-        let itemsAdded = 0;
-        comboConfig.forEach((entry: any) => {
+        if (!comboConfig.length) {
+            toast.error("This combo offer has no items configured.");
+            return;
+        }
+
+        let itemsAddedTotal = 0;
+        let missingItems = 0;
+
+        for (const entry of comboConfig) {
             const itemId = entry.menuItem?._id || entry.menuItem;
-            const item = menuItems.find(i => i._id === itemId);
-            if (item) {
-                for (let i = 0; i < (entry.quantity || 1); i++) {
-                    // Add default version to cart
-                    const sanitizedItem = { ...item };
-                    // Set default modifiers if any
-                    const defaults: Record<string, ModifierOption[]> = {};
-                    if (item.modifierGroups) {
-                        item.modifierGroups.forEach(g => {
-                            const defs = g.options.filter(o => o.isDefault);
-                            if (defs.length > 0) {
-                                defaults[g.name] = g.selectionType === 'single' ? [defs[0]] : defs;
-                            }
-                        });
+            let item = menuItems.find(i => i._id === itemId);
+            
+            // If item not in local state (e.g. paginated out), fetch it specifically
+            if (!item) {
+                try {
+                    const res = await menuAPI.getOne(itemId);
+                    item = res.data;
+                    if (item) {
+                        // Optionally add to local state to avoid refetching
+                        setMenuItems(prev => [...prev, item]);
                     }
-                    const spiceLevel = (item as any).isSpiceLevelAvailable ? (item as any).spiceLevels?.[0] : undefined;
-                    const modifiers = Object.values(defaults).flat();
-                    const modifiersStr = modifiers.sort((a, b) => a.name.localeCompare(b.name)).map(m => m.name).join(',');
-                    const cartId = `${item._id}::none::base::${spiceLevel || 'none'}::${modifiersStr}`;
-
-                    // Calculate price including default modifiers
-                    let itemPrice = item.price;
-                    modifiers.forEach(m => { itemPrice += m.price; });
-
-                    addToCart({
-                        ...sanitizedItem,
-                        cartId,
-                        price: itemPrice,
-                        modifiers,
-                        spiceLevel,
-                        quantity: 1
-                    });
-                    itemsAdded++;
+                } catch (err) {
+                    console.warn(`[Combo] Failed to fetch missing item ${itemId}`, err);
                 }
             }
-        });
 
-        if (itemsAdded > 0) {
+            if (item) {
+                const qtyToAdd = entry.quantity || 1;
+                // Add default version to cart
+                const sanitizedItem = { ...item };
+                // Set default modifiers if any
+                const defaults: Record<string, ModifierOption[]> = {};
+                if (item.modifierGroups) {
+                    item.modifierGroups.forEach(g => {
+                        const defs = g.options.filter(o => o.isDefault);
+                        if (defs.length > 0) {
+                            defaults[g.name] = g.selectionType === 'single' ? [defs[0]] : defs;
+                        }
+                    });
+                }
+                const spiceLevel = (item as any).isSpiceLevelAvailable ? (item as any).spiceLevels?.[0] : undefined;
+                const modifiers = Object.values(defaults).flat();
+                const modifiersStr = modifiers.sort((a, b) => a.name.localeCompare(b.name)).map(m => m.name).join(',');
+                const cartId = `${item._id}::none::base::${spiceLevel || 'none'}::${modifiersStr}`;
+
+                // Calculate price including default modifiers
+                let itemPrice = item.price;
+                modifiers.forEach(m => { itemPrice += m.price; });
+
+                addToCart({
+                    ...sanitizedItem,
+                    cartId,
+                    price: itemPrice,
+                    modifiers,
+                    spiceLevel,
+                    quantity: qtyToAdd
+                });
+                itemsAddedTotal += qtyToAdd;
+            } else {
+                console.warn(`[Combo] Item ${itemId} not found`);
+                missingItems++;
+            }
+        }
+
+        if (itemsAddedTotal > 0) {
             setCouponCode(coupon.code);
-            toast.success(`${coupon.name} added to cart!`);
+            toast.success(`Combo "${coupon.name}" added to cart`);
+        }
+        
+        if (missingItems > 0) {
+            toast.error(`${missingItems} item(s) in this combo are currently unavailable.`);
         }
     };
 
@@ -2033,10 +2086,11 @@ const POSPage: React.FC = () => {
                                             animationDelay: `${index * 0.05}s`,
                                         }}
                                     >
+                                        {/* Desktop View */}
                                         <Card sx={{
-                                            display: 'flex',
-                                            height: { xs: 80, md: 230 },
-                                            flexDirection: { xs: 'row', md: 'column' },
+                                            display: { xs: 'none', md: 'flex' },
+                                            height: 230,
+                                            flexDirection: 'column',
                                             transition: 'all 0.3s ease',
                                             border: '2px solid',
                                             borderColor: 'secondary.light',
@@ -2047,11 +2101,11 @@ const POSPage: React.FC = () => {
                                                 borderColor: 'secondary.main'
                                             }
                                         }}>
-                                            <CardActionArea sx={{ height: '100%', display: 'flex', flexDirection: { xs: 'row', md: 'column' }, alignItems: 'stretch' }}>
+                                            <CardActionArea sx={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
                                                 <Box sx={{
                                                     position: 'relative',
-                                                    height: { xs: '100%', md: '70%' },
-                                                    width: { xs: 80, md: '100%' },
+                                                    height: '70%',
+                                                    width: '100%',
                                                     overflow: 'hidden',
                                                     bgcolor: 'grey.100'
                                                 }}>
@@ -2104,6 +2158,68 @@ const POSPage: React.FC = () => {
                                                 </CardContent>
                                             </CardActionArea>
                                         </Card>
+
+                                        {/* Mobile Separate View */}
+                                        <Box sx={{ display: { xs: 'block', md: 'none' }, width: '100%' }}>
+                                            <Box sx={{
+                                                width: '100%',
+                                                pt: '100%', // 1:1 Aspect Ratio
+                                                position: 'relative',
+                                                borderRadius: 4,
+                                                overflow: 'hidden',
+                                                bgcolor: 'action.hover',
+                                                mb: 1,
+                                                border: '2px solid',
+                                                borderColor: 'secondary.light'
+                                            }}>
+                                                <Box sx={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%' }}>
+                                                    {/* Image Collage */}
+                                                    {combo.images && combo.images.length > 0 ? (
+                                                        <Box sx={{
+                                                            display: 'grid',
+                                                            gridTemplateColumns: combo.images.length > 1 ? '1fr 1fr' : '1fr',
+                                                            gridTemplateRows: combo.images.length > 2 ? '1fr 1fr' : '1fr',
+                                                            height: '100%',
+                                                            width: '100%',
+                                                            gap: 0.5,
+                                                            p: 0.5,
+                                                            bgcolor: 'white'
+                                                        }}>
+                                                            {combo.images.slice(0, 4).map((img: string, i: number) => (
+                                                                <Box
+                                                                    key={i}
+                                                                    component="img"
+                                                                    src={img}
+                                                                    sx={{
+                                                                        width: '100%',
+                                                                        height: '100%',
+                                                                        objectFit: 'cover',
+                                                                        borderRadius: 0.5,
+                                                                        gridColumn: combo.images.length === 3 && i === 0 ? '1 / span 2' : 'auto'
+                                                                    }}
+                                                                />
+                                                            ))}
+                                                        </Box>
+                                                    ) : (
+                                                        <Box sx={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'secondary.light', color: 'white' }}>
+                                                            <CouponIcon sx={{ fontSize: 40 }} />
+                                                        </Box>
+                                                    )}
+                                                </Box>
+                                                <Box sx={{
+                                                    position: 'absolute', top: 0, right: 0,
+                                                    bgcolor: 'secondary.main', color: 'white', px: 1, py: 0.5,
+                                                    borderBottomLeftRadius: 8, fontWeight: 'bold', fontSize: '0.65rem', zIndex: 2,
+                                                    boxShadow: 2
+                                                }}>
+                                                    COMBO DEAL
+                                                </Box>
+                                            </Box>
+                                            <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'secondary.dark', fontSize: '0.85rem', lineHeight: 1.2, mb: 0.5 }} noWrap>{combo.name}</Typography>
+                                            <Typography variant="caption" color="text.secondary" sx={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', lineHeight: 1.1 }}>
+                                                {combo.description || `Special combo`}
+                                            </Typography>
+                                        </Box>
                                     </Box>
                                 </Grid>
                             ))}
