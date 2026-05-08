@@ -33,6 +33,9 @@ import {
     DialogActions,
     Slider
 } from '@mui/material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import {
     Add as AddIcon,
     Visibility as ViewIcon,
@@ -48,7 +51,8 @@ import {
     TrendingUp as TrendIcon,
     AccountBalanceWallet as WalletIcon,
     Warning as AlertIcon,
-    History as HistoryIcon
+    History as HistoryIcon,
+    CalendarToday as CalendarIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { expensesAPI } from '../../services/api';
@@ -80,6 +84,7 @@ const ExpensesPage: React.FC = () => {
     const [customAmountRange, setCustomAmountRange] = useState({ min: 0, max: 5000 });
     const [amountRange, setAmountRange] = useState({ min: 0, max: 5000 });
     const [inputValues, setInputValues] = useState({ min: '', max: '' });
+    const [customDateRange, setCustomDateRange] = useState({ startDate: null, endDate: null });
 
     const fetchData = async () => {
         setLoading(true);
@@ -549,18 +554,19 @@ const ExpensesPage: React.FC = () => {
             </Box>
 
             {/* Custom Amount Filter Dialog */}
-            <Dialog 
-                open={showTimeFilterModal} 
-                onClose={() => setShowTimeFilterModal(false)}
-                maxWidth="sm"
-                fullWidth
-                PaperProps={{
-                    sx: {
-                        borderRadius: 4,
-                        boxShadow: '0 20px 40px rgba(0,0,0,0.15)'
-                    }
-                }}
-            >
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <Dialog 
+                    open={showTimeFilterModal} 
+                    onClose={() => setShowTimeFilterModal(false)}
+                    maxWidth="sm"
+                    fullWidth
+                    PaperProps={{
+                        sx: {
+                            borderRadius: 4,
+                            boxShadow: '0 20px 40px rgba(0,0,0,0.15)'
+                        }
+                    }}
+                >
                 <DialogTitle sx={{ pb: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
                     <Typography variant="h6" fontWeight={600}>Custom Amount Filter</Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
@@ -568,6 +574,68 @@ const ExpensesPage: React.FC = () => {
                     </Typography>
                 </DialogTitle>
                 <DialogContent sx={{ py: 3 }}>
+                    {/* Date Range Section - FIRST */}
+                    <Box sx={{ mb: 4 }}>
+                        <Typography variant="body2" color="text.secondary" sx={{ mt:2, mb: 3 }}>
+                            Date Range 
+                        </Typography>
+                        <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
+                            <DatePicker
+                                label="From Date"
+                                value={customDateRange.startDate}
+                                onChange={(newValue) => {
+                                    setCustomDateRange(prev => ({ 
+                                        ...prev, 
+                                        startDate: newValue 
+                                    }));
+                                }}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        size="small"
+                                        sx={{ flex: 1 }}
+                                        InputProps={{
+                                            ...params.InputProps,
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <CalendarIcon />
+                                                </InputAdornment>
+                                            ),
+                                        }}
+                                    />
+                                )}
+                            />
+                            <DatePicker
+                                label="To Date"
+                                value={customDateRange.endDate}
+                                onChange={(newValue) => {
+                                    setCustomDateRange(prev => ({ 
+                                        ...prev, 
+                                        endDate: newValue 
+                                    }));
+                                }}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        size="small"
+                                        sx={{ flex: 1 }}
+                                        InputProps={{
+                                            ...params.InputProps,
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <CalendarIcon />
+                                                </InputAdornment>
+                                            ),
+                                        }}
+                                    />
+                                )}
+                            />
+                        </Stack>
+                    </Box>
+                    
+                    <Divider sx={{ my: 3 }} />
+                    
+                    {/* Amount Range Section - SECOND */}
                     <Box sx={{ mb: 4 }}>
                         <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
                             Amount Range: ${amountRange.min} - ${amountRange.max}
@@ -645,7 +713,7 @@ const ExpensesPage: React.FC = () => {
                                     let finalValue = value;
                                     
                                     if (isNaN(value) || value < amountRange.min) {
-                                        finalValue = amountRange.min;
+                                        finalValue = amountRange.max;
                                     } else if (value > amountRange.max) {
                                         finalValue = amountRange.max;
                                     }
@@ -721,15 +789,30 @@ const ExpensesPage: React.FC = () => {
                             Filter Preview
                         </Typography>
                         <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                            Showing expenses between $${customAmountRange.min} and $${customAmountRange.max}
+                            Amount: $${customAmountRange.min} - $${customAmountRange.max}
                         </Typography>
+                        {customDateRange.startDate && customDateRange.endDate && (
+                            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                                Date: {customDateRange.startDate.toLocaleDateString()} - {customDateRange.endDate.toLocaleDateString()}
+                            </Typography>
+                        )}
+                        {(!customDateRange.startDate || !customDateRange.endDate) && (
+                            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                                Date: All dates
+                            </Typography>
+                        )}
                     </Box>
                 </DialogContent>
                 <DialogActions sx={{ p: 3, borderTop: '1px solid', borderColor: 'divider' }}>
                     <Button 
                         onClick={() => {
-                            // Reset slider to API default values
+                            // Reset slider and date range to defaults
                             setCustomAmountRange({ min: amountRange.min, max: amountRange.max });
+                            setCustomDateRange({ startDate: null, endDate: null });
+                            setInputValues({
+                                min: amountRange.min.toString(),
+                                max: amountRange.max.toString()
+                            });
                         }}
                         variant="outlined"
                         sx={{ borderRadius: 2 }}
@@ -745,7 +828,7 @@ const ExpensesPage: React.FC = () => {
                     </Button>
                     <Button 
                         onClick={() => {
-                            // Validate range before applying
+                            // Validate amount range before applying
                             const minVal = customAmountRange.min;
                             const maxVal = customAmountRange.max;
                             
@@ -754,18 +837,32 @@ const ExpensesPage: React.FC = () => {
                                 return;
                             }
                             
-                            // Apply custom amount filter
+                            // Validate date range if provided
+                            if (customDateRange.startDate && customDateRange.endDate) {
+                                if (customDateRange.startDate > customDateRange.endDate) {
+                                    toast.error('From date cannot be after To date');
+                                    return;
+                                }
+                            }
+                            
+                            // Apply custom filter with amount and date range
                             setTimeFilter('custom');
                             setFilters(prev => ({ 
                                 ...prev, 
-                                startDate: undefined, 
-                                endDate: undefined,
+                                startDate: customDateRange.startDate ? customDateRange.startDate.toISOString() : undefined, 
+                                endDate: customDateRange.endDate ? customDateRange.endDate.toISOString() : undefined,
                                 minAmount: minVal,
                                 maxAmount: maxVal
                             }));
                             setPage(1);
                             setShowTimeFilterModal(false);
-                            toast.success(`Filter applied: $${minVal} - $${maxVal}`);
+                            
+                            // Show success message with applied filters
+                            let message = `Filter applied: $${minVal} - $${maxVal}`;
+                            if (customDateRange.startDate && customDateRange.endDate) {
+                                message += ` | ${customDateRange.startDate.toLocaleDateString()} - ${customDateRange.endDate.toLocaleDateString()}`;
+                            }
+                            toast.success(message);
                         }}
                         variant="contained"
                         sx={{ borderRadius: 2, px: 3 }}
@@ -774,6 +871,7 @@ const ExpensesPage: React.FC = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
+            </LocalizationProvider>
         </Box>
     );
 };
