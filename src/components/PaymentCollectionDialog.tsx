@@ -92,6 +92,18 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
     const adjustedTotal = order ? (baseAmount + Math.max(order.tip || 0, targetTipAmount)) : 0;
     const amountDue = Math.max(0, adjustedTotal - totalPaid);
 
+    const maxUsablePoints = useMemo(() => {
+        if (!rewardPointsInfo?.settings) return 0;
+        const pointValue = Number(rewardPointsInfo.settings.pointValue) || 0;
+        if (pointValue <= 0) return 0;
+
+        const maxPercentage = (rewardPointsInfo.settings.maxRedemptionPercentage ?? 100) / 100;
+        const maxDiscountAllowed = (order?.subtotal || 0) * maxPercentage;
+
+        const maxPointsByBill = Math.floor(maxDiscountAllowed / pointValue);
+        return Math.min(rewardPointsInfo.points || 0, maxPointsByBill);
+    }, [rewardPointsInfo, order]);
+
     const [splitAmount, setSplitAmount] = useState<number | string>(Number(amountDue).toFixed(2));
 
     // Sync state when dialog opens or initial order changes
@@ -377,8 +389,8 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
                                                         size="small"
                                                         fullWidth
                                                         value={pointsToRedeem || ''}
-                                                        onChange={(e) => setPointsToRedeem(Math.max(0, parseInt(e.target.value) || 0))}
-                                                        inputProps={{ min: 0, max: rewardPointsInfo.points }}
+                                                        onChange={(e) => setPointsToRedeem(Math.min(maxUsablePoints, Math.max(0, parseInt(e.target.value) || 0)))}
+                                                        inputProps={{ min: 0, max: maxUsablePoints }}
                                                         disabled={rewardPointsInfo.points === 0 || (rewardPointsInfo.points < (rewardPointsInfo.settings?.minPointsToRedeem || 0))}
                                                     />
                                                     {rewardPointsInfo.settings?.minPointsToRedeem > 0 && (
@@ -391,8 +403,8 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
                                                     <Button
                                                         variant="outlined"
                                                         size="small"
-                                                        onClick={() => setPointsToRedeem(rewardPointsInfo.points)}
-                                                        disabled={rewardPointsInfo.points === 0}
+                                                        onClick={() => setPointsToRedeem(maxUsablePoints)}
+                                                        disabled={maxUsablePoints === 0 || (rewardPointsInfo.points < (rewardPointsInfo.settings?.minPointsToRedeem || 0))}
                                                     >
                                                         Max
                                                     </Button>
