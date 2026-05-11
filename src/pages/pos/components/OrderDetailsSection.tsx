@@ -188,7 +188,6 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
                                     icon={<CouponIcon />}
                                     onClick={() => {
                                         setCouponCode(c.code);
-                                        handleValidateCoupon(false, c.code);
                                     }}
                                     sx={{ cursor: 'pointer', fontSize: '0.65rem' }}
                                 />

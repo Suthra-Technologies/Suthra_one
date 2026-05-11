@@ -479,18 +479,21 @@ const TableBookingPage = () => {
                                 borderColor: 'divider',
                                 display: 'flex',
                                 flexDirection: 'column',
-                                overflow: 'hidden'
+                                overflow: 'hidden',
+                                justifyContent: { xs: 'flex-start', md: availableTables.length === 0 ? 'center' : 'flex-start' }
                             }}
                         >
                             <Box sx={{
                                 p: 3,
-                                borderBottom: '1px solid',
+                                borderBottom: { xs: '1px solid', md: availableTables.length === 0 ? 'none' : '1px solid' },
                                 borderColor: 'divider',
                                 display: 'flex',
                                 alignItems: 'center',
-                                justifySelf: 'flex-start',
-                                justifyContent: 'space-between',
-                                bgcolor: (theme) => alpha(theme.palette.background.default, 0.4)
+                                justifyContent: { xs: 'space-between', md: availableTables.length === 0 ? 'center' : 'space-between' },
+                                flexDirection: { xs: 'row', md: availableTables.length === 0 ? 'column' : 'row' },
+                                textAlign: { xs: 'left', md: availableTables.length === 0 ? 'center' : 'left' },
+                                bgcolor: (theme) => availableTables.length === 0 ? 'transparent' : alpha(theme.palette.background.default, 0.4),
+                                gap: 2
                             }}>
                                 <Box>
                                     <Typography variant="h6" fontWeight="bold" sx={{ fontSize: headingFontSize }}>
@@ -513,7 +516,8 @@ const TableBookingPage = () => {
                             <Box sx={{
                                 p: 3,
                                 overflowY: 'auto',
-                                flex: 1,
+                                flex: availableTables.length === 0 ? 'none' : 1,
+                                display: { xs: 'block', md: availableTables.length === 0 ? 'none' : 'block' },
                                 height: '100%',
                                 '&::-webkit-scrollbar': { width: '6px' },
                                 '&::-webkit-scrollbar-track': { background: 'transparent' },

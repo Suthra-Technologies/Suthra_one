@@ -907,7 +907,7 @@ const ReportsPage: React.FC = () => {
                             sx={{
                                 p: { xs: 2.5, sm: 3, md: 4 },
                                 borderRadius: 5,
-                                background: "#f5f5f5",
+                                background: isMobile ? "#f8f9fa" : "#f5f5f5",
                             }}
                         >
                             <Typography
@@ -938,53 +938,57 @@ const ReportsPage: React.FC = () => {
                                         key={index}
                                         sx={{
                                             mb: 2.5,
-                                            p: { xs: 1.5, sm: 2 },
-                                            borderRadius: 3,
+                                            p: { xs: 1.75, md: 1.5 },
+                                            borderRadius: { xs: 12, md: 3 },
                                             background: "#fff",
-                                            boxShadow: "0 4px 12px rgba(0,0,0,0.04)",
+                                            boxShadow: { xs: "0 8px 30px rgba(0,0,0,0.06)", md: "0 4px 12px rgba(0,0,0,0.04)" },
+                                            border: { xs: "1px solid rgba(0,0,0,0.04)", md: "none" },
                                         }}
                                     >
                                         <Typography
                                             variant="subtitle2"
                                             sx={{
-                                                fontWeight: 600,
-                                                mb: 1,
-                                                fontSize: { xs: 13, md: 14 }
+                                                fontWeight: 700,
+                                                mb: { xs: 1, md: 1.5 },
+                                                color: { xs: "#111827", md: "inherit" },
+                                                fontSize: { xs: 14, md: 14 }
                                             }}
                                         >
                                             {item.orderType}
                                         </Typography>
 
-                                        <Box
-                                            sx={{
-                                                height: 8,
-                                                background: "#eee",
-                                                borderRadius: 5,
-                                                overflow: "hidden",
-                                            }}
-                                        >
+                                        <Stack direction="row" spacing={2} alignItems="center">
                                             <Box
                                                 sx={{
-                                                    width: `${percent}%`,
-                                                    height: "100%",
-                                                    background: "#f4511e",
-                                                    borderRadius: 10,
+                                                    flexGrow: 1,
+                                                    height: 8,
+                                                    background: { xs: "#f1f2f6", md: "#eee" },
+                                                    borderRadius: 5,
+                                                    overflow: "hidden",
                                                 }}
-                                            />
-                                        </Box>
-
-                                        <Typography
-                                            variant="body2"
-                                            sx={{
-                                                textAlign: "right",
-                                                mt: 1,
-                                                color: "#f4511e",
-                                                fontWeight: 600,
-                                                fontSize: { xs: 12, md: 13 }
-                                            }}
-                                        >
-                                            {item.totalOrders}
-                                        </Typography>
+                                            >
+                                                <Box
+                                                    sx={{
+                                                        width: `${percent}%`,
+                                                        height: "100%",
+                                                        background: "#f4511e",
+                                                        borderRadius: 10,
+                                                    }}
+                                                />
+                                            </Box>
+                                            <Typography
+                                                variant="body2"
+                                                sx={{
+                                                    color: "#f4511e",
+                                                    fontWeight: 900,
+                                                    fontSize: { xs: 16, md: 13 },
+                                                    minWidth: { xs: 28, md: 30 },
+                                                    textAlign: 'right'
+                                                }}
+                                            >
+                                                {item.totalOrders}
+                                            </Typography>
+                                        </Stack>
                                     </Box>
                                 );
                             })}
@@ -1378,14 +1382,14 @@ const ReportsPage: React.FC = () => {
                             </Paper>
                         </Grid>
 
-                        {/* RIGHT SIDE */}
+                        {/* RIGHT SIDE — ORDER TYPE CARDS (Matches Dashboard UI) */}
                         <Grid item xs={12} md={4}>
                             <Paper
                                 elevation={0}
                                 sx={{
-                                    p: { xs: 2, sm: 3, md: 4 },
-                                    borderRadius: { xs: 4, sm: 5, md: 6 },
-                                    background: "transparent",
+                                    p: { xs: 2.5, sm: 3, md: 4 },
+                                    borderRadius: 5,
+                                    background: isMobile ? "#f8f9fa" : "transparent",
                                     height: "100%"
                                 }}
                             >
@@ -1393,86 +1397,84 @@ const ReportsPage: React.FC = () => {
                                     variant="h6"
                                     sx={{
                                         color: "#f4511e",
-                                        fontWeight: 700,
-                                        mb: isMobile ? 3 : 4,
-                                        fontSize: { xs: 16, md: 20 },
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 1
+                                        fontWeight: 600,
+                                        mb: { xs: 2, md: 3 },
+                                        fontSize: { xs: 16, md: 18 }
                                     }}
                                 >
                                     Order from
                                 </Typography>
 
-                                <Stack spacing={isMobile ? 2 : 3}>
-                                    {ordersByType.map((item, index) => {
-                                        const total = ordersByType.reduce((sum, o) => sum + (o.totalOrders || 0), 0);
-                                        const percent = total > 0 ? (item.totalOrders / total) * 100 : 0;
-                                        
-                                        return (
-                                            <Box
-                                                key={index}
+                                {filteredOrders.map((item, index) => {
+                                    const totalOrdersAll = ordersByType.reduce(
+                                        (sum, o) => sum + (Number(o.totalOrders) || 0),
+                                        0
+                                    );
+
+                                    const percent = totalOrdersAll
+                                        ? (Number(item.totalOrders) / totalOrdersAll) * 100
+                                        : 0;
+
+                                    return (
+                                        <Box
+                                            key={index}
+                                            sx={{
+                                                mb: 2.5,
+                                                p: { xs: 1.75, md: 1.5 },
+                                                borderRadius: { xs: 12, md: 3 },
+                                                background: "#fff",
+                                                boxShadow: { xs: "0 8px 30px rgba(0,0,0,0.06)", md: "0 4px 12px rgba(0,0,0,0.04)" },
+                                                border: { xs: "1px solid rgba(0,0,0,0.04)", md: "none" },
+                                            }}
+                                        >
+                                            <Typography
+                                                variant="subtitle2"
                                                 sx={{
-                                                    p: { xs: 2, md: 3 },
-                                                    borderRadius: 10,
-                                                    background: "rgba(244, 81, 30, 0.08)",
-                                                    transition: 'all 0.3s ease',
-                                                    '&:hover': {
-                                                        background: "rgba(244, 81, 30, 0.12)",
-                                                        transform: 'translateX(8px)'
-                                                    }
+                                                    fontWeight: 700,
+                                                    mb: { xs: 1, md: 1.5 },
+                                                    color: { xs: "#111827", md: "inherit" },
+                                                    fontSize: { xs: 14, md: 14 }
                                                 }}
                                             >
-                                                <Typography
-                                                    variant="subtitle2"
+                                                {item.orderType}
+                                            </Typography>
+
+                                            <Stack direction="row" spacing={2} alignItems="center">
+                                                <Box
                                                     sx={{
-                                                        fontWeight: 800,
-                                                        mb: 1.5,
-                                                        color: "#374151",
-                                                        fontSize: { xs: 13, md: 15 },
-                                                        textTransform: 'lowercase',
-                                                        letterSpacing: 0.5
+                                                        flexGrow: 1,
+                                                        height: 8,
+                                                        background: { xs: "#f1f2f6", md: "#eee" },
+                                                        borderRadius: 5,
+                                                        overflow: "hidden",
                                                     }}
                                                 >
-                                                    {item.orderType}
-                                                </Typography>
-
-                                                <Stack direction="row" spacing={2} alignItems="center">
                                                     <Box
                                                         sx={{
-                                                            flexGrow: 1,
-                                                            height: 10,
-                                                            background: "rgba(0,0,0,0.05)",
+                                                            width: `${percent}%`,
+                                                            height: "100%",
+                                                            background: "#f4511e",
                                                             borderRadius: 10,
-                                                            overflow: "hidden",
+                                                            transition: 'width 1s ease-in-out'
                                                         }}
-                                                    >
-                                                        <Box
-                                                            sx={{
-                                                                width: `${percent}%`,
-                                                                height: "100%",
-                                                                background: "#f4511e",
-                                                                borderRadius: 10,
-                                                                transition: 'width 1s ease-in-out'
-                                                            }}
-                                                        />
-                                                    </Box>
-                                                    <Typography
-                                                        variant="h6"
-                                                        sx={{
-                                                            color: "#f4511e",
-                                                            fontWeight: 900,
-                                                            fontSize: { xs: 14, md: 18 },
-                                                            minWidth: 30
-                                                        }}
-                                                    >
-                                                        {item.totalOrders}
-                                                    </Typography>
-                                                </Stack>
-                                            </Box>
-                                        );
-                                    })}
-                                </Stack>
+                                                    />
+                                                </Box>
+                                                <Typography
+                                                    variant="body2"
+                                                    sx={{
+                                                        color: "#f4511e",
+                                                        fontWeight: 900,
+                                                        fontSize: { xs: 16, md: 13 },
+                                                        minWidth: { xs: 28, md: 30 },
+                                                        textAlign: 'right'
+                                                    }}
+                                                >
+                                                    {item.totalOrders}
+                                                </Typography>
+                                            </Stack>
+                                        </Box>
+                                    );
+                                })}
                             </Paper>
                         </Grid>
 
