@@ -1384,8 +1384,13 @@ const POSPage: React.FC = () => {
                     finalPaymentMethod = 'cash';
                     console.log(`[Dine-in Payment] Replaced ${paymentMethod} with cash (pending status)`);
                 } else if (paymentMethod === 'cash' || paymentMethod === 'zelle' || paymentMethod === 'venmo') {
-                    // Keep cash/zelle/venmo but with pending status until payment is collected
-                    console.log(`[Dine-in Payment] Keeping ${paymentMethod} with pending status`);
+                    // Replace zelle/venmo with cash for dine-in orders, keep cash if already cash
+                    if (paymentMethod === 'zelle' || paymentMethod === 'venmo') {
+                        finalPaymentMethod = 'cash';
+                        console.log(`[Dine-in Payment] Replaced ${paymentMethod} with cash (pending status)`);
+                    } else {
+                        console.log(`[Dine-in Payment] Keeping ${paymentMethod} with pending status`);
+                    }
                 }
             }
 

@@ -672,7 +672,7 @@ const HomePage: React.FC = () => {
   const [formData, setFormData] = useState({
     businessName: "",
     email: "",
-    phonePrefix: "+91",
+    phonePrefix: "+1",
     phoneNumber: "",
     preferredDate: "",
     preferredTime: "",
@@ -750,7 +750,7 @@ const HomePage: React.FC = () => {
         setFormData({
           businessName: "",
           email: "",
-          phonePrefix: "+91",
+          phonePrefix: "+1",
           phoneNumber: "",
           preferredDate: "",
           preferredTime: "",

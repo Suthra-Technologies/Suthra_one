@@ -684,7 +684,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                     </Stack>
                 </Box>
 
-                {/* Payment Method */}
+                {/* Payment Method - Show Pending before payment, actual method after payment */}
                 <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
                         <PaymentIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
@@ -693,7 +693,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                         </Typography>
                     </Box>
                     <Chip
-                        label={getPaymentMethodLabel(order.payments && order.payments.length > 0 ? order.payments.map((p: any) => p.method) : order.paymentMethod)}
+                        label={order.paymentStatus === 'pending' ? 'Pending' : getPaymentMethodLabel(order.payments && order.payments.length > 0 ? order.payments.map((p: any) => p.method) : order.paymentMethod)}
                         size="small"
                         sx={{
                             bgcolor: alpha(order.paymentStatus === 'pending' ? theme.palette.warning.main : getPaymentBadgeColor(order.payments && order.payments.length > 0 ? order.payments[0].method : order.paymentMethod), 0.1),
