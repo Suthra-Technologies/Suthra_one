@@ -8,6 +8,7 @@ import {
     RestaurantMenu,
     Search as SearchIcon,
     SearchOff,
+    Tune as TuneIcon,
 } from '@mui/icons-material';
 import {
     Alert,
@@ -34,7 +35,12 @@ import {
     Tab,
     Tabs,
     TextField,
-    Typography
+    Typography,
+    Radio,
+    RadioGroup,
+    FormControlLabel,
+    Checkbox,
+    FormControl
 } from '@mui/material';
 import type { AxiosError } from 'axios';
 import { format } from 'date-fns';
@@ -1521,15 +1527,23 @@ const POSPage: React.FC = () => {
 
         // Auto-select defaults
         const defaults: Record<string, ModifierOption[]> = {};
-        if (item.modifierGroups) {
-            item.modifierGroups.forEach(g => {
-                const defs = g.options.filter(o => o.isDefault);
-                if (defs.length > 0) {
-                    // For single select, only take the first default
-                    if (g.selectionType === 'single') {
-                        defaults[g.name] = [defs[0]];
-                    } else {
-                        defaults[g.name] = defs;
+        const allGroups = [
+            ...(item.modifierGroups || []),
+            ...((item as any).linkedGroups || [])
+        ];
+        
+        if (allGroups.length > 0) {
+            allGroups.forEach(g => {
+                // Safety check: ensure g is an object and has options array
+                if (g && typeof g === 'object' && Array.isArray(g.options)) {
+                    const defs = g.options.filter((o: any) => o.isDefault);
+                    if (defs.length > 0) {
+                        // For single select, only take the first default
+                        if (g.selectionType === 'single') {
+                            defaults[g.name] = [defs[0]];
+                        } else {
+                            defaults[g.name] = defs;
+                        }
                     }
                 }
             });
@@ -1540,8 +1554,9 @@ const POSPage: React.FC = () => {
         // Check if item has spice levels enabled
         const hasSpiceLevels = (item as any).isSpiceLevelAvailable && (item as any).spiceLevels && (item as any).spiceLevels.length > 0;
         const hasTrays = false;
+        const hasModifiers = (item.modifierGroups && item.modifierGroups.length > 0) || ((item as any).linkedGroups && (item as any).linkedGroups.length > 0);
 
-        if ((item.variants && item.variants.length > 0) || (item.modifierGroups && item.modifierGroups.length > 0) || hasTrays || hasSpiceLevels) {
+        if ((item.variants && item.variants.length > 0) || hasModifiers || hasTrays || hasSpiceLevels) {
             setSelectedItem(item);
             if (hasSpiceLevels) {
                 setTempSelectedSpiceLevel((item as any).spiceLevels[0]);
@@ -1600,16 +1615,20 @@ const POSPage: React.FC = () => {
                 const sanitizedItem = { ...item };
                 // Set default modifiers if any
                 const defaults: Record<string, ModifierOption[]> = {};
-                if (item.modifierGroups) {
-                    item.modifierGroups.forEach(g => {
-                        const defs = g.options.filter(o => o.isDefault);
+                const allGroups = [
+                    ...(item.modifierGroups || []),
+                    ...((item as any).linkedGroups || [])
+                ];
+                if (allGroups.length > 0) {
+                    allGroups.forEach(g => {
+                        const defs = g.options.filter((o: any) => o.isDefault);
                         if (defs.length > 0) {
                             defaults[g.name] = g.selectionType === 'single' ? [defs[0]] : defs;
                         }
                     });
                 }
                 const spiceLevel = (item as any).isSpiceLevelAvailable ? (item as any).spiceLevels?.[0] : undefined;
-                const modifiers = Object.values(defaults).flat();
+                const modifiers = Object.entries(defaults).flatMap(([groupName, opts]) => opts.map(o => ({ ...o, groupName })));
                 const modifiersStr = modifiers.sort((a, b) => a.name.localeCompare(b.name)).map(m => m.name).join(',');
                 const cartId = `${item._id}::none::base::${spiceLevel || 'none'}::${modifiersStr}`;
 
@@ -1659,8 +1678,16 @@ const POSPage: React.FC = () => {
         if (!selectedItem) return;
 
         // Validation: Check modifier groups
-        if (selectedItem.modifierGroups) {
-            for (const group of selectedItem.modifierGroups) {
+        const allGroups = [
+            ...(selectedItem.modifierGroups || []),
+            ...((selectedItem as any).linkedGroups || [])
+        ];
+        
+        if (allGroups.length > 0) {
+            for (const group of allGroups) {
+                // Safety check: skip invalid or unpopulated groups
+                if (!group || typeof group !== 'object' || !Array.isArray(group.options)) continue;
+                
                 const selected = tempModifiers[group.name] || [];
 
                 if (group.required && selected.length === 0) {
@@ -1720,7 +1747,7 @@ const POSPage: React.FC = () => {
             name: displayName,
             image: selectedItem.image,
             variant: tempSelectedVariant,
-            modifiers: Object.values(tempModifiers).flat(),
+            modifiers: Object.entries(tempModifiers).flatMap(([groupName, opts]) => opts.map(o => ({ ...o, groupName }))),
             tray: tempSelectedTray?.tray,
             spiceLevel: hasSpiceLevels ? tempSelectedSpiceLevel : undefined,
             trayMultiplier: 1,
@@ -2671,7 +2698,11 @@ const POSPage: React.FC = () => {
                                     mr: 2,
                                     flexShrink: 0
                                 }}>
-                                    <span style={{ fontSize: '20px' }}>🌶️</span>
+                                    {(selectedItem.variants?.length || 0) > 0 || (selectedItem.modifierGroups?.length || 0) > 0 || ((selectedItem as any).linkedGroups?.length || 0) > 0 ? (
+                                        <TuneIcon sx={{ fontSize: '20px', color: 'primary.main' }} />
+                                    ) : (
+                                        <span style={{ fontSize: '20px' }}>🌶️</span>
+                                    )}
                                 </Box>
                                 <Box sx={{ flexGrow: 1 }}>
                                     <Typography sx={{
@@ -2682,13 +2713,13 @@ const POSPage: React.FC = () => {
                                         textTransform: 'uppercase',
                                         mb: 0.5
                                     }}>
-                                        Choose Spice Level
+                                    {(selectedItem.variants?.length || 0) > 0 || (selectedItem.modifierGroups?.length || 0) > 0 || ((selectedItem as any).linkedGroups?.length || 0) > 0 ? 'Customize Your Item' : 'Choose Spice Level'}
                                     </Typography>
                                     <Typography variant="h4" sx={{ fontWeight: 900, fontSize: '1.75rem', color: 'text.primary', lineHeight: 1.2, mb: 1 }}>
                                         {selectedItem.name}
                                     </Typography>
                                     <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>
-                                        Pick the spice level you want before adding this dish to cart.
+                                        Select your preferences before adding this item to the cart.
                                     </Typography>
                                 </Box>
                                 <IconButton
@@ -2742,10 +2773,143 @@ const POSPage: React.FC = () => {
                                 </Box>
 
                                 {/* Variants & Modifiers (If any) */}
-                                {((selectedItem.variants?.length || 0) > 0 || (selectedItem.modifierGroups?.length || 0) > 0) && (
+                                {((selectedItem.variants?.length || 0) > 0 || (selectedItem.modifierGroups?.length || 0) > 0 || ((selectedItem as any).linkedGroups?.length || 0) > 0) && (
                                     <Box sx={{ mb: 4 }}>
                                         <Divider sx={{ mb: 3, borderStyle: 'dashed' }} />
-                                        {/* Render variants/modifiers logic here if needed, but the UI focuses on spice levels */}
+                                        
+                                        {/* Variants Section */}
+                                        {selectedItem.variants && selectedItem.variants.length > 0 && (
+                                            <Box sx={{ mb: 4 }}>
+                                                <Typography sx={{ color: 'primary.main', fontWeight: 900, fontSize: '0.75rem', letterSpacing: '0.5px', mb: 2 }}>
+                                                    SELECT OPTION
+                                                </Typography>
+                                                <RadioGroup
+                                                    value={tempSelectedVariant?.name || ''}
+                                                    onChange={(e) => {
+                                                        const variant = selectedItem.variants?.find(v => v.name === e.target.value);
+                                                        if (variant) setTempSelectedVariant(variant);
+                                                    }}
+                                                >
+                                                    <Grid container spacing={2}>
+                                                        {selectedItem.variants.map((variant, idx) => (
+                                                            <Grid item xs={12} key={idx}>
+                                                                <Paper
+                                                                    variant="outlined"
+                                                                    sx={{
+                                                                        p: 2,
+                                                                        borderRadius: '16px',
+                                                                        cursor: 'pointer',
+                                                                        borderColor: tempSelectedVariant?.name === variant.name ? 'primary.main' : 'divider',
+                                                                        bgcolor: tempSelectedVariant?.name === variant.name ? alpha(theme.palette.primary.main, 0.05) : 'background.paper',
+                                                                        transition: 'all 0.2s',
+                                                                        '&:hover': { borderColor: 'primary.main', bgcolor: alpha(theme.palette.primary.main, 0.02) }
+                                                                    }}
+                                                                    onClick={() => setTempSelectedVariant(variant)}
+                                                                >
+                                                                    <FormControlLabel
+                                                                        value={variant.name}
+                                                                        control={<Radio size="small" />}
+                                                                        label={
+                                                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', flexGrow: 1 }}>
+                                                                                <Typography sx={{ fontWeight: 700, fontSize: '0.95rem' }}>{variant.name}</Typography>
+                                                                                <Typography sx={{ fontWeight: 900, color: 'primary.main' }}>+{formatSmartPrice(variant.price)}</Typography>
+                                                                            </Box>
+                                                                        }
+                                                                        sx={{ width: '100%', m: 0, '& .MuiFormControlLabel-label': { flexGrow: 1 } }}
+                                                                    />
+                                                                </Paper>
+                                                            </Grid>
+                                                        ))}
+                                                    </Grid>
+                                                </RadioGroup>
+                                            </Box>
+                                        )}
+
+                                        {/* Modifier Groups Section */}
+                                        {[...(selectedItem.modifierGroups || []), ...((selectedItem as any).linkedGroups || [])]
+                                            .filter(g => g && typeof g === 'object')
+                                            .map((group, groupIdx) => (
+                                            <Box key={groupIdx} sx={{ mb: 4 }}>
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                        <Typography sx={{ color: 'primary.main', fontWeight: 900, fontSize: '0.75rem', letterSpacing: '0.5px' }}>
+                                                            {group.name.toUpperCase()}
+                                                        </Typography>
+                                                        {group.required && (
+                                                            <Chip label="Required" size="small" sx={{ height: 18, fontSize: '0.6rem', fontWeight: 900, bgcolor: 'error.main', color: 'white' }} />
+                                                        )}
+                                                    </Box>
+                                                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                                        {group.selectionType === 'single' ? 'Choose 1' : 
+                                                            group.minSelection ? `Choose at least ${group.minSelection}` : 'Optional'}
+                                                    </Typography>
+                                                </Box>
+
+                                                <Grid container spacing={1}>
+                                                    {group.options.map((option, optIdx) => {
+                                                        const isSelected = (tempModifiers[group.name] || []).some(o => o.name === option.name);
+                                                        
+                                                        const toggleOption = () => {
+                                                            const current = [...(tempModifiers[group.name] || [])];
+                                                            if (group.selectionType === 'single') {
+                                                                setTempModifiers({ ...tempModifiers, [group.name]: [option] });
+                                                            } else {
+                                                                if (isSelected) {
+                                                                    setTempModifiers({
+                                                                        ...tempModifiers,
+                                                                        [group.name]: current.filter(o => o.name !== option.name)
+                                                                    });
+                                                                } else {
+                                                                    if (!group.maxSelection || current.length < group.maxSelection) {
+                                                                        setTempModifiers({
+                                                                            ...tempModifiers,
+                                                                            [group.name]: [...current, option]
+                                                                        });
+                                                                    } else {
+                                                                        toast.error(`Maximum ${group.maxSelection} selections allowed for ${group.name}`);
+                                                                    }
+                                                                }
+                                                            }
+                                                        };
+
+                                                        return (
+                                                            <Grid item xs={12} key={optIdx}>
+                                                                <Paper
+                                                                    variant="outlined"
+                                                                    sx={{
+                                                                        p: 1.5,
+                                                                        borderRadius: '12px',
+                                                                        cursor: 'pointer',
+                                                                        borderColor: isSelected ? 'primary.main' : 'divider',
+                                                                        bgcolor: isSelected ? alpha(theme.palette.primary.main, 0.05) : 'background.paper',
+                                                                        '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.02) }
+                                                                    }}
+                                                                    onClick={toggleOption}
+                                                                >
+                                                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                            {group.selectionType === 'single' ? (
+                                                                                <Radio size="small" checked={isSelected} sx={{ p: 0.5 }} />
+                                                                            ) : (
+                                                                                <Checkbox size="small" checked={isSelected} sx={{ p: 0.5 }} />
+                                                                            )}
+                                                                            <Typography sx={{ fontSize: '0.9rem', fontWeight: isSelected ? 700 : 500 }}>
+                                                                                {option.name}
+                                                                            </Typography>
+                                                                        </Box>
+                                                                        {option.price > 0 && (
+                                                                            <Typography sx={{ fontSize: '0.85rem', fontWeight: 700, color: 'text.secondary' }}>
+                                                                                +{formatSmartPrice(option.price)}
+                                                                            </Typography>
+                                                                        )}
+                                                                    </Box>
+                                                                </Paper>
+                                                            </Grid>
+                                                        );
+                                                    })}
+                                                </Grid>
+                                            </Box>
+                                        ))}
                                     </Box>
                                 )}
 
@@ -2872,14 +3036,16 @@ const POSPage: React.FC = () => {
 
                                 {/* Footer Selection Display & Actions */}
                                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <Box>
-                                        <Typography sx={{ color: 'text.disabled', fontSize: '0.75rem', fontWeight: 900, letterSpacing: '0.5px' }}>
-                                            SELECTED
-                                        </Typography>
-                                        <Typography variant="h6" sx={{ fontWeight: 900, color: 'text.primary' }}>
-                                            {tempSelectedSpiceLevel || (selectedItem as any).spiceLevels?.[0] || 'None'}
-                                        </Typography>
-                                    </Box>
+                                    {(selectedItem as any).isSpiceLevelAvailable && (selectedItem as any).spiceLevels?.length > 0 && (
+                                        <Box>
+                                            <Typography sx={{ color: 'text.disabled', fontSize: '0.75rem', fontWeight: 900, letterSpacing: '0.5px' }}>
+                                                SELECTED
+                                            </Typography>
+                                            <Typography variant="h6" sx={{ fontWeight: 900, color: 'text.primary' }}>
+                                                {tempSelectedSpiceLevel || (selectedItem as any).spiceLevels?.[0] || 'None'}
+                                            </Typography>
+                                        </Box>
+                                    )}
                                     <Box sx={{ display: 'flex', gap: 2 }}>
                                         <Button
                                             variant="outlined"

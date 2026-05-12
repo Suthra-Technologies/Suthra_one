@@ -20,6 +20,7 @@ import CustomersPage from '../pages/customers/CustomersPage';
 import KitchenInterface from '../pages/kitchen/KitchenInterface';
 import KitchenOrdersPage from '../pages/kitchen/KitchenOrdersPage';
 import MenuPage from '../pages/menu/MenuPage';
+import AddOnGroupsPage from '../pages/menu/AddOnGroupsPage';
 import TraysPage from '../pages/menu/TraysPage';
 import OrdersPage from '../pages/orders/OrdersPage';
 import POSPage from '../pages/pos/POSPage';
@@ -92,6 +93,7 @@ export const TenantRoutes = () => (
         <Route path="expenses/create" element={<CreateExpensePage />} />
         <Route path="expenses/edit/:id" element={<CreateExpensePage />} />
         <Route path="menu" element={<MenuPage />} />
+        <Route path="global-add-ons" element={<AddOnGroupsPage />} />
         <Route element={<RequireFeature feature="inventory" />}>
           <Route path="inventory" element={<InventoryPage />} />
         </Route>
