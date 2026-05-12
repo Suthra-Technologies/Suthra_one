@@ -294,6 +294,15 @@ export const menuAPI = {
   deleteSubcategory: (id: string) => api.delete(`/menu/subcategories/${id}`),
 };
 
+// -------------------- Modifier Templates API --------------------
+export const modifierTemplatesAPI = {
+  getAll: () => api.get('/menu/templates'),
+  getOne: (id: string) => api.get(`/menu/templates/${id}`),
+  create: (data: any) => api.post('/menu/templates', data),
+  update: (id: string, data: any) => api.put(`/menu/templates/${id}`, data),
+  delete: (id: string) => api.delete(`/menu/templates/${id}`),
+};
+
 // -------------------- Tax Categories API (External) --------------------
 export const taxCategoriesAPI = {
   getAll: (params?: { search?: string; page?: number; limit?: number }) =>

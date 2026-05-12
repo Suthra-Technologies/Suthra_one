@@ -13,7 +13,8 @@ import {
     Straighten as StraightenIcon,
     MenuBook as MenuBookIcon,
     Today as TodayIcon,
-    Menu as MenuIcon
+    Menu as MenuIcon,
+    PlaylistAdd as PlaylistAddIcon
 } from '@mui/icons-material';
 import {
     Box,
@@ -62,6 +63,7 @@ import TraysPage from './TraysPage';
 import RecipesPage from '../recipes/RecipesPage';
 import type { Category, Subcategory, IMenuItem } from './types';
 import MenuItemDialog from './components/MenuItemDialog';
+import AddOnGroupsPage from './AddOnGroupsPage';
 import TaxCategorySelector from './components/TaxCategorySelector';
 import { useActiveTenant } from '../../hooks/useActiveTenant';
 
@@ -857,6 +859,7 @@ const MenuPage: React.FC = () => {
                 <Tab label="Categories" icon={<CategoryIcon />} iconPosition="start" sx={{ fontWeight: 'bold', textTransform: 'none' }} />
                 <Tab label="Trays" icon={<StraightenIcon />} iconPosition="start" sx={{ fontWeight: 'bold', textTransform: 'none' }} />
                 <Tab label="Recipes" icon={<MenuBookIcon />} iconPosition="start" sx={{ fontWeight: 'bold', textTransform: 'none' }} />
+                <Tab label="Add-ons" icon={<PlaylistAddIcon />} iconPosition="start" sx={{ fontWeight: 'bold', textTransform: 'none' }} />
             </Tabs>
 
             {/* Menu Items Tab */}
@@ -1368,6 +1371,13 @@ const MenuPage: React.FC = () => {
             {tabValue === 3 && (
                 <Box>
                     <RecipesPage hideHeader />
+                </Box>
+            )}
+
+            {/* Add-on Groups Tab */}
+            {tabValue === 4 && (
+                <Box>
+                    <AddOnGroupsPage hideHeader />
                 </Box>
             )}
 

@@ -54,6 +54,7 @@ import {
   Public as WebIcon,
   DashboardCustomize,
   Gavel,
+  PlaylistAdd,
 } from '@mui/icons-material';
 import { Collapse } from '@mui/material';
 import { useAuth } from '../context/AuthContext';

@@ -1,7 +1,9 @@
 import {
     Add as AddIcon,
     Close as CloseIcon,
+    Delete as DeleteIcon,
     Image as ImageIcon,
+    PlaylistAdd as PlaylistAddIcon,
     Restaurant as RestaurantIcon,
     Straighten as StraightenIcon,
     Today as TodayIcon
@@ -9,12 +11,14 @@ import {
 import {
     Box,
     Button,
+    Checkbox,
     Chip,
     CircularProgress,
     Dialog,
     DialogActions,
     DialogContent,
     DialogTitle,
+    Divider,
     FormControl,
     FormControlLabel,
     Grid,
@@ -29,6 +33,7 @@ import {
     Tab,
     Tabs,
     TextField,
+    Tooltip,
     Typography,
     alpha,
     useMediaQuery,
@@ -39,7 +44,7 @@ import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import ActionHistoryList from '../../../components/common/ActionHistoryList';
 import { useSettings } from '../../../context/SettingsContext';
-import { menuAPI, uploadAPI } from '../../../services/api';
+import { menuAPI, modifierTemplatesAPI, uploadAPI } from '../../../services/api';
 import type {
     Category,
     IMenuItem,
@@ -76,6 +81,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
     trays
 }) => {
     const theme = useTheme();
+    const [templates, setTemplates] = useState<ModifierGroupTemplate[]>([]);
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const navigate = useNavigate();
     const { formatCurrency } = useSettings();
@@ -113,6 +119,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
         validFrom: null as Date | null,
         validTo: null as Date | null,
         priority: '' as string | number,
+        linkedGroups: [] as string[],
     });
 
     const [menuItemTouched, setMenuItemTouched] = useState({
@@ -126,6 +133,12 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
     });
 
     const [isSaving, setIsSaving] = useState(false);
+
+    useEffect(() => {
+        if (open) {
+            modifierTemplatesAPI.getAll().then(res => setTemplates(res.data)).catch(err => console.error(err));
+        }
+    }, [open]);
 
     // Initialize form when editingMenuItem changes or dialog opens
     useEffect(() => {
@@ -172,6 +185,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                     displayOption: item.displayOption || 'normal',
                     validTo: item.validTo ? new Date(item.validTo) : null,
                     priority: item.priority || '',
+                    linkedGroups: item.linkedGroups ? item.linkedGroups.map((g: any) => typeof g === 'string' ? g : g._id) : [],
                 });
             } else {
                 // Reset for new item
@@ -204,6 +218,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                     validFrom: null,
                     validTo: null,
                     priority: '',
+                    linkedGroups: [],
                 });
             }
             setMenuItemTouched({
@@ -384,6 +399,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                     }}
                 >
                     <Tab label="Details" />
+                    <Tab label="Variants & Modifiers" />
                     <Tab label="History" disabled={!editingMenuItem} />
                 </Tabs>
                 {dialogTab === 0 && (
@@ -622,23 +638,23 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                                         }
                                                     }}
                                                     renderValue={(selected) => (
-                                                        <Box sx={{ 
-                                                            overflowX: 'auto', 
-                                                            whiteSpace: 'nowrap', 
+                                                        <Box sx={{
+                                                            overflowX: 'auto',
+                                                            whiteSpace: 'nowrap',
                                                             width: '100%',
                                                             '&::-webkit-scrollbar': { height: '2px' },
                                                             '&::-webkit-scrollbar-thumb': { backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 1 }
                                                         }}>
-                                                            {selected === 'highlight' 
-                                                                ? 'Highlight Only (Available Everyday, Highlighted on specific days)' 
+                                                            {selected === 'highlight'
+                                                                ? 'Highlight Only (Available Everyday, Highlighted on specific days)'
                                                                 : 'Available Only on Selected Days'}
                                                         </Box>
                                                     )}
                                                 >
                                                     <MenuItem value="highlight">
-                                                        <Box sx={{ 
-                                                            overflowX: 'auto', 
-                                                            whiteSpace: 'nowrap', 
+                                                        <Box sx={{
+                                                            overflowX: 'auto',
+                                                            whiteSpace: 'nowrap',
                                                             width: '100%',
                                                             '&::-webkit-scrollbar': { height: '2px' },
                                                             '&::-webkit-scrollbar-thumb': { backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 1 }
@@ -647,9 +663,9 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                                         </Box>
                                                     </MenuItem>
                                                     <MenuItem value="available_only">
-                                                        <Box sx={{ 
-                                                            overflowX: 'auto', 
-                                                            whiteSpace: 'nowrap', 
+                                                        <Box sx={{
+                                                            overflowX: 'auto',
+                                                            whiteSpace: 'nowrap',
                                                             width: '100%',
                                                             '&::-webkit-scrollbar': { height: '2px' },
                                                             '&::-webkit-scrollbar-thumb': { backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: 1 }
@@ -779,7 +795,296 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                         </Grid>
                     </Grid>
                 )}
-                {dialogTab === 1 && editingMenuItem && (
+
+                {dialogTab === 1 && (
+                    <Box sx={{ mt: 3 }}>
+                        <Grid container spacing={3}>
+                            {/* Variants Section */}
+                            <Grid item xs={12} md={6}>
+                                <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: alpha(theme.palette.primary.main, 0.02) }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                        <Typography variant="subtitle2" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <StraightenIcon fontSize="small" color="primary" /> Item Variants
+                                        </Typography>
+                                        <Button
+                                            startIcon={<AddIcon />}
+                                            size="small"
+                                            onClick={() => {
+                                                const newVariants = [...menuItemForm.variants, { name: '', price: 0 }];
+                                                setMenuItemForm({ ...menuItemForm, variants: newVariants });
+                                            }}
+                                        >
+                                            Add Variant
+                                        </Button>
+                                    </Box>
+                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+                                        Create options like "Small", "Medium", "Large" or different flavors.
+                                    </Typography>
+                                    <Stack spacing={2}>
+                                        {menuItemForm.variants.map((variant, index) => (
+                                            <Box key={index} sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                                <TextField
+                                                    label="Name"
+                                                    value={variant.name}
+                                                    size="small"
+                                                    fullWidth
+                                                    onChange={(e) => {
+                                                        const newVariants = [...menuItemForm.variants];
+                                                        newVariants[index].name = e.target.value;
+                                                        setMenuItemForm({ ...menuItemForm, variants: newVariants });
+                                                    }}
+                                                />
+                                                <TextField
+                                                    label="Price"
+                                                    type="number"
+                                                    value={variant.price}
+                                                    size="small"
+                                                    sx={{ width: 120 }}
+                                                    onChange={(e) => {
+                                                        const newVariants = [...menuItemForm.variants];
+                                                        newVariants[index].price = parseFloat(e.target.value) || 0;
+                                                        setMenuItemForm({ ...menuItemForm, variants: newVariants });
+                                                    }}
+                                                />
+                                                <IconButton
+                                                    color="error"
+                                                    size="small"
+                                                    onClick={() => {
+                                                        const newVariants = menuItemForm.variants.filter((_, i) => i !== index);
+                                                        setMenuItemForm({ ...menuItemForm, variants: newVariants });
+                                                    }}
+                                                >
+                                                    <DeleteIcon />
+                                                </IconButton>
+                                            </Box>
+                                        ))}
+                                        {menuItemForm.variants.length === 0 && (
+                                            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2, border: '1px dashed', borderColor: 'divider', borderRadius: 1 }}>
+                                                No variants added
+                                            </Typography>
+                                        )}
+                                    </Stack>
+                                </Paper>
+                            </Grid>
+
+                            {/* Modifier Groups Section */}
+                            <Grid item xs={12} md={6}>
+                                <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, bgcolor: alpha(theme.palette.secondary.main, 0.02) }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                        <Typography variant="subtitle2" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <PlaylistAddIcon fontSize="small" color="secondary" /> Add-ons & Customizations
+                                        </Typography>
+                                    </Box>
+
+                                    <Box sx={{ mb: 3 }}>
+                                        <FormControl fullWidth size="small">
+                                            <InputLabel>Global Add-on Templates</InputLabel>
+                                            <Select
+                                                multiple
+                                                value={menuItemForm.linkedGroups}
+                                                onChange={(e) => setMenuItemForm({ ...menuItemForm, linkedGroups: typeof e.target.value === 'string' ? e.target.value.split(',') : e.target.value })}
+                                                input={<OutlinedInput label="Global Add-on Templates" />}
+                                                renderValue={(selected) => (
+                                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                                        {selected.map((value) => (
+                                                            <Chip key={value} label={templates.find(t => t._id === value)?.name || value} size="small" />
+                                                        ))}
+                                                    </Box>
+                                                )}
+                                            >
+                                                {templates.length === 0 && <MenuItem disabled>No global add-ons found</MenuItem>}
+                                                {templates.map((template) => (
+                                                    <MenuItem key={template._id} value={template._id}>
+                                                        {template.name}
+                                                    </MenuItem>
+                                                ))}
+                                            </Select>
+                                            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block', fontStyle: 'italic' }}>
+                                                Select reusable groups defined in the "Global Add-ons" manager.
+                                            </Typography>
+                                        </FormControl>
+                                    </Box>
+
+                                    <Divider sx={{ mb: 2, borderStyle: 'dashed' }} />
+
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                                        <Typography variant="caption" fontWeight="bold" color="secondary">Custom Local Modifiers</Typography>
+                                        <Button
+                                            variant="outlined"
+                                            color="secondary"
+                                            startIcon={<AddIcon />}
+                                            size="small"
+                                            onClick={() => {
+                                                const newGroups = [...menuItemForm.modifierGroups, {
+                                                    name: '',
+                                                    selectionType: 'single',
+                                                    required: false,
+                                                    options: []
+                                                }];
+                                                setMenuItemForm({ ...menuItemForm, modifierGroups: newGroups });
+                                            }}
+                                        >
+                                            Add Group
+                                        </Button>
+                                    </Box>
+                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+                                        Groups of add-ons like "Toppings", "Sides", or "Choice of Protein".
+                                    </Typography>
+
+                                    <Stack spacing={3}>
+                                        {menuItemForm.modifierGroups.map((group, groupIndex) => (
+                                            <Paper key={groupIndex} variant="outlined" sx={{ p: 2, position: 'relative', borderColor: 'divider' }}>
+                                                <IconButton
+                                                    sx={{ position: 'absolute', right: 4, top: 4 }}
+                                                    color="error"
+                                                    size="small"
+                                                    onClick={() => {
+                                                        const newGroups = menuItemForm.modifierGroups.filter((_, i) => i !== groupIndex);
+                                                        setMenuItemForm({ ...menuItemForm, modifierGroups: newGroups });
+                                                    }}
+                                                >
+                                                    <DeleteIcon fontSize="small" />
+                                                </IconButton>
+
+                                                <Grid container spacing={2}>
+                                                    <Grid item xs={12} sm={6}>
+                                                        <TextField
+                                                            label="Group Name"
+                                                            value={group.name}
+                                                            size="small"
+                                                            fullWidth
+                                                            onChange={(e) => {
+                                                                const newGroups = [...menuItemForm.modifierGroups];
+                                                                newGroups[groupIndex].name = e.target.value;
+                                                                setMenuItemForm({ ...menuItemForm, modifierGroups: newGroups });
+                                                            }}
+                                                        />
+                                                    </Grid>
+                                                    <Grid item xs={12} sm={6}>
+                                                        <FormControl fullWidth size="small">
+                                                            <InputLabel>Selection Type</InputLabel>
+                                                            <Select
+                                                                value={group.selectionType}
+                                                                label="Selection Type"
+                                                                onChange={(e) => {
+                                                                    const newGroups = [...menuItemForm.modifierGroups];
+                                                                    newGroups[groupIndex].selectionType = e.target.value as any;
+                                                                    setMenuItemForm({ ...menuItemForm, modifierGroups: newGroups });
+                                                                }}
+                                                            >
+                                                                <MenuItem value="single">Single (Radio)</MenuItem>
+                                                                <MenuItem value="multiple">Multiple (Checkbox)</MenuItem>
+                                                            </Select>
+                                                        </FormControl>
+                                                    </Grid>
+                                                    <Grid item xs={12}>
+                                                        <FormControlLabel
+                                                            control={
+                                                                <Checkbox
+                                                                    size="small"
+                                                                    checked={group.required}
+                                                                    onChange={(e) => {
+                                                                        const newGroups = [...menuItemForm.modifierGroups];
+                                                                        newGroups[groupIndex].required = e.target.checked;
+                                                                        setMenuItemForm({ ...menuItemForm, modifierGroups: newGroups });
+                                                                    }}
+                                                                />
+                                                            }
+                                                            label={<Typography variant="body2">Required for Customer</Typography>}
+                                                        />
+                                                    </Grid>
+                                                </Grid>
+
+                                                <Divider sx={{ my: 2 }} />
+
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                                    <Typography variant="caption" fontWeight="bold">Options</Typography>
+                                                    <Button
+                                                        size="small"
+                                                        startIcon={<AddIcon />}
+                                                        onClick={() => {
+                                                            const newGroups = [...menuItemForm.modifierGroups];
+                                                            newGroups[groupIndex].options.push({ name: '', price: 0, isDefault: false });
+                                                            setMenuItemForm({ ...menuItemForm, modifierGroups: newGroups });
+                                                        }}
+                                                    >
+                                                        Add Option
+                                                    </Button>
+                                                </Box>
+
+                                                <Stack spacing={1}>
+                                                    {group.options.map((option, optionIndex) => (
+                                                        <Box key={optionIndex} sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                                            <TextField
+                                                                placeholder="Option Name"
+                                                                value={option.name}
+                                                                size="small"
+                                                                fullWidth
+                                                                onChange={(e) => {
+                                                                    const newGroups = [...menuItemForm.modifierGroups];
+                                                                    newGroups[groupIndex].options[optionIndex].name = e.target.value;
+                                                                    setMenuItemForm({ ...menuItemForm, modifierGroups: newGroups });
+                                                                }}
+                                                            />
+                                                            <TextField
+                                                                placeholder="Price"
+                                                                type="number"
+                                                                value={option.price}
+                                                                size="small"
+                                                                sx={{ width: 100 }}
+                                                                onChange={(e) => {
+                                                                    const newGroups = [...menuItemForm.modifierGroups];
+                                                                    newGroups[groupIndex].options[optionIndex].price = parseFloat(e.target.value) || 0;
+                                                                    setMenuItemForm({ ...menuItemForm, modifierGroups: newGroups });
+                                                                }}
+                                                            />
+                                                            <Tooltip title="Default Option">
+                                                                <Checkbox
+                                                                    size="small"
+                                                                    checked={option.isDefault}
+                                                                    onChange={(e) => {
+                                                                        const newGroups = [...menuItemForm.modifierGroups];
+                                                                        // If single selection, uncheck others
+                                                                        if (group.selectionType === 'single' && e.target.checked) {
+                                                                            newGroups[groupIndex].options.forEach((o, i) => {
+                                                                                o.isDefault = i === optionIndex;
+                                                                            });
+                                                                        } else {
+                                                                            newGroups[groupIndex].options[optionIndex].isDefault = e.target.checked;
+                                                                        }
+                                                                        setMenuItemForm({ ...menuItemForm, modifierGroups: newGroups });
+                                                                    }}
+                                                                />
+                                                            </Tooltip>
+                                                            <IconButton
+                                                                size="small"
+                                                                color="error"
+                                                                onClick={() => {
+                                                                    const newGroups = [...menuItemForm.modifierGroups];
+                                                                    newGroups[groupIndex].options = newGroups[groupIndex].options.filter((_, i) => i !== optionIndex);
+                                                                    setMenuItemForm({ ...menuItemForm, modifierGroups: newGroups });
+                                                                }}
+                                                            >
+                                                                <DeleteIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </Box>
+                                                    ))}
+                                                </Stack>
+                                            </Paper>
+                                        ))}
+                                        {menuItemForm.modifierGroups.length === 0 && (
+                                            <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 2, border: '1px dashed', borderColor: 'divider', borderRadius: 1 }}>
+                                                No custom modifiers added
+                                            </Typography>
+                                        )}
+                                    </Stack>
+                                </Paper>
+                            </Grid>
+                        </Grid>
+                    </Box>
+                )}
+
+                {dialogTab === 2 && editingMenuItem && (
                     <Box sx={{ mt: 1 }}>
                         <ActionHistoryList history={editingMenuItem.actionHistory || []} />
                     </Box>
