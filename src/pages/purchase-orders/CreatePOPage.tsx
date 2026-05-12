@@ -670,57 +670,7 @@ const CreatePOPage: React.FC = () => {
                 <Grid item xs={12} md={12}>
                     <Stack spacing={isMobile ? 2 : 4} alignItems={isMobile ? "center" : "stretch"}>
                         {/* 1. Transaction Type & Category */}
-                        <Paper sx={{ 
-                            p: { xs: 2.5, md: 4 }, 
-                            borderRadius: { xs: 4, md: 5 }, 
-                            boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                            maxWidth: { xs: 500, md: 'none' },
-                            mx: { xs: 'auto', md: 0 },
-                            width: '100%'
-                        }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: isMobile ? 1.5 : 3, flexWrap: 'nowrap', gap: 1 }}>
-                                <SectionHeader icon={<DetailsIcon />} title="Category" sx={{ mb: 0 }} />
-
-                                <Button
-                                    component="label"
-                                    variant="contained"
-                                    color="secondary"
-                                    disabled={extracting}
-                                    startIcon={extracting ? <CircularProgress size={16} color="inherit" /> : <AutoAwesomeIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />}
-                                    sx={{
-                                        borderRadius: 2,
-                                        px: { xs: 1.5, sm: 3 },
-                                        py: { xs: 0.5, sm: 1 },
-                                        fontSize: { xs: '0.7rem', sm: '0.875rem' },
-                                        minWidth: 'auto',
-                                        whiteSpace: 'nowrap',
-                                        background: 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)',
-                                        boxShadow: '0 4px 14px 0 rgba(139,92,246,0.2)',
-                                        textTransform: 'none',
-                                        height: { xs: 32, md: 40 }
-                                    }}
-                                >
-                                    {extracting ? '...' : (isMobile ? 'AI Extract' : 'AI Invoice Extraction')}
-                                    <input type="file" hidden accept="image/*,application/pdf,.doc,.docx" onChange={handleExtractInvoice} />
-                                </Button>
-                            </Box>
-                            <Grid container spacing={isMobile ? 1.5 : 3}>
-                                <Grid item xs={12}>
-                                    <TextField
-                                        select
-                                        fullWidth
-                                        size={isMobile ? "small" : "medium"}
-                                        label="Primary Category"
-                                        value={formData.category}
-                                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                                        SelectProps={{ 
-                                            MenuProps: { PaperProps: { sx: { borderRadius: 3 } } },
-                                            sx: { fontSize: isMobile ? '0.875rem' : '1rem' }
-                                        }}
-                                    />
-                                </Grid>
-                            </Grid>
-                        </Paper>
+                   
 
                         {/* 2. Specialized Entity Selection */}
                         <Paper sx={{ 

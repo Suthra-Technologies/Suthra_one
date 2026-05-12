@@ -1575,7 +1575,7 @@ const SettingsPage: React.FC = () => {
                                         helperText="Default prefix for phone number fields across the app"
                                     />
                                 </Grid>
-                                <Grid size={{ xs: 12 }}>
+                                {/* <Grid size={{ xs: 12 }}>
                                     <AddressAutocomplete
                                         label="Restaurant Address *"
                                         value={settings.restaurant.address || ''}
@@ -1586,7 +1586,7 @@ const SettingsPage: React.FC = () => {
                                         }}
                                         required
                                     />
-                                </Grid>
+                                </Grid> */}
                             </Grid>
                         </Grid>
 
@@ -2363,7 +2363,7 @@ const SettingsPage: React.FC = () => {
                             >
                                 <MenuItem value="light">Light Mode</MenuItem>
                                 <MenuItem value="dark">Dark Mode</MenuItem>
-                                <MenuItem value="system">Follow System</MenuItem>
+                                {/* <MenuItem value="system">Follow System</MenuItem> */}
                             </TextField>
                         </Grid>
                         <Grid size={{ xs: 12 }}>
