@@ -92,6 +92,7 @@ import {
   AboutServicesEditor,
   AboutWhyChooseEditor,
 } from './components/AboutSectionEditors';
+import MenuSettingsEditor from './components/MenuSettingsEditor';
 
 const DEFAULT_HOMEPAGE_SECTIONS: SectionData[] = [
   {
@@ -268,6 +269,7 @@ const CustomiseScreensPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [sections, setSections] = useState<SectionData[]>([]);
   const [aboutSections, setAboutSections] = useState<AboutSectionData[]>([]);
+  const [menuSettings, setMenuSettings] = useState({ menuPdfUrl: '', qrCodeUrl: '', menuDocuments: [] as any[] });
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [tabValue, setTabValue] = useState(0);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -279,9 +281,10 @@ const CustomiseScreensPage: React.FC = () => {
   useEffect(() => {
     const fetchContent = async () => {
       try {
-        const [homeResponse, aboutResponse] = await Promise.all([
+        const [homeResponse, aboutResponse, menuResponse] = await Promise.all([
           homepageAPI.getContent(),
           homepageAPI.getAboutContent(),
+          homepageAPI.getMenuSettings(),
         ]);
         if (homeResponse.data) {
           if (homeResponse.data.sections && homeResponse.data.sections.length > 0) {
@@ -296,6 +299,9 @@ const CustomiseScreensPage: React.FC = () => {
           } else {
             setAboutSections(DEFAULT_ABOUT_SECTIONS);
           }
+        }
+        if (menuResponse.data) {
+          setMenuSettings(menuResponse.data);
         }
       } catch (error) {
         console.error('Error fetching content:', error);
@@ -318,6 +324,12 @@ const CustomiseScreensPage: React.FC = () => {
       } else if (tabValue === 2) {
         await homepageAPI.updateAboutContent(aboutSections);
         toast.success('About page updated successfully!', { 
+          position: 'top-center',
+          style: { marginTop: '90px', fontFamily: "'Outfit', sans-serif", fontWeight: 700, borderRadius: '12px', background: '#333', color: '#fff' } 
+        });
+      } else if (tabValue === 3) {
+        await homepageAPI.updateMenuSettings(menuSettings);
+        toast.success('Menu & QR settings updated successfully!', { 
           position: 'top-center',
           style: { marginTop: '90px', fontFamily: "'Outfit', sans-serif", fontWeight: 700, borderRadius: '12px', background: '#333', color: '#fff' } 
         });
@@ -561,6 +573,7 @@ const CustomiseScreensPage: React.FC = () => {
           <Tab label="Home Page" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }} />
           <Tab label="Gallery" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }} />
           <Tab label="About Page" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }} />
+          <Tab label="Menu & QR Code" sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }} />
         </Tabs>
 
         <TabPanel value={tabValue} index={0}>
@@ -753,6 +766,18 @@ const CustomiseScreensPage: React.FC = () => {
           </Box>
 
 
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={3}>
+          <Box sx={{ py: { xs: 2, md: 3 }, px: { xs: 0, md: 3 } }}>
+            <MenuSettingsEditor 
+              menuPdfUrl={menuSettings.menuPdfUrl} 
+              qrCodeUrl={menuSettings.qrCodeUrl}
+              menuDocuments={menuSettings.menuDocuments}
+              onUpdate={(data) => setMenuSettings(data)}
+              uploadFile={handleUploadImage}
+            />
+          </Box>
         </TabPanel>
       </Paper>
       </Container>

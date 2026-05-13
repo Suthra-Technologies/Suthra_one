@@ -246,20 +246,31 @@ const OrderCard: React.FC<OrderCardProps> = ({
                         >
                             {order.dailyTokenNumber ? `Token No #${order.dailyTokenNumber}` : `Order #${order.orderNumber?.split('-').pop() || order._id.slice(-6)}`}
                         </Typography>
-                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
-                            {order.dailyTokenNumber ? `Order ID: ${order.orderNumber?.split('-').pop() || order._id.slice(-6)}` : ''}
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.25 }}>
+                            Order ID: {order.orderNumber?.split('-').pop() || order._id.slice(-6)}
                         </Typography>
-                        <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
-                            Type: {getOrderTypeLabel(order.orderType, order)}
-                        </Typography>
-                        {(order.orderType === 'dine_in' && (order.tableNumber || order.table)) && (
-                            <Typography variant="h6" component="div" sx={{ fontWeight: 'bold', mb: 0.5 }}>
-                                Table: {order.tableNumber || order.table?.tableNumber || order.table?.number || order.table?.tableName || order.table?.name}
+                        <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 0.5, flexWrap: 'nowrap', overflow: 'hidden' }}>
+                            <Typography variant="caption" sx={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                                {getOrderTypeLabel(order.orderType, order)}
                             </Typography>
+                            <Box sx={{ width: 3, height: 3, borderRadius: '50%', bgcolor: 'text.disabled', flexShrink: 0 }} />
+                            <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>
+                                {getTimeElapsed(order.createdAt)}
+                            </Typography>
+                            <Box sx={{ width: 3, height: 3, borderRadius: '50%', bgcolor: 'text.disabled', flexShrink: 0 }} />
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', whiteSpace: 'nowrap' }}>
+                                <TimeIcon sx={{ fontSize: 12, mr: 0.25 }} />
+                                {formatTime(order.createdAt)}
+                            </Typography>
+                        </Stack>
+                        {order.isPreOrder && order.scheduledTime && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5, px: 1, py: 0.25, borderRadius: 1, bgcolor: alpha('#7c3aed', 0.07), border: '1px solid rgba(124,58,237,0.2)', width: 'fit-content' }}>
+                                <EventIcon sx={{ fontSize: 14, mr: 0.5, color: '#7c3aed' }} />
+                                <Typography variant="body2" sx={{ color: '#7c3aed', fontWeight: 600, fontSize: '0.75rem' }}>
+                                    Sch: {new Date(order.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </Typography>
+                            </Box>
                         )}
-                        <Typography variant="caption" color="text.secondary">
-                            {getTimeElapsed(order.createdAt)}
-                        </Typography>
                     </Box>
                     <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center' }}>
                         {order.isPreOrder && (
@@ -293,39 +304,32 @@ const OrderCard: React.FC<OrderCardProps> = ({
                     </Box>
                 </Box>
 
-                {/* Order Type & Time */}
-                <Stack direction="row" spacing={2} sx={{ mb: order.isPreOrder && order.scheduledTime ? 1 : 2, flexWrap: 'wrap', gap: 1 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
-                        <RestaurantIcon fontSize="small" sx={{ mr: 0.5 }} />
-                        <Typography variant="body2">{getOrderTypeLabel(order.orderType, order)}</Typography>
-                    </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', color: 'text.secondary' }}>
-                        <TimeIcon fontSize="small" sx={{ mr: 0.5 }} />
-                        <Typography variant="body2">{formatTime(order.createdAt)}</Typography>
-                    </Box>
-                </Stack>
-                {order.isPreOrder && order.scheduledTime && (
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, px: 1.5, py: 0.75, borderRadius: 1.5, bgcolor: alpha('#7c3aed', 0.07), border: '1px solid rgba(124,58,237,0.2)' }}>
-                        <EventIcon sx={{ fontSize: 16, mr: 1, color: '#7c3aed' }} />
-                        <Typography variant="body2" sx={{ color: '#7c3aed', fontWeight: 600, fontSize: '0.78rem' }}>
-                            Scheduled: {new Date(order.scheduledTime).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                        </Typography>
-                    </Box>
-                )}
 
                 {/* Customer & Waiter Info */}
-                <Stack spacing={1} sx={{ mb: 2 }}>
+                <Stack spacing={0.5} sx={{ mb: 1.5 }}>
                     {order.customer?.name && (
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <PersonIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
-                            <Typography variant="body2">
-                                <strong>Customer:</strong> {/^[0-9a-fA-F]{8,24}$/.test(order.customer.name) ? 'Guest' : order.customer.name}
+                            <PersonIcon sx={{ fontSize: 18, mr: 1, color: 'text.secondary' }} />
+                            <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+                                <strong>Customer:</strong> 
+                                <span>{/^[0-9a-fA-F]{8,24}$/.test(order.customer.name) ? 'Guest' : order.customer.name}</span>
+                                {order.customer?.phone && (
+                                    <Box component="span" sx={{ 
+                                        color: 'text.secondary', 
+                                        fontWeight: 'bold', 
+                                        fontSize: '0.8rem',
+                                        ml: { xs: 1, sm: 3, md: 6 },
+                                        '@media print': { display: 'none' } 
+                                    }}>
+                                        Ph: {order.customer.phone}
+                                    </Box>
+                                )}
                             </Typography>
                         </Box>
                     )}
                     {order.waiter?.name && (
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <PersonIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
+                            <PersonIcon sx={{ fontSize: 18, mr: 1, color: 'text.secondary' }} />
                             <Typography variant="body2">
                                 <strong>Waiter:</strong> {order.waiter.name}
                             </Typography>
@@ -447,14 +451,14 @@ const OrderCard: React.FC<OrderCardProps> = ({
                     </Box>
                 )}
 
-                <Divider sx={{ my: { xs: 1, sm: 2 } }} />
+                <Divider sx={{ my: 1 }} />
 
                 {/* Order Items */}
-                <Box sx={{ mb: 2 }}>
-                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                        Order Items ({order.items?.length || 0})
+                <Box sx={{ mb: 1 }}>
+                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold', mb: 0.5, display: 'block' }}>
+                        Items ({order.items?.length || 0})
                     </Typography>
-                    <Stack spacing={0.5} sx={{ maxHeight: expanded ? 300 : 120, overflowY: 'auto', mb: 1, transition: 'max-height 0.3s' }}>
+                    <Stack spacing={0.5} sx={{ maxHeight: expanded ? 300 : 120, overflowY: 'auto', mb: 0.5, transition: 'max-height 0.3s' }}>
                         {(expanded ? order.items : order.items?.slice(0, 3))?.filter((item: any) => item.preparationStatus !== 'cancelled').map((item: any, index: number) => {
                             return (
                                 <Box
@@ -582,15 +586,14 @@ const OrderCard: React.FC<OrderCardProps> = ({
                     </Stack>
                 </Box>
 
-                <Divider sx={{ my: { xs: 1, sm: 2 } }} />
+                <Divider sx={{ my: 1 }} />
 
                 {/* Payment & Total Section */}
                 <Box
                     sx={{
-                        p: 1.5,
+                        p: 1,
                         bgcolor: alpha(theme.palette.primary.main, 0.05),
                         borderRadius: 1,
-                        mt: 'auto' // Push to bottom of content
                     }}
                 >
                     <Stack spacing={0.5}>
@@ -684,18 +687,20 @@ const OrderCard: React.FC<OrderCardProps> = ({
                     </Stack>
                 </Box>
 
-                {/* Payment Method - Show Pending before payment, actual method after payment */}
-                <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                {/* Payment Method */}
+                <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <PaymentIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
-                        <Typography variant="body2" color="text.secondary">
+                        <PaymentIcon sx={{ fontSize: 16, mr: 0.5, color: 'text.secondary' }} />
+                        <Typography variant="caption" color="text.secondary">
                             Payment:
                         </Typography>
                     </Box>
                     <Chip
-                        label={order.paymentStatus === 'pending' ? 'Pending' : getPaymentMethodLabel(order.payments && order.payments.length > 0 ? order.payments.map((p: any) => p.method) : order.paymentMethod)}
+                        label={order.paymentStatus === 'pending' ? 'PENDING' : getPaymentMethodLabel(order.payments && order.payments.length > 0 ? order.payments.map((p: any) => p.method) : order.paymentMethod)}
                         size="small"
                         sx={{
+                            height: 20,
+                            fontSize: '0.7rem',
                             bgcolor: alpha(order.paymentStatus === 'pending' ? theme.palette.warning.main : getPaymentBadgeColor(order.payments && order.payments.length > 0 ? order.payments[0].method : order.paymentMethod), 0.1),
                             color: order.paymentStatus === 'pending' ? theme.palette.warning.main : getPaymentBadgeColor(order.payments && order.payments.length > 0 ? order.payments[0].method : order.paymentMethod),
                             fontWeight: 'bold',
@@ -704,7 +709,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                 </Box>
             </CardContent>
 
-            <CardActions sx={{ p: 2, pt: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: alpha(theme.palette.background.default, 0.5) }}>
+            <CardActions sx={{ p: 1, pt: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: alpha(theme.palette.background.default, 0.5) }}>
                 <Stack direction="row" spacing={0.5}>
                     <Tooltip title="View Details">
                         <IconButton size="small" color="primary" onClick={() => onView(order)} sx={{ padding: '4px' }}>

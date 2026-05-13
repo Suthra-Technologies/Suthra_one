@@ -155,7 +155,10 @@ const TablesPage: React.FC = () => {
     const [statusFilter, setStatusFilter] = useState<string>('all');
 
     // Bookings Filter State
-    const [bookingDateFilter, setBookingDateFilter] = useState(new Date().toISOString().split('T')[0]);
+    const [bookingDateFilter, setBookingDateFilter] = useState(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    });
     const [bookingStatusFilter, setBookingStatusFilter] = useState<string>('all');
     const [bookingSearchQuery, setBookingSearchQuery] = useState('');
     const [page, setPage] = useState(0);
@@ -565,20 +568,32 @@ const TablesPage: React.FC = () => {
     const bookingStatusCounts = React.useMemo(() => ({
         all: filteredBookings.length,
         pending: bookings.filter(b => {
-            const d = new Date(b.date).toISOString().split('T')[0];
-            return (!bookingDateFilter || d === bookingDateFilter) && b.status === 'pending';
+            if (!b.date) return false;
+            const bDate = new Date(b.date);
+            const dUTC = bDate.toISOString().split('T')[0];
+            const dLocal = `${bDate.getFullYear()}-${String(bDate.getMonth() + 1).padStart(2, '0')}-${String(bDate.getDate()).padStart(2, '0')}`;
+            return (!bookingDateFilter || dUTC === bookingDateFilter || dLocal === bookingDateFilter) && b.status === 'pending';
         }).length,
         confirmed: bookings.filter(b => {
-            const d = new Date(b.date).toISOString().split('T')[0];
-            return (!bookingDateFilter || d === bookingDateFilter) && b.status === 'confirmed';
+            if (!b.date) return false;
+            const bDate = new Date(b.date);
+            const dUTC = bDate.toISOString().split('T')[0];
+            const dLocal = `${bDate.getFullYear()}-${String(bDate.getMonth() + 1).padStart(2, '0')}-${String(bDate.getDate()).padStart(2, '0')}`;
+            return (!bookingDateFilter || dUTC === bookingDateFilter || dLocal === bookingDateFilter) && b.status === 'confirmed';
         }).length,
         completed: bookings.filter(b => {
-            const d = new Date(b.date).toISOString().split('T')[0];
-            return (!bookingDateFilter || d === bookingDateFilter) && b.status === 'completed';
+            if (!b.date) return false;
+            const bDate = new Date(b.date);
+            const dUTC = bDate.toISOString().split('T')[0];
+            const dLocal = `${bDate.getFullYear()}-${String(bDate.getMonth() + 1).padStart(2, '0')}-${String(bDate.getDate()).padStart(2, '0')}`;
+            return (!bookingDateFilter || dUTC === bookingDateFilter || dLocal === bookingDateFilter) && b.status === 'completed';
         }).length,
         cancelled: bookings.filter(b => {
-            const d = new Date(b.date).toISOString().split('T')[0];
-            return (!bookingDateFilter || d === bookingDateFilter) && b.status === 'cancelled';
+            if (!b.date) return false;
+            const bDate = new Date(b.date);
+            const dUTC = bDate.toISOString().split('T')[0];
+            const dLocal = `${bDate.getFullYear()}-${String(bDate.getMonth() + 1).padStart(2, '0')}-${String(bDate.getDate()).padStart(2, '0')}`;
+            return (!bookingDateFilter || dUTC === bookingDateFilter || dLocal === bookingDateFilter) && b.status === 'cancelled';
         }).length,
     }), [bookings, filteredBookings.length, bookingDateFilter]);
 
@@ -595,7 +610,10 @@ const TablesPage: React.FC = () => {
     };
 
     // Check if selected date is today
-    const isToday = bookingDateFilter === new Date().toISOString().split('T')[0];
+    const isToday = bookingDateFilter === (() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    })();
 
     // Timeline Helpers
     const timelineStartHour = 11;
@@ -1434,11 +1452,15 @@ const TablesPage: React.FC = () => {
                         {isMobile ? (
                             <Stack spacing={2}>
                                 {tables.map(table => {
-                                    const tableBookings = bookings.filter(b => 
-                                        (b.table?._id === table._id || b.table === table._id) &&
-                                        (!bookingDateFilter || new Date(b.date).toISOString().split('T')[0] === bookingDateFilter) &&
-                                        b.status !== 'cancelled'
-                                    );
+                                    const tableBookings = bookings.filter(b => {
+                                        if (!b.date) return false;
+                                        const bDate = new Date(b.date);
+                                        const dUTC = bDate.toISOString().split('T')[0];
+                                        const dLocal = `${bDate.getFullYear()}-${String(bDate.getMonth() + 1).padStart(2, '0')}-${String(bDate.getDate()).padStart(2, '0')}`;
+                                        return (b.table?._id === table._id || b.table === table._id) &&
+                                            (!bookingDateFilter || dUTC === bookingDateFilter || dLocal === bookingDateFilter) &&
+                                            b.status !== 'cancelled';
+                                    });
                                     
                                     return (
                                         <Paper key={table._id} sx={{ p: 2, borderRadius: 3, border: '1px solid', borderColor: 'divider', bgcolor: alpha(theme.palette.background.paper, 0.5) }}>
@@ -1534,9 +1556,15 @@ const TablesPage: React.FC = () => {
 
                                                 {/* Bookings for this table */}
                                                 {bookings
-                                                    .filter(b => (b.table?._id === table._id || b.table === table._id) &&
-                                                        (!bookingDateFilter || new Date(b.date).toISOString().split('T')[0] === bookingDateFilter) &&
-                                                        b.status !== 'cancelled')
+                                                    .filter(b => {
+                                                        if (!b.date) return false;
+                                                        const bDate = new Date(b.date);
+                                                        const dUTC = bDate.toISOString().split('T')[0];
+                                                        const dLocal = `${bDate.getFullYear()}-${String(bDate.getMonth() + 1).padStart(2, '0')}-${String(bDate.getDate()).padStart(2, '0')}`;
+                                                        return (b.table?._id === table._id || b.table === table._id) &&
+                                                            (!bookingDateFilter || dUTC === bookingDateFilter || dLocal === bookingDateFilter) &&
+                                                            b.status !== 'cancelled';
+                                                    })
                                                     .map(booking => {
                                                         const pos = getBookingPosition(booking);
                                                         const endTime = calculateEndTime(booking.timeSlot?.requested, booking.duration);

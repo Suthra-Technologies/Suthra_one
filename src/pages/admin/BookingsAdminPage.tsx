@@ -385,14 +385,19 @@ const BookingsAdminPage: React.FC = () => {
         return { left: `${leftPercent}%`, width: `${widthPercent}%` };
     };
 
-    // Filter bookings for selected date
     const dailyBookings = useMemo(() => {
+        const sDate = new Date(selectedDate);
+        const sDateStr = `${sDate.getFullYear()}-${String(sDate.getMonth() + 1).padStart(2, '0')}-${String(sDate.getDate()).padStart(2, '0')}`;
+
         return bookings.filter(b => {
+            if (!b.date || b.status === 'cancelled' || b.status === 'no_show') return false;
+
             const bDate = new Date(b.date);
-            return bDate.getDate() === selectedDate.getDate() &&
-                bDate.getMonth() === selectedDate.getMonth() &&
-                bDate.getFullYear() === selectedDate.getFullYear() &&
-                b.status !== 'cancelled' && b.status !== 'no_show';
+            // Try matching either UTC date (for UTC midnight dates) or Local date (for dates with time)
+            const bDateUTC = bDate.toISOString().split('T')[0];
+            const bDateLocal = `${bDate.getFullYear()}-${String(bDate.getMonth() + 1).padStart(2, '0')}-${String(bDate.getDate()).padStart(2, '0')}`;
+
+            return bDateUTC === sDateStr || bDateLocal === sDateStr;
         });
     }, [bookings, selectedDate]);
 

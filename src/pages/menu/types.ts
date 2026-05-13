@@ -25,6 +25,10 @@ export interface ModifierOption {
     name: string;
     price: number;
     isDefault?: boolean;
+    linkedMenuItem?: string;        // ObjectId of a MenuItem (deducts via its Recipe)
+    linkedInventoryItem?: string;   // ObjectId of an InventoryItem (deducts directly)
+    consumptionQty?: number;        // Qty to deduct per selection (default: 1)
+    consumptionUnit?: string;       // Unit override
 }
 
 export interface ModifierGroup {
@@ -34,6 +38,11 @@ export interface ModifierGroup {
     minSelection?: number;
     maxSelection?: number;
     options: ModifierOption[];
+}
+
+export interface ModifierGroupTemplate extends ModifierGroup {
+    _id: string;
+    isActive: boolean;
 }
 
 export interface TrayOption {
@@ -55,6 +64,7 @@ export interface IMenuItem {
     isAvailable: boolean;
     variants?: Variant[];
     modifierGroups?: ModifierGroup[];
+    linkedGroups?: (string | ModifierGroupTemplate)[];
     addOns?: string[];
     actionHistory?: any[];
     taxRate?: number | null;
