@@ -24,7 +24,11 @@ import {
     Avatar,
     InputAdornment,
     Divider,
-    useMediaQuery
+    useMediaQuery,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -65,6 +69,8 @@ const PurchaseOrdersPage: React.FC = () => {
         paymentStatus: '',
         search: '',
     });
+    const [deleteDialog, setDeleteDialog] = useState({ open: false, orderId: '', orderNumber: '' });
+    const [deleting, setDeleting] = useState(false);
 
     const fetchPOs = async () => {
         setLoading(true);
@@ -108,14 +114,21 @@ const PurchaseOrdersPage: React.FC = () => {
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (!window.confirm('Are you sure you want to delete this draft?')) return;
+    const handleDeleteClick = (id: string, poNumber: string) => {
+        setDeleteDialog({ open: true, orderId: id, orderNumber: poNumber });
+    };
+
+    const handleConfirmDelete = async () => {
+        setDeleting(true);
         try {
-            await purchaseOrdersAPI.delete(id);
+            await purchaseOrdersAPI.delete(deleteDialog.orderId);
             toast.success('Record deleted');
+            setDeleteDialog({ open: false, orderId: '', orderNumber: '' });
             fetchPOs();
         } catch (error) {
             toast.error('Failed to delete');
+        } finally {
+            setDeleting(false);
         }
     };
 
@@ -349,7 +362,7 @@ const PurchaseOrdersPage: React.FC = () => {
                                             </Tooltip>
                                         )}
                                         <Tooltip title="Delete">
-                                            <IconButton size="small" onClick={() => po.status === 'draft' && handleDelete(po._id)} sx={{ bgcolor: alpha(theme.palette.error.main, 0.05), opacity: po.status === 'draft' ? 1 : 0.3 }}><DeleteIcon color="error" fontSize="small" /></IconButton>
+                                            <IconButton size="small" onClick={() => handleDeleteClick(po._id, po.poNumber)} sx={{ bgcolor: alpha(theme.palette.error.main, 0.05) }}><DeleteIcon color="error" fontSize="small" /></IconButton>
                                         </Tooltip>
                                     </Stack>
                                 </Paper>
@@ -425,7 +438,7 @@ const PurchaseOrdersPage: React.FC = () => {
                                                     </Tooltip>
                                                 )}
                                                 <Tooltip title="Delete">
-                                                    <IconButton size="small" onClick={() => po.status === 'draft' && handleDelete(po._id)} disabled={po.status !== 'draft'}><DeleteIcon color="error" /></IconButton>
+                                                    <IconButton size="small" onClick={() => handleDeleteClick(po._id, po.poNumber)}><DeleteIcon color="error" /></IconButton>
                                                 </Tooltip>
                                             </Stack>
                                         </TableCell>
@@ -448,6 +461,38 @@ const PurchaseOrdersPage: React.FC = () => {
                     sx={{ '& .MuiPaginationItem-root': { borderRadius: 2, fontWeight: 'bold' } }}
                 />
             </Box>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog
+                open={deleteDialog.open}
+                onClose={() => !deleting && setDeleteDialog({ open: false, orderId: '', orderNumber: '' })}
+                maxWidth="xs"
+                fullWidth
+            >
+                <DialogTitle sx={{ color: 'error.main', fontWeight: 700 }}>Delete Purchase Order</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body1">
+                        Are you sure you want to delete purchase order <strong>#{deleteDialog.orderNumber}</strong>?
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" mt={1}>
+                        This action cannot be undone. All history and data associated with this order will be permanently removed.
+                    </Typography>
+                </DialogContent>
+                <DialogActions sx={{ p: 2, pt: 0 }}>
+                    <Button onClick={() => setDeleteDialog({ open: false, orderId: '', orderNumber: '' })} disabled={deleting}>
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="contained"
+                        color="error"
+                        onClick={handleConfirmDelete}
+                        disabled={deleting}
+                        startIcon={deleting ? <CircularProgress size={16} color="inherit" /> : <DeleteIcon />}
+                    >
+                        {deleting ? 'Deleting...' : 'Delete'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };

@@ -384,18 +384,21 @@ const DashboardPage: React.FC = () => {
       setPendingPOs(poData?.total || (Array.isArray(poData) ? poData.length : 0));
 
       // Process Bookings (Today's active)
-      const todayStr = new Date().toISOString().split('T')[0];
+      const d = new Date();
+      const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
       const rawBookings = bookingsRes?.status === 'fulfilled' ? bookingsRes.value?.data : bookingsRes?.data;
       const bookingsData = Array.isArray(rawBookings)
         ? rawBookings
         : (Array.isArray(rawBookings?.items) ? rawBookings.items : []);
 
-      const todaysBookings = bookingsData.filter((b: any) =>
-        b && b.bookingDate &&
-        b.bookingDate.startsWith(todayStr) &&
-        b.status !== 'cancelled'
-      );
+      const todaysBookings = bookingsData.filter((b: any) => {
+        if (!b || !b.bookingDate) return false;
+        const bDate = new Date(b.bookingDate);
+        const bDateUTC = bDate.toISOString().split('T')[0];
+        const bDateLocal = `${bDate.getFullYear()}-${String(bDate.getMonth() + 1).padStart(2, '0')}-${String(bDate.getDate()).padStart(2, '0')}`;
+        return (bDateUTC === todayStr || bDateLocal === todayStr) && b.status !== 'cancelled';
+      });
 
       setActiveBookings(todaysBookings.length);
 

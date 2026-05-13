@@ -145,7 +145,9 @@ const KitchenInterface: React.FC = () => {
         <body onload="window.print(); window.close();">
           <div class="token-no">Token No: #${order.dailyTokenNumber || 'N/A'}</div>
           
-          <div class="info-item">Order: ${order.orderNumber || order._id}</div>
+          <div class="info-item" style="display: flex; align-items: center; gap: 4px;">
+            Order No: <strong style="background-color: #e3f2fd; color: #1565c0; padding: 2px 6px; border-radius: 4px; font-size: 1.1em;">#${order.orderNumber?.split('-').pop() || 'N/A'}</strong>
+          </div>
           <div class="info-item">Customer: ${order.customer?.name || 'Guest'}</div>
           <div class="info-item">Type: ${order.orderType?.replace(/_/g, ' ').toUpperCase()}</div>
           
@@ -650,6 +652,14 @@ const KitchenInterface: React.FC = () => {
                               <UrgentIcon color="error" sx={{ animation: 'pulse 0.5s infinite' }} />
                             )}
                           </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                              Order:
+                            </Typography>
+                            <Typography variant="caption" sx={{ fontWeight: 'bold', fontSize: '0.75rem', bgcolor: alpha(theme.palette.primary.main, 0.1), color: 'primary.main', px: 0.6, py: 0.2, borderRadius: 1 }}>
+                              #{order.orderNumber?.split('-').pop() || 'N/A'}
+                            </Typography>
+                          </Box>
                           <Typography variant="body2" fontWeight="600" color="primary.main" sx={{ mt: 0.5, fontSize: bodyFontSize }}>
                             {order.customer?.name || 'Guest Customer'}
                           </Typography>

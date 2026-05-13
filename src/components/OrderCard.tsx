@@ -693,7 +693,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                         </Typography>
                     </Box>
                     <Chip
-                        label={order.paymentStatus === 'pending' ? 'Pending' : getPaymentMethodLabel(order.payments && order.payments.length > 0 ? order.payments.map((p: any) => p.method) : order.paymentMethod)}
+                        label={order.paymentStatus === 'pending' ? 'PENDING' : order.paymentStatus === 'pending' ? 'Pending' : getPaymentMethodLabel(order.payments && order.payments.length > 0 ? order.payments.map((p: any) => p.method) : order.paymentMethod)}
                         size="small"
                         sx={{
                             bgcolor: alpha(order.paymentStatus === 'pending' ? theme.palette.warning.main : getPaymentBadgeColor(order.payments && order.payments.length > 0 ? order.payments[0].method : order.paymentMethod), 0.1),

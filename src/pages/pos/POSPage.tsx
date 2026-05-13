@@ -943,7 +943,7 @@ const POSPage: React.FC = () => {
 
     // Ensure payment method is valid based on settings
     useEffect(() => {
-        if (!settings.system?.posPaymentMethods) return;
+        if (!settings.system?.posPaymentMethods || orderType === 'dine_in') return;
 
         const methods = settings.system.posPaymentMethods;
         const currentValid = (methods as any)[paymentMethod];
@@ -955,7 +955,7 @@ const POSPage: React.FC = () => {
                 setPaymentMethod(available[0] as any);
             }
         }
-    }, [settings.system?.posPaymentMethods, paymentMethod]);
+    }, [settings.system?.posPaymentMethods, paymentMethod, orderType]);
 
     // Initialise data
     useEffect(() => {
@@ -1321,6 +1321,13 @@ const POSPage: React.FC = () => {
         }
     };
 
+    // Auto-reset payment method for dine-in to avoid 'Zelle' default
+    useEffect(() => {
+        if (orderType === 'dine_in') {
+            setPaymentMethod('cash');
+        }
+    }, [orderType]);
+
     const submitOrder = async (paymentIntentId?: string, tipOverride?: number) => {
         if (orderType === 'delivery') {
             const addressString = typeof deliveryAddress === 'object' ? deliveryAddress.fullAddress : deliveryAddress;
@@ -1375,23 +1382,12 @@ const POSPage: React.FC = () => {
                 finalPaymentStatus = 'paid';
                 console.log("[POS] Order fully covered by rewards/coupons. Setting status to PAID.");
             } else if (orderType === 'dine_in') {
-                // For dine-in, always start with pending status
+                // For dine-in, always start with pending status and use 'cash' as a placeholder
+                // since the actual payment method is chosen at checkout.
                 finalPaymentStatus = 'pending';
                 finalPaymentIntentId = undefined; // No payment intent for dine-in initially
-
-                if (paymentMethod === 'card' || paymentMethod === 'online') {
-                    // Replace card/online with cash for dine-in orders
-                    finalPaymentMethod = 'cash';
-                    console.log(`[Dine-in Payment] Replaced ${paymentMethod} with cash (pending status)`);
-                } else if (paymentMethod === 'cash' || paymentMethod === 'zelle' || paymentMethod === 'venmo') {
-                    // Replace zelle/venmo with cash for dine-in orders, keep cash if already cash
-                    if (paymentMethod === 'zelle' || paymentMethod === 'venmo') {
-                        finalPaymentMethod = 'cash';
-                        console.log(`[Dine-in Payment] Replaced ${paymentMethod} with cash (pending status)`);
-                    } else {
-                        console.log(`[Dine-in Payment] Keeping ${paymentMethod} with pending status`);
-                    }
-                }
+                finalPaymentMethod = 'cash';
+                console.log(`[Dine-in Payment] Using cash placeholder with pending status`);
             }
 
             // Calculate merged tables IDs

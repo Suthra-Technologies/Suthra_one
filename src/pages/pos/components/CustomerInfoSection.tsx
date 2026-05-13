@@ -477,7 +477,25 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                         </RadioGroup>
                     </FormControl>
 
-                    {orderType !== 'dine_in' && (
+                    {orderType === 'dine_in' ? (
+                        <FormControl component="fieldset" sx={{ alignItems: 'center' }}>
+                            <Typography variant="body2" gutterBottom fontWeight="bold">
+                                Payment Method
+                            </Typography>
+                            <Chip 
+                                label="PENDING" 
+                                color="warning" 
+                                variant="outlined" 
+                                sx={{ 
+                                    fontWeight: 'bold', 
+                                    px: 2, 
+                                    bgcolor: 'rgba(237, 108, 2, 0.08)',
+                                    borderColor: 'warning.main',
+                                    height: 32
+                                }} 
+                            />
+                        </FormControl>
+                    ) : (
                         <FormControl component="fieldset" sx={{ alignItems: 'center' }}>
                             <Typography variant="body2" gutterBottom fontWeight="bold" color={finalTotal === 0 ? 'text.disabled' : 'text.primary'}>
                                 Payment Method {finalTotal === 0 && '(N/A)'}

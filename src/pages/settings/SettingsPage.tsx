@@ -1643,6 +1643,10 @@ const SettingsPage: React.FC = () => {
                                         onChange={async (e: React.ChangeEvent<HTMLInputElement>) => {
                                             const file = e.target.files?.[0];
                                             if (file) {
+                                                if (file.size > 15 * 1024 * 1024) {
+                                                    toast.error('Image upload failed: Image size exceeds the 15MB limit.');
+                                                    return;
+                                                }
                                                 try {
                                                     toast.loading('Uploading logo...');
                                                     const { uploadAPI } = await import('../../services/api');
@@ -1650,9 +1654,13 @@ const SettingsPage: React.FC = () => {
                                                     toast.dismiss();
                                                     toast.success('Logo uploaded successfully!');
                                                     handleInputChange('restaurant', 'logo', response.data.url);
-                                                } catch (error) {
+                                                } catch (error: any) {
                                                     toast.dismiss();
-                                                    toast.error('Failed to upload logo');
+                                                    if (error?.response?.status === 413) {
+                                                        toast.error('Image upload failed: Image size exceeds the 15MB limit.');
+                                                    } else {
+                                                        toast.error('Failed to upload logo');
+                                                    }
                                                     console.error(error);
                                                 }
                                             }
@@ -1688,6 +1696,10 @@ const SettingsPage: React.FC = () => {
                                         onChange={async (e: React.ChangeEvent<HTMLInputElement>) => {
                                             const file = e.target.files?.[0];
                                             if (file) {
+                                                if (file.size > 15 * 1024 * 1024) {
+                                                    toast.error('Image upload failed: Image size exceeds the 15MB limit.');
+                                                    return;
+                                                }
                                                 try {
                                                     toast.loading('Uploading stamp...');
                                                     const { uploadAPI } = await import('../../services/api');
@@ -1695,9 +1707,13 @@ const SettingsPage: React.FC = () => {
                                                     toast.dismiss();
                                                     toast.success('Stamp uploaded successfully!');
                                                     handleInputChange('restaurant', 'stamp', response.data.url);
-                                                } catch (error) {
+                                                } catch (error: any) {
                                                     toast.dismiss();
-                                                    toast.error('Failed to upload stamp');
+                                                    if (error?.response?.status === 413) {
+                                                        toast.error('Image upload failed: Image size exceeds the 15MB limit.');
+                                                    } else {
+                                                        toast.error('Failed to upload stamp');
+                                                    }
                                                     console.error(error);
                                                 }
                                             }
