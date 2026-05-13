@@ -903,7 +903,7 @@ const DashboardPage: React.FC = () => {
 
                 {/* ================= PIE ================= */}
                 <Box sx={{ width: "100%", height: { xs: 240, sm: 260, md: 300, lg: 340, xl: 380 }, minHeight: 240, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={240}>
                     <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
 
                       {/* Arrow marker */}

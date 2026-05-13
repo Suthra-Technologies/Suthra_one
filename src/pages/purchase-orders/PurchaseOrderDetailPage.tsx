@@ -25,12 +25,14 @@ import {
     ArrowBack as BackIcon,
     Print as PrintIcon,
     CheckCircle as ApproveIcon,
-    Inventory as ReceiveIcon
+    Inventory as ReceiveIcon,
+    Edit as EditIcon
 } from '@mui/icons-material';
 import ActionHistoryList from '../../components/common/ActionHistoryList';
 import { purchaseOrdersAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
+import { useActiveTenant } from '../../hooks/useActiveTenant';
 
 const fixS3Url = (url: string) => {
     if (!url) return '';
@@ -47,6 +49,7 @@ const fixS3Url = (url: string) => {
 const PurchaseOrderDetailPage: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const { getRelativePath } = useActiveTenant();
     const { formatCurrency } = useSettings();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -119,7 +122,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center', width: '100%', mb: { xs: 1, md: 0 } }}>
                     <Button
                         startIcon={<BackIcon />}
-                        onClick={() => navigate('..', { relative: 'path' })} // Go back to list
+                        onClick={() => navigate(getRelativePath('/purchase-orders'))}
                         sx={{ mr: 2, minWidth: 'auto' }}
                     >
                         Back
@@ -173,6 +176,9 @@ const PurchaseOrderDetailPage: React.FC = () => {
                             Receive
                         </Button>
                     )}
+                    <Button variant="contained" color="secondary" startIcon={<EditIcon />} onClick={() => navigate(getRelativePath(`/purchase-orders/edit/${id}`))} fullWidth sx={{ width: { sm: 'auto' } }}>
+                        Edit
+                    </Button>
                     <Button variant="outlined" startIcon={<PrintIcon />} onClick={() => window.print()} fullWidth sx={{ width: { sm: 'auto' } }}>
                         Print
                     </Button>

@@ -24,7 +24,11 @@ import {
     Avatar,
     InputAdornment,
     Divider,
-    useMediaQuery
+    useMediaQuery,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -41,15 +45,18 @@ import {
     Business as RentIcon,
     FlashOn as UtilityIcon,
     Build as FixIcon,
-    MoreHoriz as OtherIcon
+    MoreHoriz as OtherIcon,
+    Warning as WarningIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { purchaseOrdersAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
+import { useActiveTenant } from '../../hooks/useActiveTenant';
 
 const PurchaseOrdersPage: React.FC = () => {
     const navigate = useNavigate();
+    const { getRelativePath } = useActiveTenant();
     const { formatCurrency } = useSettings();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -108,14 +115,25 @@ const PurchaseOrdersPage: React.FC = () => {
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (!window.confirm('Are you sure you want to delete this draft?')) return;
+    const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+    const [poToDelete, setPoToDelete] = useState<string | null>(null);
+
+    const handleDeleteClick = (id: string) => {
+        setPoToDelete(id);
+        setDeleteDialogOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!poToDelete) return;
         try {
-            await purchaseOrdersAPI.delete(id);
+            await purchaseOrdersAPI.delete(poToDelete);
             toast.success('Record deleted');
             fetchPOs();
         } catch (error) {
             toast.error('Failed to delete');
+        } finally {
+            setDeleteDialogOpen(false);
+            setPoToDelete(null);
         }
     };
 
@@ -174,7 +192,7 @@ const PurchaseOrdersPage: React.FC = () => {
                     variant="contained"
                     size={isMobile ? "medium" : "large"}
                     startIcon={<AddIcon />}
-                    onClick={() => navigate('create')}
+                    onClick={() => navigate(getRelativePath('/purchase-orders/create'))}
                     sx={{
                         borderRadius: { xs: 2, md: 3 },
                         px: { xs: 2.5, md: 4 },
@@ -336,7 +354,10 @@ const PurchaseOrdersPage: React.FC = () => {
 
                                     <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end' }}>
                                         <Tooltip title="View Details">
-                                            <IconButton size="small" onClick={() => navigate(`${po._id}`)} sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}><ViewIcon color="primary" fontSize="small" /></IconButton>
+                                            <IconButton size="small" onClick={() => navigate(getRelativePath(`/purchase-orders/${po._id}`))} sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}><ViewIcon color="primary" fontSize="small" /></IconButton>
+                                        </Tooltip>
+                                        <Tooltip title="Edit">
+                                            <IconButton size="small" onClick={() => navigate(getRelativePath(`/purchase-orders/edit/${po._id}`))} sx={{ bgcolor: alpha(theme.palette.secondary.main, 0.05) }}><EditIcon color="secondary" fontSize="small" /></IconButton>
                                         </Tooltip>
                                         {po.status === 'pending' && (
                                             <Tooltip title="Approve">
@@ -349,7 +370,7 @@ const PurchaseOrdersPage: React.FC = () => {
                                             </Tooltip>
                                         )}
                                         <Tooltip title="Delete">
-                                            <IconButton size="small" onClick={() => po.status === 'draft' && handleDelete(po._id)} sx={{ bgcolor: alpha(theme.palette.error.main, 0.05), opacity: po.status === 'draft' ? 1 : 0.3 }}><DeleteIcon color="error" fontSize="small" /></IconButton>
+                                            <IconButton size="small" onClick={() => handleDeleteClick(po._id)} sx={{ bgcolor: alpha(theme.palette.error.main, 0.05) }}><DeleteIcon color="error" fontSize="small" /></IconButton>
                                         </Tooltip>
                                     </Stack>
                                 </Paper>
@@ -412,7 +433,18 @@ const PurchaseOrdersPage: React.FC = () => {
                                         <TableCell align="right">
                                             <Stack direction="row" spacing={1} justifyContent="flex-end">
                                                 <Tooltip title="View Details">
-                                                    <IconButton size="small" onClick={() => navigate(`${po._id}`)}><ViewIcon color="primary" /></IconButton>
+                                                    <IconButton size="small" onClick={() => {
+                                                        const path = getRelativePath(`/purchase-orders/${po._id}`);
+                                                        console.log('Navigating to Details:', path);
+                                                        navigate(path);
+                                                    }}><ViewIcon color="primary" /></IconButton>
+                                                </Tooltip>
+                                                <Tooltip title="Edit">
+                                                    <IconButton size="small" onClick={() => {
+                                                        const path = getRelativePath(`/purchase-orders/edit/${po._id}`);
+                                                        console.log('Navigating to Edit:', path);
+                                                        navigate(path);
+                                                    }}><EditIcon color="secondary" /></IconButton>
                                                 </Tooltip>
                                                 {po.status === 'pending' && (
                                                     <Tooltip title="Approve">
@@ -425,7 +457,7 @@ const PurchaseOrdersPage: React.FC = () => {
                                                     </Tooltip>
                                                 )}
                                                 <Tooltip title="Delete">
-                                                    <IconButton size="small" onClick={() => po.status === 'draft' && handleDelete(po._id)} disabled={po.status !== 'draft'}><DeleteIcon color="error" /></IconButton>
+                                                    <IconButton size="small" onClick={() => handleDeleteClick(po._id)}><DeleteIcon color="error" /></IconButton>
                                                 </Tooltip>
                                             </Stack>
                                         </TableCell>
@@ -448,6 +480,94 @@ const PurchaseOrdersPage: React.FC = () => {
                     sx={{ '& .MuiPaginationItem-root': { borderRadius: 2, fontWeight: 'bold' } }}
                 />
             </Box>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog 
+                open={deleteDialogOpen} 
+                onClose={() => setDeleteDialogOpen(false)}
+                PaperProps={{
+                    sx: {
+                        borderRadius: 6,
+                        p: { xs: 2, sm: 3 },
+                        maxWidth: 500,
+                        width: '100%',
+                        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                        border: '1px solid',
+                        borderColor: alpha(theme.palette.error.main, 0.1)
+                    }
+                }}
+                TransitionProps={{
+                    onEnter: (node: any) => {
+                        // Optional: trigger some sound or animation
+                    }
+                }}
+            >
+                <Box sx={{ textAlign: 'center', py: 2 }}>
+                    <Box sx={{ 
+                        width: 80, 
+                        height: 80, 
+                        borderRadius: '50%', 
+                        bgcolor: alpha(theme.palette.error.main, 0.1), 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        mx: 'auto',
+                        mb: 3,
+                        animation: 'pulse 2s infinite ease-in-out',
+                        '@keyframes pulse': {
+                            '0%': { transform: 'scale(1)', boxShadow: `0 0 0 0 ${alpha(theme.palette.error.main, 0.4)}` },
+                            '70%': { transform: 'scale(1.05)', boxShadow: `0 0 0 15px ${alpha(theme.palette.error.main, 0)}` },
+                            '100%': { transform: 'scale(1)', boxShadow: `0 0 0 0 ${alpha(theme.palette.error.main, 0)}` }
+                        }
+                    }}>
+                        <WarningIcon sx={{ fontSize: 48, color: 'error.main' }} />
+                    </Box>
+                    
+                    <Typography variant="h5" sx={{ fontWeight: 900, mb: 1, letterSpacing: '-0.02em' }}>
+                        Confirm Deletion
+                    </Typography>
+                    
+                    <Typography variant="body1" color="text.secondary" sx={{ px: 2, mb: 4, lineHeight: 1.6 }}>
+                        Are you sure you want to delete this record? This action is <Box component="span" sx={{ color: 'error.main', fontWeight: 800 }}>permanent</Box> and all related data will be removed.
+                    </Typography>
+
+                    <Stack direction="row" spacing={2} justifyContent="center" sx={{ width: '100%' }}>
+                        <Button 
+                            fullWidth
+                            onClick={() => setDeleteDialogOpen(false)} 
+                            sx={{ 
+                                borderRadius: 3, 
+                                py: 1.5,
+                                fontWeight: 800, 
+                                color: 'text.secondary',
+                                bgcolor: alpha(theme.palette.action.hover, 0.05),
+                                '&:hover': { bgcolor: alpha(theme.palette.action.hover, 0.1) }
+                            }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button 
+                            fullWidth
+                            onClick={confirmDelete} 
+                            variant="contained" 
+                            color="error" 
+                            sx={{ 
+                                borderRadius: 3, 
+                                py: 1.5,
+                                fontWeight: 900,
+                                boxShadow: '0 8px 20px rgba(239, 68, 68, 0.3)',
+                                '&:hover': {
+                                    boxShadow: '0 12px 30px rgba(239, 68, 68, 0.45)',
+                                    transform: 'translateY(-2px)'
+                                },
+                                transition: 'all 0.3s ease'
+                            }}
+                        >
+                            Delete Now
+                        </Button>
+                    </Stack>
+                </Box>
+            </Dialog>
         </Box>
     );
 };

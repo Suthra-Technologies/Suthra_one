@@ -45,11 +45,13 @@ import {
     AutoAwesome as AutoAwesomeIcon,
     CheckCircle as CheckCircleIcon,
     AddCircleOutline as AddCircleIcon,
-    MoveToInbox as RestockIcon
+    MoveToInbox as RestockIcon,
+    Save as SaveIcon
 } from '@mui/icons-material';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { purchaseOrdersAPI, uploadAPI, inventoryAPI, usersAPI, vendorsAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
+import { useActiveTenant } from '../../hooks/useActiveTenant';
 
 // --- Global Utilities ---
 const normalizeUnit = (unit: string): string => {
@@ -68,6 +70,8 @@ const normalizeUnit = (unit: string): string => {
 const CreatePOPage: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
+    const { id } = useParams();
+    const { getRelativePath } = useActiveTenant();
     const theme = useTheme();
     const [loading, setLoading] = useState(false);
     const [inventoryItems, setInventoryItems] = useState<any[]>([]);
@@ -105,7 +109,45 @@ const CreatePOPage: React.FC = () => {
         fetchInventory();
         fetchUsers();
         fetchVendors();
-    }, []);
+        if (id) {
+            fetchPO();
+        }
+    }, [id]);
+
+    const fetchPO = async () => {
+        try {
+            setLoading(true);
+            const response = await purchaseOrdersAPI.getOne(id!);
+            const po = response.data.data || response.data;
+            setFormData({
+                type: po.type || 'purchase_order',
+                poNumber: po.poNumber,
+                vendor: po.vendor || { name: '', contact: '', email: '', address: '' },
+                category: po.category || 'raw_materials',
+                referenceNumber: po.referenceNumber || '',
+                dueDate: po.dueDate ? new Date(po.dueDate).toISOString().split('T')[0] : '',
+                items: (po.items && po.items.length > 0) ? po.items : [{ description: '', quantity: 1, unit: 'kg', unitPrice: 0, total: 0, inventoryItem: '', weightValue: '', weightUnit: 'lb' }],
+                taxRate: po.taxRate || 0,
+                shippingCost: po.shippingCost || 0,
+                notes: po.notes || '',
+                status: po.status || 'draft',
+                paymentStatus: po.paymentStatus || 'unpaid',
+                paymentMethod: po.paymentMethod || 'cash',
+                paymentSource: po.paymentSource || 'bank_account',
+                attachments: po.attachments || [],
+                metadata: po.metadata || {},
+            });
+            if (po.vendor && po.vendor.name) {
+                // We just set a string/object so the Autocomplete shows it
+                setSelectedVendor(po.vendor);
+            }
+        } catch (error) {
+            console.error('Failed to fetch PO', error);
+            toast.error('Failed to load purchase order');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // Refetch vendors when category changes
     useEffect(() => {
@@ -565,18 +607,25 @@ const CreatePOPage: React.FC = () => {
 
         setLoading(true);
         try {
-            await purchaseOrdersAPI.create({
+            const payload = {
                 ...formData,
                 status,
                 subtotal: calculateSubtotal(),
                 tax: calculateTax(),
                 totalAmount: calculateTotal(),
-            });
-            toast.success('Record saved successfully!');
-            navigate('../purchase-orders');
+            };
+            if (id) {
+                await purchaseOrdersAPI.update(id, payload);
+                toast.success('Record updated successfully!');
+                navigate(getRelativePath('/purchase-orders'));
+            } else {
+                await purchaseOrdersAPI.create(payload);
+                toast.success('Record saved successfully!');
+                navigate(getRelativePath('/purchase-orders'));
+            }
         } catch (error: any) {
-            console.error('Create PO Error:', error);
-            toast.error(error.response?.data?.message || 'Failed to create record');
+            console.error('Save PO Error:', error);
+            toast.error(error.response?.data?.message || 'Failed to save record');
         } finally {
             setLoading(false);
         }
@@ -627,6 +676,14 @@ const CreatePOPage: React.FC = () => {
     const isUtility = formData.category === 'utilities';
     const isInventory = formData.category === 'raw_materials';
 
+    if (id && loading && formData.poNumber.startsWith('PO-')) {
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+                <CircularProgress />
+            </Box>
+        );
+    }
+
     return (
         <Box sx={{ 
             p: { xs: 1.5, md: 4 }, 
@@ -644,11 +701,11 @@ const CreatePOPage: React.FC = () => {
                 sx={{ textAlign: 'center', width: '100%' }}
             >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2 }, width: { xs: '100%', sm: 'auto' }, justifyContent: 'center' }}>
-                    <IconButton size={isMobile ? "small" : "medium"} onClick={() => navigate('../purchase-orders')} sx={{ border: '1px solid', borderColor: 'divider', p: isMobile ? 1 : 1.25, bgcolor: 'white' }}>
+                    <IconButton size={isMobile ? "small" : "medium"} onClick={() => navigate(getRelativePath('/purchase-orders'))} sx={{ border: '1px solid', borderColor: 'divider', p: isMobile ? 1 : 1.25, bgcolor: 'white' }}>
                         <BackIcon fontSize={isMobile ? "small" : "medium"} />
                     </IconButton>
                     <Box>
-                        <Typography variant="h4" fontWeight={900} sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' }, letterSpacing: '-0.04em' }}>Create Entry</Typography>
+                        <Typography variant="h4" fontWeight={900} sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' }, letterSpacing: '-0.04em' }}>{id ? 'Edit Entry' : 'Create Entry'}</Typography>
                     </Box>
                 </Box>
                 <Box sx={{ flexGrow: 1, display: { xs: 'none', sm: 'block' } }} />
@@ -1400,6 +1457,61 @@ const CreatePOPage: React.FC = () => {
 
                 {/* Right Column - Removed (Financial Goal + Settlement) */}
             </Grid>
+
+            {/* Bottom Action Section */}
+            <Box sx={{
+                mt: 6,
+                mb: 4,
+                display: 'flex',
+                flexDirection: { xs: 'column', sm: 'row' },
+                justifyContent: 'flex-end',
+                alignItems: 'center',
+                gap: 2,
+                bgcolor: 'transparent'
+            }}>
+                <Button 
+                    variant="outlined" 
+                    fullWidth={isMobile}
+                    onClick={() => navigate(getRelativePath('/purchase-orders'))}
+                    sx={{ 
+                        borderRadius: 2.5, 
+                        px: 4, 
+                        py: 1.5, 
+                        fontWeight: 700,
+                        color: 'text.secondary',
+                        borderColor: 'divider',
+                        '&:hover': {
+                            borderColor: 'text.primary',
+                            bgcolor: alpha(theme.palette.action.hover, 0.04)
+                        }
+                    }}
+                >
+                    Cancel
+                </Button>
+                <Button 
+                    variant="contained" 
+                    color="primary"
+                    fullWidth={isMobile}
+                    onClick={() => handleSubmit('pending')}
+                    disabled={loading}
+                    startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+                    sx={{ 
+                        borderRadius: 2.5, 
+                        px: 8, 
+                        py: 1.5, 
+                        fontWeight: 900,
+                        fontSize: '1rem',
+                        boxShadow: '0 8px 24px rgba(59, 130, 246, 0.35)',
+                        '&:hover': {
+                            boxShadow: '0 12px 30px rgba(59, 130, 246, 0.5)',
+                            transform: 'translateY(-2px)'
+                        },
+                        transition: 'all 0.3s ease'
+                    }}
+                >
+                    {loading ? 'Saving...' : (id ? 'Update Entry' : 'Save Entry')}
+                </Button>
+            </Box>
         </Box>
     );
 };
