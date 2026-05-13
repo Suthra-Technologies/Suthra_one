@@ -188,7 +188,11 @@ const DisputeDetails: React.FC = () => {
               <Stack spacing={2} mt={2}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography variant="body2" color="text.secondary">Order Total</Typography>
-                  <Typography variant="body2" fontWeight="700">$---</Typography>
+                  <Typography variant="body2" fontWeight="700">
+                    {dispute.order && typeof dispute.order === 'object' 
+                      ? `$${dispute.order.totalAmount?.toFixed(2)}` 
+                      : '$---'}
+                  </Typography>
                 </Box>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                   <Typography variant="body2" color="text.secondary">Disputed Amount</Typography>
