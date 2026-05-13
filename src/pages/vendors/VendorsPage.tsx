@@ -34,6 +34,8 @@ import {
     CircularProgress,
     useMediaQuery,
     Switch,
+    Radio,
+    RadioGroup,
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -71,10 +73,13 @@ interface Vendor {
     notes?: string;
     shopName?: string;
     bankDetails?: {
+        country?: string;
         accountName?: string;
         accountNumber?: string;
         bankName?: string;
         ifscCode?: string;
+        routingNumber?: string;
+        accountType?: string;
     };
     createdAt: string;
 }
@@ -122,10 +127,13 @@ const VendorsPage: React.FC = () => {
         categories: ['raw_materials'] as string[],
         notes: '',
         bankDetails: {
+            country: 'usa',
             accountName: '',
             accountNumber: '',
             bankName: '',
             ifscCode: '',
+            routingNumber: '',
+            accountType: 'Checking',
         },
     });
     const [errors, setErrors] = useState<any>({});
@@ -187,10 +195,13 @@ const VendorsPage: React.FC = () => {
                 categories: vendor.categories || ['raw_materials'],
                 notes: vendor.notes || '',
                 bankDetails: {
+                    country: vendor.bankDetails?.country || 'usa',
                     accountName: vendor.bankDetails?.accountName || '',
                     accountNumber: vendor.bankDetails?.accountNumber || '',
                     bankName: vendor.bankDetails?.bankName || '',
                     ifscCode: vendor.bankDetails?.ifscCode || '',
+                    routingNumber: vendor.bankDetails?.routingNumber || '',
+                    accountType: vendor.bankDetails?.accountType || 'Checking',
                 },
             });
         } else {
@@ -207,10 +218,13 @@ const VendorsPage: React.FC = () => {
                 categories: ['raw_materials'],
                 notes: '',
                 bankDetails: {
+                    country: 'usa',
                     accountName: '',
                     accountNumber: '',
                     bankName: '',
                     ifscCode: '',
+                    routingNumber: '',
+                    accountType: 'Checking',
                 },
             });
         }
@@ -1003,23 +1017,37 @@ const VendorsPage: React.FC = () => {
                                 borderColor: alpha(theme.palette.divider, 0.05),
                                 bgcolor: 'white'
                             }}>
-                                <Typography 
-                                    variant="caption" 
-                                    fontWeight={700} 
-                                    color="primary" 
-                                    sx={{ 
-                                        display: 'flex', 
-                                        alignItems: 'center', 
-                                        gap: 1, 
-                                        mb: 2, 
-                                        textTransform: 'uppercase', 
-                                        letterSpacing: '0.05em',
-                                        fontFamily: '"Outfit", sans-serif'
-                                    }}
-                                >
-                                    <BankIcon fontSize="inherit" />
-                                    Bank Settlement Info
-                                </Typography>
+                                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: 2, gap: 2 }}>
+                                    <Typography 
+                                        variant="caption" 
+                                        fontWeight={700} 
+                                        color="primary" 
+                                        sx={{ 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: 1, 
+                                            textTransform: 'uppercase', 
+                                            letterSpacing: '0.05em',
+                                            fontFamily: '"Outfit", sans-serif'
+                                        }}
+                                    >
+                                        <BankIcon fontSize="inherit" />
+                                        Bank Settlement Info
+                                    </Typography>
+                                    <FormControl component="fieldset" size="small">
+                                        <RadioGroup
+                                            row
+                                            value={formData.bankDetails.country || 'usa'}
+                                            onChange={(e) => setFormData({
+                                                ...formData,
+                                                bankDetails: { ...formData.bankDetails, country: e.target.value }
+                                            })}
+                                        >
+                                            <FormControlLabel value="usa" control={<Radio size="small" />} label={<Typography variant="body2" fontWeight={600}>USA</Typography>} />
+                                            <FormControlLabel value="india" control={<Radio size="small" />} label={<Typography variant="body2" fontWeight={600}>India</Typography>} />
+                                        </RadioGroup>
+                                    </FormControl>
+                                </Box>
                                 <Grid container spacing={2}>
                                     <Grid item xs={12} md={6}>
                                         <TextField
@@ -1057,18 +1085,51 @@ const VendorsPage: React.FC = () => {
                                             })}
                                         />
                                     </Grid>
-                                    <Grid item xs={12} md={6}>
-                                        <TextField
-                                            fullWidth
-                                            label="IFSC Code"
-                                            size="small"
-                                            value={formData.bankDetails.ifscCode}
-                                            onChange={(e) => setFormData({
-                                                ...formData,
-                                                bankDetails: { ...formData.bankDetails, ifscCode: e.target.value.toUpperCase() }
-                                            })}
-                                        />
-                                    </Grid>
+                                    {formData.bankDetails.country === 'usa' ? (
+                                        <>
+                                            <Grid item xs={12} md={6}>
+                                                <TextField
+                                                    fullWidth
+                                                    label="Routing Number (ABA)"
+                                                    size="small"
+                                                    value={formData.bankDetails.routingNumber}
+                                                    onChange={(e) => setFormData({
+                                                        ...formData,
+                                                        bankDetails: { ...formData.bankDetails, routingNumber: e.target.value }
+                                                    })}
+                                                />
+                                            </Grid>
+                                            <Grid item xs={12} md={6}>
+                                                <FormControl fullWidth size="small">
+                                                    <InputLabel>Account Type</InputLabel>
+                                                    <Select
+                                                        value={formData.bankDetails.accountType || 'Checking'}
+                                                        label="Account Type"
+                                                        onChange={(e) => setFormData({
+                                                            ...formData,
+                                                            bankDetails: { ...formData.bankDetails, accountType: e.target.value }
+                                                        })}
+                                                    >
+                                                        <MenuItem value="Checking">Checking</MenuItem>
+                                                        <MenuItem value="Savings">Savings</MenuItem>
+                                                    </Select>
+                                                </FormControl>
+                                            </Grid>
+                                        </>
+                                    ) : (
+                                        <Grid item xs={12} md={6}>
+                                            <TextField
+                                                fullWidth
+                                                label="IFSC Code"
+                                                size="small"
+                                                value={formData.bankDetails.ifscCode}
+                                                onChange={(e) => setFormData({
+                                                    ...formData,
+                                                    bankDetails: { ...formData.bankDetails, ifscCode: e.target.value.toUpperCase() }
+                                                })}
+                                            />
+                                        </Grid>
+                                    )}
                                 </Grid>
                             </Paper>
                         </Grid>

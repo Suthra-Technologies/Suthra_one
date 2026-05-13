@@ -87,6 +87,11 @@ export const TenantRoutes = () => (
       <Route path="dashboard" element={<DashboardPage />} />
       <Route path="orders" element={<OrdersPage />} />
       <Route path="pos" element={<POSPage />} />
+      <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
+      <Route path="purchase-orders/create" element={<CreatePOPage />} />
+      <Route path="purchase-orders/edit/:id" element={<CreatePOPage />} />
+      <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
+      
       <Route element={<RequireRole allowedRoles={['admin', 'manager']} />}>
         <Route path="expenses" element={<ExpensesPage />} />
         <Route path="expenses/:id" element={<ExpenseDetailPage />} />
@@ -100,9 +105,6 @@ export const TenantRoutes = () => (
         <Route element={<RequireFeature feature="wastemanagement" />}>
           <Route path="inventory/waste" element={<WasteManagementPage />} />
         </Route>
-        <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
-        <Route path="purchase-orders/create" element={<CreatePOPage />} />
-        <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
         <Route path="vendors" element={<VendorsPage />} />
         <Route path="recipes" element={<RecipesPage />} />
         <Route path="recipes/create" element={<CreateRecipePage />} />

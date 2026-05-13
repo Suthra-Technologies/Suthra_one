@@ -38,27 +38,29 @@ import {
     CheckCircle as ApproveIcon,
     Inventory as ReceiveIcon,
     Search as SearchIcon,
-    FilterList as FilterIcon,
     Receipt as BillIcon,
     LocalShipping as ShippingIcon,
     Group as SalaryIcon,
     Business as RentIcon,
     FlashOn as UtilityIcon,
     Build as FixIcon,
-    MoreHoriz as OtherIcon
+    MoreHoriz as OtherIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { purchaseOrdersAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
+import { useActiveTenant } from '../../hooks/useActiveTenant';
 
 const PurchaseOrdersPage: React.FC = () => {
     const navigate = useNavigate();
+    const { getRelativePath } = useActiveTenant();
     const { formatCurrency } = useSettings();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const headingFontSize = { xs: '1.12rem', sm: '1.4rem', md: '2.125rem' };
     const bodyFontSize = { xs: '0.78rem', sm: '0.88rem', md: '0.95rem' };
+    
     const [pos, setPOs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
@@ -69,6 +71,7 @@ const PurchaseOrdersPage: React.FC = () => {
         paymentStatus: '',
         search: '',
     });
+    
     const [deleteDialog, setDeleteDialog] = useState({ open: false, orderId: '', orderNumber: '' });
     const [deleting, setDeleting] = useState(false);
 
@@ -187,7 +190,7 @@ const PurchaseOrdersPage: React.FC = () => {
                     variant="contained"
                     size={isMobile ? "medium" : "large"}
                     startIcon={<AddIcon />}
-                    onClick={() => navigate('create')}
+                    onClick={() => navigate(getRelativePath('/purchase-orders/create'))}
                     sx={{
                         borderRadius: { xs: 2, md: 3 },
                         px: { xs: 2.5, md: 4 },
@@ -222,14 +225,14 @@ const PurchaseOrdersPage: React.FC = () => {
                     onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                     sx={{
                         minWidth: { xs: '100%', md: 280 },
-                        '& .MuiOutlinedInput-root': { 
-                            color: 'white', 
+                        '& .MuiOutlinedInput-root': {
+                            color: 'white',
                             '& fieldset': { border: 'none' },
                             height: { xs: 40, md: 'auto' }
                         },
                         bgcolor: alpha('#fff', 0.05), borderRadius: { xs: 2, md: 3 }, m: 0.5
                     }}
-                    InputProps={{ 
+                    InputProps={{
                         startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: alpha('#fff', 0.5), fontSize: { xs: 20, md: 24 } }} /></InputAdornment>,
                         sx: { fontSize: { xs: '0.875rem', md: '1rem' } }
                     }}
@@ -251,8 +254,8 @@ const PurchaseOrdersPage: React.FC = () => {
                             sx={{
                                 minWidth: { xs: 'calc(33.33% - 6px)', sm: 150 },
                                 flexGrow: 1,
-                                '& .MuiOutlinedInput-root': { 
-                                    color: 'white', 
+                                '& .MuiOutlinedInput-root': {
+                                    color: 'white',
                                     '& fieldset': { borderColor: alpha('#fff', 0.1) },
                                     height: { xs: 36, md: 'auto' },
                                     borderRadius: 2
@@ -283,7 +286,7 @@ const PurchaseOrdersPage: React.FC = () => {
                     <Typography variant="h5" color="text.secondary">No transactions found matching your criteria</Typography>
                 </Paper>
             ) : isMobile ? (
-                <Grid container spacing={isMobile ? 0.75 : 2} justifyContent="center" sx={{ width: '100%', m: 0, px: 0.4 }}>
+                <Grid container spacing={0.75} justifyContent="center" sx={{ width: '100%', m: 0, px: 0.4 }}>
                     {pos.map((po) => {
                         const catStyle = getCategoryStyles(po.category);
                         const statusStyle = getStatusStyles(po.status);
@@ -349,7 +352,10 @@ const PurchaseOrdersPage: React.FC = () => {
 
                                     <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end' }}>
                                         <Tooltip title="View Details">
-                                            <IconButton size="small" onClick={() => navigate(`${po._id}`)} sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}><ViewIcon color="primary" fontSize="small" /></IconButton>
+                                            <IconButton size="small" onClick={() => navigate(getRelativePath(`/purchase-orders/${po._id}`))} sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}><ViewIcon color="primary" fontSize="small" /></IconButton>
+                                        </Tooltip>
+                                        <Tooltip title="Edit">
+                                            <IconButton size="small" onClick={() => navigate(getRelativePath(`/purchase-orders/edit/${po._id}`))} sx={{ bgcolor: alpha(theme.palette.secondary.main, 0.05) }}><EditIcon color="secondary" fontSize="small" /></IconButton>
                                         </Tooltip>
                                         {po.status === 'pending' && (
                                             <Tooltip title="Approve">
@@ -425,7 +431,14 @@ const PurchaseOrdersPage: React.FC = () => {
                                         <TableCell align="right">
                                             <Stack direction="row" spacing={1} justifyContent="flex-end">
                                                 <Tooltip title="View Details">
-                                                    <IconButton size="small" onClick={() => navigate(`${po._id}`)}><ViewIcon color="primary" /></IconButton>
+                                                    <IconButton size="small" onClick={() => navigate(getRelativePath(`/purchase-orders/${po._id}`))}>
+                                                        <ViewIcon color="primary" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                                <Tooltip title="Edit">
+                                                    <IconButton size="small" onClick={() => navigate(getRelativePath(`/purchase-orders/edit/${po._id}`))}>
+                                                        <EditIcon color="secondary" />
+                                                    </IconButton>
                                                 </Tooltip>
                                                 {po.status === 'pending' && (
                                                     <Tooltip title="Approve">
