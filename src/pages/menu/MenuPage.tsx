@@ -14,9 +14,12 @@ import {
     MenuBook as MenuBookIcon,
     Today as TodayIcon,
     Menu as MenuIcon,
-    PlaylistAdd as PlaylistAddIcon
+    PlaylistAdd as PlaylistAddIcon,
+    FileUpload as FileUploadIcon,
+    PhotoCamera as PhotoCameraIcon
 } from '@mui/icons-material';
 import {
+    Menu,
     Alert,
     Box,
     Button,
@@ -118,6 +121,8 @@ const MenuPage: React.FC = () => {
     const [bulkPreviewItems, setBulkPreviewItems] = useState<any[]>([]);
     const [uploadingBulk, setUploadingBulk] = useState(false);
     const [dialogTab, setDialogTab] = useState(0);
+    const previewFileRef = useRef<HTMLInputElement>(null);
+    const [previewTargetIdx, setPreviewTargetIdx] = useState<number | null>(null);
 
     // Form State for Categories
     const [categoryForm, setCategoryForm] = useState({
@@ -603,6 +608,44 @@ const MenuPage: React.FC = () => {
 
         // Return as-is for other cases
         return trimmedImage;
+    };
+
+    const handleRemoveImage = (idx: number) => {
+        const newItems = [...bulkPreviewItems];
+        newItems[idx].image = '';
+        setBulkPreviewItems(newItems);
+    };
+
+    const handleUrlChange = (idx: number, url: string) => {
+        const newItems = [...bulkPreviewItems];
+        newItems[idx].image = url;
+        setBulkPreviewItems(newItems);
+    };
+
+    const handlePreviewImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (previewTargetIdx === null) return;
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 15 * 1024 * 1024) {
+            toast.error('Image size exceeds 15MB limit');
+            return;
+        }
+
+        const loadingToast = toast.loading('Uploading replacement image...');
+        try {
+            const response = await uploadAPI.uploadImage(file);
+            const newItems = [...bulkPreviewItems];
+            newItems[previewTargetIdx].image = response.data.url;
+            setBulkPreviewItems(newItems);
+            toast.success('Image replaced successfully');
+        } catch (error) {
+            toast.error('Failed to upload image');
+        } finally {
+            toast.dismiss(loadingToast);
+            setPreviewTargetIdx(null);
+            if (previewFileRef.current) previewFileRef.current.value = '';
+        }
     };
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1556,12 +1599,28 @@ const MenuPage: React.FC = () => {
 
             {/* Bulk Upload Dialog */}
             <Dialog open={bulkDialogOpen} onClose={() => setBulkDialogOpen(false)} maxWidth="lg" fullWidth>
-                <DialogTitle>
-                    Bulk Upload Menu Items
-                    <Tabs value={dialogTab} onChange={(e, v) => setDialogTab(v)} sx={{ mt: 1 }}>
-                        <Tab label="Upload File" />
-                        <Tab label={`Preview (${bulkPreviewItems.length})`} disabled={bulkPreviewItems.length === 0} />
-                    </Tabs>
+                <DialogTitle sx={{ m: 0, p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Box>
+                        <Typography variant="h6" component="div">Bulk Upload Menu Items</Typography>
+                        <Tabs value={dialogTab} onChange={(e, v) => setDialogTab(v)} sx={{ mt: 1 }}>
+                            <Tab label="Upload File" />
+                            <Tab label={`Preview (${bulkPreviewItems.length})`} disabled={bulkPreviewItems.length === 0} />
+                        </Tabs>
+                    </Box>
+                    <IconButton
+                        aria-label="close bulk upload dialog"
+                        onClick={() => setBulkDialogOpen(false)}
+                        size="small"
+                        sx={{
+                            bgcolor: theme.palette.error.main,
+                            color: '#fff',
+                            width: 28,
+                            height: 28,
+                            '&:hover': { bgcolor: alpha(theme.palette.error.main, 0.85) },
+                        }}
+                    >
+                        <CloseIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
                 </DialogTitle>
                 <DialogContent dividers>
                     {dialogTab === 0 && (
@@ -1621,11 +1680,11 @@ const MenuPage: React.FC = () => {
                             <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
                                 Please review the items below. Images will be loaded from the URLs provided in your file.
                             </Alert>
-                            <TableContainer component={Paper} sx={{ maxHeight: 500, borderRadius: 2, border: 1, borderColor: 'divider' }}>
+                            <TableContainer component={Paper} sx={{ maxHeight: 600, borderRadius: 2, border: 1, borderColor: 'divider' }}>
                                 <Table stickyHeader size="small">
                                     <TableHead>
                                         <TableRow>
-                                            <TableCell sx={{ fontWeight: 'bold', width: 80 }}>Image</TableCell>
+                                            <TableCell sx={{ fontWeight: 'bold', width: 320 }}>Image Configuration</TableCell>
                                             <TableCell sx={{ fontWeight: 'bold' }}>Item Name</TableCell>
                                             <TableCell sx={{ fontWeight: 'bold' }}>Category</TableCell>
                                             <TableCell sx={{ fontWeight: 'bold' }}>Price</TableCell>
@@ -1636,32 +1695,83 @@ const MenuPage: React.FC = () => {
                                         {bulkPreviewItems.map((item, idx) => (
                                             <TableRow key={idx} hover>
                                                 <TableCell>
-                                                    <Box 
-                                                        sx={{ 
-                                                            width: 50, 
-                                                            height: 50, 
-                                                            borderRadius: 1, 
-                                                            overflow: 'hidden', 
-                                                            border: 1, 
-                                                            borderColor: 'divider',
-                                                            display: 'flex',
-                                                            alignItems: 'center',
-                                                            justifyContent: 'center',
-                                                            bgcolor: 'action.hover'
-                                                        }}
-                                                    >
-                                                        {item.image ? (
-                                                            <img 
-                                                                src={item.image} 
-                                                                alt={item.name} 
-                                                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                                                onError={(e) => {
-                                                                    (e.target as HTMLImageElement).src = 'https://via.placeholder.com/50?text=Error';
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                                        <Box 
+                                                            sx={{ 
+                                                                width: 60, 
+                                                                height: 60, 
+                                                                borderRadius: 1, 
+                                                                overflow: 'hidden', 
+                                                                border: 1, 
+                                                                borderColor: 'divider',
+                                                                position: 'relative',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                bgcolor: 'action.hover',
+                                                                flexShrink: 0
+                                                            }}
+                                                        >
+                                                            {item.image ? (
+                                                                <>
+                                                                    <img 
+                                                                        src={item.image} 
+                                                                        alt={item.name} 
+                                                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                                        onError={(e) => {
+                                                                            (e.target as HTMLImageElement).src = 'https://via.placeholder.com/60?text=Error';
+                                                                        }}
+                                                                    />
+                                                                    <IconButton
+                                                                        size="small"
+                                                                        onClick={() => handleRemoveImage(idx)}
+                                                                        sx={{
+                                                                            position: 'absolute',
+                                                                            top: -4,
+                                                                            right: -4,
+                                                                            bgcolor: 'error.main',
+                                                                            color: 'white',
+                                                                            padding: '2px',
+                                                                            '&:hover': { bgcolor: 'error.dark' },
+                                                                            zIndex: 2,
+                                                                            boxShadow: 2
+                                                                        }}
+                                                                    >
+                                                                        <CloseIcon sx={{ fontSize: 12 }} />
+                                                                    </IconButton>
+                                                                </>
+                                                            ) : (
+                                                                <ImageIcon sx={{ color: 'text.disabled' }} />
+                                                            )}
+                                                        </Box>
+                                                        
+                                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, flexGrow: 1 }}>
+                                                            <Button
+                                                                variant="outlined"
+                                                                size="small"
+                                                                startIcon={<PhotoCameraIcon sx={{ fontSize: 16 }} />}
+                                                                onClick={() => {
+                                                                    setPreviewTargetIdx(idx);
+                                                                    previewFileRef.current?.click();
+                                                                }}
+                                                                sx={{ py: 0, height: 24, fontSize: '0.65rem', textTransform: 'none' }}
+                                                            >
+                                                                Upload
+                                                            </Button>
+                                                            <TextField
+                                                                size="small"
+                                                                placeholder="Paste URL..."
+                                                                value={item.image || ''}
+                                                                onChange={(e) => handleUrlChange(idx, e.target.value)}
+                                                                sx={{ 
+                                                                    '& .MuiOutlinedInput-input': { 
+                                                                        py: 0.5, 
+                                                                        fontSize: '0.65rem',
+                                                                        height: 'auto'
+                                                                    }
                                                                 }}
                                                             />
-                                                        ) : (
-                                                            <ImageIcon sx={{ color: 'text.disabled' }} />
-                                                        )}
+                                                        </Box>
                                                     </Box>
                                                 </TableCell>
                                                 <TableCell>
@@ -1682,7 +1792,7 @@ const MenuPage: React.FC = () => {
                                                         </Typography>
                                                     )}
                                                 </TableCell>
-                                                <TableCell fontWeight="bold">
+                                                <TableCell sx={{ fontWeight: 'bold' }}>
                                                     {formatCurrency(item.price)}
                                                 </TableCell>
                                                 <TableCell>
@@ -1701,6 +1811,13 @@ const MenuPage: React.FC = () => {
                                     </TableBody>
                                 </Table>
                             </TableContainer>
+                            <input
+                                type="file"
+                                hidden
+                                ref={previewFileRef}
+                                accept="image/*"
+                                onChange={handlePreviewImageChange}
+                            />
                         </Box>
                     )}
                 </DialogContent>
