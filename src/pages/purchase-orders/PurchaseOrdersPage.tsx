@@ -24,7 +24,11 @@ import {
     Avatar,
     InputAdornment,
     Divider,
-    useMediaQuery
+    useMediaQuery,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -34,27 +38,29 @@ import {
     CheckCircle as ApproveIcon,
     Inventory as ReceiveIcon,
     Search as SearchIcon,
-    FilterList as FilterIcon,
     Receipt as BillIcon,
     LocalShipping as ShippingIcon,
     Group as SalaryIcon,
     Business as RentIcon,
     FlashOn as UtilityIcon,
     Build as FixIcon,
-    MoreHoriz as OtherIcon
+    MoreHoriz as OtherIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { purchaseOrdersAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
+import { useActiveTenant } from '../../hooks/useActiveTenant';
 
 const PurchaseOrdersPage: React.FC = () => {
     const navigate = useNavigate();
+    const { getRelativePath } = useActiveTenant();
     const { formatCurrency } = useSettings();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const headingFontSize = { xs: '1.12rem', sm: '1.4rem', md: '2.125rem' };
     const bodyFontSize = { xs: '0.78rem', sm: '0.88rem', md: '0.95rem' };
+    
     const [pos, setPOs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
@@ -65,6 +71,9 @@ const PurchaseOrdersPage: React.FC = () => {
         paymentStatus: '',
         search: '',
     });
+    
+    const [deleteDialog, setDeleteDialog] = useState({ open: false, orderId: '', orderNumber: '' });
+    const [deleting, setDeleting] = useState(false);
 
     const fetchPOs = async () => {
         setLoading(true);
@@ -108,14 +117,21 @@ const PurchaseOrdersPage: React.FC = () => {
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (!window.confirm('Are you sure you want to delete this draft?')) return;
+    const handleDeleteClick = (id: string, poNumber: string) => {
+        setDeleteDialog({ open: true, orderId: id, orderNumber: poNumber });
+    };
+
+    const handleConfirmDelete = async () => {
+        setDeleting(true);
         try {
-            await purchaseOrdersAPI.delete(id);
+            await purchaseOrdersAPI.delete(deleteDialog.orderId);
             toast.success('Record deleted');
+            setDeleteDialog({ open: false, orderId: '', orderNumber: '' });
             fetchPOs();
         } catch (error) {
             toast.error('Failed to delete');
+        } finally {
+            setDeleting(false);
         }
     };
 
@@ -174,7 +190,7 @@ const PurchaseOrdersPage: React.FC = () => {
                     variant="contained"
                     size={isMobile ? "medium" : "large"}
                     startIcon={<AddIcon />}
-                    onClick={() => navigate('create')}
+                    onClick={() => navigate(getRelativePath('/purchase-orders/create'))}
                     sx={{
                         borderRadius: { xs: 2, md: 3 },
                         px: { xs: 2.5, md: 4 },
@@ -209,14 +225,14 @@ const PurchaseOrdersPage: React.FC = () => {
                     onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                     sx={{
                         minWidth: { xs: '100%', md: 280 },
-                        '& .MuiOutlinedInput-root': { 
-                            color: 'white', 
+                        '& .MuiOutlinedInput-root': {
+                            color: 'white',
                             '& fieldset': { border: 'none' },
                             height: { xs: 40, md: 'auto' }
                         },
                         bgcolor: alpha('#fff', 0.05), borderRadius: { xs: 2, md: 3 }, m: 0.5
                     }}
-                    InputProps={{ 
+                    InputProps={{
                         startAdornment: <InputAdornment position="start"><SearchIcon sx={{ color: alpha('#fff', 0.5), fontSize: { xs: 20, md: 24 } }} /></InputAdornment>,
                         sx: { fontSize: { xs: '0.875rem', md: '1rem' } }
                     }}
@@ -238,8 +254,8 @@ const PurchaseOrdersPage: React.FC = () => {
                             sx={{
                                 minWidth: { xs: 'calc(33.33% - 6px)', sm: 150 },
                                 flexGrow: 1,
-                                '& .MuiOutlinedInput-root': { 
-                                    color: 'white', 
+                                '& .MuiOutlinedInput-root': {
+                                    color: 'white',
                                     '& fieldset': { borderColor: alpha('#fff', 0.1) },
                                     height: { xs: 36, md: 'auto' },
                                     borderRadius: 2
@@ -270,7 +286,7 @@ const PurchaseOrdersPage: React.FC = () => {
                     <Typography variant="h5" color="text.secondary">No transactions found matching your criteria</Typography>
                 </Paper>
             ) : isMobile ? (
-                <Grid container spacing={isMobile ? 0.75 : 2} justifyContent="center" sx={{ width: '100%', m: 0, px: 0.4 }}>
+                <Grid container spacing={0.75} justifyContent="center" sx={{ width: '100%', m: 0, px: 0.4 }}>
                     {pos.map((po) => {
                         const catStyle = getCategoryStyles(po.category);
                         const statusStyle = getStatusStyles(po.status);
@@ -336,7 +352,10 @@ const PurchaseOrdersPage: React.FC = () => {
 
                                     <Stack direction="row" spacing={1} sx={{ justifyContent: 'flex-end' }}>
                                         <Tooltip title="View Details">
-                                            <IconButton size="small" onClick={() => navigate(`${po._id}`)} sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}><ViewIcon color="primary" fontSize="small" /></IconButton>
+                                            <IconButton size="small" onClick={() => navigate(getRelativePath(`/purchase-orders/${po._id}`))} sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}><ViewIcon color="primary" fontSize="small" /></IconButton>
+                                        </Tooltip>
+                                        <Tooltip title="Edit">
+                                            <IconButton size="small" onClick={() => navigate(getRelativePath(`/purchase-orders/edit/${po._id}`))} sx={{ bgcolor: alpha(theme.palette.secondary.main, 0.05) }}><EditIcon color="secondary" fontSize="small" /></IconButton>
                                         </Tooltip>
                                         {po.status === 'pending' && (
                                             <Tooltip title="Approve">
@@ -349,7 +368,7 @@ const PurchaseOrdersPage: React.FC = () => {
                                             </Tooltip>
                                         )}
                                         <Tooltip title="Delete">
-                                            <IconButton size="small" onClick={() => po.status === 'draft' && handleDelete(po._id)} sx={{ bgcolor: alpha(theme.palette.error.main, 0.05), opacity: po.status === 'draft' ? 1 : 0.3 }}><DeleteIcon color="error" fontSize="small" /></IconButton>
+                                            <IconButton size="small" onClick={() => handleDeleteClick(po._id, po.poNumber)} sx={{ bgcolor: alpha(theme.palette.error.main, 0.05) }}><DeleteIcon color="error" fontSize="small" /></IconButton>
                                         </Tooltip>
                                     </Stack>
                                 </Paper>
@@ -412,7 +431,14 @@ const PurchaseOrdersPage: React.FC = () => {
                                         <TableCell align="right">
                                             <Stack direction="row" spacing={1} justifyContent="flex-end">
                                                 <Tooltip title="View Details">
-                                                    <IconButton size="small" onClick={() => navigate(`${po._id}`)}><ViewIcon color="primary" /></IconButton>
+                                                    <IconButton size="small" onClick={() => navigate(getRelativePath(`/purchase-orders/${po._id}`))}>
+                                                        <ViewIcon color="primary" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                                <Tooltip title="Edit">
+                                                    <IconButton size="small" onClick={() => navigate(getRelativePath(`/purchase-orders/edit/${po._id}`))}>
+                                                        <EditIcon color="secondary" />
+                                                    </IconButton>
                                                 </Tooltip>
                                                 {po.status === 'pending' && (
                                                     <Tooltip title="Approve">
@@ -425,7 +451,7 @@ const PurchaseOrdersPage: React.FC = () => {
                                                     </Tooltip>
                                                 )}
                                                 <Tooltip title="Delete">
-                                                    <IconButton size="small" onClick={() => po.status === 'draft' && handleDelete(po._id)} disabled={po.status !== 'draft'}><DeleteIcon color="error" /></IconButton>
+                                                    <IconButton size="small" onClick={() => handleDeleteClick(po._id, po.poNumber)}><DeleteIcon color="error" /></IconButton>
                                                 </Tooltip>
                                             </Stack>
                                         </TableCell>
@@ -448,6 +474,38 @@ const PurchaseOrdersPage: React.FC = () => {
                     sx={{ '& .MuiPaginationItem-root': { borderRadius: 2, fontWeight: 'bold' } }}
                 />
             </Box>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog
+                open={deleteDialog.open}
+                onClose={() => !deleting && setDeleteDialog({ open: false, orderId: '', orderNumber: '' })}
+                maxWidth="xs"
+                fullWidth
+            >
+                <DialogTitle sx={{ color: 'error.main', fontWeight: 700 }}>Delete Purchase Order</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body1">
+                        Are you sure you want to delete purchase order <strong>#{deleteDialog.orderNumber}</strong>?
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" mt={1}>
+                        This action cannot be undone. All history and data associated with this order will be permanently removed.
+                    </Typography>
+                </DialogContent>
+                <DialogActions sx={{ p: 2, pt: 0 }}>
+                    <Button onClick={() => setDeleteDialog({ open: false, orderId: '', orderNumber: '' })} disabled={deleting}>
+                        Cancel
+                    </Button>
+                    <Button
+                        variant="contained"
+                        color="error"
+                        onClick={handleConfirmDelete}
+                        disabled={deleting}
+                        startIcon={deleting ? <CircularProgress size={16} color="inherit" /> : <DeleteIcon />}
+                    >
+                        {deleting ? 'Deleting...' : 'Delete'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };

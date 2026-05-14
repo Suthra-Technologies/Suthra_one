@@ -23,7 +23,7 @@ import {
     Tooltip,
     Typography
 } from '@mui/material';
-import React from 'react';
+import React, { useEffect } from 'react';
 import AddressAutocomplete from '../../../components/AddressAutocomplete';
 import PhoneInput from '../../../components/PhoneInput';
 
@@ -152,6 +152,13 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
     maxUsablePoints = 0,
     isApplyingCoupon = false,
 }) => {
+    // Set default payment method for dine-in orders
+    useEffect(() => {
+        if (orderType === 'dine_in') {
+            // Always set to cash for dine-in orders, regardless of current payment method
+            setPaymentMethod('cash');
+        }
+    }, [orderType, setPaymentMethod]);
     const generateTimeSlots = (dateString: string) => {
         if (!settings?.restaurant?.businessHours) return [];
 
@@ -488,7 +495,7 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                     width: '100%',
                                     '& .MuiFormControlLabel-root': {
                                         mr: { xs: 0, sm: 2 }
-                                    },
+                                     },
                                     opacity: finalTotal === 0 ? 0.5 : 1,
                                     pointerEvents: finalTotal === 0 ? 'none' : 'auto'
                                 }}
@@ -508,6 +515,9 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                             </RadioGroup>
                         </FormControl>
                     )}
+
+                    {/* Dine-in Payment Method - Only Card and Cash */}
+
                 </Box>
 
 

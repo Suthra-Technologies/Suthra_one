@@ -273,10 +273,11 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
     const filtered = useMemo(() => {
         const q = search.toLowerCase().trim();
         if (!q) {
-            // Show USA and India at the top, then rest of countries
-            const priorityCountries = COUNTRIES.filter(c => c.iso2 === 'US' || c.iso2 === 'IN');
+            // Show USA first, then India, then rest of countries
+            const usaCountry = COUNTRIES.filter(c => c.iso2 === 'US');
+            const indiaCountry = COUNTRIES.filter(c => c.iso2 === 'IN');
             const otherCountries = COUNTRIES.filter(c => c.iso2 !== 'US' && c.iso2 !== 'IN');
-            return [...priorityCountries, ...otherCountries];
+            return [...usaCountry, ...indiaCountry, ...otherCountries];
         }
         return COUNTRIES.filter(
             (c) =>

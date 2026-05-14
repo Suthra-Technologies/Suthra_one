@@ -233,6 +233,11 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                                     <strong>Phone:</strong> {order.customer.phone}
                                 </Typography>
                             )}
+                            {order.customer?.email && (
+                                <Typography variant="body2">
+                                    <strong>Email:</strong> {order.customer.email}
+                                </Typography>
+                            )}
                             {(order.tableNumber || order.table) && (
                                 <Typography variant="body2">
                                     <strong>Table:</strong> {order.tableNumber || order.table?.tableNumber || order.table?.number || order.table?.tableName || order.table?.name}

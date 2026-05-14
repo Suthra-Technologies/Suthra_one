@@ -20,6 +20,7 @@ import CustomersPage from '../pages/customers/CustomersPage';
 import KitchenInterface from '../pages/kitchen/KitchenInterface';
 import KitchenOrdersPage from '../pages/kitchen/KitchenOrdersPage';
 import MenuPage from '../pages/menu/MenuPage';
+import AddOnGroupsPage from '../pages/menu/AddOnGroupsPage';
 import TraysPage from '../pages/menu/TraysPage';
 import OrdersPage from '../pages/orders/OrdersPage';
 import POSPage from '../pages/pos/POSPage';
@@ -86,21 +87,24 @@ export const TenantRoutes = () => (
       <Route path="dashboard" element={<DashboardPage />} />
       <Route path="orders" element={<OrdersPage />} />
       <Route path="pos" element={<POSPage />} />
+      <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
+      <Route path="purchase-orders/create" element={<CreatePOPage />} />
+      <Route path="purchase-orders/edit/:id" element={<CreatePOPage />} />
+      <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
+      
       <Route element={<RequireRole allowedRoles={['admin', 'manager']} />}>
         <Route path="expenses" element={<ExpensesPage />} />
         <Route path="expenses/:id" element={<ExpenseDetailPage />} />
         <Route path="expenses/create" element={<CreateExpensePage />} />
         <Route path="expenses/edit/:id" element={<CreateExpensePage />} />
         <Route path="menu" element={<MenuPage />} />
+        <Route path="global-add-ons" element={<AddOnGroupsPage />} />
         <Route element={<RequireFeature feature="inventory" />}>
           <Route path="inventory" element={<InventoryPage />} />
         </Route>
         <Route element={<RequireFeature feature="wastemanagement" />}>
           <Route path="inventory/waste" element={<WasteManagementPage />} />
         </Route>
-        <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
-        <Route path="purchase-orders/create" element={<CreatePOPage />} />
-        <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
         <Route path="vendors" element={<VendorsPage />} />
         <Route path="recipes" element={<RecipesPage />} />
         <Route path="recipes/create" element={<CreateRecipePage />} />

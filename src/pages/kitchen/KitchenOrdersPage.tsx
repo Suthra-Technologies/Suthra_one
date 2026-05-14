@@ -315,12 +315,17 @@ const KitchenOrdersPage: React.FC = () => {
                                 <CardContent sx={{ flexGrow: 1, p: { xs: 1.25, sm: 2 }, '&:last-child': { pb: { xs: 1.25, sm: 2 } } }}>
                                     <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: { xs: 1, sm: 2 }, gap: { xs: 0.5, sm: 1 } }}>
                                         <Box>
-                                            <Typography variant="h6" color="info.main" gutterBottom sx={{ fontWeight: 'bold', fontSize: { xs: '0.95rem', sm: headingFontSize.sm } }}>
+                                            <Typography variant="h6" color="info.main" gutterBottom sx={{ fontWeight: 'bold', fontSize: { xs: '0.95rem', sm: headingFontSize.sm }, mb: 0.5 }}>
                                                 Token No: {order.dailyTokenNumber}
                                             </Typography>
-                                            {/* <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                                                Order #{order.orderNumber?.split('-').pop()}
-                                            </Typography> */}
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mb: 1 }}>
+                                                <Typography variant="subtitle2" color="text.secondary" sx={{ fontWeight: 600, fontSize: '0.7rem' }}>
+                                                    Order:
+                                                </Typography>
+                                                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', fontSize: '0.85rem', bgcolor: alpha(theme.palette.primary.main, 0.1), color: 'primary.main', px: 0.8, py: 0.2, borderRadius: 1 }}>
+                                                    #{order.orderNumber?.split('-').pop() || 'N/A'}
+                                                </Typography>
+                                            </Box>
                                             {/* <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
                                                 Type: {getOrderTypeLabel(order.orderType, order)}
                                             </Typography> */}
