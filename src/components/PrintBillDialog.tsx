@@ -531,13 +531,13 @@ const PrintBillDialog: React.FC<PrintBillDialogProps> = ({ open, order, onClose 
                                         </TableRow>
                                     )}
 
-                                    {billData.discount?.amount > 0 && (
+                                    {(billData.discount?.amount > 0 || billData.couponDiscount > 0) && (
                                         <TableRow>
                                             <TableCell colSpan={3} sx={{ borderBottom: 'none', py: 0.25 }}>
-                                                <Typography variant="body2">Discount {billData.discount.code ? `(${billData.discount.code})` : ''}:</Typography>
+                                                <Typography variant="body2">Discount {(billData.discount?.couponCode || billData.couponCode) ? `(${billData.discount?.couponCode || billData.couponCode})` : ''}:</Typography>
                                             </TableCell>
                                             <TableCell align="right" sx={{ borderBottom: 'none', py: 0.25 }}>
-                                                <Typography variant="body2">-{formatCurrency(billData.discount.amount)}</Typography>
+                                                <Typography variant="body2">-{formatCurrency(billData.discount?.amount || billData.couponDiscount)}</Typography>
                                             </TableCell>
                                         </TableRow>
                                     )}

@@ -716,6 +716,9 @@ export const homepageAPI = {
   getAboutContent: () => api.get('/homepage/about'),
   updateAboutContent: (aboutSections: any[]) => api.put('/homepage/about', { aboutSections }),
   getPublicAboutContent: (tenantSlug: string) => api.get('/homepage/about/public', { params: { tenantSlug } }),
+  getMenuSettings: () => api.get<{ menuPdfUrl: string; qrCodeUrl: string; menuDocuments: any[] }>('/homepage/menu'),
+  updateMenuSettings: (data: { menuPdfUrl: string; qrCodeUrl: string; menuDocuments: any[] }) => api.put('/homepage/menu', data),
+  getPublicMenuSettings: (tenantSlug: string) => api.get<{ menuPdfUrl: string; qrCodeUrl: string; menuDocuments: any[] }>('/homepage/menu/public', { params: { tenantSlug } }),
 };
 
 // -------------------- SMS API --------------------

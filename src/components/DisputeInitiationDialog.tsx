@@ -31,7 +31,7 @@ const DisputeInitiationDialog: React.FC<DisputeInitiationDialogProps> = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    reason: 'billing_error',
+    reason: 'price_error',
     description: '',
     disputedAmount: order?.totalAmount || 0,
   });
@@ -85,10 +85,11 @@ const DisputeInitiationDialog: React.FC<DisputeInitiationDialogProps> = ({
             value={formData.reason}
             onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
           >
-            <MenuItem value="billing_error">Billing Error</MenuItem>
+            <MenuItem value="price_error">Billing/Price Error</MenuItem>
             <MenuItem value="item_missing">Item Missing</MenuItem>
-            <MenuItem value="poor_service">Poor Service</MenuItem>
+            <MenuItem value="service_issue">Service Issue</MenuItem>
             <MenuItem value="quality_issue">Quality Issue</MenuItem>
+            <MenuItem value="unauthorized_charge">Unauthorized Charge</MenuItem>
             <MenuItem value="other">Other</MenuItem>
           </TextField>
 

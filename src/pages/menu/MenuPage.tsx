@@ -14,9 +14,13 @@ import {
     MenuBook as MenuBookIcon,
     Today as TodayIcon,
     Menu as MenuIcon,
-    PlaylistAdd as PlaylistAddIcon
+    PlaylistAdd as PlaylistAddIcon,
+    FileUpload as FileUploadIcon,
+    PhotoCamera as PhotoCameraIcon
 } from '@mui/icons-material';
 import {
+    Menu,
+    Alert,
     Box,
     Button,
     Card,
@@ -50,7 +54,13 @@ import {
     InputAdornment,
     useTheme,
     useMediaQuery,
-    Divider
+    Divider,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow
 } from '@mui/material';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -108,7 +118,11 @@ const MenuPage: React.FC = () => {
     const [editingMenuItem, setEditingMenuItem] = useState<IMenuItem | null>(null);
     const [bulkCsv, setBulkCsv] = useState('');
     const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
+    const [bulkPreviewItems, setBulkPreviewItems] = useState<any[]>([]);
+    const [uploadingBulk, setUploadingBulk] = useState(false);
     const [dialogTab, setDialogTab] = useState(0);
+    const previewFileRef = useRef<HTMLInputElement>(null);
+    const [previewTargetIdx, setPreviewTargetIdx] = useState<number | null>(null);
 
     // Form State for Categories
     const [categoryForm, setCategoryForm] = useState({
@@ -124,6 +138,21 @@ const MenuPage: React.FC = () => {
         title: '',
         message: '',
         onConfirm: () => { }
+    });
+    const [confirmAction, setConfirmAction] = useState<{ 
+        open: boolean; 
+        title: string; 
+        message: React.ReactNode; 
+        onConfirm: () => void;
+        onAlternative?: () => void;
+        confirmLabel?: string;
+        alternativeLabel?: string;
+        showCancel?: boolean;
+    }>({
+        open: false,
+        title: '',
+        message: '',
+        onConfirm: () => { },
     });
     useEffect(() => {
         debouncedFetchData();
@@ -429,31 +458,81 @@ const MenuPage: React.FC = () => {
             return;
         }
 
-        try {
-            if (editingCategory && isSubcategory(editingCategory)) {
-                if (!categoryForm.parentCategory) {
-                    setCategoryTouched((prev) => ({ ...prev, parentCategory: true }));
-                    toast.error('Please select a parent category');
-                    return;
+        const executeSave = async () => {
+            try {
+                if (editingCategory && isSubcategory(editingCategory)) {
+                    if (!categoryForm.parentCategory) {
+                        setCategoryTouched((prev) => ({ ...prev, parentCategory: true }));
+                        toast.error('Please select a parent category');
+                        return;
+                    }
+                    await menuAPI.updateSubcategory(editingCategory._id, categoryForm);
+                    toast.success('Subcategory updated successfully');
+                } else if (editingCategory) {
+                    await menuAPI.updateCategory(editingCategory._id, categoryForm);
+                    toast.success('Category updated successfully');
+                } else if (categoryForm.parentCategory) {
+                    await menuAPI.createSubcategory(categoryForm);
+                    toast.success('Subcategory created successfully');
+                } else {
+                    await menuAPI.createCategory(categoryForm);
+                    toast.success('Category created successfully');
                 }
-                await menuAPI.updateSubcategory(editingCategory._id, categoryForm);
-                toast.success('Subcategory updated successfully');
-            } else if (editingCategory) {
-                await menuAPI.updateCategory(editingCategory._id, categoryForm);
-                toast.success('Category updated successfully');
-            } else if (categoryForm.parentCategory) {
-                await menuAPI.createSubcategory(categoryForm);
-                toast.success('Subcategory created successfully');
-            } else {
-                await menuAPI.createCategory(categoryForm);
-                toast.success('Category created successfully');
+                fetchData();
+                setCategoryDialogOpen(false);
+            } catch (error: any) {
+                console.error('Error saving category:', error);
+                toast.error(error.response?.data?.message || 'Failed to save category');
             }
-            fetchData();
-            setCategoryDialogOpen(false);
-        } catch (error: any) {
-            console.error('Error saving category:', error);
-            toast.error(error.response?.data?.message || 'Failed to save category');
+        };
+
+        // Check for duplicates before creating new
+        if (!editingCategory) {
+            const normalizedNewName = categoryForm.name.toLowerCase().trim();
+            const isCreatingSubcategory = !!categoryForm.parentCategory;
+
+            let existingDuplicate: any = null;
+            if (isCreatingSubcategory) {
+                existingDuplicate = subcategories.find(sub => 
+                    sub.name.toLowerCase().trim() === normalizedNewName && 
+                    getSubcategoryParentId(sub) === categoryForm.parentCategory
+                );
+            } else {
+                existingDuplicate = categories.find(cat => 
+                    cat.name.toLowerCase().trim() === normalizedNewName
+                );
+            }
+
+            if (existingDuplicate) {
+                setConfirmAction({
+                    open: true,
+                    title: 'Duplicate Name Detected',
+                    message: (
+                        <Box>
+                            <Typography variant="body2" gutterBottom>
+                                A {isCreatingSubcategory ? 'subcategory' : 'category'} named <strong>"{existingDuplicate.name}"</strong> already exists.
+                            </Typography>
+                            <Typography variant="body2">
+                                Do you want to create a <strong>New</strong> category with this name, or <strong>Merge</strong> (use the existing one)?
+                            </Typography>
+                        </Box>
+                    ),
+                    confirmLabel: 'Create New',
+                    alternativeLabel: 'Merge',
+                    showCancel: true,
+                    onConfirm: () => {
+                        executeSave();
+                    },
+                    onAlternative: () => {
+                        setCategoryDialogOpen(false);
+                        toast.success(`Using existing category "${existingDuplicate.name}"`);
+                    }
+                });
+                return;
+            }
         }
+
+        await executeSave();
     };
 
     const handleDeleteCategory = async (category: Category) => {
@@ -529,6 +608,44 @@ const MenuPage: React.FC = () => {
 
         // Return as-is for other cases
         return trimmedImage;
+    };
+
+    const handleRemoveImage = (idx: number) => {
+        const newItems = [...bulkPreviewItems];
+        newItems[idx].image = '';
+        setBulkPreviewItems(newItems);
+    };
+
+    const handleUrlChange = (idx: number, url: string) => {
+        const newItems = [...bulkPreviewItems];
+        newItems[idx].image = url;
+        setBulkPreviewItems(newItems);
+    };
+
+    const handlePreviewImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (previewTargetIdx === null) return;
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 15 * 1024 * 1024) {
+            toast.error('Image size exceeds 15MB limit');
+            return;
+        }
+
+        const loadingToast = toast.loading('Uploading replacement image...');
+        try {
+            const response = await uploadAPI.uploadImage(file);
+            const newItems = [...bulkPreviewItems];
+            newItems[previewTargetIdx].image = response.data.url;
+            setBulkPreviewItems(newItems);
+            toast.success('Image replaced successfully');
+        } catch (error) {
+            toast.error('Failed to upload image');
+        } finally {
+            toast.dismiss(loadingToast);
+            setPreviewTargetIdx(null);
+            if (previewFileRef.current) previewFileRef.current.value = '';
+        }
     };
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -610,48 +727,53 @@ const MenuPage: React.FC = () => {
                 toast.loading(progressMessage);
 
                 // Debug: Log the data being sent
-                console.log('[Frontend] Sending bulk upload request with', validItems.length, 'items');
-                console.log('[Frontend] Sample item data:', validItems[0]);
-
-                try {
-                    const res = await menuAPI.bulkCreate(validItems);
-
-                    // Debug: Log the response
-                    console.log('[Frontend] Bulk upload response:', res);
-
-                    const createdCount = Array.isArray(res.data) ? res.data.length : 0;
-                    const skippedCount = validItems.length - createdCount;
-
-                    toast.dismiss();
-                    if (createdCount > 0) {
-                        toast.success(`Uploaded ${createdCount} items.${skippedCount > 0 ? ` Skipped ${skippedCount} duplicates.` : ''}`);
-                    } else {
-                        toast.error(`No new items added. ${skippedCount} items were duplicates.`);
-                    }
-                    setBulkDialogOpen(false);
-
-                    // Add a delay to ensure backend has time to create categories
-                    toast.loading('Refreshing categories and menu items...');
-                    setTimeout(() => {
-                        fetchData(); // Refresh all data including menu items and categories
-                        toast.dismiss();
-                        // Force a second refresh to ensure UI updates
-                        setTimeout(() => {
-                            fetchData();
-                        }, 1000);
-                    }, 3000); // Increased delay to 3 seconds for better UI refresh
-                } catch (error: any) {
-                    toast.dismiss();
-                    console.error('[Frontend] Bulk upload error:', error);
-                    toast.error(`Upload failed: ${error.response?.data?.message || error.message || 'Unknown error'}`);
-                    console.error('[Frontend] Bulk upload error details:', error.response?.data);
-                }
+                console.log('[Frontend] Parsed bulk upload request with', validItems.length, 'items');
+                setBulkPreviewItems(validItems);
+                setDialogTab(1); // Switch to preview tab
             } catch (error) {
                 console.error(error);
                 toast.error('Failed to parse Excel file');
             }
         };
         reader.readAsBinaryString(file);
+    };
+
+    const handleConfirmBulkUpload = async () => {
+        if (bulkPreviewItems.length === 0) return;
+
+        setUploadingBulk(true);
+        const progressToast = toast.loading(`Uploading ${bulkPreviewItems.length} items...`);
+
+        try {
+            const res = await menuAPI.bulkCreate(bulkPreviewItems);
+            console.log('[Frontend] Bulk upload response:', res);
+
+            const createdCount = Array.isArray(res.data) ? res.data.length : (res.data?.count || 0);
+            const skippedCount = bulkPreviewItems.length - createdCount;
+
+            toast.dismiss(progressToast);
+            if (createdCount > 0) {
+                toast.success(`Uploaded ${createdCount} items.${skippedCount > 0 ? ` Skipped ${skippedCount} duplicates.` : ''}`);
+            } else {
+                toast.error(`No new items added. ${skippedCount} items were duplicates.`);
+            }
+            
+            setBulkDialogOpen(false);
+            setBulkPreviewItems([]);
+            
+            // Refresh data
+            toast.loading('Refreshing menu...');
+            setTimeout(() => {
+                fetchData();
+                toast.dismiss();
+            }, 2000);
+        } catch (error: any) {
+            toast.dismiss(progressToast);
+            console.error('[Frontend] Bulk upload error:', error);
+            toast.error(`Upload failed: ${error.response?.data?.message || error.message || 'Unknown error'}`);
+        } finally {
+            setUploadingBulk(false);
+        }
     };
 
     const handleBulkUpload = async () => {
@@ -725,41 +847,14 @@ const MenuPage: React.FC = () => {
 
             toast.loading(progressMessage);
 
-            // Debug: Log the data being sent
-            console.log('[Frontend] Sending CSV bulk upload request with', validItems.length, 'items');
-            console.log('[Frontend] Sample item data:', validItems[0]);
-
             try {
-                const res = await menuAPI.bulkCreate(validItems);
-
-                // Debug: Log the response
-                console.log('[Frontend] CSV bulk upload response:', res);
-
-                const createdCount = Array.isArray(res.data) ? res.data.length : 0;
-                const skippedCount = validItems.length - createdCount;
-
-                toast.dismiss();
-                if (createdCount > 0) {
-                    toast.success(`Uploaded ${createdCount} items.${skippedCount > 0 ? ` Skipped ${skippedCount} duplicates.` : ''}`);
-                } else {
-                    toast.error(`No new items added. ${skippedCount} duplicates found.`);
-                }
-                setBulkDialogOpen(false);
-                // Add a delay to ensure backend has time to create categories
-                toast.loading('Refreshing categories and menu items...');
-                setTimeout(() => {
-                    fetchData(); // Refresh all data including menu items and categories
-                    toast.dismiss();
-                    // Force a second refresh to ensure UI updates
-                    setTimeout(() => {
-                        fetchData();
-                    }, 1000);
-                }, 3000); // Increased delay to 3 seconds for better UI refresh
+                console.log('[Frontend] Parsed CSV bulk upload request with', validItems.length, 'items');
+                setBulkPreviewItems(validItems);
+                setDialogTab(1); // Switch to preview tab
                 setBulkCsv('');
             } catch (error: any) {
                 console.error(error);
-                toast.dismiss();
-                toast.error(error.response?.data?.message || 'Failed to upload items');
+                toast.error(error.response?.data?.message || 'Failed to process items');
             }
         } catch (error: any) {
             console.error(error);
@@ -810,6 +905,11 @@ const MenuPage: React.FC = () => {
 
         return filtered;
     }, [menuItems, searchQuery, selectedCategory, selectedSubcategory, categories, subcategories]);
+    const handleOpenBulkDialog = () => {
+        setBulkPreviewItems([]);
+        setDialogTab(0);
+        setBulkDialogOpen(true);
+    };
 
     return (
         <Box sx={{ p: { xs: 1.2, md: 3 }, pt: { xs: 0.8, md: 3 } }}>
@@ -921,7 +1021,7 @@ const MenuPage: React.FC = () => {
                                     variant="outlined"
                                     size={isMobile ? "small" : "medium"}
                                     startIcon={<CloudUploadIcon sx={{ fontSize: isMobile ? '0.9rem !important' : 'inherit' }} />}
-                                    onClick={() => setBulkDialogOpen(true)}
+                                    onClick={handleOpenBulkDialog}
                                     sx={{ 
                                         width: 'auto',
                                         fontSize: isMobile ? '0.7rem' : '0.85rem',
@@ -1498,45 +1598,312 @@ const MenuPage: React.FC = () => {
             />
 
             {/* Bulk Upload Dialog */}
-            <Dialog open={bulkDialogOpen} onClose={() => setBulkDialogOpen(false)} maxWidth="md" fullWidth>
-                <DialogTitle>Bulk Upload Menu Items</DialogTitle>
-                <DialogContent>
-                    <Box sx={{ mb: 3, p: 2, border: '1px dashed grey', borderRadius: 2, bgcolor: 'background.paper', textAlign: 'center' }}>
-                        <Typography variant="h6" gutterBottom>Upload Excel / CSV File</Typography>
-                        <Button
-                            variant="contained"
-                            component="label"
-                            startIcon={<CloudUploadIcon />}
-                            sx={{ mb: 2 }}
-                        >
-                            Select File
+            <Dialog open={bulkDialogOpen} onClose={() => setBulkDialogOpen(false)} maxWidth="lg" fullWidth>
+                <DialogTitle sx={{ m: 0, p: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Box>
+                        <Typography variant="h6" component="div">Bulk Upload Menu Items</Typography>
+                        <Tabs value={dialogTab} onChange={(e, v) => setDialogTab(v)} sx={{ mt: 1 }}>
+                            <Tab label="Upload File" />
+                            <Tab label={`Preview (${bulkPreviewItems.length})`} disabled={bulkPreviewItems.length === 0} />
+                        </Tabs>
+                    </Box>
+                    <IconButton
+                        aria-label="close bulk upload dialog"
+                        onClick={() => setBulkDialogOpen(false)}
+                        size="small"
+                        sx={{
+                            bgcolor: theme.palette.error.main,
+                            color: '#fff',
+                            width: 28,
+                            height: 28,
+                            '&:hover': { bgcolor: alpha(theme.palette.error.main, 0.85) },
+                        }}
+                    >
+                        <CloseIcon sx={{ fontSize: 18 }} />
+                    </IconButton>
+                </DialogTitle>
+                <DialogContent dividers>
+                    {dialogTab === 0 && (
+                        <Box sx={{ py: 4, textAlign: 'center' }}>
+                            <Box sx={{ mb: 4, p: 3, border: '2px dashed', borderColor: 'divider', borderRadius: 4, bgcolor: alpha(theme.palette.primary.main, 0.02) }}>
+                                <CloudUploadIcon sx={{ fontSize: 64, color: 'primary.main', mb: 2, opacity: 0.5 }} />
+                                <Typography variant="h6" gutterBottom fontWeight="bold">Upload Spreadsheet</Typography>
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                                    Upload an Excel (.xlsx, .xls) or CSV file with your menu items.
+                                </Typography>
+                                <Button
+                                    variant="contained"
+                                    component="label"
+                                    startIcon={<CloudUploadIcon />}
+                                    size="large"
+                                    sx={{ borderRadius: 2, px: 4 }}
+                                >
+                                    Select File
+                                    <input
+                                        type="file"
+                                        hidden
+                                        accept=".xlsx, .xls, .csv"
+                                        onChange={handleFileUpload}
+                                    />
+                                </Button>
+                                <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 2 }}>
+                                    Maximum 500 items per batch
+                                </Typography>
+                            </Box>
+
+                            <Box sx={{ mt: 2 }}>
+                                <Button 
+                                    variant="outlined" 
+                                    size="small" 
+                                    startIcon={<PlaylistAddIcon />}
+                                    sx={{ borderRadius: 2 }}
+                                    onClick={() => {
+                                        const template = [
+                                            { Name: 'Classic Burger', Price: 12.99, Category: 'Main Course', Subcategory: 'Burgers', Description: 'Juicy beef patty with lettuce, tomato, and special sauce', Image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500', 'Food Type': 'non-veg', 'Is Available': 'true', 'Is Catering Available': 'true' },
+                                            { Name: 'Margherita Pizza', Price: 14.50, Category: 'Main Course', Subcategory: 'Italian', Description: 'Fresh mozzarella, basil, and tomato sauce', Image: 'https://images.unsplash.com/photo-1604382354936-07c5d9983bd3?w=500', 'Food Type': 'veg', 'Is Available': 'true', 'Is Catering Available': 'true' },
+                                            { Name: 'Greek Salad', Price: 9.99, Category: 'Starters', Subcategory: 'Salads', Description: 'Cucumber, olives, feta cheese, and balsamic dressing', Image: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=500', 'Food Type': 'veg', 'Is Available': 'true', 'Is Catering Available': 'false' }
+                                        ];
+                                        const ws = XLSX.utils.json_to_sheet(template);
+                                        const wb = XLSX.utils.book_new();
+                                        XLSX.utils.book_append_sheet(wb, ws, "Template");
+                                        XLSX.writeFile(wb, "menu_upload_template.xlsx");
+                                    }}
+                                >
+                                    Download Excel Template
+                                </Button>
+                            </Box>
+                        </Box>
+                    )}
+
+                    {dialogTab === 1 && (
+                        <Box>
+                            <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
+                                Please review the items below. Images will be loaded from the URLs provided in your file.
+                            </Alert>
+                            <TableContainer component={Paper} sx={{ maxHeight: 600, borderRadius: 2, border: 1, borderColor: 'divider' }}>
+                                <Table stickyHeader size="small">
+                                    <TableHead>
+                                        <TableRow>
+                                            <TableCell sx={{ fontWeight: 'bold', width: 320 }}>Image Configuration</TableCell>
+                                            <TableCell sx={{ fontWeight: 'bold' }}>Item Name</TableCell>
+                                            <TableCell sx={{ fontWeight: 'bold' }}>Category</TableCell>
+                                            <TableCell sx={{ fontWeight: 'bold' }}>Price</TableCell>
+                                            <TableCell sx={{ fontWeight: 'bold' }}>Description</TableCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {bulkPreviewItems.map((item, idx) => (
+                                            <TableRow key={idx} hover>
+                                                <TableCell>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                                        <Box 
+                                                            sx={{ 
+                                                                width: 60, 
+                                                                height: 60, 
+                                                                borderRadius: 1, 
+                                                                overflow: 'hidden', 
+                                                                border: 1, 
+                                                                borderColor: 'divider',
+                                                                position: 'relative',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                bgcolor: 'action.hover',
+                                                                flexShrink: 0
+                                                            }}
+                                                        >
+                                                            {item.image ? (
+                                                                <>
+                                                                    <img 
+                                                                        src={item.image} 
+                                                                        alt={item.name} 
+                                                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                                        onError={(e) => {
+                                                                            (e.target as HTMLImageElement).src = 'https://via.placeholder.com/60?text=Error';
+                                                                        }}
+                                                                    />
+                                                                    <IconButton
+                                                                        size="small"
+                                                                        onClick={() => handleRemoveImage(idx)}
+                                                                        sx={{
+                                                                            position: 'absolute',
+                                                                            top: -4,
+                                                                            right: -4,
+                                                                            bgcolor: 'error.main',
+                                                                            color: 'white',
+                                                                            padding: '2px',
+                                                                            '&:hover': { bgcolor: 'error.dark' },
+                                                                            zIndex: 2,
+                                                                            boxShadow: 2
+                                                                        }}
+                                                                    >
+                                                                        <CloseIcon sx={{ fontSize: 12 }} />
+                                                                    </IconButton>
+                                                                </>
+                                                            ) : (
+                                                                <ImageIcon sx={{ color: 'text.disabled' }} />
+                                                            )}
+                                                        </Box>
+                                                        
+                                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, flexGrow: 1 }}>
+                                                            <Button
+                                                                variant="outlined"
+                                                                size="small"
+                                                                startIcon={<PhotoCameraIcon sx={{ fontSize: 16 }} />}
+                                                                onClick={() => {
+                                                                    setPreviewTargetIdx(idx);
+                                                                    previewFileRef.current?.click();
+                                                                }}
+                                                                sx={{ py: 0, height: 24, fontSize: '0.65rem', textTransform: 'none' }}
+                                                            >
+                                                                Upload
+                                                            </Button>
+                                                            <TextField
+                                                                size="small"
+                                                                placeholder="Paste URL..."
+                                                                value={item.image || ''}
+                                                                onChange={(e) => handleUrlChange(idx, e.target.value)}
+                                                                sx={{ 
+                                                                    '& .MuiOutlinedInput-input': { 
+                                                                        py: 0.5, 
+                                                                        fontSize: '0.65rem',
+                                                                        height: 'auto'
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </Box>
+                                                    </Box>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Typography variant="body2" fontWeight="bold">{item.name}</Typography>
+                                                    <Chip 
+                                                        label={item.foodType || 'n/a'} 
+                                                        size="small" 
+                                                        variant="outlined"
+                                                        color={item.foodType === 'veg' ? 'success' : item.foodType === 'non-veg' ? 'error' : 'default'}
+                                                        sx={{ height: 16, fontSize: '0.6rem', mt: 0.5 }}
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Typography variant="body2">{item.category}</Typography>
+                                                    {item.subcategory && (
+                                                        <Typography variant="caption" color="text.secondary" display="block">
+                                                            {item.subcategory}
+                                                        </Typography>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell sx={{ fontWeight: 'bold' }}>
+                                                    {formatCurrency(item.price)}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Typography variant="caption" sx={{ 
+                                                        display: '-webkit-box',
+                                                        WebkitLineClamp: 2,
+                                                        WebkitBoxOrient: 'vertical',
+                                                        overflow: 'hidden',
+                                                        maxWidth: 200
+                                                    }}>
+                                                        {item.description || '-'}
+                                                    </Typography>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
                             <input
                                 type="file"
                                 hidden
-                                accept=".xlsx, .xls, .csv"
-                                onChange={handleFileUpload}
+                                ref={previewFileRef}
+                                accept="image/*"
+                                onChange={handlePreviewImageChange}
                             />
-                        </Button>
-                        <Typography variant="caption" display="block" color="text.secondary">
-                            Supported formats: .xlsx, .xls, .csv
-                        </Typography>
-                        <Button size="small" sx={{ mt: 1 }} onClick={() => {
-                            const template = [
-                                { Name: 'Burger', Price: 10.99, Category: 'Main Course', Subcategory: 'Burgers', Description: 'Delicious burger', Image: 'https://example.com/burger.jpg', 'Food Type': 'non-veg', 'Is Available': 'true', 'Is Catering Available': 'true' },
-                                { Name: 'Pizza', Price: 12.50, Category: 'Main Course', Subcategory: 'Italian', Description: 'Cheese pizza', Image: 'https://example.com/pizza.jpg', 'Food Type': 'veg', 'Is Available': 'true', 'Is Catering Available': 'true' },
-                                { Name: 'Salad', Price: 8.99, Category: 'Starters', Subcategory: 'Salads', Description: 'Fresh garden salad', Image: '', 'Food Type': 'veg', 'Is Available': 'true', 'Is Catering Available': 'false' }
-                            ];
-                            const ws = XLSX.utils.json_to_sheet(template);
-                            const wb = XLSX.utils.book_new();
-                            XLSX.utils.book_append_sheet(wb, ws, "Template");
-                            XLSX.writeFile(wb, "menu_upload_template.xlsx");
-                        }}>
-                            Download Template
-                        </Button>
-                    </Box>
+                        </Box>
+                    )}
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setBulkDialogOpen(false)}>Cancel</Button>
+                <DialogActions sx={{ p: 2, px: 3 }}>
+                    <Button onClick={() => setBulkDialogOpen(false)} disabled={uploadingBulk}>Cancel</Button>
+                    <Box sx={{ flexGrow: 1 }} />
+                    {dialogTab === 1 && (
+                        <>
+                            <Button 
+                                onClick={() => {
+                                    setBulkPreviewItems([]);
+                                    setDialogTab(0);
+                                }} 
+                                color="inherit"
+                                disabled={uploadingBulk}
+                            >
+                                Clear Selection
+                            </Button>
+                            <Button
+                                variant="contained"
+                                onClick={handleConfirmBulkUpload}
+                                disabled={uploadingBulk}
+                                startIcon={uploadingBulk ? <CircularProgress size={20} /> : <CloudUploadIcon />}
+                                sx={{ borderRadius: 2, px: 4 }}
+                            >
+                                {uploadingBulk ? 'Uploading...' : `Confirm & Upload ${bulkPreviewItems.length} Items`}
+                            </Button>
+                        </>
+                    )}
+                </DialogActions>
+            </Dialog>
+
+            {/* Generic Confirmation Dialog */}
+            <Dialog
+                open={confirmAction.open}
+                onClose={() => setConfirmAction({ ...confirmAction, open: false })}
+                PaperProps={{
+                    sx: { borderRadius: 3, p: 1, maxWidth: '450px' }
+                }}
+            >
+                <DialogTitle sx={{ pb: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <WarningIcon sx={{ color: 'warning.main', fontSize: 32 }} />
+                        <Typography variant="h6" sx={{ fontWeight: 'bold', color: 'warning.main' }}>
+                            {confirmAction.title}
+                        </Typography>
+                    </Box>
+                </DialogTitle>
+                <DialogContent>
+                    {confirmAction.message}
+                </DialogContent>
+                <DialogActions sx={{ p: 2.5, pt: 1.5, gap: 1 }}>
+                    {confirmAction.showCancel !== false && (
+                        <Button
+                            onClick={() => setConfirmAction({ ...confirmAction, open: false })}
+                            variant="outlined"
+                            sx={{ borderRadius: 2, px: 2 }}
+                        >
+                            Cancel
+                        </Button>
+                    )}
+                    <Box sx={{ flexGrow: 1 }} />
+                    {confirmAction.onAlternative && (
+                        <Button
+                            onClick={() => {
+                                confirmAction.onAlternative?.();
+                                setConfirmAction({ ...confirmAction, open: false });
+                            }}
+                            variant="outlined"
+                            color="primary"
+                            sx={{ borderRadius: 2, px: 2, fontWeight: 'bold' }}
+                        >
+                            {confirmAction.alternativeLabel || 'Alternative'}
+                        </Button>
+                    )}
+                    <Button
+                        onClick={() => {
+                            confirmAction.onConfirm();
+                            setConfirmAction({ ...confirmAction, open: false });
+                        }}
+                        variant="contained"
+                        color="primary"
+                        sx={{ borderRadius: 2, px: 3, fontWeight: 'bold' }}
+                    >
+                        {confirmAction.confirmLabel || 'Confirm'}
+                    </Button>
                 </DialogActions>
             </Dialog>
 

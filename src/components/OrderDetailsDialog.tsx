@@ -233,6 +233,11 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                                     <strong>Phone:</strong> {order.customer.phone}
                                 </Typography>
                             )}
+                            {order.customer?.email && (
+                                <Typography variant="body2">
+                                    <strong>Email:</strong> {order.customer.email}
+                                </Typography>
+                            )}
                             {(order.tableNumber || order.table) && (
                                 <Typography variant="body2">
                                     <strong>Table:</strong> {order.tableNumber || order.table?.tableNumber || order.table?.number || order.table?.tableName || order.table?.name}
@@ -511,13 +516,13 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                                     <Typography variant="body2">{formatCurrency(order.serviceCharge.amount)}</Typography>
                                 </Box>
                             )}
-                            {order.discount?.amount > 0 && (
+                            {(order.discount?.amount > 0 || order.couponDiscount > 0) && (
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', color: 'success.main' }}>
                                     <Typography variant="body2">
-                                        Discount {order.discount.code ? `(${order.discount.code})` : ''}:
+                                        Discount {(order.discount?.couponCode || order.couponCode) ? `(${order.discount?.couponCode || order.couponCode})` : ''}:
                                     </Typography>
                                     <Typography variant="body2" fontWeight="medium">
-                                        -{formatCurrency(order.discount.amount)}
+                                        -{formatCurrency(order.discount?.amount || order.couponDiscount)}
                                     </Typography>
                                 </Box>
                             )}

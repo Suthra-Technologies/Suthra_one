@@ -23,6 +23,8 @@ import {
   TableRow,
   Paper,
   Pagination,
+  useMediaQuery,
+  Divider,
 } from '@mui/material';
 import {
   Refresh,
@@ -108,6 +110,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, subtitle
 
 const AssetDashboard: React.FC = () => {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [insights, setInsights] = useState<any>(null);
@@ -279,68 +282,145 @@ const AssetDashboard: React.FC = () => {
               </Box>
             ) : (
               <>
-                <TableContainer>
-                  <Table>
-                    <TableHead sx={{ bgcolor: alpha(theme.palette.primary.main, 0.02) }}>
-                      <TableRow>
-                        <TableCell sx={{ fontWeight: 700 }}>Asset Name</TableCell>
-                        <TableCell sx={{ fontWeight: 700 }}>Type</TableCell>
-                        <TableCell sx={{ fontWeight: 700 }}>Relevant Date</TableCell>
-                        <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
-                        <TableCell sx={{ fontWeight: 700 }} align="right">Actions</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {tabData.data.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
-                            <Typography variant="body2" color="text.secondary">No assets found in this category</Typography>
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        tabData.data.map((asset: any) => (
-                          <TableRow key={asset._id} hover>
-                            <TableCell>
-                              <Typography variant="subtitle2" fontWeight="700">{asset.name}</Typography>
-                            </TableCell>
-                            <TableCell>
-                              <Chip
-                                icon={getAssetIcon(asset.type)}
-                                label={asset.type}
-                                size="small"
-                                sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), color: theme.palette.primary.main }}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              {tabValue < 2 ? (
-                                asset.lifecycle?.expiryDate ? new Date(asset.lifecycle.expiryDate).toLocaleDateString() : 'N/A'
-                              ) : (
-                                asset.lifecycle?.nextServiceDate ? new Date(asset.lifecycle.nextServiceDate).toLocaleDateString() : 'N/A'
-                              )}
-                            </TableCell>
-                            <TableCell>
+                {isMobile ? (
+                  <Stack spacing={2} sx={{ p: 2 }}>
+                    {tabData.data.length === 0 ? (
+                      <Box sx={{ py: 4, textAlign: 'center' }}>
+                        <Typography variant="body2" color="text.secondary">No assets found in this category</Typography>
+                      </Box>
+                    ) : (
+                      tabData.data.map((asset: any) => (
+                        <Card
+                          key={asset._id}
+                          onClick={() => navigate(`/assets/${asset._id}/edit`)}
+                          sx={{
+                            borderRadius: 3,
+                            cursor: 'pointer',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
+                            transition: 'box-shadow 0.2s',
+                            '&:hover': { boxShadow: '0 4px 16px rgba(0,0,0,0.13)' },
+                          }}
+                        >
+                          <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
+                            <Stack direction="row" spacing={1.5} alignItems="flex-start" mb={1.5}>
+                              <Avatar
+                                sx={{
+                                  bgcolor: alpha(theme.palette.primary.main, 0.1),
+                                  color: theme.palette.primary.main,
+                                  width: 40, height: 40, flexShrink: 0,
+                                }}
+                              >
+                                {getAssetIcon(asset.type)}
+                              </Avatar>
+                              <Box sx={{ flex: 1, minWidth: 0 }}>
+                                <Typography variant="subtitle1" fontWeight="700" noWrap>{asset.name}</Typography>
+                                <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'capitalize' }}>{asset.type}</Typography>
+                              </Box>
                               <Chip
                                 label={tabValue === 0 ? 'Expired' : tabValue === 2 ? 'Overdue' : 'Due Soon'}
                                 size="small"
                                 color={tabValue % 2 === 0 ? 'error' : 'warning'}
                                 variant="outlined"
                               />
-                            </TableCell>
-                            <TableCell align="right">
-                              <Button
-                                size="small"
-                                variant="text"
-                                onClick={() => navigate(`/assets/${asset._id}/edit`)}
-                              >
-                                View Details
-                              </Button>
+                            </Stack>
+
+                            <Divider sx={{ mb: 1.5 }} />
+
+                            <Grid container spacing={1} alignItems="center">
+                              <Grid item xs={8}>
+                                <Typography variant="caption" color="text.secondary" fontWeight={600} display="block">
+                                  Relevant Date
+                                </Typography>
+                                <Typography variant="body2">
+                                  {tabValue < 2 ? (
+                                    asset.lifecycle?.expiryDate ? new Date(asset.lifecycle.expiryDate).toLocaleDateString() : 'N/A'
+                                  ) : (
+                                    asset.lifecycle?.nextServiceDate ? new Date(asset.lifecycle.nextServiceDate).toLocaleDateString() : 'N/A'
+                                  )}
+                                </Typography>
+                              </Grid>
+                              <Grid item xs={4} textAlign="right">
+                                <Button
+                                  size="small"
+                                  variant="text"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/assets/${asset._id}/edit`);
+                                  }}
+                                >
+                                  View
+                                </Button>
+                              </Grid>
+                            </Grid>
+                          </CardContent>
+                        </Card>
+                      ))
+                    )}
+                  </Stack>
+                ) : (
+                  <TableContainer>
+                    <Table>
+                      <TableHead sx={{ bgcolor: alpha(theme.palette.primary.main, 0.02) }}>
+                        <TableRow>
+                          <TableCell sx={{ fontWeight: 700 }}>Asset Name</TableCell>
+                          <TableCell sx={{ fontWeight: 700 }}>Type</TableCell>
+                          <TableCell sx={{ fontWeight: 700 }}>Relevant Date</TableCell>
+                          <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
+                          <TableCell sx={{ fontWeight: 700 }} align="right">Actions</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {tabData.data.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
+                              <Typography variant="body2" color="text.secondary">No assets found in this category</Typography>
                             </TableCell>
                           </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
+                        ) : (
+                          tabData.data.map((asset: any) => (
+                            <TableRow key={asset._id} hover>
+                              <TableCell>
+                                <Typography variant="subtitle2" fontWeight="700">{asset.name}</Typography>
+                              </TableCell>
+                              <TableCell>
+                                <Chip
+                                  icon={getAssetIcon(asset.type)}
+                                  label={asset.type}
+                                  size="small"
+                                  sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), color: theme.palette.primary.main }}
+                                />
+                              </TableCell>
+                              <TableCell>
+                                {tabValue < 2 ? (
+                                  asset.lifecycle?.expiryDate ? new Date(asset.lifecycle.expiryDate).toLocaleDateString() : 'N/A'
+                                ) : (
+                                  asset.lifecycle?.nextServiceDate ? new Date(asset.lifecycle.nextServiceDate).toLocaleDateString() : 'N/A'
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <Chip
+                                  label={tabValue === 0 ? 'Expired' : tabValue === 2 ? 'Overdue' : 'Due Soon'}
+                                  size="small"
+                                  color={tabValue % 2 === 0 ? 'error' : 'warning'}
+                                  variant="outlined"
+                                />
+                              </TableCell>
+                              <TableCell align="right">
+                                <Button
+                                  size="small"
+                                  variant="text"
+                                  onClick={() => navigate(`/assets/${asset._id}/edit`)}
+                                >
+                                  View Details
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                )}
                 {tabData.total > 5 && (
                   <Box sx={{ p: 2, display: 'flex', justifyContent: 'center', borderTop: 1, borderColor: 'divider' }}>
                     <Pagination

@@ -495,7 +495,7 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                     width: '100%',
                                     '& .MuiFormControlLabel-root': {
                                         mr: { xs: 0, sm: 2 }
-                                    },
+                                     },
                                     opacity: finalTotal === 0 ? 0.5 : 1,
                                     pointerEvents: finalTotal === 0 ? 'none' : 'auto'
                                 }}
@@ -517,38 +517,7 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                     )}
 
                     {/* Dine-in Payment Method - Only Card and Cash */}
-                    {orderType === 'dine_in' && (
-                        <FormControl component="fieldset" sx={{ alignItems: 'center' }}>
-                            <Typography variant="body2" gutterBottom fontWeight="bold" color={finalTotal === 0 ? 'text.disabled' : 'text.primary'}>
-                                Payment Method {finalTotal === 0 && '(N/A)'}
-                            </Typography>
-                            <RadioGroup
-                                value={finalTotal === 0 ? '' : paymentMethod}
-                                onChange={(e) => setPaymentMethod(e.target.value as any)}
-                                sx={{
-                                    display: { xs: 'grid', sm: 'flex' },
-                                    gridTemplateColumns: { xs: '1fr 1fr', sm: 'none' },
-                                    flexDirection: { sm: 'row' },
-                                    justifyContent: 'center',
-                                    columnGap: { xs: 2, sm: 0 },
-                                    rowGap: { xs: 0, sm: 0 },
-                                    width: '100%',
-                                    '& .MuiFormControlLabel-root': {
-                                        mr: { xs: 0, sm: 2 }
-                                    },
-                                    opacity: finalTotal === 0 ? 0.5 : 1,
-                                    pointerEvents: finalTotal === 0 ? 'none' : 'auto'
-                                }}
-                            >
-                                {(settings.system?.posPaymentMethods?.cash ?? true) && (
-                                    <FormControlLabel value="cash" control={<Radio size="small" />} label="Cash" />
-                                )}
-                                {(settings.system?.posPaymentMethods?.card ?? true) && (
-                                    <FormControlLabel value="card" control={<Radio size="small" />} label="Card" />
-                                )}
-                            </RadioGroup>
-                        </FormControl>
-                    )}
+
                 </Box>
 
 
