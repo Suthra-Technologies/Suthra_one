@@ -1,0 +1,174 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
+  TableHead, TableRow, TablePagination, Chip, CircularProgress, IconButton,
+  Stack, Card, CardContent, Divider, TextField, MenuItem, Select, FormControl, InputLabel
+} from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { superAdminPaymentsAPI } from '../../services/api';
+import { toast } from 'react-hot-toast';
+import { getStatusLabel, getStatusColor, getOrderTypeLabel } from '../../utils/orderWorkflows';
+
+const TenantOrdersPage: React.FC = () => {
+  const { tenantId } = useParams<{ tenantId: string }>();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const tenant = location.state?.tenant;
+
+  const [rows, setRows] = useState<any[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(20);
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState('all');
+  const [search, setSearch] = useState('');
+
+  const fetch = useCallback(async (p: number, rpp: number, s: string, q: string) => {
+    if (!tenantId) return;
+    setLoading(true);
+    try {
+      const res = await superAdminPaymentsAPI.getTenantOrders(tenantId, { 
+        page: p + 1, 
+        limit: rpp,
+        status: s,
+        search: q
+      });
+      setRows(res.data.orders || []);
+      setTotal(res.data.total || 0);
+    } catch {
+      toast.error('Failed to load orders');
+    } finally {
+      setLoading(false);
+    }
+  }, [tenantId]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetch(page, rowsPerPage, status, search);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [page, rowsPerPage, status, search, fetch]);
+
+  const fmt = (n: any) => `$${(Number(n) || 0).toFixed(2)}`;
+  const fmtDate = (d: string) => d ? new Date(d).toLocaleString() : '-';
+
+  return (
+    <Box sx={{ px: { xs: 1.5, sm: 3 }, pb: 4, pt: { xs: 0.5, sm: 3 } }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+        <IconButton onClick={() => navigate(`/superadmin/tenants/${tenantId}`, { state: { tenant } })} sx={{ mr: 2 }}>
+          <ArrowBackIcon />
+        </IconButton>
+        <ShoppingBagIcon sx={{ mr: 1, color: '#ed6c02' }} />
+        <Typography variant="h5" fontWeight="bold">
+          Manage Orders — {tenant?.name || 'Store'}
+        </Typography>
+      </Box>
+
+      <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+          <TextField
+            label="Search Order #, Customer"
+            variant="outlined"
+            size="small"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            sx={{ flexGrow: 1 }}
+          />
+          <FormControl size="small" sx={{ minWidth: 200 }}>
+            <InputLabel>Status</InputLabel>
+            <Select
+              value={status}
+              label="Status"
+              onChange={(e) => setStatus(e.target.value)}
+            >
+              <MenuItem value="all">All Statuses</MenuItem>
+              <MenuItem value="pending">Pending</MenuItem>
+              <MenuItem value="confirmed">Confirmed</MenuItem>
+              <MenuItem value="preparing">Preparing</MenuItem>
+              <MenuItem value="ready">Ready</MenuItem>
+              <MenuItem value="served">Served</MenuItem>
+              <MenuItem value="completed">Completed</MenuItem>
+              <MenuItem value="cancelled">Cancelled</MenuItem>
+            </Select>
+          </FormControl>
+        </Stack>
+      </Paper>
+
+      <Paper elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3, overflow: 'hidden' }}>
+        <TableContainer>
+          <Table size="small">
+            <TableHead>
+              <TableRow sx={{ bgcolor: 'grey.50' }}>
+                <TableCell sx={{ fontWeight: 700 }}>Date</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Order #</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Type</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Customer</TableCell>
+                <TableCell sx={{ fontWeight: 700 }} align="right">Amount</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Payment</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                    <CircularProgress size={28} />
+                  </TableCell>
+                </TableRow>
+              ) : rows.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                    <Typography color="text.secondary">No orders found for this store.</Typography>
+                  </TableCell>
+                </TableRow>
+              ) : rows.map((row) => (
+                <TableRow key={row._id} hover>
+                  <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '0.78rem' }}>{fmtDate(row.createdAt)}</TableCell>
+                  <TableCell sx={{ fontWeight: 600, fontSize: '0.78rem' }}>{row.orderNumber}</TableCell>
+                  <TableCell sx={{ fontSize: '0.78rem' }}>
+                    <Chip label={getOrderTypeLabel(row.orderType, row)} size="small" variant="outlined" sx={{ fontSize: '0.68rem' }} />
+                  </TableCell>
+                  <TableCell sx={{ fontSize: '0.78rem' }}>
+                    <Typography variant="inherit" noWrap sx={{ maxWidth: 140 }}>{row.customer?.name || 'Guest'}</Typography>
+                    {row.customer?.phone && <Typography variant="caption" color="text.secondary" display="block">{row.customer.phone}</Typography>}
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.85rem', color: 'primary.main' }}>{fmt(row.totalAmount)}</TableCell>
+                  <TableCell>
+                    <Chip
+                      label={getStatusLabel(row.status)}
+                      size="small"
+                      color={getStatusColor(row.status) as any}
+                      sx={{ fontSize: '0.68rem', textTransform: 'capitalize' }}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={row.paymentStatus || 'Unpaid'}
+                      size="small"
+                      variant="outlined"
+                      color={row.paymentStatus === 'paid' ? 'success' : 'default'}
+                      sx={{ fontSize: '0.68rem', textTransform: 'capitalize' }}
+                    />
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        <TablePagination
+          component="div"
+          count={total}
+          page={page}
+          onPageChange={(_, p) => setPage(p)}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={(e) => { setRowsPerPage(parseInt(e.target.value, 10)); setPage(0); }}
+          rowsPerPageOptions={[10, 20, 50]}
+        />
+      </Paper>
+    </Box>
+  );
+};
+
+export default TenantOrdersPage;

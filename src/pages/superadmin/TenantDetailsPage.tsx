@@ -7,6 +7,7 @@ import EmailIcon from '@mui/icons-material/Email';
 import ReceiptIcon from '@mui/icons-material/Receipt';
 import StoreIcon from '@mui/icons-material/Store';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
+import PaymentIcon from '@mui/icons-material/Payment';
 
 const TenantDetailsPage: React.FC = () => {
   const { tenantId } = useParams<{ tenantId: string }>();
@@ -45,6 +46,12 @@ const TenantDetailsPage: React.FC = () => {
       icon: <SupportAgentIcon sx={{ fontSize: 40, color: '#0891b2' }} />,
       path: `/superadmin/logs/tickets?tenantId=${tenantId}&name=${storeName}`,
       color: '#e0f2fe',
+    },
+    {
+      title: 'Platform Payments',
+      icon: <PaymentIcon sx={{ fontSize: 40, color: '#1565c0' }} />,
+      path: `/superadmin/tenants/${tenantId}/platform-payments`,
+      color: '#e3f2fd',
     },
   ];
 

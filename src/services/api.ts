@@ -155,14 +155,14 @@ export const ordersAPI = {
   getPublicSettings: (tenantSlug: string) =>
     api.get('/public/orders/settings', { params: { tenantSlug } }),
 
-  getPublicPaymentConfig: (tenantSlug: string) =>
-    api.get('/public/orders/payment-config', { params: { tenantSlug } }),
+  getPublicPaymentConfig: (tenantSlug: string, orderType?: string) =>
+    api.get('/public/orders/payment-config', { params: { tenantSlug, orderType } }),
 
-  createPublicPaymentIntent: (amount: number, tenantSlug?: string, currency?: string) =>
-    api.post('/public/orders/create-payment-intent', { amount, currency, tenantSlug }),
+  createPublicPaymentIntent: (amount: number, tenantSlug?: string, currency?: string, orderType?: string) =>
+    api.post('/public/orders/create-payment-intent', { amount, currency, tenantSlug, orderType }),
 
-  verifyPublicPaymentIntent: (tenantSlug: string, intentId: string) =>
-    api.get(`/public/orders/verify-payment-intent/${intentId}`, { params: { tenantSlug } }),
+  verifyPublicPaymentIntent: (tenantSlug: string, intentId: string, orderType?: string) =>
+    api.get(`/public/orders/verify-payment-intent/${intentId}`, { params: { tenantSlug, orderType } }),
 
   getDeliveryQuote: (deliveryAddress: any, items: any[], tenantSlug: string) =>
     api.post('/public/orders/delivery-quote', { deliveryAddress, items }, { params: { tenantSlug } }),
@@ -415,6 +415,15 @@ export const subscriptionAPI = {
     cancelUrl: string;
   }) => api.post('/payments/create-checkout-session', data),
   verifySession: (sessionId: string) => api.post(`/payments/verify-session/${sessionId}`),
+  updateSettings: (data: { useEmailTopup?: boolean; useSmsTopup?: boolean }) => api.put('/subscription/settings', data),
+};
+
+// -------------------- Super Admin Payments API --------------------
+export const superAdminPaymentsAPI = {
+  getTenantPlatformPayments: (tenantId: string, params?: { page?: number; limit?: number; startDate?: string; endDate?: string }) =>
+    api.get(`/payments/superadmin/tenant/${tenantId}/platform-payments`, { params }),
+  getTenantOrders: (tenantId: string, params?: any) =>
+    api.get(`/superadmin/tenants/${tenantId}/orders`, { params }),
 };
 
 // -------------------- Coupons API --------------------

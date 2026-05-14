@@ -224,24 +224,10 @@ const KitchenInterface: React.FC = () => {
       const response = await ordersAPI.getKitchen();
       const ordersData = Array.isArray(response.data) ? response.data : [];
 
-      // Sort by urgency first, then status
-      const sortedOrders = ordersData.sort((a: any, b: any) => {
-        const urgencyA = getUrgencyLevel(a.createdAt);
-        const urgencyB = getUrgencyLevel(b.createdAt);
-
-        // Critical orders always first
-        if (urgencyA === 'critical' && urgencyB !== 'critical') return -1;
-        if (urgencyA !== 'critical' && urgencyB === 'critical') return 1;
-
-        // Then sort by status
-        const statusPriority: any = { pending: 0, confirmed: 1, preparing: 2, 'in-progress': 2, ready: 3 };
-        if (statusPriority[a.status] !== statusPriority[b.status]) {
-          return (statusPriority[a.status] || 0) - (statusPriority[b.status] || 0);
-        }
-
-        // Finally by time (oldest first)
-        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-      });
+      // Sort by most recent first
+      const sortedOrders = ordersData.sort((a: any, b: any) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
 
       setOrders(sortedOrders);
     } catch (error) {
@@ -466,9 +452,9 @@ const KitchenInterface: React.FC = () => {
     return result;
   }, [orders, filterStatus, filterType, activeTab]);
 
-  const ITEMS_PER_PAGE = isMobile ? 5 : (filteredOrders.length || 1);
-  const totalPages = isMobile ? Math.ceil(filteredOrders.length / 5) : 1;
-  const paginatedOrders = isMobile ? filteredOrders.slice((page - 1) * 5, page * 5) : filteredOrders;
+  const ITEMS_PER_PAGE = 20;
+  const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
+  const paginatedOrders = filteredOrders.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   useEffect(() => {
     setPage(1);
@@ -933,14 +919,16 @@ const KitchenInterface: React.FC = () => {
         </Grid>
       )}
 
-      {!loading && isMobile && totalPages > 1 && (
+      {!loading && totalPages > 1 && (
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-          <Pagination 
-            count={totalPages} 
-            page={page} 
-            onChange={(_, value) => setPage(value)} 
-            color="primary" 
-            size="large"
+          <Pagination
+            count={totalPages}
+            page={page}
+            onChange={(_, value) => { setPage(value); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            color="primary"
+            size={isMobile ? 'medium' : 'large'}
+            showFirstButton
+            showLastButton
           />
         </Box>
       )}
