@@ -27,9 +27,18 @@ import {
     TextField,
     TablePagination,
     Tooltip as MuiTooltip,
+    IconButton,
     alpha,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    Divider,
+    List,
+    ListItem,
+    ListItemText,
 } from '@mui/material';
-import { ordersAPI, tablesAPI, bookingsAPI, feedbackAPI, reportsAPI } from '../../services/api';
+import { ordersAPI, tablesAPI, bookingsAPI, feedbackAPI, reportsAPI, cateringAPI } from '../../services/api';
 import {
     BarChart,
     Bar,
@@ -54,22 +63,30 @@ import PeopleIcon from '@mui/icons-material/People';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import MoneyIcon from '@mui/icons-material/AttachMoney';
 import StarIcon from '@mui/icons-material/Star';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import TwoWheelerIcon from '@mui/icons-material/TwoWheeler';
+import RequestQuoteIcon from '@mui/icons-material/RequestQuote';
+import SavingsIcon from '@mui/icons-material/Savings';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import ReceiptIcon from '@mui/icons-material/Receipt';
+import CurrencyExchangeIcon from '@mui/icons-material/CurrencyExchange';
+import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
+import LeaderboardIcon from '@mui/icons-material/Leaderboard';
+import PaymentsIcon from '@mui/icons-material/Payments';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import CloseIcon from '@mui/icons-material/Close';
+import EmailIcon from '@mui/icons-material/Email';
+import EditIcon from '@mui/icons-material/Edit';
+import HistoryIcon from '@mui/icons-material/History';
+import AssignmentIcon from '@mui/icons-material/Assignment';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { downloadFromUrl } from '../../utils/fileDownload';
 import { useTheme, useMediaQuery } from '@mui/material';
 import { useSocket } from '../../context/SocketContext';
 import { useSettings } from '../../context/SettingsContext';
-import CurrencyExchangeIcon from '@mui/icons-material/CurrencyExchange';
-import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
-import LeaderboardIcon from '@mui/icons-material/Leaderboard';
-import PaymentsIcon from '@mui/icons-material/Payments';
-import ReceiptIcon from '@mui/icons-material/Receipt';
-import LocalShippingIcon from '@mui/icons-material/LocalShipping';
-import TwoWheelerIcon from '@mui/icons-material/TwoWheeler';
-import SavingsIcon from '@mui/icons-material/Savings';
-import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
-import RequestQuoteIcon from '@mui/icons-material/RequestQuote';
+import ActionHistoryList from '../../components/common/ActionHistoryList';
+
 
 
 const COLORS = ["#3b82f6", "#22c55e", "#ef4444", "#f59e0b", "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16", "#f97316", "#6366f1"];
@@ -144,6 +161,15 @@ const ReportsPage: React.FC = () => {
     const [topCancelledItemsRowsPerPage, setTopCancelledItemsRowsPerPage] = useState(10);
     const [refundRecordsPage, setRefundRecordsPage] = useState(0);
     const [refundRecordsRowsPerPage, setRefundRecordsRowsPerPage] = useState(10);
+    const [cateringData, setCateringData] = useState<any[]>([]);
+    const [cateringPage, setCateringPage] = useState(0);
+    const [cateringRowsPerPage, setCateringRowsPerPage] = useState(10);
+    const [cateringTotalCount, setCateringTotalCount] = useState(0);
+    const [previewOpen, setPreviewOpen] = useState(false);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+    const [previewOrderNumber, setPreviewOrderNumber] = useState('');
+    const [selectedCateringOrder, setSelectedCateringOrder] = useState<any | null>(null);
+    const [cateringTab, setCateringTab] = useState(0);
 
     const { socket } = useSocket();
 
@@ -171,6 +197,7 @@ const ReportsPage: React.FC = () => {
         setTopCancelledItemsPage(0);
         setTipsReportPage(0);
         setDeliveryReportPage(0);
+        setCateringPage(0);
     }, [activeTab, period, startDate, endDate]);
 
     // Reset payment method filter when switching tabs
@@ -182,7 +209,6 @@ const ReportsPage: React.FC = () => {
     // Fetch data based on active tab
     useEffect(() => {
         fetchReportData();
-
         const interval = setInterval(fetchReportData, 30000); // Auto-refresh every 30s
         return () => clearInterval(interval);
     }, [activeTab, period, startDate, endDate, paymentMethodFilter]);
@@ -318,6 +344,9 @@ const ReportsPage: React.FC = () => {
                 case 20: // Delivery Report
                     await fetchDeliveryReport({ ...params, provider: deliveryProviderFilter });
                     break;
+                case 21: // Catering Report
+                    await fetchCateringReport(params);
+                    break;
             }
         } catch (error) {
             console.error('Error fetching report:', error);
@@ -328,24 +357,30 @@ const ReportsPage: React.FC = () => {
     };
 
     const fetchComprehensiveReport = async (params: any) => {
-        const [reportResponse, ordersResponse] = await Promise.all([
-            axios.get(`${API_URL}/api/reports/comprehensive`, { params, headers }),
-            ordersAPI.filter({ page: 1, limit: 100, ...params })
-        ]);
+        if (loading) return;
+        setLoading(true);
+        try {
+            const [reportResponse, ordersResponse] = await Promise.all([
+                axios.get(`${API_URL}/api/reports/comprehensive`, { params, headers }),
+                ordersAPI.filter({ page: 1, limit: 100, ...params })
+            ]);
 
-        const responseData = reportResponse.data;
-        setBestSellingItems(responseData.bestSellingItems.slice(0, 10));
-        setOrdersByType(responseData.ordersByType);
-        setWaiterPerformance(responseData.waiterPerformance.slice(0, 5));
-        setMaterialUsage(responseData.materialUsage.items ? responseData.materialUsage.items.slice(0, 10) : []);
-        setSalesReport(responseData.salesReport);
-        setPeakHours(responseData.peakHours);
-        setPaymentAnalytics(responseData.paymentAnalytics);
-        setCategoryPerformance(responseData.categoryPerformance);
-        setCancellationAnalysis(responseData.cancellationAnalysis);
+            // Background fetch for P&L to populate Total Expenses card without blocking
+            fetchProfitLoss(params, true); 
 
-        // set Recent Orders
-        setRecentOrders(ordersResponse.data.orders || []);
+            const responseData = reportResponse.data;
+            setBestSellingItems(responseData.bestSellingItems || []);
+            setOrdersByType(responseData.ordersByType || []);
+            setWaiterPerformance(responseData.waiterPerformance || []);
+            setMaterialUsage(responseData.materialUsage?.items || (Array.isArray(responseData.materialUsage) ? responseData.materialUsage : []));
+            setSalesReport(responseData.salesReport || null);
+            setRecentOrders(ordersResponse.data.orders || []);
+        } catch (error) {
+            console.error('Error fetching comprehensive report:', error);
+            toast.error('Failed to load dashboard data');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const fetchBestSellingItems = async (params: any) => {
@@ -407,9 +442,72 @@ const ReportsPage: React.FC = () => {
         setCancellationAnalysis(response.data);
     };
 
-    const fetchProfitLoss = async (params: any) => {
-        const response = await axios.get(`${API_URL}/api/reports/profit-loss`, { params, headers });
-        setProfitLoss(response.data);
+    const fetchCateringCommissions = async (params: any) => {
+        try {
+            // Clean params to only include what commission API supports
+            const commissionParams = {
+                startDate: params.startDate,
+                endDate: params.endDate,
+                status: params.status,
+                search: params.search
+            };
+            const response = await cateringAPI.getCommissions(commissionParams);
+            return response.data.commissions || response.data.data || [];
+        } catch (error) {
+            console.error('Error fetching catering commissions:', error);
+            return [];
+        }
+    };
+
+    const fetchProfitLoss = async (params: any, isBackground = false) => {
+        if (!isBackground) setLoading(true);
+        try {
+            const [plResponse, commissionData] = await Promise.all([
+                axios.get(`${API_URL}/api/reports/profit-loss`, { params, headers }),
+                fetchCateringCommissions(params)
+            ]);
+
+            const plData = plResponse.data;
+            
+            // Map commissions to expense format
+            const commissionExpenses = commissionData.map((c: any) => {
+                const comm = c.commission || c;
+                return {
+                    date: c.createdAt || c.date || new Date().toISOString(),
+                    poNumber: `COMM-${c.cateringOrder?.orderNumber || 'N/A'}`,
+                    vendor: comm.reference?.name || 'Commission Beneficiary',
+                    amount: comm.amount || comm.commissionAmount || 0,
+                    type: 'Catering Commission'
+                };
+            });
+
+            const totalCommission = commissionExpenses.reduce((sum: number, exp: any) => sum + exp.amount, 0);
+            
+            // Combine with standard expenses (POs)
+            const integratedExpenses = [
+                ...(plData.expenses || []).map((e: any) => ({ ...e, type: 'Purchase Order' })),
+                ...commissionExpenses
+            ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+            const updatedPL = {
+                ...plData,
+                expenses: integratedExpenses,
+                cateringCommissionsTotal: totalCommission,
+                poExpensesTotal: plData.cogs || 0,
+                cogs: (plData.cogs || 0) + totalCommission, // Total COGS
+                grossProfit: (plData.revenue || 0) - ((plData.cogs || 0) + totalCommission),
+                margin: plData.revenue > 0 
+                    ? (((plData.revenue || 0) - ((plData.cogs || 0) + totalCommission)) / (plData.revenue || 0)) * 100 
+                    : 0
+            };
+
+            setProfitLoss(updatedPL);
+        } catch (error) {
+            console.error('Error fetching Profit & Loss data:', error);
+            if (!isBackground) toast.error('Failed to fetch P&L report');
+        } finally {
+            if (!isBackground) setLoading(false);
+        }
     };
 
     const fetchCustomerAnalytics = async (params: any) => {
@@ -433,17 +531,17 @@ const ReportsPage: React.FC = () => {
     };
 
     const fetchPromoSummary = async (params: any) => {
-        const response = await axios.get(`${API_URL}/api/reports/promo-summary`, { 
-            params: { ...params, promoType, promoCode: promoSearch }, 
-            headers 
+        const response = await axios.get(`${API_URL}/api/reports/promo-summary`, {
+            params: { ...params, promoType, promoCode: promoSearch },
+            headers
         });
         setPromoSummary(response.data);
     };
 
     const fetchPromoRedemptions = async (params: any) => {
-        const response = await axios.get(`${API_URL}/api/reports/promo-redemptions`, { 
-            params: { ...params, promoType, promoCode: promoSearch }, 
-            headers 
+        const response = await axios.get(`${API_URL}/api/reports/promo-redemptions`, {
+            params: { ...params, promoType, promoCode: promoSearch },
+            headers
         });
         setPromoRedemptions(response.data);
     };
@@ -461,6 +559,16 @@ const ReportsPage: React.FC = () => {
         setDeliveryReport(response.data);
     };
 
+    const fetchCateringReport = async (params: any) => {
+        const response = await cateringAPI.getAll({
+            page: 1,
+            limit: 1000,
+            ...params
+        });
+        setCateringData(response.data.orders || []);
+        setCateringTotalCount(response.data.total || 0);
+    };
+
     const downloadExcel = async (reportType: string, customPaymentMethod?: string) => {
         try {
             const params: any = { reportType, period };
@@ -474,6 +582,34 @@ const ReportsPage: React.FC = () => {
                 if (method) {
                     params.paymentMethod = method;
                 }
+            }
+
+            if (reportType === 'catering-report') {
+                const csvRows = [
+                    ['Order #', 'Date', 'Customer', 'Occasion', 'Service', 'Guests', 'Total', 'Payment', 'Status'],
+                    ...cateringData.map(o => [
+                        o.orderNumber,
+                        new Date(o.requiredDate).toLocaleDateString(),
+                        o.customerName,
+                        o.occasion,
+                        o.serviceType,
+                        ((o.guests?.adults?.veg || 0) + (o.guests?.adults?.nonVeg || 0) + (o.guests?.kids?.veg || 0) + (o.guests?.kids?.nonVeg || 0)),
+                        o.totalAmount,
+                        o.paymentStatus,
+                        o.status
+                    ])
+                ];
+
+                const csvContent = "data:text/csv;charset=utf-8," + csvRows.map(e => e.join(",")).join("\n");
+                const encodedUri = encodeURI(csvContent);
+                const link = document.createElement("a");
+                link.setAttribute("href", encodedUri);
+                link.setAttribute("download", `catering-report-${period}-${Date.now()}.csv`);
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                toast.success('Catering report exported!');
+                return;
             }
 
             const queryString = new URLSearchParams(params).toString();
@@ -559,139 +695,139 @@ const ReportsPage: React.FC = () => {
     const renderDashboard = () => (
         <Grid container spacing={isMobile ? 1 : 3}>
             {/* Summary Cards */}
-                <Grid item xs={6} md={3}>
-                    <Card sx={{ 
-                        background: 'linear-gradient(135deg, #3f51b5 0%, #1a237e 100%)', 
-                        borderRadius: isMobile ? 3 : 4,
-                        boxShadow: isMobile ? '0 4px 12px rgba(26, 35, 126, 0.2)' : 3,
-                        position: 'relative',
-                        overflow: 'hidden'
-                    }}>
-                        <CardContent sx={{ p: isMobile ? 1.5 : 2, '&:last-child': { pb: isMobile ? 1.5 : 2 } }}>
-                            <Stack spacing={isMobile ? 0.25 : 1}>
-                                <Stack direction="row" alignItems="center" spacing={0.5}>
-                                    <CurrencyExchangeIcon sx={{ fontSize: isMobile ? 16 : 28, color: 'rgba(255,255,255,0.9)' }} />
-                                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontSize: isMobile ? '0.65rem' : 'inherit', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                        Total Sales
-                                    </Typography>
-                                </Stack>
-                                <Typography variant={isMobile ? "h6" : "h4"} sx={{ color: 'white', fontWeight: 800, fontSize: isMobile ? '1.1rem' : 'inherit' }}>
-                                    {salesReport ? formatCurrency(salesReport.summary.totalSales).replace('₹', '') : '-'}
+            <Grid item xs={6} md={3}>
+                <Card sx={{
+                    background: 'linear-gradient(135deg, #3f51b5 0%, #1a237e 100%)',
+                    borderRadius: isMobile ? 3 : 4,
+                    boxShadow: isMobile ? '0 4px 12px rgba(26, 35, 126, 0.2)' : 3,
+                    position: 'relative',
+                    overflow: 'hidden'
+                }}>
+                    <CardContent sx={{ p: isMobile ? 1.5 : 2, '&:last-child': { pb: isMobile ? 1.5 : 2 } }}>
+                        <Stack spacing={isMobile ? 0.25 : 1}>
+                            <Stack direction="row" alignItems="center" spacing={0.5}>
+                                <CurrencyExchangeIcon sx={{ fontSize: isMobile ? 16 : 28, color: 'rgba(255,255,255,0.9)' }} />
+                                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontSize: isMobile ? '0.65rem' : 'inherit', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                    Total Sales
                                 </Typography>
                             </Stack>
-                        </CardContent>
-                    </Card>
-                </Grid>
+                            <Typography variant={isMobile ? "h6" : "h4"} sx={{ color: 'white', fontWeight: 800, fontSize: isMobile ? '1.1rem' : 'inherit' }}>
+                                {salesReport ? formatCurrency(salesReport.summary.totalSales).replace('₹', '') : '-'}
+                            </Typography>
+                        </Stack>
+                    </CardContent>
+                </Card>
+            </Grid>
 
-                <Grid item xs={6} md={3}>
-                    <Card sx={{ 
-                        background: 'linear-gradient(135deg, #ec407a 0%, #ad1457 100%)', 
-                        borderRadius: isMobile ? 3 : 4,
-                        boxShadow: isMobile ? '0 4px 12px rgba(173, 20, 87, 0.2)' : 3,
-                    }}>
-                        <CardContent sx={{ p: isMobile ? 1.5 : 2, '&:last-child': { pb: isMobile ? 1.5 : 2 } }}>
-                            <Stack spacing={isMobile ? 0.25 : 1}>
-                                <Stack direction="row" alignItems="center" spacing={0.5}>
-                                    <ShoppingBagIcon sx={{ fontSize: isMobile ? 16 : 28, color: 'rgba(255,255,255,0.9)' }} />
-                                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontSize: isMobile ? '0.65rem' : 'inherit', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                        Total Orders
-                                    </Typography>
-                                </Stack>
-                                <Typography variant={isMobile ? "h6" : "h4"} sx={{ color: 'white', fontWeight: 800, fontSize: isMobile ? '1.1rem' : 'inherit' }}>
-                                    {salesReport ? salesReport.summary.totalOrders : '-'}
+            <Grid item xs={6} md={3}>
+                <Card sx={{
+                    background: 'linear-gradient(135deg, #ec407a 0%, #ad1457 100%)',
+                    borderRadius: isMobile ? 3 : 4,
+                    boxShadow: isMobile ? '0 4px 12px rgba(173, 20, 87, 0.2)' : 3,
+                }}>
+                    <CardContent sx={{ p: isMobile ? 1.5 : 2, '&:last-child': { pb: isMobile ? 1.5 : 2 } }}>
+                        <Stack spacing={isMobile ? 0.25 : 1}>
+                            <Stack direction="row" alignItems="center" spacing={0.5}>
+                                <ShoppingBagIcon sx={{ fontSize: isMobile ? 16 : 28, color: 'rgba(255,255,255,0.9)' }} />
+                                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontSize: isMobile ? '0.65rem' : 'inherit', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                    Total Orders
                                 </Typography>
                             </Stack>
-                        </CardContent>
-                    </Card>
-                </Grid>
+                            <Typography variant={isMobile ? "h6" : "h4"} sx={{ color: 'white', fontWeight: 800, fontSize: isMobile ? '1.1rem' : 'inherit' }}>
+                                {salesReport ? salesReport.summary.totalOrders : '-'}
+                            </Typography>
+                        </Stack>
+                    </CardContent>
+                </Card>
+            </Grid>
 
-                <Grid item xs={6} md={3}>
-                    <Card sx={{ 
-                        background: 'linear-gradient(135deg, #0288d1 0%, #01579b 100%)', 
-                        borderRadius: isMobile ? 3 : 4,
-                        boxShadow: isMobile ? '0 4px 12px rgba(1, 87, 155, 0.2)' : 3,
-                    }}>
-                        <CardContent sx={{ p: isMobile ? 1.5 : 2, '&:last-child': { pb: isMobile ? 1.5 : 2 } }}>
-                            <Stack spacing={isMobile ? 0.25 : 1}>
-                                <Stack direction="row" alignItems="center" spacing={0.5}>
-                                    <TrendingUpIcon sx={{ fontSize: isMobile ? 16 : 28, color: 'rgba(255,255,255,0.9)' }} />
-                                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontSize: isMobile ? '0.65rem' : 'inherit', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                        Avg Order Value
-                                    </Typography>
-                                </Stack>
-                                <Typography variant={isMobile ? "h6" : "h4"} sx={{ color: 'white', fontWeight: 800, fontSize: isMobile ? '1.1rem' : 'inherit' }}>
-                                    {salesReport ? formatCurrency(salesReport.summary.averageOrderValue).replace('₹', '') : '-'}
+            <Grid item xs={6} md={3}>
+                <Card sx={{
+                    background: 'linear-gradient(135deg, #0288d1 0%, #01579b 100%)',
+                    borderRadius: isMobile ? 3 : 4,
+                    boxShadow: isMobile ? '0 4px 12px rgba(1, 87, 155, 0.2)' : 3,
+                }}>
+                    <CardContent sx={{ p: isMobile ? 1.5 : 2, '&:last-child': { pb: isMobile ? 1.5 : 2 } }}>
+                        <Stack spacing={isMobile ? 0.25 : 1}>
+                            <Stack direction="row" alignItems="center" spacing={0.5}>
+                                <TrendingUpIcon sx={{ fontSize: isMobile ? 16 : 28, color: 'rgba(255,255,255,0.9)' }} />
+                                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontSize: isMobile ? '0.65rem' : 'inherit', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                    Avg Order Value
                                 </Typography>
                             </Stack>
-                        </CardContent>
-                    </Card>
-                </Grid>
+                            <Typography variant={isMobile ? "h6" : "h4"} sx={{ color: 'white', fontWeight: 800, fontSize: isMobile ? '1.1rem' : 'inherit' }}>
+                                {salesReport ? formatCurrency(salesReport.summary.averageOrderValue).replace('₹', '') : '-'}
+                            </Typography>
+                        </Stack>
+                    </CardContent>
+                </Card>
+            </Grid>
 
-                <Grid item xs={6} md={3}>
-                    <Card sx={{ 
-                        background: 'linear-gradient(135deg, #ff8f00 0%, #e65100 100%)', 
-                        borderRadius: isMobile ? 3 : 4,
-                        boxShadow: isMobile ? '0 4px 12px rgba(230, 81, 0, 0.2)' : 3,
-                    }}>
-                        <CardContent sx={{ p: isMobile ? 1.5 : 2, '&:last-child': { pb: isMobile ? 1.5 : 2 } }}>
-                            <Stack spacing={isMobile ? 0.25 : 1}>
-                                <Stack direction="row" alignItems="center" spacing={0.5}>
-                                    <LeaderboardIcon sx={{ fontSize: isMobile ? 16 : 28, color: 'rgba(255,255,255,0.9)' }} />
-                                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontSize: isMobile ? '0.65rem' : 'inherit', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                        Top Items Sold
-                                    </Typography>
-                                </Stack>
-                                <Typography variant={isMobile ? "h6" : "h4"} sx={{ color: 'white', fontWeight: 800, fontSize: isMobile ? '1.1rem' : 'inherit' }}>
-                                    {topItems.length}
+            <Grid item xs={6} md={3}>
+                <Card sx={{
+                    background: 'linear-gradient(135deg, #ff8f00 0%, #e65100 100%)',
+                    borderRadius: isMobile ? 3 : 4,
+                    boxShadow: isMobile ? '0 4px 12px rgba(230, 81, 0, 0.2)' : 3,
+                }}>
+                    <CardContent sx={{ p: isMobile ? 1.5 : 2, '&:last-child': { pb: isMobile ? 1.5 : 2 } }}>
+                        <Stack spacing={isMobile ? 0.25 : 1}>
+                            <Stack direction="row" alignItems="center" spacing={0.5}>
+                                <LeaderboardIcon sx={{ fontSize: isMobile ? 16 : 28, color: 'rgba(255,255,255,0.9)' }} />
+                                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontSize: isMobile ? '0.65rem' : 'inherit', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                    Top Items Sold
                                 </Typography>
                             </Stack>
-                        </CardContent>
-                    </Card>
-                </Grid>
+                            <Typography variant={isMobile ? "h6" : "h4"} sx={{ color: 'white', fontWeight: 800, fontSize: isMobile ? '1.1rem' : 'inherit' }}>
+                                {topItems.length}
+                            </Typography>
+                        </Stack>
+                    </CardContent>
+                </Card>
+            </Grid>
 
-                <Grid item xs={6} md={3}>
-                    <Card sx={{ 
-                        background: 'linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%)', 
-                        borderRadius: isMobile ? 3 : 4,
-                        boxShadow: isMobile ? '0 4px 12px rgba(27, 94, 32, 0.2)' : 3,
-                    }}>
-                        <CardContent sx={{ p: isMobile ? 1.5 : 2, '&:last-child': { pb: isMobile ? 1.5 : 2 } }}>
-                            <Stack spacing={isMobile ? 0.25 : 1}>
-                                <Stack direction="row" alignItems="center" spacing={0.5}>
-                                    <PaymentsIcon sx={{ fontSize: isMobile ? 16 : 28, color: 'rgba(255,255,255,0.9)' }} />
-                                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontSize: isMobile ? '0.65rem' : 'inherit', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                        Total Tips
-                                    </Typography>
-                                </Stack>
-                                <Typography variant={isMobile ? "h6" : "h4"} sx={{ color: 'white', fontWeight: 800, fontSize: isMobile ? '1.1rem' : 'inherit' }}>
-                                    {salesReport ? formatCurrency(salesReport.summary.totalTips || 0).replace('₹', '') : '-'}
+            <Grid item xs={6} md={3}>
+                <Card sx={{
+                    background: 'linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%)',
+                    borderRadius: isMobile ? 3 : 4,
+                    boxShadow: isMobile ? '0 4px 12px rgba(27, 94, 32, 0.2)' : 3,
+                }}>
+                    <CardContent sx={{ p: isMobile ? 1.5 : 2, '&:last-child': { pb: isMobile ? 1.5 : 2 } }}>
+                        <Stack spacing={isMobile ? 0.25 : 1}>
+                            <Stack direction="row" alignItems="center" spacing={0.5}>
+                                <PaymentsIcon sx={{ fontSize: isMobile ? 16 : 28, color: 'rgba(255,255,255,0.9)' }} />
+                                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontSize: isMobile ? '0.65rem' : 'inherit', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                    Total Tips
                                 </Typography>
                             </Stack>
-                        </CardContent>
-                    </Card>
-                </Grid>
+                            <Typography variant={isMobile ? "h6" : "h4"} sx={{ color: 'white', fontWeight: 800, fontSize: isMobile ? '1.1rem' : 'inherit' }}>
+                                {salesReport ? formatCurrency(salesReport.summary.totalTips || 0).replace('₹', '') : '-'}
+                            </Typography>
+                        </Stack>
+                    </CardContent>
+                </Card>
+            </Grid>
 
-                <Grid item xs={6} md={3}>
-                    <Card sx={{ 
-                        background: 'linear-gradient(135deg, #455a64 0%, #263238 100%)', 
-                        borderRadius: isMobile ? 3 : 4,
-                        boxShadow: isMobile ? '0 4px 12px rgba(38, 50, 56, 0.2)' : 3,
-                    }}>
-                        <CardContent sx={{ p: isMobile ? 1.5 : 2, '&:last-child': { pb: isMobile ? 1.5 : 2 } }}>
-                            <Stack spacing={isMobile ? 0.25 : 1}>
-                                <Stack direction="row" alignItems="center" spacing={0.5}>
-                                    <ReceiptIcon sx={{ fontSize: isMobile ? 16 : 28, color: 'rgba(255,255,255,0.9)' }} />
-                                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontSize: isMobile ? '0.65rem' : 'inherit', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                        Total Tax
-                                    </Typography>
-                                </Stack>
-                                <Typography variant={isMobile ? "h6" : "h4"} sx={{ color: 'white', fontWeight: 800, fontSize: isMobile ? '1.1rem' : 'inherit' }}>
-                                    {salesReport ? formatCurrency(salesReport.summary.totalTax || 0).replace('₹', '') : '-'}
+            <Grid item xs={6} md={3}>
+                <Card sx={{
+                    background: 'linear-gradient(135deg, #455a64 0%, #263238 100%)',
+                    borderRadius: isMobile ? 3 : 4,
+                    boxShadow: isMobile ? '0 4px 12px rgba(38, 50, 56, 0.2)' : 3,
+                }}>
+                    <CardContent sx={{ p: isMobile ? 1.5 : 2, '&:last-child': { pb: isMobile ? 1.5 : 2 } }}>
+                        <Stack spacing={isMobile ? 0.25 : 1}>
+                            <Stack direction="row" alignItems="center" spacing={0.5}>
+                                <ReceiptIcon sx={{ fontSize: isMobile ? 16 : 28, color: 'rgba(255,255,255,0.9)' }} />
+                                <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', fontSize: isMobile ? '0.65rem' : 'inherit', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                    Total Tax
                                 </Typography>
                             </Stack>
-                        </CardContent>
-                    </Card>
-                </Grid>
+                            <Typography variant={isMobile ? "h6" : "h4"} sx={{ color: 'white', fontWeight: 800, fontSize: isMobile ? '1.1rem' : 'inherit' }}>
+                                {salesReport ? formatCurrency(salesReport.summary.totalTax || 0).replace('₹', '') : '-'}
+                            </Typography>
+                        </Stack>
+                    </CardContent>
+                </Card>
+            </Grid>
             {/* Charts Row */}
             <Grid item xs={12}>
                 <Grid container spacing={{ xs: 2, md: 3 }}>
@@ -1062,8 +1198,8 @@ const ReportsPage: React.FC = () => {
                                     <TableCell align="right">Unit</TableCell>
                                 </TableRow>
                             </TableHead>
-                            <TableBody>
-                                {materialUsage.slice(0, 5).map((item, index) => (
+                             <TableBody>
+                                {Array.isArray(materialUsage) && materialUsage.slice(0, 5).map((item, index) => (
                                     <TableRow key={index}>
                                         <TableCell>{item.itemName}</TableCell>
                                         <TableCell align="right">{item.totalUsed}</TableCell>
@@ -1205,11 +1341,11 @@ const ReportsPage: React.FC = () => {
     // Best Selling Items Tab
     const renderBestSellingItems = () => (
         <Box sx={{ py: 0 }}>
-            <Box sx={{ 
-                display: 'flex', 
-                flexDirection: 'row', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
+            <Box sx={{
+                display: 'flex',
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
                 mb: isMobile ? 1.5 : 3,
                 gap: 1
             }}>
@@ -1221,8 +1357,8 @@ const ReportsPage: React.FC = () => {
                     size="small"
                     startIcon={<DownloadIcon sx={{ fontSize: isMobile ? '14px !important' : 'inherit' }} />}
                     onClick={() => downloadExcel('best-selling')}
-                    sx={{ 
-                        borderRadius: 2, 
+                    sx={{
+                        borderRadius: 2,
                         fontSize: isMobile ? '0.65rem' : 'inherit',
                         px: isMobile ? 1 : 2,
                         minWidth: 'auto',
@@ -1274,59 +1410,59 @@ const ReportsPage: React.FC = () => {
                                         <Grid item xs={12}>
                                             <Box sx={{ width: "100%", height: isMobile ? 220 : 320 }}>
                                                 <ResponsiveContainer width="100%" height="100%">
-                                                <PieChart>
-                                                    <Pie
-                                                        data={safeBestPie}
-                                                        dataKey="totalQuantity"
-                                                        nameKey="itemName"
-                                                        cx="50%"
-                                                        cy="50%"
-                                                        innerRadius={0}
-                                                        outerRadius={isMobile ? 80 : 110}
-                                                        stroke="none"
-                                                        paddingAngle={0}
-                                                        isAnimationActive={false}
-                                                        labelLine={true}
-                                                        label={({ cx, cy, midAngle, outerRadius, percent }) => {
-                                                            if (!percent) return null;
-                                                            const value = Math.round(percent * 100);
-                                                            if (value < 2) return null;
-                                                            
-                                                            const RADIAN = Math.PI / 180;
-                                                            const sx = cx + (outerRadius - 5) * Math.cos(-midAngle * RADIAN);
-                                                            const sy = cy + (outerRadius - 5) * Math.sin(-midAngle * RADIAN);
-                                                            const mx = cx + (outerRadius + 20) * Math.cos(-midAngle * RADIAN);
-                                                            const my = cy + (outerRadius + 20) * Math.sin(-midAngle * RADIAN);
-                                                            const ex = mx + (mx > cx ? 20 : -20);
-                                                            const ey = my;
-                                                            const textAnchor = ex > cx ? "start" : "end";
+                                                    <PieChart>
+                                                        <Pie
+                                                            data={safeBestPie}
+                                                            dataKey="totalQuantity"
+                                                            nameKey="itemName"
+                                                            cx="50%"
+                                                            cy="50%"
+                                                            innerRadius={0}
+                                                            outerRadius={isMobile ? 80 : 110}
+                                                            stroke="none"
+                                                            paddingAngle={0}
+                                                            isAnimationActive={false}
+                                                            labelLine={true}
+                                                            label={({ cx, cy, midAngle, outerRadius, percent }) => {
+                                                                if (!percent) return null;
+                                                                const value = Math.round(percent * 100);
+                                                                if (value < 2) return null;
 
-                                                            return (
-                                                                <g>
-                                                                    <path d={`M${sx},${sy}L${mx},${my}`} stroke="#9ca3af" fill="none" strokeWidth={1} />
-                                                                    <text
-                                                                        x={ex}
-                                                                        y={ey}
-                                                                        textAnchor={textAnchor}
-                                                                        dominantBaseline="central"
-                                                                        fill="#374151"
-                                                                        style={{ fontSize: 11, fontWeight: 500 }}
-                                                                    >
-                                                                        {value}%
-                                                                    </text>
-                                                                </g>
-                                                            );
-                                                        }}
-                                                    >
-                                                        {safeBestPie.map((entry, index) => (
-                                                            <Cell
-                                                                key={index}
-                                                                fill={COLORS[index % COLORS.length]}
-                                                            />
-                                                        ))}
-                                                    </Pie>
-                                                    <RechartsTooltip />
-                                                </PieChart>
+                                                                const RADIAN = Math.PI / 180;
+                                                                const sx = cx + (outerRadius - 5) * Math.cos(-midAngle * RADIAN);
+                                                                const sy = cy + (outerRadius - 5) * Math.sin(-midAngle * RADIAN);
+                                                                const mx = cx + (outerRadius + 20) * Math.cos(-midAngle * RADIAN);
+                                                                const my = cy + (outerRadius + 20) * Math.sin(-midAngle * RADIAN);
+                                                                const ex = mx + (mx > cx ? 20 : -20);
+                                                                const ey = my;
+                                                                const textAnchor = ex > cx ? "start" : "end";
+
+                                                                return (
+                                                                    <g>
+                                                                        <path d={`M${sx},${sy}L${mx},${my}`} stroke="#9ca3af" fill="none" strokeWidth={1} />
+                                                                        <text
+                                                                            x={ex}
+                                                                            y={ey}
+                                                                            textAnchor={textAnchor}
+                                                                            dominantBaseline="central"
+                                                                            fill="#374151"
+                                                                            style={{ fontSize: 11, fontWeight: 500 }}
+                                                                        >
+                                                                            {value}%
+                                                                        </text>
+                                                                    </g>
+                                                                );
+                                                            }}
+                                                        >
+                                                            {safeBestPie.map((entry, index) => (
+                                                                <Cell
+                                                                    key={index}
+                                                                    fill={COLORS[index % COLORS.length]}
+                                                                />
+                                                            ))}
+                                                        </Pie>
+                                                        <RechartsTooltip />
+                                                    </PieChart>
                                                 </ResponsiveContainer>
                                             </Box>
                                         </Grid>
@@ -1482,10 +1618,10 @@ const ReportsPage: React.FC = () => {
                 </Grid>
 
                 <Grid item xs={12}>
-                    <Paper 
+                    <Paper
                         elevation={0}
-                        sx={{ 
-                            p: isMobile ? 2 : 3, 
+                        sx={{
+                            p: isMobile ? 2 : 3,
                             borderRadius: isMobile ? 3 : 4,
                             background: isMobile ? "#ffffff" : "#f9fafb",
                             boxShadow: isMobile ? "0 2px 10px rgba(0,0,0,0.05)" : "none",
@@ -1495,91 +1631,91 @@ const ReportsPage: React.FC = () => {
                         <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, fontSize: isMobile ? '1.1rem' : 'inherit' }}>Detailed Report</Typography>
                         {/* Mobile Cards */}
                         <Box sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', gap: 1.5 }}>
-                        {bestSellingItems
-                            .slice(bestSellingPage * bestSellingRowsPerPage, bestSellingPage * bestSellingRowsPerPage + bestSellingRowsPerPage)
-                            .map((item, index) => {
-                                const rank = bestSellingPage * bestSellingRowsPerPage + index + 1;
-                                return (
-                                    <Paper key={index} elevation={1} sx={{ p: 2, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                <Chip label={rank} size="small" color={rank <= 3 ? 'primary' : 'default'} />
-                                                <Typography variant="subtitle2" fontWeight={600}>{item.itemName}</Typography>
+                            {bestSellingItems
+                                .slice(bestSellingPage * bestSellingRowsPerPage, bestSellingPage * bestSellingRowsPerPage + bestSellingRowsPerPage)
+                                .map((item, index) => {
+                                    const rank = bestSellingPage * bestSellingRowsPerPage + index + 1;
+                                    return (
+                                        <Paper key={index} elevation={1} sx={{ p: 2, borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                    <Chip label={rank} size="small" color={rank <= 3 ? 'primary' : 'default'} />
+                                                    <Typography variant="subtitle2" fontWeight={600}>{item.itemName}</Typography>
+                                                </Box>
+                                                <Typography variant="caption" color="text.secondary">{item.category}</Typography>
                                             </Box>
-                                            <Typography variant="caption" color="text.secondary">{item.category}</Typography>
-                                        </Box>
-                                        <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
-                                            <Box>
-                                                <Typography variant="caption" color="text.secondary">Qty Sold</Typography>
-                                                <Typography variant="body2" fontWeight={600}>{item.totalQuantity}</Typography>
+                                            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
+                                                <Box>
+                                                    <Typography variant="caption" color="text.secondary">Qty Sold</Typography>
+                                                    <Typography variant="body2" fontWeight={600}>{item.totalQuantity}</Typography>
+                                                </Box>
+                                                <Box>
+                                                    <Typography variant="caption" color="text.secondary">Revenue</Typography>
+                                                    <Typography variant="body2" fontWeight={600}>{formatCurrency(item.totalRevenue)}</Typography>
+                                                </Box>
+                                                <Box>
+                                                    <Typography variant="caption" color="text.secondary">Order Count</Typography>
+                                                    <Typography variant="body2" fontWeight={600}>{item.orderCount}</Typography>
+                                                </Box>
+                                                <Box>
+                                                    <Typography variant="caption" color="text.secondary">Avg Price</Typography>
+                                                    <Typography variant="body2" fontWeight={600}>{formatCurrency(item.averagePrice)}</Typography>
+                                                </Box>
                                             </Box>
-                                            <Box>
-                                                <Typography variant="caption" color="text.secondary">Revenue</Typography>
-                                                <Typography variant="body2" fontWeight={600}>{formatCurrency(item.totalRevenue)}</Typography>
-                                            </Box>
-                                            <Box>
-                                                <Typography variant="caption" color="text.secondary">Order Count</Typography>
-                                                <Typography variant="body2" fontWeight={600}>{item.orderCount}</Typography>
-                                            </Box>
-                                            <Box>
-                                                <Typography variant="caption" color="text.secondary">Avg Price</Typography>
-                                                <Typography variant="body2" fontWeight={600}>{formatCurrency(item.averagePrice)}</Typography>
-                                            </Box>
-                                        </Box>
-                                    </Paper>
-                                );
-                            })}
-                    </Box>
+                                        </Paper>
+                                    );
+                                })}
+                        </Box>
 
-                    {/* Desktop Table */}
-                    <TableContainer component={Paper} sx={{ display: { xs: 'none', md: 'block' } }}>
-                        <Table>
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell>Rank</TableCell>
-                                    <TableCell>Item Name</TableCell>
-                                    <TableCell>Category</TableCell>
-                                    <TableCell align="right">Quantity Sold</TableCell>
-                                    <TableCell align="right">Total Revenue</TableCell>
-                                    <TableCell align="right">Order Count</TableCell>
-                                    <TableCell align="right">Avg Price</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {bestSellingItems
-                                    .slice(bestSellingPage * bestSellingRowsPerPage, bestSellingPage * bestSellingRowsPerPage + bestSellingRowsPerPage)
-                                    .map((item, index) => (
-                                        <TableRow key={index}>
-                                            <TableCell>
-                                                <Chip
-                                                    label={bestSellingPage * bestSellingRowsPerPage + index + 1}
-                                                    size="small"
-                                                    color={bestSellingPage * bestSellingRowsPerPage + index < 3 ? 'primary' : 'default'}
-                                                />
-                                            </TableCell>
-                                            <TableCell>{item.itemName}</TableCell>
-                                            <TableCell>{item.category}</TableCell>
-                                            <TableCell align="right">{item.totalQuantity}</TableCell>
-                                            <TableCell align="right">{formatCurrency(item.totalRevenue)}</TableCell>
-                                            <TableCell align="right">{item.orderCount}</TableCell>
-                                            <TableCell align="right">{formatCurrency(item.averagePrice)}</TableCell>
-                                        </TableRow>
-                                    ))}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
-                    <TablePagination
-                        rowsPerPageOptions={[5, 10, 25, 50]}
-                        component="div"
-                        count={bestSellingItems.length}
-                        rowsPerPage={bestSellingRowsPerPage}
-                        page={bestSellingPage}
-                        onPageChange={(_, newPage) => setBestSellingPage(newPage)}
-                        onRowsPerPageChange={(e) => {
-                            setBestSellingRowsPerPage(parseInt(e.target.value, 10));
-                            setBestSellingPage(0);
-                        }}
-                    />
+                        {/* Desktop Table */}
+                        <TableContainer component={Paper} sx={{ display: { xs: 'none', md: 'block' } }}>
+                            <Table>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>Rank</TableCell>
+                                        <TableCell>Item Name</TableCell>
+                                        <TableCell>Category</TableCell>
+                                        <TableCell align="right">Quantity Sold</TableCell>
+                                        <TableCell align="right">Total Revenue</TableCell>
+                                        <TableCell align="right">Order Count</TableCell>
+                                        <TableCell align="right">Avg Price</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {bestSellingItems
+                                        .slice(bestSellingPage * bestSellingRowsPerPage, bestSellingPage * bestSellingRowsPerPage + bestSellingRowsPerPage)
+                                        .map((item, index) => (
+                                            <TableRow key={index}>
+                                                <TableCell>
+                                                    <Chip
+                                                        label={bestSellingPage * bestSellingRowsPerPage + index + 1}
+                                                        size="small"
+                                                        color={bestSellingPage * bestSellingRowsPerPage + index < 3 ? 'primary' : 'default'}
+                                                    />
+                                                </TableCell>
+                                                <TableCell>{item.itemName}</TableCell>
+                                                <TableCell>{item.category}</TableCell>
+                                                <TableCell align="right">{item.totalQuantity}</TableCell>
+                                                <TableCell align="right">{formatCurrency(item.totalRevenue)}</TableCell>
+                                                <TableCell align="right">{item.orderCount}</TableCell>
+                                                <TableCell align="right">{formatCurrency(item.averagePrice)}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                        <TablePagination
+                            rowsPerPageOptions={[5, 10, 25, 50]}
+                            component="div"
+                            count={bestSellingItems.length}
+                            rowsPerPage={bestSellingRowsPerPage}
+                            page={bestSellingPage}
+                            onPageChange={(_, newPage) => setBestSellingPage(newPage)}
+                            onRowsPerPageChange={(e) => {
+                                setBestSellingRowsPerPage(parseInt(e.target.value, 10));
+                                setBestSellingPage(0);
+                            }}
+                        />
                     </Paper>
                 </Grid>
             </Grid>
@@ -1832,98 +1968,98 @@ const ReportsPage: React.FC = () => {
                         </Typography>
                     </Stack>
                     <Box>
-    {/* Mobile Card View */}
-    <Box sx={{ display: { xs: 'block', md: 'none' } }}>
-        {recentOrders.filter(order => (order.tip || 0) > 0).length > 0 ? (
-            recentOrders
-                .filter(order => (order.tip || 0) > 0)
-                .slice(tipsReportPage * tipsReportRowsPerPage, tipsReportPage * tipsReportRowsPerPage + tipsReportRowsPerPage)
-                .map((order) => (
-                    <Paper key={order._id} sx={{ p: 2, mb: 2, borderRadius: 2 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5, alignItems: 'flex-start' }}>
-                            <Box>
-                                <Typography variant="body2" fontWeight="bold">{order.orderNumber}</Typography>
-                                <Typography variant="caption" color="text.secondary">
-                                    {new Date(order.createdAt).toLocaleString()}
-                                </Typography>
-                            </Box>
-                            <Chip label={formatOrderType(order.orderType)} size="small" variant="outlined" />
+                        {/* Mobile Card View */}
+                        <Box sx={{ display: { xs: 'block', md: 'none' } }}>
+                            {recentOrders.filter(order => (order.tip || 0) > 0).length > 0 ? (
+                                recentOrders
+                                    .filter(order => (order.tip || 0) > 0)
+                                    .slice(tipsReportPage * tipsReportRowsPerPage, tipsReportPage * tipsReportRowsPerPage + tipsReportRowsPerPage)
+                                    .map((order) => (
+                                        <Paper key={order._id} sx={{ p: 2, mb: 2, borderRadius: 2 }}>
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5, alignItems: 'flex-start' }}>
+                                                <Box>
+                                                    <Typography variant="body2" fontWeight="bold">{order.orderNumber}</Typography>
+                                                    <Typography variant="caption" color="text.secondary">
+                                                        {new Date(order.createdAt).toLocaleString()}
+                                                    </Typography>
+                                                </Box>
+                                                <Chip label={formatOrderType(order.orderType)} size="small" variant="outlined" />
+                                            </Box>
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                                <Typography variant="body2" color="text.secondary">Waiter:</Typography>
+                                                <Typography variant="body2" fontWeight={600}>
+                                                    {order.waiter && typeof order.waiter === 'object'
+                                                        ? `${order.waiter.firstName || ''} ${order.waiter.lastName || ''}`.trim() || order.waiter.email || '-'
+                                                        : order.waiterName || '-'}
+                                                </Typography>
+                                            </Box>
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                                <Typography variant="body2" color="text.secondary">Order Amount:</Typography>
+                                                <Typography variant="body2" fontWeight={600}>{formatCurrency(order.totalAmount)}</Typography>
+                                            </Box>
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 1, borderTop: '1px solid #f0f0f0' }}>
+                                                <Typography variant="body2" color="text.secondary">Tip Amount:</Typography>
+                                                <Typography variant="body2" fontWeight={700} color="black">
+                                                    {formatCurrency(order.tip || 0)}
+                                                </Typography>
+                                            </Box>
+                                        </Paper>
+                                    ))
+                            ) : (
+                                <Paper sx={{ p: 3, textAlign: 'center' }}>
+                                    <Typography variant="body2" color="text.secondary">No orders with tips found in the selected period.</Typography>
+                                </Paper>
+                            )}
                         </Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                            <Typography variant="body2" color="text.secondary">Waiter:</Typography>
-                            <Typography variant="body2" fontWeight={600}>
-                                {order.waiter && typeof order.waiter === 'object'
-                                    ? `${order.waiter.firstName || ''} ${order.waiter.lastName || ''}`.trim() || order.waiter.email || '-'
-                                    : order.waiterName || '-'}
-                            </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                            <Typography variant="body2" color="text.secondary">Order Amount:</Typography>
-                            <Typography variant="body2" fontWeight={600}>{formatCurrency(order.totalAmount)}</Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', pt: 1, borderTop: '1px solid #f0f0f0' }}>
-                            <Typography variant="body2" color="text.secondary">Tip Amount:</Typography>
-                            <Typography variant="body2" fontWeight={700} color="black">
-                                {formatCurrency(order.tip || 0)}
-                            </Typography>
-                        </Box>
-                    </Paper>
-                ))
-        ) : (
-            <Paper sx={{ p: 3, textAlign: 'center' }}>
-                <Typography variant="body2" color="text.secondary">No orders with tips found in the selected period.</Typography>
-            </Paper>
-        )}
-    </Box>
 
-    {/* Desktop Table View */}
-    <TableContainer sx={{ display: { xs: 'none', md: 'block' } }}>
-        <Table size="small">
-            <TableHead>
-                <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-                    <TableCell sx={{ fontWeight: 700, color: 'black' }}>Order #</TableCell>
-                    <TableCell sx={{ fontWeight: 700, color: 'black' }}>Date/Time</TableCell>
-                    <TableCell sx={{ fontWeight: 700, color: 'black' }}>Type</TableCell>
-                    <TableCell sx={{ fontWeight: 700, color: 'black' }}>Waiter</TableCell>
-                    <TableCell sx={{ fontWeight: 700, color: 'black' }} align="right">Order Amount</TableCell>
-                    <TableCell sx={{ fontWeight: 700, color: 'black' }} align="right">Tip Amount</TableCell>
-                </TableRow>
-            </TableHead>
-            <TableBody>
-                {recentOrders
-                    .filter(order => (order.tip || 0) > 0)
-                    .slice(tipsReportPage * tipsReportRowsPerPage, tipsReportPage * tipsReportRowsPerPage + tipsReportRowsPerPage)
-                    .map((order) => (
-                        <TableRow key={order._id}>
-                            <TableCell>{order.orderNumber}</TableCell>
-                            <TableCell>{new Date(order.createdAt).toLocaleString()}</TableCell>
-                            <TableCell>
-                                <Chip label={formatOrderType(order.orderType)} size="small" variant="outlined" />
-                            </TableCell>
-                            <TableCell>
-                                {order.waiter && typeof order.waiter === 'object'
-                                    ? `${order.waiter.firstName || ''} ${order.waiter.lastName || ''}`.trim() || order.waiter.email || '-'
-                                    : order.waiterName || '-'}
-                            </TableCell>
-                            <TableCell align="right">{formatCurrency(order.totalAmount)}</TableCell>
-                            <TableCell align="right">
-                                <Typography sx={{ fontWeight: 700, color: 'black' }}>
-                                    {formatCurrency(order.tip || 0)}
-                                </Typography>
-                            </TableCell>
-                        </TableRow>
-                    ))}
-                {recentOrders.filter(order => (order.tip || 0) > 0).length === 0 && (
-                    <TableRow>
-                        <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                            <Typography color="text.secondary">No orders with tips found in the selected period.</Typography>
-                        </TableCell>
-                    </TableRow>
-                )}
-            </TableBody>
-        </Table>
-    </TableContainer>
-</Box>
+                        {/* Desktop Table View */}
+                        <TableContainer sx={{ display: { xs: 'none', md: 'block' } }}>
+                            <Table size="small">
+                                <TableHead>
+                                    <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+                                        <TableCell sx={{ fontWeight: 700, color: 'black' }}>Order #</TableCell>
+                                        <TableCell sx={{ fontWeight: 700, color: 'black' }}>Date/Time</TableCell>
+                                        <TableCell sx={{ fontWeight: 700, color: 'black' }}>Type</TableCell>
+                                        <TableCell sx={{ fontWeight: 700, color: 'black' }}>Waiter</TableCell>
+                                        <TableCell sx={{ fontWeight: 700, color: 'black' }} align="right">Order Amount</TableCell>
+                                        <TableCell sx={{ fontWeight: 700, color: 'black' }} align="right">Tip Amount</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {recentOrders
+                                        .filter(order => (order.tip || 0) > 0)
+                                        .slice(tipsReportPage * tipsReportRowsPerPage, tipsReportPage * tipsReportRowsPerPage + tipsReportRowsPerPage)
+                                        .map((order) => (
+                                            <TableRow key={order._id}>
+                                                <TableCell>{order.orderNumber}</TableCell>
+                                                <TableCell>{new Date(order.createdAt).toLocaleString()}</TableCell>
+                                                <TableCell>
+                                                    <Chip label={formatOrderType(order.orderType)} size="small" variant="outlined" />
+                                                </TableCell>
+                                                <TableCell>
+                                                    {order.waiter && typeof order.waiter === 'object'
+                                                        ? `${order.waiter.firstName || ''} ${order.waiter.lastName || ''}`.trim() || order.waiter.email || '-'
+                                                        : order.waiterName || '-'}
+                                                </TableCell>
+                                                <TableCell align="right">{formatCurrency(order.totalAmount)}</TableCell>
+                                                <TableCell align="right">
+                                                    <Typography sx={{ fontWeight: 700, color: 'black' }}>
+                                                        {formatCurrency(order.tip || 0)}
+                                                    </Typography>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    {recentOrders.filter(order => (order.tip || 0) > 0).length === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
+                                                <Typography color="text.secondary">No orders with tips found in the selected period.</Typography>
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    </Box>
                     <TablePagination
                         rowsPerPageOptions={[5, 10, 25, 50]}
                         component="div"
@@ -2165,11 +2301,11 @@ const ReportsPage: React.FC = () => {
     // );
     const renderOrdersByType = () => (
         <Paper sx={{ p: isMobile ? 1.5 : 3 }}>
-            <Box sx={{ 
-                display: 'flex', 
-                flexDirection: 'row', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
+            <Box sx={{
+                display: 'flex',
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
                 mb: isMobile ? 1.5 : 3,
                 gap: 1
             }}>
@@ -2179,8 +2315,8 @@ const ReportsPage: React.FC = () => {
                     size="small"
                     startIcon={<DownloadIcon sx={{ fontSize: isMobile ? '14px !important' : 'inherit' }} />}
                     onClick={() => downloadExcel('orders-by-type')}
-                    sx={{ 
-                        borderRadius: 2, 
+                    sx={{
+                        borderRadius: 2,
                         fontSize: isMobile ? '0.65rem' : 'inherit',
                         px: isMobile ? 1 : 2,
                         minWidth: 'auto',
@@ -2433,23 +2569,23 @@ const ReportsPage: React.FC = () => {
                     {/* Mobile Cards */}
                     <Box sx={{ display: { xs: 'grid', md: 'none' }, gridTemplateColumns: "1fr 1fr", gap: 1 }}>
                         {ordersByType.map((type, index) => (
-                            <Paper key={index} elevation={0} sx={{ 
-                                p: 1.5, 
-                                borderRadius: 3, 
-                                border: '1px solid', 
+                            <Paper key={index} elevation={0} sx={{
+                                p: 1.5,
+                                borderRadius: 3,
+                                border: '1px solid',
                                 borderColor: 'divider',
                                 background: "linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)"
-                             }}>
+                            }}>
                                 <Box sx={{ mb: 1 }}>
-                                    <Chip 
-                                        label={formatOrderType(type.orderType)} 
+                                    <Chip
+                                        label={formatOrderType(type.orderType)}
                                         size="small"
-                                        sx={{ 
-                                            maxWidth: '100%', 
-                                            height: 20, 
+                                        sx={{
+                                            maxWidth: '100%',
+                                            height: 20,
                                             fontSize: '0.65rem',
-                                            fontWeight: 700 
-                                        }} 
+                                            fontWeight: 700
+                                        }}
                                     />
                                 </Box>
                                 <Box>
@@ -2598,18 +2734,18 @@ const ReportsPage: React.FC = () => {
                 <Grid item xs={12}>
                     <Box sx={{ display: { xs: 'grid', md: 'none' }, gridTemplateColumns: "1fr 1fr", gap: 1 }}>
                         {waiterPerformance.map((waiter, index) => (
-                            <Card key={index} sx={{ 
+                            <Card key={index} sx={{
                                 borderRadius: 3,
                                 boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
                                 background: "linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)"
                             }}>
                                 <CardContent sx={{ p: 1.5 }}>
                                     <Stack direction="row" alignItems="center" spacing={1} mb={1}>
-                                        <Chip 
-                                            label={index + 1} 
-                                            size="small" 
+                                        <Chip
+                                            label={index + 1}
+                                            size="small"
                                             sx={{ width: 20, height: 20, fontSize: '0.6rem', p: 0 }}
-                                            color={index < 3 ? 'primary' : 'default'} 
+                                            color={index < 3 ? 'primary' : 'default'}
                                         />
                                         <Typography variant="caption" fontWeight={800} noWrap sx={{ maxWidth: 80 }}>
                                             {waiter.waiterName}
@@ -2674,19 +2810,19 @@ const ReportsPage: React.FC = () => {
     // Material Usage Tab
     const renderMaterialUsage = () => (
         <Paper sx={{ p: isMobile ? 1.5 : 3 }}>
-            <Box sx={{ 
-                display: 'flex', 
-                flexDirection: 'row', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
+            <Box sx={{
+                display: 'flex',
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
                 mb: isMobile ? 1.5 : 3,
                 gap: 1
             }}>
                 <Typography variant={isMobile ? "body2" : "h6"} sx={{ fontWeight: 800 }}>Material Usage</Typography>
-                <Button 
-                    variant="contained" 
+                <Button
+                    variant="contained"
                     size="small"
-                    startIcon={<DownloadIcon sx={{ fontSize: isMobile ? '14px !important' : 'inherit' }} />} 
+                    startIcon={<DownloadIcon sx={{ fontSize: isMobile ? '14px !important' : 'inherit' }} />}
                     onClick={() => downloadExcel('material-usage')}
                     sx={{ borderRadius: 2, height: 28, px: 1, textTransform: 'none', fontSize: isMobile ? '0.65rem' : 'inherit' }}
                 >
@@ -2746,10 +2882,10 @@ const ReportsPage: React.FC = () => {
                 <Grid item xs={12}>
                     <Box sx={{ display: { xs: 'grid', md: 'none' }, gridTemplateColumns: "1fr 1fr", gap: 1 }}>
                         {materialUsage.map((item, index) => (
-                            <Paper key={index} elevation={0} sx={{ 
-                                p: 1.5, 
-                                borderRadius: 3, 
-                                border: '1px solid', 
+                            <Paper key={index} elevation={0} sx={{
+                                p: 1.5,
+                                borderRadius: 3,
+                                border: '1px solid',
                                 borderColor: 'divider',
                                 background: "linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)"
                             }}>
@@ -2999,19 +3135,19 @@ const ReportsPage: React.FC = () => {
     // Peak Hours Tab
     const renderPeakHours = () => (
         <Paper sx={{ p: isMobile ? 1.5 : 3 }}>
-            <Box sx={{ 
-                display: 'flex', 
-                flexDirection: 'row', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
+            <Box sx={{
+                display: 'flex',
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
                 mb: isMobile ? 1.5 : 3,
                 gap: 1
             }}>
                 <Typography variant={isMobile ? "body2" : "h6"} sx={{ fontWeight: 800 }}>Peak Hours Analysis</Typography>
-                <Button 
-                    variant="contained" 
+                <Button
+                    variant="contained"
                     size="small"
-                    startIcon={<DownloadIcon sx={{ fontSize: isMobile ? '14px !important' : 'inherit' }} />} 
+                    startIcon={<DownloadIcon sx={{ fontSize: isMobile ? '14px !important' : 'inherit' }} />}
                     onClick={() => downloadExcel('peak-hours')}
                     sx={{ borderRadius: 2, height: 28, px: 1, textTransform: 'none', fontSize: isMobile ? '0.65rem' : 'inherit' }}
                 >
@@ -3027,37 +3163,37 @@ const ReportsPage: React.FC = () => {
                             <ResponsiveContainer width="100%" height={isMobile ? 220 : 420}>
                                 <BarChart
                                     data={isMobile ? peakHours.hourlyData.slice(0, 5) : peakHours.hourlyData}
-                                margin={{ top: 20, right: 20, left: 10, bottom: 20 }}
-                            >
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                    margin={{ top: 20, right: 20, left: 10, bottom: 20 }}
+                                >
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
 
-                                <XAxis
-                                    dataKey="hour"
-                                    tickFormatter={(hour) => `${hour}:00`}
-                                    tick={{ fontSize: 12 }}
-                                />
+                                    <XAxis
+                                        dataKey="hour"
+                                        tickFormatter={(hour) => `${hour}:00`}
+                                        tick={{ fontSize: 12 }}
+                                    />
 
-                                <YAxis tick={{ fontSize: 12 }} />
+                                    <YAxis tick={{ fontSize: 12 }} />
 
-                                <RechartsTooltip
-                                    formatter={(value: any) => [`${value} Orders`, "Total Orders"]}
-                                    contentStyle={{
-                                        borderRadius: 10,
-                                        border: "none",
-                                        boxShadow: "0 8px 25px rgba(0,0,0,0.1)"
-                                    }}
-                                />
+                                    <RechartsTooltip
+                                        formatter={(value: any) => [`${value} Orders`, "Total Orders"]}
+                                        contentStyle={{
+                                            borderRadius: 10,
+                                            border: "none",
+                                            boxShadow: "0 8px 25px rgba(0,0,0,0.1)"
+                                        }}
+                                    />
 
-                                <Bar
-                                    dataKey="totalOrders"
-                                    name="Orders"
-                                    fill="#f97316"
-                                    radius={[6, 6, 0, 0]}
-                                    barSize={28}
-                                    isAnimationActive={false}
-                                />
-                            </BarChart>
-                        </ResponsiveContainer>
+                                    <Bar
+                                        dataKey="totalOrders"
+                                        name="Orders"
+                                        fill="#f97316"
+                                        radius={[6, 6, 0, 0]}
+                                        barSize={28}
+                                        isAnimationActive={false}
+                                    />
+                                </BarChart>
+                            </ResponsiveContainer>
                         </Paper>
                     </Grid>
 
@@ -3067,14 +3203,14 @@ const ReportsPage: React.FC = () => {
                             <ResponsiveContainer width="100%" height={isMobile ? 220 : 400}>
                                 <BarChart data={isMobile ? peakHours.dailyData.slice(0, 5) : peakHours.dailyData}>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                <XAxis dataKey="dayName" />
-                                <YAxis />
-                                <RechartsTooltip />
-                                <Legend />
-                                <Bar dataKey="totalOrders" fill="#82ca9d" name="Orders" isAnimationActive={false} />
-                                <Bar dataKey="totalRevenue" fill="#ffc658" name={`Revenue (${settings.restaurant.currency})`} isAnimationActive={false} />
-                            </BarChart>
-                        </ResponsiveContainer>
+                                    <XAxis dataKey="dayName" />
+                                    <YAxis />
+                                    <RechartsTooltip />
+                                    <Legend />
+                                    <Bar dataKey="totalOrders" fill="#82ca9d" name="Orders" isAnimationActive={false} />
+                                    <Bar dataKey="totalRevenue" fill="#ffc658" name={`Revenue (${settings.restaurant.currency})`} isAnimationActive={false} />
+                                </BarChart>
+                            </ResponsiveContainer>
                         </Paper>
                     </Grid>
 
@@ -3083,10 +3219,10 @@ const ReportsPage: React.FC = () => {
                             {peakHours.hourlyData
                                 .slice(peakHoursPage * peakHoursRowsPerPage, peakHoursPage * peakHoursRowsPerPage + peakHoursRowsPerPage)
                                 .map((hour: any, index: number) => (
-                                    <Paper key={index} elevation={0} sx={{ 
-                                        p: 1.5, 
-                                        borderRadius: 3, 
-                                        border: '1px solid', 
+                                    <Paper key={index} elevation={0} sx={{
+                                        p: 1.5,
+                                        borderRadius: 3,
+                                        border: '1px solid',
                                         borderColor: 'divider',
                                         background: "linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)"
                                     }}>
@@ -3160,11 +3296,11 @@ const ReportsPage: React.FC = () => {
 
         return (
             <Paper sx={{ p: isMobile ? 1.5 : 3 }}>
-                <Box sx={{ 
-                    display: 'flex', 
-                    flexDirection: isMobile ? 'column' : 'row', 
-                    justifyContent: 'space-between', 
-                    alignItems: isMobile ? 'flex-start' : 'center', 
+                <Box sx={{
+                    display: 'flex',
+                    flexDirection: isMobile ? 'column' : 'row',
+                    justifyContent: 'space-between',
+                    alignItems: isMobile ? 'flex-start' : 'center',
                     mb: isMobile ? 1.5 : 3,
                     gap: 1.5
                 }}>
@@ -3185,10 +3321,10 @@ const ReportsPage: React.FC = () => {
                                 ))}
                             </Select>
                         </FormControl>
-                        <Button 
-                            variant="contained" 
+                        <Button
+                            variant="contained"
                             size="small"
-                            startIcon={<DownloadIcon sx={{ fontSize: isMobile ? '14px !important' : 'inherit' }} />} 
+                            startIcon={<DownloadIcon sx={{ fontSize: isMobile ? '14px !important' : 'inherit' }} />}
                             onClick={() => downloadExcel('payment-analytics')}
                             sx={{ borderRadius: 2, height: 40, px: 2, textTransform: 'none' }}
                         >
@@ -3449,19 +3585,19 @@ const ReportsPage: React.FC = () => {
 
         return (
             <Paper sx={{ p: isMobile ? 1.5 : 3 }}>
-                <Box sx={{ 
-                    display: 'flex', 
-                    flexDirection: 'row', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center', 
+                <Box sx={{
+                    display: 'flex',
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
                     mb: isMobile ? 1.5 : 3,
                     gap: 1
                 }}>
                     <Typography variant={isMobile ? "body2" : "h6"} sx={{ fontWeight: 800 }}>Category Performance</Typography>
-                    <Button 
-                        variant="contained" 
+                    <Button
+                        variant="contained"
                         size="small"
-                        startIcon={<DownloadIcon sx={{ fontSize: isMobile ? '14px !important' : 'inherit' }} />} 
+                        startIcon={<DownloadIcon sx={{ fontSize: isMobile ? '14px !important' : 'inherit' }} />}
                         onClick={() => downloadExcel('category-performance')}
                         sx={{ borderRadius: 2, height: 28, px: 1, textTransform: 'none', fontSize: isMobile ? '0.65rem' : 'inherit' }}
                     >
@@ -3569,10 +3705,10 @@ const ReportsPage: React.FC = () => {
                             {data.length === 0 ? (
                                 <Typography sx={{ textAlign: 'center', py: 3, color: 'text.secondary' }}>No data available</Typography>
                             ) : data.map((cat, index) => (
-                                <Paper key={index} elevation={0} sx={{ 
-                                    p: 2, 
-                                    borderRadius: 3, 
-                                    border: '1px solid', 
+                                <Paper key={index} elevation={0} sx={{
+                                    p: 2,
+                                    borderRadius: 3,
+                                    border: '1px solid',
                                     borderColor: 'divider',
                                     background: "linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)",
                                     boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
@@ -4166,10 +4302,10 @@ const ReportsPage: React.FC = () => {
                             <Box sx={{ display: { xs: 'grid', md: 'none' }, gridTemplateColumns: "1fr 1fr", gap: 1 }}>
                                 {profitLoss.expenses && profitLoss.expenses.length > 0 ? (
                                     profitLoss.expenses.map((item: any, index: number) => (
-                                        <Paper key={index} sx={{ 
-                                            p: 1.5, 
-                                            borderRadius: 3, 
-                                            border: '1px solid', 
+                                        <Paper key={index} sx={{
+                                            p: 1.5,
+                                            borderRadius: 3,
+                                            border: '1px solid',
                                             borderColor: 'divider',
                                             background: "linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)"
                                         }}>
@@ -4238,10 +4374,10 @@ const ReportsPage: React.FC = () => {
                     {customerAnalytics
                         .slice(customerPage * customerRowsPerPage, customerPage * customerRowsPerPage + customerRowsPerPage)
                         .map((customer: any, index: number) => (
-                            <Paper key={index} elevation={0} sx={{ 
-                                p: 1.5, 
-                                borderRadius: 3, 
-                                border: '1px solid', 
+                            <Paper key={index} elevation={0} sx={{
+                                p: 1.5,
+                                borderRadius: 3,
+                                border: '1px solid',
                                 borderColor: 'divider',
                                 background: "linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)"
                             }}>
@@ -4342,10 +4478,10 @@ const ReportsPage: React.FC = () => {
                             {inventoryStock.items
                                 .slice(inventoryPage * inventoryRowsPerPage, inventoryPage * inventoryRowsPerPage + inventoryRowsPerPage)
                                 .map((item: any, index: number) => (
-                                    <Paper key={index} elevation={0} sx={{ 
-                                        p: 2, 
-                                        borderRadius: 3, 
-                                        border: '1px solid', 
+                                    <Paper key={index} elevation={0} sx={{
+                                        p: 2,
+                                        borderRadius: 3,
+                                        border: '1px solid',
                                         borderColor: item.status === 'Low Stock' ? 'error.light' : 'divider',
                                         background: item.status === 'Low Stock' ? "#fff5f5" : "linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)",
                                         boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
@@ -4357,11 +4493,11 @@ const ReportsPage: React.FC = () => {
                                             <Typography variant="body2" fontWeight={800} sx={{ wordBreak: 'break-word', lineHeight: 1.3 }}>
                                                 {item.name}
                                             </Typography>
-                                            <Chip 
-                                                label={item.status} 
-                                                size="small" 
-                                                color={item.status === 'Low Stock' ? 'error' : 'success'} 
-                                                sx={{ height: 20, fontSize: '0.65rem', mt: 0.75, fontWeight: 600, borderRadius: 1.5 }} 
+                                            <Chip
+                                                label={item.status}
+                                                size="small"
+                                                color={item.status === 'Low Stock' ? 'error' : 'success'}
+                                                sx={{ height: 20, fontSize: '0.65rem', mt: 0.75, fontWeight: 600, borderRadius: 1.5 }}
                                             />
                                         </Box>
                                         <Box sx={{ textAlign: 'right' }}>
@@ -4495,19 +4631,19 @@ const ReportsPage: React.FC = () => {
 
     const renderTableStats = () => (
         <Paper sx={{ p: isMobile ? 1.5 : 3 }}>
-            <Box sx={{ 
-                display: 'flex', 
-                flexDirection: 'row', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
+            <Box sx={{
+                display: 'flex',
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                alignItems: 'center',
                 mb: isMobile ? 1.5 : 3,
                 gap: 1
             }}>
                 <Typography variant={isMobile ? "body2" : "h6"} sx={{ fontWeight: 800 }}>Table Performance</Typography>
-                <Button 
-                    variant="contained" 
+                <Button
+                    variant="contained"
                     size="small"
-                    startIcon={<DownloadIcon sx={{ fontSize: isMobile ? '14px !important' : 'inherit' }} />} 
+                    startIcon={<DownloadIcon sx={{ fontSize: isMobile ? '14px !important' : 'inherit' }} />}
                     onClick={() => downloadExcel('table-stats')}
                     sx={{ borderRadius: 2, height: 28, px: 1, textTransform: 'none', fontSize: isMobile ? '0.65rem' : 'inherit' }}
                 >
@@ -4581,10 +4717,10 @@ const ReportsPage: React.FC = () => {
                         {tableStats
                             .slice(tableStatsPage * tableStatsRowsPerPage, tableStatsPage * tableStatsRowsPerPage + tableStatsRowsPerPage)
                             .map((row, i) => (
-                                <Paper key={i} elevation={0} sx={{ 
-                                    p: 1.5, 
-                                    borderRadius: 3, 
-                                    border: '1px solid', 
+                                <Paper key={i} elevation={0} sx={{
+                                    p: 1.5,
+                                    borderRadius: 3,
+                                    border: '1px solid',
                                     borderColor: 'divider',
                                     background: "linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)"
                                 }}>
@@ -4651,10 +4787,10 @@ const ReportsPage: React.FC = () => {
                     {couponAnalytics
                         .slice(couponPage * couponRowsPerPage, couponPage * couponRowsPerPage + couponRowsPerPage)
                         .map((coupon: any, index: number) => (
-                            <Paper key={index} elevation={0} sx={{ 
-                                p: 1.5, 
-                                borderRadius: 3, 
-                                border: '1px solid', 
+                            <Paper key={index} elevation={0} sx={{
+                                p: 1.5,
+                                borderRadius: 3,
+                                border: '1px solid',
                                 borderColor: 'divider',
                                 background: "linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)"
                             }}>
@@ -4733,10 +4869,10 @@ const ReportsPage: React.FC = () => {
                                 <MenuItem value="compensation">Goodwill</MenuItem>
                             </Select>
                         </FormControl>
-                        <TextField 
-                            size="small" 
-                            placeholder="Search code..." 
-                            value={promoSearch} 
+                        <TextField
+                            size="small"
+                            placeholder="Search code..."
+                            value={promoSearch}
                             onChange={(e) => setPromoSearch(e.target.value)}
                         />
                         <Button variant="contained" size={isMobile ? "small" : "medium"} onClick={fetchReportData}>Apply</Button>
@@ -4772,8 +4908,8 @@ const ReportsPage: React.FC = () => {
                     <CardContent sx={{ p: isMobile ? 1.5 : 2 }}>
                         <Typography sx={{ opacity: 0.8, fontSize: '0.7rem' }}>Avg. Saving</Typography>
                         <Typography variant={isMobile ? "subtitle2" : "h4"} fontWeight={800}>
-                            {promoSummary?.redemptionCount > 0 
-                                ? formatCurrency(promoSummary.totalRedeemedValue / promoSummary.redemptionCount) 
+                            {promoSummary?.redemptionCount > 0
+                                ? formatCurrency(promoSummary.totalRedeemedValue / promoSummary.redemptionCount)
                                 : formatCurrency(0)}
                         </Typography>
                     </CardContent>
@@ -4810,10 +4946,10 @@ const ReportsPage: React.FC = () => {
                 {/* Mobile Card View */}
                 <Box sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', gap: 1.5 }}>
                     {promoRedemptions.map((row: any) => (
-                        <Paper key={row._id} elevation={0} sx={{ 
-                            p: 2, 
-                            borderRadius: 3, 
-                            border: '1px solid', 
+                        <Paper key={row._id} elevation={0} sx={{
+                            p: 2,
+                            borderRadius: 3,
+                            border: '1px solid',
                             borderColor: 'divider',
                             background: "linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)",
                             boxShadow: '0 4px 12px rgba(0,0,0,0.02)'
@@ -4827,10 +4963,10 @@ const ReportsPage: React.FC = () => {
                                         {row.customer?.name || 'Guest'}
                                     </Typography>
                                 </Box>
-                                <Chip 
-                                    label={row.couponCode} 
-                                    size="small" 
-                                    sx={{ height: 20, fontSize: '0.65rem', fontWeight: 600, bgcolor: 'primary.50', color: 'primary.700', borderRadius: 1.5 }} 
+                                <Chip
+                                    label={row.couponCode}
+                                    size="small"
+                                    sx={{ height: 20, fontSize: '0.65rem', fontWeight: 600, bgcolor: 'primary.50', color: 'primary.700', borderRadius: 1.5 }}
                                 />
                             </Box>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1.5, pt: 1, borderTop: "1px dashed #e5e7eb" }}>
@@ -4846,40 +4982,40 @@ const ReportsPage: React.FC = () => {
                     )}
                 </Box>
                 <TableContainer component={Paper} elevation={0} sx={{ display: { xs: 'none', md: 'block' } }}>
-            <Table>
-                <TableHead>
-                    <TableRow sx={{ bgcolor: 'grey.50' }}>
-                        <TableCell>Order #</TableCell>
-                        <TableCell>Promo Code</TableCell>
-                        <TableCell>Date</TableCell>
-                        <TableCell>Customer</TableCell>
-                        <TableCell align="right">Order Total</TableCell>
-                        <TableCell align="right">Discount</TableCell>
-                    </TableRow>
-                </TableHead>
-                <TableBody>
-                    {promoRedemptions.map((row: any) => (
-                        <TableRow key={row._id}>
-                            <TableCell>{row.orderNumber}</TableCell>
-                            <TableCell>
-                                <Chip label={row.couponCode} size="small" variant="outlined" color="primary" />
-                            </TableCell>
-                            <TableCell>{new Date(row.createdAt).toLocaleDateString()}</TableCell>
-                            <TableCell>{row.customer?.name || 'Guest'}</TableCell>
-                            <TableCell align="right">{formatCurrency(row.totalAmount)}</TableCell>
-                            <TableCell align="right" sx={{ color: 'error.main' }}>
-                                -{formatCurrency(row.discount?.amount || 0)}
-                            </TableCell>
-                        </TableRow>
-                    ))}
-                    {promoRedemptions.length === 0 && (
-                        <TableRow>
-                            <TableCell colSpan={6} align="center">No redemptions found</TableCell>
-                        </TableRow>
-                    )}
-                </TableBody>
-            </Table>
-        </TableContainer>
+                    <Table>
+                        <TableHead>
+                            <TableRow sx={{ bgcolor: 'grey.50' }}>
+                                <TableCell>Order #</TableCell>
+                                <TableCell>Promo Code</TableCell>
+                                <TableCell>Date</TableCell>
+                                <TableCell>Customer</TableCell>
+                                <TableCell align="right">Order Total</TableCell>
+                                <TableCell align="right">Discount</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {promoRedemptions.map((row: any) => (
+                                <TableRow key={row._id}>
+                                    <TableCell>{row.orderNumber}</TableCell>
+                                    <TableCell>
+                                        <Chip label={row.couponCode} size="small" variant="outlined" color="primary" />
+                                    </TableCell>
+                                    <TableCell>{new Date(row.createdAt).toLocaleDateString()}</TableCell>
+                                    <TableCell>{row.customer?.name || 'Guest'}</TableCell>
+                                    <TableCell align="right">{formatCurrency(row.totalAmount)}</TableCell>
+                                    <TableCell align="right" sx={{ color: 'error.main' }}>
+                                        -{formatCurrency(row.discount?.amount || 0)}
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                            {promoRedemptions.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={6} align="center">No redemptions found</TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
             </Box>
         </Paper>
     );
@@ -4891,10 +5027,10 @@ const ReportsPage: React.FC = () => {
                 {/* Mobile Card View */}
                 <Box sx={{ display: { xs: 'flex', md: 'none' }, flexDirection: 'column', gap: 1.5 }}>
                     {promoCompensation.map((row: any, i: number) => (
-                        <Paper key={i} elevation={0} sx={{ 
-                            p: 2, 
-                            borderRadius: 3, 
-                            border: '1px solid', 
+                        <Paper key={i} elevation={0} sx={{
+                            p: 2,
+                            borderRadius: 3,
+                            border: '1px solid',
                             borderColor: 'divider',
                             background: "linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)",
                             boxShadow: '0 4px 12px rgba(0,0,0,0.02)',
@@ -4923,32 +5059,32 @@ const ReportsPage: React.FC = () => {
                     )}
                 </Box>
                 <TableContainer component={Paper} elevation={0} sx={{ display: { xs: 'none', md: 'block' } }}>
-            <Table>
-                <TableHead>
-                    <TableRow sx={{ bgcolor: 'grey.50' }}>
-                        <TableCell>Reason</TableCell>
-                        <TableCell align="right">Count</TableCell>
-                        <TableCell align="right">Total Compensation Value</TableCell>
-                    </TableRow>
-                </TableHead>
-                <TableBody>
-                    {promoCompensation.map((row: any, i: number) => (
-                        <TableRow key={i}>
-                            <TableCell>{row._id || 'General Support'}</TableCell>
-                            <TableCell align="right">{row.count}</TableCell>
-                            <TableCell align="right" sx={{ color: 'error.main', fontWeight: 'bold' }}>
-                                {formatCurrency(row.totalValue)}
-                            </TableCell>
-                        </TableRow>
-                    ))}
-                    {promoCompensation.length === 0 && (
-                        <TableRow>
-                            <TableCell colSpan={3} align="center">No compensation data found</TableCell>
-                        </TableRow>
-                    )}
-                </TableBody>
-            </Table>
-        </TableContainer>
+                    <Table>
+                        <TableHead>
+                            <TableRow sx={{ bgcolor: 'grey.50' }}>
+                                <TableCell>Reason</TableCell>
+                                <TableCell align="right">Count</TableCell>
+                                <TableCell align="right">Total Compensation Value</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {promoCompensation.map((row: any, i: number) => (
+                                <TableRow key={i}>
+                                    <TableCell>{row._id || 'General Support'}</TableCell>
+                                    <TableCell align="right">{row.count}</TableCell>
+                                    <TableCell align="right" sx={{ color: 'error.main', fontWeight: 'bold' }}>
+                                        {formatCurrency(row.totalValue)}
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                            {promoCompensation.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={3} align="center">No compensation data found</TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
             </Box>
         </Paper>
     );
@@ -4966,11 +5102,11 @@ const ReportsPage: React.FC = () => {
 
         return (
             <Paper sx={{ p: isMobile ? 1.5 : 3 }}>
-                <Box sx={{ 
-                    display: 'flex', 
-                    flexDirection: isMobile ? 'column' : 'row', 
-                    justifyContent: 'space-between', 
-                    alignItems: isMobile ? 'flex-start' : 'center', 
+                <Box sx={{
+                    display: 'flex',
+                    flexDirection: isMobile ? 'column' : 'row',
+                    justifyContent: 'space-between',
+                    alignItems: isMobile ? 'flex-start' : 'center',
                     mb: isMobile ? 1.5 : 3,
                     gap: 1.5
                 }}>
@@ -5302,10 +5438,10 @@ const ReportsPage: React.FC = () => {
                 {/* Orders Table */}
                 <Box sx={{ display: { xs: 'grid', md: 'none' }, gridTemplateColumns: "1fr 1fr", gap: 1 }}>
                     {paged.map((order: any, idx: number) => (
-                        <Paper key={order.orderNumber || idx} elevation={0} sx={{ 
-                            p: 1.5, 
-                            borderRadius: 3, 
-                            border: '1px solid', 
+                        <Paper key={order.orderNumber || idx} elevation={0} sx={{
+                            p: 1.5,
+                            borderRadius: 3,
+                            border: '1px solid',
                             borderColor: 'divider',
                             background: "linear-gradient(135deg, #ffffff 0%, #f9fafb 100%)"
                         }}>
@@ -5318,7 +5454,7 @@ const ReportsPage: React.FC = () => {
                                 <Typography variant="caption" fontWeight={800} color="primary.main">{formatCurrency(order.totalAmount)}</Typography>
                             </Box>
                             <Box sx={{ mt: 1, pt: 0.5, borderTop: "1px dashed #e5e7eb", display: 'flex', justifyContent: 'space-between' }}>
-                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem' }}>Status: 
+                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.6rem' }}>Status:
                                     <span style={{ color: order.status === 'delivered' ? 'green' : 'inherit', marginLeft: 4 }}>
                                         {order.status}
                                     </span>
@@ -5433,11 +5569,142 @@ const ReportsPage: React.FC = () => {
         );
     };
 
+    const renderCateringReport = () => {
+        return (
+            <Paper sx={{ p: isMobile ? 1.5 : 3 }}>
+                <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} sx={{ mb: isMobile ? 1.5 : 3 }}>
+                    <Typography variant={isMobile ? "body2" : "h6"} fontWeight="bold">Catering Reports</Typography>
+                </Stack>
+
+                <TableContainer>
+                    <Table size="small">
+                        <TableHead>
+                            <TableRow sx={{ bgcolor: 'grey.50' }}>
+                                <TableCell><strong>Order #</strong></TableCell>
+                                <TableCell><strong>Required Date</strong></TableCell>
+                                <TableCell><strong>Customer</strong></TableCell>
+                                <TableCell><strong>Occasion</strong></TableCell>
+                                <TableCell><strong>Service</strong></TableCell>
+                                <TableCell align="right"><strong>Guests</strong></TableCell>
+                                <TableCell align="right"><strong>Total Amount</strong></TableCell>
+                                <TableCell><strong>Payment</strong></TableCell>
+                                <TableCell><strong>Status</strong></TableCell>
+                                <TableCell align="center"><strong>Actions</strong></TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {cateringData
+                                .slice(cateringPage * cateringRowsPerPage, cateringPage * cateringRowsPerPage + cateringRowsPerPage)
+                                .map((order: any) => (
+                                    <TableRow key={order._id} hover>
+                                        <TableCell sx={{ fontWeight: 'bold' }}>{order.orderNumber}</TableCell>
+                                        <TableCell>
+                                            {new Date(order.requiredDate).toLocaleDateString()}
+                                            <Typography variant="caption" display="block" color="text.secondary">
+                                                {new Date(order.requiredDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </Typography>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Typography variant="body2">{order.customerName}</Typography>
+                                            <Typography variant="caption" color="text.secondary">{order.customerPhone}</Typography>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Typography variant="body2">{order.occasion}</Typography>
+                                            {order.occasionPersonName && (
+                                                <Typography variant="caption" color="text.secondary">For: {order.occasionPersonName}</Typography>
+                                            )}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Chip label={order.serviceType?.replace('_', ' ')} size="small" variant="outlined" />
+                                        </TableCell>
+                                        <TableCell align="right">
+                                            {((order.guests?.adults?.veg || 0) + (order.guests?.adults?.nonVeg || 0) + (order.guests?.kids?.veg || 0) + (order.guests?.kids?.nonVeg || 0)) || '-'}
+                                        </TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: 'bold' }}>{formatCurrency(order.totalAmount)}</TableCell>
+                                        <TableCell>
+                                            <Chip
+                                                label={order.paymentStatus || 'pending'}
+                                                size="small"
+                                                color={order.paymentStatus === 'paid' ? 'success' : 'default'}
+                                            />
+                                        </TableCell>
+                                        <TableCell>
+                                            <Chip
+                                                label={order.status}
+                                                size="small"
+                                                color={order.status === 'completed' ? 'success' : order.status === 'cancelled' ? 'error' : 'warning'}
+                                            />
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            <Stack direction="row" spacing={0.5} justifyContent="center">
+                                                <MuiTooltip title="Preview Invoice">
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={() => {
+                                                            setSelectedCateringOrder(order);
+                                                            setCateringTab(0);
+                                                            setPreviewOpen(true);
+                                                        }}
+                                                    >
+                                                        <VisibilityIcon fontSize="small" />
+                                                    </IconButton>
+                                                </MuiTooltip>
+                                                <MuiTooltip title="Download Invoice">
+                                                    <IconButton
+                                                        size="small"
+                                                        onClick={async () => {
+                                                            try {
+                                                                const res = await cateringAPI.downloadPDF(order._id);
+                                                                const url = window.URL.createObjectURL(new Blob([res.data]));
+                                                                const link = document.createElement('a');
+                                                                link.href = url;
+                                                                link.setAttribute('download', `invoice-${order.orderNumber}.pdf`);
+                                                                document.body.appendChild(link);
+                                                                link.click();
+                                                                link.remove();
+                                                            } catch (err) {
+                                                                toast.error('Failed to download invoice');
+                                                            }
+                                                        }}
+                                                    >
+                                                        <DownloadIcon fontSize="small" />
+                                                    </IconButton>
+                                                </MuiTooltip>
+                                            </Stack>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            {cateringData.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={10} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                                        No catering orders found
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+                <TablePagination
+                    component="div"
+                    count={cateringTotalCount}
+                    page={cateringPage}
+                    onPageChange={(_, p) => setCateringPage(p)}
+                    rowsPerPage={cateringRowsPerPage}
+                    onRowsPerPageChange={(e) => {
+                        setCateringRowsPerPage(parseInt(e.target.value, 10));
+                        setCateringPage(0);
+                    }}
+                    rowsPerPageOptions={[10, 25, 50]}
+                />
+            </Paper>
+        );
+    };
+
     return (
         <Container maxWidth="xl" sx={{ py: { xs: 1.5, sm: 3, md: 4 }, px: { xs: 1.5, sm: 2, md: 3 } }}>
-            <Typography variant={isMobile ? "h5" : "h4"} gutterBottom sx={{ 
-                textAlign: { xs: 'center', sm: 'left' }, 
-                fontWeight: 900, 
+            <Typography variant={isMobile ? "h5" : "h4"} gutterBottom sx={{
+                textAlign: { xs: 'center', sm: 'left' },
+                fontWeight: 900,
                 mt: { xs: 1, sm: 0 },
                 fontSize: { xs: '1.5rem', sm: '2rem', md: '2.5rem' },
                 letterSpacing: '-0.04em'
@@ -5446,13 +5713,13 @@ const ReportsPage: React.FC = () => {
             </Typography>
 
             {/* Filters — sticky just below the fixed AppBar */}
-            <Paper sx={{ 
-                p: { xs: 1.5, sm: 2 }, 
-                mb: { xs: 1.5, sm: 2 }, 
-                position: 'sticky', 
-                top: isMobile ? 0 : 64, 
-                zIndex: 100, 
-                boxShadow: '0 2px 10px rgba(0,0,0,0.05)', 
+            <Paper sx={{
+                p: { xs: 1.5, sm: 2 },
+                mb: { xs: 1.5, sm: 2 },
+                position: 'sticky',
+                top: isMobile ? 0 : 64,
+                zIndex: 100,
+                boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
                 borderRadius: { xs: 0, sm: 2 },
                 border: '1px solid',
                 borderColor: alpha(theme.palette.divider, 0.05)
@@ -5511,21 +5778,21 @@ const ReportsPage: React.FC = () => {
             </Paper>
 
             {/* Tabs — sticky below filter bar */}
-            <Paper sx={{ 
-                mb: { xs: 2, sm: 3 }, 
-                position: 'sticky', 
-                top: isMobile ? 48 : 136, 
-                zIndex: 99, 
-                boxShadow: '0 2px 10px rgba(0,0,0,0.05)', 
+            <Paper sx={{
+                mb: { xs: 2, sm: 3 },
+                position: 'sticky',
+                top: isMobile ? 48 : 136,
+                zIndex: 99,
+                boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
                 borderRadius: { xs: 0, sm: 2 },
                 overflow: 'hidden',
                 border: '1px solid',
                 borderColor: alpha(theme.palette.divider, 0.05)
             }}>
-                <Tabs 
-                    value={activeTab} 
-                    onChange={(e, v) => setActiveTab(v)} 
-                    variant="scrollable" 
+                <Tabs
+                    value={activeTab}
+                    onChange={(e, v) => setActiveTab(v)}
+                    variant="scrollable"
                     scrollButtons="auto"
                     sx={{ minHeight: isMobile ? 40 : 48 }}
                 >
@@ -5550,6 +5817,8 @@ const ReportsPage: React.FC = () => {
                     <Tab label="Promo Summary" />
                     <Tab label="Promo Redemptions" />
                     <Tab label="Promo Compensation" />
+                    <Tab label="Delivery Report" />
+                    <Tab label="Catering Reports" />
                 </Tabs>
             </Paper>
 
@@ -5581,9 +5850,283 @@ const ReportsPage: React.FC = () => {
                         {activeTab === 17 && renderPromoSummary()}
                         {activeTab === 18 && renderPromoRedemptions()}
                         {activeTab === 19 && renderPromoCompensation()}
+                        {activeTab === 20 && renderDeliveryReport()}
+                        {activeTab === 21 && renderCateringReport()}
                     </>
                 )}
             </Box>
+
+            <Dialog
+                open={previewOpen}
+                onClose={() => {
+                    setPreviewOpen(false);
+                    setSelectedCateringOrder(null);
+                }}
+                maxWidth="md"
+                fullWidth
+                PaperProps={{
+                    sx: { borderRadius: 3, overflow: 'hidden' }
+                }}
+            >
+                <DialogTitle sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    bgcolor: 'background.paper',
+                    px: 3,
+                    py: 2
+                }}>
+                    <Typography variant="h6" fontWeight="800">Order Details</Typography>
+                    <IconButton
+                        onClick={() => { setPreviewOpen(false); setSelectedCateringOrder(null); }}
+                        size="small"
+                        sx={{
+                            bgcolor: alpha(theme.palette.error.main, 0.1),
+                            color: 'error.main',
+                            '&:hover': { bgcolor: alpha(theme.palette.error.main, 0.2) }
+                        }}
+                    >
+                        <CloseIcon fontSize="small" />
+                    </IconButton>
+                </DialogTitle>
+                <DialogContent dividers sx={{ p: 0 }}>
+                    {selectedCateringOrder && (
+                        <Box sx={{ width: '100%' }}>
+                            <Box sx={{ borderBottom: 1, borderColor: 'divider', px: 3 }}>
+                                <Tabs
+                                    value={cateringTab}
+                                    onChange={(e, v) => setCateringTab(v)}
+                                    sx={{
+                                        '& .MuiTab-root': {
+                                            textTransform: 'none',
+                                            fontWeight: 600,
+                                            minHeight: 48,
+                                            fontSize: '0.9rem'
+                                        }
+                                    }}
+                                >
+                                    <Tab label="Order Details" />
+                                    <Tab label="Action History" />
+                                </Tabs>
+                            </Box>
+
+                            <Box sx={{ p: 3 }}>
+                                {cateringTab === 0 ? (
+                                    <Box>
+                                        <Grid container spacing={4}>
+                                            <Grid item xs={12} sm={6}>
+                                                <Typography variant="subtitle2" color="text.secondary" gutterBottom fontWeight="700" sx={{ textTransform: 'uppercase', letterSpacing: 0.5, fontSize: '0.75rem' }}>Customer Info</Typography>
+                                                <Typography variant="body1" fontWeight="600">{selectedCateringOrder.customerName}</Typography>
+                                                <Typography variant="body2" color="text.secondary">{selectedCateringOrder.customerPhone}</Typography>
+                                                <Typography variant="body2" color="text.secondary">{selectedCateringOrder.customerEmail || 'No email provided'}</Typography>
+                                                {selectedCateringOrder.occasionDate && (
+                                                    <Box sx={{ mt: 1.5 }}>
+                                                        <Typography variant="caption" color="text.secondary" display="block">Occasion Date</Typography>
+                                                        <Typography variant="body2" fontWeight="600">{new Date(selectedCateringOrder.occasionDate).toLocaleDateString()}</Typography>
+                                                    </Box>
+                                                )}
+                                            </Grid>
+                                            <Grid item xs={12} sm={6}>
+                                                <Typography variant="subtitle2" color="primary" gutterBottom fontWeight="700" sx={{ textTransform: 'uppercase', letterSpacing: 0.5, fontSize: '0.75rem' }}>Order Info</Typography>
+                                                <Stack spacing={1}>
+                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                        <Typography variant="body2" color="text.secondary">Order #:</Typography>
+                                                        <Typography variant="body2" fontWeight="600">{selectedCateringOrder.orderNumber}</Typography>
+                                                    </Box>
+                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                        <Typography variant="body2" color="text.secondary">Service:</Typography>
+                                                        <Typography variant="body2" fontWeight="600">{selectedCateringOrder.serviceType?.replace('_', ' ')}</Typography>
+                                                    </Box>
+                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                        <Typography variant="body2" color="text.secondary">Occasion:</Typography>
+                                                        <Typography variant="body2" fontWeight="600">{selectedCateringOrder.occasion || 'N/A'}</Typography>
+                                                    </Box>
+                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                        <Typography variant="body2" color="text.secondary">Date:</Typography>
+                                                        <Typography variant="body2" fontWeight="600">{new Date(selectedCateringOrder.requiredDate).toLocaleString()}</Typography>
+                                                    </Box>
+                                                    <Box sx={{ mt: 1 }}>
+                                                        <Chip
+                                                            label={selectedCateringOrder.status?.toUpperCase()}
+                                                            size="small"
+                                                            color={selectedCateringOrder.status === 'completed' ? 'success' : 'warning'}
+                                                            sx={{ fontWeight: 800, fontSize: '0.7rem' }}
+                                                        />
+                                                    </Box>
+                                                </Stack>
+                                            </Grid>
+
+                                            <Grid item xs={12}>
+                                                <Typography variant="subtitle2" color="primary" gutterBottom fontWeight="700" sx={{ textTransform: 'uppercase', letterSpacing: 0.5, fontSize: '0.75rem', mt: 1 }}>Guest Requirements</Typography>
+                                                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2, bgcolor: alpha(theme.palette.primary.main, 0.01) }}>
+                                                    <Table size="small">
+                                                        <TableHead sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}>
+                                                            <TableRow>
+                                                                <TableCell sx={{ fontWeight: 'bold' }}>Guests</TableCell>
+                                                                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Veg</TableCell>
+                                                                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Non-Veg</TableCell>
+                                                            </TableRow>
+                                                        </TableHead>
+                                                        <TableBody>
+                                                            <TableRow>
+                                                                <TableCell>Adults</TableCell>
+                                                                <TableCell align="center">{selectedCateringOrder.guests?.adults?.veg || 0}</TableCell>
+                                                                <TableCell align="center">{selectedCateringOrder.guests?.adults?.nonVeg || 0}</TableCell>
+                                                            </TableRow>
+                                                            <TableRow>
+                                                                <TableCell>Kids</TableCell>
+                                                                <TableCell align="center">{selectedCateringOrder.guests?.kids?.veg || 0}</TableCell>
+                                                                <TableCell align="center">{selectedCateringOrder.guests?.kids?.nonVeg || 0}</TableCell>
+                                                            </TableRow>
+                                                        </TableBody>
+                                                    </Table>
+                                                </TableContainer>
+                                            </Grid>
+
+                                            <Grid item xs={12}>
+                                                <Typography variant="h6" fontWeight="800" sx={{ mt: 2, mb: 1 }}>Items</Typography>
+                                                <List sx={{ p: 0, border: '1px solid', borderColor: 'divider', borderRadius: 2, overflow: 'hidden' }}>
+                                                    {selectedCateringOrder.items?.map((item: any, i: number) => (
+                                                        <ListItem
+                                                            key={i}
+                                                            divider={i < selectedCateringOrder.items.length - 1}
+                                                            sx={{ py: 1.5, px: 2 }}
+                                                        >
+                                                            <ListItemText
+                                                                primary={<Typography variant="body2" fontWeight="700">{item.name}</Typography>}
+                                                                secondary={
+                                                                    <Typography variant="caption" color="text.secondary">
+                                                                        {formatCurrency(item.unitPrice)} x {item.quantity}
+                                                                    </Typography>
+                                                                }
+                                                            />
+                                                            <Typography variant="body2" fontWeight="800">{formatCurrency(item.total)}</Typography>
+                                                        </ListItem>
+                                                    ))}
+                                                </List>
+                                            </Grid>
+
+                                            <Grid item xs={12} sm={6}>
+                                                <Typography variant="subtitle2" color="text.secondary" gutterBottom fontWeight="700">Payment Details</Typography>
+                                                {selectedCateringOrder.payments && selectedCateringOrder.payments.length > 0 ? (
+                                                    <Stack spacing={1}>
+                                                        {selectedCateringOrder.payments.map((p: any, idx: number) => (
+                                                            <Typography key={idx} variant="body2">
+                                                                <strong>{formatCurrency(p.amount)}</strong> via {p.method?.toUpperCase()}
+                                                            </Typography>
+                                                        ))}
+                                                    </Stack>
+                                                ) : (
+                                                    <Typography variant="body2" color="text.secondary">No payments recorded</Typography>
+                                                )}
+
+                                                <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 2 }} fontWeight="700">Additional Services</Typography>
+                                                <Typography variant="body2">{selectedCateringOrder.additionalServices || 'None'}</Typography>
+
+                                                <Typography variant="subtitle2" color="text.secondary" sx={{ mt: 2 }} fontWeight="700">Processing Person</Typography>
+                                                <Typography variant="body2">{selectedCateringOrder.processingPerson || 'N/A'}</Typography>
+                                            </Grid>
+
+                                            <Grid item xs={12} sm={6}>
+                                                <Box sx={{ bgcolor: alpha(theme.palette.primary.main, 0.02), p: 2, borderRadius: 2, border: '1px solid', borderColor: alpha(theme.palette.primary.main, 0.05) }}>
+                                                    <Stack spacing={1}>
+                                                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                            <Typography variant="body2" color="text.secondary">Subtotal:</Typography>
+                                                            <Typography variant="body2">{formatCurrency(selectedCateringOrder.subtotal || 0)}</Typography>
+                                                        </Box>
+                                                        {selectedCateringOrder.discount?.value > 0 && (
+                                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', color: 'error.main' }}>
+                                                                <Typography variant="body2">Discount ({selectedCateringOrder.discount.type === 'percentage' ? `${selectedCateringOrder.discount.value}%` : 'Fixed'}):</Typography>
+                                                                <Typography variant="body2">-{formatCurrency(selectedCateringOrder.discount.type === 'percentage' ? (selectedCateringOrder.subtotal * selectedCateringOrder.discount.value / 100) : selectedCateringOrder.discount.value)}</Typography>
+                                                            </Box>
+                                                        )}
+                                                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                            <Typography variant="body2" color="text.secondary">Tax ({selectedCateringOrder.tax?.rate || 0}%):</Typography>
+                                                            <Typography variant="body2">{formatCurrency(selectedCateringOrder.tax?.amount || 0)}</Typography>
+                                                        </Box>
+                                                        <Divider sx={{ my: 1 }} />
+                                                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                            <Typography variant="subtitle1" fontWeight="800">Total:</Typography>
+                                                            <Typography variant="subtitle1" fontWeight="800">{formatCurrency(selectedCateringOrder.totalAmount)}</Typography>
+                                                        </Box>
+                                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', color: 'success.main' }}>
+                                                            <Typography variant="body2" fontWeight="600">Advance Paid:</Typography>
+                                                            <Typography variant="body2" fontWeight="600">{formatCurrency(selectedCateringOrder.advanceReceived || 0)}</Typography>
+                                                        </Box>
+                                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', color: 'error.main', mt: 1 }}>
+                                                            <Typography variant="h6" fontWeight="900">Balance Due:</Typography>
+                                                            <Typography variant="h6" fontWeight="900">{formatCurrency(Math.max(0, selectedCateringOrder.totalAmount - (selectedCateringOrder.advanceReceived || 0)))}</Typography>
+                                                        </Box>
+                                                    </Stack>
+                                                </Box>
+                                            </Grid>
+                                        </Grid>
+                                    </Box>
+                                ) : (
+                                    <Box sx={{ py: 2 }}>
+                                        <ActionHistoryList
+                                            history={selectedCateringOrder.actionHistory || []}
+                                            emptyMessage="No action history recorded for this catering order."
+                                        />
+                                    </Box>
+                                )}
+                            </Box>
+                        </Box>
+                    )}
+                </DialogContent>
+                <DialogActions sx={{ p: 2.5, bgcolor: 'grey.50' }}>
+                    <Box sx={{ display: 'flex', width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                            <Button
+                                variant="outlined"
+                                startIcon={<DownloadIcon />}
+                                size="small"
+                                onClick={async () => {
+                                    try {
+                                        const res = await cateringAPI.downloadPDF(selectedCateringOrder._id);
+                                        const url = window.URL.createObjectURL(new Blob([res.data]));
+                                        const link = document.createElement('a');
+                                        link.href = url;
+                                        link.setAttribute('download', `invoice-${selectedCateringOrder.orderNumber}.pdf`);
+                                        document.body.appendChild(link);
+                                        link.click();
+                                        link.remove();
+                                    } catch (err) {
+                                        toast.error('Failed to download invoice');
+                                    }
+                                }}
+                                sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
+                            >
+                                Download Invoice
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                color="secondary"
+                                startIcon={<EmailIcon />}
+                                size="small"
+                                onClick={async () => {
+                                    try {
+                                        await cateringAPI.sendEmail(selectedCateringOrder._id);
+                                        toast.success('Email sent successfully');
+                                    } catch (err) {
+                                        toast.error('Failed to send email');
+                                    }
+                                }}
+                                sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600 }}
+                            >
+                                Email Receipt
+                            </Button>
+                        </Box>
+                        <Button
+                            variant="contained"
+                            onClick={() => { setPreviewOpen(false); setSelectedCateringOrder(null); }}
+                            sx={{ borderRadius: 2, px: 4, bgcolor: '#4f46e5', '&:hover': { bgcolor: '#4338ca' } }}
+                        >
+                            Close
+                        </Button>
+                    </Box>
+                </DialogActions>
+            </Dialog>
         </Container>
     );
 };
