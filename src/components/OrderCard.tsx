@@ -310,15 +310,18 @@ const OrderCard: React.FC<OrderCardProps> = ({
                     {order.customer?.name && (
                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
                             <PersonIcon sx={{ fontSize: 18, mr: 1, color: 'text.secondary' }} />
-                            <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+                            <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
                                 <strong>Customer:</strong> 
-                                <span>{/^[0-9a-fA-F]{8,24}$/.test(order.customer.name) ? 'Guest' : order.customer.name}</span>
+                                <Box component="span" sx={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: { xs: '100%', sm: '150px', md: '200px' } }}>
+                                    {/^[0-9a-fA-F]{8,24}$/.test(order.customer.name) ? 'Guest' : order.customer.name}
+                                </Box>
                                 {order.customer?.phone && (
                                     <Box component="span" sx={{ 
                                         color: 'text.secondary', 
                                         fontWeight: 'bold', 
                                         fontSize: '0.8rem',
-                                        ml: { xs: 1, sm: 3, md: 6 },
+                                        ml: { xs: 0, sm: 1.5, md: 2 },
+                                        whiteSpace: 'nowrap',
                                         '@media print': { display: 'none' } 
                                     }}>
                                         Ph: {order.customer.phone}
@@ -586,7 +589,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                     </Stack>
                 </Box>
 
-                <Divider sx={{ my: 1 }} />
+                <Divider sx={{ mt: 'auto', mb: 1 }} />
 
                 {/* Payment & Total Section */}
                 <Box
@@ -635,13 +638,13 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                 </Typography>
                             </Box>
                         )}
-                        {order.discount?.amount > 0 && (
+                        {(order.discount?.amount > 0 || order.couponDiscount > 0) && (
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', color: 'success.main' }}>
                                 <Typography variant="body2">
-                                    Discount {order.discount.code ? `(${order.discount.code})` : ''}:
+                                    Discount {(order.discount?.couponCode || order.couponCode) ? `(${order.discount?.couponCode || order.couponCode})` : ''}:
                                 </Typography>
                                 <Typography variant="body2" fontWeight="medium">
-                                    -{formatCurrency(order.discount.amount)}
+                                    -{formatCurrency(order.discount?.amount || order.couponDiscount)}
                                 </Typography>
                             </Box>
                         )}
