@@ -158,8 +158,8 @@ export const ordersAPI = {
   getPublicPaymentConfig: (tenantSlug: string, orderType?: string) =>
     api.get('/public/orders/payment-config', { params: { tenantSlug, orderType } }),
 
-  createPublicPaymentIntent: (amount: number, tenantSlug?: string, currency?: string, orderType?: string) =>
-    api.post('/public/orders/create-payment-intent', { amount, currency, tenantSlug, orderType }),
+  createPublicPaymentIntent: (amount: number, tenantSlug?: string, currency?: string, orderType?: string, subtotal?: number, tax?: number) =>
+    api.post('/public/orders/create-payment-intent', { amount, currency, tenantSlug, orderType, subtotal, tax }),
 
   verifyPublicPaymentIntent: (tenantSlug: string, intentId: string, orderType?: string) =>
     api.get(`/public/orders/verify-payment-intent/${intentId}`, { params: { tenantSlug, orderType } }),
@@ -541,6 +541,10 @@ export const superAPI = {
   confirmDemoRequest: (id: string, data: any) => api.patch(`/superadmin/demo-requests/${id}/confirm`, data),
   deleteDemoRequest: (id: string) => api.delete(`/superadmin/demo-requests/${id}`),
   adminRescheduleDemo: (id: string, data: { newDate: string; newTime: string; requestedBy: string }) => api.put(`/superadmin/demo-requests/${id}/reschedule`, data),
+
+  // Stripe Connect
+  updateTenantConnectAccount: (tenantId: string, payload: { stripeConnectAccountId: string; stripeConnectStatus?: string }) =>
+    api.patch(`/superadmin/tenants/${tenantId}/connect-account`, payload),
 
   // Admin activity logs
   getAdminLogs: (params?: any) => api.get('/superadmin/admin-logs', { params }),

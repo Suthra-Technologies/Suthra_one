@@ -145,6 +145,8 @@ const CheckoutCardInner: React.FC<CheckoutCardFormProps> = ({ tenantSlug, orderT
 
 interface CheckoutStripeWrapperProps {
   amount: number;
+  subtotal?: number;
+  tax?: number;
   tenantSlug: string;
   orderType: 'delivery' | 'takeaway';
   onSuccess: (paymentIntentId: string) => void;
@@ -165,7 +167,7 @@ const CheckoutStripeCard: React.FC<CheckoutStripeWrapperProps> = (props) => {
     setLoadError(null);
     Promise.all([
       ordersAPI.getPublicPaymentConfig(props.tenantSlug, props.orderType),
-      ordersAPI.createPublicPaymentIntent(props.amount, props.tenantSlug, undefined, props.orderType),
+      ordersAPI.createPublicPaymentIntent(props.amount, props.tenantSlug, undefined, props.orderType, props.subtotal, props.tax),
     ])
       .then(([configRes, intentRes]) => {
         if (cancelled) return;
@@ -1461,6 +1463,8 @@ const CheckoutPage: React.FC = () => {
               ((cart.totalAmount * processingFeeRate) / 100) +
               cart.totalAmount * (taxRate / 100)
             }
+            subtotal={cart.totalAmount}
+            tax={cart.totalAmount * (taxRate / 100)}
             tenantSlug={slug || ''}
             orderType={orderType}
             onSuccess={(intentId) => {
