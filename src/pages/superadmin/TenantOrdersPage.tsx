@@ -2,14 +2,17 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, TablePagination, Chip, CircularProgress, IconButton,
-  Stack, Card, CardContent, Divider, TextField, MenuItem, Select, FormControl, InputLabel
+  Stack, Card, CardContent, Divider, TextField, MenuItem, Select, FormControl, InputLabel,
+  Tooltip
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ShoppingBagIcon from '@mui/icons-material/ShoppingBag';
+import SyncIcon from '@mui/icons-material/Sync';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { superAdminPaymentsAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { getStatusLabel, getStatusColor, getOrderTypeLabel } from '../../utils/orderWorkflows';
+import OrderDetailsDialog from '../../components/OrderDetailsDialog';
 
 const TenantOrdersPage: React.FC = () => {
   const { tenantId } = useParams<{ tenantId: string }>();
@@ -24,6 +27,8 @@ const TenantOrdersPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('all');
   const [search, setSearch] = useState('');
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
 
   const fetch = useCallback(async (p: number, rpp: number, s: string, q: string) => {
     if (!tenantId) return;
@@ -107,24 +112,33 @@ const TenantOrdersPage: React.FC = () => {
                 <TableCell sx={{ fontWeight: 700 }}>Customer</TableCell>
                 <TableCell sx={{ fontWeight: 700 }} align="right">Amount</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Delivery</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Payment</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
                     <CircularProgress size={28} />
                   </TableCell>
                 </TableRow>
               ) : rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
                     <Typography color="text.secondary">No orders found for this store.</Typography>
                   </TableCell>
                 </TableRow>
               ) : rows.map((row) => (
-                <TableRow key={row._id} hover>
+                <TableRow 
+                  key={row._id} 
+                  hover 
+                  onClick={() => {
+                    setSelectedOrder(row);
+                    setDetailsDialogOpen(true);
+                  }}
+                  sx={{ cursor: 'pointer' }}
+                >
                   <TableCell sx={{ whiteSpace: 'nowrap', fontSize: '0.78rem' }}>{fmtDate(row.createdAt)}</TableCell>
                   <TableCell sx={{ fontWeight: 600, fontSize: '0.78rem' }}>{row.orderNumber}</TableCell>
                   <TableCell sx={{ fontSize: '0.78rem' }}>
@@ -142,6 +156,20 @@ const TenantOrdersPage: React.FC = () => {
                       color={getStatusColor(row.status) as any}
                       sx={{ fontSize: '0.68rem', textTransform: 'capitalize' }}
                     />
+                  </TableCell>
+                  <TableCell>
+                    {row.uberEatsDeliveryId || row.doordashDeliveryId ? (
+                      <Tooltip title={row.uberEatsDeliveryId ? "Uber Eats" : "DoorDash"}>
+                        <Chip 
+                          label={row.uberEatsDeliveryId ? 'Uber' : 'DoorDash'} 
+                          size="small" 
+                          color="info" 
+                          variant="outlined"
+                          icon={<SyncIcon sx={{ fontSize: '0.8rem !important' }} />}
+                          sx={{ fontSize: '0.65rem' }}
+                        />
+                      </Tooltip>
+                    ) : '-'}
                   </TableCell>
                   <TableCell>
                     <Chip
@@ -167,6 +195,20 @@ const TenantOrdersPage: React.FC = () => {
           rowsPerPageOptions={[10, 20, 50]}
         />
       </Paper>
+
+      {selectedOrder && (
+        <OrderDetailsDialog
+          open={detailsDialogOpen}
+          order={selectedOrder}
+          onClose={() => {
+            setDetailsDialogOpen(false);
+            setSelectedOrder(null);
+          }}
+          onUpdate={() => {
+            fetch(page, rowsPerPage, status, search);
+          }}
+        />
+      )}
     </Box>
   );
 };

@@ -554,6 +554,21 @@ export const publicDemoAPI = {
 
 export const superAdminAPI = superAPI; // alias for compatibility
 
+export const materialProvidersAPI = {
+  list: (params?: { page?: number; limit?: number; search?: string; status?: string }) =>
+    api.get('/superadmin/material-providers', { params }),
+  create: (data: any) => api.post('/superadmin/material-providers', data),
+  update: (id: string, data: any) => api.patch(`/superadmin/material-providers/${id}`, data),
+  remove: (id: string) => api.delete(`/superadmin/material-providers/${id}`),
+};
+
+export const materialCategoriesAPI = {
+  list: () => api.get('/superadmin/material-categories'),
+  create: (data: { name: string; description?: string }) => api.post('/superadmin/material-categories', data),
+  update: (id: string, data: { name?: string; description?: string }) => api.patch(`/superadmin/material-categories/${id}`, data),
+  remove: (id: string) => api.delete(`/superadmin/material-categories/${id}`),
+};
+
 export const supportAPI = {
   listMine: () => api.get('/support/mine'),
   listCustomerTickets: () => api.get('/support/tickets/customers'),
