@@ -846,23 +846,54 @@ const OrderCard: React.FC<OrderCardProps> = ({
                     {canManage && nextStatus && (isDeliveryBoy ? ['ready_to_pickup', 'on_the_way', 'ready_to_pick'].includes(order.status) : true) && (
                         // Hide "Next: Completed" for Dine In as it's typically handled via payment collection
                         (order.orderType === 'dine_in' && nextStatus === 'completed' && !isGlobalDineIn(order)) ? null : (
-                            <Button
-                                variant="contained"
-                                color="info"
-                                size="small"
-                                onClick={handleNextStatus}
-                                disabled={isProcessing}
-                                sx={{
-                                    fontSize: '0.65rem',
-                                    padding: '4px 8px',
-                                    textTransform: 'none',
-                                    fontWeight: 'bold',
-                                    minWidth: 'auto',
-                                    height: '28px'
-                                }}
-                            >
-                                {isProcessing ? 'Processing...' : `Next: ${getStatusLabel(nextStatus)}`}
-                            </Button>
+                            // Disable "On the Way" and "Delivered" for third-party delivery (DoorDash/Uber Eats)
+                            (() => {
+                                const isThirdPartyDelivery = !!(order.doordashDeliveryId || order.uberEatsDeliveryId);
+                                const isBlockedStatus = nextStatus === 'on_the_way' || nextStatus === 'delivered';
+                                if (isThirdPartyDelivery && isBlockedStatus) {
+                                    return (
+                                        <Tooltip title="Status is managed by the delivery partner">
+                                            <span>
+                                                <Button
+                                                    variant="contained"
+                                                    color="info"
+                                                    size="small"
+                                                    disabled
+                                                    sx={{
+                                                        fontSize: '0.65rem',
+                                                        padding: '4px 8px',
+                                                        textTransform: 'none',
+                                                        fontWeight: 'bold',
+                                                        minWidth: 'auto',
+                                                        height: '28px'
+                                                    }}
+                                                >
+                                                    {`Next: ${getStatusLabel(nextStatus)}`}
+                                                </Button>
+                                            </span>
+                                        </Tooltip>
+                                    );
+                                }
+                                return (
+                                    <Button
+                                        variant="contained"
+                                        color="info"
+                                        size="small"
+                                        onClick={handleNextStatus}
+                                        disabled={isProcessing}
+                                        sx={{
+                                            fontSize: '0.65rem',
+                                            padding: '4px 8px',
+                                            textTransform: 'none',
+                                            fontWeight: 'bold',
+                                            minWidth: 'auto',
+                                            height: '28px'
+                                        }}
+                                    >
+                                        {isProcessing ? 'Processing...' : `Next: ${getStatusLabel(nextStatus)}`}
+                                    </Button>
+                                );
+                            })()
                         )
                     )}
                     {canAddMoreItems && (
