@@ -405,7 +405,7 @@ const KitchenInterface: React.FC = () => {
   };
 
   // Handle order status progression
-  const handleOrderStatusUpdate = async (orderId: string, currentStatus: string, orderType: string) => {
+  const handleOrderStatusUpdate = async (orderId: string, currentStatus: string, orderType: string, isThirdPartyDelivery = false) => {
     let newStatus = '';
     if (currentStatus === 'pending') newStatus = 'confirmed';
     else if (currentStatus === 'confirmed') newStatus = 'preparing';
@@ -415,7 +415,8 @@ const KitchenInterface: React.FC = () => {
       else newStatus = 'ready';
     } else if (['ready', 'ready_to_takeaway', 'ready_to_pickup'].includes(currentStatus)) {
       if (orderType === 'dine_in') newStatus = 'served';
-      else if (orderType === 'delivery') newStatus = 'on_the_way';
+      else if (orderType === 'delivery' && !isThirdPartyDelivery) newStatus = 'on_the_way';
+      else if (orderType === 'delivery' && isThirdPartyDelivery) return; // managed by delivery partner
       else newStatus = 'completed';
     }
 
@@ -911,7 +912,7 @@ const KitchenInterface: React.FC = () => {
                         fullWidth
                         variant="contained"
                         color={isAllReady ? "success" : (getStatusColor(order.status) as any)}
-                        onClick={() => handleOrderStatusUpdate(order._id, order.status, order.orderType)}
+                        onClick={() => handleOrderStatusUpdate(order._id, order.status, order.orderType, !!(order.doordashDeliveryId || order.uberEatsDeliveryId))}
                         startIcon={isAllReady ? <CheckCircleIcon /> : <PlayArrowIcon />}
                         disabled={(!isAllReady && order.status === 'preparing')}
                         sx={{ flex: { xs: 1, sm: 'initial' }, minWidth: 0, fontSize: { xs: '0.62rem', sm: '0.78rem' }, py: { xs: 0.45, sm: 0.7 }, px: { xs: 0.5, sm: 1 }, minHeight: { xs: 28, sm: 34 }, '& .MuiButton-startIcon': { mr: { xs: 0.3, sm: 0.75 } } }}
