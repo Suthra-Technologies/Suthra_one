@@ -451,6 +451,7 @@ const CateringManagementPage = () => {
     };
 
     const handleSaveUpdate = async () => {
+        if (updating) return;
         if (!editData || !selectedOrder) return;
 
         // Validation
@@ -753,6 +754,7 @@ const CateringManagementPage = () => {
     };
 
     const handleUpdateStatus = async (id: string, newStatus: string) => {
+        if (updatingOrderId === id) return;
         setUpdatingOrderId(id);
         try {
             await cateringAPI.updateStatus(id, newStatus);

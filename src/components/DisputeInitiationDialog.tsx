@@ -33,10 +33,11 @@ const DisputeInitiationDialog: React.FC<DisputeInitiationDialogProps> = ({
   const [formData, setFormData] = useState({
     reason: 'price_error',
     description: '',
-    disputedAmount: order?.totalAmount || 0,
+    disputedAmount: Number(order?.totalAmount || 0),
   });
 
   const handleSubmit = async () => {
+    if (loading) return;
     if (!formData.description) {
       toast.error('Please provide a description');
       return;
@@ -49,7 +50,7 @@ const DisputeInitiationDialog: React.FC<DisputeInitiationDialogProps> = ({
         orderNumber: order.orderNumber,
         reason: formData.reason,
         description: formData.description,
-        disputedAmount: formData.disputedAmount,
+        disputedAmount: parseFloat(Number(formData.disputedAmount).toFixed(2)),
       });
       toast.success('Dispute initiated successfully');
       onSuccess();
@@ -97,8 +98,9 @@ const DisputeInitiationDialog: React.FC<DisputeInitiationDialogProps> = ({
             fullWidth
             label="Disputed Amount"
             type="number"
-            value={formData.disputedAmount}
-            onChange={(e) => setFormData({ ...formData, disputedAmount: parseFloat(e.target.value) || 0 })}
+            value={Number(formData.disputedAmount).toFixed(2)}
+            onChange={(e) => setFormData({ ...formData, disputedAmount: e.target.value })}
+            onBlur={() => setFormData({ ...formData, disputedAmount: parseFloat(Number(formData.disputedAmount).toFixed(2)) })}
             inputProps={{ step: 0.01 }}
           />
 

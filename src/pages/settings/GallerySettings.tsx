@@ -47,6 +47,7 @@ const GallerySettings: React.FC = () => {
     const [openDialog, setOpenDialog] = useState(false);
     const [editingItem, setEditingItem] = useState<Partial<GalleryItem> | null>(null);
     const [uploading, setUploading] = useState(false);
+    const [isProcessing, setIsProcessing] = useState(false);
 
     const fetchGallery = async () => {
         try {
@@ -82,6 +83,7 @@ const GallerySettings: React.FC = () => {
     };
 
     const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        if (uploading) return;
         const file = event.target.files?.[0];
         if (!file) return;
 
@@ -99,6 +101,7 @@ const GallerySettings: React.FC = () => {
     };
 
     const handleSave = async () => {
+        if (uploading) return;
         if (!editingItem?.imageUrl) {
             toast.error('Please upload an image');
             return;
@@ -121,26 +124,34 @@ const GallerySettings: React.FC = () => {
     };
 
     const handleDelete = async (id: string) => {
+        if (isProcessing) return;
         if (!window.confirm('Are you sure you want to delete this image?')) return;
 
         try {
+            setIsProcessing(true);
             await galleryAPI.delete(id);
             toast.success('Image deleted');
             fetchGallery();
         } catch (error) {
             console.error('Failed to delete image:', error);
             toast.error('Failed to delete image');
+        } finally {
+            setIsProcessing(false);
         }
     };
 
     const handleToggleActive = async (item: GalleryItem) => {
+        if (isProcessing) return;
         try {
+            setIsProcessing(true);
             await galleryAPI.update(item._id, { isActive: !item.isActive });
             setItems(prev => prev.map(i => i._id === item._id ? { ...i, isActive: !i.isActive } : i));
             toast.success(`Image ${!item.isActive ? 'activated' : 'deactivated'}`);
         } catch (error) {
             console.error('Failed to toggle status:', error);
             toast.error('Failed to update status');
+        } finally {
+            setIsProcessing(false);
         }
     };
 

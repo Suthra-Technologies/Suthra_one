@@ -1284,6 +1284,7 @@ const SettingsPage: React.FC = () => {
     };
 
     const handleSave = async (category: keyof SettingsState) => {
+        if (loading) return;
         if (category === 'restaurant' && !validateRestaurantForm()) {
             toast.error('Please fix the errors in the form');
             return;
@@ -3489,6 +3490,7 @@ const SettingsPage: React.FC = () => {
                                 variant="contained"
                                 startIcon={<SaveIcon />}
                                 onClick={async () => {
+                                    if (loading) return;
                                     try {
                                         setLoading(true);
                                         const payload: any = {};

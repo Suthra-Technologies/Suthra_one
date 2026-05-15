@@ -155,7 +155,8 @@ const CustomersPage: React.FC = () => {
     };
 
     const handleAdjustPoints = async () => {
-        if (!selectedCustomer?._id || !adjustAmount || isAdjusting) return;
+        if (isAdjusting) return;
+        if (!selectedCustomer?._id || !adjustAmount) return;
 
         const points = parseInt(adjustAmount);
         if (isNaN(points)) {

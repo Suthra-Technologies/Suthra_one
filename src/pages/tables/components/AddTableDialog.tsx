@@ -44,6 +44,7 @@ const AddTableDialog: React.FC<AddTableDialogProps> = ({
     const [newTableCapacity, setNewTableCapacity] = useState(0);
     const [newTableLocation, setNewTableLocation] = useState('indoor');
     const [newTableStatus, setNewTableStatus] = useState('available');
+    const [isProcessing, setIsProcessing] = useState(false);
 
     const [touched, setTouched] = useState({
         tableName: false,
@@ -135,11 +136,13 @@ const AddTableDialog: React.FC<AddTableDialogProps> = ({
     };
 
     const handleAddTable = async () => {
+        if (isProcessing) return;
         if (!validateAll()) {
             toast.error('Please fill all the required fields correctly');
             return;
         }
         try {
+            setIsProcessing(true);
             const payload = {
                 tableName: newTableName,
                 tableNumber: newTableNumber,
@@ -155,6 +158,8 @@ const AddTableDialog: React.FC<AddTableDialogProps> = ({
             console.error('Error adding table:', error);
             const errorMessage = error.response?.data?.error || error.response?.data?.message || 'Failed to add table';
             toast.error(errorMessage);
+        } finally {
+            setIsProcessing(false);
         }
     };
 
@@ -314,7 +319,9 @@ const AddTableDialog: React.FC<AddTableDialogProps> = ({
             </DialogContent>
             <DialogActions>
                 <Button onClick={handleClose}>Cancel</Button>
-                <Button variant="contained" onClick={handleAddTable}>Add</Button>
+                <Button variant="contained" onClick={handleAddTable} disabled={isProcessing} startIcon={isProcessing && <CircularProgress size={16} color="inherit" />}>
+                    {isProcessing ? 'Adding...' : 'Add'}
+                </Button>
             </DialogActions>
         </Dialog>
     );

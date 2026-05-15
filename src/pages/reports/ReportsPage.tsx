@@ -170,6 +170,7 @@ const ReportsPage: React.FC = () => {
     const [previewOrderNumber, setPreviewOrderNumber] = useState('');
     const [selectedCateringOrder, setSelectedCateringOrder] = useState<any | null>(null);
     const [cateringTab, setCateringTab] = useState(0);
+    const fetchRequestId = React.useRef(0);
 
     const { socket } = useSocket();
 
@@ -242,6 +243,8 @@ const ReportsPage: React.FC = () => {
     }, [socket, activeTab, period, startDate, endDate]);
 
     const fetchReportData = async () => {
+        if (loading && fetchRequestId.current > 0) return;
+        const requestId = ++fetchRequestId.current;
         setLoading(true);
         try {
             const params: any = { period };
@@ -348,11 +351,10 @@ const ReportsPage: React.FC = () => {
                     await fetchCateringReport(params);
                     break;
             }
-        } catch (error) {
-            console.error('Error fetching report:', error);
-            toast.error('Failed to fetch report data');
         } finally {
-            setLoading(false);
+            if (requestId === fetchRequestId.current) {
+                setLoading(false);
+            }
         }
     };
 
@@ -570,6 +572,8 @@ const ReportsPage: React.FC = () => {
     };
 
     const downloadExcel = async (reportType: string, customPaymentMethod?: string) => {
+        if (loading) return;
+        setLoading(true);
         try {
             const params: any = { reportType, period };
             if (period === 'custom' && startDate && endDate) {
@@ -621,6 +625,8 @@ const ReportsPage: React.FC = () => {
         } catch (error) {
             console.error('Error downloading Excel:', error);
             toast.error('Failed to download Excel report');
+        } finally {
+            setLoading(false);
         }
     };
 

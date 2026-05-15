@@ -70,6 +70,7 @@ interface Booking {
 const OrdersPage = () => {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -238,23 +239,31 @@ const OrdersPage = () => {
   };
 
   const handleAcceptPreOrder = async (orderId: string) => {
+    if (isProcessing) return;
     try {
+      setIsProcessing(true);
       await ordersAPI.updateStatus(orderId, 'confirmed');
       toast.success('Pre-order accepted');
       // fetchOrders();
       handleOrderRefresh(orderId);
     } catch {
       toast.error('Failed to accept pre-order');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   const handleRejectPreOrder = async (orderId: string) => {
+    if (isProcessing) return;
     try {
+      setIsProcessing(true);
       await ordersAPI.updateStatus(orderId, 'cancelled');
       toast.success('Pre-order rejected');
       handleOrderRefresh(orderId);
     } catch {
       toast.error('Failed to reject pre-order');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -348,10 +357,10 @@ const OrdersPage = () => {
                   onChange={(e) => setTypeFilter(e.target.value)}
                 >
                   <MenuItem value="all">All Types</MenuItem>
-                  <MenuItem value="dine_in">Global Dine In</MenuItem>
-                  <MenuItem value="takeaway">Global Takeaway</MenuItem>
+                  <MenuItem value="dine_in">Dine In</MenuItem>
+                  <MenuItem value="takeaway">Takeaway</MenuItem>
                   <MenuItem value="delivery">Delivery</MenuItem>
-                  <MenuItem value="online">Online</MenuItem>
+                  <MenuItem value="online">Online (Web/App)</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -386,46 +395,48 @@ const OrdersPage = () => {
       ) : (
         <Grid container spacing={{ xs: 2, sm: 3 }}>
           {orders.map((order) => (
-            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }} key={order._id}>
-              {/* Pre-order accept/reject row for POS Pre Orders tab */}
-              {!isCustomer && posActiveTab === 1 && order.status === 'pending' && (
-                <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-                  <Button
-                    variant="contained"
-                    color="success"
-                    size="small"
-                    fullWidth
-                    onClick={() => handleAcceptPreOrder(order._id)}
-                    sx={{ fontWeight: 'bold', borderRadius: 2 }}
-                  >
-                    ✓ Accept
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    color="error"
-                    size="small"
-                    fullWidth
-                    onClick={() => handleRejectPreOrder(order._id)}
-                    sx={{ fontWeight: 'bold', borderRadius: 2 }}
-                  >
-                    ✕ Reject
-                  </Button>
-                </Box>
-              )}
-              <OrderCard
-                order={order}
-                onView={() => handleView(order)}
-                onUpdate={() => handleUpdate(order)}
-                onPrint={() => handlePrint(order)}
-                onAddItem={() => handleAddItem(order)}
-                canManage={canManageOrders}
-
-                onRefresh={() => handleOrderRefresh(order._id)}
-                onFeedback={(id: string) => {
-                  const targetSlug = order?.restaurant?.slug || tenantSlug || '';
-                  navigate(`/${targetSlug}/feedback/${id}`);
-                }}
-              />
+            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }} key={order._id} sx={{ display: 'flex' }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
+                {/* Pre-order accept/reject row for POS Pre Orders tab */}
+                {!isCustomer && posActiveTab === 1 && order.status === 'pending' && (
+                  <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+                    <Button
+                      variant="contained"
+                      color="success"
+                      size="small"
+                      fullWidth
+                      onClick={() => handleAcceptPreOrder(order._id)}
+                      sx={{ fontWeight: 'bold', borderRadius: 2 }}
+                    >
+                      ✓ Accept
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      color="error"
+                      size="small"
+                      fullWidth
+                      onClick={() => handleRejectPreOrder(order._id)}
+                      sx={{ fontWeight: 'bold', borderRadius: 2 }}
+                    >
+                      ✕ Reject
+                    </Button>
+                  </Box>
+                )}
+                <OrderCard
+                  sx={{ flex: 1 }}
+                  order={order}
+                  onView={() => handleView(order)}
+                  onUpdate={() => handleUpdate(order)}
+                  onPrint={() => handlePrint(order)}
+                  onAddItem={() => handleAddItem(order)}
+                  canManage={canManageOrders}
+                  onRefresh={() => handleOrderRefresh(order._id)}
+                  onFeedback={(id: string) => {
+                    const targetSlug = order?.restaurant?.slug || tenantSlug || '';
+                    navigate(`/${targetSlug}/feedback/${id}`);
+                  }}
+                />
+              </Box>
             </Grid>
           ))}
         </Grid>

@@ -599,6 +599,7 @@ const CreatePOPage: React.FC = () => {
     const calculateTotal = () => calculateSubtotal() + calculateTax() + (formData.shippingCost || 0);
 
     const handleSubmit = async (status: string) => {
+        if (loading) return;
         if (!formData.vendor.name && formData.category !== 'salaries') {
             setErrors(prev => ({ ...prev, name: 'Required field' }));
             toast.error('Entity name is required');
