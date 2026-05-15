@@ -638,13 +638,13 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                 </Typography>
                             </Box>
                         )}
-                        {order.discount?.amount > 0 && (
+                        {(order.discount?.amount > 0 || order.couponDiscount > 0) && (
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', color: 'success.main' }}>
                                 <Typography variant="body2">
-                                    Discount {order.discount.code ? `(${order.discount.code})` : ''}:
+                                    Discount {(order.discount?.couponCode || order.couponCode) ? `(${order.discount?.couponCode || order.couponCode})` : ''}:
                                 </Typography>
                                 <Typography variant="body2" fontWeight="medium">
-                                    -{formatCurrency(order.discount.amount)}
+                                    -{formatCurrency(order.discount?.amount || order.couponDiscount)}
                                 </Typography>
                             </Box>
                         )}

@@ -642,7 +642,7 @@ const CateringManagementPage = () => {
             // Fetch both menu, recipes and categories
             const [menuRes, recipeRes, catRes] = await Promise.all([
                 menuAPI.getAll({ search, cursor, limit: 50, isCateringAvailable: true }),
-                recipesAPI.getAll({ limit: 1000 }),
+                recipesAPI.getAll({ limit: 500 }),
                 menuAPI.getAllCategories()
             ]);
 

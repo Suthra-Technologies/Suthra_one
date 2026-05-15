@@ -52,10 +52,11 @@ import {
     AccountBalanceWallet as WalletIcon,
     Warning as AlertIcon,
     History as HistoryIcon,
-    CalendarToday as CalendarIcon
+    CalendarToday as CalendarIcon,
+    RestaurantMenuOutlined as RestaurantMenuOutlinedIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { expensesAPI } from '../../services/api';
+import { expensesAPI, cateringAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
 
@@ -118,16 +119,78 @@ const ExpensesPage: React.FC = () => {
             console.log('Clean filters being sent to API:', cleanFilters);
             
             // Get filtered data with current filters
-            const [listRes, statsRes] = await Promise.all([
+            // For commissions, we only send filters it supports (search, status, date range)
+            const commissionFilters = {
+                page,
+                limit: 10,
+                search: filters.search,
+                status: filters.status,
+                startDate: (filters as any).startDate,
+                endDate: (filters as any).endDate
+            };
+
+            const [listRes, statsRes, commissionsRes] = await Promise.all([
                 expensesAPI.getAll(cleanFilters),
-                expensesAPI.getStats()
+                expensesAPI.getStats(),
+                cateringAPI.getCommissions(commissionFilters)
             ]);
             
-            console.log('API response:', listRes.data);
+            // Map commissions to expense format
+            const commList = commissionsRes.data.commissions || commissionsRes.data.data || [];
+            const mappedCommissions = commList.map((c: any) => ({
+                ...c,
+                _id: c._id,
+                expenseNumber: c.commissionNumber,
+                createdAt: c.createdAt,
+                payee: { 
+                    name: c.reference?.name || 'Catering Beneficiary', 
+                    type: c.reference?.type === 'internal_team' ? 'person' : 'organization' 
+                },
+                category: 'Catering Commission',
+                type: 'one_time',
+                amount: c.commissionAmount || 0,
+                status: c.status === 'approved' ? 'paid' : (c.status === 'paid' ? 'paid' : 'pending'),
+                isCateringCommission: true
+            }));
+
+            const combinedExpenses = [
+                ...(listRes.data.data || []),
+                ...mappedCommissions
+            ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+            setExpenses(combinedExpenses);
             
-            setExpenses(listRes.data.data || []);
-            setTotalPages(Math.ceil((listRes.data.total || 0) / 10));
-            setStats(statsRes.data.data);
+            const totalCount = (listRes.data.total || 0) + (commissionsRes.data.total || 0);
+            setTotalPages(Math.ceil(totalCount / 10));
+            
+            // Get ALL commissions for the period to calculate accurate totals for the cards
+            const allCommsRes = await cateringAPI.getCommissions({ ...commissionFilters, limit: 1000, page: 1 });
+            const allComms = allCommsRes.data.commissions || allCommsRes.data.data || [];
+            
+            const commStats = allComms.reduce((acc: any, curr: any) => {
+                const amount = curr.commissionAmount || 0;
+                acc.total += amount;
+                acc.count += 1;
+                return acc;
+            }, { total: 0, count: 0 });
+
+            const updatedStats = {
+                ...(statsRes.data.data || {}),
+                dailyTotal: (statsRes.data.data?.dailyTotal || 0) + (timeFilter === 'daily' ? commStats.total : 0),
+                dailyCount: (statsRes.data.data?.dailyCount || 0) + (timeFilter === 'daily' ? commStats.count : 0),
+                weeklyTotal: (statsRes.data.data?.weeklyTotal || 0) + (timeFilter === 'weekly' ? commStats.total : 0),
+                weeklyCount: (statsRes.data.data?.weeklyCount || 0) + (timeFilter === 'weekly' ? commStats.count : 0),
+                monthlyTotal: (statsRes.data.data?.monthlyTotal || 0) + (timeFilter === 'monthly' ? commStats.total : 0),
+                monthlyCount: (statsRes.data.data?.monthlyCount || 0) + (timeFilter === 'monthly' ? commStats.count : 0)
+            };
+            
+            // If it's a custom range or other filter, we still want to show the combined total in the main card
+            if (timeFilter === 'custom' || filters.search) {
+                 // The main card uses monthlyTotal as a fallback in some UI parts, 
+                 // but let's make sure the specific card shown is updated.
+            }
+
+            setStats(updatedStats);
         } catch (error) {
             console.error('Error fetching expenses:', error);
             toast.error('Failed to load expense data');
@@ -497,7 +560,7 @@ const ExpensesPage: React.FC = () => {
                                         </TableCell>
                                         <TableCell>
                                             <Stack direction="row" spacing={1} alignItems="center">
-                                                {exp.payee.type === 'organization' ? <OrgIcon fontSize="small" color="action" /> : <PersonIcon fontSize="small" color="action" />}
+                                                {exp.isCateringCommission ? <RestaurantMenuOutlinedIcon fontSize="small" color="primary" /> : (exp.payee.type === 'organization' ? <OrgIcon fontSize="small" color="action" /> : <PersonIcon fontSize="small" color="action" />)}
                                                 <Typography variant="body2">{exp.payee.name}</Typography>
                                             </Stack>
                                         </TableCell>
@@ -526,20 +589,28 @@ const ExpensesPage: React.FC = () => {
                                             )}
                                         </TableCell>
                                         <TableCell align="right">
-                                            <Stack direction="row" spacing={1} justifyContent="flex-end">
-                                                <Tooltip title="View Details">
-                                                    <IconButton size="small" onClick={() => navigate(`${exp._id}`)}><ViewIcon color="primary" /></IconButton>
-                                                </Tooltip>
-                                                <Tooltip title="View History">
-                                                    <IconButton size="small" onClick={() => navigate(`${exp._id}#history`)}><HistoryIcon color="info" /></IconButton>
-                                                </Tooltip>
-                                                <Tooltip title="Edit">
-                                                    <IconButton size="small" onClick={() => navigate(`edit/${exp._id}`)}><EditIcon color="secondary" /></IconButton>
-                                                </Tooltip>
-                                                <Tooltip title="Delete">
-                                                    <IconButton size="small" onClick={() => handleDelete(exp._id)}><DeleteIcon color="error" /></IconButton>
-                                                </Tooltip>
-                                            </Stack>
+                                            {exp.isCateringCommission ? (
+                                                <Typography variant="body2" color="text.disabled" sx={{ pr: 2 }}>—</Typography>
+                                            ) : (
+                                                <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                                    <Tooltip title="View Details">
+                                                        <IconButton size="small" onClick={() => navigate(`${exp._id}`)}>
+                                                            <ViewIcon color="primary" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="View History">
+                                                        <IconButton size="small" onClick={() => navigate(`${exp._id}#history`)}><HistoryIcon color="info" /></IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="Edit">
+                                                        <IconButton size="small" onClick={() => navigate(`edit/${exp._id}`)}><EditIcon color="secondary" /></IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="Delete">
+                                                        <IconButton size="small" onClick={() => handleDelete(exp._id)}>
+                                                            <DeleteIcon color="error" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                </Stack>
+                                            )}
                                         </TableCell>
                                     </TableRow>
                                 );

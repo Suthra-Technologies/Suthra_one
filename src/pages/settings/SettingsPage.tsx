@@ -3,32 +3,34 @@ import {
     CheckCircle as CheckCircleIcon,
     CreditCard as CreditCardIcon,
     Delete as DeleteIcon,
-    PlayArrow as PlayArrowIcon,
-    Print as PrintIcon,
-    Save as SaveIcon,
-    Sms as SmsIcon,
-    History as HistoryIcon,
-    Person as PersonIcon,
-    Category as CategoryIcon,
+    DeliveryDining as DeliveryDiningIcon,
     Edit as EditIcon,
+    History as HistoryIcon,
     Login as LoginIcon,
     Logout as LogoutIcon,
-    Search as SearchIcon,
-    FilterList as FilterListIcon,
-    Terminal as TerminalIcon,
+    PlayArrow as PlayArrowIcon,
+    Print as PrintIcon,
     Refresh as RefreshIcon,
+    Save as SaveIcon,
+    Sms as SmsIcon,
     Star as StarIcon,
-    DeliveryDining as DeliveryDiningIcon,
-    ReceiptLong as ReceiptLongIcon
+    Terminal as TerminalIcon
 } from '@mui/icons-material';
-import { useTheme } from '@mui/material/styles';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import {
     Alert,
     Avatar,
     Box,
     Button,
+    Checkbox,
+    Chip,
     CircularProgress,
+    Collapse,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
     Divider,
     FormControlLabel,
     IconButton,
@@ -38,30 +40,23 @@ import {
     Radio,
     Stack,
     Switch,
-    Checkbox,
     Tab,
     Table,
     TableBody,
     TableCell,
     TableContainer,
     TableHead,
+    TablePagination,
     TableRow,
     Tabs,
     TextField,
+    Tooltip,
     Typography,
     alpha,
-    Collapse,
-    Tooltip,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    Chip,
-    TablePagination,
     useMediaQuery
 } from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Grid from '@mui/material/Grid2';
+import { useTheme } from '@mui/material/styles';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import AddressAutocomplete from '../../components/AddressAutocomplete';
@@ -87,7 +82,7 @@ import {
     type UnitConfig
 } from '../../context/SettingsContext';
 
-import { paymentsAPI, printersAPI, settingsAPI, tenantAPI, usersAPI, smsAPI } from '../../services/api';
+import { paymentsAPI, printersAPI, settingsAPI, smsAPI, tenantAPI, usersAPI } from '../../services/api';
 
 import { NOTIFICATION_SOUNDS, previewSound } from '../../utils/notificationSounds';
 import type { ValidationResult } from '../../utils/validation';
@@ -240,6 +235,53 @@ const DEFAULT_BUSINESS_HOURS: BusinessHourDay[] = [
     { day: 'Saturday', isOpen: true, slots: [{ openTime: '11:00', closeTime: '23:00' }] },
     { day: 'Sunday', isOpen: true, slots: [{ openTime: '12:00', closeTime: '21:00' }] },
 ];
+
+const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
+    const totalMinutes = i * 30;
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const displayHours = hours % 12 || 12;
+    const displayMinutes = minutes.toString().padStart(2, '0');
+    const value = `${hours.toString().padStart(2, '0')}:${displayMinutes}`;
+    return {
+        label: `${displayHours}:${displayMinutes} ${ampm}`,
+        value,
+        minutes: totalMinutes,
+        group: hours < 12 ? 'Morning' : hours < 17 ? 'Afternoon' : hours < 21 ? 'Evening' : 'Night'
+    };
+});
+
+/** Closing Time Options (includes EOD and supports wrap-around display logic) */
+const CLOSING_TIME_OPTIONS = [
+    ...TIME_OPTIONS,
+    { label: '11:59 PM', value: '23:59', minutes: 1439, group: 'Night' }
+];
+
+// Add EOD value
+TIME_OPTIONS.push({
+    label: '11:59 PM',
+    value: '23:59',
+    minutes: 1439,
+    group: 'Night'
+});
+
+/** Time Utility Functions */
+const timeToMinutes = (time: string): number => {
+    if (!time) return 0;
+    const [h, m] = time.split(':').map(Number);
+    return (h || 0) * 60 + (m || 0);
+};
+
+const formatTimeDisplay = (timeStr: string): string => {
+    if (!timeStr) return '';
+    const mins = timeToMinutes(timeStr);
+    const hours = Math.floor(mins / 60);
+    const minutes = mins % 60;
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const h12 = hours % 12 || 12;
+    return `${h12}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+};
 
 /** Pure helper: given businessHours + IANA timezone, compute if currently open */
 const isCurrentlyOpen = (hours: BusinessHourDay[], timezone: string): boolean => {
@@ -1028,96 +1070,70 @@ const SettingsPage: React.FC = () => {
         });
     };
 
-    const timeToMinutes = (time: string): number => {
-        const [h, m] = time.split(':').map(Number);
-        return (h || 0) * 60 + (m || 0);
-    };
 
     const handleSlotChange = (dayIdx: number, slotIdx: number, field: 'openTime' | 'closeTime', value: string) => {
-        const dayConfig = settings.restaurant.businessHours![dayIdx];
+        const businessHours = settings.restaurant.businessHours || DEFAULT_BUSINESS_HOURS;
+        const dayConfig = businessHours[dayIdx];
         const slots = [...(dayConfig.slots || [{ openTime: dayConfig.openTime || '09:00', closeTime: dayConfig.closeTime || '17:00' }])];
 
-        let newSlot = { ...slots[slotIdx], [field]: value };
-        let newStart = timeToMinutes(newSlot.openTime);
-        let newEnd = timeToMinutes(newSlot.closeTime);
-
-        const toTimeStr = (mins: number) => {
-            const h = Math.floor(mins / 60).toString().padStart(2, '0');
-            const m = (mins % 60).toString().padStart(2, '0');
-            return `${h}:${m}`;
-        };
-
-        if (newStart >= newEnd) {
-            if (field === 'openTime') {
-                newEnd = newStart + 60;
-                if (newEnd > 1439) newEnd = 1439;
-                newSlot.closeTime = toTimeStr(newEnd);
-            } else {
-                newStart = newEnd - 60;
-                if (newStart < 0) newStart = 0;
-                newSlot.openTime = toTimeStr(newStart);
+        let updatedSlot = { ...slots[slotIdx], [field]: value };
+        
+        // Ensure chronology if closeTime was changed to something before openTime
+        if (field === 'closeTime') {
+            const startMins = timeToMinutes(updatedSlot.openTime);
+            const endMins = timeToMinutes(value);
+            if (endMins <= startMins) {
+                // Should be prevented by dropdown filtering, but as fallback:
+                const nextValid = TIME_OPTIONS.find(o => o.minutes > startMins);
+                updatedSlot.closeTime = nextValid ? nextValid.value : '23:59';
+            }
+        }
+        
+        // Chain subsequent slots if needed (optional Clover behavior: keep them strictly sequential)
+        slots[slotIdx] = updatedSlot;
+        
+        // If a slot's close time changes, subsequent slots might need adjustment if they overlap
+        for (let i = slotIdx + 1; i < slots.length; i++) {
+            const prevClose = timeToMinutes(slots[i - 1].closeTime);
+            const currentOpen = timeToMinutes(slots[i].openTime);
+            if (currentOpen < prevClose) {
+                slots[i].openTime = slots[i - 1].closeTime;
+                const currentClose = timeToMinutes(slots[i].closeTime);
+                if (currentClose <= prevClose) {
+                    const nextClose = TIME_OPTIONS.find(o => o.minutes > prevClose);
+                    slots[i].closeTime = nextClose ? nextClose.value : '23:59';
+                }
             }
         }
 
-        for (let i = 0; i < slots.length; i++) {
-            if (i === slotIdx) continue;
-            const eStart = timeToMinutes(slots[i].openTime);
-            const eEnd = timeToMinutes(slots[i].closeTime);
-
-            if (newStart < eEnd && newEnd > eStart) {
-                toast.error('Time slots cannot overlap.');
-                return;
-            }
-        }
-
-        slots[slotIdx] = newSlot;
-        slots.sort((a, b) => timeToMinutes(a.openTime) - timeToMinutes(b.openTime));
-
-        const updated = [...(settings.restaurant.businessHours || DEFAULT_BUSINESS_HOURS)];
+        const updated = [...businessHours];
         updated[dayIdx] = { ...updated[dayIdx], slots, openTime: slots[0].openTime, closeTime: slots[0].closeTime };
         handleInputChange('restaurant', 'businessHours', updated);
     };
 
     const handleAddSlot = (dayIdx: number) => {
-        const dayConfig = settings.restaurant.businessHours![dayIdx];
-        const slots = [...(dayConfig.slots || [{ openTime: dayConfig.openTime || '09:00', closeTime: dayConfig.closeTime || '17:00' }])];
+        const businessHours = settings.restaurant.businessHours || DEFAULT_BUSINESS_HOURS;
+        const dayConfig = businessHours[dayIdx];
+        const slots = [...(dayConfig.slots || [])];
 
-        let proposedStart = 12 * 60;
-        let proposedEnd = 13 * 60;
-        let found = false;
-
-        for (let attempt = 0; attempt < 24; attempt++) {
-            let overlap = false;
-            for (const s of slots) {
-                if (proposedStart < timeToMinutes(s.closeTime) && proposedEnd > timeToMinutes(s.openTime)) {
-                    overlap = true;
-                    break;
-                }
-            }
-            if (!overlap) {
-                found = true;
-                break;
-            }
-            proposedStart = (proposedStart + 60) % (24 * 60);
-            proposedEnd = proposedStart + 60;
-            if (proposedEnd > 24 * 60) proposedEnd = 24 * 60;
-        }
-
-        if (!found) {
-            toast.error('No free time slots available.');
+        const lastSlot = slots[slots.length - 1];
+        const prevCloseMins = lastSlot ? timeToMinutes(lastSlot.closeTime) : 540; // 9:00 AM default
+        
+        if (prevCloseMins >= 1439) {
+            toast.error('Day is already fully scheduled.');
             return;
         }
 
-        const toTimeStr = (mins: number) => {
-            const h = Math.floor(mins / 60).toString().padStart(2, '0');
-            const m = (mins % 60).toString().padStart(2, '0');
-            return `${h}:${m}`;
-        };
+        const nextOpenTime = lastSlot ? lastSlot.closeTime : '09:00';
+        const nextOpenMins = timeToMinutes(nextOpenTime);
+        let nextCloseMins = nextOpenMins + 60; // Default 1 hour slot
+        if (nextCloseMins > 1439) nextCloseMins = 1439;
 
-        slots.push({ openTime: toTimeStr(proposedStart), closeTime: toTimeStr(proposedEnd) });
-        slots.sort((a, b) => timeToMinutes(a.openTime) - timeToMinutes(b.openTime));
+        const nextCloseTime = TIME_OPTIONS.find(o => o.minutes >= nextCloseMins)?.value || '23:59';
 
-        const updated = [...(settings.restaurant.businessHours || DEFAULT_BUSINESS_HOURS)];
+        slots.push({ openTime: nextOpenTime, closeTime: nextCloseTime });
+
+        const updated = [...businessHours];
         updated[dayIdx] = { ...updated[dayIdx], slots, openTime: slots[0].openTime, closeTime: slots[0].closeTime };
         handleInputChange('restaurant', 'businessHours', updated);
     };
@@ -1391,12 +1407,12 @@ const SettingsPage: React.FC = () => {
 
     return (
         <Box>
-            <Typography 
-                variant="h4" 
-                gutterBottom 
-                sx={{ 
+            <Typography
+                variant="h4"
+                gutterBottom
+                sx={{
                     mt: { xs: 0.75, sm: 0 },
-                    mb: { xs: 1.25, sm: 3 }, 
+                    mb: { xs: 1.25, sm: 3 },
                     textAlign: { xs: 'center', md: 'left' },
                     fontWeight: 800,
                     fontFamily: "'Outfit', sans-serif",
@@ -1800,14 +1816,14 @@ const SettingsPage: React.FC = () => {
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 6 }}>
-                                <TextField
-                                    fullWidth
-                                    type="number"
-                                    label="Default Tax Rate (%)"
-                                    value={settings.restaurant.taxRate ?? 5}
-                                    onChange={(e) => handleInputChange('restaurant', 'taxRate', parseFloat(e.target.value))}
-                                    slotProps={{ htmlInput: { min: 0, step: "0.01" } }}
-                                    helperText="Fallback tax rate if automatic lookup fails."
+                            <TextField
+                                fullWidth
+                                type="number"
+                                label="Default Tax Rate (%)"
+                                value={settings.restaurant.taxRate ?? 5}
+                                onChange={(e) => handleInputChange('restaurant', 'taxRate', parseFloat(e.target.value))}
+                                slotProps={{ htmlInput: { min: 0, step: "0.01" } }}
+                                helperText="Fallback tax rate if automatic lookup fails."
                                 InputProps={{
                                     endAdornment: (
                                         <InputAdornment position="end">
@@ -2095,17 +2111,31 @@ const SettingsPage: React.FC = () => {
                                                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                                                         <Box
                                                             sx={{
-                                                                px: 1.5, py: 0.4,
-                                                                borderRadius: 10,
-                                                                bgcolor: alpha('#22c55e', 0.1),
+                                                                px: 1.5, py: 0.6,
+                                                                borderRadius: 2,
+                                                                bgcolor: alpha(theme.palette.success.main, 0.08),
                                                                 color: 'success.dark',
-                                                                fontSize: '0.8rem',
-                                                                fontWeight: 600,
+                                                                fontSize: '0.82rem',
+                                                                fontWeight: 700,
                                                                 display: 'inline-flex',
                                                                 alignItems: 'center',
+                                                                gap: 1,
+                                                                fontFamily: "'Outfit', sans-serif",
+                                                                border: `1px solid ${alpha(theme.palette.success.main, 0.1)}`
                                                             }}
                                                         >
-                                                            {slots.map(s => `${s.openTime} – ${s.closeTime}`).join(', ')}
+                                                            {slots.map((s, si) => (
+                                                                <React.Fragment key={si}>
+                                                                    {si > 0 && (
+                                                                        <Typography component="span" sx={{ mx: 0.5, opacity: 0.4, fontWeight: 400 }}>
+                                                                            •
+                                                                        </Typography>
+                                                                    )}
+                                                                    <Box component="span">
+                                                                        {formatTimeDisplay(s.openTime)} – {formatTimeDisplay(s.closeTime)}
+                                                                    </Box>
+                                                                </React.Fragment>
+                                                            ))}
                                                         </Box>
                                                         <Tooltip title={isExpanded ? "Collapse" : "Edit Slots"}>
                                                             <IconButton
@@ -2122,25 +2152,83 @@ const SettingsPage: React.FC = () => {
                                                             {slots.map((slot, sIdx) => (
                                                                 <Box key={sIdx} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
                                                                     <TextField
-                                                                        type="time"
+                                                                        select
                                                                         label="Opens"
                                                                         size="small"
                                                                         value={slot.openTime}
                                                                         onChange={(e) => handleSlotChange(idx, sIdx, 'openTime', e.target.value)}
-                                                                        inputProps={{ step: 300 }}
-                                                                        sx={{ width: { xs: '100%', sm: 140 }, flex: { xs: 1, sm: 'none' } }}
-                                                                    />
-                                                                    <Typography variant="body2" color="text.secondary">to</Typography>
+                                                                        sx={{ width: { xs: '100%', sm: 160 }, flex: { xs: 1, sm: 'none' } }}
+                                                                    >
+                                                                        {(() => {
+                                                                            let lastGroup = '';
+                                                                            return TIME_OPTIONS.filter(opt => {
+                                                                                if (slot.closeTime && opt.minutes >= timeToMinutes(slot.closeTime)) return false;
+
+                                                                                // Constraint: Subsequent slots must start at or after previous slot's end
+                                                                                if (sIdx > 0) {
+                                                                                    const prevSlot = slots[sIdx - 1];
+                                                                                    return opt.minutes >= timeToMinutes(prevSlot.closeTime);
+                                                                                }
+                                                                                return true;
+                                                                            }).map(opt => {
+                                                                                const showHeader = opt.group !== lastGroup;
+                                                                                lastGroup = opt.group;
+                                                                                return [
+                                                                                    showHeader && (
+                                                                                        <MenuItem key={`${opt.group}-header`} disabled sx={{ opacity: 1, fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', color: 'primary.main', bgcolor: alpha(theme.palette.primary.main, 0.05), minHeight: 'auto', py: 0.5 }}>
+                                                                                            {opt.group}
+                                                                                        </MenuItem>
+                                                                                    ),
+                                                                                    <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                                                                                ];
+                                                                            });
+                                                                        })()}
+                                                                    </TextField>
+                                                                    <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>to</Typography>
                                                                     <TextField
-                                                                        type="time"
+                                                                        select
                                                                         label="Closes"
                                                                         size="small"
                                                                         value={slot.closeTime}
                                                                         onChange={(e) => handleSlotChange(idx, sIdx, 'closeTime', e.target.value)}
-                                                                        inputProps={{ step: 300 }}
-                                                                        sx={{ width: { xs: '100%', sm: 140 }, flex: { xs: 1, sm: 'none' } }}
+                                                                        sx={{ width: { xs: '100%', sm: 160 }, flex: { xs: 1, sm: 'none' } }}
+                                                                    >
+                                                                        {(() => {
+                                                                            let lastGroup = '';
+                                                                            const currentOpenMins = timeToMinutes(slot.openTime);
+                                                                            const nextSlot = slots[sIdx + 1];
+                                                                            
+                                                                            return CLOSING_TIME_OPTIONS.filter(opt => {
+                                                                                if (nextSlot) {
+                                                                                    const limitMins = timeToMinutes(nextSlot.openTime);
+                                                                                    return opt.minutes > currentOpenMins && opt.minutes <= limitMins;
+                                                                                }
+                                                                                // For the last slot, allow any time except the exact opening time
+                                                                                return opt.value !== slot.openTime;
+                                                                            }).map(opt => {
+                                                                                const showHeader = opt.group !== lastGroup;
+                                                                                lastGroup = opt.group;
+                                                                                const isNextDay = opt.minutes <= currentOpenMins;
 
-                                                                    />
+                                                                                return [
+                                                                                    showHeader && (
+                                                                                        <MenuItem key={`${opt.group}-header`} disabled sx={{ opacity: 1, fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', color: 'primary.main', bgcolor: alpha(theme.palette.primary.main, 0.05), minHeight: 'auto', py: 0.5 }}>
+                                                                                            {opt.group}
+                                                                                        </MenuItem>
+                                                                                    ),
+                                                                                    <MenuItem key={opt.value} value={opt.value}>
+                                                                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', gap: 1 }}>
+                                                                                            <Typography variant="body2">{opt.label}</Typography>
+                                                                                            {isNextDay && (
+                                                                                                <Chip label="Next Day" size="small" color="info" variant="outlined" sx={{ height: 20, fontSize: '0.6rem', borderRadius: 1 }} />
+                                                                                            )}
+                                                                                        </Box>
+                                                                                    </MenuItem>
+                                                                                ];
+                                                                            });
+                                                                        })()}
+                                                                    </TextField>
+
                                                                     {slots.length > 1 && (
                                                                         <IconButton
                                                                             size="small"
@@ -2157,14 +2245,29 @@ const SettingsPage: React.FC = () => {
                                                                     )}
                                                                 </Box>
                                                             ))}
-                                                            <Button
-                                                                size="small"
-                                                                startIcon={<AddIcon />}
-                                                                onClick={() => handleAddSlot(idx)}
-                                                                sx={{ alignSelf: 'flex-start', mt: 0.5 }}
-                                                            >
-                                                                Add Slot
-                                                            </Button>
+                                                            {(() => {
+                                                                const lastSlot = slots[slots.length - 1];
+                                                                const isLastSlotValid = lastSlot && lastSlot.openTime && lastSlot.closeTime;
+                                                                const isDayFull = lastSlot && timeToMinutes(lastSlot.closeTime) >= 1439;
+                                                                
+                                                                return isLastSlotValid && !isDayFull && (
+                                                                    <Button
+                                                                        size="small"
+                                                                        startIcon={<AddIcon />}
+                                                                        onClick={() => handleAddSlot(idx)}
+                                                                        sx={{ 
+                                                                            alignSelf: 'flex-start', 
+                                                                            mt: 0.5,
+                                                                            fontWeight: 700,
+                                                                            fontFamily: "'Outfit', sans-serif",
+                                                                            borderRadius: 2,
+                                                                            textTransform: 'none'
+                                                                        }}
+                                                                    >
+                                                                        Add Slot
+                                                                    </Button>
+                                                                );
+                                                            })()}
                                                         </Box>
                                                     </Collapse>
                                                 </Box>
@@ -2342,7 +2445,7 @@ const SettingsPage: React.FC = () => {
                                 startIcon={<SaveIcon />}
                                 onClick={() => handleSave('restaurant')}
                                 disabled={loading}
-                                sx={{ 
+                                sx={{
                                     borderRadius: 2.5,
                                     px: { xs: 3, sm: 4 },
                                     fontWeight: 800,
@@ -2411,7 +2514,7 @@ const SettingsPage: React.FC = () => {
                                 startIcon={<SaveIcon />}
                                 onClick={() => handleSave('system')}
                                 disabled={loading}
-                                sx={{ 
+                                sx={{
                                     borderRadius: 2.5,
                                     px: { xs: 3, sm: 4 },
                                     fontWeight: 800,
@@ -2448,9 +2551,9 @@ const SettingsPage: React.FC = () => {
                     <Typography variant="h6" gutterBottom sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
                         Measurement Units
                     </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 3, fontWeight: 500, fontFamily: "'Outfit', sans-serif" }}>
-                            Customize the units available for inventory management. These units will be available across the entire application.
-                        </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3, fontWeight: 500, fontFamily: "'Outfit', sans-serif" }}>
+                        Customize the units available for inventory management. These units will be available across the entire application.
+                    </Typography>
 
                     {/* Current Units Display */}
                     <Paper variant="outlined" sx={{ p: 2, mb: 3 }}>
@@ -2591,9 +2694,9 @@ const SettingsPage: React.FC = () => {
                     </Paper>
 
                     {/* Reset to Defaults */}
-                    <Stack 
-                        direction={{ xs: 'column', sm: 'row' }} 
-                        spacing={2} 
+                    <Stack
+                        direction={{ xs: 'column', sm: 'row' }}
+                        spacing={2}
                         alignItems="center"
                         justifyContent={{ xs: 'center', md: 'flex-start' }}
                         sx={{ mt: 2 }}
@@ -2614,7 +2717,7 @@ const SettingsPage: React.FC = () => {
                                 }));
                                 toast.success('Units reset to country defaults');
                             }}
-                            sx={{ 
+                            sx={{
                                 borderRadius: 2,
                                 textTransform: 'none',
                                 fontWeight: 700,
@@ -2632,7 +2735,7 @@ const SettingsPage: React.FC = () => {
                             startIcon={<SaveIcon />}
                             onClick={() => handleSave('restaurant')}
                             disabled={loading}
-                            sx={{ 
+                            sx={{
                                 borderRadius: 2.5,
                                 px: { xs: 3, sm: 4 },
                                 fontWeight: 800,
@@ -2860,7 +2963,7 @@ const SettingsPage: React.FC = () => {
                             </Grid>
                         </Grid>
 
-{/* 
+                        {/* 
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 1 }} />
                         </Grid> */}
@@ -2981,167 +3084,167 @@ const SettingsPage: React.FC = () => {
                             </Typography>
 
                             {isMobile ? (
-    /* MOBILE CARD VIEW */
-    usersList.length === 0 ? (
-        <Box sx={{ textAlign: 'center', py: 6 }}>
-            <Typography variant="body2" color="text.secondary">No staff members found</Typography>
-        </Box>
-    ) : (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            {usersList.map((u: any) => {
-                const userRole = Array.isArray(u.roles) ? u.roles[0] : 'cashier';
-                const config = settings.notification.push?.users?.[u._id] ||
-                    settings.notification.push?.roles?.[userRole] ||
-                    { orders: true, catering: true, inventory: true };
-                return (
-                    <Paper key={u._id} variant="outlined" sx={{ borderRadius: 3, p: 2 }}>
-                        {/* Name + Role */}
-                        <Box sx={{ mb: 1.5 }}>
-                            <Typography fontWeight={600} variant="body2">
-                                {u.firstName && u.lastName ? `${u.firstName} ${u.lastName}` : u.firstName || u.email || 'Staff Member'}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'capitalize' }}>
-                                {Array.isArray(u.roles) ? u.roles.map((r: string) => r.replace('_', ' ')).join(', ') : 'Staff'}
-                            </Typography>
-                        </Box>
+                                /* MOBILE CARD VIEW */
+                                usersList.length === 0 ? (
+                                    <Box sx={{ textAlign: 'center', py: 6 }}>
+                                        <Typography variant="body2" color="text.secondary">No staff members found</Typography>
+                                    </Box>
+                                ) : (
+                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                                        {usersList.map((u: any) => {
+                                            const userRole = Array.isArray(u.roles) ? u.roles[0] : 'cashier';
+                                            const config = settings.notification.push?.users?.[u._id] ||
+                                                settings.notification.push?.roles?.[userRole] ||
+                                                { orders: true, catering: true, inventory: true };
+                                            return (
+                                                <Paper key={u._id} variant="outlined" sx={{ borderRadius: 3, p: 2 }}>
+                                                    {/* Name + Role */}
+                                                    <Box sx={{ mb: 1.5 }}>
+                                                        <Typography fontWeight={600} variant="body2">
+                                                            {u.firstName && u.lastName ? `${u.firstName} ${u.lastName}` : u.firstName || u.email || 'Staff Member'}
+                                                        </Typography>
+                                                        <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'capitalize' }}>
+                                                            {Array.isArray(u.roles) ? u.roles.map((r: string) => r.replace('_', ' ')).join(', ') : 'Staff'}
+                                                        </Typography>
+                                                    </Box>
 
-                        {/* Toggles */}
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                            {[
-                                { label: 'Orders', key: 'orders' },
-                                { label: 'Catering', key: 'catering' },
-                                { label: 'Inventory', key: 'inventory' },
-                            ].map(({ label, key }) => (
-                                <Box key={key} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
-                                    <Typography variant="caption" color="text.secondary" fontWeight={700}>{label}</Typography>
-                                    <Switch
-                                        size="small"
-                                        checked={Boolean(config[key])}
-                                        onChange={(e) => setSettings((prev: any) => ({
-                                            ...prev,
-                                            notification: {
-                                                ...prev.notification,
-                                                push: {
-                                                    ...prev.notification.push,
-                                                    users: {
-                                                        ...prev.notification.push?.users,
-                                                        [u._id]: {
-                                                            ...prev.notification.push?.users?.[u._id] || config,
-                                                            [key]: e.target.checked
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }))}
-                                    />
-                                </Box>
-                            ))}
-                        </Box>
-                    </Paper>
-                );
-            })}
-        </Box>
-    )
-) : (
-    /* TABLET / DESKTOP — original table unchanged */
-    <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3 }}>
-        <Table size="small">
-            <TableHead sx={{ bgcolor: alpha('#94a3b8', 0.05) }}>
-                <TableRow>
-                    <TableCell sx={{ fontWeight: 700 }}>Staff Name</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>System Role</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 700 }}>Orders</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 700 }}>Catering</TableCell>
-                    <TableCell align="center" sx={{ fontWeight: 700 }}>Inventory</TableCell>
-                </TableRow>
-            </TableHead>
-            <TableBody>
-                {usersList.map((u: any) => {
-                    const userRole = Array.isArray(u.roles) ? u.roles[0] : 'cashier';
-                    const config = settings.notification.push?.users?.[u._id] ||
-                        settings.notification.push?.roles?.[userRole] ||
-                        { orders: true, catering: true, inventory: true };
-                    return (
-                        <TableRow key={u._id} hover>
-                            <TableCell sx={{ fontWeight: 500 }}>
-                                {u.firstName && u.lastName ? `${u.firstName} ${u.lastName}` : u.firstName || u.email || 'Staff Member'}
-                            </TableCell>
-                            <TableCell sx={{ textTransform: 'capitalize', color: 'text.secondary', fontSize: '0.8rem' }}>
-                                {Array.isArray(u.roles) ? u.roles.map((r: string) => r.replace('_', ' ')).join(', ') : 'Staff'}
-                            </TableCell>
-                            <TableCell align="center">
-                                <Switch
-                                    size="small"
-                                    checked={Boolean(config.orders)}
-                                    onChange={(e) => setSettings((prev: any) => ({
-                                        ...prev,
-                                        notification: {
-                                            ...prev.notification,
-                                            push: {
-                                                ...prev.notification.push,
-                                                users: {
-                                                    ...prev.notification.push?.users,
-                                                    [u._id]: {
-                                                        ...prev.notification.push?.users?.[u._id] || config,
-                                                        orders: e.target.checked
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }))}
-                                />
-                            </TableCell>
-                            <TableCell align="center">
-                                <Switch
-                                    size="small"
-                                    checked={Boolean(config.catering)}
-                                    onChange={(e) => setSettings((prev: any) => ({
-                                        ...prev,
-                                        notification: {
-                                            ...prev.notification,
-                                            push: {
-                                                ...prev.notification.push,
-                                                users: {
-                                                    ...prev.notification.push?.users,
-                                                    [u._id]: {
-                                                        ...prev.notification.push?.users?.[u._id] || config,
-                                                        catering: e.target.checked
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }))}
-                                />
-                            </TableCell>
-                            <TableCell align="center">
-                                <Switch
-                                    size="small"
-                                    checked={Boolean(config.inventory)}
-                                    onChange={(e) => setSettings((prev: any) => ({
-                                        ...prev,
-                                        notification: {
-                                            ...prev.notification,
-                                            push: {
-                                                ...prev.notification.push,
-                                                users: {
-                                                    ...prev.notification.push?.users,
-                                                    [u._id]: {
-                                                        ...prev.notification.push?.users?.[u._id] || config,
-                                                        inventory: e.target.checked
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }))}
-                                />
-                            </TableCell>
-                        </TableRow>
-                    );
-                })}
-            </TableBody>
-        </Table>
-    </TableContainer>
-)}
+                                                    {/* Toggles */}
+                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                        {[
+                                                            { label: 'Orders', key: 'orders' },
+                                                            { label: 'Catering', key: 'catering' },
+                                                            { label: 'Inventory', key: 'inventory' },
+                                                        ].map(({ label, key }) => (
+                                                            <Box key={key} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
+                                                                <Typography variant="caption" color="text.secondary" fontWeight={700}>{label}</Typography>
+                                                                <Switch
+                                                                    size="small"
+                                                                    checked={Boolean(config[key])}
+                                                                    onChange={(e) => setSettings((prev: any) => ({
+                                                                        ...prev,
+                                                                        notification: {
+                                                                            ...prev.notification,
+                                                                            push: {
+                                                                                ...prev.notification.push,
+                                                                                users: {
+                                                                                    ...prev.notification.push?.users,
+                                                                                    [u._id]: {
+                                                                                        ...prev.notification.push?.users?.[u._id] || config,
+                                                                                        [key]: e.target.checked
+                                                                                    }
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }))}
+                                                                />
+                                                            </Box>
+                                                        ))}
+                                                    </Box>
+                                                </Paper>
+                                            );
+                                        })}
+                                    </Box>
+                                )
+                            ) : (
+                                /* TABLET / DESKTOP — original table unchanged */
+                                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3 }}>
+                                    <Table size="small">
+                                        <TableHead sx={{ bgcolor: alpha('#94a3b8', 0.05) }}>
+                                            <TableRow>
+                                                <TableCell sx={{ fontWeight: 700 }}>Staff Name</TableCell>
+                                                <TableCell sx={{ fontWeight: 700 }}>System Role</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 700 }}>Orders</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 700 }}>Catering</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 700 }}>Inventory</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {usersList.map((u: any) => {
+                                                const userRole = Array.isArray(u.roles) ? u.roles[0] : 'cashier';
+                                                const config = settings.notification.push?.users?.[u._id] ||
+                                                    settings.notification.push?.roles?.[userRole] ||
+                                                    { orders: true, catering: true, inventory: true };
+                                                return (
+                                                    <TableRow key={u._id} hover>
+                                                        <TableCell sx={{ fontWeight: 500 }}>
+                                                            {u.firstName && u.lastName ? `${u.firstName} ${u.lastName}` : u.firstName || u.email || 'Staff Member'}
+                                                        </TableCell>
+                                                        <TableCell sx={{ textTransform: 'capitalize', color: 'text.secondary', fontSize: '0.8rem' }}>
+                                                            {Array.isArray(u.roles) ? u.roles.map((r: string) => r.replace('_', ' ')).join(', ') : 'Staff'}
+                                                        </TableCell>
+                                                        <TableCell align="center">
+                                                            <Switch
+                                                                size="small"
+                                                                checked={Boolean(config.orders)}
+                                                                onChange={(e) => setSettings((prev: any) => ({
+                                                                    ...prev,
+                                                                    notification: {
+                                                                        ...prev.notification,
+                                                                        push: {
+                                                                            ...prev.notification.push,
+                                                                            users: {
+                                                                                ...prev.notification.push?.users,
+                                                                                [u._id]: {
+                                                                                    ...prev.notification.push?.users?.[u._id] || config,
+                                                                                    orders: e.target.checked
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }))}
+                                                            />
+                                                        </TableCell>
+                                                        <TableCell align="center">
+                                                            <Switch
+                                                                size="small"
+                                                                checked={Boolean(config.catering)}
+                                                                onChange={(e) => setSettings((prev: any) => ({
+                                                                    ...prev,
+                                                                    notification: {
+                                                                        ...prev.notification,
+                                                                        push: {
+                                                                            ...prev.notification.push,
+                                                                            users: {
+                                                                                ...prev.notification.push?.users,
+                                                                                [u._id]: {
+                                                                                    ...prev.notification.push?.users?.[u._id] || config,
+                                                                                    catering: e.target.checked
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }))}
+                                                            />
+                                                        </TableCell>
+                                                        <TableCell align="center">
+                                                            <Switch
+                                                                size="small"
+                                                                checked={Boolean(config.inventory)}
+                                                                onChange={(e) => setSettings((prev: any) => ({
+                                                                    ...prev,
+                                                                    notification: {
+                                                                        ...prev.notification,
+                                                                        push: {
+                                                                            ...prev.notification.push,
+                                                                            users: {
+                                                                                ...prev.notification.push?.users,
+                                                                                [u._id]: {
+                                                                                    ...prev.notification.push?.users?.[u._id] || config,
+                                                                                    inventory: e.target.checked
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }))}
+                                                            />
+                                                        </TableCell>
+                                                    </TableRow>
+                                                );
+                                            })}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            )}
                             <TablePagination
                                 rowsPerPageOptions={[5, 10, 25, 50]}
                                 component="div"
@@ -3165,7 +3268,7 @@ const SettingsPage: React.FC = () => {
                                 startIcon={<SaveIcon />}
                                 onClick={() => handleSave('notification')}
                                 disabled={loading}
-                                sx={{ 
+                                sx={{
                                     borderRadius: 2.5,
                                     px: { xs: 3, sm: 4 },
                                     fontWeight: 800,
@@ -3230,7 +3333,7 @@ const SettingsPage: React.FC = () => {
                                 startIcon={<SaveIcon />}
                                 onClick={() => handleSave('system')}
                                 disabled={loading}
-                                sx={{ 
+                                sx={{
                                     borderRadius: 2.5,
                                     px: 4,
                                     fontWeight: 800,
@@ -3428,7 +3531,7 @@ const SettingsPage: React.FC = () => {
                                 }}
                                 size="medium"
                                 disabled={loading}
-                                sx={{ 
+                                sx={{
                                     borderRadius: 2.5,
                                     px: { xs: 3, sm: 4 },
                                     fontWeight: 800,
@@ -3450,10 +3553,10 @@ const SettingsPage: React.FC = () => {
                     <Typography variant="h6" gutterBottom sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
                         Printers Settings
                     </Typography>
-                        <Typography variant="body2" color="text.secondary" sx={{ mb: 3, fontWeight: 500, fontFamily: "'Outfit', sans-serif" }}>
-                            Configure automated billing and kitchen printing for this restaurant.
-                            Enable the "Print Automation" switch to start auto-printing when an order is created.
-                        </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3, fontWeight: 500, fontFamily: "'Outfit', sans-serif" }}>
+                        Configure automated billing and kitchen printing for this restaurant.
+                        Enable the "Print Automation" switch to start auto-printing when an order is created.
+                    </Typography>
 
                     <Grid container spacing={4}>
                         <Grid size={{ xs: 12 }}>
@@ -3654,144 +3757,144 @@ const SettingsPage: React.FC = () => {
                                     <Alert severity="info" sx={{ borderRadius: 2 }}>
                                         No print agents paired yet. Download the Electron app and use a pairing token to get started.
                                     </Alert>
-                                ) : 
+                                ) :
                                     isMobile ? (
-    /* MOBILE CARD VIEW */
-    pairedAgents.length === 0 ? (
-        <Box sx={{ textAlign: 'center', py: 6 }}>
-            <Typography variant="body2" color="text.secondary">No agents paired yet</Typography>
-        </Box>
-    ) : (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            {pairedAgents.map((agent: any) => (
-                <Paper key={agent._id} variant="outlined" sx={{ borderRadius: 3, p: 2 }}>
-                    {/* Name + Status */}
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                            <Avatar sx={{ width: 32, height: 32, bgcolor: alpha('#4f46e5', 0.1), color: '#4f46e5' }}>
-                                <TerminalIcon sx={{ fontSize: 18 }} />
-                            </Avatar>
-                            <Typography variant="subtitle2" fontWeight={600}>{agent.name}</Typography>
-                        </Box>
-                        <Chip
-                            size="small"
-                            label={agent.status}
-                            color={agent.status === 'active' ? 'success' : 'default'}
-                            variant="filled"
-                            sx={{ fontWeight: 600, textTransform: 'uppercase', fontSize: '0.65rem' }}
-                        />
-                    </Box>
+                                        /* MOBILE CARD VIEW */
+                                        pairedAgents.length === 0 ? (
+                                            <Box sx={{ textAlign: 'center', py: 6 }}>
+                                                <Typography variant="body2" color="text.secondary">No agents paired yet</Typography>
+                                            </Box>
+                                        ) : (
+                                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                                                {pairedAgents.map((agent: any) => (
+                                                    <Paper key={agent._id} variant="outlined" sx={{ borderRadius: 3, p: 2 }}>
+                                                        {/* Name + Status */}
+                                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                                                <Avatar sx={{ width: 32, height: 32, bgcolor: alpha('#4f46e5', 0.1), color: '#4f46e5' }}>
+                                                                    <TerminalIcon sx={{ fontSize: 18 }} />
+                                                                </Avatar>
+                                                                <Typography variant="subtitle2" fontWeight={600}>{agent.name}</Typography>
+                                                            </Box>
+                                                            <Chip
+                                                                size="small"
+                                                                label={agent.status}
+                                                                color={agent.status === 'active' ? 'success' : 'default'}
+                                                                variant="filled"
+                                                                sx={{ fontWeight: 600, textTransform: 'uppercase', fontSize: '0.65rem' }}
+                                                            />
+                                                        </Box>
 
-                    {/* Last Seen */}
-                    <Typography variant="caption" color="text.secondary">
-                        Last seen: {agent.lastSeenAt ? new Date(agent.lastSeenAt).toLocaleString() : 'Never'}
-                    </Typography>
+                                                        {/* Last Seen */}
+                                                        <Typography variant="caption" color="text.secondary">
+                                                            Last seen: {agent.lastSeenAt ? new Date(agent.lastSeenAt).toLocaleString() : 'Never'}
+                                                        </Typography>
 
-                    {/* Actions */}
-                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5, mt: 1 }}>
-                        <Tooltip title="Copy Token">
-                            <IconButton
-                                size="small"
-                                onClick={() => {
-                                    const token = agent.token || agent.pairingToken;
-                                    if (token) {
-                                        navigator.clipboard.writeText(token);
-                                        toast.success('Token copied to clipboard');
-                                    }
-                                }}
-                                disabled={!agent.token && !agent.pairingToken}
-                                sx={{ color: 'primary.main' }}
-                            >
-                                <ContentCopyIcon fontSize="small" />
-                            </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Regenerate Token">
-                            <IconButton size="small" onClick={() => handleRegenerateAgentToken(agent._id)} sx={{ color: 'primary.main' }}>
-                                <RefreshIcon fontSize="small" />
-                            </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Revoke Agent">
-                            <IconButton size="small" onClick={() => handleRevokeAgent(agent._id)} sx={{ color: 'error.main' }}>
-                                <DeleteIcon fontSize="small" />
-                            </IconButton>
-                        </Tooltip>
-                    </Box>
-                </Paper>
-            ))}
-        </Box>
-    )
-) : (
-    /* TABLET / DESKTOP — original table unchanged */
-    <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3 }}>
-        <Table size="small">
-            <TableHead sx={{ bgcolor: 'action.hover' }}>
-                <TableRow>
-                    <TableCell sx={{ fontWeight: 700 }}>Agent Name</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Last Seen</TableCell>
-                    <TableCell align="right" sx={{ fontWeight: 700 }}>Actions</TableCell>
-                </TableRow>
-            </TableHead>
-            <TableBody>
-                {pairedAgents.map((agent: any) => (
-                    <TableRow key={agent._id} hover>
-                        <TableCell sx={{ py: 2 }}>
-                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                                <Avatar sx={{ width: 32, height: 32, bgcolor: alpha('#4f46e5', 0.1), color: '#4f46e5' }}>
-                                    <TerminalIcon sx={{ fontSize: 18 }} />
-                                </Avatar>
-                                <Typography variant="subtitle2" fontWeight={600}>{agent.name}</Typography>
-                            </Box>
-                        </TableCell>
-                        <TableCell>
-                            <Chip
-                                size="small"
-                                label={agent.status}
-                                color={agent.status === 'active' ? 'success' : 'default'}
-                                variant="filled"
-                                sx={{ fontWeight: 600, textTransform: 'uppercase', fontSize: '0.65rem' }}
-                            />
-                        </TableCell>
-                        <TableCell>
-                            <Typography variant="caption" color="text.secondary">
-                                {agent.lastSeenAt ? new Date(agent.lastSeenAt).toLocaleString() : 'Never'}
-                            </Typography>
-                        </TableCell>
-                        <TableCell align="right">
-                            <Tooltip title="Copy Token">
-                                <IconButton
-                                    size="small"
-                                    onClick={() => {
-                                        const token = agent.token || agent.pairingToken;
-                                        if (token) {
-                                            navigator.clipboard.writeText(token);
-                                            toast.success('Token copied to clipboard');
-                                        }
-                                    }}
-                                    disabled={!agent.token && !agent.pairingToken}
-                                    sx={{ color: 'primary.main' }}
-                                >
-                                    <ContentCopyIcon fontSize="small" />
-                                </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Regenerate Token">
-                                <IconButton size="small" onClick={() => handleRegenerateAgentToken(agent._id)} sx={{ color: 'primary.main' }}>
-                                    <RefreshIcon fontSize="small" />
-                                </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Revoke Agent">
-                                <IconButton size="small" onClick={() => handleRevokeAgent(agent._id)} sx={{ color: 'error.main' }}>
-                                    <DeleteIcon fontSize="small" />
-                                </IconButton>
-                            </Tooltip>
-                        </TableCell>
-                    </TableRow>
-                ))}
-            </TableBody>
-        </Table>
-    </TableContainer>
-)}
-                                
+                                                        {/* Actions */}
+                                                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 0.5, mt: 1 }}>
+                                                            <Tooltip title="Copy Token">
+                                                                <IconButton
+                                                                    size="small"
+                                                                    onClick={() => {
+                                                                        const token = agent.token || agent.pairingToken;
+                                                                        if (token) {
+                                                                            navigator.clipboard.writeText(token);
+                                                                            toast.success('Token copied to clipboard');
+                                                                        }
+                                                                    }}
+                                                                    disabled={!agent.token && !agent.pairingToken}
+                                                                    sx={{ color: 'primary.main' }}
+                                                                >
+                                                                    <ContentCopyIcon fontSize="small" />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                            <Tooltip title="Regenerate Token">
+                                                                <IconButton size="small" onClick={() => handleRegenerateAgentToken(agent._id)} sx={{ color: 'primary.main' }}>
+                                                                    <RefreshIcon fontSize="small" />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                            <Tooltip title="Revoke Agent">
+                                                                <IconButton size="small" onClick={() => handleRevokeAgent(agent._id)} sx={{ color: 'error.main' }}>
+                                                                    <DeleteIcon fontSize="small" />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                        </Box>
+                                                    </Paper>
+                                                ))}
+                                            </Box>
+                                        )
+                                    ) : (
+                                        /* TABLET / DESKTOP — original table unchanged */
+                                        <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3 }}>
+                                            <Table size="small">
+                                                <TableHead sx={{ bgcolor: 'action.hover' }}>
+                                                    <TableRow>
+                                                        <TableCell sx={{ fontWeight: 700 }}>Agent Name</TableCell>
+                                                        <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
+                                                        <TableCell sx={{ fontWeight: 700 }}>Last Seen</TableCell>
+                                                        <TableCell align="right" sx={{ fontWeight: 700 }}>Actions</TableCell>
+                                                    </TableRow>
+                                                </TableHead>
+                                                <TableBody>
+                                                    {pairedAgents.map((agent: any) => (
+                                                        <TableRow key={agent._id} hover>
+                                                            <TableCell sx={{ py: 2 }}>
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                                                    <Avatar sx={{ width: 32, height: 32, bgcolor: alpha('#4f46e5', 0.1), color: '#4f46e5' }}>
+                                                                        <TerminalIcon sx={{ fontSize: 18 }} />
+                                                                    </Avatar>
+                                                                    <Typography variant="subtitle2" fontWeight={600}>{agent.name}</Typography>
+                                                                </Box>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Chip
+                                                                    size="small"
+                                                                    label={agent.status}
+                                                                    color={agent.status === 'active' ? 'success' : 'default'}
+                                                                    variant="filled"
+                                                                    sx={{ fontWeight: 600, textTransform: 'uppercase', fontSize: '0.65rem' }}
+                                                                />
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Typography variant="caption" color="text.secondary">
+                                                                    {agent.lastSeenAt ? new Date(agent.lastSeenAt).toLocaleString() : 'Never'}
+                                                                </Typography>
+                                                            </TableCell>
+                                                            <TableCell align="right">
+                                                                <Tooltip title="Copy Token">
+                                                                    <IconButton
+                                                                        size="small"
+                                                                        onClick={() => {
+                                                                            const token = agent.token || agent.pairingToken;
+                                                                            if (token) {
+                                                                                navigator.clipboard.writeText(token);
+                                                                                toast.success('Token copied to clipboard');
+                                                                            }
+                                                                        }}
+                                                                        disabled={!agent.token && !agent.pairingToken}
+                                                                        sx={{ color: 'primary.main' }}
+                                                                    >
+                                                                        <ContentCopyIcon fontSize="small" />
+                                                                    </IconButton>
+                                                                </Tooltip>
+                                                                <Tooltip title="Regenerate Token">
+                                                                    <IconButton size="small" onClick={() => handleRegenerateAgentToken(agent._id)} sx={{ color: 'primary.main' }}>
+                                                                        <RefreshIcon fontSize="small" />
+                                                                    </IconButton>
+                                                                </Tooltip>
+                                                                <Tooltip title="Revoke Agent">
+                                                                    <IconButton size="small" onClick={() => handleRevokeAgent(agent._id)} sx={{ color: 'error.main' }}>
+                                                                        <DeleteIcon fontSize="small" />
+                                                                    </IconButton>
+                                                                </Tooltip>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </TableContainer>
+                                    )}
+
                             </Box>
                         </Grid>
 
@@ -3802,7 +3905,7 @@ const SettingsPage: React.FC = () => {
                                 startIcon={<SaveIcon />}
                                 onClick={() => handleSave('printer')}
                                 disabled={loading}
-                                sx={{ 
+                                sx={{
                                     borderRadius: 2.5,
                                     px: { xs: 3, sm: 4 },
                                     fontWeight: 800,
@@ -3978,7 +4081,7 @@ const SettingsPage: React.FC = () => {
                                             startIcon={<SaveIcon />}
                                             onClick={() => handleSave('rewards')}
                                             disabled={loading}
-                                            sx={{ 
+                                            sx={{
                                                 borderRadius: 2.5,
                                                 px: 4,
                                                 fontWeight: 800,
@@ -4002,7 +4105,7 @@ const SettingsPage: React.FC = () => {
                                         startIcon={<SaveIcon />}
                                         onClick={() => handleSave('rewards')}
                                         disabled={loading}
-                                        sx={{ 
+                                        sx={{
                                             borderRadius: 2.5,
                                             px: { xs: 3, sm: 4 },
                                             fontWeight: 800,
@@ -4088,7 +4191,7 @@ const SettingsPage: React.FC = () => {
                                             startIcon={<SaveIcon />}
                                             onClick={() => handleSave('delivery')}
                                             disabled={loading}
-                                            sx={{ 
+                                            sx={{
                                                 borderRadius: 2.5,
                                                 px: 4,
                                                 fontWeight: 800,
@@ -4169,7 +4272,7 @@ const SettingsPage: React.FC = () => {
                                             startIcon={<SaveIcon />}
                                             onClick={() => handleSave('delivery')}
                                             disabled={loading}
-                                            sx={{ 
+                                            sx={{
                                                 borderRadius: 2.5,
                                                 px: 4,
                                                 fontWeight: 800,
