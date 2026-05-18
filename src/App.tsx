@@ -76,8 +76,6 @@ import PlansPage from './pages/superadmin/PlansPage';
 import SuperAdminPortal from './pages/superadmin/SuperAdminPortal';
 import TenantsPage from './pages/superadmin/TenantsPage';
 import TenantDetailsPage from './pages/superadmin/TenantDetailsPage';
-import TenantPaymentsPage from './pages/superadmin/TenantPaymentsPage';
-import TenantOrdersPage from './pages/superadmin/TenantOrdersPage';
 import TicketsPage from './pages/superadmin/TicketsPage';
 import DeliveryReportsPage from './pages/superadmin/DeliveryReportsPage';
 import UberDirectPage from './pages/superadmin/UberDirectPage';
@@ -91,7 +89,6 @@ import PlansLogPage from './pages/superadmin/PlansLogPage';
 import DemoRequestsLogPage from './pages/superadmin/DemoRequestsLogPage';
 import TicketsLogPage from './pages/superadmin/TicketsLogPage';
 import AdminLogsPage from './pages/superadmin/AdminLogsPage';
-import MaterialProvidersPage from './pages/superadmin/MaterialProvidersPage';
 import VendorsPage from './pages/vendors/VendorsPage';
 
 import { SettingsProvider, useSettings } from './context/SettingsContext';
@@ -250,8 +247,6 @@ const AppRoutes: React.FC = () => {
           <Route path="/superadmin" element={<SuperAdminPortal />} />
           <Route path="/superadmin/tenants" element={<TenantsPage />} />
           <Route path="/superadmin/tenants/:tenantId" element={<TenantDetailsPage />} />
-          <Route path="/superadmin/tenants/:tenantId/platform-payments" element={<TenantPaymentsPage />} />
-          <Route path="/superadmin/tenants/:tenantId/orders" element={<TenantOrdersPage />} />
           <Route path="/superadmin/plans" element={<PlansPage />} />
           <Route path="/superadmin/invoices" element={<InvoicesAdminPage />} />
           <Route path="/superadmin/tickets" element={<TicketsPage />} />
@@ -267,7 +262,6 @@ const AppRoutes: React.FC = () => {
           <Route path="/superadmin/logs/demo-requests" element={<DemoRequestsLogPage />} />
           <Route path="/superadmin/logs/tickets" element={<TicketsLogPage />} />
           <Route path="/superadmin/admin-logs" element={<AdminLogsPage />} />
-          <Route path="/superadmin/material-providers" element={<MaterialProvidersPage />} />
         </Route>
       </Route>
 

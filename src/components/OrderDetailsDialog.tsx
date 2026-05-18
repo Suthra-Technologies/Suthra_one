@@ -92,13 +92,7 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
         setSimulating(true);
         try {
             if (status === 'sync') {
-                if (order.uberEatsDeliveryId) {
-                    await ordersAPI.syncUberEatsStatus(order._id);
-                } else if (order.doordashDeliveryId) {
-                    await ordersAPI.syncDoordashStatus(order._id);
-                } else {
-                    throw new Error('No third-party delivery associated with this order');
-                }
+                await ordersAPI.syncUberEatsStatus(order._id);
                 toast.success('Sync successful');
             } else {
                 await ordersAPI.simulateUberEatsStatus(order._id, status);
@@ -107,7 +101,7 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
             if (onUpdate) onUpdate();
         } catch (error: any) {
             console.error('Simulation/Sync error:', error);
-            toast.error(error.response?.data?.message || error.message || 'Operation failed');
+            toast.error(error.response?.data?.message || 'Operation failed');
         } finally {
             setSimulating(false);
         }
@@ -362,24 +356,14 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                                             <strong>Tracking Link:</strong> <a href={order.trackingUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2', textDecoration: 'none' }}>Track Delivery</a>
                                         </Typography>
                                     )}
-                                    {(order.uberEatsDeliveryId || order.doordashDeliveryId) && (user?.role === 'admin' || user?.role === 'manager') && (
+                                    {order.uberEatsDeliveryId && (user?.role === 'admin' || user?.role === 'manager') && (
                                         <Stack direction="row" spacing={1} sx={{ mt: 1 }} flexWrap="wrap">
-                                            <Button 
-                                                size="small" 
-                                                variant="outlined" 
-                                                color="secondary"
-                                                disabled={simulating}
-                                                onClick={() => handleSimulate('sync')}
-                                                startIcon={simulating ? <CircularProgress size={16} /> : <Box component="span">🔄</Box>}
-                                            >
-                                                Sync Status
-                                            </Button>
-                                            {order.uberEatsDeliveryId && order.status === 'delivered' && (
+                                            {order.status === 'delivered' && (
                                                 <Button size="small" variant="outlined" onClick={handleViewProof}>
                                                     View Proof of Delivery
                                                 </Button>
                                             )}
-                                            {order.uberEatsDeliveryId && order.status === 'delivered' && (
+                                            {order.status === 'delivered' && (
                                                 <Button size="small" variant="outlined" color="error" onClick={() => setRefundDialogOpen(true)}>
                                                     Request Refund
                                                 </Button>
@@ -583,77 +567,91 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                     </Box>
                     <Divider sx={{ my: 2 }} />
 
-                    {/* Delivery Simulator (Sandbox) */}
-                    {(order.uberEatsDeliveryId || order.doordashDeliveryId) && (user?.role === 'admin' || user?.role === 'manager') && (
+                    {/* Uber Eats Simulator (Sandbox) - Commented for production
+                    {order.uberEatsDeliveryId && (user?.role === 'admin' || user?.role === 'manager') && (
                         <>
-                            <Divider sx={{ my: 2 }} />
                             <Box sx={{ mb: 3, p: 2, borderRadius: 2, bgcolor: alpha(theme.palette.info.main, 0.05), border: `1px dashed ${theme.palette.info.main}` }}>
                                 <Typography variant="subtitle2" sx={{ fontWeight: 'bold', mb: 1, display: 'flex', alignItems: 'center', color: theme.palette.info.main }}>
-                                    <Box component="span" sx={{ mr: 1 }}>🧪</Box> Delivery Synchronization & Testing
+                                    <Box component="span" sx={{ mr: 1 }}>🧪</Box> Uber Eats Delivery Simulator (Sandbox)
                                 </Typography>
                                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
-                                    {order.uberEatsDeliveryId ? 'Manually sync or simulate Uber Eats states.' : 'Manually sync DoorDash delivery status.'}
+                                    Manually move this delivery through states to test webhooks and status transitions.
                                 </Typography>
                                 <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
+                                    <Button 
+                                        size="small" 
+                                        variant="outlined" 
+                                        color="primary"
+                                        component="a"
+                                        href={order.trackingUrl}
+                                        target="_blank"
+                                        startIcon={<Box component="span">🔗</Box>}
+                                    >
+                                        Open Tracking Page (Simulate Here)
+                                    </Button>
+                                    <Button 
+                                        size="small" 
+                                        variant="outlined" 
+                                        color="info" 
+                                        disabled={simulating || order.status === 'on_the_way'}
+                                        onClick={() => handleSimulate('pickup_completed')}
+                                    >
+                                        Picked Up
+                                    </Button>
+                                    <Button 
+                                        size="small" 
+                                        variant="outlined" 
+                                        color="success" 
+                                        disabled={simulating || order.status === 'delivered'}
+                                        onClick={() => handleSimulate('delivered')}
+                                    >
+                                        Delivered
+                                    </Button>
+                                    <Button 
+                                        size="small" 
+                                        variant="contained" 
+                                        color="warning"
+                                        disabled={simulating}
+                                        onClick={() => handleSimulate('pickup_completed')}
+                                        sx={{ fontWeight: 'bold' }}
+                                    >
+                                        🚀 Force: Picked Up
+                                    </Button>
+                                    <Button 
+                                        size="small" 
+                                        variant="contained" 
+                                        color="success"
+                                        disabled={simulating}
+                                        onClick={() => handleSimulate('delivered')}
+                                        sx={{ fontWeight: 'bold' }}
+                                    >
+                                        ✅ Force: Delivered
+                                    </Button>
                                     <Button 
                                         size="small" 
                                         variant="outlined" 
                                         color="secondary"
                                         disabled={simulating}
                                         onClick={() => handleSimulate('sync')}
-                                        startIcon={simulating ? <CircularProgress size={16} /> : <Box component="span">🔄</Box>}
+                                        startIcon={<Box component="span">🔄</Box>}
                                     >
                                         Sync Status
                                     </Button>
-
-                                    {order.uberEatsDeliveryId && (
-                                        <>
-                                            <Button 
-                                                size="small" 
-                                                variant="outlined" 
-                                                color="primary"
-                                                component="a"
-                                                href={order.trackingUrl}
-                                                target="_blank"
-                                                startIcon={<Box component="span">🔗</Box>}
-                                            >
-                                                Tracking Page
-                                            </Button>
-                                            <Button 
-                                                size="small" 
-                                                variant="contained" 
-                                                color="warning"
-                                                disabled={simulating || order.status === 'on_the_way'}
-                                                onClick={() => handleSimulate('pickup_completed')}
-                                                sx={{ fontWeight: 'bold' }}
-                                            >
-                                                🚀 Force: Picked Up
-                                            </Button>
-                                            <Button 
-                                                size="small" 
-                                                variant="contained" 
-                                                color="success"
-                                                disabled={simulating || order.status === 'delivered'}
-                                                onClick={() => handleSimulate('delivered')}
-                                                sx={{ fontWeight: 'bold' }}
-                                            >
-                                                ✅ Force: Delivered
-                                            </Button>
-                                            <Button 
-                                                size="small" 
-                                                variant="outlined" 
-                                                color="error" 
-                                                disabled={simulating || order.status === 'cancelled'}
-                                                onClick={() => handleSimulate('canceled')}
-                                            >
-                                                Cancel Delivery
-                                            </Button>
-                                        </>
-                                    )}
+                                    <Button 
+                                        size="small" 
+                                        variant="outlined" 
+                                        color="error" 
+                                        disabled={simulating || order.status === 'cancelled'}
+                                        onClick={() => handleSimulate('canceled')}
+                                    >
+                                        Canceled
+                                    </Button>
                                 </Stack>
                             </Box>
+                            <Divider sx={{ my: 2 }} />
                         </>
                     )}
+                    */}
 
                     {/* Status History */}
                     {order.statusHistory && order.statusHistory.length > 0 && (

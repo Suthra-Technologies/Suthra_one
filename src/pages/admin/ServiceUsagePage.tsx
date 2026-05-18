@@ -5,7 +5,7 @@ import {
     TableHead, TableRow, TablePagination, Chip, CircularProgress, useTheme, useMediaQuery,
     Tabs, Tab, Stack, FormControl, InputLabel, Select, MenuItem, Button,
     TextField, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions,
-    IconButton, Collapse, Card, CardContent, Divider, LinearProgress, Switch, FormControlLabel,
+    IconButton, Collapse, Card, CardContent, Divider, LinearProgress,
 } from '@mui/material';
 import Grid from '@mui/material/Grid2';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
@@ -176,8 +176,6 @@ const ServiceUsagePage: React.FC = () => {
     const [emailMaxQuota, setEmailMaxQuota] = useState<number>(0);
     const [smsBalance, setSmsBalance] = useState<number>(0);
     const [emailBalance, setEmailBalance] = useState<number>(0);
-    const [useEmailTopup, setUseEmailTopup] = useState<boolean>(true);
-    const [togglingEmailTopup, setTogglingEmailTopup] = useState(false);
     const [smsLoading, setSmsLoading] = useState(false);
     const [smsTypeFilter, setSmsTypeFilter] = useState('');
     const [testSmsOpen, setTestSmsOpen] = useState(false);
@@ -245,7 +243,6 @@ const ServiceUsagePage: React.FC = () => {
                 setEmailMaxQuota(summaryData?.maxEmail ?? 0);
                 setSmsBalance(summaryData?.smsBalance ?? 0);
                 setEmailBalance(summaryData?.emailBalance ?? 0);
-                if (summaryData?.useEmailTopup !== undefined) setUseEmailTopup(summaryData.useEmailTopup);
             }
         } catch {
             toast.error('Failed to load SMS data');
@@ -286,7 +283,6 @@ const ServiceUsagePage: React.FC = () => {
             setEmailMaxQuota(summaryData?.maxEmail ?? 0);
             setSmsBalance(summaryData?.smsBalance ?? 0);
             setEmailBalance(summaryData?.emailBalance ?? 0);
-            if (summaryData?.useEmailTopup !== undefined) setUseEmailTopup(summaryData.useEmailTopup);
         } catch {
             toast.error('Failed to load email data');
         } finally {
@@ -299,19 +295,6 @@ const ServiceUsagePage: React.FC = () => {
         if (activeTab === 1) fetchDeliveryData();
         if (activeTab === 2) fetchEmailData(emailPage, emailRowsPerPage);
     }, [activeTab, smsPage, smsRowsPerPage, emailPage, emailRowsPerPage, period, startDate, endDate, smsTypeFilter, emailTypeFilter, deliveryProviderFilter]);
-
-    const handleToggleEmailTopup = async (enabled: boolean) => {
-        setTogglingEmailTopup(true);
-        try {
-            await subscriptionAPI.updateSettings({ useEmailTopup: enabled });
-            setUseEmailTopup(enabled);
-            toast.success(enabled ? 'Top-up credits enabled for emails' : 'Top-up credits disabled for emails');
-        } catch {
-            toast.error('Failed to update setting');
-        } finally {
-            setTogglingEmailTopup(false);
-        }
-    };
 
     const handleSendTestSms = async () => {
         if (!testSmsTo) return toast.error('Recipient number is required');
@@ -988,11 +971,11 @@ const ServiceUsagePage: React.FC = () => {
                                             <Typography variant="h6" fontWeight={800} sx={{ lineHeight: 1.1, mb: 1 }}>
                                                 {emailBalance}
                                             </Typography>
-                                            <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
-                                                <Button
-                                                    size="small"
-                                                    startIcon={<AddIcon />}
-                                                    variant="contained"
+                                            <Stack direction="row" alignItems="center" spacing={1}>
+                                                <Button 
+                                                    size="small" 
+                                                    startIcon={<AddIcon />} 
+                                                    variant="contained" 
                                                     onClick={() => handleOpenTopUp('email')}
                                                     sx={{ height: 28, fontSize: '0.7rem', px: 2, borderRadius: 1.5, bgcolor: quotaColor }}
                                                 >
@@ -1002,18 +985,6 @@ const ServiceUsagePage: React.FC = () => {
                                                     Never expires
                                                 </Typography>
                                             </Stack>
-                                            <FormControlLabel
-                                                control={
-                                                    <Switch
-                                                        size="small"
-                                                        checked={useEmailTopup}
-                                                        onChange={(e) => handleToggleEmailTopup(e.target.checked)}
-                                                        disabled={togglingEmailTopup}
-                                                        color="success"
-                                                    />
-                                                }
-                                                label={<Typography variant="caption" color={useEmailTopup ? 'success.main' : 'text.secondary'} fontWeight={600}>{useEmailTopup ? 'Credits active' : 'Credits disabled'}</Typography>}
-                                            />
                                         </Box>
                                     </Stack>
                                 </Paper>

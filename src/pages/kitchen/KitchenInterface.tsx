@@ -227,10 +227,24 @@ const KitchenInterface: React.FC = () => {
       const response = await ordersAPI.getKitchen();
       const ordersData = Array.isArray(response.data) ? response.data : [];
 
-      // Sort by most recent first
-      const sortedOrders = ordersData.sort((a: any, b: any) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-      );
+      // Sort by urgency first, then status
+      const sortedOrders = ordersData.sort((a: any, b: any) => {
+        const urgencyA = getUrgencyLevel(a.createdAt);
+        const urgencyB = getUrgencyLevel(b.createdAt);
+
+        // Critical orders always first
+        if (urgencyA === 'critical' && urgencyB !== 'critical') return -1;
+        if (urgencyA !== 'critical' && urgencyB === 'critical') return 1;
+
+        // Then sort by status
+        const statusPriority: any = { pending: 0, confirmed: 1, preparing: 2, 'in-progress': 2, ready: 3 };
+        if (statusPriority[a.status] !== statusPriority[b.status]) {
+          return (statusPriority[a.status] || 0) - (statusPriority[b.status] || 0);
+        }
+
+        // Finally by time (oldest first)
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      });
 
       setOrders(sortedOrders);
     } catch (error) {
@@ -414,7 +428,7 @@ const KitchenInterface: React.FC = () => {
   };
 
   // Handle order status progression
-  const handleOrderStatusUpdate = async (orderId: string, currentStatus: string, orderType: string, isThirdPartyDelivery = false) => {
+  const handleOrderStatusUpdate = async (orderId: string, currentStatus: string, orderType: string) => {
     let newStatus = '';
     if (currentStatus === 'pending') newStatus = 'confirmed';
     else if (currentStatus === 'confirmed') newStatus = 'preparing';
@@ -424,8 +438,7 @@ const KitchenInterface: React.FC = () => {
       else newStatus = 'ready';
     } else if (['ready', 'ready_to_takeaway', 'ready_to_pickup'].includes(currentStatus)) {
       if (orderType === 'dine_in') newStatus = 'served';
-      else if (orderType === 'delivery' && !isThirdPartyDelivery) newStatus = 'on_the_way';
-      else if (orderType === 'delivery' && isThirdPartyDelivery) return; // managed by delivery partner
+      else if (orderType === 'delivery') newStatus = 'on_the_way';
       else newStatus = 'completed';
     }
 
@@ -464,9 +477,9 @@ const KitchenInterface: React.FC = () => {
     return result;
   }, [orders, filterStatus, filterType, activeTab]);
 
-  const ITEMS_PER_PAGE = 20;
-  const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
-  const paginatedOrders = filteredOrders.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+  const ITEMS_PER_PAGE = isMobile ? 5 : (filteredOrders.length || 1);
+  const totalPages = isMobile ? Math.ceil(filteredOrders.length / 5) : 1;
+  const paginatedOrders = isMobile ? filteredOrders.slice((page - 1) * 5, page * 5) : filteredOrders;
 
   useEffect(() => {
     setPage(1);
@@ -922,7 +935,7 @@ const KitchenInterface: React.FC = () => {
                         fullWidth
                         variant="contained"
                         color={isAllReady ? "success" : (getStatusColor(order.status) as any)}
-                        onClick={() => handleOrderStatusUpdate(order._id, order.status, order.orderType, !!(order.doordashDeliveryId || order.uberEatsDeliveryId))}
+                        onClick={() => handleOrderStatusUpdate(order._id, order.status, order.orderType)}
                         startIcon={isAllReady ? <CheckCircleIcon /> : <PlayArrowIcon />}
                         disabled={isProcessing || (!isAllReady && order.status === 'preparing')}
                         sx={{ flex: { xs: 1, sm: 'initial' }, minWidth: 0, fontSize: { xs: '0.62rem', sm: '0.78rem' }, py: { xs: 0.45, sm: 0.7 }, px: { xs: 0.5, sm: 1 }, minHeight: { xs: 28, sm: 34 }, '& .MuiButton-startIcon': { mr: { xs: 0.3, sm: 0.75 } } }}
@@ -940,16 +953,14 @@ const KitchenInterface: React.FC = () => {
         </Grid>
       )}
 
-      {!loading && totalPages > 1 && (
+      {!loading && isMobile && totalPages > 1 && (
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-          <Pagination
-            count={totalPages}
-            page={page}
-            onChange={(_, value) => { setPage(value); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-            color="primary"
-            size={isMobile ? 'medium' : 'large'}
-            showFirstButton
-            showLastButton
+          <Pagination 
+            count={totalPages} 
+            page={page} 
+            onChange={(_, value) => setPage(value)} 
+            color="primary" 
+            size="large"
           />
         </Box>
       )}

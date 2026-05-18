@@ -79,7 +79,7 @@ const EmailOverviewPage: React.FC = () => {
                     { label: 'Total Emails', value: totals.total.toLocaleString(), color: '#6366f1', icon: <EmailIcon /> },
                     { label: 'Delivered', value: totals.sent.toLocaleString(), color: '#22c55e', icon: <MarkEmailReadIcon /> },
                     { label: 'Failed', value: totals.failed.toLocaleString(), color: '#ef4444', icon: <EmailIcon /> },
-                    { label: 'Total Charges', value: `$${(Number(totals.cost) || 0).toFixed(2)}`, color: '#f59e0b', icon: <AttachMoneyIcon /> },
+                    { label: 'Total Charges', value: `$${totals.cost.toFixed(2)}`, color: '#f59e0b', icon: <AttachMoneyIcon /> },
                 ].map(kpi => (
                     <Paper key={kpi.label} elevation={0} sx={{
                         flex: 1, p: 2.5, borderRadius: 3, border: '1px solid', borderColor: 'divider',
@@ -170,7 +170,7 @@ const EmailOverviewPage: React.FC = () => {
                                         </TableCell>
                                         <TableCell align="right">
                                             <Typography variant="body2" fontWeight="bold" color="primary.main">
-                                                ${(Number(tenant.totalCost) || 0).toFixed(4)}
+                                                ${(tenant.totalCost || 0).toFixed(4)}
                                             </Typography>
                                         </TableCell>
                                         <TableCell>

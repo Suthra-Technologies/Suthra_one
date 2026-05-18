@@ -2,10 +2,11 @@ import {
     Add as AddIcon,
     Close as CloseIcon,
     Delete as DeleteIcon,
-    Inventory2Outlined as DirectLinkIcon,
     Image as ImageIcon,
-    PlaylistAdd as PlaylistAddIcon,
+    Inventory2Outlined as DirectLinkIcon,
     MenuBookOutlined as RecipeIcon,
+    PlaylistAdd as PlaylistAddIcon,
+    RemoveCircleOutline as NoneIcon,
     Restaurant as RestaurantIcon,
     Straighten as StraightenIcon,
     Today as TodayIcon
@@ -47,8 +48,7 @@ import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import ActionHistoryList from '../../../components/common/ActionHistoryList';
 import { useSettings } from '../../../context/SettingsContext';
-import { useActiveTenant } from '../../../hooks/useActiveTenant';
-import { inventoryAPI, menuAPI, modifierTemplatesAPI, uploadAPI, recipesAPI } from '../../../services/api';
+import { inventoryAPI, menuAPI, modifierTemplatesAPI, uploadAPI } from '../../../services/api';
 import type {
     Category,
     IMenuItem,
@@ -89,13 +89,9 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
     const [inventoryItems, setInventoryItems] = useState<any[]>([]);
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const navigate = useNavigate();
-    const { getRelativePath } = useActiveTenant();
     const { formatCurrency } = useSettings();
     const [dialogTab, setDialogTab] = useState(0);
     const todayStr = new Date().toISOString().split('T')[0];
-
-    const [existingRecipe, setExistingRecipe] = useState<any>(null);
-    const [isLoadingRecipe, setIsLoadingRecipe] = useState(false);
 
 
     // Form State
@@ -152,18 +148,6 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
             inventoryAPI.getAll().then(res => setInventoryItems(res.data)).catch(err => console.error(err));
         }
     }, [open]);
-
-    useEffect(() => {
-        if (open && editingMenuItem) {
-            setIsLoadingRecipe(true);
-            recipesAPI.getByMenuItem(editingMenuItem._id)
-                .then(res => setExistingRecipe(res.data.data || res.data))
-                .catch(() => setExistingRecipe(null))
-                .finally(() => setIsLoadingRecipe(false));
-        } else {
-            setExistingRecipe(null);
-        }
-    }, [open, editingMenuItem]);
 
     // Initialize form when editingMenuItem changes or dialog opens
     useEffect(() => {
@@ -686,56 +670,11 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                     </Stack>
 
                                     {menuItemForm.inventoryTrackingMode === 'recipe' && (
-                                        <Box sx={{ mt: 2, p: 2, bgcolor: alpha(theme.palette.success.main, 0.05), borderRadius: 2, border: '1px solid', borderColor: alpha(theme.palette.success.main, 0.2) }}>
-                                            <Stack spacing={1.5}>
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                                                    <RecipeIcon fontSize="small" sx={{ color: 'success.main' }} />
-                                                    <Typography variant="body2" color="text.secondary">
-                                                        Ingredients will be auto-deducted from the recipe linked to this item.
-                                                    </Typography>
-                                                </Box>
-                                                
-                                                {!editingMenuItem ? (
-                                                    <Typography variant="caption" sx={{ color: 'warning.dark', fontStyle: 'italic', bgcolor: alpha(theme.palette.warning.main, 0.1), p: 1, borderRadius: 1 }}>
-                                                        Save this menu item first to create and manage its recipe.
-                                                    </Typography>
-                                                ) : isLoadingRecipe ? (
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 1 }}>
-                                                        <CircularProgress size={16} />
-                                                        <Typography variant="caption">Checking recipe status...</Typography>
-                                                    </Box>
-                                                ) : existingRecipe ? (
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1, bgcolor: alpha(theme.palette.success.main, 0.1), borderRadius: 1 }}>
-                                                        <Typography variant="caption" fontWeight="bold" color="success.dark">
-                                                            Recipe Configured ✓
-                                                        </Typography>
-                                                        <Button 
-                                                            size="small" 
-                                                            variant="outlined" 
-                                                            color="success"
-                                                            onClick={() => navigate(getRelativePath(`/recipes/${existingRecipe._id}/edit?returnTo=/menu`))}
-                                                            sx={{ textTransform: 'none', py: 0.5 }}
-                                                        >
-                                                            View / Edit
-                                                        </Button>
-                                                    </Box>
-                                                ) : (
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1, bgcolor: alpha(theme.palette.warning.main, 0.1), borderRadius: 1 }}>
-                                                        <Typography variant="caption" fontWeight="bold" color="warning.dark">
-                                                            No Recipe Found ⚠
-                                                        </Typography>
-                                                        <Button 
-                                                            size="small" 
-                                                            variant="contained" 
-                                                            color="warning"
-                                                            onClick={() => navigate(getRelativePath(`/recipes/create?menuItem=${editingMenuItem._id}&returnTo=/menu`))}
-                                                            sx={{ textTransform: 'none', py: 0.5, boxShadow: 'none' }}
-                                                        >
-                                                            Create Recipe
-                                                        </Button>
-                                                    </Box>
-                                                )}
-                                            </Stack>
+                                        <Box sx={{ mt: 2, p: 1.5, bgcolor: alpha(theme.palette.success.main, 0.05), borderRadius: 2, border: '1px solid', borderColor: alpha(theme.palette.success.main, 0.2), display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                            <RecipeIcon fontSize="small" sx={{ color: 'success.main' }} />
+                                            <Typography variant="body2" color="text.secondary">
+                                                Ingredients will be auto-deducted from the recipe linked to this item. Manage recipes from the <strong>Recipes</strong> page.
+                                            </Typography>
                                         </Box>
                                     )}
 

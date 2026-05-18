@@ -224,7 +224,7 @@ const MyBookingsPage: React.FC = () => {
             const transformedOrders: Order[] = (Array.isArray(fetchedOrders) ? fetchedOrders : []).map((order: any) => ({
                 ...order,
                 refunds: Array.isArray(order.refunds) ? order.refunds : [],
-                canCancel: ['pending', 'confirmed'].includes(order.status) && !order.doordashDeliveryId && !order.uberEatsDeliveryId,
+                canCancel: ['pending', 'confirmed'].includes(order.status),
             }));
             setOrders(transformedOrders);
 

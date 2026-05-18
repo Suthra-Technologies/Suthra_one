@@ -46,15 +46,6 @@ const CreateRecipePage: React.FC = () => {
     const isEditMode = !!id;
     const queryParams = new URLSearchParams(location.search);
     const preSelectedMenuItemId = queryParams.get('menuItem');
-    const returnTo = queryParams.get('returnTo');
-
-    const handleNavigationBack = () => {
-        if (returnTo) {
-            navigate(getRelativePath(returnTo));
-        } else {
-            navigate(getRelativePath('/recipes'));
-        }
-    };
 
     const [loading, setLoading] = useState(false);
     const [menuItems, setMenuItems] = useState<any[]>([]);
@@ -169,7 +160,7 @@ const CreateRecipePage: React.FC = () => {
         } catch (error) {
             console.error('Error fetching recipe:', error);
             toast.error('Failed to load recipe');
-            handleNavigationBack();
+            navigate(getRelativePath('/recipes'));
         }
     };
 
@@ -234,7 +225,7 @@ const CreateRecipePage: React.FC = () => {
                 await recipesAPI.create(payload);
                 toast.success('Recipe created successfully');
             }
-            handleNavigationBack();
+            navigate(getRelativePath('/recipes'));
         } catch (error: any) {
             toast.error(error.response?.data?.message || `Failed to ${isEditMode ? 'update' : 'create'} recipe`);
         } finally {
@@ -245,7 +236,7 @@ const CreateRecipePage: React.FC = () => {
     return (
         <Box sx={{ p: { xs: 1.5, sm: 3 }, pt: { xs: 1, sm: 3 } }}>
             <Box sx={{ display: 'flex', alignItems: 'center', mb: { xs: 1.5, sm: 3 } }}>
-                <IconButton onClick={handleNavigationBack} sx={{ mr: { xs: 1, sm: 2 } }} size={isMobile ? "small" : "medium"}>
+                <IconButton onClick={() => navigate(getRelativePath('/recipes'))} sx={{ mr: { xs: 1, sm: 2 } }} size={isMobile ? "small" : "medium"}>
                     <BackIcon fontSize={isMobile ? "small" : "medium"} />
                 </IconButton>
                 <Typography variant={isMobile ? "h6" : "h4"} fontWeight={800}>
@@ -581,7 +572,7 @@ const CreateRecipePage: React.FC = () => {
 
             {/* Actions */}
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mt: 2, mb: 4 }}>
-                <Button fullWidth variant="outlined" onClick={handleNavigationBack} disabled={loading} sx={{ borderRadius: 2, fontWeight: 'bold' }}>
+                <Button fullWidth variant="outlined" onClick={() => navigate(getRelativePath('/recipes'))} disabled={loading} sx={{ borderRadius: 2, fontWeight: 'bold' }}>
                     Cancel
                 </Button>
                 <Button fullWidth variant="contained" onClick={handleSubmit} disabled={loading} sx={{ borderRadius: 2, fontWeight: 'bold' }}>

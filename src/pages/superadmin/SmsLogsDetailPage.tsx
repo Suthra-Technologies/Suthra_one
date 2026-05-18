@@ -138,7 +138,7 @@ const SmsLogsDetailPage: React.FC = () => {
                                         </Stack>
                                     </TableCell>
                                     <TableCell align="right" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                                        ${(Number(log.cost) || 0).toFixed(4)}
+                                        ${log.cost?.toFixed(4) || '0.0000'}
                                     </TableCell>
                                     <TableCell sx={{ maxWidth: 250 }}>
                                         <Tooltip title={log.body || ''}>
