@@ -323,6 +323,7 @@ const DashboardPage: React.FC = () => {
   const [activeBookings, setActiveBookings] = useState<number>(0);
   const [lowStockItems, setLowStockItems] = useState<number>(0);
   const [assetInsights, setAssetInsights] = useState<any>(null);
+  const fetchRequestId = React.useRef(0);
   const [assetTabValue, setAssetTabValue] = useState(0);
   const [assetTabData, setAssetTabData] = useState<any>({ data: [], total: 0, page: 1, loading: false });
   const [completionDialog, setCompletionDialog] = useState({
@@ -336,6 +337,9 @@ const DashboardPage: React.FC = () => {
 
   const fetchDashboardData = async () => {
     if (timeRange === 'custom' && (!startDate || !endDate)) return;
+    if (loading && fetchRequestId.current > 0) return; // Basic entry guard
+    
+    const requestId = ++fetchRequestId.current;
     setLoading(true);
     try {
       const params: any = { range: timeRange };
@@ -357,6 +361,8 @@ const DashboardPage: React.FC = () => {
       ];
 
       const results = await Promise.all(promises);
+      if (requestId !== fetchRequestId.current) return; // Ignore stale request
+      
       const [dashboardRes, billingRes, inventoryRes, poRes, bookingsRes, bestSellingRes, ordersByTypeRes, assetsRes] = results;
 
       const dashboardDataActual = dashboardRes?.status === 'fulfilled' ? dashboardRes.value?.data : dashboardRes?.data;
@@ -406,7 +412,9 @@ const DashboardPage: React.FC = () => {
       console.error('Error fetching dashboard data:', error);
       toast.error('Failed to load dashboard data');
     } finally {
-      setLoading(false);
+      if (requestId === fetchRequestId.current) {
+        setLoading(false);
+      }
     }
   };
 

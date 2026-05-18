@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import api from '../services/api';
 import { getTenantUrl } from '../utils/tenant.utils';
+import { toast } from 'react-hot-toast';
 
 // JWT payload shape
 export interface JwtPayload {
@@ -241,9 +242,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
         // Reload to ensure fresh start in new context with correct subdomain and token handover
         window.location.href = getTenantUrl(slug, '/dashboard', newToken);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to switch tenant', error);
-      alert('Failed to switch restaurant. Please try again.');
+      const message = error.response?.data?.message || 'Failed to switch restaurant. Please try again.';
+      toast.error(message);
       setIsLoading(false);
     }
   };

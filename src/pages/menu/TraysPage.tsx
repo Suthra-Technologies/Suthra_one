@@ -60,6 +60,8 @@ const TraysPage: React.FC<TraysPageProps> = ({ hideHeader = false }) => {
         depth: '',
         isActive: true,
     });
+    const [submitting, setSubmitting] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState<{ open: boolean, id: string | null }>({ open: false, id: null });
 
     const fetchTrays = async () => {
@@ -109,8 +111,10 @@ const TraysPage: React.FC<TraysPageProps> = ({ hideHeader = false }) => {
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
+        if (submitting) return;
         e.preventDefault();
         try {
+            setSubmitting(true);
             if (editingTray) {
                 await traysAPI.update(editingTray._id, formData);
                 toast.success('Tray updated successfully');
@@ -122,6 +126,8 @@ const TraysPage: React.FC<TraysPageProps> = ({ hideHeader = false }) => {
             fetchTrays();
         } catch (error) {
             toast.error('Failed to save tray');
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -130,14 +136,16 @@ const TraysPage: React.FC<TraysPageProps> = ({ hideHeader = false }) => {
     };
 
     const handleConfirmDelete = async () => {
-        if (!confirmDelete.id) return;
+        if (isDeleting || !confirmDelete.id) return;
         try {
+            setIsDeleting(true);
             await traysAPI.delete(confirmDelete.id);
             toast.success('Tray deleted successfully');
             fetchTrays();
         } catch (error) {
             toast.error('Failed to delete tray');
         } finally {
+            setIsDeleting(false);
             setConfirmDelete({ open: false, id: null });
         }
     };
@@ -357,9 +365,9 @@ const TraysPage: React.FC<TraysPageProps> = ({ hideHeader = false }) => {
                         </Grid>
                     </DialogContent>
                     <DialogActions>
-                        <Button onClick={handleCloseDialog}>Cancel</Button>
-                        <Button type="submit" variant="contained" color="primary">
-                            Save Tray
+                        <Button onClick={handleCloseDialog} disabled={submitting}>Cancel</Button>
+                        <Button type="submit" variant="contained" color="primary" disabled={submitting} startIcon={submitting && <CircularProgress size={16} color="inherit" />}>
+                            {submitting ? 'Saving...' : 'Save Tray'}
                         </Button>
                     </DialogActions>
                 </form>
@@ -384,6 +392,7 @@ const TraysPage: React.FC<TraysPageProps> = ({ hideHeader = false }) => {
                         onClick={() => setConfirmDelete({ open: false, id: null })}
                         variant="outlined"
                         sx={{ borderRadius: 2, textTransform: 'none' }}
+                        disabled={isDeleting}
                     >
                         Cancel
                     </Button>
@@ -392,8 +401,10 @@ const TraysPage: React.FC<TraysPageProps> = ({ hideHeader = false }) => {
                         variant="contained"
                         color="error"
                         sx={{ borderRadius: 2, textTransform: 'none', px: 3 }}
+                        disabled={isDeleting}
+                        startIcon={isDeleting && <CircularProgress size={16} color="inherit" />}
                     >
-                        Delete
+                        {isDeleting ? 'Deleting...' : 'Delete'}
                     </Button>
                 </DialogActions>
             </Dialog>

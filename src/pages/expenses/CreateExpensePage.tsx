@@ -144,6 +144,7 @@ const CreateExpensePage: React.FC = () => {
     const totalPaid = formData.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
 
     const handleSubmit = async (e: React.FormEvent) => {
+        if (loading) return;
         e.preventDefault();
         
         if (totalPaid > formData.amount) {

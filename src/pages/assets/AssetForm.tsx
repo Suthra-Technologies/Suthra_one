@@ -150,6 +150,7 @@ const AssetForm: React.FC = () => {
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (uploading) return;
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -178,6 +179,7 @@ const AssetForm: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
     setSubmitting(true);
     try {
       // Convert metadata array back to object

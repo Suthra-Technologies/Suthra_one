@@ -301,7 +301,8 @@ const UsersPage = () => {
     },
     salary: '',
     hireDate: new Date().toISOString().split('T')[0],
-    department: ''
+    department: '',
+    password: ''
   });
 
   const [passwordForm, setPasswordForm] = useState({
@@ -441,6 +442,7 @@ const UsersPage = () => {
   };
 
   const handleUserSubmit = async () => {
+    if (submitting) return;
     // Validate critical fields
     if (!validateUserForm()) {
       toast.error('Please fill all the required fields');
@@ -472,7 +474,8 @@ const UsersPage = () => {
         isActive: userForm.isActive !== false,
         salary: userForm.salary ? parseFloat(userForm.salary) : 0,
         hireDate: userForm.hireDate ? new Date(userForm.hireDate).toISOString() : new Date().toISOString(),
-        department: userForm.department?.trim() || ''
+        department: userForm.department?.trim() || '',
+        password: userForm.password
       };
       if (userForm.address.street || userForm.address.city) {
         formData.address = {
@@ -517,6 +520,7 @@ const UsersPage = () => {
   };
 
   const handlePasswordReset = async () => {
+    if (submitting) return;
     if (!selectedUser?._id) {
       toast.error('No user selected for password reset');
       return;
@@ -547,6 +551,8 @@ const UsersPage = () => {
   };
 
   const confirmToggleStatus = async (userId: string) => {
+    if (submitting) return;
+    setSubmitting(true);
     try {
       await usersAPI.toggleUserStatus(userId);
       toast.success('User status updated successfully');
@@ -564,8 +570,10 @@ const UsersPage = () => {
   };
 
   const confirmDeleteUser = async () => {
+    if (submitting) return;
     if (!deleteTarget) return;
 
+    setSubmitting(true);
     try {
       // 1. Check if we should delete directly or raise a ticket
       // In theory, if the button was enabled, it depends on who is target and who is actor
@@ -640,7 +648,8 @@ const UsersPage = () => {
       },
       salary: '',
       hireDate: new Date().toISOString().split('T')[0],
-      department: ''
+      department: '',
+      password: ''
     });
     setEditingUser(null);
     setDialogTab(0);
@@ -683,7 +692,8 @@ const UsersPage = () => {
       },
       salary: user.salary?.toString() || '',
       hireDate: user.hireDate ? new Date(user.hireDate).toISOString().split('T')[0] : '',
-      department: user.department || ''
+      department: user.department || '',
+      password: ''
     });
     setEditingUser(user);
     setDialogTab(initialTab);
@@ -745,6 +755,18 @@ const UsersPage = () => {
       roles: selectedRoles,
       permissions: getPermissionsForRoles(selectedRoles)
     }));
+  };
+  
+  const generateRandomPassword = () => {
+    if (!userForm.firstName) {
+      toast.error('Please enter first name first');
+      return;
+    }
+    const trimmedName = userForm.firstName.trim();
+    const randomDigits = Math.floor(100 + Math.random() * 900);
+    const generated = `${trimmedName}${randomDigits}`;
+    setUserForm(prev => ({ ...prev, password: generated }));
+    toast.success('Password generated!');
   };
 
   return (
@@ -1331,7 +1353,7 @@ const UsersPage = () => {
                           required
                         />
                       </Grid>
-                      <Grid size={{ xs: 12 }}>
+                      <Grid size={{ xs: 12, sm: 6 }}>
                         <FormControl fullWidth>
                           <InputLabel>System Roles</InputLabel>
                           <Select
@@ -1374,6 +1396,27 @@ const UsersPage = () => {
                           </Select>
                         </FormControl>
                       </Grid>
+                      {!editingUser && (
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                          <TextField
+                            fullWidth
+                            label="Password"
+                            placeholder="Click icon to auto-generate"
+                            value={userForm.password}
+                            onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+                            InputProps={{
+                              endAdornment: (
+                                <Tooltip title="Auto-generate password">
+                                  <IconButton onClick={generateRandomPassword} edge="end" color="primary">
+                                    <LockIcon fontSize="small" />
+                                  </IconButton>
+                                </Tooltip>
+                              )
+                            }}
+                            helperText="Recommended: firstName + 3 random digits"
+                          />
+                        </Grid>
+                      )}
                     </Grid>
                   </CardContent>
                 </Card>

@@ -98,6 +98,7 @@ const PurchaseOrdersPage: React.FC = () => {
     }, [page, filters]);
 
     const handleApprove = async (id: string) => {
+        if (loading) return;
         try {
             await purchaseOrdersAPI.updateStatus(id, 'approved');
             toast.success('Purchase order approved');
@@ -108,6 +109,7 @@ const PurchaseOrdersPage: React.FC = () => {
     };
 
     const handleReceive = async (id: string) => {
+        if (loading) return;
         try {
             await purchaseOrdersAPI.receive(id);
             toast.success('Items received & stock updated');

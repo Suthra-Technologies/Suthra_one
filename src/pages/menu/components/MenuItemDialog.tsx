@@ -3,7 +3,10 @@ import {
     Close as CloseIcon,
     Delete as DeleteIcon,
     Image as ImageIcon,
+    Inventory2Outlined as DirectLinkIcon,
+    MenuBookOutlined as RecipeIcon,
     PlaylistAdd as PlaylistAddIcon,
+    RemoveCircleOutline as NoneIcon,
     Restaurant as RestaurantIcon,
     Straighten as StraightenIcon,
     Today as TodayIcon
@@ -33,6 +36,7 @@ import {
     Tab,
     Tabs,
     TextField,
+
     Tooltip,
     Typography,
     alpha,
@@ -44,7 +48,7 @@ import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import ActionHistoryList from '../../../components/common/ActionHistoryList';
 import { useSettings } from '../../../context/SettingsContext';
-import { menuAPI, modifierTemplatesAPI, uploadAPI } from '../../../services/api';
+import { inventoryAPI, menuAPI, modifierTemplatesAPI, uploadAPI } from '../../../services/api';
 import type {
     Category,
     IMenuItem,
@@ -82,6 +86,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
 }) => {
     const theme = useTheme();
     const [templates, setTemplates] = useState<ModifierGroupTemplate[]>([]);
+    const [inventoryItems, setInventoryItems] = useState<any[]>([]);
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const navigate = useNavigate();
     const { formatCurrency } = useSettings();
@@ -120,6 +125,9 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
         validTo: null as Date | null,
         priority: '' as string | number,
         linkedGroups: [] as string[],
+        linkedInventoryItem: '',
+        inventoryConsumptionQty: 1,
+        inventoryTrackingMode: 'recipe' as 'direct' | 'recipe',
     });
 
     const [menuItemTouched, setMenuItemTouched] = useState({
@@ -137,6 +145,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
     useEffect(() => {
         if (open) {
             modifierTemplatesAPI.getAll().then(res => setTemplates(res.data)).catch(err => console.error(err));
+            inventoryAPI.getAll().then(res => setInventoryItems(res.data)).catch(err => console.error(err));
         }
     }, [open]);
 
@@ -186,6 +195,9 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                     validTo: item.validTo ? new Date(item.validTo) : null,
                     priority: item.priority || '',
                     linkedGroups: item.linkedGroups ? item.linkedGroups.map((g: any) => typeof g === 'string' ? g : g._id) : [],
+                    linkedInventoryItem: typeof item.linkedInventoryItem === 'object' ? (item.linkedInventoryItem as any)?._id : (item.linkedInventoryItem || ''),
+                    inventoryConsumptionQty: item.inventoryConsumptionQty || 1,
+                    inventoryTrackingMode: item.inventoryTrackingMode || (item.linkedInventoryItem ? 'direct' : 'recipe'),
                 });
             } else {
                 // Reset for new item
@@ -219,6 +231,8 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                     validTo: null,
                     priority: '',
                     linkedGroups: [],
+                    linkedInventoryItem: '',
+                    inventoryConsumptionQty: 1,
                 });
             }
             setMenuItemTouched({
@@ -591,12 +605,110 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                     <Typography variant={isMobile ? "caption" : "subtitle2"} fontWeight="bold" sx={{ mb: isMobile ? 0.5 : 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                                         <AddIcon fontSize="small" color="primary" /> Inventory & Visibility
                                     </Typography>
-                                    <Stack spacing={0}>
+
+                                    <Stack spacing={0} sx={{ mb: 2 }}>
                                         <FormControlLabel control={<Switch size="small" checked={menuItemForm.isAvailable} onChange={(e) => setMenuItemForm({ ...menuItemForm, isAvailable: e.target.checked })} />} label={<Typography variant="body2">Available for ordering</Typography>} />
-                                        <FormControlLabel control={<Switch size="small" checked={menuItemForm.isAutoDebit} onChange={(e) => setMenuItemForm({ ...menuItemForm, isAutoDebit: e.target.checked })} />} label={<Typography variant="body2">Auto Debit from Inventory</Typography>} />
                                         <FormControlLabel control={<Switch size="small" checked={menuItemForm.isCateringAvailable} onChange={(e) => setMenuItemForm({ ...menuItemForm, isCateringAvailable: e.target.checked })} />} label={<Typography variant="body2">Available for Catering</Typography>} />
                                         <FormControlLabel control={<Switch size="small" checked={menuItemForm.isSpiceLevelAvailable} onChange={(e) => setMenuItemForm({ ...menuItemForm, isSpiceLevelAvailable: e.target.checked })} />} label={<Typography variant="body2">Enable Spice Level Selection</Typography>} />
                                     </Stack>
+
+                                    <Divider sx={{ mb: 2 }} />
+                                    <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ mb: 1.5, display: 'block', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                        Stock Deduction Method
+                                    </Typography>
+
+                                    <Stack direction={isMobile ? 'column' : 'row'} spacing={1.5}>
+                                        {[
+                                            { value: 'recipe', icon: <RecipeIcon />, label: 'Recipe', desc: 'Deduct ingredients', color: theme.palette.success.main },
+                                            { value: 'direct', icon: <DirectLinkIcon />, label: 'Direct Link', desc: 'Deduct single item', color: theme.palette.info.main },
+                                        ].map((opt) => {
+                                            const isSelected = menuItemForm.inventoryTrackingMode === opt.value;
+                                            return (
+                                                <Box
+                                                    key={opt.value}
+                                                    onClick={() => setMenuItemForm({ ...menuItemForm, inventoryTrackingMode: opt.value })}
+                                                    sx={{
+                                                        flex: 1,
+                                                        cursor: 'pointer',
+                                                        p: 1.5,
+                                                        borderRadius: 2,
+                                                        border: '2px solid',
+                                                        borderColor: isSelected ? opt.color : 'divider',
+                                                        bgcolor: isSelected ? alpha(opt.color, 0.06) : 'transparent',
+                                                        transition: 'all 0.2s ease',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 1.5,
+                                                        '&:hover': {
+                                                            borderColor: isSelected ? opt.color : alpha(opt.color, 0.4),
+                                                            bgcolor: alpha(opt.color, 0.04),
+                                                        },
+                                                    }}
+                                                >
+                                                    <Box sx={{
+                                                        width: 36, height: 36,
+                                                        borderRadius: '50%',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                        bgcolor: isSelected ? alpha(opt.color, 0.15) : alpha(theme.palette.action.active, 0.08),
+                                                        color: isSelected ? opt.color : theme.palette.text.secondary,
+                                                        transition: 'all 0.2s ease',
+                                                        flexShrink: 0,
+                                                    }}>
+                                                        {React.cloneElement(opt.icon, { fontSize: 'small' })}
+                                                    </Box>
+                                                    <Box sx={{ minWidth: 0 }}>
+                                                        <Typography variant="body2" fontWeight={isSelected ? 700 : 500} color={isSelected ? opt.color : 'text.primary'} noWrap>
+                                                            {opt.label}
+                                                        </Typography>
+                                                        <Typography variant="caption" color="text.secondary" noWrap>
+                                                            {opt.desc}
+                                                        </Typography>
+                                                    </Box>
+                                                </Box>
+                                            );
+                                        })}
+                                    </Stack>
+
+                                    {menuItemForm.inventoryTrackingMode === 'recipe' && (
+                                        <Box sx={{ mt: 2, p: 1.5, bgcolor: alpha(theme.palette.success.main, 0.05), borderRadius: 2, border: '1px solid', borderColor: alpha(theme.palette.success.main, 0.2), display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                            <RecipeIcon fontSize="small" sx={{ color: 'success.main' }} />
+                                            <Typography variant="body2" color="text.secondary">
+                                                Ingredients will be auto-deducted from the recipe linked to this item. Manage recipes from the <strong>Recipes</strong> page.
+                                            </Typography>
+                                        </Box>
+                                    )}
+
+                                    {menuItemForm.inventoryTrackingMode === 'direct' && (
+                                        <Box sx={{ mt: 2, p: 2, bgcolor: alpha(theme.palette.info.main, 0.04), borderRadius: 2, border: '1px solid', borderColor: alpha(theme.palette.info.main, 0.2) }}>
+                                            <Stack spacing={2}>
+                                                <FormControl fullWidth size="small">
+                                                    <InputLabel>Inventory Item</InputLabel>
+                                                    <Select
+                                                        value={menuItemForm.linkedInventoryItem}
+                                                        label="Inventory Item"
+                                                        onChange={(e) => setMenuItemForm({ ...menuItemForm, linkedInventoryItem: e.target.value })}
+                                                    >
+                                                        <MenuItem value=""><em>Select an item...</em></MenuItem>
+                                                        {inventoryItems.map((item) => (
+                                                            <MenuItem key={item._id} value={item._id}>
+                                                                {item.name} ({item.sku}) — {item.currentStock} {item.unit}
+                                                            </MenuItem>
+                                                        ))}
+                                                    </Select>
+                                                </FormControl>
+                                                {menuItemForm.linkedInventoryItem && (
+                                                    <TextField
+                                                        label="Qty to deduct per unit sold"
+                                                        type="number"
+                                                        size="small"
+                                                        value={menuItemForm.inventoryConsumptionQty}
+                                                        onChange={(e) => setMenuItemForm({ ...menuItemForm, inventoryConsumptionQty: parseFloat(e.target.value) || 1 })}
+                                                        fullWidth
+                                                    />
+                                                )}
+                                            </Stack>
+                                        </Box>
+                                    )}
                                 </Paper>
                             </Stack>
                         </Grid>
@@ -699,7 +811,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                                         size="small"
                                                         variant="outlined"
                                                         sx={{ borderRadius: 2, textTransform: 'none', px: 1, fontSize: '0.7rem' }}
-                                                        onClick={() => setMenuItemForm({ ...menuItemForm, availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'] })}
+                                                        onClick={() => setMenuItemForm({ ...menuItemForm, availableDays: ['monday', 'tuesday', 'wednesday', 'thursday'] })}
                                                     >
                                                         Weekdays
                                                     </Button>
@@ -707,7 +819,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                                         size="small"
                                                         variant="outlined"
                                                         sx={{ borderRadius: 2, textTransform: 'none', px: 1, fontSize: '0.7rem' }}
-                                                        onClick={() => setMenuItemForm({ ...menuItemForm, availableDays: ['saturday', 'sunday'] })}
+                                                        onClick={() => setMenuItemForm({ ...menuItemForm, availableDays: ['friday', 'saturday', 'sunday'] })}
                                                     >
                                                         Weekend
                                                     </Button>
