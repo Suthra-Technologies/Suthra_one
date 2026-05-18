@@ -13,9 +13,9 @@ const SubscriptionSuccess: React.FC = () => {
     const sessionId = searchParams.get('session_id');
     const [verifying, setVerifying] = useState(true);
     const [success, setSuccess] = useState(false);
-    const { tenantSlug } = useAuth();
+    const { tenantSlug, refreshProfile } = useAuth();
     
-    const dashboardPath = isSubdomainAccess() ? '/dashboard' : `/${tenantSlug}/dashboard`;
+    const dashboardPath = isSubdomainAccess() ? '/dashboard' : (tenantSlug ? `/${tenantSlug}/dashboard` : '/login');
 
     useEffect(() => {
         const verify = async () => {
@@ -31,6 +31,12 @@ const SubscriptionSuccess: React.FC = () => {
                 }
                 setSuccess(true);
                 toast.success('Payment verified! Your subscription is active.');
+                // Refresh profile to get the updated subscription status from backend
+                try {
+                    await refreshProfile();
+                } catch (refreshError) {
+                    console.error('Failed to refresh profile:', refreshError);
+                }
             } catch (error) {
                 console.error('Verification failed:', error);
                 toast.error('Could not verify payment status. Please contact support.');

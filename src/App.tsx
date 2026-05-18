@@ -240,6 +240,8 @@ const AppRoutes: React.FC = () => {
       <Route path="/login" element={hasStoredSession ? <Navigate to={defaultAuthedPath} replace /> : <LoginPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
       <Route path="/register" element={<RestaurantRegisterPage />} />
+      <Route path="/registration-success" element={<SubscriptionSuccess />} />
+      <Route path="/registration-failed" element={<SubscriptionCancel />} />
 
       {/* ---- SUPERADMIN ROUTES ---- */}
       <Route element={<RequireRole allowedRoles={["superadmin"]} />}>

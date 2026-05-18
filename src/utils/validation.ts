@@ -25,25 +25,11 @@ export const validatePhone = (phone: string): ValidationResult => {
         return { isValid: false, message: 'Phone number is required' };
     }
 
-    const cleaned = phone.replace(/\D/g, '');
-    let digits = cleaned;
-    if (digits.length === 11 && digits.startsWith('1')) {
-        digits = digits.slice(1);
-    }
+    // Keep only digits
+    const digits = phone.replace(/\D/g, '');
 
     if (digits.length !== 10) {
-        return { isValid: false, message: 'Phone number must be 10 digits' };
-    }
-
-
-    if (!/^\d{10}$/.test(digits)) {
-        return { isValid: false, message: 'Please enter a valid 10-digit phone number' };
-    }
-
-    const areaFirst = digits.charAt(0);
-    const centralFirst = digits.charAt(3);
-    if (!/[2-9]/.test(areaFirst) || !/[2-9]/.test(centralFirst)) {
-        return { isValid: false, message: 'Please enter a valid 10-digit US phone number' };
+        return { isValid: false, message: 'Please enter exactly 10 digits' };
     }
 
     return { isValid: true };
