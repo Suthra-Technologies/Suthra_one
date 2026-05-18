@@ -135,9 +135,10 @@ const KitchenOrdersPage: React.FC = () => {
         return matchType && matchStatus;
     });
 
-    const ITEMS_PER_PAGE = isMobile ? 5 : (filteredOrders.length || 1);
-    const totalPages = isMobile ? Math.ceil(filteredOrders.length / 5) : 1;
-    const paginatedOrders = isMobile ? filteredOrders.slice((page - 1) * 5, page * 5) : filteredOrders;
+    const sortedOrders = [...filteredOrders].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    const ITEMS_PER_PAGE = isMobile ? 5 : (sortedOrders.length || 1);
+    const totalPages = isMobile ? Math.ceil(sortedOrders.length / 5) : 1;
+    const paginatedOrders = isMobile ? sortedOrders.slice((page - 1) * 5, page * 5) : sortedOrders;
 
     useEffect(() => {
         setPage(1);

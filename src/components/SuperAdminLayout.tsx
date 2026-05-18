@@ -32,6 +32,7 @@ import {
     Email as EmailIcon,
     Assessment as LogIcon,
     History as HistoryIcon,
+    Inventory2 as MaterialProviderIcon,
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
@@ -82,6 +83,7 @@ const SuperAdminLayout: React.FC = () => {
         { path: '/superadmin/logs/demo-requests', label: 'Demo Requests Log', icon: <LogIcon /> },
         { path: '/superadmin/logs/tickets', label: 'Tickets Log', icon: <LogIcon /> },
         { path: '/superadmin/admin-logs', label: 'Activity Log', icon: <HistoryIcon /> },
+        { path: '/superadmin/material-providers', label: 'Material Providers', icon: <MaterialProviderIcon /> },
     ];
 
     const isActiveRoute = (path: string) => {

@@ -55,12 +55,152 @@ import { useGuestCart } from '../context/GuestCartContext';
 import CustomerRegistration from '../components/auth/CustomerRegistration';
 import GooglePlacesAutocomplete from '../components/common/GooglePlacesAutocomplete';
 import { toast } from 'react-hot-toast';
-import { ordersAPI, authAPI } from '../services/api';
+import { ordersAPI } from '../services/api';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { isWithinDeliveryRadius, METERS_PER_MILE } from '../services/googleMapsService';
 
 
 
 const steps = ['Cart Review', 'Account', 'Delivery Details', 'Payment'];
+
+// Inline Stripe card form used only in CheckoutPage
+interface CheckoutCardFormProps {
+  tenantSlug: string;
+  orderType: 'delivery' | 'takeaway';
+  clientSecret: string;
+  onSuccess: (paymentIntentId: string) => void;
+  onError: (msg: string) => void;
+  setSubmitting: (v: boolean) => void;
+  submitRef: React.MutableRefObject<(() => void) | null>;
+}
+
+const SUCCESS_STATUSES = new Set(['succeeded']);
+const FAILURE_STATUSES = new Set(['canceled', 'requires_payment_method', 'failed']);
+const PROCESSING_STATUSES = new Set(['processing', 'requires_action', 'requires_confirmation', 'requires_capture']);
+
+const CheckoutCardInner: React.FC<CheckoutCardFormProps> = ({ tenantSlug, orderType, clientSecret, onSuccess, onError, setSubmitting, submitRef }) => {
+  const stripe = useStripe();
+  const elements = useElements();
+  const stripeRef = React.useRef(stripe);
+  const elementsRef = React.useRef(elements);
+
+  React.useEffect(() => { stripeRef.current = stripe; }, [stripe]);
+  React.useEffect(() => { elementsRef.current = elements; }, [elements]);
+
+  // Keep callback refs stable so submit closure always has latest values
+  const onSuccessRef = React.useRef(onSuccess);
+  const onErrorRef = React.useRef(onError);
+  const setSubmittingRef = React.useRef(setSubmitting);
+  React.useEffect(() => { onSuccessRef.current = onSuccess; }, [onSuccess]);
+  React.useEffect(() => { onErrorRef.current = onError; }, [onError]);
+  React.useEffect(() => { setSubmittingRef.current = setSubmitting; }, [setSubmitting]);
+
+  React.useEffect(() => {
+    submitRef.current = async () => {
+      const s = stripeRef.current;
+      const el = elementsRef.current;
+      if (!s || !el) { onErrorRef.current('Stripe not ready. Please wait a moment and try again.'); return; }
+
+      const cardElement = el.getElement(CardElement);
+      if (!cardElement) { onErrorRef.current('Card details not entered. Please fill in your card information.'); return; }
+
+      setSubmittingRef.current(true);
+      try {
+        const result = await s.confirmCardPayment(clientSecret, {
+          payment_method: { card: cardElement },
+        });
+        if (result.error) {
+          onErrorRef.current(result.error.message || 'Payment failed');
+        } else if (result.paymentIntent && SUCCESS_STATUSES.has(result.paymentIntent.status)) {
+          onSuccessRef.current(result.paymentIntent.id);
+        } else if (result.paymentIntent && PROCESSING_STATUSES.has(result.paymentIntent.status)) {
+          const start = Date.now();
+          while (Date.now() - start < 60000) {
+            await new Promise(r => setTimeout(r, 2000));
+            const res = await ordersAPI.verifyPublicPaymentIntent(tenantSlug, result.paymentIntent.id, orderType);
+            const status = res.data?.status;
+            if (SUCCESS_STATUSES.has(status)) { onSuccessRef.current(result.paymentIntent.id); return; }
+            if (FAILURE_STATUSES.has(status)) { onErrorRef.current(res.data?.lastPaymentError?.message || 'Payment failed'); return; }
+          }
+          onErrorRef.current('Payment timed out. Please try again.');
+        } else {
+          onErrorRef.current(`Payment not completed (status: ${result.paymentIntent?.status})`);
+        }
+      } catch (err: any) {
+        onErrorRef.current(err.response?.data?.message || err.message || 'Payment failed');
+      } finally {
+        setSubmittingRef.current(false);
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientSecret]);
+
+  return (
+    <Box sx={{ p: 2, border: '1px solid #e0e0e0', borderRadius: 1 }}>
+      <CardElement options={{ style: { base: { fontSize: '16px', color: '#424770', '::placeholder': { color: '#aab7c4' } }, invalid: { color: '#9e2146' } } }} />
+    </Box>
+  );
+};
+
+interface CheckoutStripeWrapperProps {
+  amount: number;
+  subtotal?: number;
+  tax?: number;
+  tenantSlug: string;
+  orderType: 'delivery' | 'takeaway';
+  onSuccess: (paymentIntentId: string) => void;
+  onError: (msg: string) => void;
+  setSubmitting: (v: boolean) => void;
+  submitRef: React.MutableRefObject<(() => void) | null>;
+}
+
+const CheckoutStripeCard: React.FC<CheckoutStripeWrapperProps> = (props) => {
+  const [stripePromise, setStripePromise] = React.useState<Promise<any> | null>(null);
+  const [clientSecret, setClientSecret] = React.useState<string | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
+    Promise.all([
+      ordersAPI.getPublicPaymentConfig(props.tenantSlug, props.orderType),
+      ordersAPI.createPublicPaymentIntent(props.amount, props.tenantSlug, undefined, props.orderType, props.subtotal, props.tax),
+    ])
+      .then(([configRes, intentRes]) => {
+        if (cancelled) return;
+        const key = configRes.data?.publishableKey;
+        const secret = intentRes.data?.clientSecret;
+        if (!key || !secret) { setLoadError('Payment configuration error.'); return; }
+        setStripePromise(loadStripe(key));
+        setClientSecret(secret);
+      })
+      .catch(() => { if (!cancelled) setLoadError('Failed to initialise payment. Please try again.'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  // Only run once when the card form first mounts — amount is locked at mount time
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [props.tenantSlug, props.orderType]);
+
+  if (loading) return <Box sx={{ py: 2, textAlign: 'center' }}><Spinner size={24} /></Box>;
+  if (loadError || !stripePromise || !clientSecret) return <Typography color="error">{loadError || 'Card payment unavailable.'}</Typography>;
+
+  return (
+    <Elements stripe={stripePromise} options={{ clientSecret }}>
+      <CheckoutCardInner
+        tenantSlug={props.tenantSlug}
+        orderType={props.orderType}
+        clientSecret={clientSecret}
+        onSuccess={props.onSuccess}
+        onError={props.onError}
+        setSubmitting={props.setSubmitting}
+        submitRef={props.submitRef}
+      />
+    </Elements>
+  );
+};
 
 interface DeliveryInfo {
   address: string;
@@ -122,30 +262,10 @@ const CheckoutPage: React.FC = () => {
   const [placingOrder, setPlacingOrder] = useState<boolean>(false);
   const [placedOrder, setPlacedOrder] = useState<any>(null);
 
-  // Card saving state
-  const [saveCard, setSaveCard] = useState<boolean>(false);
-  const [savedCards, setSavedCards] = useState<any[]>([]);
-  const [selectedSavedCard, setSelectedSavedCard] = useState<number | null>(null);
-
-  // Card input state
-  const [cardNumber, setCardNumber] = useState<string>('');
-  const [cardExpiry, setCardExpiry] = useState<string>('');
-  const [cardCvc, setCardCvc] = useState<string>('');
-
-  useEffect(() => {
-    if (isAuthenticated) {
-      fetchSavedCards();
-    }
-  }, [isAuthenticated]);
-
-  const fetchSavedCards = async () => {
-    try {
-      const response = await authAPI.getCustomerCards();
-      setSavedCards(response.data.savedCards || []);
-    } catch (err) {
-      console.error('Failed to fetch cards:', err);
-    }
-  };
+  // Stripe card payment state
+  const stripeSubmitRef = React.useRef<(() => void) | null>(null);
+  const [stripeSubmitting, setStripeSubmitting] = useState<boolean>(false);
+  const [stripePaymentIntentId, setStripePaymentIntentId] = useState<string | null>(null);
 
   // Tip selection state
   const TIP_PERCENTAGES = [5, 10, 15, 20];
@@ -233,12 +353,12 @@ const CheckoutPage: React.FC = () => {
     }
   }, [selectedAddressMode, user?.savedAddresses]);
 
-  // Auto-switch to 'saved' mode if addresses become available (e.g. after background profile refresh)
+  // When saved addresses load (async profile refresh), auto-select the default
   useEffect(() => {
-    if (user?.savedAddresses?.length && selectedAddressMode === 'new' && !deliveryInfo.address) {
+    if (user?.savedAddresses?.length && selectedAddressMode === 'new') {
       setSelectedAddressMode('saved');
     }
-  }, [user?.savedAddresses, selectedAddressMode, deliveryInfo.address]);
+  }, [user?.savedAddresses?.length]);
 
   const generateTimeSlots = (dateString: string) => {
     if (!settings?.restaurant?.businessHours) return [];
@@ -427,7 +547,15 @@ const CheckoutPage: React.FC = () => {
     setActiveStep(2);
   };
 
-  const handlePlaceOrder = async () => {
+  const handlePlaceOrder = async (intentId?: string) => {
+    const resolvedIntentId = intentId ?? stripePaymentIntentId;
+    // For card payments, confirm the card first if not yet authorised
+    if (paymentMethod === 'card' && !resolvedIntentId) {
+      if (!stripeSubmitRef.current) return;
+      stripeSubmitRef.current();
+      return;
+    }
+
     try {
       setPlacingOrder(true);
       setError('');
@@ -485,46 +613,13 @@ const CheckoutPage: React.FC = () => {
         total: cart.totalAmount + (orderType === 'delivery' ? deliveryFee : 0) + (cart.totalAmount * (taxRate / 100)) + calculatedProcessingFee + (orderType === 'delivery' ? Number(deliveryInfo.tip) || 0 : 0),
         deliveryCharge: orderType === 'delivery' ? deliveryFee : 0,
         deliveryProvider: orderType === 'delivery' ? selectedProvider : null,
-        cardDetails: selectedSavedCard !== null ? savedCards[selectedSavedCard] : null,
+        paymentIntentId: resolvedIntentId || undefined,
         tax: cart.totalAmount * (taxRate / 100),
         processingFee: calculatedProcessingFee,
         tip: orderType === 'delivery' ? Number(deliveryInfo.tip) || 0 : 0
       };
-      // Save card details if requested
-      if (saveCard && paymentMethod === 'card' && selectedSavedCard === null) {
-        try {
-          // Robust card parsing
-          const cleanCardNumber = cardNumber.replace(/\s/g, '');
-          const last4 = cleanCardNumber.slice(-4) || '0000';
-          
-          let brand = 'Visa';
-          if (cleanCardNumber.startsWith('5')) brand = 'MasterCard';
-          else if (cleanCardNumber.startsWith('3')) brand = 'Amex';
-          else if (cleanCardNumber.startsWith('6')) brand = 'Discover';
 
-          const [month, year] = cardExpiry.split('/').map(s => parseInt(s.trim()));
-          
-          const cardData = {
-            brand,
-            last4,
-            expMonth: month || 12,
-            expYear: year ? (year < 100 ? 2000 + year : year) : 2026
-          };
-
-          const cardResponse = await authAPI.saveCustomerCard(cardData);
-          
-          if (cardResponse.data) {
-            toast.success('Card saved for future use!');
-            // Refresh saved cards
-            fetchSavedCards();
-          }
-        } catch (e) {
-          console.error('Failed to save card metadata:', e);
-          toast.error('Could not save card details, but proceeding with order.');
-        }
-      }
-
-      const response = await ordersAPI.create(orderData);
+      const response = await ordersAPI.createPublic(orderData, slug || '');
       setPlacingOrder(false);
       clearCart();
       toast.success('Order placed successfully!', {
@@ -537,10 +632,12 @@ const CheckoutPage: React.FC = () => {
       // We don't redirect yet so user can see tracking link if delivery
     } catch (err: any) {
       setPlacingOrder(false);
-      // Prioritize 'error' field which contains subscription limit messages
-      const errorMessage = err.response?.data?.error || err.response?.data?.message || 'Failed to place order. Please try again.';
+      const d = err.response?.data;
+      // NestJS: { statusCode, message, error:"Bad Request" } — message is the real error
+      const rawMsg = d?.message || d?.error || err.message;
+      const errorMessage = Array.isArray(rawMsg) ? rawMsg.join(', ') : (rawMsg || 'Failed to place order. Please try again.');
       setError(errorMessage);
-      toast.error(errorMessage);
+      toast.error(errorMessage, { duration: 6000 });
     }
   };
 
@@ -797,63 +894,78 @@ const CheckoutPage: React.FC = () => {
           {user?.savedAddresses && user.savedAddresses.length > 0 && (
             <Grid size={{ xs: 12 }}>
               <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle2" gutterBottom>Saved Addresses</Typography>
+                <Typography variant="subtitle2" gutterBottom fontWeight="700">Saved Addresses</Typography>
                 <Grid container spacing={1}>
-                  {user.savedAddresses.map((addr, idx) => (
-                    <Grid size={{ xs: 12, sm: 6 }} key={idx}>
-                      <Card
-                        variant={selectedAddressMode === 'saved' && deliveryInfo.address.includes(addr.street || '') ? 'outlined' : 'elevation'}
-                        sx={{
-                          cursor: 'pointer',
-                          borderColor: selectedAddressMode === 'saved' && deliveryInfo.address.includes(addr.street || '') ? 'primary.main' : 'divider',
-                          bgcolor: selectedAddressMode === 'saved' && deliveryInfo.address.includes(addr.street || '') ? 'action.hover' : 'background.paper',
-                          height: '100%'
-                        }}
-                        onClick={() => {
-                          setSelectedAddressMode('saved');
-                          const addrStr = `${addr.street}, ${addr.city}, ${addr.state} ${addr.zipCode}`.trim();
-                          setDeliveryInfo(prev => ({ 
-                            ...prev, 
-                            address: addrStr,
-                            latitude: addr.coordinates?.lat || addr.lat,
-                            longitude: addr.coordinates?.lng || addr.lng
-                          }));
-                        }}
-                      >
-                        <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            {addr.label === 'Home' ? <HomeIcon fontSize="small" /> : addr.label === 'Work' ? <WorkIcon fontSize="small" /> : <LocationOn fontSize="small" />}
-                            <Typography variant="subtitle2" fontWeight="bold">{addr.label}</Typography>
-                          </Box>
-                          <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
-                            {addr.street}, {addr.city}
-                          </Typography>
-                        </CardContent>
-                      </Card>
-                    </Grid>
-                  ))}
-                  {/* <Grid size={{ xs: 12, sm: 6 }}>
+                  {user.savedAddresses.map((addr, idx) => {
+                    const addrStr = `${addr.street}, ${addr.city}, ${addr.state} ${addr.zipCode}`.trim();
+                    const isSelected = selectedAddressMode === 'saved' && deliveryInfo.address === addrStr;
+                    return (
+                      <Grid size={{ xs: 12, sm: 6 }} key={idx}>
+                        <Card
+                          variant={isSelected ? 'outlined' : 'elevation'}
+                          sx={{
+                            cursor: 'pointer',
+                            borderColor: isSelected ? 'primary.main' : 'divider',
+                            borderWidth: isSelected ? 2 : 1,
+                            bgcolor: isSelected ? alpha(theme.palette.primary.main, 0.05) : 'background.paper',
+                            height: '100%',
+                            transition: 'all 0.15s',
+                          }}
+                          onClick={() => {
+                            setSelectedAddressMode('saved');
+                            setDeliveryInfo(prev => ({
+                              ...prev,
+                              address: addrStr,
+                              latitude: (addr as any).coordinates?.lat || (addr as any).lat,
+                              longitude: (addr as any).coordinates?.lng || (addr as any).lng
+                            }));
+                          }}
+                        >
+                          <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 } }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                {addr.label === 'Home' ? <HomeIcon fontSize="small" color={isSelected ? 'primary' : 'action'} /> : addr.label === 'Work' ? <WorkIcon fontSize="small" color={isSelected ? 'primary' : 'action'} /> : <LocationOn fontSize="small" color={isSelected ? 'primary' : 'action'} />}
+                                <Typography variant="subtitle2" fontWeight="bold" color={isSelected ? 'primary' : 'text.primary'}>{addr.label || 'Address'}</Typography>
+                              </Box>
+                              {isSelected && <CheckCircle fontSize="small" color="primary" />}
+                            </Box>
+                            <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 0.5 }}>
+                              {addr.street}, {addr.city}{addr.state ? `, ${addr.state}` : ''} {addr.zipCode}
+                            </Typography>
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    );
+                  })}
+                  <Grid size={{ xs: 12, sm: 6 }}>
                     <Card
                       variant={selectedAddressMode === 'new' ? 'outlined' : 'elevation'}
                       sx={{
                         cursor: 'pointer',
                         borderColor: selectedAddressMode === 'new' ? 'primary.main' : 'divider',
-                        bgcolor: selectedAddressMode === 'new' ? 'action.hover' : 'background.paper',
+                        borderWidth: selectedAddressMode === 'new' ? 2 : 1,
+                        bgcolor: selectedAddressMode === 'new' ? alpha(theme.palette.primary.main, 0.05) : 'background.paper',
                         height: '100%',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center'
+                        justifyContent: 'center',
+                        minHeight: 72,
                       }}
                       onClick={() => {
                         setSelectedAddressMode('new');
-                        setDeliveryInfo(prev => ({ ...prev, address: '' }));
+                        setDeliveryInfo(prev => ({ ...prev, address: '', latitude: undefined, longitude: undefined }));
                       }}
                     >
                       <CardContent sx={{ py: 1.5, px: 2, '&:last-child': { pb: 1.5 }, textAlign: 'center' }}>
-                        <Typography variant="subtitle2">Add New Address</Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, justifyContent: 'center' }}>
+                          <LocationOn fontSize="small" color={selectedAddressMode === 'new' ? 'primary' : 'action'} />
+                          <Typography variant="subtitle2" fontWeight="700" color={selectedAddressMode === 'new' ? 'primary' : 'text.secondary'}>
+                            Use Different Address
+                          </Typography>
+                        </Box>
                       </CardContent>
                     </Card>
-                  </Grid> */}
+                  </Grid>
                 </Grid>
               </Box>
             </Grid>
@@ -1343,119 +1455,30 @@ const CheckoutPage: React.FC = () => {
       )}
       {paymentMethod === 'card' && (
         <Box sx={{ p: 3, bgcolor: 'grey.50', borderRadius: 1 }}>
-          {isAuthenticated && savedCards.length > 0 && (
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="subtitle2" gutterBottom fontWeight="700">Saved Cards</Typography>
-              <Grid container spacing={1}>
-                {savedCards.map((card, idx) => (
-                  <Grid size={{ xs: 12, sm: 6 }} key={idx}>
-                    <Card 
-                      variant={selectedSavedCard === idx ? 'outlined' : 'elevation'}
-                      sx={{ 
-                        p: 1.5, 
-                        cursor: 'pointer', 
-                        borderColor: selectedSavedCard === idx ? 'primary.main' : 'divider',
-                        bgcolor: selectedSavedCard === idx ? alpha(theme.palette.primary.main, 0.05) : 'background.paper'
-                      }}
-                      onClick={() => setSelectedSavedCard(idx)}
-                    >
-                      <Stack direction="row" spacing={2} alignItems="center">
-                        <CreditCard color={selectedSavedCard === idx ? "primary" : "action"} />
-                        <Box>
-                          <Typography variant="body2" fontWeight="700">{card.brand} •••• {card.last4}</Typography>
-                          <Typography variant="caption" color="text.secondary">Expires {card.expMonth}/{card.expYear}</Typography>
-                        </Box>
-                      </Stack>
-                    </Card>
-                  </Grid>
-                ))}
-                <Grid size={{ xs: 12, sm: 6 }}>
-                  <Card 
-                    variant={selectedSavedCard === null ? 'outlined' : 'elevation'}
-                    sx={{ 
-                      p: 1.5, 
-                      cursor: 'pointer', 
-                      borderColor: selectedSavedCard === null ? 'primary.main' : 'divider',
-                      bgcolor: selectedSavedCard === null ? alpha(theme.palette.primary.main, 0.05) : 'background.paper',
-                      height: '100%',
-                      display: 'flex',
-                      alignItems: 'center'
-                    }}
-                    onClick={() => setSelectedSavedCard(null)}
-                  >
-                    <Typography variant="body2" fontWeight="700">+ Use New Card</Typography>
-                  </Card>
-                </Grid>
-              </Grid>
-            </Box>
-          )}
-
-          {selectedSavedCard === null ? (
-            <>
-              <Typography variant="subtitle2" gutterBottom fontWeight="700">Enter Card Details</Typography>
-              <Grid container spacing={2}>
-                <Grid size={{ xs: 12 }}>
-                  <TextField 
-                    fullWidth 
-                    label="Card Number" 
-                    placeholder="0000 0000 0000 0000" 
-                    size="small"
-                    value={cardNumber}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim();
-                      setCardNumber(val.slice(0, 19));
-                    }}
-                  />
-                </Grid>
-                <Grid size={{ xs: 6 }}>
-                  <TextField 
-                    fullWidth 
-                    label="Expiry Date" 
-                    placeholder="MM/YY" 
-                    size="small"
-                    value={cardExpiry}
-                    onChange={(e) => {
-                      let val = e.target.value.replace(/\D/g, '');
-                      if (val.length > 2) val = val.slice(0, 2) + '/' + val.slice(2, 4);
-                      setCardExpiry(val.slice(0, 5));
-                    }}
-                  />
-                </Grid>
-                <Grid size={{ xs: 6 }}>
-                  <TextField 
-                    fullWidth 
-                    label="CVC" 
-                    placeholder="123" 
-                    size="small"
-                    value={cardCvc}
-                    onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                  />
-                </Grid>
-                {isAuthenticated && (
-                  <Grid size={{ xs: 12 }}>
-                    <FormControlLabel
-                      control={<Checkbox checked={saveCard} onChange={(e) => setSaveCard(e.target.checked)} size="small" />}
-                      label={<Typography variant="body2">Save card for future purposes</Typography>}
-                    />
-                  </Grid>
-                )}
-              </Grid>
-            </>
-          ) : (
-            <Box sx={{ p: 2, border: '1px dashed', borderColor: 'divider', borderRadius: 2, bgcolor: 'background.paper' }}>
-              <Typography variant="body2">Using saved card: <strong>{savedCards[selectedSavedCard].brand} •••• {savedCards[selectedSavedCard].last4}</strong></Typography>
-              <Button size="small" sx={{ mt: 1 }} onClick={() => setSelectedSavedCard(null)}>Change Card</Button>
-            </Box>
-          )}
-          
-          <Alert severity="info" sx={{ mt: 2, borderRadius: 2 }}>
-            Total Payment: <strong>${(
+          <Typography variant="subtitle2" gutterBottom fontWeight="700">Enter Card Details</Typography>
+          <CheckoutStripeCard
+            amount={
               cart.totalAmount +
-              (orderType === 'delivery' && activeStep >= 2 ? deliveryFee + (Number(deliveryInfo.tip) || 0) : 0) +
+              (orderType === 'delivery' ? deliveryFee + (Number(deliveryInfo.tip) || 0) : 0) +
               ((cart.totalAmount * processingFeeRate) / 100) +
               cart.totalAmount * (taxRate / 100)
-            ).toFixed(2)}</strong> (Secure Stripe integration demo)
-          </Alert>
+            }
+            subtotal={cart.totalAmount}
+            tax={cart.totalAmount * (taxRate / 100)}
+            tenantSlug={slug || ''}
+            orderType={orderType}
+            onSuccess={(intentId) => {
+              setStripePaymentIntentId(intentId);
+              toast.success('Card authorised! Placing your order...');
+              handlePlaceOrder(intentId);
+            }}
+            onError={(msg) => {
+              setError(msg);
+              toast.error(msg);
+            }}
+            setSubmitting={setStripeSubmitting}
+            submitRef={stripeSubmitRef}
+          />
         </Box>
       )}
     </Paper>
@@ -1488,15 +1511,7 @@ const CheckoutPage: React.FC = () => {
         const isAgeValid = !hasAlcohol || ageVerification === 'above';
         return (deliveryInfo.phone && (orderType === 'takeaway' || (orderType === 'delivery' && deliveryInfo.address))) && isTimeValid && isContactlessValid && isAgeValid;
       case 3:
-        if (paymentMethod === 'card') {
-          const isSavedCardSelected = selectedSavedCard !== null;
-          const cleanCardNum = cardNumber.replace(/\s/g, '');
-          const isAmex = cleanCardNum.startsWith('34') || cleanCardNum.startsWith('37');
-          const isCardNumValid = isAmex ? cleanCardNum.length === 15 : cleanCardNum.length === 16;
-          const isNewCardEntered = isCardNumValid && cardExpiry.length >= 5 && cardCvc.length >= 3;
-          return isSavedCardSelected || isNewCardEntered;
-        }
-        return true;
+        return true; // Stripe CardElement handles its own validation
       default:
         return false;
     }
@@ -1671,7 +1686,7 @@ const CheckoutPage: React.FC = () => {
                   {activeStep === steps.length - 1 ? (
                     <Button 
                       variant="contained" 
-                      onClick={handlePlaceOrder} 
+                      onClick={() => handlePlaceOrder()}
                       disabled={!isStepValid(activeStep) || placingOrder} 
                       fullWidth
                       startIcon={placingOrder ? <Spinner size={20} color="inherit" /> : null}

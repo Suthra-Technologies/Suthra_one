@@ -81,7 +81,7 @@ const SmsOverviewPage: React.FC = () => {
                     { label: 'Total Messages', value: totals.total, color: '#6366f1' },
                     { label: 'Delivered', value: totals.delivered, color: '#22c55e' },
                     { label: 'Failed', value: totals.failed, color: '#ef4444' },
-                    { label: 'Total Charges', value: `$${totals.cost.toFixed(2)}`, color: '#f59e0b' },
+                    { label: 'Total Charges', value: `$${(Number(totals.cost) || 0).toFixed(2)}`, color: '#f59e0b' },
                 ].map((kpi) => (
                     <Grid item xs={6} sm={3} key={kpi.label}>
                         <Paper elevation={0} sx={{ 
@@ -155,7 +155,7 @@ const SmsOverviewPage: React.FC = () => {
                                     </TableCell>
                                     <TableCell align="right">
                                         <Typography variant="body2" fontWeight="bold" color="primary.main">
-                                            ${tenant.totalCost.toFixed(4)}
+                                            ${(Number(tenant.totalCost) || 0).toFixed(4)}
                                         </Typography>
                                     </TableCell>
                                     <TableCell align="center">
@@ -235,7 +235,7 @@ const SmsOverviewPage: React.FC = () => {
                                             <Box>
                                                 <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase' }}>Cost</Typography>
                                                 <Typography sx={{ fontSize: '0.9rem', fontWeight: 700, color: 'primary.main' }}>
-                                                    ${tenant.totalCost.toFixed(4)}
+                                                    ${(Number(tenant.totalCost) || 0).toFixed(4)}
                                                 </Typography>
                                             </Box>
                                             <Box>

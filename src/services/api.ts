@@ -155,14 +155,14 @@ export const ordersAPI = {
   getPublicSettings: (tenantSlug: string) =>
     api.get('/public/orders/settings', { params: { tenantSlug } }),
 
-  getPublicPaymentConfig: (tenantSlug: string) =>
-    api.get('/public/orders/payment-config', { params: { tenantSlug } }),
+  getPublicPaymentConfig: (tenantSlug: string, orderType?: string) =>
+    api.get('/public/orders/payment-config', { params: { tenantSlug, orderType } }),
 
-  createPublicPaymentIntent: (amount: number, tenantSlug?: string, currency?: string) =>
-    api.post('/public/orders/create-payment-intent', { amount, currency, tenantSlug }),
+  createPublicPaymentIntent: (amount: number, tenantSlug?: string, currency?: string, orderType?: string, subtotal?: number, tax?: number) =>
+    api.post('/public/orders/create-payment-intent', { amount, currency, tenantSlug, orderType, subtotal, tax }),
 
-  verifyPublicPaymentIntent: (tenantSlug: string, intentId: string) =>
-    api.get(`/public/orders/verify-payment-intent/${intentId}`, { params: { tenantSlug } }),
+  verifyPublicPaymentIntent: (tenantSlug: string, intentId: string, orderType?: string) =>
+    api.get(`/public/orders/verify-payment-intent/${intentId}`, { params: { tenantSlug, orderType } }),
 
   getDeliveryQuote: (deliveryAddress: any, items: any[], tenantSlug: string) =>
     api.post('/public/orders/delivery-quote', { deliveryAddress, items }, { params: { tenantSlug } }),
@@ -424,6 +424,15 @@ export const subscriptionAPI = {
     cancelUrl: string;
   }) => api.post('/payments/create-checkout-session', data),
   verifySession: (sessionId: string) => api.post(`/payments/verify-session/${sessionId}`),
+  updateSettings: (data: { useEmailTopup?: boolean; useSmsTopup?: boolean }) => api.put('/subscription/settings', data),
+};
+
+// -------------------- Super Admin Payments API --------------------
+export const superAdminPaymentsAPI = {
+  getTenantPlatformPayments: (tenantId: string, params?: { page?: number; limit?: number; startDate?: string; endDate?: string }) =>
+    api.get(`/payments/superadmin/tenant/${tenantId}/platform-payments`, { params }),
+  getTenantOrders: (tenantId: string, params?: any) =>
+    api.get(`/superadmin/tenants/${tenantId}/orders`, { params }),
 };
 
 // -------------------- Coupons API --------------------
@@ -533,6 +542,10 @@ export const superAPI = {
   deleteDemoRequest: (id: string) => api.delete(`/superadmin/demo-requests/${id}`),
   adminRescheduleDemo: (id: string, data: { newDate: string; newTime: string; requestedBy: string }) => api.put(`/superadmin/demo-requests/${id}/reschedule`, data),
 
+  // Stripe Connect
+  updateTenantConnectAccount: (tenantId: string, payload: { stripeConnectAccountId: string; stripeConnectStatus?: string }) =>
+    api.patch(`/superadmin/tenants/${tenantId}/connect-account`, payload),
+
   // Admin activity logs
   getAdminLogs: (params?: any) => api.get('/superadmin/admin-logs', { params }),
 };
@@ -544,6 +557,21 @@ export const publicDemoAPI = {
 };
 
 export const superAdminAPI = superAPI; // alias for compatibility
+
+export const materialProvidersAPI = {
+  list: (params?: { page?: number; limit?: number; search?: string; status?: string }) =>
+    api.get('/superadmin/material-providers', { params }),
+  create: (data: any) => api.post('/superadmin/material-providers', data),
+  update: (id: string, data: any) => api.patch(`/superadmin/material-providers/${id}`, data),
+  remove: (id: string) => api.delete(`/superadmin/material-providers/${id}`),
+};
+
+export const materialCategoriesAPI = {
+  list: () => api.get('/superadmin/material-categories'),
+  create: (data: { name: string; description?: string }) => api.post('/superadmin/material-categories', data),
+  update: (id: string, data: { name?: string; description?: string }) => api.patch(`/superadmin/material-categories/${id}`, data),
+  remove: (id: string) => api.delete(`/superadmin/material-categories/${id}`),
+};
 
 export const supportAPI = {
   listMine: () => api.get('/support/mine'),
