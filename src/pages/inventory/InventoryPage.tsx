@@ -308,6 +308,7 @@ const InventoryPage: React.FC = () => {
     const [rawMaterials, setRawMaterials] = useState<RawMaterial[]>([]);
     const [dailyReport, setDailyReport] = useState<DailyReport | null>(null);
     const [loading, setLoading] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
 // Notes History Feature
     // const { openTab, activeTabs } = useNotesHistory();
     const [notesDrawerOpen, setNotesDrawerOpen] = useState(false);
@@ -403,12 +404,17 @@ const InventoryPage: React.FC = () => {
             title: 'Delete Material',
             message: <>Are you sure you want to delete <strong>"{material.name}"</strong>? This action cannot be undone.</>,
             onConfirm: async () => {
+                if (isDeleting) return;
                 try {
+                    setIsDeleting(true);
                     await inventoryAPI.delete(material._id);
                     toast.success(`Material "${material.name}" deleted successfully`);
                     loadRawMaterials();
                 } catch (err: any) {
                     toast.error(err.response?.data?.message || 'Failed to delete material');
+                } finally {
+                    setIsDeleting(false);
+                    setConfirmDelete(prev => ({ ...prev, open: false }));
                 }
             }
         });

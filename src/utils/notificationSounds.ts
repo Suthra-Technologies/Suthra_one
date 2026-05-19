@@ -13,6 +13,7 @@ import snd_attention_alert from '../assets/sounds/attention_alert.mp3';
 import snd_payment_success from '../assets/sounds/payment_success.mp3';
 import snd_pos_notif       from '../assets/sounds/pos_notification.mp3';
 import snd_restaurant_bell from '../assets/sounds/restaurant_bell.mp3';
+import snd_doraemon        from '../assets/sounds/doraemon.mpeg';
 
 export interface NotificationSound {
     id: string;
@@ -29,6 +30,7 @@ export const NOTIFICATION_SOUNDS: NotificationSound[] = [
     { id: 'payment_success', label: 'Payment Success',      emoji: '💳', src: snd_payment_success },
     { id: 'pos_notification',label: 'POS Notification',     emoji: '🏪', src: snd_pos_notif       },
     { id: 'restaurant_bell', label: 'Restaurant Bell',      emoji: '🍽️', src: snd_restaurant_bell },
+    { id: 'doraemon',        label: 'Doraemon Alert',       emoji: '🐱', src: snd_doraemon        },
 ];
 
 /** Look up the Vite-resolved URL for a stored sound ID. */

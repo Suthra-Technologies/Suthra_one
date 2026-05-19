@@ -98,6 +98,7 @@ const PurchaseOrdersPage: React.FC = () => {
     }, [page, filters]);
 
     const handleApprove = async (id: string) => {
+        if (loading) return;
         try {
             await purchaseOrdersAPI.updateStatus(id, 'approved');
             toast.success('Purchase order approved');
@@ -108,6 +109,7 @@ const PurchaseOrdersPage: React.FC = () => {
     };
 
     const handleReceive = async (id: string) => {
+        if (loading) return;
         try {
             await purchaseOrdersAPI.receive(id);
             toast.success('Items received & stock updated');
@@ -343,7 +345,7 @@ const PurchaseOrdersPage: React.FC = () => {
                                         <Box sx={{ textAlign: 'right' }}>
                                             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.1, fontSize: '0.62rem' }}>Grand Total</Typography>
                                             <Typography variant="h6" fontWeight={900} color="primary.main" sx={{ fontSize: '1rem' }}>
-                                                {formatCurrency ? formatCurrency(po.totalAmount || 0) : `$${(po.totalAmount || 0).toFixed(2)}`}
+                                                {formatCurrency ? formatCurrency(po.totalAmount || 0) : `$${(Number(po.totalAmount) || 0).toFixed(2)}`}
                                             </Typography>
                                         </Box>
                                     </Box>
@@ -413,7 +415,7 @@ const PurchaseOrdersPage: React.FC = () => {
                                         </TableCell>
                                         <TableCell>
                                             <Typography variant="body2" fontWeight="bold" color="primary.main">
-                                                {formatCurrency ? formatCurrency(po.totalAmount || 0) : `$${(po.totalAmount || 0).toFixed(2)}`}
+                                                {formatCurrency ? formatCurrency(po.totalAmount || 0) : `$${(Number(po.totalAmount) || 0).toFixed(2)}`}
                                             </Typography>
                                         </TableCell>
                                         <TableCell>

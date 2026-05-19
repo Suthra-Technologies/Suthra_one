@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Backdrop, Box, Paper, TextField, Button, Typography, Alert, CircularProgress, Grid, CssBaseline, Avatar, MenuItem, InputAdornment, Select, IconButton } from '@mui/material';
-import { Restaurant, Visibility, VisibilityOff } from '@mui/icons-material';
+import React, { useState, useEffect } from 'react';
+import { Backdrop, Box, Paper, TextField, Button, Typography, Alert, CircularProgress, Grid, CssBaseline, Avatar, MenuItem, InputAdornment, Select, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Restaurant, Visibility, VisibilityOff, CheckCircle } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { validateEmail, validatePhone, validateName, validatePassword, validateCompanyName, validateRequired, getHelperText, hasError } from '../utils/validation';
 import type { ValidationResult } from '../utils/validation';
@@ -17,6 +17,20 @@ interface RestaurantRegisterForm {
   phone: string;
   dialCode: string;
   password: string;
+  planId?: string;
+}
+
+interface Plan {
+  _id: string;
+  name: string;
+  description: string;
+  price: number;
+  interval: string;
+  features: string[];
+  maxUsers?: number;
+  maxTables?: number;
+  maxOrders?: number;
+  maxSms?: number;
 }
 
 const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5006'}/api`;
@@ -47,12 +61,51 @@ const RestaurantRegisterPage: React.FC = () => {
     phone: '',
     dialCode: '1',
     password: '',
+    planId: undefined,
   });
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [loadingPlans, setLoadingPlans] = useState<boolean>(true);
   const [loading, setLoading] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [uploadingLogo, setUploadingLogo] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
+  const [successData, setSuccessData] = useState<{ restaurantName: string } | null>(null);
+  const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
   const [errors, setErrors] = useState<Record<string, ValidationResult>>({});
+
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/superadmin/plans/public`);
+        const data = await res.json();
+
+        console.log("[Plans Lookup] Raw fetched plans from backend:", data);
+        const finalPlans = (data || []).filter((plan: any) => {
+          const nameLower = plan.name?.toLowerCase() || '';
+          const intervalLower = plan.interval?.toLowerCase() || '';
+
+          // STRICT EXCLUSION: If it contains 'sms' anywhere, reject it
+          if (nameLower.includes('sms') || intervalLower.includes('sms')) return false;
+
+          // STRICT INCLUSION: Only show plans with monthly interval
+          const isMatch = intervalLower === 'monthly';
+          if (isMatch) {
+            console.log(`[Plans Lookup Match] Plan: "${plan.name}" has Interval: "${plan.interval}" (Matched Monthly Interval)`);
+          }
+          return isMatch;
+        });
+
+        console.log("[Plans Lookup] Final filtered plans showing in registration UI:", finalPlans);
+        setPlans(finalPlans);
+        // We no longer auto-select a plan by default as per user request to make it optional
+      } catch (err) {
+        console.error('Failed to fetch plans', err);
+      } finally {
+        setLoadingPlans(false);
+      }
+    };
+    fetchPlans();
+  }, []);
 
   // const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
   //   const { name, value } = e.target;
@@ -69,9 +122,10 @@ const RestaurantRegisterPage: React.FC = () => {
     // Special rule for phone input
     if (name === "phone") {
       const numeric = value.replace(/\D/g, ""); // keep only digits
-      if (numeric.length > 10) return; // stop typing beyond 10 digits
-      setForm({ ...form, [name]: numeric });
+      const final = numeric.length > 10 ? numeric.slice(-10) : numeric;
+      setForm({ ...form, [name]: final });
 
+      // Clear error when user types a valid phone number (10 digits)
       if (errors[name]) {
         setErrors(prev => ({ ...prev, [name]: { isValid: true } }));
       }
@@ -117,7 +171,7 @@ const RestaurantRegisterPage: React.FC = () => {
   };
 
   const handleBlur = (field: keyof RestaurantRegisterForm) => {
-    const value = form[field];
+    const value = form[field] as string;
     let validation: ValidationResult;
 
     switch (field) {
@@ -196,13 +250,14 @@ const RestaurantRegisterPage: React.FC = () => {
 
       if (!res.ok) throw new Error(data?.message || 'Registration failed');
 
-      // Attempt auto-login
-      const loginRes = await login({ email: form.email, password: form.password });
-      if (loginRes.success) {
-        navigate('/');
-      } else {
-        navigate('/login');
+      // If a paid plan was selected, redirect to Stripe checkout
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl;
+        return;
       }
+
+      // If it's a trial/free registration, show success popup
+      setSuccessData({ restaurantName: form.restaurantName });
     } catch (e: any) {
       setError(e.message || 'Registration failed');
     } finally {
@@ -246,7 +301,7 @@ const RestaurantRegisterPage: React.FC = () => {
             </Typography>
           </Box>
 
-       
+
 
           <Box component="form" noValidate onSubmit={onSubmit} sx={{ width: '100%' }}>
             <Grid container spacing={2}>
@@ -355,8 +410,13 @@ const RestaurantRegisterPage: React.FC = () => {
                   value={form.phone}
                   onChange={(val) => {
                     const clean = val.replace(/\D/g, '');
-                    if (clean.length <= 10) {
-                      setForm({ ...form, phone: clean });
+                    // If they paste a full number with country code, take the last 10 digits
+                    const final = clean.length > 10 ? clean.slice(-10) : clean;
+                    setForm({ ...form, phone: final });
+
+                    // Clear error when user types or corrects the number
+                    if (errors.phone) {
+                      setErrors(prev => ({ ...prev, phone: { isValid: true } }));
                     }
                   }}
                   dialCode={form.dialCode}
@@ -393,6 +453,116 @@ const RestaurantRegisterPage: React.FC = () => {
                 />
               </Grid>
             </Grid>
+
+            {/* Plans Selection UI */}
+            {loadingPlans ? (
+              <Box sx={{ mt: 5, mb: 2, display: 'flex', justifyContent: 'center', p: 3 }}>
+                <CircularProgress />
+              </Box>
+            ) : plans.length > 0 ? (
+              <Box sx={{ mt: 5, mb: 2, width: '100%' }}>
+                <Typography variant="h6" fontWeight="bold" sx={{ textAlign: 'center', color: 'text.primary' }}>
+                  Choose Your Subscription Plan
+                </Typography>
+                <Typography variant="body2" sx={{ mb: 3, textAlign: 'center', color: 'text.secondary' }}>
+                  (Optional - You can skip this and start with a free trial)
+                </Typography>
+                <Box
+                  sx={{
+                    display: 'flex',
+                    overflowX: 'auto',
+                    gap: 3,
+                    pb: 2,
+                    px: 1,
+                    scrollSnapType: 'x mandatory',
+                    '&::-webkit-scrollbar': { height: 8 },
+                    '&::-webkit-scrollbar-thumb': { backgroundColor: 'divider', borderRadius: 4 },
+                  }}
+                >
+                  {plans.map((plan) => {
+                    const planFeatures = [];
+                    if (plan.maxUsers) planFeatures.push(`Up to ${plan.maxUsers} Users`);
+                    if (plan.maxTables) planFeatures.push(`Manage ${plan.maxTables} Tables`);
+                    if (plan.maxOrders) planFeatures.push(`${plan.maxOrders} Orders / month`);
+                    if (plan.maxSms) planFeatures.push(`${plan.maxSms} SMS Credits`);
+                    if (plan.features && plan.features.length > 0) planFeatures.push(...plan.features);
+
+                    return (
+                      <Box key={plan._id} sx={{ scrollSnapAlign: 'start', flexShrink: 0, width: { xs: 280, md: 300 } }}>
+                        <Paper
+                          elevation={form.planId === plan._id ? 8 : 1}
+                          onClick={() => setForm({ ...form, planId: form.planId === plan._id ? undefined : plan._id })}
+                          sx={{
+                            p: 3,
+                            height: '100%',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            cursor: 'pointer',
+                            borderRadius: 4,
+                            position: 'relative',
+                            overflow: 'hidden',
+                            border: form.planId === plan._id ? '2px solid' : '2px solid transparent',
+                            borderColor: form.planId === plan._id ? 'primary.main' : 'divider',
+                            transition: 'all 0.3s ease',
+                            '&:hover': {
+                              transform: 'translateY(-6px)',
+                              boxShadow: '0 12px 20px -10px rgba(79, 70, 229, 0.28), 0 4px 20px 0 rgba(0, 0, 0, 0.12)',
+                              borderColor: 'primary.main',
+                            },
+                            backgroundColor: form.planId === plan._id ? 'rgba(79, 70, 229, 0.04)' : 'background.paper',
+                          }}
+                        >
+                          <Typography variant="subtitle1" fontWeight="bold" color={form.planId === plan._id ? 'primary.main' : 'text.primary'} sx={{ textTransform: 'uppercase', letterSpacing: 1, fontSize: '0.85rem', mb: 1, pr: 8 }}>
+                            {plan.name}
+                          </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'baseline', mb: 1 }}>
+                            <Typography variant="h4" fontWeight="bold" color="text.primary">
+                              ${plan.price || 0}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ ml: 1, textTransform: 'capitalize' }}>
+                              / {plan.interval}
+                            </Typography>
+                          </Box>
+                          <Typography variant="body2" color="text.secondary" sx={{ mb: 3, minHeight: 40 }}>
+                            {plan.description || 'Get started with our basic features to manage your restaurant efficiently.'}
+                          </Typography>
+                          <Box component="ul" sx={{ m: 0, p: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 1.5, flexGrow: 1, mb: 3 }}>
+                            {planFeatures.slice(0, 6).map((feature, idx) => (
+                              <Box component="li" key={idx} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+                                <Box sx={{
+                                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                  width: 20, height: 20, borderRadius: '50%',
+                                  backgroundColor: form.planId === plan._id ? 'primary.main' : 'rgba(0,0,0,0.08)',
+                                  color: form.planId === plan._id ? 'white' : 'text.secondary',
+                                  flexShrink: 0,
+                                }}>
+                                  <Typography sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}>✓</Typography>
+                                </Box>
+                                <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.4 }}>{feature}</Typography>
+                              </Box>
+                            ))}
+                          </Box>
+                          <Button
+                            variant={form.planId === plan._id ? "contained" : "outlined"}
+                            fullWidth
+                            sx={{
+                              mt: 'auto',
+                              borderRadius: 2,
+                              textTransform: 'none',
+                              fontWeight: 'bold',
+                              py: 1,
+                              pointerEvents: 'none' // Let the paper handle the click
+                            }}
+                          >
+                            {form.planId === plan._id ? 'Selected' : 'Choose Plan'}
+                          </Button>
+                        </Paper>
+                      </Box>
+                    )
+                  })}
+                </Box>
+              </Box>
+            ) : null}
 
             {error && <Alert severity="error" sx={{ mt: 3, borderRadius: 2 }}>{error}</Alert>}
 
@@ -436,6 +606,69 @@ const RestaurantRegisterPage: React.FC = () => {
           Please wait while we set up your workspace
         </Typography>
       </Backdrop>
+
+      {/* Success Dialog for Free Registration */}
+      <Dialog
+        open={!!successData}
+        onClose={() => setSuccessData(null)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: 3, p: 2 }
+        }}
+      >
+        <DialogTitle sx={{ textAlign: 'center', pt: 3 }}>
+          <CheckCircle sx={{ fontSize: 64, color: 'success.main', mb: 2 }} />
+          <Typography variant="h4" fontWeight="bold">
+            Registration Successful!
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ textAlign: 'center', pb: 1 }}>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+            You have successfully created your restaurant workspace:
+          </Typography>
+          <Typography variant="h5" color="primary.main" fontWeight="bold" sx={{ mb: 3 }}>
+            {successData?.restaurantName}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Your account is now ready. Please log in with your credentials to access your dashboard and start managing your restaurant.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', pb: 3, pt: 2, gap: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={() => {
+              setSuccessData(null);
+            }}
+            sx={{ px: 4, py: 1.5, borderRadius: 2, textTransform: 'none', fontWeight: 'bold' }}
+          >
+            Close
+          </Button>
+          <Button
+            variant="contained"
+            onClick={async () => {
+              setIsLoggingIn(true);
+              try {
+                const loginRes = await login({ email: form.email, password: form.password });
+                if (loginRes.success) {
+                  navigate('/');
+                } else {
+                  navigate('/login');
+                }
+              } catch (err) {
+                console.error("Login failed:", err);
+                navigate('/login');
+              } finally {
+                setIsLoggingIn(false);
+              }
+            }}
+            disabled={isLoggingIn}
+            sx={{ px: 4, py: 1.5, borderRadius: 2, textTransform: 'none', fontWeight: 'bold' }}
+          >
+            {isLoggingIn ? <CircularProgress size={24} color="inherit" /> : 'Login Now'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Grid>
   );
 };

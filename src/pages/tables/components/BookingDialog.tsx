@@ -13,7 +13,8 @@ import {
     MenuItem,
     Stack,
     FormHelperText,
-    IconButton
+    IconButton,
+    CircularProgress
 } from '@mui/material';
 import {
     Close as CloseIcon
@@ -46,6 +47,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
     const [customerDialCode, setCustomerDialCode] = useState(settings?.restaurant?.dialCode || '1');
     const [customerEmail, setCustomerEmail] = useState('');
     const [bookingDuration, setBookingDuration] = useState(120);
+    const [isProcessing, setIsProcessing] = useState(false);
     const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
 
     useEffect(() => {
@@ -176,7 +178,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
     };
 
     const handleCreateBooking = async () => {
-        if (!table) return;
+        if (isProcessing || !table) return;
 
         const fields = ['date', 'time', 'customerName', 'customerPhone', 'guests', 'duration', 'customerEmail'];
         setBookingTouched({
@@ -216,6 +218,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
         }
 
         try {
+            setIsProcessing(true);
             const payload = {
                 tableId: table._id,
                 bookingDate,
@@ -239,6 +242,8 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
         } catch (error: any) {
             console.error('Error creating booking:', error);
             toast.error(error.response?.data?.message || 'Failed to create booking');
+        } finally {
+            setIsProcessing(false);
         }
     };
 
@@ -416,9 +421,10 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
                     variant="contained"
                     color="success"
                     onClick={handleCreateBooking}
-                    disabled={table && guestCount > table.capacity}
+                    disabled={(table && guestCount > table.capacity) || isProcessing}
+                    startIcon={isProcessing && <CircularProgress size={16} color="inherit" />}
                 >
-                    Book Now
+                    {isProcessing ? 'Booking...' : 'Book Now'}
                 </Button>
             </DialogActions>
         </Dialog>

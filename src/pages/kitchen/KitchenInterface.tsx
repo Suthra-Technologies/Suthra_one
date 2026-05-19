@@ -88,6 +88,7 @@ interface Order {
 const KitchenInterface: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [updatingItems, setUpdatingItems] = useState<Set<string>>(new Set());
   const theme = useTheme();
   const { socket } = useSocket();
@@ -98,8 +99,8 @@ const KitchenInterface: React.FC = () => {
   const [filterType, setFilterType] = useState<string>('all'); // 'all', 'dine_in', 'takeaway', 'delivery'
   const [page, setPage] = useState(1);
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const headingFontSize = { xs: '1.12rem', md: '1.6rem' };
-  const bodyFontSize = { xs: '0.7rem', sm: '0.88rem' };
+  const headingFontSize = { xs: '1rem', md: '1.4rem' };
+  const bodyFontSize = { xs: '0.65rem', sm: '0.78rem' };
 
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelItemRef, setCancelItemRef] = useState<{ orderId: string, itemIndex: number, itemName: string } | null>(null);
@@ -226,24 +227,10 @@ const KitchenInterface: React.FC = () => {
       const response = await ordersAPI.getKitchen();
       const ordersData = Array.isArray(response.data) ? response.data : [];
 
-      // Sort by urgency first, then status
-      const sortedOrders = ordersData.sort((a: any, b: any) => {
-        const urgencyA = getUrgencyLevel(a.createdAt);
-        const urgencyB = getUrgencyLevel(b.createdAt);
-
-        // Critical orders always first
-        if (urgencyA === 'critical' && urgencyB !== 'critical') return -1;
-        if (urgencyA !== 'critical' && urgencyB === 'critical') return 1;
-
-        // Then sort by status
-        const statusPriority: any = { pending: 0, confirmed: 1, preparing: 2, 'in-progress': 2, ready: 3 };
-        if (statusPriority[a.status] !== statusPriority[b.status]) {
-          return (statusPriority[a.status] || 0) - (statusPriority[b.status] || 0);
-        }
-
-        // Finally by time (oldest first)
-        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-      });
+      // Sort by most recent first
+      const sortedOrders = ordersData.sort((a: any, b: any) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
 
       setOrders(sortedOrders);
     } catch (error) {
@@ -297,9 +284,10 @@ const KitchenInterface: React.FC = () => {
 
   // Handle individual item status toggle
   const handleItemStatusChange = async (orderId: string, itemIndex: number, currentStatus: string) => {
-    const newStatus = currentStatus === 'ready' ? 'pending' : 'ready';
     const key = `${orderId}-${itemIndex}`;
-
+    if (updatingItems.has(key)) return;
+    
+    const newStatus = currentStatus === 'ready' ? 'pending' : 'ready';
     setUpdatingItems(prev => new Set(prev).add(key));
 
     try {
@@ -328,13 +316,14 @@ const KitchenInterface: React.FC = () => {
   };
 
   const handleCancelItemProcess = async () => {
+    if (isProcessing) return;
     if (!cancelItemRef || !cancelReason.trim()) {
       toast.error('Please provide a reason for cancellation');
       return;
     }
     const { orderId, itemIndex } = cancelItemRef;
     const key = `${orderId}-${itemIndex}`;
-
+    setIsProcessing(true);
     setUpdatingItems(prev => new Set(prev).add(key));
     setCancelDialogOpen(false);
 
@@ -355,6 +344,7 @@ const KitchenInterface: React.FC = () => {
       });
       setCancelReason('');
       setCancelItemRef(null);
+      setIsProcessing(false);
     }
   };
 
@@ -369,11 +359,11 @@ const KitchenInterface: React.FC = () => {
   };
 
   const handleRefundItemProcess = async () => {
-    if (!refundItemRef) return;
+    if (isProcessing || !refundItemRef) return;
     const { orderId, itemIndex } = refundItemRef;
     setRefundDialogOpen(false);
-
     const key = `${orderId}-${itemIndex}`;
+    setIsProcessing(true);
     setUpdatingItems(prev => new Set(prev).add(key));
 
     try {
@@ -390,12 +380,15 @@ const KitchenInterface: React.FC = () => {
         return updated;
       });
       setRefundItemRef(null);
+      setIsProcessing(false);
     }
   };
 
   // Handle marking all items as ready
   const handleMarkAllReady = async (orderId: string) => {
+    if (isProcessing) return;
     try {
+      setIsProcessing(true);
       await ordersAPI.updateAllItemsStatus(orderId, 'ready');
 
       setOrders(prev => prev.map(order => {
@@ -415,11 +408,13 @@ const KitchenInterface: React.FC = () => {
     } catch (error) {
       console.error('Error marking all items ready:', error);
       toast.error('Failed to mark all items ready');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
   // Handle order status progression
-  const handleOrderStatusUpdate = async (orderId: string, currentStatus: string, orderType: string) => {
+  const handleOrderStatusUpdate = async (orderId: string, currentStatus: string, orderType: string, isThirdPartyDelivery = false) => {
     let newStatus = '';
     if (currentStatus === 'pending') newStatus = 'confirmed';
     else if (currentStatus === 'confirmed') newStatus = 'preparing';
@@ -429,19 +424,20 @@ const KitchenInterface: React.FC = () => {
       else newStatus = 'ready';
     } else if (['ready', 'ready_to_takeaway', 'ready_to_pickup'].includes(currentStatus)) {
       if (orderType === 'dine_in') newStatus = 'served';
-      else if (orderType === 'delivery') newStatus = 'on_the_way';
+      else if (orderType === 'delivery' && !isThirdPartyDelivery) newStatus = 'on_the_way';
+      else if (orderType === 'delivery' && isThirdPartyDelivery) return; // managed by delivery partner
       else newStatus = 'completed';
     }
 
-    if (!newStatus) return;
+    if (!newStatus || isProcessing) return;
 
     try {
+      setIsProcessing(true);
       await ordersAPI.updateStatus(orderId, newStatus);
       toast.success(`Order marked as ${newStatus.replace(/_/g, ' ')}`);
       fetchOrders();
-    } catch (error) {
-      console.error('Error updating status:', error);
-      toast.error('Failed to update status');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -468,9 +464,9 @@ const KitchenInterface: React.FC = () => {
     return result;
   }, [orders, filterStatus, filterType, activeTab]);
 
-  const ITEMS_PER_PAGE = isMobile ? 5 : (filteredOrders.length || 1);
-  const totalPages = isMobile ? Math.ceil(filteredOrders.length / 5) : 1;
-  const paginatedOrders = isMobile ? filteredOrders.slice((page - 1) * 5, page * 5) : filteredOrders;
+  const ITEMS_PER_PAGE = 20;
+  const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
+  const paginatedOrders = filteredOrders.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   useEffect(() => {
     setPage(1);
@@ -637,7 +633,7 @@ const KitchenInterface: React.FC = () => {
                 >
                   <CardContent sx={{
                     flexGrow: { xs: 0, md: 1 },
-                    p: { xs: 1.1, sm: 2 },
+                    p: { xs: 1, sm: 1.5 },
                     display: 'flex',
                     flexDirection: 'column',
                     overflow: 'hidden'
@@ -691,19 +687,19 @@ const KitchenInterface: React.FC = () => {
                     </Box>
 
                     {/* Order Type & Status */}
-                    <Stack direction="row" spacing={1} sx={{ mb: { xs: 1, sm: 2 } }} alignItems="center">
+                    <Stack direction="row" spacing={1} sx={{ mb: { xs: 1, sm: 2 }, flexWrap: 'wrap', gap: 1 }} alignItems="center">
                       <Chip
                         icon={getOrderTypeIcon(order.orderType)}
                         label={order.orderType?.replace(/_/g, ' ').toUpperCase() || 'DINE IN'}
                         size="small"
                         variant="outlined"
-                        sx={{ fontSize: bodyFontSize, height: 24 }}
+                        sx={{ fontSize: '0.65rem', height: 22 }}
                       />
                       <Chip
                         label={order.status?.toUpperCase() || 'PENDING'}
                         color={getStatusColor(order.status) as any}
                         size="small"
-                        sx={{ fontSize: bodyFontSize, height: 24, fontWeight: 'bold' }}
+                        sx={{ fontSize: '0.65rem', height: 22, fontWeight: 'bold' }}
                       />
                     </Stack>
 
@@ -733,7 +729,7 @@ const KitchenInterface: React.FC = () => {
                     <Divider sx={{ mb: { xs: 0.5, sm: 1 } }} />
                     <Box sx={{
                       flexGrow: { xs: 0, md: 1 },
-                      maxHeight: { xs: 170, md: 'none' },
+                      maxHeight: { xs: 170, md: 240 },
                       overflowY: 'auto',
                       '&::-webkit-scrollbar': {
                         width: '6px',
@@ -756,7 +752,7 @@ const KitchenInterface: React.FC = () => {
                             key={idx}
                             sx={{
                               display: 'flex',
-                              alignItems: 'center',
+                              alignItems: 'flex-start',
                               py: { xs: 0.25, sm: 0.5 },
                               px: { xs: 0.5, sm: 1 },
                               borderBottom: idx < order.items.length - 1 ? '1px dashed' : 'none',
@@ -894,7 +890,7 @@ const KitchenInterface: React.FC = () => {
                   </CardContent>
 
                   {/* Action Buttons */}
-                  <CardActions sx={{ p: { xs: 1, sm: 2 }, pt: { xs: 0.1, sm: 0 }, flexDirection: { xs: 'row', sm: 'column' }, gap: { xs: 0.4, sm: 1 }, alignItems: 'stretch', mt: 0 }}>
+                  <CardActions sx={{ p: { xs: 1, sm: 1.5 }, pt: { xs: 0.1, sm: 0 }, flexDirection: { xs: 'row', sm: 'column' }, gap: { xs: 0.4, sm: 1 }, alignItems: 'stretch', mt: 0 }}>
                     <Button
                       fullWidth
                       variant="outlined"
@@ -913,6 +909,7 @@ const KitchenInterface: React.FC = () => {
                         color="success"
                         size="small"
                         onClick={() => handleMarkAllReady(order._id)}
+                        disabled={isProcessing}
                         startIcon={<DoneAllIcon />}
                         sx={{ flex: { xs: 1, sm: 'initial' }, minWidth: 0, fontSize: { xs: '0.62rem', sm: '0.78rem' }, py: { xs: 0.45, sm: 0.7 }, px: { xs: 0.5, sm: 1 }, minHeight: { xs: 28, sm: 34 }, '& .MuiButton-startIcon': { mr: { xs: 0.3, sm: 0.75 } } }}
                       >
@@ -925,9 +922,9 @@ const KitchenInterface: React.FC = () => {
                         fullWidth
                         variant="contained"
                         color={isAllReady ? "success" : (getStatusColor(order.status) as any)}
-                        onClick={() => handleOrderStatusUpdate(order._id, order.status, order.orderType)}
+                        onClick={() => handleOrderStatusUpdate(order._id, order.status, order.orderType, !!(order.doordashDeliveryId || order.uberEatsDeliveryId))}
                         startIcon={isAllReady ? <CheckCircleIcon /> : <PlayArrowIcon />}
-                        disabled={(!isAllReady && order.status === 'preparing')}
+                        disabled={isProcessing || (!isAllReady && order.status === 'preparing')}
                         sx={{ flex: { xs: 1, sm: 'initial' }, minWidth: 0, fontSize: { xs: '0.62rem', sm: '0.78rem' }, py: { xs: 0.45, sm: 0.7 }, px: { xs: 0.5, sm: 1 }, minHeight: { xs: 28, sm: 34 }, '& .MuiButton-startIcon': { mr: { xs: 0.3, sm: 0.75 } } }}
                       >
                         {order.status === 'pending' ? 'Confirm' :
@@ -943,14 +940,16 @@ const KitchenInterface: React.FC = () => {
         </Grid>
       )}
 
-      {!loading && isMobile && totalPages > 1 && (
+      {!loading && totalPages > 1 && (
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-          <Pagination 
-            count={totalPages} 
-            page={page} 
-            onChange={(_, value) => setPage(value)} 
-            color="primary" 
-            size="large"
+          <Pagination
+            count={totalPages}
+            page={page}
+            onChange={(_, value) => { setPage(value); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            color="primary"
+            size={isMobile ? 'medium' : 'large'}
+            showFirstButton
+            showLastButton
           />
         </Box>
       )}

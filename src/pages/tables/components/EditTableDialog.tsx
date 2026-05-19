@@ -13,7 +13,8 @@ import {
     MenuItem,
     Stack,
     FormHelperText,
-    IconButton
+    IconButton,
+    CircularProgress
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -42,6 +43,7 @@ const EditTableDialog: React.FC<EditTableDialogProps> = ({
     onOpenAddLocation
 }) => {
     const [editTable, setEditTable] = useState<any>(null);
+    const [isProcessing, setIsProcessing] = useState(false);
 
     useEffect(() => {
         if (table) {
@@ -124,12 +126,13 @@ const EditTableDialog: React.FC<EditTableDialogProps> = ({
     };
 
     const handleUpdateTable = async () => {
-        if (!editTable) return;
+        if (isProcessing || !editTable) return;
         if (!validateAll()) {
             toast.error('Please fill all required fields correctly');
             return;
         }
         try {
+            setIsProcessing(true);
             const updateData = {
                 tableName: editTable.tableName,
                 tableNumber: editTable.tableNumber,
@@ -143,6 +146,8 @@ const EditTableDialog: React.FC<EditTableDialogProps> = ({
         } catch (error) {
             console.error('Error updating table:', error);
             toast.error('Failed to update table');
+        } finally {
+            setIsProcessing(false);
         }
     };
 
@@ -277,7 +282,9 @@ const EditTableDialog: React.FC<EditTableDialogProps> = ({
             </DialogContent>
             <DialogActions>
                 <Button onClick={onClose}>Cancel</Button>
-                <Button variant="contained" onClick={handleUpdateTable}>Update</Button>
+                <Button variant="contained" onClick={handleUpdateTable} disabled={isProcessing} startIcon={isProcessing && <CircularProgress size={16} color="inherit" />}>
+                    {isProcessing ? 'Updating...' : 'Update'}
+                </Button>
             </DialogActions>
         </Dialog>
     );

@@ -625,7 +625,7 @@ const LoginPage: React.FC = () => {
                 <Grid item>
                   <Link
                     component={RouterLink}
-                    to={activeTenant?.slug ? `/${activeTenant.slug}/register` : (targetTenant ? `/${targetTenant}/register` : "/register")}
+                    to={activeTenant?.slug ? "/register" : (targetTenant ? `/${targetTenant}/register` : "/customer-register")}
                     variant="body2"
                     sx={{ fontSize: bodyFontSize }}
                   >

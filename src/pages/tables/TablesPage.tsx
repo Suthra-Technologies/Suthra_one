@@ -192,6 +192,7 @@ const TablesPage: React.FC = () => {
     const [selectedTableIds, setSelectedTableIds] = useState<string[]>([]);
     const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
     const [primaryTableId, setPrimaryTableId] = useState<string>('');
+    const [isProcessing, setIsProcessing] = useState(false);
 
     const fetchTables = async () => {
         try {
@@ -292,8 +293,9 @@ const TablesPage: React.FC = () => {
     };
 
     const confirmDeleteTable = async () => {
-        if (!tableToDelete) return;
+        if (!tableToDelete || isProcessing) return;
         try {
+            setIsProcessing(true);
             await tablesAPI.delete(tableToDelete._id);
             toast.success('Table deleted successfully');
             setDeleteDialogOpen(false);
@@ -302,6 +304,8 @@ const TablesPage: React.FC = () => {
         } catch (error) {
             console.error('Error deleting table:', error);
             toast.error('Failed to delete table');
+        } finally {
+            setIsProcessing(false);
         }
     };
 
@@ -318,13 +322,17 @@ const TablesPage: React.FC = () => {
 
     // Quick Status Update
     const handleQuickStatusChange = async (tableId: string, newStatus: string) => {
+        if (isProcessing) return;
         try {
+            setIsProcessing(true);
             await tablesAPI.updateStatus(tableId, newStatus);
             toast.success(`Table status updated to ${newStatus}`);
             fetchTables();
         } catch (error) {
             console.error('Error updating table status:', error);
             toast.error('Failed to update table status');
+        } finally {
+            setIsProcessing(false);
         }
         handleCloseMenu();
     };
@@ -336,6 +344,7 @@ const TablesPage: React.FC = () => {
     };
 
     const handleMerge = async () => {
+        if (isProcessing) return;
         if (!primaryTableId || selectedTableIds.length < 2) {
             toast.error('Please select a primary table and at least one secondary table');
             return;
@@ -344,6 +353,7 @@ const TablesPage: React.FC = () => {
         const secondaryIds = selectedTableIds.filter(id => id !== primaryTableId);
 
         try {
+            setIsProcessing(true);
             await tablesAPI.merge(primaryTableId, secondaryIds);
             toast.success('Tables merged successfully');
             setMergeDialogOpen(false);
@@ -354,14 +364,18 @@ const TablesPage: React.FC = () => {
             console.error('Error merging tables:', error);
             const msg = error.response?.data?.message || 'Failed to merge tables';
             toast.error(msg);
+        } finally {
+            setIsProcessing(false);
         }
     };
 
     const handleUnmerge = async (table: any) => {
+        if (isProcessing) return;
         const primaryId = table.isPrimary ? table._id : table.mergedWith;
         if (!primaryId) return;
 
         try {
+            setIsProcessing(true);
             await tablesAPI.unmerge(primaryId);
             toast.success('Tables unmerged successfully');
             fetchTables();
@@ -369,12 +383,16 @@ const TablesPage: React.FC = () => {
         } catch (error) {
             console.error('Error unmerging tables:', error);
             toast.error('Failed to unmerge tables');
+        } finally {
+            setIsProcessing(false);
         }
     };
 
     // Booking Status Update
     const handleBookingStatusChange = async (bookingId: string, newStatus: string) => {
+        if (isProcessing) return;
         try {
+            setIsProcessing(true);
             await bookingsAPI.updateStatus(bookingId, newStatus);
             toast.success(`Booking ${newStatus}`);
             fetchBookings();
@@ -382,11 +400,15 @@ const TablesPage: React.FC = () => {
         } catch (error) {
             console.error('Error updating booking status:', error);
             toast.error('Failed to update booking');
+        } finally {
+            setIsProcessing(false);
         }
     };
 
     const handleCheckIn = async (bookingId: string) => {
+        if (isProcessing) return;
         try {
+            setIsProcessing(true);
             // Find the booking in local state to check if already checked in
             const existingBooking = bookings.find(b => b._id === bookingId);
             let booking = existingBooking;
@@ -435,6 +457,8 @@ const TablesPage: React.FC = () => {
             console.error('Error checking in:', error);
             const msg = error.response?.data?.message || 'Failed to check in guest';
             toast.error(msg);
+        } finally {
+            setIsProcessing(false);
         }
     };
 

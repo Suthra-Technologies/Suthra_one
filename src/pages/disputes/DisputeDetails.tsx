@@ -272,10 +272,12 @@ const DisputeDetails: React.FC = () => {
               fullWidth
               label="Refund Amount"
               type="number"
-              value={resolution.amount}
-              onChange={(e) => setResolution({ ...resolution, amount: parseFloat(e.target.value) || 0 })}
+              value={Number(resolution.amount).toFixed(2)}
+              onChange={(e) => setResolution({ ...resolution, amount: e.target.value })}
+              onBlur={() => setResolution({ ...resolution, amount: parseFloat(Number(resolution.amount).toFixed(2)) })}
               disabled={resolution.type === 'full_refund'}
               InputProps={{ startAdornment: <AttachMoney sx={{ fontSize: 20, mr: 0.5, color: 'text.secondary' }} /> }}
+              inputProps={{ step: 0.01 }}
             />
             <TextField
               fullWidth

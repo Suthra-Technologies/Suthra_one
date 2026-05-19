@@ -152,10 +152,12 @@ const AdminSupportPage: React.FC = () => {
   };
 
   const createTicket = async () => {
+    if (loading) return;
     if (!subject || !message) {
       toast.error('Subject and message are required');
       return;
     }
+    setLoading(true);
     try {
       if (editingTicket) {
         await supportAPI.update(editingTicket._id, {
@@ -189,6 +191,8 @@ const AdminSupportPage: React.FC = () => {
       } else {
         toast.error(e.response?.data?.message || `Failed to ${editingTicket ? 'update' : 'create'} ticket`);
       }
+    } finally {
+      setLoading(false);
     }
   };
 

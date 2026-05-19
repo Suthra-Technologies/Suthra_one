@@ -1,104 +1,62 @@
+import { Capacitor, registerPlugin } from '@capacitor/core';
 import { Box, Button, CircularProgress, CssBaseline, Paper, ThemeProvider, Typography, useMediaQuery } from '@mui/material';
 import React, { useEffect, useMemo } from 'react';
-import { Navigate, Route, BrowserRouter as Router, Routes, useParams, useLocation } from 'react-router-dom';
-import CustomerLayout from './components/CustomerLayout';
-import Layout from './components/Layout';
+import { Navigate, Route, BrowserRouter as Router, Routes, useLocation } from 'react-router-dom';
 import PushNotificationInitializer from './components/PushNotificationInitializer';
-import { getTenantSlugFromHostname } from './utils/tenant.utils';
-import { TenantRoutes } from './routes/TenantRoutes';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { NotificationProvider } from './context/NotificationProvider';
 import { SocketProvider } from './context/SocketContext';
-import { Capacitor, registerPlugin } from '@capacitor/core';
 import LoginPage from './pages/auth/LoginPage';
 import ResetPasswordPage from './pages/auth/ResetPasswordPage';
-import CustomerOrderPage from './pages/customer/CustomerOrderPage';
-import MyBookingsPage from './pages/customer/MyBookingsPage';
-import TableBookingPage from './pages/customer/TableBookingPage';
-import CheckoutPage from './pages/CheckoutPage';
-import DashboardPage from './pages/DashboardPage';
-import GuestPOSPage from './pages/guest/GuestPOSPage';
-import InventoryPage from './pages/inventory/InventoryPage';
-import WasteManagementPage from './pages/inventory/WasteManagementPage';
-import InvoiceDetailPage from './pages/invoices/InvoiceDetailPage';
-import InvoicesPage from './pages/invoices/InvoicesPage';
-import KitchenInterface from './pages/kitchen/KitchenInterface';
-import KitchenOrdersPage from './pages/kitchen/KitchenOrdersPage';
-import MenuPage from './pages/menu/MenuPage';
-import TraysPage from './pages/menu/TraysPage';
+import { TenantRoutes } from './routes/TenantRoutes';
+import { getTenantSlugFromHostname } from './utils/tenant.utils';
 
-import OrdersPage from './pages/orders/OrdersPage';
-import POSPage from './pages/pos/POSPage';
-import ProfilePage from './pages/profile/ProfilePage';
-import FeedbackPage from './pages/public/FeedbackPage';
 import HomePage from './pages/public/HomePage';
 import PrivacyPolicyPage from './pages/public/PrivacyPolicyPage';
-import TermsConditionsPage from './pages/public/TermsConditionsPage';
 import RescheduleDemoPage from './pages/public/RescheduleDemoPage';
-import CreatePOPage from './pages/purchase-orders/CreatePOPage';
-import PurchaseOrderDetailPage from './pages/purchase-orders/PurchaseOrderDetailPage';
-import PurchaseOrdersPage from './pages/purchase-orders/PurchaseOrdersPage';
-import CreateRecipePage from './pages/recipes/CreateRecipePage';
-import RecipesPage from './pages/recipes/RecipesPage';
-import ReportsPage from './pages/reports/ReportsPage';
+import TermsConditionsPage from './pages/public/TermsConditionsPage';
 import RestaurantRegisterPage from './pages/RestaurantRegisterPage';
-import SettingsPage from './pages/settings/SettingsPage';
 import SubscriptionCancel from './pages/subscription/SubscriptionCancel';
-import SubscriptionPage from './pages/subscription/SubscriptionPage';
 import SubscriptionSuccess from './pages/subscription/SubscriptionSuccess';
-import AdminSupportPage from './pages/support/AdminSupportPage';
-import CustomerSupportPage from './pages/support/CustomerSupportPage';
-import TablesPage from './pages/tables/TablesPage';
-import UsersPage from './pages/users/UsersPage';
 import { getTheme } from './theme/theme';
 
 // ---- NEW IMPORTS FOR ADMIN SECTION ----
-import { RequireFeature } from './components/RequireFeature';
 import { RequireRole } from './components/RequireRole';
-import CouponsAdminPage from './pages/admin/CouponsAdminPage';
-import PromoCodePage from './pages/admin/PromoCodePage';
 import { Unauthorized } from './pages/Unauthorized';
 // import UsersAdminPage from './pages/admin/UsersAdminPage';
 // import SettingsAdminPage from './pages/admin/SettingsAdminPage';
 import { Toaster } from 'react-hot-toast';
 import SuperAdminLayout from './components/SuperAdminLayout';
-import AuditLogsPage from './pages/admin/AuditLogsPage';
-import BookingsAdminPage from './pages/admin/BookingsAdminPage';
-import CateringCommissionsPage from './pages/admin/catering/CateringCommissionsPage';
-import CateringManagementPage from './pages/admin/catering/CateringManagementPage';
-import CustomiseScreensPage from './pages/admin/customise-screens/CustomiseScreensPage';
-import AttendancePage from './pages/AttendancePage';
-import CateringPage from './pages/catering/CateringPage';
-import CateringTrackPage from './pages/customer/CateringTrackPage';
-import CustomersPage from './pages/customers/CustomersPage';
-import InvoicesAdminPage from './pages/superadmin/InvoicesAdminPage';
-import PlansPage from './pages/superadmin/PlansPage';
-import SuperAdminPortal from './pages/superadmin/SuperAdminPortal';
-import TenantsPage from './pages/superadmin/TenantsPage';
-import TenantDetailsPage from './pages/superadmin/TenantDetailsPage';
-import TicketsPage from './pages/superadmin/TicketsPage';
-import DeliveryReportsPage from './pages/superadmin/DeliveryReportsPage';
-import UberDirectPage from './pages/superadmin/UberDirectPage';
-import DemoRequestsPage from './pages/superadmin/DemoRequestsPage';
-import SmsOverviewPage from './pages/superadmin/SmsOverviewPage';
-import SmsLogsDetailPage from './pages/superadmin/SmsLogsDetailPage';
-import EmailOverviewPage from './pages/superadmin/EmailOverviewPage';
-import EmailLogsDetailPage from './pages/superadmin/EmailLogsDetailPage';
-import StoresLogPage from './pages/superadmin/StoresLogPage';
-import PlansLogPage from './pages/superadmin/PlansLogPage';
-import DemoRequestsLogPage from './pages/superadmin/DemoRequestsLogPage';
-import TicketsLogPage from './pages/superadmin/TicketsLogPage';
 import AdminLogsPage from './pages/superadmin/AdminLogsPage';
+import DeliveryReportsPage from './pages/superadmin/DeliveryReportsPage';
+import DemoRequestsLogPage from './pages/superadmin/DemoRequestsLogPage';
+import DemoRequestsPage from './pages/superadmin/DemoRequestsPage';
+import EmailLogsDetailPage from './pages/superadmin/EmailLogsDetailPage';
+import EmailOverviewPage from './pages/superadmin/EmailOverviewPage';
+import InvoicesAdminPage from './pages/superadmin/InvoicesAdminPage';
+import MaterialProvidersPage from './pages/superadmin/MaterialProvidersPage';
+import PlansLogPage from './pages/superadmin/PlansLogPage';
+import PlansPage from './pages/superadmin/PlansPage';
 import SuperAdminSettingsPage from './pages/superadmin/SettingsPage';
+import SmsLogsDetailPage from './pages/superadmin/SmsLogsDetailPage';
+import SmsOverviewPage from './pages/superadmin/SmsOverviewPage';
+import StoresLogPage from './pages/superadmin/StoresLogPage';
+import SuperAdminPortal from './pages/superadmin/SuperAdminPortal';
 import SuperAdminTeamPage from './pages/superadmin/SuperAdminTeamPage';
-import VendorsPage from './pages/vendors/VendorsPage';
+import TenantDetailsPage from './pages/superadmin/TenantDetailsPage';
+import TenantOrdersPage from './pages/superadmin/TenantOrdersPage';
+import TenantPaymentsPage from './pages/superadmin/TenantPaymentsPage';
+import TenantsPage from './pages/superadmin/TenantsPage';
+import TicketsLogPage from './pages/superadmin/TicketsLogPage';
+import TicketsPage from './pages/superadmin/TicketsPage';
+import UberDirectPage from './pages/superadmin/UberDirectPage';
 
-import { SettingsProvider, useSettings } from './context/SettingsContext';
 import { BrandProvider, useBrand } from './context/BrandContext';
+import { SettingsProvider, useSettings } from './context/SettingsContext';
 
 
-import CustomerRegisterPage from './pages/auth/CustomerRegisterPage';
 import { GuestCartProvider } from './context/GuestCartContext';
+import CustomerRegisterPage from './pages/auth/CustomerRegisterPage';
 
 // Error Boundary Component to prevent white screens
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: any }> {
@@ -184,7 +142,7 @@ const MobileBackHandler: React.FC = () => {
       listenerHandle = await AppPlugin.addListener('backButton', ({ canGoBack }: { canGoBack: boolean }) => {
         const currentPath = location.pathname;
         const storedTenantSlug = localStorage.getItem('tenantSlug');
-        const isAuthScreen = ['/login', '/reset-password', '/register'].some((path) => currentPath === path || currentPath.startsWith(`${path}/`));
+        const isAuthScreen = ['/login', '/reset-password', '/register', '/customer-register'].some((path) => currentPath === path || currentPath.startsWith(`${path}/`));
         const defaultPath = storedTenantSlug ? `/${storedTenantSlug}/dashboard` : '/dashboard';
 
         // If we have browser history, go back within app.
@@ -241,7 +199,10 @@ const AppRoutes: React.FC = () => {
       <Route path="/reschedule-demo/:token" element={<RescheduleDemoPage />} />
       <Route path="/login" element={hasStoredSession ? <Navigate to={defaultAuthedPath} replace /> : <LoginPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
-      <Route path="/register" element={<RestaurantRegisterPage />} />
+      {!hostnameSlug && <Route path="/register" element={<RestaurantRegisterPage />} />}
+      <Route path="/customer-register" element={<CustomerRegisterPage />} />
+      <Route path="/registration-success" element={<SubscriptionSuccess />} />
+      <Route path="/registration-failed" element={<SubscriptionCancel />} />
 
       {/* ---- SUPERADMIN ROUTES ---- */}
       <Route element={<RequireRole allowedRoles={["superadmin"]} />}>
@@ -249,6 +210,8 @@ const AppRoutes: React.FC = () => {
           <Route path="/superadmin" element={<SuperAdminPortal />} />
           <Route path="/superadmin/tenants" element={<TenantsPage />} />
           <Route path="/superadmin/tenants/:tenantId" element={<TenantDetailsPage />} />
+          <Route path="/superadmin/tenants/:tenantId/platform-payments" element={<TenantPaymentsPage />} />
+          <Route path="/superadmin/tenants/:tenantId/orders" element={<TenantOrdersPage />} />
           <Route path="/superadmin/plans" element={<PlansPage />} />
           <Route path="/superadmin/invoices" element={<InvoicesAdminPage />} />
           <Route path="/superadmin/tickets" element={<TicketsPage />} />
@@ -266,6 +229,7 @@ const AppRoutes: React.FC = () => {
           <Route path="/superadmin/admin-logs" element={<AdminLogsPage />} />
           <Route path="/superadmin/settings" element={<SuperAdminSettingsPage />} />
           <Route path="/superadmin/team" element={<SuperAdminTeamPage />} />
+          <Route path="/superadmin/material-providers" element={<MaterialProvidersPage />} />
         </Route>
       </Route>
 

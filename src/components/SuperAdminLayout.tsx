@@ -1,43 +1,44 @@
-import React from 'react';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import {
-    Box,
-    Drawer,
+    Dashboard as DashboardIcon,
+    LocalShipping as DeliveryIcon,
+    ContactPage as DemoIcon,
+    Email as EmailIcon,
+    ExpandLess,
+    ExpandMore,
+    History as HistoryIcon,
+    Assessment as LogIcon,
+    Logout,
+    Menu as MenuIcon,
+    CardMembership as PlansIcon,
+    Receipt as ReceiptIcon,
+    Settings as SettingsIcon,
+    Store as StoreIcon,
+    SupportAgent as SupportIcon,
+    Group as TeamIcon,
+    DirectionsBike as UberDirectIcon,
+    Category as MaterialProviderIcon
+} from '@mui/icons-material';
+import {
+    alpha,
     AppBar,
-    Toolbar,
-    Typography,
+    Avatar,
+    Box,
+    Collapse,
+    Divider,
+    Drawer,
+    IconButton,
     List,
     ListItem,
     ListItemButton,
     ListItemIcon,
     ListItemText,
-    IconButton,
-    Avatar,
     Menu,
     MenuItem,
-    Divider,
-    alpha,
-    Collapse,
+    Toolbar,
+    Typography,
 } from '@mui/material';
-import {
-    Store as StoreIcon,
-    SupportAgent as SupportIcon,
-    Logout,
-    CardMembership as PlansIcon,
-    Dashboard as DashboardIcon,
-    Receipt as ReceiptIcon,
-    Menu as MenuIcon,
-    LocalShipping as DeliveryIcon,
-    ContactPage as DemoIcon,
-    DirectionsBike as UberDirectIcon,
-    Email as EmailIcon,
-    Assessment as LogIcon,
-    History as HistoryIcon,
-    Settings as SettingsIcon,
-    Group as TeamIcon,
-    ExpandLess,
-    ExpandMore,
-} from '@mui/icons-material';
+import React from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
 
@@ -116,6 +117,7 @@ const SuperAdminLayout: React.FC = () => {
                 { path: '/superadmin/logs/plans', label: 'Plans Log', icon: <LogIcon /> },
                 { path: '/superadmin/logs/demo-requests', label: 'Demo Requests Log', icon: <LogIcon /> },
                 { path: '/superadmin/logs/tickets', label: 'Tickets Log', icon: <LogIcon /> },
+                { path: '/superadmin/material-providers', label: 'Material Providers', icon: <MaterialProviderIcon /> },
             ]
         },
         { path: '/superadmin/team', label: 'Team', icon: <TeamIcon />, permKey: 'team' },
