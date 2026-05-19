@@ -1,63 +1,60 @@
-import React, { useState, useEffect } from 'react';
-import Grid from '@mui/material/Grid2';
 import {
-  Box,
-  Container,
-  Paper,
-  Typography,
-  Stepper,
-  Step,
-  StepLabel,
-  Button,
-  Checkbox,
-  Card,
-  CardContent,
-  Divider,
-  Alert,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Radio,
-  RadioGroup,
-  FormControlLabel,
-  FormControl,
-  FormLabel,
-  TextField,
-  CardActionArea,
-  Stack,
-  Chip,
-  alpha,
-  useTheme,
-  Backdrop,
-  CircularProgress as Spinner
-} from '@mui/material';
-import {
-  ShoppingCart,
-  Person,
+  CheckCircle,
+  CreditCard,
+  DeliveryDining,
+  Home as HomeIcon,
   LocationOn,
   Payment,
-  DeliveryDining,
-  Storefront,
+  Person,
   QrCode,
-  CreditCard,
-  AttachMoney,
-  CheckCircle,
-  Home as HomeIcon,
-  Work as WorkIcon,
-  Warning as WarningIcon
+  ShoppingCart,
+  Storefront,
+  Warning as WarningIcon,
+  Work as WorkIcon
 } from '@mui/icons-material';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { useSettings } from '../context/SettingsContext';
-import { useActiveTenant } from '../hooks/useActiveTenant';
-import { useGuestCart } from '../context/GuestCartContext';
+import {
+  Alert,
+  alpha,
+  Backdrop,
+  Box,
+  Button,
+  Card,
+  CardActionArea,
+  CardContent,
+  Checkbox,
+  Chip,
+  Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  FormControl,
+  FormControlLabel,
+  FormLabel,
+  Paper,
+  Radio,
+  RadioGroup,
+  CircularProgress as Spinner,
+  Stack,
+  Step,
+  StepLabel,
+  Stepper,
+  TextField,
+  Typography,
+  useTheme
+} from '@mui/material';
+import Grid from '@mui/material/Grid2';
+import React, { useEffect, useState } from 'react';
+import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import CustomerRegistration from '../components/auth/CustomerRegistration';
 import GooglePlacesAutocomplete from '../components/common/GooglePlacesAutocomplete';
-import { toast } from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
+import { useGuestCart } from '../context/GuestCartContext';
+import { useSettings } from '../context/SettingsContext';
+import { useActiveTenant } from '../hooks/useActiveTenant';
 import { ordersAPI } from '../services/api';
-import { loadStripe } from '@stripe/stripe-js';
-import { Elements, CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { isWithinDeliveryRadius, METERS_PER_MILE } from '../services/googleMapsService';
 
 
@@ -133,7 +130,7 @@ const CheckoutCardInner: React.FC<CheckoutCardFormProps> = ({ tenantSlug, orderT
         setSubmittingRef.current(false);
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientSecret]);
 
   return (
@@ -180,8 +177,8 @@ const CheckoutStripeCard: React.FC<CheckoutStripeWrapperProps> = (props) => {
       .catch(() => { if (!cancelled) setLoadError('Failed to initialise payment. Please try again.'); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  // Only run once when the card form first mounts — amount is locked at mount time
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Only run once when the card form first mounts — amount is locked at mount time
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [props.tenantSlug, props.orderType]);
 
   if (loading) return <Box sx={{ py: 2, textAlign: 'center' }}><Spinner size={24} /></Box>;
@@ -223,7 +220,7 @@ const CheckoutPage: React.FC = () => {
   const isAuthenticated = !!user;
   const { cart, setOrderType, setDeliveryAddress, clearCart, updateQuantity, removeItem, updateNote } = useGuestCart();
   const theme = useTheme();
-  
+
   const taxRate = settings?.restaurant?.taxRate ?? 0;
   const processingFeeRate = settings?.restaurant?.processingFee ?? 0;
 
@@ -271,14 +268,14 @@ const CheckoutPage: React.FC = () => {
   const TIP_PERCENTAGES = [5, 10, 15, 20];
   const [selectedTipPercent, setSelectedTipPercent] = useState<number | 'custom'>(5);
   const [customTipValue, setCustomTipValue] = useState<string>('');
-  
+
   // Scheduling state
   const [scheduledDate, setScheduledDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [scheduledTime, setScheduledTime] = useState<string>('');
   const [ageVerification, setAgeVerification] = useState<'pending' | 'above' | 'below'>('pending');
 
-  const hasAlcohol = cart.items.some(item => 
-    item.isAlcohol || 
+  const hasAlcohol = cart.items.some(item =>
+    item.isAlcohol ||
     item.categoryName?.toLowerCase().includes('alcohol') ||
     item.name?.toLowerCase().includes('beer') ||
     item.name?.toLowerCase().includes('wine') ||
@@ -362,41 +359,41 @@ const CheckoutPage: React.FC = () => {
 
   const generateTimeSlots = (dateString: string) => {
     if (!settings?.restaurant?.businessHours) return [];
-    
+
     const date = new Date(dateString + 'T00:00:00');
     const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
     const dayConfig = settings.restaurant.businessHours.find(bh => bh.day === dayName);
-    
+
     if (!dayConfig || !dayConfig.isOpen) return [];
-    
+
     const openStr = dayConfig.slots?.[0]?.openTime || dayConfig.openTime || '09:00';
     const closeStr = dayConfig.slots?.[0]?.closeTime || dayConfig.closeTime || '22:00';
-    
+
     const slots: string[] = [];
     let current = new Date(`${dateString}T${openStr}`);
     const end = new Date(`${dateString}T${closeStr}`);
-    
+
     const now = new Date();
     // Allow for preparation/delivery time buffer (60 mins for delivery, 20 mins for takeaway)
     const bufferMinutes = orderType === 'delivery' ? 60 : 20;
     if (date.toDateString() === now.toDateString()) {
-       const earliest = new Date(now.getTime() + bufferMinutes * 60 * 1000);
-       if (current < earliest) current = earliest;
-       
-       const mins = current.getMinutes();
-       if (mins > 0 && mins <= 15) current.setMinutes(15);
-       else if (mins > 15 && mins <= 30) current.setMinutes(30);
-       else if (mins > 30 && mins <= 45) current.setMinutes(45);
-       else if (mins > 45) { current.setHours(current.getHours() + 1); current.setMinutes(0); }
+      const earliest = new Date(now.getTime() + bufferMinutes * 60 * 1000);
+      if (current < earliest) current = earliest;
+
+      const mins = current.getMinutes();
+      if (mins > 0 && mins <= 15) current.setMinutes(15);
+      else if (mins > 15 && mins <= 30) current.setMinutes(30);
+      else if (mins > 30 && mins <= 45) current.setMinutes(45);
+      else if (mins > 45) { current.setHours(current.getHours() + 1); current.setMinutes(0); }
     }
-    
+
     while (current < end) {
       const hours = String(current.getHours()).padStart(2, '0');
       const minutes = String(current.getMinutes()).padStart(2, '0');
       slots.push(`${hours}:${minutes}`);
       current.setMinutes(current.getMinutes() + 15);
     }
-    
+
     return slots;
   };
 
@@ -413,7 +410,7 @@ const CheckoutPage: React.FC = () => {
       try {
         setIsFetchingQuote(true);
         setQuoteError(null);
-        
+
         const tenantSlug = slug || '';
         if (!tenantSlug) return;
 
@@ -431,11 +428,11 @@ const CheckoutPage: React.FC = () => {
             setSelectedProvider(response.data.quotes[0].provider);
             setQuoteError(null);
           } else if (response.data && response.data.fee !== undefined) {
-             // Fallback for single quote
+            // Fallback for single quote
             setDeliveryFee(response.data.fee);
             setSelectedProvider(response.data.provider || 'doordash');
-            setDeliveryQuotes([{ 
-              provider: response.data.provider || 'doordash', 
+            setDeliveryQuotes([{
+              provider: response.data.provider || 'doordash',
               fee: response.data.fee,
               provider_displayName: response.data.provider_displayName || 'Standard Delivery'
             }]);
@@ -449,13 +446,13 @@ const CheckoutPage: React.FC = () => {
         if (!isCancelled) {
           const errMsg = err.response?.data?.message || 'Delivery not available for this address.';
           setQuoteError(errMsg);
-          
+
           // Detect distance error
           const lowerMsg = errMsg.toLowerCase();
           if (lowerMsg.includes('distance') || lowerMsg.includes('range') || lowerMsg.includes('too long') || lowerMsg.includes('far')) {
             setShowDistanceDialog(true);
           }
-          
+
           setDeliveryFee(0);
           setDeliveryQuotes([]);
           toast.error(errMsg);
@@ -482,14 +479,14 @@ const CheckoutPage: React.FC = () => {
       setOrderType(orderType === 'delivery' ? 'delivery' : 'takeaway');
       if (orderType === 'delivery') {
         setDeliveryAddress(deliveryInfo.address);
-        
+
         // Delivery Radius Check
         const checkDeliveryRadius = async () => {
           if (!deliveryInfo.address) {
             toast.error('Please enter a delivery address');
             return false;
           }
-          
+
           if (!settings?.restaurant?.address) {
             console.warn('Restaurant address not set in settings');
             return true; // If restaurant address is missing, we can't check, so allow (or block)
@@ -511,13 +508,13 @@ const CheckoutPage: React.FC = () => {
               setShowDistanceDialog(true);
               return false;
             }
-            
+
             setError('');
             return true;
           } catch (err) {
             console.error('Distance check failed:', err);
             // In case of API failure, we might want to allow it or show a warning
-            return true; 
+            return true;
           } finally {
             setCheckingDistance(false);
           }
@@ -560,17 +557,17 @@ const CheckoutPage: React.FC = () => {
       setPlacingOrder(true);
       setError('');
       const isPaidMethod = paymentMethod === 'card' || paymentMethod === 'qr';
-        const calculatedProcessingFee = (cart.totalAmount * processingFeeRate) / 100;
+      const calculatedProcessingFee = (cart.totalAmount * processingFeeRate) / 100;
 
-        const orderData = {
+      const orderData = {
         items: cart.items.map(item => ({
-            menuItem: item.id,
-            name: item.name,
-            quantity: item.quantity,
-            price: item.price,
-            itemTotal: item.itemTotal,
-            customizations: item.customizations || [],
-            spiceLevel: item.spiceLevel || ''
+          menuItem: item.id,
+          name: item.name,
+          quantity: item.quantity,
+          price: item.price,
+          itemTotal: item.itemTotal,
+          customizations: item.customizations || [],
+          spiceLevel: item.spiceLevel || ''
         })),
         orderType: orderType === 'delivery' ? 'delivery' : 'takeaway',
         paymentMethod,
@@ -584,20 +581,20 @@ const CheckoutPage: React.FC = () => {
           : null,
 
         deliveryAddress: orderType === 'delivery' ? {
-            fullAddress: deliveryInfo.address,
-            latitude: deliveryInfo.latitude,
-            longitude: deliveryInfo.longitude,
-            city: '',
-            state: '',
-            pincode: ''
+          fullAddress: deliveryInfo.address,
+          latitude: deliveryInfo.latitude,
+          longitude: deliveryInfo.longitude,
+          city: '',
+          state: '',
+          pincode: ''
         } : null,
         customer: user ? {
-            _id: user._id,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            name: `${user.firstName} ${user.lastName}`.trim(),
-            email: user.email,
-            phone: deliveryInfo.phone || user.phone
+          _id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          name: `${user.firstName} ${user.lastName}`.trim(),
+          email: user.email,
+          phone: deliveryInfo.phone || user.phone
         } : {
           firstName: 'Guest',
           lastName: 'User',
@@ -623,11 +620,11 @@ const CheckoutPage: React.FC = () => {
       setPlacingOrder(false);
       clearCart();
       toast.success('Order placed successfully!', {
-          duration: 5000,
-          position: 'top-center',
-          style: { background: '#2ecc71', color: '#fff', fontWeight: 'bold' }
+        duration: 5000,
+        position: 'top-center',
+        style: { background: '#2ecc71', color: '#fff', fontWeight: 'bold' }
       });
-      
+
       setPlacedOrder(response.data);
       // We don't redirect yet so user can see tracking link if delivery
     } catch (err: any) {
@@ -649,11 +646,11 @@ const CheckoutPage: React.FC = () => {
           <Typography variant="h4" gutterBottom>Order Placed!</Typography>
           <Typography variant="body1" gutterBottom>Your order number is <strong>{placedOrder.orderNumber || 'N/A'}</strong></Typography>
           {placedOrder.trackingUrl && (
-            <Button 
-              variant="contained" 
-              size="large" 
-              href={placedOrder.trackingUrl} 
-              target="_blank" 
+            <Button
+              variant="contained"
+              size="large"
+              href={placedOrder.trackingUrl}
+              target="_blank"
               sx={{ mt: 3, borderRadius: 2, px: 4 }}
             >
               Track on {placedOrder.deliveryProvider === 'doordash' ? 'DoorDash' : 'Delivery Partner'}
@@ -685,9 +682,9 @@ const CheckoutPage: React.FC = () => {
                   {item.quantity} x ${item.price.toFixed(2)} = <Box component="span" sx={{ color: 'primary.main', fontWeight: 'bold' }}>${item.itemTotal.toFixed(2)}</Box>
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: alpha(theme.palette.primary.main, 0.05), borderRadius: 1.5, px: 1 }}>
-                  <Button 
-                    size="small" 
-                    sx={{ minWidth: 28, p: 0, fontWeight: 'bold' }} 
+                  <Button
+                    size="small"
+                    sx={{ minWidth: 28, p: 0, fontWeight: 'bold' }}
                     onClick={() => updateQuantity(index, item.quantity - 1)}
                   >
                     -
@@ -695,23 +692,23 @@ const CheckoutPage: React.FC = () => {
                   <Typography variant="body2" sx={{ mx: 1.5, fontWeight: 'bold' }}>
                     {item.quantity}
                   </Typography>
-                  <Button 
-                    size="small" 
-                    sx={{ minWidth: 28, p: 0, fontWeight: 'bold' }} 
+                  <Button
+                    size="small"
+                    sx={{ minWidth: 28, p: 0, fontWeight: 'bold' }}
                     onClick={() => updateQuantity(index, item.quantity + 1)}
                   >
                     +
                   </Button>
                 </Box>
               </Box>
-              
+
               {item.spiceLevel && (
-                <Chip 
-                  size="small" 
-                  label={`Spice: ${item.spiceLevel}`} 
-                  color="warning" 
-                  variant="outlined" 
-                  sx={{ mt: 1, fontWeight: 'bold', textTransform: 'capitalize' }} 
+                <Chip
+                  size="small"
+                  label={`Spice: ${item.spiceLevel}`}
+                  color="warning"
+                  variant="outlined"
+                  sx={{ mt: 1, fontWeight: 'bold', textTransform: 'capitalize' }}
                 />
               )}
               {item.customizations.length > 0 && (
@@ -756,12 +753,12 @@ const CheckoutPage: React.FC = () => {
                 >
                   Customise order
                 </Typography>
-                <Typography 
-                  variant="caption" 
+                <Typography
+                  variant="caption"
                   onClick={() => removeItem(index)}
-                  sx={{ 
-                    cursor: 'pointer', 
-                    color: 'error.main', 
+                  sx={{
+                    cursor: 'pointer',
+                    color: 'error.main',
                     fontWeight: 600,
                     '&:hover': { textDecoration: 'underline' }
                   }}
@@ -980,8 +977,8 @@ const CheckoutPage: React.FC = () => {
                 onChange={(address: string) => setDeliveryInfo((prev) => ({ ...prev, address }))}
                 onPlaceSelect={(placeData: any) => {
                   if (placeData) {
-                    setDeliveryInfo((prev) => ({ 
-                      ...prev, 
+                    setDeliveryInfo((prev) => ({
+                      ...prev,
                       address: placeData.formattedAddress,
                       latitude: placeData.lat,
                       longitude: placeData.lng,
@@ -1016,7 +1013,7 @@ const CheckoutPage: React.FC = () => {
                 <Typography variant="body2" sx={{ fontWeight: 600 }}>Finding the best delivery rate for you...</Typography>
               </Box>
             )}
-            
+
             {/* Provider selection hidden from customer view as logic is automatic based on fee */}
             {!isFetchingQuote && deliveryQuotes.length > 0 && (
               <Box sx={{ mb: 2, p: 1.5, bgcolor: alpha(theme.palette.success.main, 0.05), borderRadius: 2, border: '1px solid', borderColor: alpha(theme.palette.success.main, 0.1) }}>
@@ -1025,7 +1022,7 @@ const CheckoutPage: React.FC = () => {
                 </Typography>
               </Box>
             )}
-            
+
             {quoteError && (
               <Alert severity="error" sx={{ mb: 3, borderRadius: 3 }}>
                 {quoteError}
@@ -1053,18 +1050,18 @@ const CheckoutPage: React.FC = () => {
                 onChange={(e) => setDeliveryInfo((prev) => ({ ...prev, deliveryTime: e.target.value }))}
                 row
               >
-                <FormControlLabel 
-                  value="asap" 
-                  control={<Radio />} 
-                  label={<Typography variant="body2" fontWeight="700">ASAP (30-45 mins)</Typography>} 
+                <FormControlLabel
+                  value="asap"
+                  control={<Radio />}
+                  label={<Typography variant="body2" fontWeight="700">ASAP (30-45 mins)</Typography>}
                 />
-                <FormControlLabel 
-                  value="later" 
-                  control={<Radio />} 
-                  label={<Typography variant="body2" fontWeight="700">Schedule for later</Typography>} 
+                <FormControlLabel
+                  value="later"
+                  control={<Radio />}
+                  label={<Typography variant="body2" fontWeight="700">Schedule for later</Typography>}
                 />
               </RadioGroup>
-              
+
               {deliveryInfo.deliveryTime === 'later' && (
                 <Stack spacing={2} sx={{ mt: 2, p: 2, bgcolor: alpha(theme.palette.primary.main, 0.03), borderRadius: 3, border: '1px dashed', borderColor: 'divider' }}>
                   <Box>
@@ -1196,8 +1193,8 @@ const CheckoutPage: React.FC = () => {
                 </Typography>
                 <Typography variant="caption" fontWeight="bold" sx={{ mb: 1.5, display: 'block' }}>Please confirm your age:</Typography>
                 <Stack direction="row" spacing={2}>
-                  <Button 
-                    variant={ageVerification === 'above' ? "contained" : "outlined"} 
+                  <Button
+                    variant={ageVerification === 'above' ? "contained" : "outlined"}
                     color="success"
                     onClick={() => setAgeVerification('above')}
                     fullWidth
@@ -1205,8 +1202,8 @@ const CheckoutPage: React.FC = () => {
                   >
                     I am Above 18
                   </Button>
-                  <Button 
-                    variant={ageVerification === 'below' ? "contained" : "outlined"} 
+                  <Button
+                    variant={ageVerification === 'below' ? "contained" : "outlined"}
                     color="error"
                     onClick={() => setAgeVerification('below')}
                     fullWidth
@@ -1225,12 +1222,12 @@ const CheckoutPage: React.FC = () => {
           )}
 
           <Grid size={{ xs: 12 }}>
-            <Box sx={{ 
-              mt: 1, 
-              p: 2, 
-              bgcolor: hasAlcohol ? alpha(theme.palette.action.disabledBackground, 0.1) : alpha(theme.palette.success.main, 0.03), 
-              borderRadius: 3, 
-              border: '1px solid', 
+            <Box sx={{
+              mt: 1,
+              p: 2,
+              bgcolor: hasAlcohol ? alpha(theme.palette.action.disabledBackground, 0.1) : alpha(theme.palette.success.main, 0.03),
+              borderRadius: 3,
+              border: '1px solid',
               borderColor: hasAlcohol ? 'divider' : alpha(theme.palette.success.main, 0.1),
               opacity: hasAlcohol ? 0.7 : 1
             }}>
@@ -1261,8 +1258,8 @@ const CheckoutPage: React.FC = () => {
                 sx={{ mt: 2 }}
                 value={deliveryInfo.dropOffInstructions}
                 onChange={(e) => setDeliveryInfo(prev => ({ ...prev, dropOffInstructions: e.target.value }))}
-                helperText={deliveryInfo.isContactless 
-                  ? "Required for contactless delivery (e.g. gate code, door color)" 
+                helperText={deliveryInfo.isContactless
+                  ? "Required for contactless delivery (e.g. gate code, door color)"
                   : "Help the driver find your location accurately (e.g. gate code, floor number, etc.)"}
               />
             </Box>
@@ -1294,18 +1291,18 @@ const CheckoutPage: React.FC = () => {
                   onChange={(e) => setDeliveryInfo((prev) => ({ ...prev, deliveryTime: e.target.value }))}
                   row
                 >
-                  <FormControlLabel 
-                    value="asap" 
-                    control={<Radio />} 
-                    label={<Typography variant="body2" fontWeight="700">ASAP (15-20 mins)</Typography>} 
+                  <FormControlLabel
+                    value="asap"
+                    control={<Radio />}
+                    label={<Typography variant="body2" fontWeight="700">ASAP (15-20 mins)</Typography>}
                   />
-                  <FormControlLabel 
-                    value="later" 
-                    control={<Radio />} 
-                    label={<Typography variant="body2" fontWeight="700">Schedule for later</Typography>} 
+                  <FormControlLabel
+                    value="later"
+                    control={<Radio />}
+                    label={<Typography variant="body2" fontWeight="700">Schedule for later</Typography>}
                   />
                 </RadioGroup>
-                
+
                 {deliveryInfo.deliveryTime === 'asap' && (
                   <Alert severity="info" sx={{ mt: 1, borderRadius: 3 }}>
                     <Typography variant="body2">
@@ -1391,13 +1388,13 @@ const CheckoutPage: React.FC = () => {
         <Grid size={{ xs: 12, md: 6 }}>
           <Card
             variant={paymentMethod === 'qr' ? 'outlined' : 'elevation'}
-            sx={{ 
+            sx={{
               height: '100%',
-              borderColor: paymentMethod === 'qr' ? 'primary.main' : 'divider', 
-              borderWidth: paymentMethod === 'qr' ? 2 : 1, 
+              borderColor: paymentMethod === 'qr' ? 'primary.main' : 'divider',
+              borderWidth: paymentMethod === 'qr' ? 2 : 1,
               cursor: 'pointer',
               display: 'flex',
-              flexDirection: 'column' 
+              flexDirection: 'column'
             }}
             onClick={() => setPaymentMethod('qr')}
           >
@@ -1416,10 +1413,10 @@ const CheckoutPage: React.FC = () => {
         <Grid size={{ xs: 12, md: 6 }}>
           <Card
             variant={paymentMethod === 'card' ? 'outlined' : 'elevation'}
-            sx={{ 
+            sx={{
               height: '100%',
-              borderColor: paymentMethod === 'card' ? 'primary.main' : 'divider', 
-              borderWidth: paymentMethod === 'card' ? 2 : 1, 
+              borderColor: paymentMethod === 'card' ? 'primary.main' : 'divider',
+              borderWidth: paymentMethod === 'card' ? 2 : 1,
               cursor: 'pointer',
               display: 'flex',
               flexDirection: 'column'
@@ -1529,13 +1526,13 @@ const CheckoutPage: React.FC = () => {
           <Typography variant="h6" color="text.secondary" paragraph>
             Your order <strong>#{placedOrder.orderNumber}</strong> has been received and is being prepared.
           </Typography>
-          
+
           <Stack spacing={2} sx={{ mt: 4, maxWidth: 400, mx: 'auto' }}>
             {trackingUrl && (
-              <Button 
-                variant="contained" 
-                color="success" 
-                size="large" 
+              <Button
+                variant="contained"
+                color="success"
+                size="large"
                 fullWidth
                 startIcon={<DeliveryDining />}
                 sx={{ py: 2, borderRadius: 4, fontWeight: 'bold', fontSize: '1.1rem' }}
@@ -1544,14 +1541,14 @@ const CheckoutPage: React.FC = () => {
                 Track on {placedOrder.deliveryProvider === 'ubereats' ? 'Uber Eats' : 'DoorDash'}
               </Button>
             )}
-            <Button 
-              variant="outlined" 
-              size="large" 
+            <Button
+              variant="outlined"
+              size="large"
               fullWidth
               sx={{ py: 1.5, borderRadius: 4, fontWeight: 'bold' }}
               onClick={() => {
-                 if (slug) navigate(`/${slug}/customer/order`);
-                 else navigate('/');
+                if (slug) navigate(`/${slug}/customer/order`);
+                else navigate('/');
               }}
             >
               Return to Menu
@@ -1586,31 +1583,31 @@ const CheckoutPage: React.FC = () => {
       <Typography variant="h4" gutterBottom align="center">
         Checkout
       </Typography>
-      <Stepper 
-    activeStep={activeStep} 
-    sx={{ 
-        mb: 4,
-        '& .MuiStepLabel-label': {
+      <Stepper
+        activeStep={activeStep}
+        sx={{
+          mb: 4,
+          '& .MuiStepLabel-label': {
             fontSize: { xs: '0.65rem', sm: '0.875rem' },
             fontWeight: 700,
-        },
-        '& .MuiStepIcon-root': {
+          },
+          '& .MuiStepIcon-root': {
             fontSize: { xs: '1.2rem', sm: '1.5rem' },
-        },
-        '& .MuiStep-root': {
+          },
+          '& .MuiStep-root': {
             px: { xs: 0.5, sm: 1 },
-        },
-        '& .MuiStepConnector-line': {
+          },
+          '& .MuiStepConnector-line': {
             minWidth: { xs: '10px', sm: '20px' },
-        }
-    }}
->
-    {steps.map((label, index) => (
-        <Step key={label} completed={activeStep > index}>
+          }
+        }}
+      >
+        {steps.map((label, index) => (
+          <Step key={label} completed={activeStep > index}>
             <StepLabel>{label}</StepLabel>
-        </Step>
-    ))}
-</Stepper>
+          </Step>
+        ))}
+      </Stepper>
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
@@ -1684,20 +1681,20 @@ const CheckoutPage: React.FC = () => {
                     Back
                   </Button>
                   {activeStep === steps.length - 1 ? (
-                    <Button 
-                      variant="contained" 
+                    <Button
+                      variant="contained"
                       onClick={() => handlePlaceOrder()}
-                      disabled={!isStepValid(activeStep) || placingOrder} 
+                      disabled={!isStepValid(activeStep) || placingOrder}
                       fullWidth
                       startIcon={placingOrder ? <Spinner size={20} color="inherit" /> : null}
                     >
                       {placingOrder ? 'Placing Order...' : 'Place Order'}
                     </Button>
                   ) : (
-                    <Button 
-                      variant="contained" 
-                      onClick={handleNext} 
-                      disabled={!isStepValid(activeStep) || checkingDistance} 
+                    <Button
+                      variant="contained"
+                      onClick={handleNext}
+                      disabled={!isStepValid(activeStep) || checkingDistance}
                       fullWidth
                     >
                       {checkingDistance ? <Spinner size={24} color="inherit" /> : 'Next'}
@@ -1719,10 +1716,10 @@ const CheckoutPage: React.FC = () => {
               <Alert severity="info" sx={{ mb: 2 }}>
                 Please sign in to your account to continue.
               </Alert>
-              <Button 
-                variant="contained" 
-                fullWidth 
-                sx={{ mt: 2 }} 
+              <Button
+                variant="contained"
+                fullWidth
+                sx={{ mt: 2 }}
                 onClick={() => handleAuthSuccess({ firstName: 'Guest', lastName: 'User' })}
               >
                 Sign In (Demo)
@@ -1731,7 +1728,7 @@ const CheckoutPage: React.FC = () => {
           )}
         </DialogContent>
       </Dialog>
-      
+
       <Backdrop
         sx={{ color: '#fff', zIndex: (theme) => theme.zIndex.drawer + 1, flexDirection: 'column', gap: 2 }}
         open={placingOrder}
@@ -1754,8 +1751,8 @@ const CheckoutPage: React.FC = () => {
         }}
       >
         <DialogContent sx={{ textAlign: 'center', p: 4 }}>
-          <Box sx={{ 
-            bgcolor: alpha(theme.palette.warning.main, 0.1), 
+          <Box sx={{
+            bgcolor: alpha(theme.palette.warning.main, 0.1),
             color: 'warning.main',
             width: 80,
             height: 80,
@@ -1772,10 +1769,10 @@ const CheckoutPage: React.FC = () => {
             Out of Delivery Range
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 4, lineHeight: 1.6 }}>
-            Unfortunately, this address is outside our standard 15-mile delivery zone. 
+            Unfortunately, this address is outside our standard 15-mile delivery zone.
             Uber and DoorDash are unable to service this distance.
           </Typography>
-          
+
           <Stack spacing={2}>
             <Button
               variant="contained"

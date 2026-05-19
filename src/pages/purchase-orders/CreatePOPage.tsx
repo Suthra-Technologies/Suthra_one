@@ -656,10 +656,10 @@ const CreatePOPage: React.FC = () => {
             }}>
                 {icon}
             </Box>
-            <Typography 
-                variant="body1" 
-                fontWeight={900} 
-                sx={{ 
+            <Typography
+                variant="body1"
+                fontWeight={900}
+                sx={{
                     fontSize: { xs: '0.9rem', md: '1.25rem' },
                     letterSpacing: '-0.02em',
                     color: 'text.primary',
@@ -671,6 +671,58 @@ const CreatePOPage: React.FC = () => {
             </Typography>
         </Stack>
     );
+
+    <Paper sx={{
+        p: { xs: 2.5, md: 4 },
+        borderRadius: { xs: 4, md: 5 },
+        boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+        maxWidth: { xs: 500, md: 'none' },
+        mx: { xs: 'auto', md: 0 },
+        width: '100%'
+    }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: isMobile ? 1.5 : 3, flexWrap: 'nowrap', gap: 1 }}>
+            <SectionHeader icon={<DetailsIcon />} title="Category" sx={{ mb: 0 }} />
+
+            <Button
+                component="label"
+                variant="contained"
+                color="secondary"
+                disabled={extracting}
+                startIcon={extracting ? <CircularProgress size={16} color="inherit" /> : <AutoAwesomeIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />}
+                sx={{
+                    borderRadius: 2,
+                    px: { xs: 1.5, sm: 3 },
+                    py: { xs: 0.5, sm: 1 },
+                    fontSize: { xs: '0.7rem', sm: '0.875rem' },
+                    minWidth: 'auto',
+                    whiteSpace: 'nowrap',
+                    background: 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)',
+                    boxShadow: '0 4px 14px 0 rgba(139,92,246,0.2)',
+                    textTransform: 'none',
+                    height: { xs: 32, md: 40 }
+                }}
+            >
+                {extracting ? '...' : (isMobile ? 'AI Extract' : 'AI Invoice Extraction')}
+                <input type="file" hidden accept="image/*,application/pdf,.doc,.docx" onChange={handleExtractInvoice} />
+            </Button>
+        </Box>
+        <Grid container spacing={isMobile ? 1.5 : 3}>
+            <Grid item xs={12}>
+                <TextField
+                    select
+                    fullWidth
+                    size={isMobile ? "small" : "medium"}
+                    label="Primary Category"
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    SelectProps={{
+                        MenuProps: { PaperProps: { sx: { borderRadius: 3 } } },
+                        sx: { fontSize: isMobile ? '0.875rem' : '1rem' }
+                    }}
+                />
+            </Grid>
+        </Grid>
+    </Paper>
 
     // --- Dynamic UI Logic ---
     const isSalary = formData.category === 'salaries';
@@ -686,9 +738,9 @@ const CreatePOPage: React.FC = () => {
     }
 
     return (
-        <Box sx={{ 
-            p: { xs: 1.5, md: 4 }, 
-            maxWidth: 1400, 
+        <Box sx={{
+            p: { xs: 1.5, md: 4 },
+            maxWidth: 1400,
             mx: 'auto',
             minHeight: '100vh',
             bgcolor: '#f9fafb',
@@ -728,12 +780,36 @@ const CreatePOPage: React.FC = () => {
                 <Grid item xs={12} md={12}>
                     <Stack spacing={isMobile ? 2 : 4} alignItems={isMobile ? "center" : "stretch"}>
                         {/* 1. Transaction Type & Category */}
-                   
+                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', width: '100%', mb: 0 }}>
+                            <Button
+                                component="label"
+                                variant="contained"
+                                color="secondary"
+                                disabled={extracting}
+                                startIcon={extracting ? <CircularProgress size={16} color="inherit" /> : <AutoAwesomeIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />}
+                                sx={{
+                                    borderRadius: 2,
+                                    px: { xs: 1.5, sm: 3 },
+                                    py: { xs: 0.5, sm: 1 },
+                                    fontSize: { xs: '0.7rem', sm: '0.875rem' },
+                                    minWidth: 'auto',
+                                    whiteSpace: 'nowrap',
+                                    background: 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)',
+                                    boxShadow: '0 4px 14px 0 rgba(139,92,246,0.2)',
+                                    textTransform: 'none',
+                                    height: { xs: 32, md: 40 }
+                                }}
+                            >
+                                {extracting ? '...' : (isMobile ? 'AI Extract' : 'AI Invoice Extraction')}
+                                <input type="file" hidden accept="image/*,application/pdf,.doc,.docx" onChange={handleExtractInvoice} />
+                            </Button>
+                        </Box>
+
 
                         {/* 2. Specialized Entity Selection */}
-                        <Paper sx={{ 
-                            p: { xs: 2.5, md: 4 }, 
-                            borderRadius: { xs: 4, md: 5 }, 
+                        <Paper sx={{
+                            p: { xs: 2.5, md: 4 },
+                            borderRadius: { xs: 4, md: 5 },
                             boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
                             maxWidth: { xs: 500, md: 'none' },
                             mx: { xs: 'auto', md: 0 },
@@ -844,11 +920,11 @@ const CreatePOPage: React.FC = () => {
                                                 }
                                             />
                                             {formData.vendor.name && !selectedVendor && (
-                                                <IconButton 
+                                                <IconButton
                                                     onClick={handleCreateVendor}
                                                     size="small"
-                                                    sx={{ 
-                                                        bgcolor: alpha(theme.palette.warning.main, 0.1), 
+                                                    sx={{
+                                                        bgcolor: alpha(theme.palette.warning.main, 0.1),
                                                         color: theme.palette.warning.dark,
                                                         borderRadius: 1.5,
                                                         p: 1
@@ -919,20 +995,20 @@ const CreatePOPage: React.FC = () => {
                                                 label="Email"
                                                 value={formData.vendor.email}
                                                 onChange={(e) => handleVendorChange('email', e.target.value)}
-                                                sx={{ 
+                                                sx={{
                                                     display: { xs: isMobile ? 'none' : 'block', sm: 'block' },
-                                                    '& .MuiInputLabel-root': { fontSize: isMobile ? '0.8rem' : '1rem' } 
+                                                    '& .MuiInputLabel-root': { fontSize: isMobile ? '0.8rem' : '1rem' }
                                                 }}
                                             />
                                             {isMobile && (
-                                                 <TextField
-                                                 fullWidth
-                                                 size="small"
-                                                 label="Address"
-                                                 value={formData.vendor.address}
-                                                 onChange={(e) => handleVendorChange('address', e.target.value)}
-                                                 sx={{ '& .MuiInputLabel-root': { fontSize: '0.8rem' } }}
-                                             />
+                                                <TextField
+                                                    fullWidth
+                                                    size="small"
+                                                    label="Address"
+                                                    value={formData.vendor.address}
+                                                    onChange={(e) => handleVendorChange('address', e.target.value)}
+                                                    sx={{ '& .MuiInputLabel-root': { fontSize: '0.8rem' } }}
+                                                />
                                             )}
                                         </Grid>
                                         {!isMobile && (
@@ -950,9 +1026,9 @@ const CreatePOPage: React.FC = () => {
                                 )}
                             </Grid>
                         </Paper>                        {/* 3. Dynamic Items Table */}
-                        <Paper sx={{ 
-                            p: { xs: 2, md: 4 }, 
-                            borderRadius: { xs: 4, md: 5 }, 
+                        <Paper sx={{
+                            p: { xs: 2, md: 4 },
+                            borderRadius: { xs: 4, md: 5 },
                             boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
                             maxWidth: { xs: 500, md: 'none' },
                             mx: { xs: 'auto', md: 0 },
@@ -1087,8 +1163,8 @@ const CreatePOPage: React.FC = () => {
                                                                 <Chip label="MATCHED" size="small" color="success" variant="outlined" sx={{ fontSize: '0.6rem', height: 16, fontWeight: 800 }} />
                                                             )}
                                                             {isInventory && !item.inventoryItem && item.description && (
-                                                                <Button 
-                                                                    size="small" 
+                                                                <Button
+                                                                    size="small"
                                                                     onClick={() => handleCreateInventoryItem(index)}
                                                                     sx={{ fontSize: '0.6rem', height: 20, p: 0, textTransform: 'none', minWidth: 'auto', color: 'orange' }}
                                                                 >
@@ -1148,8 +1224,8 @@ const CreatePOPage: React.FC = () => {
                                                                             <Chip label="MATCHED" size="small" color="success" variant="outlined" sx={{ fontSize: '0.6rem', height: 16, fontWeight: 800 }} />
                                                                         )}
                                                                         {!item.inventoryItem && item.description && (
-                                                                            <Button 
-                                                                                size="small" 
+                                                                            <Button
+                                                                                size="small"
                                                                                 onClick={() => handleCreateInventoryItem(index)}
                                                                                 sx={{ fontSize: '0.65rem', height: 20, p: 0, textTransform: 'none', minWidth: 'auto', color: 'orange', fontWeight: 'bold' }}
                                                                             >
@@ -1190,12 +1266,12 @@ const CreatePOPage: React.FC = () => {
                         {/* 4. Financial Summary + Settlement */}
                         <Grid container spacing={isMobile ? 0 : 4} justifyContent="center" sx={{ width: '100%', m: 0 }}>
                             <Grid item xs={12} md={8} sx={{ display: 'flex', justifyContent: 'center' }}>
-                                <Paper sx={{ 
-                                    p: { xs: 2.5, md: 4 }, 
-                                    borderRadius: { xs: 4, md: 5 }, 
-                                    bgcolor: '#111827', 
-                                    color: 'white', 
-                                    boxShadow: '0 12px 40px rgba(0,0,0,0.15)', 
+                                <Paper sx={{
+                                    p: { xs: 2.5, md: 4 },
+                                    borderRadius: { xs: 4, md: 5 },
+                                    bgcolor: '#111827',
+                                    color: 'white',
+                                    boxShadow: '0 12px 40px rgba(0,0,0,0.15)',
                                     height: '100%',
                                     maxWidth: { xs: 500, md: 'none' },
                                     mx: { xs: 'auto', md: 0 },
@@ -1256,11 +1332,11 @@ const CreatePOPage: React.FC = () => {
                                 </Paper>
                             </Grid>
                             <Grid item xs={12} md={4} sx={{ display: 'flex', justifyContent: 'center' }}>
-                                <Paper sx={{ 
-                                    p: { xs: 2.5, md: 4 }, 
-                                    borderRadius: { xs: 4, md: 5 }, 
-                                    border: '1px solid', 
-                                    borderColor: 'divider', 
+                                <Paper sx={{
+                                    p: { xs: 2.5, md: 4 },
+                                    borderRadius: { xs: 4, md: 5 },
+                                    border: '1px solid',
+                                    borderColor: 'divider',
                                     height: '100%',
                                     boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
                                     maxWidth: { xs: 500, md: 'none' },
@@ -1295,7 +1371,7 @@ const CreatePOPage: React.FC = () => {
                         </Grid>
 
                         {/* 5. Evidence & Notes */}
-                                                <Grid container spacing={isMobile ? 0 : 4} justifyContent="center" sx={{ width: '100%', m: 0 }}>
+                        <Grid container spacing={isMobile ? 0 : 4} justifyContent="center" sx={{ width: '100%', m: 0 }}>
 
                             <Grid item xs={12} sm={6} sx={{ display: 'flex', justifyContent: 'center' }}>
                                 <Paper sx={{
@@ -1420,14 +1496,14 @@ const CreatePOPage: React.FC = () => {
                 gap: 2,
                 bgcolor: 'transparent'
             }}>
-                <Button 
-                    variant="outlined" 
+                <Button
+                    variant="outlined"
                     fullWidth={isMobile}
                     onClick={() => navigate(getRelativePath('/purchase-orders'))}
-                    sx={{ 
-                        borderRadius: 2.5, 
-                        px: 4, 
-                        py: 1.5, 
+                    sx={{
+                        borderRadius: 2.5,
+                        px: 4,
+                        py: 1.5,
                         fontWeight: 700,
                         color: 'text.secondary',
                         borderColor: 'divider',
@@ -1439,17 +1515,17 @@ const CreatePOPage: React.FC = () => {
                 >
                     Cancel
                 </Button>
-                <Button 
-                    variant="contained" 
+                <Button
+                    variant="contained"
                     color="primary"
                     fullWidth={isMobile}
                     onClick={() => handleSubmit('pending')}
                     disabled={loading}
                     startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
-                    sx={{ 
-                        borderRadius: 2.5, 
-                        px: 8, 
-                        py: 1.5, 
+                    sx={{
+                        borderRadius: 2.5,
+                        px: 8,
+                        py: 1.5,
                         fontWeight: 900,
                         fontSize: '1rem',
                         boxShadow: '0 8px 24px rgba(59, 130, 246, 0.35)',

@@ -181,6 +181,9 @@ export const ordersAPI = {
   getDeliveryQuote: (deliveryAddress: any, items: any[], tenantSlug: string) =>
     api.post('/public/orders/delivery-quote', { deliveryAddress, items }, { params: { tenantSlug } }),
 
+  calculatePublicTax: (data: any, tenantSlug: string) =>
+    api.post('/public/orders/calculate-tax', data, { params: { tenantSlug } }),
+
   // Filtering & search
   filter: (params: { status?: string; orderType?: string; search?: string; startDate?: string; endDate?: string; page?: number; limit?: number; isPreOrder?: boolean }) =>
     api.get('/orders/filter', { params }),
@@ -562,6 +565,12 @@ export const superAPI = {
 
   // Admin activity logs
   getAdminLogs: (params?: any) => api.get('/superadmin/admin-logs', { params }),
+
+  // Superadmin team management
+  listTeam: () => api.get('/superadmin/team'),
+  createTeamMember: (data: any) => api.post('/superadmin/team', data),
+  updateTeamMember: (id: string, data: any) => api.patch(`/superadmin/team/${id}`, data),
+  deleteTeamMember: (id: string) => api.delete(`/superadmin/team/${id}`),
 };
 
 export const publicDemoAPI = {
