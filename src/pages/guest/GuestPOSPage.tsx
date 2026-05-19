@@ -486,82 +486,170 @@ const GuestPOSPage: React.FC = () => {
     return (
         <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
             {/* Header */}
-            <AppBar position="sticky" color="default" elevation={1}>
-                <Toolbar>
-                    <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <MenuIcon color="primary" />
+            <AppBar 
+                position="sticky" 
+                sx={{ 
+                    background: 'rgba(255, 255, 255, 0.85)', 
+                    backdropFilter: 'blur(12px)', 
+                    borderBottom: '1px solid rgba(0,0,0,0.06)',
+                    boxShadow: 'none',
+                    top: 0,
+                    zIndex: 1100
+                }}
+            >
+                <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 2, sm: 3 } }}>
+                    <Typography 
+                        variant="h6" 
+                        component="div" 
+                        sx={{ 
+                            fontWeight: 900, 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1,
+                            color: '#1e293b',
+                            letterSpacing: '0.75px',
+                            fontFamily: '"Outfit", "Inter", sans-serif',
+                            fontSize: { xs: '1.05rem', sm: '1.25rem' }
+                        }}
+                    >
+                        <MenuIcon sx={{ color: 'primary.main', fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
                         {slug?.toUpperCase()}
+                        <Box component="span" sx={{ color: 'primary.main' }}>.</Box>
                     </Typography>
 
-                    <Button
-                        variant="outlined"
-                        color="primary"
-                        startIcon={<LoginIcon />}
-                        onClick={() => navigate(getRelativePath('/login'))}
-                        sx={{ mr: 2 }}
-                    >
-                        Login
-                    </Button>
+                    <Box display="flex" alignItems="center" gap={1}>
+                        <IconButton 
 
-                    <IconButton color="primary" onClick={() => setCartOpen(true)}>
-                        <Badge badgeContent={cart.length} color="error">
-                            <CartIcon />
-                        </Badge>
-                    </IconButton>
+                            onClick={() => setCartOpen(true)}
+                            sx={{ 
+                                bgcolor: 'rgba(79, 70, 229, 0.06)',
+                                color: 'primary.main',
+                                '&:hover': { bgcolor: 'rgba(79, 70, 229, 0.12)' },
+                                p: { xs: 0.75, sm: 1.25 }
+                            }}
+                        >
+                            <Badge badgeContent={cart.length} color="error" sx={{ '& .MuiBadge-badge': { fontWeight: 'bold', fontSize: '0.7rem' } }}>
+                                <CartIcon sx={{ fontSize: { xs: '1.15rem', sm: '1.4rem' } }} />
+                            </Badge>
+                        </IconButton>
+                    </Box>
                 </Toolbar>
             </AppBar>
 
             {/* Content */}
-            <Box sx={{ p: { xs: 2, md: 4 } }}>
+            <Box sx={{ p: { xs: 1.5, sm: 3 } }}>
                 {/* Categories */}
-                <Paper sx={{ mb: 3, p: 2, overflowX: 'auto', display: 'flex', gap: 1 }}>
-                    {categories.map(cat => (
-                        <Chip
-                            key={cat}
-                            label={cat}
-                            onClick={() => setSelectedCategory(cat)}
-                            color={selectedCategory === cat ? 'primary' : 'default'}
-                            variant={selectedCategory === cat ? 'filled' : 'outlined'}
-                        />
-                    ))}
-                </Paper>
+                <Box 
+                    sx={{ 
+                        mb: 2.5, 
+                        overflowX: 'auto', 
+                        display: 'flex', 
+                        gap: 1,
+                        pb: 0.75,
+                        scrollBehavior: 'smooth',
+                        scrollbarWidth: 'none',
+                        '&::-webkit-scrollbar': { display: 'none' },
+                    }}
+                >
+                    {categories.map(cat => {
+                        const isActive = selectedCategory === cat;
+                        return (
+                            <Chip
+                                key={cat}
+                                label={cat}
+                                onClick={() => setSelectedCategory(cat)}
+                                sx={{
+                                    fontWeight: 700,
+                                    fontSize: { xs: '0.75rem', sm: '0.85rem' },
+                                    px: { xs: 0.5, sm: 1.5 },
+                                    height: { xs: '28px', sm: '36px' },
+                                    borderRadius: '50px',
+                                    border: isActive ? 'none' : '1px solid rgba(0,0,0,0.06)',
+                                    background: isActive 
+                                        ? 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)' 
+                                        : '#ffffff',
+                                    color: isActive ? '#ffffff' : '#64748b',
+                                    boxShadow: isActive 
+                                        ? '0 4px 10px rgba(79, 70, 229, 0.25)' 
+                                        : '0 2px 4px rgba(0,0,0,0.01)',
+                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    cursor: 'pointer',
+                                    '&:hover': {
+                                        background: isActive 
+                                            ? 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)' 
+                                            : '#f8fafc',
+                                        transform: 'translateY(-1px)',
+                                    },
+                                    '&:active': {
+                                        transform: 'scale(0.95)'
+                                    }
+                                }}
+                            />
+                        );
+                    })}
+                </Box>
 
                 {loading ? (
                     <Typography align="center" sx={{ mt: 4 }}>Loading menu...</Typography>
                 ) : (
-                    <Grid container spacing={3}>
+                    <Grid container spacing={{ xs: 1.5, sm: 3 }}>
                         {filteredItems.map(item => (
-                            <Grid item xs={12} sm={6} md={4} lg={3} key={item._id}>
-                                <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                            <Grid item xs={6} sm={6} md={4} lg={3} key={item._id}>
+                                <Card 
+                                    sx={{ 
+                                        height: '100%', 
+                                        display: 'flex', 
+                                        flexDirection: 'column', 
+                                        borderRadius: { xs: '12px', sm: '18px' },
+                                        border: '1px solid rgba(0, 0, 0, 0.04)',
+                                        boxShadow: '0 4px 16px rgba(0,0,0,0.02)',
+                                        overflow: 'hidden',
+                                        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                        '&:hover': { 
+                                            transform: 'translateY(-5px)', 
+                                            boxShadow: '0 10px 24px rgba(0,0,0,0.06)',
+                                            borderColor: 'rgba(79, 70, 229, 0.12)'
+                                        },
+                                        '&:hover img': {
+                                            transform: 'scale(1.06)'
+                                        }
+                                    }}
+                                >
                                     {item.image ? (
-                                        <CardMedia
-                                            component="img"
-                                            height="180"
-                                            image={item.image}
-                                            alt={item.name}
-                                            sx={{ width: '100%', objectFit: 'cover' }}
-                                        />
+                                        <Box sx={{ overflow: 'hidden', position: 'relative' }}>
+                                            <CardMedia
+                                                component="img"
+                                                image={item.image}
+                                                alt={item.name}
+                                                sx={{ 
+                                                    width: '100%', 
+                                                    objectFit: 'cover', 
+                                                    height: { xs: 120, sm: 180 },
+                                                    transition: 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+                                                }}
+                                            />
+                                        </Box>
                                     ) : (
                                         <Box
                                             sx={{
-                                                height: 180,
+                                                height: { xs: 120, sm: 180 },
                                                 display: 'flex',
                                                 flexDirection: 'column',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
-                                                bgcolor: 'grey.100',
+                                                bgcolor: 'grey.50',
                                                 color: 'text.disabled',
                                                 gap: 1,
                                                 flexShrink: 0,
                                             }}
                                         >
-                                            <MenuIcon sx={{ fontSize: 48, opacity: 0.4 }} />
-                                            <Typography variant="caption" color="text.disabled">
+                                            <MenuIcon sx={{ fontSize: { xs: 36, sm: 48 }, opacity: 0.25 }} />
+                                            <Typography variant="caption" color="text.disabled" sx={{ fontSize: { xs: '0.6rem', sm: '0.75rem' }, fontWeight: 600, letterSpacing: '0.5px' }}>
                                                 {typeof item.category === 'string' ? item.category : item.category?.name || 'Food Item'}
                                             </Typography>
                                         </Box>
                                     )}
-                                    <CardContent sx={{ flexGrow: 1 }}>
+                                    <CardContent sx={{ flexGrow: 1, p: { xs: 1.25, sm: 2 } }}>
                                         {(() => {
                                             const getBestCouponForItem = (itemId: string) => {
                                                 if (!availableCoupons || availableCoupons.length === 0) return null;
@@ -596,25 +684,67 @@ const GuestPOSPage: React.FC = () => {
                                                     : `${formatCurrency(coupon.discountValue)} OFF`;
 
                                                 return (
-                                                    <Box sx={{ mb: 1.5, p: 1, bgcolor: '#fff3e0', borderRadius: 1, border: '1px dashed #ff9800' }}>
-                                                        <Typography variant="subtitle2" color="#e65100" fontWeight="bold">
-                                                            {discountText} • Use: {coupon.code}
+                                                    <Box 
+                                                        sx={{ 
+                                                            mb: { xs: 0.75, sm: 1.5 }, 
+                                                            p: { xs: '4px 8px', sm: '8px 12px' }, 
+                                                            bgcolor: 'rgba(255, 107, 53, 0.05)', 
+                                                            borderRadius: '8px', 
+                                                            border: '1px dashed rgba(255, 107, 53, 0.35)',
+                                                            display: 'flex',
+                                                            flexDirection: 'column',
+                                                            gap: 0.25
+                                                        }}
+                                                    >
+                                                        <Typography 
+                                                            variant="subtitle2" 
+                                                            color="#d84315" 
+                                                            fontWeight={800} 
+                                                            sx={{ 
+                                                                fontSize: { xs: '0.62rem', sm: '0.85rem' },
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: 0.5
+                                                            }}
+                                                        >
+                                                            🏷️ {discountText} • {coupon.code}
                                                         </Typography>
-                                                        <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5, fontSize: '0.7rem' }}>
+                                                        <Typography variant="caption" display="block" color="text.secondary" sx={{ fontSize: { xs: '0.52rem', sm: '0.68rem' }, fontWeight: 500 }}>
                                                             {coupon.minBillAmount ? `Min Order: ${formatCurrency(coupon.minBillAmount)}` : 'No Min Order'}
-                                                            {coupon.validTo ? ` | Exp: ${format(new Date(coupon.validTo), 'MM/dd/yy')}` : ''}
                                                         </Typography>
                                                     </Box>
                                                 );
                                             }
                                             return null;
                                         })()}
-                                        <Typography variant="h6" gutterBottom>{item.name}</Typography>
+                                        <Typography 
+                                            variant="h6" 
+                                            gutterBottom
+                                            sx={{ 
+                                                fontSize: { xs: '0.78rem', sm: '1.15rem' }, 
+                                                fontWeight: 'bold',
+                                                minHeight: { xs: '32px', sm: 'auto' },
+                                                overflow: 'hidden',
+                                                display: '-webkit-box',
+                                                WebkitLineClamp: 2,
+                                                WebkitBoxOrient: 'vertical',
+                                                color: '#1e293b'
+                                            }}
+                                        >
+                                            {item.name}
+                                        </Typography>
                                         {/* <Typography variant="body2" color="text.secondary" paragraph>
                                             {item.description}
                                         </Typography> */}
                                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 'auto' }}>
-                                            <Typography variant="h6" color="primary">
+                                            <Typography 
+                                                variant="h6" 
+                                                color="primary"
+                                                sx={{ 
+                                                    fontSize: { xs: '0.78rem', sm: '1.15rem' }, 
+                                                    fontWeight: 800 
+                                                }}
+                                            >
                                                 {formatCurrency(item.price)}
                                             </Typography>
                                             {(() => {
@@ -625,35 +755,60 @@ const GuestPOSPage: React.FC = () => {
                                                             display: 'flex',
                                                             alignItems: 'center',
                                                             bgcolor: 'primary.main',
+                                                            backgroundImage: 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)',
                                                             color: 'white',
-                                                            borderRadius: 1,
-                                                            boxShadow: 2
+                                                            borderRadius: '50px',
+                                                            boxShadow: '0 4px 10px rgba(79, 70, 229, 0.25)',
+                                                            p: '2px'
                                                         }}
                                                     >
                                                         <IconButton
                                                             size="small"
                                                             onClick={() => removeFromCart(item._id)}
-                                                            sx={{ color: 'inherit', p: 1 }}
+                                                            sx={{ 
+                                                                color: 'white', 
+                                                                p: { xs: 0.5, sm: 0.75 },
+                                                                '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' }
+                                                            }}
                                                         >
-                                                            <RemoveIcon fontSize="small" />
+                                                            <RemoveIcon fontSize="small" sx={{ fontSize: { xs: '0.8rem', sm: '1rem' } }} />
                                                         </IconButton>
-                                                        <Typography fontWeight="bold" sx={{ minWidth: 20, textAlign: 'center', userSelect: 'none' }}>
+                                                        <Typography fontWeight="bold" sx={{ minWidth: { xs: 14, sm: 20 }, textAlign: 'center', userSelect: 'none', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
                                                             {cartItem.quantity}
                                                         </Typography>
                                                         <IconButton
                                                             size="small"
                                                             onClick={() => addToCart(item)}
-                                                            sx={{ color: 'inherit', p: 1 }}
+                                                            sx={{ 
+                                                                color: 'white', 
+                                                                p: { xs: 0.5, sm: 0.75 },
+                                                                '&:hover': { bgcolor: 'rgba(255,255,255,0.15)' }
+                                                            }}
                                                         >
-                                                            <AddIcon fontSize="small" />
+                                                            <AddIcon fontSize="small" sx={{ fontSize: { xs: '0.8rem', sm: '1rem' } }} />
                                                         </IconButton>
                                                     </Box>
                                                 ) : (
                                                     <Button
                                                         variant="contained"
                                                         size="small"
-                                                        startIcon={<AddIcon />}
+                                                        startIcon={<AddIcon sx={{ fontSize: { xs: '0.9rem !important', sm: '1.15rem !important' }, mr: { xs: 0.25, sm: 0.5 } }} />}
                                                         onClick={() => addToCart(item)}
+                                                        sx={{
+                                                            px: { xs: 1.25, sm: 2.25 },
+                                                            py: { xs: 0.5, sm: 0.75 },
+                                                            fontSize: { xs: '0.72rem', sm: '0.85rem' },
+                                                            fontWeight: 700,
+                                                            textTransform: 'none',
+                                                            borderRadius: '50px',
+                                                            background: 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)',
+                                                            boxShadow: '0 4px 10px rgba(79, 70, 229, 0.15)',
+                                                            minWidth: { xs: '55px', sm: '80px' },
+                                                            '&:hover': {
+                                                                background: 'linear-gradient(135deg, #4338ca 0%, #2563eb 100%)',
+                                                                boxShadow: '0 6px 14px rgba(79, 70, 229, 0.25)',
+                                                            }
+                                                        }}
                                                     >
                                                         Add
                                                     </Button>

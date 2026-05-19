@@ -8,11 +8,25 @@ import { Capacitor } from '@capacitor/core';
 const envApiBase = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
 const brandApiBase = (BRAND_CONFIG.apiBaseUrl as string | undefined)?.trim();
 
-const rawApiBase =
+// Smart Self-Healing: If running on a live server but the configured/compiled URL points to local loopbacks,
+// dynamically switch to the active domain's origin so requests succeed automatically.
+const getHealedUrl = (url: string) => {
+  if (typeof window !== 'undefined' && window.location) {
+    const host = window.location.hostname;
+    const isLocal = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.localhost');
+    if (!isLocal && (url.includes('localhost') || url.includes('127.0.0.1'))) {
+      return window.location.origin;
+    }
+  }
+  return url;
+};
+
+const rawApiBase = getHealedUrl(
   envApiBase ||
   brandApiBase ||
   (typeof window !== 'undefined' ? window.location.origin : '') ||
-  'http://localhost:5006';
+  'http://localhost:5006'
+);
 
 // Ensure we append /api exactly once, even if env already includes /api
 const normalizedBase = rawApiBase
@@ -551,6 +565,12 @@ export const superAPI = {
 
   // Admin activity logs
   getAdminLogs: (params?: any) => api.get('/superadmin/admin-logs', { params }),
+
+  // Superadmin team management
+  listTeam: () => api.get('/superadmin/team'),
+  createTeamMember: (data: any) => api.post('/superadmin/team', data),
+  updateTeamMember: (id: string, data: any) => api.patch(`/superadmin/team/${id}`, data),
+  deleteTeamMember: (id: string) => api.delete(`/superadmin/team/${id}`),
 };
 
 export const publicDemoAPI = {
