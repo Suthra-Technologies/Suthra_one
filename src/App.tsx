@@ -185,7 +185,7 @@ const MobileBackHandler: React.FC = () => {
       listenerHandle = await AppPlugin.addListener('backButton', ({ canGoBack }: { canGoBack: boolean }) => {
         const currentPath = location.pathname;
         const storedTenantSlug = localStorage.getItem('tenantSlug');
-        const isAuthScreen = ['/login', '/reset-password', '/register'].some((path) => currentPath === path || currentPath.startsWith(`${path}/`));
+        const isAuthScreen = ['/login', '/reset-password', '/register', '/customer-register'].some((path) => currentPath === path || currentPath.startsWith(`${path}/`));
         const defaultPath = storedTenantSlug ? `/${storedTenantSlug}/dashboard` : '/dashboard';
 
         // If we have browser history, go back within app.
@@ -242,7 +242,8 @@ const AppRoutes: React.FC = () => {
       <Route path="/reschedule-demo/:token" element={<RescheduleDemoPage />} />
       <Route path="/login" element={hasStoredSession ? <Navigate to={defaultAuthedPath} replace /> : <LoginPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
-      <Route path="/register" element={<RestaurantRegisterPage />} />
+      {!hostnameSlug && <Route path="/register" element={<RestaurantRegisterPage />} />}
+      <Route path="/customer-register" element={<CustomerRegisterPage />} />
       <Route path="/registration-success" element={<SubscriptionSuccess />} />
       <Route path="/registration-failed" element={<SubscriptionCancel />} />
 

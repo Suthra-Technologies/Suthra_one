@@ -1098,15 +1098,33 @@ const CateringManagementPage = () => {
                                                                             </Grid>
                                                                         )}
                                                                         <Grid item xs={6} sm={hasTrays ? 3 : 4}>
-                                                                            <TextField label="Quantity*" type="number" size="small" fullWidth value={row.quantity} inputProps={{ min: 1 }} error={!row.quantity}
+                                                                            <TextField
+                                                                                select
+                                                                                label="Quantity*"
+                                                                                size="small"
+                                                                                fullWidth
+                                                                                value={row.quantity}
+                                                                                error={!row.quantity}
                                                                                 helperText={!row.quantity ? <Box component="span" sx={{ color: 'error.main', fontSize: '0.65rem' }}>* Required</Box> : ''}
                                                                                 onChange={(e) => {
-                                                                                    const val = e.target.value === '' ? '' : String(Math.max(1, parseInt(e.target.value) || 1));
+                                                                                    const val = e.target.value;
                                                                                     const newRows = [...config.trayRows];
                                                                                     newRows[idx] = { ...row, quantity: val };
                                                                                     setItemSelectorConfigs(prev => ({ ...prev, [item._id]: { ...config, trayRows: newRows } }));
                                                                                 }}
-                                                                            />
+                                                                                SelectProps={{
+                                                                                    displayEmpty: true
+                                                                                }}
+                                                                            >
+                                                                                <MenuItem value="" disabled>
+                                                                                    {/* <em>Select Qty</em> */}
+                                                                                </MenuItem>
+                                                                                {Array.from({ length: 100 }, (_, i) => i + 1).map((val) => (
+                                                                                    <MenuItem key={val} value={String(val)}>
+                                                                                        {val}
+                                                                                    </MenuItem>
+                                                                                ))}
+                                                                            </TextField>
                                                                         </Grid>
                                                                         <Grid item xs={12} sm={1} display="flex" justifyContent="center" pt={0.5}>
                                                                             <IconButton size="small" color="error" onClick={() => (config.trayRows.length > 1) ? handleRemoveItemRow(item._id, idx) : handleToggleItemSelection(item._id)}>
@@ -3210,14 +3228,19 @@ const CateringManagementPage = () => {
                                                     </Grid>
                                                     <Grid item xs={6} sm={2}>
                                                         <TextField
-                                                            label="Qty"
-                                                            type="number"
-                                                            size="small"
-                                                            fullWidth
-                                                            value={adminCustomItemQty}
-                                                            onChange={e => setAdminCustomItemQty(Math.max(1, parseInt(e.target.value) || 1))}
-                                                            inputProps={{ min: 1 }}
-                                                        />
+                                                             select
+                                                             label="Qty"
+                                                             size="small"
+                                                             fullWidth
+                                                             value={adminCustomItemQty}
+                                                             onChange={e => setAdminCustomItemQty(parseInt(e.target.value) || 1)}
+                                                         >
+                                                             {Array.from({ length: 100 }, (_, i) => i + 1).map((val) => (
+                                                                 <MenuItem key={val} value={val}>
+                                                                     {val}
+                                                                 </MenuItem>
+                                                             ))}
+                                                         </TextField>
                                                     </Grid>
                                                     <Grid item xs={6} sm={3}>
                                                         <TextField

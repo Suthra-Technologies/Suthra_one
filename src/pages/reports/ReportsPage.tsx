@@ -2423,7 +2423,9 @@ const ReportsPage: React.FC = () => {
                                                         />
                                                     ))}
                                                 </Pie>
-                                                <RechartsTooltip />
+                                                <RechartsTooltip 
+                                                    formatter={(value: any, name: any) => [formatCurrency(Number(value)), formatOrderType(String(name))]}
+                                                />
                                             </PieChart>
                                         </ResponsiveContainer>
                                     </Box>
