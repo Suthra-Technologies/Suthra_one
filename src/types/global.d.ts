@@ -34,3 +34,8 @@ declare interface Window {
     google?: any; // Google Identity Services
     AppleID?: any; // Apple Sign In
 }
+
+declare module "*.mpeg" {
+    const src: string;
+    export default src;
+}

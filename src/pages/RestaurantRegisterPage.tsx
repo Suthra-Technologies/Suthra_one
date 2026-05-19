@@ -79,8 +79,7 @@ const RestaurantRegisterPage: React.FC = () => {
         const res = await fetch(`${API_BASE}/superadmin/plans/public`);
         const data = await res.json();
 
-        // Filter to only show Monthly, Quarterly, and Special plans, excluding SMS plans
-        const targetPlanNames = ['monthly', 'quarterly', 'special'];
+        console.log("[Plans Lookup] Raw fetched plans from backend:", data);
         const finalPlans = (data || []).filter((plan: any) => {
           const nameLower = plan.name?.toLowerCase() || '';
           const intervalLower = plan.interval?.toLowerCase() || '';
@@ -88,10 +87,15 @@ const RestaurantRegisterPage: React.FC = () => {
           // STRICT EXCLUSION: If it contains 'sms' anywhere, reject it
           if (nameLower.includes('sms') || intervalLower.includes('sms')) return false;
 
-          // STRICT INCLUSION: Must contain one of the target names
-          return targetPlanNames.some(kw => nameLower.includes(kw));
+          // STRICT INCLUSION: Only show plans with monthly interval
+          const isMatch = intervalLower === 'monthly';
+          if (isMatch) {
+            console.log(`[Plans Lookup Match] Plan: "${plan.name}" has Interval: "${plan.interval}" (Matched Monthly Interval)`);
+          }
+          return isMatch;
         });
 
+        console.log("[Plans Lookup] Final filtered plans showing in registration UI:", finalPlans);
         setPlans(finalPlans);
         // We no longer auto-select a plan by default as per user request to make it optional
       } catch (err) {
