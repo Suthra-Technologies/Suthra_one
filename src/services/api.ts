@@ -167,6 +167,9 @@ export const ordersAPI = {
   getDeliveryQuote: (deliveryAddress: any, items: any[], tenantSlug: string) =>
     api.post('/public/orders/delivery-quote', { deliveryAddress, items }, { params: { tenantSlug } }),
 
+  calculatePublicTax: (data: any, tenantSlug: string) =>
+    api.post('/public/orders/calculate-tax', data, { params: { tenantSlug } }),
+
   // Filtering & search
   filter: (params: { status?: string; orderType?: string; search?: string; startDate?: string; endDate?: string; page?: number; limit?: number; isPreOrder?: boolean }) =>
     api.get('/orders/filter', { params }),

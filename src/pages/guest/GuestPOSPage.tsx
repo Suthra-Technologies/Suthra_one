@@ -82,6 +82,9 @@ const GuestPOSPage: React.FC = () => {
     const [couponCode, setCouponCode] = useState('');
     const [appliedCoupon, setAppliedCoupon] = useState<any>(null);
     const [paymentSettings, setPaymentSettings] = useState<any>(null);
+    const [restaurantSettings, setRestaurantSettings] = useState<any>(null);
+    const [taxDetails, setTaxDetails] = useState<any>(null);
+    const [isCalculatingTax, setIsCalculatingTax] = useState(false);
     const [showPayment, setShowPayment] = useState(false);
     const [successOrderNumber, setSuccessOrderNumber] = useState<string | null>(null);
     const [orderType, setOrderType] = useState<'global_dine_in' | 'global_takeaway' | 'delivery' | 'online_takeaway'>('global_dine_in');
@@ -103,6 +106,7 @@ const GuestPOSPage: React.FC = () => {
             ]);
             setAvailableCoupons(couponsRes.data);
             setPaymentSettings(settingsRes.data);
+            setRestaurantSettings(settingsRes.data?.restaurant || null);
 
             // Extract tax rate from settings
             if (settingsRes.data?.restaurant?.taxRate) {
@@ -158,6 +162,67 @@ const GuestPOSPage: React.FC = () => {
             setIsFetchingMore(false);
         }
     };
+
+    // Debounced Tax Calculation
+    useEffect(() => {
+        if (cart.length === 0) {
+            setTaxDetails(null);
+            return;
+        }
+
+        const timer = setTimeout(async () => {
+            if (!slug) return;
+            try {
+                setIsCalculatingTax(true);
+                const to_zip = restaurantSettings?.zipCode || restaurantSettings?.pincode || '30040';
+
+                // Compute discount amount for tax input
+                const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                let discountAmount = 0;
+                if (appliedCoupon) {
+                    let applicableSubtotal = subtotal;
+                    if (appliedCoupon.offerType === 'menu_item' && appliedCoupon.applicableItems?.length > 0) {
+                        applicableSubtotal = cart
+                            .filter(item => appliedCoupon.applicableItems.includes(item._id))
+                            .reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                    }
+                    if (applicableSubtotal > 0) {
+                        if (appliedCoupon.discountType === 'percentage') {
+                            discountAmount = (applicableSubtotal * appliedCoupon.discountValue) / 100;
+                        } else {
+                            discountAmount = Math.min(appliedCoupon.discountValue, applicableSubtotal);
+                        }
+                        if (appliedCoupon.maxDiscountAmount && discountAmount > appliedCoupon.maxDiscountAmount) {
+                            discountAmount = appliedCoupon.maxDiscountAmount;
+                        }
+                    }
+                }
+
+                const payload = {
+                    to_zip,
+                    discount: discountAmount,
+                    line_items: cart.map(item => ({
+                        itemId: item._id,
+                        quantity: item.quantity,
+                        price: item.price,
+                        discount: 0,
+                        name: item.name
+                    }))
+                };
+
+                const res = await ordersAPI.calculatePublicTax(payload, slug);
+                setTaxDetails(res.data || res);
+            } catch (err) {
+                console.error("[Tax] Dynamic calculation failed:", err);
+                // Fallback to null triggers standard percentage calculation
+                setTaxDetails(null);
+            } finally {
+                setIsCalculatingTax(false);
+            }
+        }, 800);
+
+        return () => clearTimeout(timer);
+    }, [cart, appliedCoupon, restaurantSettings, slug]);
 
     const addToCart = (item: MenuItem) => {
         const cartId = item._id;
@@ -241,10 +306,12 @@ const GuestPOSPage: React.FC = () => {
             }
         }
 
-        const gst = cart.reduce((sum, item) => {
-            const itemTaxRate = (item.taxRate !== undefined && item.taxRate !== null) ? item.taxRate : taxRate;
-            return sum + (item.price * item.quantity * (itemTaxRate / 100));
-        }, 0);
+        const gst = taxDetails
+            ? (taxDetails.taxAmount || taxDetails.amount_to_collect || taxDetails.total_tax || 0)
+            : cart.reduce((sum, item) => {
+                const itemTaxRate = (item.taxRate !== undefined && item.taxRate !== null) ? item.taxRate : taxRate;
+                return sum + (item.price * item.quantity * (itemTaxRate / 100));
+            }, 0);
 
         return { subtotal, discount: discountAmt, gst, total: subtotal - discountAmt + gst };
     };
@@ -281,7 +348,11 @@ const GuestPOSPage: React.FC = () => {
                 totalAmount: totals.total,
                 discount: totals.discount,
                 couponCode: appliedCoupon?.code,
-                tax: { rate: taxRate, amount: totals.gst },
+                tax: { 
+                    rate: taxDetails?.taxRate !== undefined ? Number((taxDetails.taxRate * 100).toFixed(2)) : taxRate, 
+                    amount: totals.gst,
+                    breakdown: taxDetails?.breakdown || taxDetails
+                },
                 tableNumber: orderType === 'global_dine_in' ? tableNumber : undefined,
                 notes: `Guest Order - ${orderType}${orderType === 'global_dine_in' && tableNumber ? ` - Table ${tableNumber}` : ''} - Paid via QR`,
                 source: 'website'
@@ -798,7 +869,7 @@ const GuestPOSPage: React.FC = () => {
                                     </Box>
                                 )}
                                 <Box display="flex" justifyContent="space-between" mb={1}>
-                                    <Typography>Tax ({taxRate}%)</Typography>
+                                    <Typography>Tax {taxDetails?.taxRate !== undefined ? `(${(taxDetails.taxRate * 100).toFixed(1)}%)` : `(${taxRate}%)`}</Typography>
                                     <Typography>{formatCurrency(calculateTotal().gst)}</Typography>
                                 </Box>
                                 <Box display="flex" justifyContent="space-between" mt={2}>
