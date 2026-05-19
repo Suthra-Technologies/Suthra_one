@@ -535,6 +535,12 @@ export const superAPI = {
 
   // Admin activity logs
   getAdminLogs: (params?: any) => api.get('/superadmin/admin-logs', { params }),
+
+  // Superadmin team management
+  listTeam: () => api.get('/superadmin/team'),
+  createTeamMember: (data: any) => api.post('/superadmin/team', data),
+  updateTeamMember: (id: string, data: any) => api.patch(`/superadmin/team/${id}`, data),
+  deleteTeamMember: (id: string) => api.delete(`/superadmin/team/${id}`),
 };
 
 export const publicDemoAPI = {

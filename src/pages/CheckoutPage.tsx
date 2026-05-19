@@ -55,7 +55,7 @@ import { useGuestCart } from '../context/GuestCartContext';
 import CustomerRegistration from '../components/auth/CustomerRegistration';
 import GooglePlacesAutocomplete from '../components/common/GooglePlacesAutocomplete';
 import { toast } from 'react-hot-toast';
-import { ordersAPI, authAPI } from '../services/api';
+import { ordersAPI, authAPI, settingsAPI } from '../services/api';
 import { isWithinDeliveryRadius, METERS_PER_MILE } from '../services/googleMapsService';
 
 

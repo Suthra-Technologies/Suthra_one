@@ -89,6 +89,8 @@ import PlansLogPage from './pages/superadmin/PlansLogPage';
 import DemoRequestsLogPage from './pages/superadmin/DemoRequestsLogPage';
 import TicketsLogPage from './pages/superadmin/TicketsLogPage';
 import AdminLogsPage from './pages/superadmin/AdminLogsPage';
+import SuperAdminSettingsPage from './pages/superadmin/SettingsPage';
+import SuperAdminTeamPage from './pages/superadmin/SuperAdminTeamPage';
 import VendorsPage from './pages/vendors/VendorsPage';
 
 import { SettingsProvider, useSettings } from './context/SettingsContext';
@@ -262,6 +264,8 @@ const AppRoutes: React.FC = () => {
           <Route path="/superadmin/logs/demo-requests" element={<DemoRequestsLogPage />} />
           <Route path="/superadmin/logs/tickets" element={<TicketsLogPage />} />
           <Route path="/superadmin/admin-logs" element={<AdminLogsPage />} />
+          <Route path="/superadmin/settings" element={<SuperAdminSettingsPage />} />
+          <Route path="/superadmin/team" element={<SuperAdminTeamPage />} />
         </Route>
       </Route>
 

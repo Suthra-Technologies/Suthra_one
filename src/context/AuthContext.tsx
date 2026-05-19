@@ -20,6 +20,9 @@ export interface JwtPayload {
   };
   availableTenants?: Array<{ slug: string; name: string }>; // Added field
 
+  permissions?: Array<{ module: string; actions: string[] }>;
+  isRootAdmin?: boolean;
+
   iat: number;
   exp: number;
   // Custom fields added by the backend token payload
@@ -166,9 +169,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
     localStorage.removeItem('availableTenants');
   };
 
-  const hasPermission = (_module: string, _action: string): boolean => {
+  const hasPermission = (module: string, action: string): boolean => {
+    if (!activeRole) return false;
     if (activeRole === 'admin') return true;
-    return true; // placeholder – extend as needed
+    if (activeRole === 'superadmin') {
+      if (user?.isRootAdmin) return true;
+      const perm = user?.permissions?.find(p => p.module === module);
+      if (!perm) return false;
+      return perm.actions.includes(action) || perm.actions.includes('full');
+    }
+    return true; // placeholder for other roles
   };
 
   const hasRole = (roles: string[]): boolean => {
