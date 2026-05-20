@@ -4150,42 +4150,10 @@ const SettingsPage: React.FC = () => {
                                             label={settings.delivery?.doordash?.enabled ? 'Enabled' : 'Disabled'}
                                         />
                                     </Stack>
-                                    <Divider sx={{ mb: 3 }} />
-                                    <Stack spacing={2.5}>
-                                        <TextField
-                                            fullWidth
-                                            label="Developer ID"
-                                            value={settings.delivery?.doordash?.developerId || ''}
-                                            onChange={(e) => handleDeliveryChange('doordash', 'developerId', e.target.value)}
-                                            placeholder="Your DoorDash Developer ID"
-                                        />
-                                        <TextField
-                                            fullWidth
-                                            label="Key ID"
-                                            value={settings.delivery?.doordash?.keyId || ''}
-                                            onChange={(e) => handleDeliveryChange('doordash', 'keyId', e.target.value)}
-                                            placeholder="DoorDash API Key ID"
-                                        />
-                                        <TextField
-                                            fullWidth
-                                            type="password"
-                                            label="Signing Secret"
-                                            value={settings.delivery?.doordash?.signingSecret || ''}
-                                            onChange={(e) => handleDeliveryChange('doordash', 'signingSecret', e.target.value)}
-                                            placeholder="DoorDash API Secret"
-                                        />
-                                        <Stack direction="row" spacing={2} alignItems="center">
-                                            <FormControlLabel
-                                                control={
-                                                    <Checkbox
-                                                        checked={settings.delivery?.doordash?.isSandbox || false}
-                                                        onChange={(e) => handleDeliveryChange('doordash', 'isSandbox', e.target.checked)}
-                                                    />
-                                                }
-                                                label="Use Sandbox Mode"
-                                            />
-                                        </Stack>
-                                    </Stack>
+                                    <Divider sx={{ mb: 2 }} />
+                                    <Typography variant="body2" color="text.secondary">
+                                        DoorDash Drive credentials are configured by your platform administrator. Toggle to enable or disable DoorDash delivery for your store.
+                                    </Typography>
                                     <Box sx={{ mt: 4, display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' } }}>
                                         <Button
                                             variant="contained"
@@ -4203,7 +4171,7 @@ const SettingsPage: React.FC = () => {
                                                 boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.25)}`
                                             }}
                                         >
-                                            Save DoorDash Settings
+                                            Save
                                         </Button>
                                     </Box>
                                 </Paper>
@@ -4213,7 +4181,7 @@ const SettingsPage: React.FC = () => {
                             <Grid size={{ xs: 12, md: 6 }}>
                                 <Paper variant="outlined" sx={{ p: 3, borderRadius: 4, height: '100%', borderColor: settings.delivery?.ubereats?.enabled ? 'primary.main' : 'divider', bgcolor: settings.delivery?.ubereats?.enabled ? alpha('#4F46E5', 0.02) : 'background.paper' }}>
                                     <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                                        <Typography variant="h6" fontWeight="bold">Uber Eats Direct</Typography>
+                                        <Typography variant="h6" fontWeight="bold">Uber Direct</Typography>
                                         <FormControlLabel
                                             control={
                                                 <Switch
@@ -4224,49 +4192,10 @@ const SettingsPage: React.FC = () => {
                                             label={settings.delivery?.ubereats?.enabled ? 'Enabled' : 'Disabled'}
                                         />
                                     </Stack>
-                                    <Divider sx={{ mb: 3 }} />
-                                    <Stack spacing={2.5}>
-                                        <TextField
-                                            fullWidth
-                                            label="Client ID"
-                                            value={settings.delivery?.ubereats?.clientId || ''}
-                                            onChange={(e) => handleDeliveryChange('ubereats', 'clientId', e.target.value)}
-                                            placeholder="Uber Eats Client ID"
-                                        />
-                                        <TextField
-                                            fullWidth
-                                            type="password"
-                                            label="Client Secret"
-                                            value={settings.delivery?.ubereats?.clientSecret || ''}
-                                            onChange={(e) => handleDeliveryChange('ubereats', 'clientSecret', e.target.value)}
-                                            placeholder="Uber Eats Client Secret"
-                                        />
-                                        <TextField
-                                            fullWidth
-                                            label="Customer ID"
-                                            value={settings.delivery?.ubereats?.customerId || ''}
-                                            onChange={(e) => handleDeliveryChange('ubereats', 'customerId', e.target.value)}
-                                            placeholder="Uber Eats Customer ID"
-                                        />
-                                        <TextField
-                                            fullWidth
-                                            label="Store ID"
-                                            value={settings.delivery?.ubereats?.storeId || ''}
-                                            onChange={(e) => handleDeliveryChange('ubereats', 'storeId', e.target.value)}
-                                            placeholder="Uber Eats Store ID for this restaurant"
-                                        />
-                                        <Stack direction="row" spacing={2} alignItems="center">
-                                            <FormControlLabel
-                                                control={
-                                                    <Checkbox
-                                                        checked={settings.delivery?.ubereats?.isSandbox || false}
-                                                        onChange={(e) => handleDeliveryChange('ubereats', 'isSandbox', e.target.checked)}
-                                                    />
-                                                }
-                                                label="Use Sandbox Mode"
-                                            />
-                                        </Stack>
-                                    </Stack>
+                                    <Divider sx={{ mb: 2 }} />
+                                    <Typography variant="body2" color="text.secondary">
+                                        Uber Direct credentials are configured by your platform administrator. Toggle to enable or disable Uber Direct delivery for your store.
+                                    </Typography>
                                     <Box sx={{ mt: 4, display: 'flex', justifyContent: { xs: 'center', md: 'flex-end' } }}>
                                         <Button
                                             variant="contained"
@@ -4284,7 +4213,7 @@ const SettingsPage: React.FC = () => {
                                                 boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.25)}`
                                             }}
                                         >
-                                            Save Uber Eats Settings
+                                            Save
                                         </Button>
                                     </Box>
                                 </Paper>

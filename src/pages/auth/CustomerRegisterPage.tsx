@@ -25,9 +25,11 @@ import { useAuth } from '../../context/AuthContext';
 import { authAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import logo from '../../assets/images/icons/logo.jpeg';
+import { getTenantSlugFromHostname } from '../../utils/tenant.utils';
 
 const CustomerRegisterPage: React.FC = () => {
-    const { slug } = useParams<{ slug: string }>();
+    const { slug: pathSlug } = useParams<{ slug: string }>();
+    const slug = pathSlug || getTenantSlugFromHostname();
     const navigate = useNavigate();
     const { login } = useAuth();
 
@@ -46,13 +48,26 @@ const CustomerRegisterPage: React.FC = () => {
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        if (name === 'phone') {
+            const numericValue = value.replace(/\D/g, '').slice(0, 10);
+            setFormData(prev => ({ ...prev, [name]: numericValue }));
+        } else {
+            setFormData(prev => ({ ...prev, [name]: value }));
+        }
         if (error) setError('');
     };
 
     const validateForm = () => {
-        if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
+        if (!formData.firstName || !formData.lastName || !formData.email || !formData.password || !formData.phone) {
             setError('Please fill in all required fields');
+            return false;
+        }
+        if (!slug) {
+            setError('Tenant context is missing. Please access this page through your restaurant\'s link.');
+            return false;
+        }
+        if (!/^\d{10}$/.test(formData.phone)) {
+            setError('Phone number must be exactly 10 digits');
             return false;
         }
         if (formData.password !== formData.confirmPassword) {
@@ -89,9 +104,9 @@ const CustomerRegisterPage: React.FC = () => {
                 });
 
                 if (loginRes.success) {
-                    navigate(`/${slug}/customer/order`);
+                    navigate(slug ? `/${slug}/customer/order` : "/customer/order");
                 } else {
-                    navigate(`/${slug}/login`);
+                    navigate(slug ? `/${slug}/login` : "/login");
                 }
             }
         } catch (err: any) {
@@ -185,11 +200,13 @@ const CustomerRegisterPage: React.FC = () => {
                         </Grid>
                         <Grid item xs={12}>
                             <TextField
+                                required
                                 fullWidth
                                 name="phone"
                                 label="Phone Number"
                                 value={formData.phone}
                                 onChange={handleChange}
+                                inputProps={{ maxLength: 10, inputMode: 'numeric', pattern: '[0-9]*' }}
                                 InputProps={{
                                     startAdornment: (
                                         <InputAdornment position="start">
@@ -250,7 +267,7 @@ const CustomerRegisterPage: React.FC = () => {
                         <Grid item>
                             <Typography variant="body2">
                                 Already have an account?{' '}
-                                <Link component={RouterLink} to={`/${slug}/login`} sx={{ fontWeight: 'bold' }}>
+                                <Link component={RouterLink} to={slug ? `/${slug}/login` : "/login"} sx={{ fontWeight: 'bold' }}>
                                     Sign In
                                 </Link>
                             </Typography>

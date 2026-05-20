@@ -181,6 +181,9 @@ export const ordersAPI = {
   getDeliveryQuote: (deliveryAddress: any, items: any[], tenantSlug: string) =>
     api.post('/public/orders/delivery-quote', { deliveryAddress, items }, { params: { tenantSlug } }),
 
+  calculatePublicTax: (data: any, tenantSlug: string) =>
+    api.post('/public/orders/calculate-tax', data, { params: { tenantSlug } }),
+
   // Filtering & search
   filter: (params: { status?: string; orderType?: string; search?: string; startDate?: string; endDate?: string; page?: number; limit?: number; isPreOrder?: boolean }) =>
     api.get('/orders/filter', { params }),
@@ -256,6 +259,7 @@ export const ubereatsAPI = {
   inviteMember: (organizationId: string, payload: any) => api.post(`/ubereats/organizations/${organizationId}/memberships/invite`, payload),
 
   // Business Locations
+  createBusinessLocation: (organizationId: string, payload: any) => api.post(`/ubereats/organizations/${organizationId}/business-locations`, payload),
   getBusinessLocations: (organizationId: string) => api.get(`/ubereats/organizations/${organizationId}/business-locations`),
   getBusinessLocation: (organizationId: string, businessLocationId: string) => api.get(`/ubereats/organizations/${organizationId}/business-locations/${businessLocationId}`),
   updateBusinessLocation: (organizationId: string, businessLocationId: string, payload: any) => api.patch(`/ubereats/organizations/${organizationId}/business-locations/${businessLocationId}`, payload),
@@ -560,6 +564,24 @@ export const superAPI = {
   // Stripe Connect
   updateTenantConnectAccount: (tenantId: string, payload: { stripeConnectAccountId: string; stripeConnectStatus?: string }) =>
     api.patch(`/superadmin/tenants/${tenantId}/connect-account`, payload),
+  onboardConnectAccount: (tenantId: string, returnUrl: string, refreshUrl: string) =>
+    api.post(`/superadmin/tenants/${tenantId}/connect-account/onboard`, { returnUrl, refreshUrl }),
+  getConnectAccountStatus: (tenantId: string) =>
+    api.get(`/superadmin/tenants/${tenantId}/connect-account/status`),
+  getConnectLoginLink: (tenantId: string) =>
+    api.get(`/superadmin/tenants/${tenantId}/connect-account/login-link`),
+  clearConnectAccount: (tenantId: string) =>
+    api.delete(`/superadmin/tenants/${tenantId}/connect-account`),
+
+  // Uber Direct location linking
+  linkUberPickupLocation: (tenantId: string, organizationId: string, businessLocationId: string) =>
+    api.post(`/superadmin/tenants/${tenantId}/uber-link-location`, { organizationId, businessLocationId }),
+
+  // Tenant delivery settings (credentials managed by superadmin)
+  getTenantDeliverySettings: (tenantId: string) =>
+    api.get(`/superadmin/tenants/${tenantId}/delivery-settings`),
+  updateTenantDeliverySettings: (tenantId: string, payload: any) =>
+    api.patch(`/superadmin/tenants/${tenantId}/delivery-settings`, payload),
 
   // Admin activity logs
   getAdminLogs: (params?: any) => api.get('/superadmin/admin-logs', { params }),
