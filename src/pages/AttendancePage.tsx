@@ -208,6 +208,7 @@ const AttendancePage: React.FC = () => {
     }, [fetchAttendance]);
 
     const handleManualSubmit = async () => {
+        if (submitting) return;
         if (!manualForm.userId || !manualForm.clockInTime) {
             toast.error('Staff member and Clock-in time are required');
             return;
@@ -271,6 +272,7 @@ const AttendancePage: React.FC = () => {
     };
 
     const handleEditSubmit = async () => {
+        if (editSubmitting) return;
         try {
             setEditSubmitting(true);
             await attendanceAPI.update(editForm.id, {

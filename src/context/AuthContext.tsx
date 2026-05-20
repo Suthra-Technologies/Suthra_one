@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import api from '../services/api';
 import { getTenantUrl } from '../utils/tenant.utils';
+import { toast } from 'react-hot-toast';
 
 // JWT payload shape
 export interface JwtPayload {
@@ -19,6 +20,9 @@ export interface JwtPayload {
     [key: string]: any
   };
   availableTenants?: Array<{ slug: string; name: string }>; // Added field
+
+  permissions?: Array<{ module: string; actions: string[] }>;
+  isRootAdmin?: boolean;
 
   iat: number;
   exp: number;
@@ -166,9 +170,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
     localStorage.removeItem('availableTenants');
   };
 
-  const hasPermission = (_module: string, _action: string): boolean => {
+  const hasPermission = (module: string, action: string): boolean => {
+    if (!activeRole) return false;
     if (activeRole === 'admin') return true;
-    return true; // placeholder – extend as needed
+    if (activeRole === 'superadmin') {
+      if (user?.isRootAdmin) return true;
+      const perm = user?.permissions?.find(p => p.module === module);
+      if (!perm) return false;
+      return perm.actions.includes(action) || perm.actions.includes('full');
+    }
+    return true; // placeholder for other roles
   };
 
   const hasRole = (roles: string[]): boolean => {
@@ -241,9 +252,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
         // Reload to ensure fresh start in new context with correct subdomain and token handover
         window.location.href = getTenantUrl(slug, '/dashboard', newToken);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to switch tenant', error);
-      alert('Failed to switch restaurant. Please try again.');
+      const message = error.response?.data?.message || 'Failed to switch restaurant. Please try again.';
+      toast.error(message);
       setIsLoading(false);
     }
   };

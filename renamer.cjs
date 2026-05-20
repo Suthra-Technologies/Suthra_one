@@ -15,7 +15,7 @@
  *  8. Updates iOS bundle id (project.pbxproj) and display name (Info.plist)
  *  9. Copies brand assets (icon, logo, splash) to Android + iOS native folders
  */
-const fs   = require('fs');
+const fs = require('fs');
 const path = require('path');
 
 const brand = process.argv[2];
@@ -26,7 +26,7 @@ if (!brand) {
 }
 
 const brandFolder = path.join(__dirname, 'brands', brand);
-const configPath  = path.join(brandFolder, 'config.json');
+const configPath = path.join(brandFolder, 'config.json');
 
 if (!fs.existsSync(configPath)) {
     console.error(`❌ Config not found for brand "${brand}" at:\n   ${configPath}`);
@@ -203,7 +203,7 @@ if (fs.existsSync(brandAssetsDir)) {
 
         iconTargets.forEach(dest => {
             const destPath = path.join(__dirname, dest);
-            const destDir  = path.dirname(destPath);
+            const destDir = path.dirname(destPath);
             if (fs.existsSync(destDir)) {
                 try {
                     fs.copyFileSync(iconSrcPath, destPath);
@@ -221,8 +221,8 @@ if (fs.existsSync(brandAssetsDir)) {
     // UI Logo (shown inside the React app)
     const logoFileName = fs.readdirSync(brandAssetsDir).find(f => /^logo\.(png|jpg|jpeg|webp)$/i.test(f));
     if (logoFileName) {
-        const logoSrc  = path.join(brandAssetsDir, logoFileName);
-        const logoDir  = path.join(__dirname, 'src', 'assets', 'images');
+        const logoSrc = path.join(brandAssetsDir, logoFileName);
+        const logoDir = path.join(__dirname, 'src', 'assets', 'images');
         const logoDest = path.join(logoDir, 'brand-logo.png');
         if (!fs.existsSync(logoDir)) fs.mkdirSync(logoDir, { recursive: true });
         fs.copyFileSync(logoSrc, logoDest);
@@ -237,9 +237,9 @@ if (fs.existsSync(brandAssetsDir)) {
     }
 
     if (splashFileName) {
-        const splashSrc  = path.join(brandAssetsDir, splashFileName);
+        const splashSrc = path.join(brandAssetsDir, splashFileName);
         const splashDest = path.join(__dirname, 'android/app/src/main/res/drawable/splash.png');
-        const splashDir  = path.dirname(splashDest);
+        const splashDir = path.dirname(splashDest);
         if (fs.existsSync(splashDir)) {
             fs.copyFileSync(splashSrc, splashDest);
             console.log(`   ✅ Splash screen → Android drawable`);

@@ -120,7 +120,6 @@ export const TenantRoutes = () => (
         <Route element={<RequireFeature feature="attendance" />}>
           <Route path="attendance" element={<AttendancePage />} />
         </Route>
-        <Route path="bookings" element={<BookingsAdminPage />} />
         <Route path="customise-screens" element={<CustomiseScreensPage />} />
         <Route path="service-usage" element={<ServiceUsagePage />} />
         <Route path="audit-logs" element={<AuditLogsPage />} />

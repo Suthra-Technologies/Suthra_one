@@ -361,6 +361,7 @@ const PromoCodePage: React.FC = () => {
     };
 
     const handleSave = async () => {
+        if (formLoading) return;
         if (!formData.code || !formData.name || !formData.discountValue) {
             toast.error('Please fill in required fields');
             return;
@@ -395,8 +396,10 @@ const PromoCodePage: React.FC = () => {
     };
 
     const confirmDelete = async () => {
+        if (formLoading) return;
         if (!promoToDelete) return;
         try {
+            setFormLoading(true);
             await promosAPI.delete(promoToDelete._id);
             toast.success('Promo code deleted');
             setOpenDeleteDialog(false);
@@ -404,6 +407,8 @@ const PromoCodePage: React.FC = () => {
             fetchPromos();
         } catch (error) {
             toast.error('Failed to delete promo code');
+        } finally {
+            setFormLoading(false);
         }
     };
 
@@ -448,6 +453,7 @@ const PromoCodePage: React.FC = () => {
     };
 
     const handleSendBulkEmail = async () => {
+        if (emailLoading) return;
         if (emailData.selectedCustomers.length === 0) {
             toast.error('Please select at least one customer');
             return;
@@ -487,6 +493,7 @@ const PromoCodePage: React.FC = () => {
     };
 
     const handleSendSmsBroadcast = async () => {
+        if (smsLoading) return;
         if (selectedSmsPhones.length === 0) {
             toast.error('Select recipients');
             return;

@@ -9,7 +9,7 @@ const SubscriptionCancel: React.FC = () => {
     const navigate = useNavigate();
     const { tenantSlug } = useAuth();
     
-    const dashboardPath = isSubdomainAccess() ? '/dashboard' : `/${tenantSlug}/dashboard`;
+    const dashboardPath = isSubdomainAccess() ? '/dashboard' : (tenantSlug ? `/${tenantSlug}/dashboard` : '/login');
 
     return (
         <Box sx={{ p: 4, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>

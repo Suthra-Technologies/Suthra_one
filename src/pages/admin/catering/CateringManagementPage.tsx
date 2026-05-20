@@ -296,16 +296,24 @@ const CateringManagementPage = () => {
         "Baby Shower",
         "Business Meeting"
     ]).filter(o => o !== 'Others' && o !== 'Other'));
+    
+    const [reminderOccasionsList, setReminderOccasionsList] = useState<string[]>(settings?.restaurant?.reminderOccasions || []);
 
     useEffect(() => {
         if (settings?.restaurant?.occasions) {
             setOccasionsList(settings.restaurant.occasions.filter(o => o !== 'Others' && o !== 'Other'));
         }
-    }, [settings?.restaurant?.occasions]);
+        if (settings?.restaurant?.reminderOccasions) {
+            setReminderOccasionsList(settings.restaurant.reminderOccasions);
+        }
+    }, [settings?.restaurant?.occasions, settings?.restaurant?.reminderOccasions]);
+    
     const [occasionInputValue, setOccasionInputValue] = useState('');
+    const [isOccasionDialogOpen, setIsOccasionDialogOpen] = useState(false);
+    const [newOccasionName, setNewOccasionName] = useState('');
 
     const handleAddCustomOccasion = async () => {
-        const val = occasionInputValue.trim();
+        const val = newOccasionName.trim();
         if (val) {
             let updatedList = occasionsList;
             if (!occasionsList.includes(val)) {
@@ -331,6 +339,8 @@ const CateringManagementPage = () => {
                 setNewOrder({ ...newOrder, occasion: val });
             }
             setOccasionTouched(true);
+            setIsOccasionDialogOpen(false);
+            setNewOccasionName('');
         }
     };
 
@@ -348,6 +358,31 @@ const CateringManagementPage = () => {
         } catch (error) {
             console.error('Failed to delete occasion:', error);
             toast.error('Failed to save changes to settings');
+        }
+    };
+
+    const handleToggleReminder = async (occasion: string, checked: boolean) => {
+        let updatedReminders = [...reminderOccasionsList];
+        if (checked) {
+            if (!updatedReminders.includes(occasion)) updatedReminders.push(occasion);
+        } else {
+            updatedReminders = updatedReminders.filter(o => o !== occasion);
+        }
+        
+        setReminderOccasionsList(updatedReminders);
+        
+        try {
+            await settingsAPI.update('restaurant', {
+                ...settings.restaurant,
+                reminderOccasions: updatedReminders
+            });
+            await refreshSettings();
+            toast.success(`Yearly reminders ${checked ? 'enabled' : 'disabled'} for ${occasion}`);
+        } catch (error) {
+            console.error('Failed to update reminders:', error);
+            toast.error('Failed to save changes to settings');
+            // Revert state on failure
+            setReminderOccasionsList(reminderOccasionsList);
         }
     };
 
@@ -451,6 +486,7 @@ const CateringManagementPage = () => {
     };
 
     const handleSaveUpdate = async () => {
+        if (updating) return;
         if (!editData || !selectedOrder) return;
 
         // Validation
@@ -753,6 +789,7 @@ const CateringManagementPage = () => {
     };
 
     const handleUpdateStatus = async (id: string, newStatus: string) => {
+        if (updatingOrderId === id) return;
         setUpdatingOrderId(id);
         try {
             await cateringAPI.updateStatus(id, newStatus);
@@ -1096,15 +1133,33 @@ const CateringManagementPage = () => {
                                                                             </Grid>
                                                                         )}
                                                                         <Grid item xs={6} sm={hasTrays ? 3 : 4}>
-                                                                            <TextField label="Quantity*" type="number" size="small" fullWidth value={row.quantity} inputProps={{ min: 1 }} error={!row.quantity}
+                                                                            <TextField
+                                                                                select
+                                                                                label="Quantity*"
+                                                                                size="small"
+                                                                                fullWidth
+                                                                                value={row.quantity}
+                                                                                error={!row.quantity}
                                                                                 helperText={!row.quantity ? <Box component="span" sx={{ color: 'error.main', fontSize: '0.65rem' }}>* Required</Box> : ''}
                                                                                 onChange={(e) => {
-                                                                                    const val = e.target.value === '' ? '' : String(Math.max(1, parseInt(e.target.value) || 1));
+                                                                                    const val = e.target.value;
                                                                                     const newRows = [...config.trayRows];
                                                                                     newRows[idx] = { ...row, quantity: val };
                                                                                     setItemSelectorConfigs(prev => ({ ...prev, [item._id]: { ...config, trayRows: newRows } }));
                                                                                 }}
-                                                                            />
+                                                                                SelectProps={{
+                                                                                    displayEmpty: true
+                                                                                }}
+                                                                            >
+                                                                                <MenuItem value="" disabled>
+                                                                                    {/* <em>Select Qty</em> */}
+                                                                                </MenuItem>
+                                                                                {Array.from({ length: 100 }, (_, i) => i + 1).map((val) => (
+                                                                                    <MenuItem key={val} value={String(val)}>
+                                                                                        {val}
+                                                                                    </MenuItem>
+                                                                                ))}
+                                                                            </TextField>
                                                                         </Grid>
                                                                         <Grid item xs={12} sm={1} display="flex" justifyContent="center" pt={0.5}>
                                                                             <IconButton size="small" color="error" onClick={() => (config.trayRows.length > 1) ? handleRemoveItemRow(item._id, idx) : handleToggleItemSelection(item._id)}>
@@ -2156,7 +2211,7 @@ const CateringManagementPage = () => {
                                                         <Button
                                                             variant="contained"
                                                             color="primary"
-                                                            onClick={() => handleAddCustomOccasion()}
+                                                            onClick={() => setIsOccasionDialogOpen(true)}
                                                             sx={{
                                                                 minWidth: 40,
                                                                 height: 40,
@@ -2894,7 +2949,7 @@ const CateringManagementPage = () => {
                                                         <Button
                                                             variant="contained"
                                                             color="primary"
-                                                            onClick={() => handleAddCustomOccasion()}
+                                                            onClick={() => setIsOccasionDialogOpen(true)}
                                                             sx={{
                                                                 minWidth: 40,
                                                                 height: 40,
@@ -3208,14 +3263,19 @@ const CateringManagementPage = () => {
                                                     </Grid>
                                                     <Grid item xs={6} sm={2}>
                                                         <TextField
-                                                            label="Qty"
-                                                            type="number"
-                                                            size="small"
-                                                            fullWidth
-                                                            value={adminCustomItemQty}
-                                                            onChange={e => setAdminCustomItemQty(Math.max(1, parseInt(e.target.value) || 1))}
-                                                            inputProps={{ min: 1 }}
-                                                        />
+                                                             select
+                                                             label="Qty"
+                                                             size="small"
+                                                             fullWidth
+                                                             value={adminCustomItemQty}
+                                                             onChange={e => setAdminCustomItemQty(parseInt(e.target.value) || 1)}
+                                                         >
+                                                             {Array.from({ length: 100 }, (_, i) => i + 1).map((val) => (
+                                                                 <MenuItem key={val} value={val}>
+                                                                     {val}
+                                                                 </MenuItem>
+                                                             ))}
+                                                         </TextField>
                                                     </Grid>
                                                     <Grid item xs={6} sm={3}>
                                                         <TextField
@@ -3782,6 +3842,77 @@ const CateringManagementPage = () => {
                     <Typography variant="body2">Send Email</Typography>
                 </MenuItem>
             </Menu>
+
+            {/* Manage Occasions Dialog */}
+            <Dialog open={isOccasionDialogOpen} onClose={() => setIsOccasionDialogOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>Manage Occasions</DialogTitle>
+                <DialogContent>
+                    <Box sx={{ mt: 1, mb: 3 }}>
+                        <TextField
+                            label="Add New Occasion"
+                            fullWidth
+                            size="small"
+                            value={newOccasionName}
+                            onChange={(e) => setNewOccasionName(e.target.value)}
+                            placeholder="e.g. Graduation, Corporate Event"
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' && newOccasionName.trim()) {
+                                    handleAddCustomOccasion();
+                                }
+                            }}
+                            InputProps={{
+                                endAdornment: (
+                                    <Button 
+                                        size="small" 
+                                        onClick={handleAddCustomOccasion} 
+                                        disabled={!newOccasionName.trim()}
+                                        sx={{ minWidth: 'auto' }}
+                                    >
+                                        <Add />
+                                    </Button>
+                                )
+                            }}
+                        />
+                    </Box>
+                    <Typography variant="subtitle2" sx={{ mb: 1, color: 'text.secondary' }}>Available Occasions</Typography>
+                    <List sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1, p: 0 }}>
+                        {occasionsList.map((occasion, index) => (
+                            <ListItem 
+                                key={occasion} 
+                                divider={index < occasionsList.length - 1}
+                                sx={{ py: 1 }}
+                            >
+                                <ListItemText primary={occasion} />
+                                <Stack direction="row" alignItems="center" spacing={1}>
+                                    <FormControlLabel
+                                        control={
+                                            <Switch 
+                                                size="small" 
+                                                checked={reminderOccasionsList.includes(occasion)}
+                                                onChange={(e) => handleToggleReminder(occasion, e.target.checked)}
+                                            />
+                                        }
+                                        label={<Typography variant="caption">Yearly Reminder</Typography>}
+                                        labelPlacement="start"
+                                        sx={{ m: 0 }}
+                                    />
+                                    <IconButton 
+                                        size="small" 
+                                        color="error" 
+                                        onClick={() => handleDeleteOccasion(occasion)}
+                                        title="Delete Occasion"
+                                    >
+                                        <Delete fontSize="small" />
+                                    </IconButton>
+                                </Stack>
+                            </ListItem>
+                        ))}
+                    </List>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setIsOccasionDialogOpen(false)}>Close</Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };

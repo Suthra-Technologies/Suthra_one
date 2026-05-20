@@ -131,6 +131,20 @@ const RestaurantStatusToggle: React.FC = () => {
 
   useEffect(() => {
     loadStatus();
+
+    // Poll every 30 seconds so all open sessions stay in sync
+    const interval = setInterval(loadStatus, 30_000);
+
+    // Also refresh immediately when the browser tab becomes visible again
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') loadStatus();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [loadStatus]);
 
   const handleConfirm = async () => {

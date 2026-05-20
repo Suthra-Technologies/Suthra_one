@@ -116,11 +116,22 @@ const MemoizedMenuItemCard = React.memo(({
                     />
                 )}
                 <CardContent sx={{ flexGrow: 1, p: 1.5 }}>
-                    <Typography variant="subtitle1" fontWeight="bold" noWrap gutterBottom>
+                    <Typography 
+                        variant="subtitle1" 
+                        fontWeight="bold" 
+                        noWrap 
+                        gutterBottom
+                        sx={{ fontSize: { xs: '0.95rem', md: '0.88rem' } }}
+                    >
                         {item.name}
                     </Typography>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <Typography variant="body1" color="primary" fontWeight="700">
+                        <Typography 
+                            variant="body1" 
+                            color="primary" 
+                            fontWeight="700"
+                            sx={{ fontSize: { xs: '1rem', md: '0.9rem' } }}
+                        >
                             {formatCurrency(item.price)}
                         </Typography>
                         {item.foodType && (
@@ -249,6 +260,7 @@ const POSPage: React.FC = () => {
     const [rewardDiscount, setRewardDiscount] = useState<number>(0);
     const [isFetchingRewards, setIsFetchingRewards] = useState(false);
     const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
+    const [isUnmerging, setIsUnmerging] = useState(false);
     const [suggestedPhone, setSuggestedPhone] = useState<string | null>(null);
     const [customerConflict, setCustomerConflict] = useState<boolean>(false);
 
@@ -288,6 +300,7 @@ const POSPage: React.FC = () => {
     const [isCartVisible, setIsCartVisible] = useState(false);
     const cartSectionRef = useRef<HTMLDivElement | null>(null);
     const loadMoreRef = useRef<HTMLDivElement | null>(null);
+    const menuFetchRequestId = useRef(0);
     // Guard to prevent re-loading stale order data after an order is submitted
     const orderSubmittedRef = useRef(false);
     const [trays, setTrays] = useState<any[]>([]);
@@ -438,6 +451,7 @@ const POSPage: React.FC = () => {
 
     // Fetch menu with cursor pagination
     const fetchMenu = async (cursor?: string | null, fresh = false) => {
+        const requestId = ++menuFetchRequestId.current;
         try {
             if (cursor) {
                 setIsFetchingMore(true);
@@ -460,6 +474,8 @@ const POSPage: React.FC = () => {
 
             const data = res.data;
             const fetchedItems: any[] = Array.isArray(data) ? data : (data?.items ?? []);
+            if (requestId !== menuFetchRequestId.current) return; // Stale request
+            
             const newCursor = Array.isArray(data) ? null : (data?.nextCursor ?? null);
             const totalCount = Array.isArray(data) ? fetchedItems.length : (data?.totalCount ?? 0);
 
@@ -474,8 +490,10 @@ const POSPage: React.FC = () => {
             console.error('Error fetching menuItems:', error);
             // toast.error('Failed to load menu');
         } finally {
-            setLoading(false);
-            setIsFetchingMore(false);
+            if (requestId === menuFetchRequestId.current) {
+                setLoading(false);
+                setIsFetchingMore(false);
+            }
         }
     };
 
@@ -536,12 +554,22 @@ const POSPage: React.FC = () => {
 
     // Validate a manually entered coupon code
     const handleValidateCoupon = React.useCallback(async (silent = false, explicitCode?: string) => {
+        if (isApplyingCoupon) return;
         const codeToUse = explicitCode !== undefined ? explicitCode : couponCode;
 
         if (!codeToUse) {
             setCouponDiscount(0);
             return;
         }
+
+        // Validation: Must have items in cart
+        if (cart.length === 0) {
+            if (!silent) {
+                toast.error('Please add items to your cart before applying a coupon');
+            }
+            return;
+        }
+
         try {
             setIsApplyingCoupon(true);
             const cartTotal = cart.reduce((sum, i) => sum + i.price * i.quantity, 0);
@@ -914,10 +942,12 @@ const POSPage: React.FC = () => {
     };
 
     const handleUnmerge = async (table: any) => {
+        if (isUnmerging) return;
         const primaryId = table.isPrimary ? table._id : table.mergedWith;
         if (!primaryId) return;
 
         try {
+            setIsUnmerging(true);
             await tablesAPI.unmerge(primaryId);
             toast.success('Tables unmerged successfully');
 
@@ -936,6 +966,8 @@ const POSPage: React.FC = () => {
         } catch (error) {
             console.error('Error unmerging tables:', error);
             toast.error('Failed to unmerge tables');
+        } finally {
+            setIsUnmerging(false);
         }
     };
 
@@ -1329,6 +1361,7 @@ const POSPage: React.FC = () => {
     }, [orderType]);
 
     const submitOrder = async (paymentIntentId?: string, tipOverride?: number) => {
+        if (placingOrder) return;
         if (orderType === 'delivery') {
             const addressString = typeof deliveryAddress === 'object' ? deliveryAddress.fullAddress : deliveryAddress;
             if (!addressString) {
@@ -2179,8 +2212,24 @@ const POSPage: React.FC = () => {
                                                     </Box>
                                                 </Box>
                                                 <CardContent sx={{ p: 1, flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: 'secondary.dark' }} noWrap>{combo.name}</Typography>
-                                                    <Typography variant="caption" color="text.secondary" sx={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                                                    <Typography 
+                                                        variant="subtitle2" 
+                                                        sx={{ fontWeight: 'bold', color: 'secondary.dark', fontSize: { xs: '0.875rem', md: '0.82rem' } }} 
+                                                        noWrap
+                                                    >
+                                                        {combo.name}
+                                                    </Typography>
+                                                    <Typography 
+                                                        variant="caption" 
+                                                        color="text.secondary" 
+                                                        sx={{ 
+                                                            display: '-webkit-box', 
+                                                            WebkitLineClamp: 2, 
+                                                            WebkitBoxOrient: 'vertical', 
+                                                            overflow: 'hidden',
+                                                            fontSize: { xs: '0.75rem', md: '0.7rem' }
+                                                        }}
+                                                    >
                                                         {combo.description || `Special combo offer: ${combo.code}`}
                                                     </Typography>
                                                 </CardContent>
@@ -2411,8 +2460,20 @@ const POSPage: React.FC = () => {
                                                     {(() => {
                                                         return (
                                                             <>
-                                                                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', fontSize: '0.9rem' }} noWrap>{item.name}</Typography>
-                                                                <Typography variant="body2" color="primary.main" sx={{ fontWeight: 'bold' }}>{formatSmartPrice(item.price)}</Typography>
+                                                                <Typography 
+                                                                    variant="subtitle2" 
+                                                                    sx={{ fontWeight: 'bold', fontSize: { xs: '0.9rem', md: '0.82rem' } }} 
+                                                                    noWrap
+                                                                >
+                                                                    {item.name}
+                                                                </Typography>
+                                                                <Typography 
+                                                                    variant="body2" 
+                                                                    color="primary.main" 
+                                                                    sx={{ fontWeight: 'bold', fontSize: { xs: '1rem', md: '0.88rem' } }}
+                                                                >
+                                                                    {formatSmartPrice(item.price)}
+                                                                </Typography>
                                                             </>
                                                         );
                                                     })()}

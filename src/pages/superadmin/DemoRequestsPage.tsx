@@ -3,13 +3,13 @@ import {
   Close as CloseIcon,
   Delete as DeleteIcon,
   Email as EmailIcon,
+  Event as EventIcon,
   FilterList as FilterIcon,
+  History as HistoryIcon,
   Phone as PhoneIcon,
   Search as SearchIcon,
   Visibility as ViewIcon,
-  Event as EventIcon,
-  Update as UpdateIcon,
-  History as HistoryIcon,
+  ContentCopy as CopyIcon,
 } from '@mui/icons-material';
 import {
   Box,
@@ -46,7 +46,7 @@ import {
 } from '@mui/material';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { superAPI, publicDemoAPI } from '../../services/api';
+import { publicDemoAPI, superAPI } from '../../services/api';
 
 const STATUS_OPTIONS = [
   { value: 'demo_scheduled', label: 'Demo Scheduled', color: 'primary' as const },
@@ -174,10 +174,12 @@ const DemoRequestsPage: React.FC = () => {
   const handleConfirmDemo = async () => {
     if (!selectedRequest) return;
     try {
-      await superAPI.confirmDemoRequest(selectedRequest._id, { meetingLink });
+      const response = await superAPI.confirmDemoRequest(selectedRequest._id, { meetingLink });
+      const updatedRequest = response.data;
       toast.success('Demo confirmed and email sent');
       fetchRequests();
-      setSelectedRequest((prev: any) => ({ ...prev, status: 'demo_scheduled', meetingLink }));
+      setMeetingLink(updatedRequest.meetingLink || '');
+      setSelectedRequest(updatedRequest);
     } catch (error) {
       console.error('Error confirming demo:', error);
       toast.error('Failed to confirm demo');
@@ -705,15 +707,35 @@ const DemoRequestsPage: React.FC = () => {
                   <Typography variant="body2" mb={2}>
                     Requested Time: <strong>{formatDate(selectedRequest.preferredDateTime)}</strong>
                   </Typography>
-                  <TextField
-                    fullWidth
-                    value={meetingLink}
-                    onChange={(e) => setMeetingLink(e.target.value)}
-                    placeholder="Enter meeting link (e.g. Zoom/Google Meet) for the customer"
-                    variant="outlined"
-                    size="small"
-                    sx={{ mb: 2, bgcolor: 'white' }}
-                  />
+                  <Box display="flex" gap={1} mb={2} alignItems="flex-start">
+                    <TextField
+                      fullWidth
+                      value={meetingLink}
+                      onChange={(e) => setMeetingLink(e.target.value)}
+                      placeholder="Enter meeting link or leave blank to auto-generate Google Meet"
+                      variant="outlined"
+                      size="small"
+                      sx={{ bgcolor: 'white' }}
+                      helperText="✨ Leave blank to automatically generate a secure Google Meet room on confirm."
+                      InputProps={{
+                        endAdornment: meetingLink && (
+                          <InputAdornment position="end">
+                            <Tooltip title="Copy Link">
+                              <IconButton
+                                size="small"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(meetingLink);
+                                  toast.success('Link copied to clipboard!');
+                                }}
+                              >
+                                <CopyIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </InputAdornment>
+                        )
+                      }}
+                    />
+                  </Box>
                   <Button
                     variant="contained"
                     color="success"

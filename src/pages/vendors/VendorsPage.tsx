@@ -114,6 +114,9 @@ const VendorsPage: React.FC = () => {
     const [reorderDialogOpen, setReorderDialogOpen] = useState(false);
     const [reorderItems, setReorderItems] = useState<any[]>([]);
     const [reorderLoading, setReorderLoading] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [isToggling, setIsToggling] = useState(false);
 
     const [formData, setFormData] = useState({
         name: '',
@@ -274,12 +277,14 @@ const VendorsPage: React.FC = () => {
     };
 
     const handleSubmit = async () => {
+        if (submitting) return;
         if (!validateForm()) {
             toast.error('Please fill all the required fields');
             return;
         }
 
         try {
+            setSubmitting(true);
             if (selectedVendor) {
                 await vendorsAPI.update(selectedVendor._id, formData);
                 toast.success('Vendor updated successfully');
@@ -291,13 +296,16 @@ const VendorsPage: React.FC = () => {
             fetchVendors();
         } catch (error: any) {
             toast.error(error.response?.data?.message || 'Failed to save vendor');
+        } finally {
+            setSubmitting(false);
         }
     };
 
     const handleDelete = async () => {
-        if (!selectedVendor) return;
+        if (!selectedVendor || isDeleting) return;
 
         try {
+            setIsDeleting(true);
             await vendorsAPI.delete(selectedVendor._id);
             toast.success('Vendor deleted successfully');
             setDeleteDialogOpen(false);
@@ -305,16 +313,22 @@ const VendorsPage: React.FC = () => {
             fetchVendors();
         } catch (error: any) {
             toast.error(error.response?.data?.message || 'Failed to delete vendor');
+        } finally {
+            setIsDeleting(false);
         }
     };
 
     const handleToggleStatus = async (vendor: Vendor) => {
+        if (isToggling) return;
         try {
+            setIsToggling(true);
             await vendorsAPI.toggleStatus(vendor._id);
             toast.success(`Vendor ${vendor.status === 'active' ? 'deactivated' : 'activated'}`);
             fetchVendors();
         } catch (error: any) {
             toast.error('Failed to update vendor status');
+        } finally {
+            setIsToggling(false);
         }
     };
 
@@ -340,6 +354,7 @@ const VendorsPage: React.FC = () => {
     };
 
     const handleSaveReorderSettings = async () => {
+        if (reorderLoading) return;
         try {
             setReorderLoading(true);
             // Specifically save reorder levels back to inventory

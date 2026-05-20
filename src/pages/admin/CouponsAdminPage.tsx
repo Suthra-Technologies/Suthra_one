@@ -278,6 +278,7 @@ const CouponsAdminPage: React.FC = () => {
     };
 
     const handleSaveCoupon = async () => {
+        if (submitting) return;
         if (
             !formData.code ||
             !formData.name ||
@@ -313,6 +314,7 @@ const CouponsAdminPage: React.FC = () => {
         }
 
         try {
+            setSubmitting(true);
             if (selectedCoupon) {
                 await couponsAPI.update(selectedCoupon._id, formData);
                 toast.success('Coupon updated successfully');
@@ -325,6 +327,8 @@ const CouponsAdminPage: React.FC = () => {
         } catch (error) {
             console.error('Error saving coupon:', error);
             toast.error('Failed to save coupon');
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -334,9 +338,11 @@ const CouponsAdminPage: React.FC = () => {
     };
 
     const confirmDeleteCoupon = async () => {
+        if (submitting) return;
         if (!deleteTarget) return;
 
         try {
+            setSubmitting(true);
             await couponsAPI.delete(deleteTarget.id);
             toast.success('Coupon deleted successfully');
             fetchCoupons();
@@ -345,6 +351,8 @@ const CouponsAdminPage: React.FC = () => {
         } catch (error) {
             console.error('Error deleting coupon:', error);
             toast.error('Failed to delete coupon');
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -418,6 +426,7 @@ const CouponsAdminPage: React.FC = () => {
     };
 
     const handleSendSms = async () => {
+        if (smsLoading) return;
         if (selectedSmsPhones.length === 0) {
             toast.error('Please select at least one customer');
             return;
@@ -463,6 +472,7 @@ const CouponsAdminPage: React.FC = () => {
     };
 
     const handleSendBulkEmail = async () => {
+        if (emailLoading) return;
         if (emailData.selectedCustomers.length === 0) {
             toast.error('Please select at least one customer');
             return;

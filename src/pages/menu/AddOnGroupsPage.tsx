@@ -56,6 +56,8 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
         options: [],
         isActive: true,
     });
+    const [submitting, setSubmitting] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [confirmDelete, setConfirmDelete] = useState<{ open: boolean, id: string | null }>({ open: false, id: null });
 
     // Inventory & Menu Items for linking
@@ -157,6 +159,7 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
+        if (submitting) return;
         e.preventDefault();
 
         // Validation
@@ -174,6 +177,7 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
         }
 
         try {
+            setSubmitting(true);
             if (editingTemplate) {
                 await modifierTemplatesAPI.update(editingTemplate._id, formData);
                 toast.success('Add-on group updated');
@@ -185,18 +189,22 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
             fetchTemplates();
         } catch (error) {
             toast.error('Failed to save add-on group');
+        } finally {
+            setSubmitting(false);
         }
     };
 
     const handleConfirmDelete = async () => {
-        if (!confirmDelete.id) return;
+        if (isDeleting || !confirmDelete.id) return;
         try {
+            setIsDeleting(true);
             await modifierTemplatesAPI.delete(confirmDelete.id);
             toast.success('Add-on group deleted');
             fetchTemplates();
         } catch (error) {
             toast.error('Failed to delete add-on group');
         } finally {
+            setIsDeleting(false);
             setConfirmDelete({ open: false, id: null });
         }
     };
@@ -466,8 +474,8 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
                     </DialogContent>
                     <DialogActions>
                         <Button onClick={handleCloseDialog}>Cancel</Button>
-                        <Button type="submit" variant="contained" startIcon={<SaveIcon />}>
-                            Save Group
+                        <Button type="submit" variant="contained" startIcon={submitting ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />} disabled={submitting}>
+                            {submitting ? 'Saving...' : 'Save Group'}
                         </Button>
                     </DialogActions>
                 </form>
@@ -482,8 +490,10 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
                     </Typography>
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setConfirmDelete({ open: false, id: null })}>Cancel</Button>
-                    <Button onClick={handleConfirmDelete} color="error" variant="contained">Delete</Button>
+                    <Button onClick={() => setConfirmDelete({ open: false, id: null })} disabled={isDeleting}>Cancel</Button>
+                    <Button onClick={handleConfirmDelete} color="error" variant="contained" disabled={isDeleting} startIcon={isDeleting && <CircularProgress size={16} color="inherit" />}>
+                        {isDeleting ? 'Deleting...' : 'Delete'}
+                    </Button>
                 </DialogActions>
             </Dialog>
         </Box>

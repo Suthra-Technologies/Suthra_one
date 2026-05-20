@@ -16,7 +16,8 @@ import {
     Menu as MenuIcon,
     PlaylistAdd as PlaylistAddIcon,
     FileUpload as FileUploadIcon,
-    PhotoCamera as PhotoCameraIcon
+    PhotoCamera as PhotoCameraIcon,
+    OpenInNew as OpenInNewIcon
 } from '@mui/icons-material';
 import {
     Menu,
@@ -60,7 +61,8 @@ import {
     TableCell,
     TableContainer,
     TableHead,
-    TableRow
+    TableRow,
+    Link
 } from '@mui/material';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -88,6 +90,7 @@ const MenuPage: React.FC = () => {
     const { getRelativePath } = useActiveTenant();
     const [tabValue, setTabValue] = useState<number>(0);
     const [loading, setLoading] = useState(true);
+    const [isProcessing, setIsProcessing] = useState(false);
 
     // Menu Items State
     const [menuItems, setMenuItems] = useState<IMenuItem[]>([]);
@@ -120,7 +123,9 @@ const MenuPage: React.FC = () => {
     const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
     const [bulkPreviewItems, setBulkPreviewItems] = useState<any[]>([]);
     const [uploadingBulk, setUploadingBulk] = useState(false);
+    const [previewLimit, setPreviewLimit] = useState(50);
     const [dialogTab, setDialogTab] = useState(0);
+    const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
     const previewFileRef = useRef<HTMLInputElement>(null);
     const [previewTargetIdx, setPreviewTargetIdx] = useState<number | null>(null);
 
@@ -446,6 +451,7 @@ const MenuPage: React.FC = () => {
     };
 
     const handleSaveCategory = async () => {
+        if (isProcessing) return;
         if (!categoryForm.name || !categoryForm.name.trim()) {
             setCategoryTouched((prev) => ({ ...prev, name: true }));
             toast.error('Category name is required');
@@ -460,6 +466,7 @@ const MenuPage: React.FC = () => {
 
         const executeSave = async () => {
             try {
+                setIsProcessing(true);
                 if (editingCategory && isSubcategory(editingCategory)) {
                     if (!categoryForm.parentCategory) {
                         setCategoryTouched((prev) => ({ ...prev, parentCategory: true }));
@@ -483,6 +490,8 @@ const MenuPage: React.FC = () => {
             } catch (error: any) {
                 console.error('Error saving category:', error);
                 toast.error(error.response?.data?.message || 'Failed to save category');
+            } finally {
+                setIsProcessing(false);
             }
         };
 
@@ -544,7 +553,9 @@ const MenuPage: React.FC = () => {
                 ? <>Are you sure you want to delete the subcategory <strong>"{category.name}"</strong>? Items linked to it will lose only the subcategory assignment.</>
                 : <>Are you sure you want to delete the category <strong>"{category.name}"</strong>? This will affect all menu items in this category.</>,
             onConfirm: async () => {
+                if (isProcessing) return;
                 try {
+                    setIsProcessing(true);
                     if (deletingSubcategory) {
                         await menuAPI.deleteSubcategory(category._id);
                         toast.success(`Subcategory "${category.name}" deleted successfully`);
@@ -556,6 +567,8 @@ const MenuPage: React.FC = () => {
                 } catch (error: any) {
                     console.error('Error deleting category:', error);
                     toast.error(error.response?.data?.message || 'Failed to delete category');
+                } finally {
+                    setIsProcessing(false);
                 }
             }
         });
@@ -573,13 +586,17 @@ const MenuPage: React.FC = () => {
             title: 'Delete Menu Item',
             message: <>Are you sure you want to delete <strong>"{item.name}"</strong>?</>,
             onConfirm: async () => {
+                if (isProcessing) return;
                 try {
+                    setIsProcessing(true);
                     await menuAPI.delete(item._id);
                     toast.success(`Menu item "${item.name}" deleted successfully`);
                     fetchData();
                 } catch (error: any) {
                     console.error('Error deleting menu item:', error);
                     toast.error(error.response?.data?.message || 'Failed to delete menu item');
+                } finally {
+                    setIsProcessing(false);
                 }
             }
         });
@@ -657,9 +674,24 @@ const MenuPage: React.FC = () => {
             try {
                 const bstr = evt.target?.result;
                 const wb = XLSX.read(bstr, { type: 'binary' });
-                const wsname = wb.SheetNames[0];
-                const ws = wb.Sheets[wsname];
-                const data = XLSX.utils.sheet_to_json(ws);
+                let ws = wb.Sheets[wb.SheetNames[0]];
+                let data = XLSX.utils.sheet_to_json(ws);
+
+                // If first sheet is empty, try to find a sheet with data
+                if (data.length === 0 && wb.SheetNames.length > 1) {
+                    for (let i = 1; i < wb.SheetNames.length; i++) {
+                        ws = wb.Sheets[wb.SheetNames[i]];
+                        data = XLSX.utils.sheet_to_json(ws);
+                        if (data.length > 0) break;
+                    }
+                }
+
+                if (data.length === 0) {
+                    toast.error('The selected file appears to be empty or has no recognizable data.');
+                    return;
+                }
+
+                toast.loading('Processing your file...', { id: 'bulk-parse' });
 
                 // Process data
                 if (data.length === 0) {
@@ -669,16 +701,24 @@ const MenuPage: React.FC = () => {
 
                 // Map data to CreateMenuDto
                 const items = await Promise.all(data.map(async (row: any) => {
-                    // Try to map various common header names
-                    const name = row['Name'] || row['name'] || row['Item Name'];
-                    const price = row['Price'] || row['price'] || row['Base Price'];
-                    const category = row['Category'] || row['category'] || row['Categories'];
-                    const subcategory = row['Subcategory'] || row['subcategory'] || row['Sub Category'] || row['Sub Category Name'];
-                    const description = row['Description'] || row['description'];
-                    const image = row['Image'] || row['image'] || row['Image URL'];
-                    const foodType = row['Food Type'] || row['foodType'] || row['Food Type'];
-                    const isAvailable = row['Is Available'] !== undefined ? row['Is Available'] : row['isAvailable'];
-                    const isCateringAvailable = row['Is Catering Available'] !== undefined ? row['Is Catering Available'] : row['isCateringAvailable'];
+                    // Robust Dynamic Header Mapping
+                    const findValue = (keywords: string[]) => {
+                        const key = Object.keys(row).find(k => {
+                            const normalizedK = k.toLowerCase().trim();
+                            return keywords.some(kw => normalizedK === kw || normalizedK.includes(kw));
+                        });
+                        return key ? row[key] : undefined;
+                    };
+
+                    const name = findValue(['name', 'item', 'product', 'title']);
+                    const price = findValue(['price', 'rate', 'cost', 'amount']);
+                    const category = findValue(['category', 'cat']);
+                    const subcategory = findValue(['subcategory', 'subcat', 'sub category']);
+                    const description = findValue(['description', 'desc', 'details']);
+                    const image = findValue(['image', 'photo', 'img', 'url', 'link']);
+                    const foodType = findValue(['food type', 'foodtype', 'veg', 'type']);
+                    const isAvailable = findValue(['available', 'isavailable', 'stock']);
+                    const isCateringAvailable = findValue(['catering', 'iscatering']);
 
                     if (!name || (price === undefined && row['Price'] === undefined)) {
                         // invalid row
@@ -718,18 +758,15 @@ const MenuPage: React.FC = () => {
                     return;
                 }
 
-                // Show progress for large uploads
-                const uploadSize = validItems.length;
-                const progressMessage = uploadSize > 100 ?
-                    `Uploading ${uploadSize} items from Excel. This may take a while...` :
-                    `Uploading ${uploadSize} items from Excel...`;
 
-                toast.loading(progressMessage);
 
-                // Debug: Log the data being sent
-                console.log('[Frontend] Parsed bulk upload request with', validItems.length, 'items');
+                const imageCount = validItems.filter(item => item.image).length;
+                console.log(`[Frontend] Parsed ${validItems.length} items. Images found: ${imageCount}`);
+                
                 setBulkPreviewItems(validItems);
-                setDialogTab(1); // Switch to preview tab
+                setPreviewLimit(50);
+                setDialogTab(1);
+                toast.success(`Successfully parsed ${validItems.length} items. Detected ${imageCount} items with images.`, { id: 'bulk-parse' });
             } catch (error) {
                 console.error(error);
                 toast.error('Failed to parse Excel file');
@@ -739,7 +776,7 @@ const MenuPage: React.FC = () => {
     };
 
     const handleConfirmBulkUpload = async () => {
-        if (bulkPreviewItems.length === 0) return;
+        if (uploadingBulk || bulkPreviewItems.length === 0) return;
 
         setUploadingBulk(true);
         const progressToast = toast.loading(`Uploading ${bulkPreviewItems.length} items...`);
@@ -850,8 +887,11 @@ const MenuPage: React.FC = () => {
             try {
                 console.log('[Frontend] Parsed CSV bulk upload request with', validItems.length, 'items');
                 setBulkPreviewItems(validItems);
+                setPreviewLimit(50); // Reset limit
                 setDialogTab(1); // Switch to preview tab
                 setBulkCsv('');
+                toast.dismiss();
+                toast.success(`Parsed ${validItems.length} items successfully.`);
             } catch (error: any) {
                 console.error(error);
                 toast.error(error.response?.data?.message || 'Failed to process items');
@@ -1678,116 +1718,138 @@ const MenuPage: React.FC = () => {
                     {dialogTab === 1 && (
                         <Box>
                             <Alert severity="info" sx={{ mb: 2, borderRadius: 2 }}>
-                                Please review the items below. Images will be loaded from the URLs provided in your file.
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                                    <Box>
+                                        Reviewing <b>{bulkPreviewItems.length}</b> items. 
+                                        Detected <b>{bulkPreviewItems.filter(i => i.image).length}</b> images.
+                                    </Box>
+                                    <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                                        Check the first {previewLimit} items below
+                                    </Typography>
+                                </Box>
                             </Alert>
                             <TableContainer component={Paper} sx={{ maxHeight: 600, borderRadius: 2, border: 1, borderColor: 'divider' }}>
                                 <Table stickyHeader size="small">
                                     <TableHead>
                                         <TableRow>
-                                            <TableCell sx={{ fontWeight: 'bold', width: 320 }}>Image Configuration</TableCell>
-                                            <TableCell sx={{ fontWeight: 'bold' }}>Item Name</TableCell>
+                                            <TableCell sx={{ fontWeight: 'bold', width: 80 }}>Preview</TableCell>
+                                            <TableCell sx={{ fontWeight: 'bold', width: 280 }}>Image Link</TableCell>
+                                            <TableCell sx={{ fontWeight: 'bold' }}>Item Details</TableCell>
                                             <TableCell sx={{ fontWeight: 'bold' }}>Category</TableCell>
                                             <TableCell sx={{ fontWeight: 'bold' }}>Price</TableCell>
                                             <TableCell sx={{ fontWeight: 'bold' }}>Description</TableCell>
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
-                                        {bulkPreviewItems.map((item, idx) => (
+                                        {bulkPreviewItems.slice(0, previewLimit).map((item, idx) => (
                                             <TableRow key={idx} hover>
                                                 <TableCell>
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                                    <Tooltip 
+                                                        title={
+                                                            item.image ? (
+                                                                <Box sx={{ p: 0.5 }}>
+                                                                    <img 
+                                                                        src={item.image} 
+                                                                        alt="Large Preview" 
+                                                                        style={{ maxWidth: 300, maxHeight: 300, borderRadius: 4, display: 'block' }} 
+                                                                        onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/300?text=Invalid+Image+URL'; }}
+                                                                    />
+                                                                </Box>
+                                                            ) : "No Image"
+                                                        }
+                                                        arrow
+                                                        placement="right"
+                                                    >
                                                         <Box 
                                                             sx={{ 
-                                                                width: 60, 
-                                                                height: 60, 
-                                                                borderRadius: 1, 
+                                                                width: 70, 
+                                                                height: 70, 
+                                                                borderRadius: 2, 
                                                                 overflow: 'hidden', 
-                                                                border: 1, 
-                                                                borderColor: 'divider',
+                                                                border: '2px solid', 
+                                                                borderColor: item.image ? 'primary.light' : 'divider',
                                                                 position: 'relative',
                                                                 display: 'flex',
                                                                 alignItems: 'center',
                                                                 justifyContent: 'center',
                                                                 bgcolor: 'action.hover',
-                                                                flexShrink: 0
+                                                                transition: 'transform 0.2s',
+                                                                '&:hover': { transform: 'scale(1.05)', cursor: 'zoom-in' }
                                                             }}
                                                         >
                                                             {item.image ? (
-                                                                <>
-                                                                    <img 
-                                                                        src={item.image} 
-                                                                        alt={item.name} 
-                                                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                                                        onError={(e) => {
-                                                                            (e.target as HTMLImageElement).src = 'https://via.placeholder.com/60?text=Error';
-                                                                        }}
-                                                                    />
-                                                                    <IconButton
-                                                                        size="small"
-                                                                        onClick={() => handleRemoveImage(idx)}
-                                                                        sx={{
-                                                                            position: 'absolute',
-                                                                            top: -4,
-                                                                            right: -4,
-                                                                            bgcolor: 'error.main',
-                                                                            color: 'white',
-                                                                            padding: '2px',
-                                                                            '&:hover': { bgcolor: 'error.dark' },
-                                                                            zIndex: 2,
-                                                                            boxShadow: 2
-                                                                        }}
-                                                                    >
-                                                                        <CloseIcon sx={{ fontSize: 12 }} />
-                                                                    </IconButton>
-                                                                </>
+                                                                <img 
+                                                                    src={item.image} 
+                                                                    alt={item.name} 
+                                                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                                    loading="lazy"
+                                                                    onError={(e) => {
+                                                                        (e.target as HTMLImageElement).src = 'https://via.placeholder.com/70?text=Error';
+                                                                    }}
+                                                                />
                                                             ) : (
                                                                 <ImageIcon sx={{ color: 'text.disabled' }} />
                                                             )}
                                                         </Box>
-                                                        
-                                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, flexGrow: 1 }}>
-                                                            <Button
-                                                                variant="outlined"
+                                                    </Tooltip>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                                        <TextField
+                                                            fullWidth
+                                                            size="small"
+                                                            placeholder="Paste Image URL..."
+                                                            value={item.image || ''}
+                                                            onChange={(e) => handleUrlChange(idx, e.target.value)}
+                                                            InputProps={{
+                                                                sx: { fontSize: '0.75rem', bgcolor: 'background.paper' },
+                                                                endAdornment: item.image ? (
+                                                                    <InputAdornment position="end">
+                                                                        <IconButton size="small" onClick={() => handleRemoveImage(idx)} color="error">
+                                                                            <CloseIcon fontSize="small" />
+                                                                        </IconButton>
+                                                                    </InputAdornment>
+                                                                ) : null
+                                                            }}
+                                                        />
+                                                        {item.image && (
+                                                            <Button 
+                                                                variant="text"
                                                                 size="small"
-                                                                startIcon={<PhotoCameraIcon sx={{ fontSize: 16 }} />}
-                                                                onClick={() => {
-                                                                    setPreviewTargetIdx(idx);
-                                                                    previewFileRef.current?.click();
-                                                                }}
-                                                                sx={{ py: 0, height: 24, fontSize: '0.65rem', textTransform: 'none' }}
+                                                                onClick={() => setFullScreenImage(item.image)}
+                                                                sx={{ fontSize: '0.65rem', display: 'flex', alignItems: 'center', gap: 0.5, color: 'primary.main', textTransform: 'none', p: 0, justifyContent: 'flex-start', '&:hover': { textDecoration: 'underline' } }}
                                                             >
-                                                                Upload
+                                                                <OpenInNewIcon sx={{ fontSize: 12 }} /> View Full Resolution
                                                             </Button>
-                                                            <TextField
-                                                                size="small"
-                                                                placeholder="Paste URL..."
-                                                                value={item.image || ''}
-                                                                onChange={(e) => handleUrlChange(idx, e.target.value)}
-                                                                sx={{ 
-                                                                    '& .MuiOutlinedInput-input': { 
-                                                                        py: 0.5, 
-                                                                        fontSize: '0.65rem',
-                                                                        height: 'auto'
-                                                                    }
-                                                                }}
-                                                            />
-                                                        </Box>
+                                                        )}
+                                                        <Button
+                                                            variant="text"
+                                                            size="small"
+                                                            startIcon={<PhotoCameraIcon sx={{ fontSize: 14 }} />}
+                                                            onClick={() => {
+                                                                setPreviewTargetIdx(idx);
+                                                                previewFileRef.current?.click();
+                                                            }}
+                                                            sx={{ fontSize: '0.65rem', textTransform: 'none', p: 0, justifyContent: 'flex-start', minWidth: 0, height: 'auto' }}
+                                                        >
+                                                            Replace with File
+                                                        </Button>
                                                     </Box>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Typography variant="body2" fontWeight="bold">{item.name}</Typography>
+                                                    <Typography variant="body2" fontWeight="bold" sx={{ color: 'text.primary' }}>{item.name}</Typography>
                                                     <Chip 
                                                         label={item.foodType || 'n/a'} 
                                                         size="small" 
-                                                        variant="outlined"
+                                                        variant="filled"
                                                         color={item.foodType === 'veg' ? 'success' : item.foodType === 'non-veg' ? 'error' : 'default'}
-                                                        sx={{ height: 16, fontSize: '0.6rem', mt: 0.5 }}
+                                                        sx={{ height: 18, fontSize: '0.65rem', mt: 0.5, fontWeight: 600 }}
                                                     />
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Typography variant="body2">{item.category}</Typography>
+                                                    <Typography variant="body2" color="text.primary">{item.category}</Typography>
                                                     {item.subcategory && (
-                                                        <Typography variant="caption" color="text.secondary" display="block">
+                                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontStyle: 'italic' }}>
                                                             {item.subcategory}
                                                         </Typography>
                                                     )}
@@ -1811,6 +1873,18 @@ const MenuPage: React.FC = () => {
                                     </TableBody>
                                 </Table>
                             </TableContainer>
+
+                            {bulkPreviewItems.length > previewLimit && (
+                                <Box sx={{ mt: 2, textAlign: 'center' }}>
+                                    <Button 
+                                        variant="outlined" 
+                                        onClick={() => setPreviewLimit(prev => prev + 50)}
+                                        sx={{ borderRadius: 2, fontWeight: 'bold' }}
+                                    >
+                                        Load More (Showing {previewLimit} of {bulkPreviewItems.length})
+                                    </Button>
+                                </Box>
+                            )}
                             <input
                                 type="file"
                                 hidden
@@ -1960,6 +2034,31 @@ const MenuPage: React.FC = () => {
                         Delete
                     </Button>
                 </DialogActions>
+            </Dialog>
+             {/* Full Screen Image Preview Dialog */}
+             <Dialog 
+                open={Boolean(fullScreenImage)} 
+                onClose={() => setFullScreenImage(null)} 
+                maxWidth="md" 
+                fullWidth
+                PaperProps={{
+                    sx: { bgcolor: 'transparent', boxShadow: 'none', overflow: 'hidden' }
+                }}
+            >
+                <DialogTitle sx={{ p: 1, display: 'flex', justifyContent: 'flex-end', bgcolor: 'rgba(0,0,0,0.5)' }}>
+                    <IconButton onClick={() => setFullScreenImage(null)} sx={{ color: 'white' }}>
+                        <CloseIcon />
+                    </IconButton>
+                </DialogTitle>
+                <DialogContent sx={{ p: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', bgcolor: 'rgba(0,0,0,0.8)' }}>
+                    {fullScreenImage && (
+                        <img 
+                            src={fullScreenImage} 
+                            alt="Full Resolution" 
+                            style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }} 
+                        />
+                    )}
+                </DialogContent>
             </Dialog>
         </Box>
     );
