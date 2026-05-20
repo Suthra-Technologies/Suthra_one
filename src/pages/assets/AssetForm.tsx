@@ -40,6 +40,7 @@ import {
 import { assetsAPI, uploadAPI } from '../../services/api';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { useActiveTenant } from '../../hooks/useActiveTenant';
 
 const ASSET_TYPES = ['Vehicle', 'Document', 'License', 'Gadget', 'Equipment', /* 'Property', */ 'Other'];
 
@@ -47,6 +48,7 @@ const AssetForm: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
   const { id } = useParams();
+  const { getRelativePath } = useActiveTenant();
   const isEdit = Boolean(id);
 
   const [loading, setLoading] = useState(false);
@@ -128,7 +130,7 @@ const AssetForm: React.FC = () => {
       });
     } catch (error) {
       toast.error('Failed to load asset details');
-      navigate('/assets');
+      navigate(getRelativePath('/assets'));
     } finally {
       setLoading(false);
     }
@@ -237,7 +239,7 @@ const AssetForm: React.FC = () => {
         await assetsAPI.create(payload);
         toast.success('Asset created successfully');
       }
-      navigate('/assets');
+      navigate(getRelativePath('/assets'));
     } catch (error: any) {
       toast.error(error.response?.data?.message || 'Failed to save asset');
     } finally {
@@ -256,7 +258,7 @@ const AssetForm: React.FC = () => {
   return (
     <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 }, maxWidth: 1400, mx: 'auto' }}>
       <Stack direction="row" alignItems="center" spacing={2} mb={4}>
-        <IconButton onClick={() => navigate('/assets')}>
+        <IconButton onClick={() => navigate(getRelativePath('/assets'))}>
           <ArrowBack />
         </IconButton>
         <Typography variant="h4" fontWeight="800">
@@ -634,7 +636,7 @@ const AssetForm: React.FC = () => {
           <Grid item xs={12}>
             <Divider sx={{ my: 2 }} />
             <Stack direction="row" spacing={2} justifyContent="flex-end">
-              <Button size="large" onClick={() => navigate('/assets')}>Cancel</Button>
+              <Button size="large" onClick={() => navigate(getRelativePath('/assets'))}>Cancel</Button>
               <Button
                 size="large"
                 type="submit"

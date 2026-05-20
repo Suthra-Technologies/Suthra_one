@@ -54,6 +54,7 @@ import RestaurantMenuOutlinedIcon from '@mui/icons-material/RestaurantMenuOutlin
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 
 import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import { Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../context/SettingsContext';
@@ -65,6 +66,7 @@ import {
   purchaseOrdersAPI,
   reportsAPI
 } from '../services/api';
+import { useActiveTenant } from '../hooks/useActiveTenant';
 
 // ---------------------------------------------------------------------------
 // StatCard – reusable card used throughout the dashboard
@@ -284,6 +286,8 @@ const DashboardPage: React.FC = () => {
   const { user, hasRole } = useAuth();
   const { formatCurrency } = useSettings();
   const theme = useTheme();
+  const navigate = useNavigate();
+  const { getRelativePath } = useActiveTenant();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const headingFontSize = { xs: '1.12rem', sm: '1.4rem', md: '2.125rem' };
   const bodyFontSize = { xs: '0.78rem', sm: '0.88rem', md: '0.95rem' };
@@ -491,8 +495,8 @@ const DashboardPage: React.FC = () => {
     }
   };
 
-  const navigate = (path: string) => {
-    window.location.href = path; // Using window.location since I don't have useNavigate import here (wait, I should check if I have it)
+  const navTo = (path: string) => {
+    navigate(getRelativePath(path));
   };
 
   // ✅ Create Top 10 Best Selling Items (Sorted by Quantity)
@@ -1169,7 +1173,7 @@ const DashboardPage: React.FC = () => {
           <Button
             variant="outlined"
             size="small"
-            onClick={() => navigate('/assets')}
+            onClick={() => navTo('/assets')}
             sx={{ borderRadius: 2 }}
           >
             Go to Asset Module
@@ -1382,7 +1386,7 @@ const DashboardPage: React.FC = () => {
                                     <IconButton
                                       size="small"
                                       color="primary"
-                                      onClick={() => navigate(`/assets/${asset._id}/edit`)}
+                                      onClick={() => navTo(`/assets/${asset._id}/edit`)}
                                     >
                                       <Assessment fontSize="small" />
                                     </IconButton>
@@ -1472,7 +1476,7 @@ const DashboardPage: React.FC = () => {
                                 <IconButton
                                   size="small"
                                   color="primary"
-                                  onClick={() => navigate(`/assets/${asset._id}/edit`)}
+                                  onClick={() => navTo(`/assets/${asset._id}/edit`)}
                                   sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1) }}
                                 >
                                   <Assessment fontSize="small" />
