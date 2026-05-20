@@ -23,7 +23,10 @@ import {
     ToggleButton,
     ToggleButtonGroup,
     CircularProgress,
+    Alert,
 } from '@mui/material';
+import { loadStripe } from '@stripe/stripe-js';
+import { PaymentElement, Elements, useStripe, useElements } from '@stripe/react-stripe-js';
 import {
     Add as AddIcon,
     Remove as RemoveIcon,
@@ -90,6 +93,80 @@ const GuestPOSPage: React.FC = () => {
     const [orderType, setOrderType] = useState<'global_dine_in' | 'global_takeaway' | 'delivery' | 'online_takeaway'>('global_dine_in');
     const [tableNumber, setTableNumber] = useState<string>('');
     const [taxRate, setTaxRate] = useState<number>(5); // Default 5%, will be updated from settings
+
+    // Stripe card payment
+    const [stripePromise, setStripePromise] = useState<Promise<any> | null>(null);
+    const [clientSecret, setClientSecret] = useState<string | null>(null);
+    const [stripeLoading, setStripeLoading] = useState(false);
+    const [stripeError, setStripeError] = useState<string | null>(null);
+    const [stripeRetry, setStripeRetry] = useState(0);
+
+    // Redirect-based payment return (Amazon Pay, etc.)
+    const [redirectProcessing, setRedirectProcessing] = useState(false);
+    const [redirectError, setRedirectError] = useState<string | null>(null);
+    const [redirectPaymentId, setRedirectPaymentId] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!showPayment || !slug) return;
+        let cancelled = false;
+        setStripeLoading(true);
+        setStripeError(null);
+        setStripePromise(null);
+        setClientSecret(null);
+        const totals = calculateTotal();
+        Promise.all([
+            ordersAPI.getPublicPaymentConfig(slug, orderType),
+            ordersAPI.createPublicPaymentIntent(totals.total, slug, undefined, orderType, totals.subtotal, totals.gst),
+        ])
+            .then(([configRes, intentRes]) => {
+                if (cancelled) return;
+                const key = configRes.data?.publishableKey;
+                const secret = intentRes.data?.clientSecret;
+                if (!key || !secret) { setStripeError('Payment configuration error.'); return; }
+                setStripePromise(loadStripe(key));
+                setClientSecret(secret);
+            })
+            .catch((err) => {
+                if (cancelled) return;
+                console.error('[GuestPOS] Stripe init failed:', err?.response?.data || err?.message || err);
+                setStripeError('Failed to initialise payment. Please try again.');
+            })
+            .finally(() => { if (!cancelled) setStripeLoading(false); });
+        return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [showPayment, slug, stripeRetry]);
+
+    // Handle return from redirect-based payments (Amazon Pay, UPI redirect, etc.)
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const paymentIntentId = params.get('payment_intent');
+        const redirectStatus = params.get('redirect_status');
+        if (!paymentIntentId || !redirectStatus) return;
+
+        // Clean the URL immediately so a page refresh doesn't re-trigger this
+        window.history.replaceState({}, '', window.location.pathname);
+
+        const savedStr = sessionStorage.getItem('guestPendingOrder');
+        sessionStorage.removeItem('guestPendingOrder');
+
+        if (redirectStatus === 'succeeded' && savedStr) {
+            const savedData = JSON.parse(savedStr);
+            setRedirectProcessing(true);
+            ordersAPI.createPublic({ ...savedData, paymentIntentId }, savedData.slug)
+                .then((res: any) => {
+                    setSuccessOrderNumber(res.data.orderNumber || 'Unknown');
+                })
+                .catch((err: any) => {
+                    console.error('Order error after redirect payment:', err);
+                    setRedirectPaymentId(paymentIntentId);
+                    setRedirectError('Your payment was received but we could not confirm your order automatically. Please show the reference below to a staff member.');
+                })
+                .finally(() => setRedirectProcessing(false));
+        } else if (redirectStatus !== 'succeeded') {
+            toast.error('Payment was not completed. Please try again.');
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     useEffect(() => {
         if (slug) {
@@ -321,7 +398,14 @@ const GuestPOSPage: React.FC = () => {
         setCartOpen(false);
     };
 
-    const handlePlaceOrder = async () => {
+    const handleClosePayment = () => {
+        setShowPayment(false);
+        setStripePromise(null);
+        setClientSecret(null);
+        setStripeError(null);
+    };
+
+    const handlePlaceOrder = async (paymentIntentId: string) => {
         if (!slug) return;
         try {
             setSubmitting(true);
@@ -336,95 +420,212 @@ const GuestPOSPage: React.FC = () => {
                     total: item.price * item.quantity,
                     taxRate: (item.taxRate !== undefined && item.taxRate !== null) ? item.taxRate : undefined
                 })),
-                orderType: orderType,
-                customer: {
-                    name: 'Guest Customer',
-                    phone: '',
-                },
-                paymentMethod: 'upi',
-                paymentStatus: 'paid', // Correct status from 'completed' to 'paid'
-                status: 'confirmed', // Send directly to confirmed/KOT
+                orderType,
+                customer: { name: 'Guest Customer', phone: '' },
+                paymentMethod: 'card',
+                paymentStatus: 'paid',
+                paymentIntentId,
+                status: 'confirmed',
                 subtotal: totals.subtotal,
                 totalAmount: totals.total,
                 discount: totals.discount,
                 couponCode: appliedCoupon?.code,
-                tax: { 
-                    rate: taxDetails?.taxRate !== undefined ? Number((taxDetails.taxRate * 100).toFixed(2)) : taxRate, 
+                tax: {
+                    rate: taxDetails?.taxRate !== undefined ? Number((taxDetails.taxRate * 100).toFixed(2)) : taxRate,
                     amount: totals.gst,
                     breakdown: taxDetails?.breakdown || taxDetails
                 },
                 tableNumber: orderType === 'global_dine_in' ? tableNumber : undefined,
-                notes: `Guest Order - ${orderType}${orderType === 'global_dine_in' && tableNumber ? ` - Table ${tableNumber}` : ''} - Paid via QR`,
+                notes: `Guest Order - ${orderType}${orderType === 'global_dine_in' && tableNumber ? ` - Table ${tableNumber}` : ''} - Paid via Card`,
                 source: 'website'
             };
 
             const res = await ordersAPI.createPublic(orderData, slug);
             setSuccessOrderNumber(res.data.orderNumber || 'Unknown');
             setCart([]);
-            setShowPayment(false);
-            setCartOpen(false);
+            handleClosePayment();
         } catch (error: any) {
             console.error('Order error:', error);
             toast.error(error.response?.data?.message || 'Failed to place order');
+            throw error;
         } finally {
             setSubmitting(false);
         }
     };
 
-    const QRCodePayment = () => {
-        const totals = calculateTotal();
-        // Use provided VPA or fallback - handle both old and new response structures
-        const upiSettings = paymentSettings?.upi || paymentSettings;
-        const vpa = upiSettings?.vpa || 'pay@upi';
-        const name = upiSettings?.name || 'Restaurant';
-        const upiString = `upi://pay?pa=${vpa}&pn=${encodeURIComponent(name)}&am=${totals.total.toFixed(2)}&tn=Order Payment`;
+    // Inner card form — must be rendered inside <Elements>
+    const StripeCardForm: React.FC = () => {
+        const stripe = useStripe();
+        const elements = useElements();
+        const [paymentStatus, setPaymentStatus] = React.useState<'idle' | 'failed' | 'order_failed'>('idle');
+        const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
+        const [paidIntentId, setPaidIntentId] = React.useState<string | null>(null);
+        const [paying, setPaying] = React.useState(false);
 
-        // Using qrserver API for simplicity to avoid import issues or missing libraries
-        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(upiString)}`;
+        const handlePay = async () => {
+            if (!stripe || !elements || !clientSecret) return;
 
-        return (
-            <Dialog open={showPayment} onClose={() => setShowPayment(false)} fullWidth maxWidth="xs">
-                <DialogTitle sx={{ textAlign: 'center' }}>Scan to Pay</DialogTitle>
-                <DialogContent sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 3 }}>
-                    <Typography variant="h3" color="primary" gutterBottom fontWeight="bold">
-                        {formatCurrency(totals.total)}
+            // Pre-save order data so redirect-based methods (Amazon Pay, etc.)
+            // can complete the order after the browser returns from the external auth page
+            const totals = calculateTotal();
+            sessionStorage.setItem('guestPendingOrder', JSON.stringify({
+                slug,
+                items: cart.map(item => ({
+                    menuItem: item._id,
+                    name: item.name,
+                    quantity: item.quantity,
+                    price: item.price,
+                    total: item.price * item.quantity,
+                    taxRate: (item.taxRate !== undefined && item.taxRate !== null) ? item.taxRate : undefined,
+                })),
+                orderType,
+                customer: { name: 'Guest Customer', phone: '' },
+                paymentMethod: 'card',
+                paymentStatus: 'paid',
+                status: 'confirmed',
+                subtotal: totals.subtotal,
+                totalAmount: totals.total,
+                discount: totals.discount,
+                couponCode: appliedCoupon?.code,
+                tax: {
+                    rate: taxDetails?.taxRate !== undefined ? Number((taxDetails.taxRate * 100).toFixed(2)) : taxRate,
+                    amount: totals.gst,
+                    breakdown: taxDetails?.breakdown || taxDetails,
+                },
+                tableNumber: orderType === 'global_dine_in' ? tableNumber : undefined,
+                notes: `Guest Order - ${orderType}${orderType === 'global_dine_in' && tableNumber ? ` - Table ${tableNumber}` : ''} - Paid via Card`,
+                source: 'website',
+            }));
+
+            setPaying(true);
+            setPaymentStatus('idle');
+            setErrorMsg(null);
+
+            const { error, paymentIntent } = await stripe.confirmPayment({
+                elements,
+                confirmParams: { return_url: window.location.href },
+                redirect: 'if_required',
+            });
+
+            // Reached here → no redirect happened (card payment inline)
+            sessionStorage.removeItem('guestPendingOrder');
+            setPaying(false);
+
+            if (error) {
+                setErrorMsg(error.message || 'Payment failed. Please try again.');
+                setPaymentStatus('failed');
+            } else if (paymentIntent?.status === 'succeeded') {
+                try {
+                    await handlePlaceOrder(paymentIntent.id);
+                } catch {
+                    setPaidIntentId(paymentIntent.id);
+                    setPaymentStatus('order_failed');
+                }
+            }
+        };
+
+        const contactPhone = restaurantSettings?.phone || restaurantSettings?.contactPhone || null;
+
+        if (paymentStatus === 'failed') {
+            return (
+                <Box sx={{ textAlign: 'center', py: 2 }}>
+                    <Typography sx={{ fontSize: '3rem', mb: 1 }}>❌</Typography>
+                    <Typography variant="h6" color="error" fontWeight="bold" gutterBottom>
+                        Payment Failed
                     </Typography>
-
-                    <Box
-                        component="img"
-                        src={qrUrl}
-                        alt="Payment QR"
-                        sx={{
-                            width: 250,
-                            height: 250,
-                            mb: 2,
-                            border: '1px solid #ddd',
-                            borderRadius: 2,
-                            p: 1
-                        }}
-                    />
-
-                    <Typography variant="body2" color="text.secondary" align="center">
-                        Scan with any UPI app<br />(GPay, PhonePe, Paytm, etc.)
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                        {errorMsg}
                     </Typography>
-
-                    {appliedCoupon && (
-                        <Chip label={`Coupon ${appliedCoupon.code} Applied`} color="success" size="small" sx={{ mt: 2 }} />
-                    )}
-                </DialogContent>
-                <DialogActions sx={{ flexDirection: 'column', gap: 1, p: 3 }}>
                     <Button
                         variant="contained"
                         fullWidth
                         size="large"
-                        color="success"
-                        onClick={handlePlaceOrder}
-                        disabled={submitting}
-                        sx={{ py: 1.5, fontSize: '1.1rem' }}
+                        sx={{ mb: 1.5 }}
+                        onClick={() => { setPaymentStatus('idle'); setErrorMsg(null); }}
                     >
-                        {submitting ? 'Verifying...' : 'I have Paid'}
+                        Try Again
                     </Button>
-                    <Button onClick={() => setShowPayment(false)} fullWidth disabled={submitting}>
+                    <Typography variant="body2" color="text.secondary">
+                        Need help?{' '}
+                        {contactPhone
+                            ? <>Call us at <Box component="a" href={`tel:${contactPhone}`} sx={{ color: 'primary.main', fontWeight: 600 }}>{contactPhone}</Box></>
+                            : 'Please contact a staff member for assistance.'
+                        }
+                    </Typography>
+                </Box>
+            );
+        }
+
+        if (paymentStatus === 'order_failed') {
+            return (
+                <Box sx={{ textAlign: 'center', py: 2 }}>
+                    <Typography sx={{ fontSize: '3rem', mb: 1 }}>⚠️</Typography>
+                    <Typography variant="h6" fontWeight="bold" gutterBottom>
+                        Payment Received
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                        Your payment was successful but we could not place the order automatically.
+                    </Typography>
+                    <Alert severity="warning" sx={{ mb: 2, textAlign: 'left' }}>
+                        <Typography variant="caption" display="block" fontWeight="bold">Payment Reference:</Typography>
+                        <Typography variant="caption" sx={{ wordBreak: 'break-all' }}>{paidIntentId}</Typography>
+                    </Alert>
+                    <Typography variant="body2" color="text.secondary">
+                        Please show this reference to a staff member — your order will be confirmed manually.
+                        {contactPhone && <> Call us at <Box component="a" href={`tel:${contactPhone}`} sx={{ color: 'primary.main', fontWeight: 600 }}>{contactPhone}</Box>.</>}
+                    </Typography>
+                </Box>
+            );
+        }
+
+        return (
+            <Box sx={{ width: '100%' }}>
+                <Box sx={{ mb: 2 }}>
+                    <PaymentElement />
+                </Box>
+                <Button
+                    variant="contained"
+                    fullWidth
+                    size="large"
+                    onClick={handlePay}
+                    disabled={!stripe || paying || submitting}
+                    sx={{ py: 1.5, fontSize: '1.1rem' }}
+                >
+                    {paying || submitting ? <CircularProgress size={22} color="inherit" /> : `Pay ${formatCurrency(calculateTotal().total)}`}
+                </Button>
+            </Box>
+        );
+    };
+
+    const PaymentDialog = () => {
+        const totals = calculateTotal();
+        return (
+            <Dialog open={showPayment} onClose={handleClosePayment} fullWidth maxWidth="xs">
+                <DialogTitle sx={{ textAlign: 'center', pb: 1 }}>
+                    <Typography variant="h6" fontWeight="bold">Pay with Card</Typography>
+                    <Typography variant="h4" color="primary" fontWeight="bold">{formatCurrency(totals.total)}</Typography>
+                    {appliedCoupon && <Chip label={`Coupon ${appliedCoupon.code} Applied`} color="success" size="small" sx={{ mt: 1 }} />}
+                </DialogTitle>
+                <DialogContent sx={{ pt: 1 }}>
+                    {stripeLoading && (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+                            <CircularProgress />
+                        </Box>
+                    )}
+                    {stripeError && (
+                        <Box>
+                            <Alert severity="error" sx={{ mb: 1 }}>{stripeError}</Alert>
+                            <Button fullWidth size="small" onClick={() => setStripeRetry(r => r + 1)}>Retry</Button>
+                        </Box>
+                    )}
+                    {!stripeLoading && !stripeError && stripePromise && clientSecret && (
+                        <Elements stripe={stripePromise} options={{ clientSecret }}>
+                            <StripeCardForm />
+                        </Elements>
+                    )}
+                </DialogContent>
+                <DialogActions sx={{ p: 2, pt: 0 }}>
+                    <Button onClick={handleClosePayment} fullWidth disabled={submitting}>
                         Cancel
                     </Button>
                 </DialogActions>
@@ -1048,8 +1249,43 @@ const GuestPOSPage: React.FC = () => {
                 </DialogActions>
             </Dialog>
 
-            {QRCodePayment()}
+            {PaymentDialog()}
             {SuccessData()}
+
+            {/* Redirect payment processing overlay */}
+            <Dialog open={redirectProcessing} maxWidth="xs" fullWidth>
+                <DialogContent sx={{ textAlign: 'center', py: 6 }}>
+                    <CircularProgress size={52} sx={{ mb: 2 }} />
+                    <Typography variant="h6" fontWeight="bold" gutterBottom>Processing Payment…</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                        Please wait while we confirm your order.
+                    </Typography>
+                </DialogContent>
+            </Dialog>
+
+            {/* Redirect payment succeeded but order creation failed */}
+            <Dialog open={!!redirectError && !redirectProcessing} maxWidth="xs" fullWidth>
+                <DialogContent sx={{ textAlign: 'center', py: 3 }}>
+                    <Typography sx={{ fontSize: '3rem', mb: 1 }}>⚠️</Typography>
+                    <Typography variant="h6" fontWeight="bold" gutterBottom>Payment Received</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        {redirectError}
+                    </Typography>
+                    <Alert severity="warning" sx={{ textAlign: 'left', mb: 1 }}>
+                        <Typography variant="caption" display="block" fontWeight="bold">Payment Reference:</Typography>
+                        <Typography variant="caption" sx={{ wordBreak: 'break-all' }}>{redirectPaymentId}</Typography>
+                    </Alert>
+                </DialogContent>
+                <DialogActions sx={{ p: 2 }}>
+                    <Button
+                        fullWidth
+                        variant="contained"
+                        onClick={() => { setRedirectError(null); setRedirectPaymentId(null); }}
+                    >
+                        Close
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };

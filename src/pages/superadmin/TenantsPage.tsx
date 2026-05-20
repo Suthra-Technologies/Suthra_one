@@ -52,7 +52,7 @@ const TenantsPage: React.FC = () => {
     try {
       const [tenantsRes, plansRes] = await Promise.all([
         superAPI.listTenants({ page: page + 1, limit: rowsPerPage, search }),
-        superAPI.listPlans()
+        superAPI.listPlansPublic()
       ]);
       setTenants(tenantsRes.data.tenants);
       setTotalTenants(tenantsRes.data.total);
