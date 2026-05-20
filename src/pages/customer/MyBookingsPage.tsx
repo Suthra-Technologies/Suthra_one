@@ -182,14 +182,15 @@ const MyBookingsPage: React.FC = () => {
     }, [orders.length, filteredBookings.length, tabValue, bookings, cancelledOrders.length]);
 
     const fetchData = async () => {
-        try {
-            setLoading(true);
-            const [bookingsRes, ordersRes] = await Promise.all([
-                bookingsAPI.getByCustomer(),
-                ordersAPI.getAll()
-            ]);
+        setLoading(true);
+        const [bookingsResult, ordersResult] = await Promise.allSettled([
+            bookingsAPI.getByCustomer(),
+            ordersAPI.getAll(),
+        ]);
 
-            const fetchedBookings = bookingsRes.data?.data || bookingsRes.data?.bookings || (Array.isArray(bookingsRes.data) ? bookingsRes.data : []);
+        if (bookingsResult.status === 'fulfilled') {
+            const res = bookingsResult.value;
+            const fetchedBookings = res.data?.data || res.data?.bookings || (Array.isArray(res.data) ? res.data : []);
             const transformedBookings: Booking[] = fetchedBookings.map((booking: any) => ({
                 ...booking,
                 id: booking.bookingId || booking._id || booking.id,
@@ -216,23 +217,28 @@ const MyBookingsPage: React.FC = () => {
                 guests: booking.guests || 1,
                 status: booking.status,
                 occasion: booking.occasion,
-                specialRequests: booking.specialRequests
+                specialRequests: booking.specialRequests,
             }));
             setBookings(transformedBookings);
+        } else {
+            console.error('Failed to load bookings:', bookingsResult.reason);
+        }
 
-            const fetchedOrders = ordersRes.data?.orders || ordersRes.data?.data || ordersRes.data || [];
-            const transformedOrders: Order[] = (Array.isArray(fetchedOrders) ? fetchedOrders : []).map((order: any) => ({
+        if (ordersResult.status === 'fulfilled') {
+            const res = ordersResult.value;
+            const fetchedOrders = res.data?.orders || res.data?.data || (Array.isArray(res.data) ? res.data : []);
+            const transformedOrders: Order[] = fetchedOrders.map((order: any) => ({
                 ...order,
                 refunds: Array.isArray(order.refunds) ? order.refunds : [],
                 canCancel: ['pending', 'confirmed'].includes(order.status) && !order.doordashDeliveryId && !order.uberEatsDeliveryId,
             }));
             setOrders(transformedOrders);
-
-        } catch (error) {
-            toast.error('Failed to load data. Please try again.');
-        } finally {
-            setLoading(false);
+        } else {
+            console.error('Failed to load orders:', ordersResult.reason);
+            toast.error('Could not load your orders. Please refresh.');
         }
+
+        setLoading(false);
     };
 
     const getStatusColor = (status: string) => {
