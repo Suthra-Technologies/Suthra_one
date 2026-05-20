@@ -545,6 +545,7 @@ export const superAPI = {
 
   // Plans management
   listPlans: () => api.get('/superadmin/plans'),
+  listPlansPublic: () => api.get('/superadmin/plans/public'),
   createPlan: (data: any) => api.post('/superadmin/plans', data),
   updatePlan: (id: string, data: any) => api.patch(`/superadmin/plans/${id}`, data),
   deletePlan: (id: string) => api.delete(`/superadmin/plans/${id}`),
