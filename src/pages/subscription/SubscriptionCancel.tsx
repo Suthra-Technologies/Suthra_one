@@ -1,15 +1,26 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Box, Typography, Button, Card, CardContent } from '@mui/material';
 import { Cancel } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { isSubdomainAccess } from '../../utils/tenant.utils';
+import { subscriptionAPI } from '../../services/api';
 
 const SubscriptionCancel: React.FC = () => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const sessionId = searchParams.get('session_id');
     const { tenantSlug } = useAuth();
     
     const dashboardPath = isSubdomainAccess() ? '/dashboard' : (tenantSlug ? `/${tenantSlug}/dashboard` : '/login');
+
+    useEffect(() => {
+        if (sessionId) {
+            subscriptionAPI.verifySession(sessionId).catch(err => {
+                console.error('Error triggering cancellation verification:', err);
+            });
+        }
+    }, [sessionId]);
 
     return (
         <Box sx={{ p: 4, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
