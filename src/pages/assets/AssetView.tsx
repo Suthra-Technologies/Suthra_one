@@ -54,6 +54,7 @@ import {
 import { useParams, useNavigate } from 'react-router-dom';
 import { assetsAPI, usersAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
+import { useActiveTenant } from '../../hooks/useActiveTenant';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -74,6 +75,7 @@ const AssetView: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const theme = useTheme();
+  const { getRelativePath } = useActiveTenant();
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set());
   
   const [loading, setLoading] = useState(true);
@@ -144,7 +146,7 @@ const AssetView: React.FC = () => {
       Promise.allSettled(emailPromises);
     } catch (error) {
       toast.error('Failed to load asset details');
-      navigate('/assets');
+      navigate(getRelativePath('/assets'));
     } finally {
       setLoading(false);
     }
@@ -245,7 +247,7 @@ const getStatusDisplay = (asset: any) => {
       {/* Header */}
       <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={4}>
         <Stack direction="row" spacing={2} alignItems="center">
-          <IconButton onClick={() => navigate('/mythri/assets')}>
+          <IconButton onClick={() => navigate(getRelativePath('/assets'))}>
             <ArrowBack />
           </IconButton>
           <Avatar 

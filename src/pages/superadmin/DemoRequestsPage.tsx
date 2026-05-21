@@ -8,6 +8,7 @@ import {
   History as HistoryIcon,
   Phone as PhoneIcon,
   Search as SearchIcon,
+  VideoCall as MeetIcon,
   Visibility as ViewIcon,
   ContentCopy as CopyIcon,
 } from '@mui/icons-material';
@@ -352,6 +353,7 @@ const DemoRequestsPage: React.FC = () => {
                 <TableCell sx={{ fontWeight: 700 }}>Email</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Phone</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Requested Time</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Meeting Link</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Submitted</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Last Updated</TableCell>
@@ -404,6 +406,13 @@ const DemoRequestsPage: React.FC = () => {
                         <Typography variant="body2" color={req.preferredDateTime ? "primary" : "text.secondary"}>
                           {req.preferredDateTime ? formatDate(req.preferredDateTime) : 'N/A'}
                         </Typography>
+                      </TableCell>
+                      <TableCell>
+                        {req.meetingLink ? (
+                          <Typography variant="body2" color="primary" component="a" href={req.meetingLink} target="_blank" rel="noopener noreferrer">
+                            Join Meet
+                          </Typography>
+                        ) : '-'}
                       </TableCell>
                       <TableCell>
                         <FormControl size="small" sx={{ minWidth: 140 }}>
@@ -509,6 +518,14 @@ const DemoRequestsPage: React.FC = () => {
                         {req.phonePrefix} {req.phoneNumber}
                       </Typography>
                     </Box>
+                    {req.meetingLink && (
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <MeetIcon fontSize="small" color="action" />
+                        <Typography variant="body2" component="a" href={req.meetingLink} target="_blank" rel="noopener noreferrer" sx={{ textDecoration: 'none', color: 'primary.main' }}>
+                          Join Meeting
+                        </Typography>
+                      </Box>
+                    )}
                   </Stack>
 
                   <FormControl size="small" fullWidth sx={{ mb: 2 }}>

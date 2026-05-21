@@ -356,6 +356,111 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     }, [user, playNotificationSound, showNotification, getOrderNotificationDetails]);
 
+    const handleNewCateringOrder = useCallback((data: any) => {
+        console.log('🔔 [NotificationProvider] RAW newCateringOrder event:', data);
+        if (!user) return;
+        const userRole = user.role?.toLowerCase() || '';
+        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
+        const isStaff = staffRoles.includes(userRole);
+        const isCustomer = userRole === 'customer';
+        const orderCustomerId = data.order?.customerUser || data.order?.customer?.userId || data.order?.customerId;
+        const currentUserId = user.sub || user._id || user.id;
+        const isOwnOrder = isCustomer && (orderCustomerId === currentUserId || data.order?.customerEmail === user.email);
+
+        if (!isStaff && !isOwnOrder) return;
+
+        playNotificationSound();
+        const orderNum = data.order?.orderNumber || 'Catering Order';
+        const customerName = data.order?.customerName || 'Customer';
+        const title = `New Catering Order!`;
+        const body = `Order No: ${orderNum}\nCustomer: ${customerName}\nStatus: Pending`;
+        showNotification(title, body);
+
+        toast.custom((t) => (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'success.main', color: 'white', p: 2, borderRadius: 2, boxShadow: 3, minWidth: 300, cursor: 'pointer' }} onClick={() => toast.dismiss(t.id)}>
+                <RestaurantIcon />
+                <Box sx={{ flexGrow: 1 }}>
+                    <Typography variant="subtitle1" fontWeight="bold">{title}</Typography>
+                    <Typography variant="body2">{body}</Typography>
+                </Box>
+                <IconButton size="small" sx={{ color: 'white' }}><CloseIcon /></IconButton>
+            </Box>
+        ), { duration: 6000, position: 'top-right' });
+
+        const newNotif: Notification = { id: data.order?._id || Date.now(), timestamp: new Date(), read: false, type: 'catering', title, message: body, priority: 'high', data: data };
+        setNotifications(prev => [newNotif, ...prev].slice(0, 50));
+    }, [user, playNotificationSound, showNotification]);
+
+    const handleCateringOrderStatusUpdate = useCallback((data: any) => {
+        console.log('🔔 [NotificationProvider] RAW cateringOrderStatusUpdate event:', data);
+        if (!user) return;
+        const userRole = user.role?.toLowerCase() || '';
+        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
+        const isStaff = staffRoles.includes(userRole);
+        const isCustomer = userRole === 'customer';
+        const orderCustomerId = data.order?.customerUser || data.order?.customer?.userId || data.order?.customerId;
+        const currentUserId = user.sub || user._id || user.id;
+        const isOwnOrder = isCustomer && (orderCustomerId === currentUserId || data.order?.customerEmail === user.email);
+
+        if (!isStaff && !isOwnOrder) return;
+
+        playNotificationSound();
+        const orderNum = data.order?.orderNumber || 'Catering Order';
+        const rawStatus = data.status || data.order?.status || 'Update';
+        const displayStatus = String(rawStatus).replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+        const title = `Catering Order Update`;
+        const body = `Order No: ${orderNum}\nStatus: ${displayStatus}`;
+        showNotification(title, body);
+
+        toast.custom((t) => (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'info.main', color: 'white', p: 2, borderRadius: 2, boxShadow: 3, minWidth: 300, cursor: 'pointer' }} onClick={() => toast.dismiss(t.id)}>
+                <RestaurantIcon />
+                <Box sx={{ flexGrow: 1 }}>
+                    <Typography variant="subtitle1" fontWeight="bold">{title}</Typography>
+                    <Typography variant="body2">{body}</Typography>
+                </Box>
+                <IconButton size="small" sx={{ color: 'white' }}><CloseIcon /></IconButton>
+            </Box>
+        ), { duration: 6000, position: 'top-right' });
+
+        const newNotif: Notification = { id: 'catering-status-' + Date.now(), timestamp: new Date(), read: false, type: 'catering-status', title, message: body, priority: 'medium', data: data };
+        setNotifications(prev => [newNotif, ...prev].slice(0, 50));
+    }, [user, playNotificationSound, showNotification]);
+
+    const handleCateringOrderUpdate = useCallback((data: any) => {
+        console.log('🔔 [NotificationProvider] RAW cateringOrderUpdate event:', data);
+        if (!user) return;
+        const userRole = user.role?.toLowerCase() || '';
+        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
+        const isStaff = staffRoles.includes(userRole);
+        const isCustomer = userRole === 'customer';
+        const orderCustomerId = data.order?.customerUser || data.order?.customer?.userId || data.order?.customerId;
+        const currentUserId = user.sub || user._id || user.id;
+        const isOwnOrder = isCustomer && (orderCustomerId === currentUserId || data.order?.customerEmail === user.email);
+
+        if (!isStaff && !isOwnOrder) return;
+
+        playNotificationSound();
+        const orderNum = data.order?.orderNumber || 'Catering Order';
+        const title = `Catering Order Updated`;
+        const body = `Order No: ${orderNum} details have been updated.`;
+        showNotification(title, body);
+
+        toast.custom((t) => (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'info.main', color: 'white', p: 2, borderRadius: 2, boxShadow: 3, minWidth: 300, cursor: 'pointer' }} onClick={() => toast.dismiss(t.id)}>
+                <RestaurantIcon />
+                <Box sx={{ flexGrow: 1 }}>
+                    <Typography variant="subtitle1" fontWeight="bold">{title}</Typography>
+                    <Typography variant="body2">{body}</Typography>
+                </Box>
+                <IconButton size="small" sx={{ color: 'white' }}><CloseIcon /></IconButton>
+            </Box>
+        ), { duration: 6000, position: 'top-right' });
+
+        const newNotif: Notification = { id: 'catering-update-' + Date.now(), timestamp: new Date(), read: false, type: 'catering-update', title, message: body, priority: 'low', data: data };
+        setNotifications(prev => [newNotif, ...prev].slice(0, 50));
+    }, [user, playNotificationSound, showNotification]);
+
     const [deliveryLocations, setDeliveryLocations] = useState<Record<string, { lat: number, lng: number, timestamp: Date }>>({});
 
     const handleLocationUpdate = useCallback((data: { orderId: string, location: { lat: number, lng: number }, timestamp: string | Date }) => {
@@ -423,17 +528,26 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         socketService.on('newOrder', handleNewOrder);
         socketService.on('orderStatusUpdate', handleOrderStatusUpdate);
         socketService.on('locationUpdate', handleLocationUpdate);
+        
+        // Catering events
+        socketService.on('newCateringOrder', handleNewCateringOrder);
+        socketService.on('cateringOrderStatusUpdate', handleCateringOrderStatusUpdate);
+        socketService.on('cateringOrderUpdate', handleCateringOrderUpdate);
 
         return () => {
             console.log('🔌 [NotificationProvider] Cleanup: removing listeners');
             socketService.off('newOrder', handleNewOrder);
             socketService.off('orderStatusUpdate', handleOrderStatusUpdate);
             socketService.off('locationUpdate', handleLocationUpdate);
+            
+            socketService.off('newCateringOrder', handleNewCateringOrder);
+            socketService.off('cateringOrderStatusUpdate', handleCateringOrderStatusUpdate);
+            socketService.off('cateringOrderUpdate', handleCateringOrderUpdate);
             // Optional: disconnect on unmount? Better to keep it alive? 
             // Usually disconnecting is safer to prevent duplicate handlers if remounted.
             socketService.disconnect();
         };
-    }, [user?.sub, user?.role, handleNewOrder, handleOrderStatusUpdate]); // Re-connect only if identity changes
+    }, [user?.sub, user?.role, handleNewOrder, handleOrderStatusUpdate, handleNewCateringOrder, handleCateringOrderStatusUpdate, handleCateringOrderUpdate]); // Re-connect only if identity changes
 
     const clearNotifications = useCallback(() => setNotifications([]), []);
     const markAsRead = useCallback((id: string | number) => {

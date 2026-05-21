@@ -23,9 +23,13 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  FormControl,
   Grid,
   IconButton,
+  InputLabel,
+  MenuItem,
   Paper,
+  Select,
   Stack,
   Switch,
   Table, TableBody, TableCell, TableContainer,
@@ -61,6 +65,7 @@ interface TeamMember {
   isActive: boolean;
   isRootAdmin: boolean;
   permissions: Array<{ module: string; actions: string[] }>;
+  roles?: string[];
   createdAt?: string;
   lastLogin?: string;
 }
@@ -72,6 +77,7 @@ const defaultForm = {
   password: '',
   phone: '',
   permissions: [] as Array<{ module: string; actions: string[] }>,
+  roles: ['superadmin'] as string[],
 };
 
 const SuperAdminTeamPage: React.FC = () => {
@@ -146,6 +152,7 @@ const SuperAdminTeamPage: React.FC = () => {
       password: '',
       phone: member.phone || '',
       permissions: member.permissions || [],
+      roles: member.roles || ['superadmin'],
     });
     setShowPassword(false);
     setDialogOpen(true);
@@ -187,6 +194,7 @@ const SuperAdminTeamPage: React.FC = () => {
           lastName: form.lastName,
           phone: form.phone,
           permissions: form.permissions,
+          roles: form.roles,
         };
         if (form.password) updateData.password = form.password;
         await superAPI.updateTeamMember(editing._id, updateData);
@@ -288,9 +296,20 @@ const SuperAdminTeamPage: React.FC = () => {
                         <Typography variant="body2" fontWeight={600}>
                           {member.firstName} {member.lastName}
                         </Typography>
-                        {member.isRootAdmin && (
-                          <Chip label="Root Admin" size="small" color="error" sx={{ height: 18, fontSize: '0.65rem', mt: 0.3 }} />
-                        )}
+                        <Stack direction="row" spacing={0.5} sx={{ mt: 0.3 }}>
+                          {member.isRootAdmin && (
+                            <Chip label="Root Admin" size="small" color="error" sx={{ height: 18, fontSize: '0.65rem' }} />
+                          )}
+                          {!member.isRootAdmin && member.roles?.includes('sales_admin') && (
+                            <Chip label="Sales Admin" size="small" color="primary" variant="outlined" sx={{ height: 18, fontSize: '0.65rem' }} />
+                          )}
+                          {!member.isRootAdmin && member.roles?.includes('support_admin') && (
+                            <Chip label="Support Admin" size="small" color="secondary" variant="outlined" sx={{ height: 18, fontSize: '0.65rem' }} />
+                          )}
+                          {!member.isRootAdmin && !member.roles?.includes('sales_admin') && !member.roles?.includes('support_admin') && (
+                            <Chip label="General Admin" size="small" color="default" variant="outlined" sx={{ height: 18, fontSize: '0.65rem' }} />
+                          )}
+                        </Stack>
                       </Box>
                     </Stack>
                   </TableCell>
@@ -437,6 +456,27 @@ const SuperAdminTeamPage: React.FC = () => {
                   ),
                 }}
               />
+            </Grid>
+            <Grid item xs={12}>
+              <FormControl fullWidth size="small">
+                <InputLabel id="role-select-label">Team Member Role</InputLabel>
+                <Select
+                  labelId="role-select-label"
+                  label="Team Member Role"
+                  value={form.roles?.includes('sales_admin') ? 'sales_admin' : (form.roles?.includes('support_admin') ? 'support_admin' : 'superadmin')}
+                  onChange={e => {
+                    const val = e.target.value;
+                    let rolesArray = ['superadmin'];
+                    if (val === 'sales_admin') rolesArray = ['superadmin', 'sales_admin'];
+                    else if (val === 'support_admin') rolesArray = ['superadmin', 'support_admin'];
+                    setForm(prev => ({ ...prev, roles: rolesArray }));
+                  }}
+                >
+                  <MenuItem value="superadmin">General Admin</MenuItem>
+                  <MenuItem value="sales_admin">Sales Admin</MenuItem>
+                  <MenuItem value="support_admin">Support Admin</MenuItem>
+                </Select>
+              </FormControl>
             </Grid>
           </Grid>
 

@@ -11,7 +11,9 @@ import {
   TakeoutDining as TakeawayIcon,
   LocalFireDepartment as UrgentIcon,
   Print as PrintIcon,
-  CurrencyExchange as RefundIcon
+  CurrencyExchange as RefundIcon,
+  Add as AddIcon,
+  Remove as RemoveIcon
 } from '@mui/icons-material';
 import {
   alpha,
@@ -103,8 +105,9 @@ const KitchenInterface: React.FC = () => {
   const bodyFontSize = { xs: '0.65rem', sm: '0.78rem' };
 
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
-  const [cancelItemRef, setCancelItemRef] = useState<{ orderId: string, itemIndex: number, itemName: string } | null>(null);
+  const [cancelItemRef, setCancelItemRef] = useState<{ orderId: string, itemIndex: number, itemName: string, maxQuantity: number } | null>(null);
   const [cancelReason, setCancelReason] = useState('');
+  const [cancelQuantity, setCancelQuantity] = useState<number>(1);
 
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [refundItemRef, setRefundItemRef] = useState<{ orderId: string, itemIndex: number, itemName: string, orderType: string, itemSubtotal: number, itemTax: number } | null>(null);
@@ -321,6 +324,10 @@ const KitchenInterface: React.FC = () => {
       toast.error('Please provide a reason for cancellation');
       return;
     }
+    if (cancelQuantity < 1 || cancelQuantity > cancelItemRef.maxQuantity) {
+      toast.error('Invalid quantity selected');
+      return;
+    }
     const { orderId, itemIndex } = cancelItemRef;
     const key = `${orderId}-${itemIndex}`;
     setIsProcessing(true);
@@ -328,7 +335,7 @@ const KitchenInterface: React.FC = () => {
     setCancelDialogOpen(false);
 
     try {
-      await ordersAPI.updateItemStatus(orderId, itemIndex, 'cancelled', cancelReason.trim());
+      await ordersAPI.updateItemStatus(orderId, itemIndex, 'cancelled', cancelReason.trim(), cancelQuantity);
 
       toast.success('Item cancelled successfully');
       // Refetch whole orders to ensure totalAmount/tax recalculation syncs exactly with backend
@@ -343,6 +350,7 @@ const KitchenInterface: React.FC = () => {
         return updated;
       });
       setCancelReason('');
+      setCancelQuantity(1);
       setCancelItemRef(null);
       setIsProcessing(false);
     }
@@ -854,8 +862,9 @@ const KitchenInterface: React.FC = () => {
                                   size="small"
                                   color="error"
                                   onClick={() => {
-                                    setCancelItemRef({ orderId: order._id, itemIndex: idx, itemName: item.name });
+                                    setCancelItemRef({ orderId: order._id, itemIndex: idx, itemName: item.name, maxQuantity: item.quantity });
                                     setCancelReason('');
+                                    setCancelQuantity(item.quantity);
                                     setCancelDialogOpen(true);
                                   }}
                                   disabled={isUpdating}
@@ -954,27 +963,142 @@ const KitchenInterface: React.FC = () => {
         </Box>
       )}
 
-{/* Dialog for canceling item */ }
-<Dialog open={cancelDialogOpen} onClose={() => setCancelDialogOpen(false)}>
-  <DialogTitle>Cancel Item</DialogTitle>
-  <DialogContent>
-    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-      You are about to cancel <strong>{cancelItemRef?.itemName}</strong>. Please provide a reason (e.g., "Out of Stock", "Customer Changed Mind").
+{/* Dialog for canceling item */}
+<Dialog 
+  open={cancelDialogOpen} 
+  onClose={() => setCancelDialogOpen(false)}
+  PaperProps={{
+    sx: {
+      borderRadius: 3,
+      width: '100%',
+      maxWidth: 420,
+      p: 1
+    }
+  }}
+>
+  <DialogTitle sx={{ pb: 1, fontWeight: '800', display: 'flex', alignItems: 'center', gap: 1 }}>
+    <CancelIcon color="error" />
+    Cancel Item
+  </DialogTitle>
+  <DialogContent sx={{ pb: 2 }}>
+    <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+      You are about to cancel <strong>{cancelItemRef?.itemName}</strong>.
     </Typography>
+
+    {cancelItemRef && cancelItemRef.maxQuantity > 1 && (
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, textAlign: 'center' }}>
+          Select Quantity to Cancel
+        </Typography>
+        <Stack direction="row" alignItems="center" justifyContent="center" spacing={3} sx={{ mb: 2 }}>
+          <IconButton 
+            onClick={() => setCancelQuantity(q => Math.max(1, q - 1))}
+            disabled={cancelQuantity <= 1}
+            sx={{ 
+              border: '1.5px solid', 
+              borderColor: 'divider',
+              bgcolor: 'background.paper',
+              '&:hover': { bgcolor: 'action.hover' }
+            }}
+          >
+            <RemoveIcon />
+          </IconButton>
+          
+          <Box sx={{ minWidth: 60, textAlign: 'center' }}>
+            <Typography variant="h4" fontWeight="800" color="primary.main">
+              {cancelQuantity}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              of {cancelItemRef.maxQuantity} max
+            </Typography>
+          </Box>
+
+          <IconButton 
+            onClick={() => setCancelQuantity(q => Math.min(cancelItemRef.maxQuantity, q + 1))}
+            disabled={cancelQuantity >= cancelItemRef.maxQuantity}
+            sx={{ 
+              border: '1.5px solid', 
+              borderColor: 'divider',
+              bgcolor: 'background.paper',
+              '&:hover': { bgcolor: 'action.hover' }
+            }}
+          >
+            <AddIcon />
+          </IconButton>
+        </Stack>
+
+        <Stack direction="row" spacing={1} justifyContent="center">
+          <Button 
+            size="small" 
+            variant="outlined" 
+            onClick={() => setCancelQuantity(1)}
+            sx={{ borderRadius: 4, textTransform: 'none', fontWeight: 600 }}
+          >
+            Cancel 1
+          </Button>
+          <Button 
+            size="small" 
+            variant="outlined" 
+            color="error"
+            onClick={() => setCancelQuantity(cancelItemRef.maxQuantity)}
+            sx={{ borderRadius: 4, textTransform: 'none', fontWeight: 600 }}
+          >
+            Cancel All ({cancelItemRef.maxQuantity})
+          </Button>
+        </Stack>
+      </Box>
+    )}
+
+    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+      Quick Reasons
+    </Typography>
+    <Stack direction="row" spacing={1} flexWrap="wrap" gap={1} sx={{ mb: 2.5 }}>
+      {["Out of Stock", "Customer Changed Mind", "Kitchen Error", "Wrong Item Ordered"].map((reason) => (
+        <Chip
+          key={reason}
+          label={reason}
+          clickable
+          color={cancelReason === reason ? "error" : "default"}
+          onClick={() => setCancelReason(reason)}
+          sx={{ borderRadius: 1.5, fontWeight: 500 }}
+        />
+      ))}
+    </Stack>
+
     <TextField
       autoFocus
       margin="dense"
-      label="Cancellation Reason"
+      label="Or type a custom reason..."
       type="text"
       fullWidth
       variant="outlined"
       value={cancelReason}
       onChange={(e) => setCancelReason(e.target.value)}
+      size="small"
     />
   </DialogContent>
-  <DialogActions>
-    <Button onClick={() => setCancelDialogOpen(false)}>Cancel</Button>
-    <Button onClick={handleCancelItemProcess} color="error" variant="contained" disabled={!cancelReason.trim()}>
+  <DialogActions sx={{ px: 3, pb: 2 }}>
+    <Button 
+      onClick={() => setCancelDialogOpen(false)}
+      variant="text"
+      color="inherit"
+      sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, color: 'text.secondary' }}
+    >
+      Go Back
+    </Button>
+    <Button 
+      onClick={handleCancelItemProcess} 
+      color="error" 
+      variant="contained" 
+      disabled={!cancelReason.trim()}
+      disableElevation
+      sx={{ 
+        borderRadius: 2, 
+        textTransform: 'none', 
+        fontWeight: 600,
+        boxShadow: '0 8px 16px -4px rgba(211, 47, 47, 0.3)'
+      }}
+    >
       Confirm Cancellation
     </Button>
   </DialogActions>

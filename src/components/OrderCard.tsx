@@ -18,6 +18,8 @@ import {
     Phone as PhoneIcon,
     Launch as LaunchIcon,
     MoneyOff as RefundIcon,
+    Add as AddIcon,
+    Remove as RemoveIcon,
 } from '@mui/icons-material';
 import {
     alpha,
@@ -97,6 +99,8 @@ const OrderCard: React.FC<OrderCardProps> = ({
     const [cancelOrderDialogOpen, setCancelOrderDialogOpen] = useState(false);
     const [cancelNotes, setCancelNotes] = useState('');
     const [itemToDeleteIndex, setItemToDeleteIndex] = useState<number | null>(null);
+    const [itemToDeleteDetails, setItemToDeleteDetails] = useState<{ maxQuantity: number, itemName: string } | null>(null);
+    const [removeQuantity, setRemoveQuantity] = useState<number>(1);
     const [expanded, setExpanded] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
     const [refundDialogOpen, setRefundDialogOpen] = useState(false);
@@ -143,17 +147,23 @@ const OrderCard: React.FC<OrderCardProps> = ({
         if (onRefresh) onRefresh();
     };
 
-    const handleDeleteItem = (index: number) => {
+    const handleDeleteItem = (index: number, maxQuantity: number, itemName: string) => {
         setItemToDeleteIndex(index);
+        setItemToDeleteDetails({ maxQuantity, itemName });
+        setRemoveQuantity(maxQuantity);
         setDeleteConfirmationOpen(true);
     };
 
     const confirmDelete = async () => {
         if (itemToDeleteIndex === null || isProcessing) return;
+        if (itemToDeleteDetails && (removeQuantity < 1 || removeQuantity > itemToDeleteDetails.maxQuantity)) {
+            toast.error('Invalid quantity selected');
+            return;
+        }
 
         setIsProcessing(true);
         try {
-            await ordersAPI.removeItem(order._id, itemToDeleteIndex);
+            await ordersAPI.removeItem(order._id, itemToDeleteIndex, removeQuantity);
             toast.success('Item removed');
             if (onRefresh) onRefresh();
         } catch (error) {
@@ -162,6 +172,8 @@ const OrderCard: React.FC<OrderCardProps> = ({
         } finally {
             setDeleteConfirmationOpen(false);
             setItemToDeleteIndex(null);
+            setItemToDeleteDetails(null);
+            setRemoveQuantity(1);
             setIsProcessing(false);
         }
     };
@@ -593,7 +605,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                                         color="error"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            handleDeleteItem(realIndex);
+                                                            handleDeleteItem(realIndex, item.quantity, item.name || item.menuItem?.name || 'Unknown Item');
                                                         }}
                                                     >
                                                         <DeleteIcon fontSize="small" />
@@ -1045,8 +1057,71 @@ const OrderCard: React.FC<OrderCardProps> = ({
                         Delete Item?
                     </Typography>
                     <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3, px: 2 }}>
-                        Are you sure you want to remove <strong>{itemToDeleteIndex !== null && order.items[itemToDeleteIndex] ? (order.items[itemToDeleteIndex].name || order.items[itemToDeleteIndex].menuItem?.name || 'this item') : 'this item'}</strong>? This action cannot be undone.
+                        Are you sure you want to remove <strong>{itemToDeleteDetails?.itemName || (itemToDeleteIndex !== null && order.items[itemToDeleteIndex] ? (order.items[itemToDeleteIndex].name || order.items[itemToDeleteIndex].menuItem?.name || 'this item') : 'this item')}</strong>? This action cannot be undone.
                     </Typography>
+                    {itemToDeleteDetails && itemToDeleteDetails.maxQuantity > 1 && (
+                        <Box sx={{ width: '100%', mb: 3, px: 2 }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, textAlign: 'center' }}>
+                                Select Quantity to Remove
+                            </Typography>
+                            <Stack direction="row" alignItems="center" justifyContent="center" spacing={3} sx={{ mb: 2 }}>
+                                <IconButton 
+                                    onClick={() => setRemoveQuantity(q => Math.max(1, q - 1))}
+                                    disabled={removeQuantity <= 1}
+                                    sx={{ 
+                                        border: '1.5px solid', 
+                                        borderColor: 'divider',
+                                        bgcolor: 'background.paper',
+                                        '&:hover': { bgcolor: 'action.hover' }
+                                    }}
+                                >
+                                    <RemoveIcon />
+                                </IconButton>
+                                
+                                <Box sx={{ minWidth: 60, textAlign: 'center' }}>
+                                    <Typography variant="h4" fontWeight="800" color="primary.main">
+                                        {removeQuantity}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        of {itemToDeleteDetails.maxQuantity} max
+                                    </Typography>
+                                </Box>
+
+                                <IconButton 
+                                    onClick={() => setRemoveQuantity(q => Math.min(itemToDeleteDetails.maxQuantity, q + 1))}
+                                    disabled={removeQuantity >= itemToDeleteDetails.maxQuantity}
+                                    sx={{ 
+                                        border: '1.5px solid', 
+                                        borderColor: 'divider',
+                                        bgcolor: 'background.paper',
+                                        '&:hover': { bgcolor: 'action.hover' }
+                                    }}
+                                >
+                                    <AddIcon />
+                                </IconButton>
+                            </Stack>
+
+                            <Stack direction="row" spacing={1} justifyContent="center">
+                                <Button 
+                                    size="small" 
+                                    variant="outlined" 
+                                    onClick={() => setRemoveQuantity(1)}
+                                    sx={{ borderRadius: 4, textTransform: 'none', fontWeight: 600 }}
+                                >
+                                    Remove 1
+                                </Button>
+                                <Button 
+                                    size="small" 
+                                    variant="outlined" 
+                                    color="error"
+                                    onClick={() => setRemoveQuantity(itemToDeleteDetails.maxQuantity)}
+                                    sx={{ borderRadius: 4, textTransform: 'none', fontWeight: 600 }}
+                                >
+                                    Remove All ({itemToDeleteDetails.maxQuantity})
+                                </Button>
+                            </Stack>
+                        </Box>
+                    )}
                     <Stack direction="row" spacing={2} width="100%">
                         <Button
                             onClick={() => setDeleteConfirmationOpen(false)}
