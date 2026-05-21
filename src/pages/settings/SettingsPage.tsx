@@ -9,6 +9,7 @@ import {
     Login as LoginIcon,
     Logout as LogoutIcon,
     PlayArrow as PlayArrowIcon,
+    PriceChange as PriceChangeIcon,
     Print as PrintIcon,
     Refresh as RefreshIcon,
     Save as SaveIcon,
@@ -82,7 +83,7 @@ import {
     type UnitConfig
 } from '../../context/SettingsContext';
 
-import { paymentsAPI, printersAPI, settingsAPI, smsAPI, tenantAPI, usersAPI } from '../../services/api';
+import { menuAPI, paymentsAPI, printersAPI, settingsAPI, smsAPI, tenantAPI, usersAPI } from '../../services/api';
 
 import { NOTIFICATION_SOUNDS, previewSound } from '../../utils/notificationSounds';
 import type { ValidationResult } from '../../utils/validation';
@@ -447,6 +448,14 @@ const createDefaultSettings = (): SettingsState => ({
         maxRedemptionPercentage: 100,
     },
     delivery: {
+        builtIn: {
+            enabled: false,
+            minDeliveryRange: 0,
+            maxDeliveryRange: 15,
+            baseFee: 2.00,
+            baseMiles: 2,
+            perMileRate: 0.50,
+        },
         doordash: {
             enabled: false,
             developerId: '',
@@ -541,6 +550,10 @@ const mergeSettingsWithDefaults = (defaults: SettingsState, partial: Partial<Set
             ...(partial.rewards || {}),
         },
         delivery: {
+            builtIn: {
+                ...defaults.delivery!.builtIn,
+                ...(partial.delivery?.builtIn || {}),
+            },
             doordash: {
                 ...defaults.delivery!.doordash,
                 ...(partial.delivery?.doordash || {}),
@@ -584,6 +597,95 @@ const SettingsPage: React.FC = () => {
     const [smsSummary, setSmsSummary] = useState<any[]>([]);
 
     const [smsLoading, setSmsLoading] = useState(false);
+
+    // Menu Price Adjustment tab state
+    const [priceCategories, setPriceCategories] = useState<any[]>([]);
+    const [priceSelectedCategory, setPriceSelectedCategory] = useState<string>('all');
+    const [pricePercentage, setPricePercentage] = useState<string>('');
+    const [pricePreviewItems, setPricePreviewItems] = useState<{ _id: string; name: string; category: any; currentPrice: number; newPrice: number }[]>([]);
+    const [pricePreviewLoading, setPricePreviewLoading] = useState(false);
+    const [priceApplyLoading, setPriceApplyLoading] = useState(false);
+    const [priceLogsOpen, setPriceLogsOpen] = useState(false);
+    const [priceLogs, setPriceLogs] = useState<any[]>([]);
+    const [priceLogsLoading, setPriceLogsLoading] = useState(false);
+
+    const fetchPriceCategories = async () => {
+        try {
+            const res = await menuAPI.getAllCategories();
+            setPriceCategories(res.data || []);
+        } catch {
+            toast.error('Failed to load categories');
+        }
+    };
+
+    const handlePricePreview = async () => {
+        const pct = parseFloat(pricePercentage);
+        if (!pricePercentage || isNaN(pct)) {
+            toast.error('Enter a valid percentage');
+            return;
+        }
+        try {
+            setPricePreviewLoading(true);
+            setPricePreviewItems([]);
+            const params: any = { limit: 1000 };
+            if (priceSelectedCategory !== 'all') params.category = priceSelectedCategory;
+            const res = await menuAPI.getAll(params);
+            const items = res.data?.items || res.data || [];
+            const multiplier = 1 + pct / 100;
+            const preview = items.map((item: any) => ({
+                _id: item._id,
+                name: item.name,
+                category: item.category,
+                currentPrice: item.price,
+                newPrice: Math.round(item.price * multiplier * 100) / 100,
+            }));
+            setPricePreviewItems(preview);
+        } catch {
+            toast.error('Failed to load preview');
+        } finally {
+            setPricePreviewLoading(false);
+        }
+    };
+
+    const handlePriceApply = async () => {
+        const pct = parseFloat(pricePercentage);
+        if (!pricePreviewItems.length || isNaN(pct)) return;
+        if (!window.confirm(`Apply ${pct > 0 ? '+' : ''}${pct}% price change to ${pricePreviewItems.length} item(s)? This cannot be undone.`)) return;
+        try {
+            setPriceApplyLoading(true);
+            const res = await menuAPI.bulkPriceAdjust(pct, priceSelectedCategory !== 'all' ? priceSelectedCategory : undefined);
+            toast.success(`Updated prices for ${res.data.updated} item(s)`);
+            setPricePreviewItems([]);
+            setPricePercentage('');
+            // Refresh logs if panel is open
+            if (priceLogsOpen) {
+                fetchPriceLogs();
+            }
+        } catch {
+            toast.error('Failed to apply price changes');
+        } finally {
+            setPriceApplyLoading(false);
+        }
+    };
+
+    const fetchPriceLogs = async () => {
+        try {
+            setPriceLogsLoading(true);
+            const res = await menuAPI.getPriceAdjustmentLogs();
+            setPriceLogs(res.data || []);
+        } catch {
+            toast.error('Failed to load price adjustment logs');
+        } finally {
+            setPriceLogsLoading(false);
+        }
+    };
+
+    const handleTogglePriceLogs = () => {
+        if (!priceLogsOpen && priceLogs.length === 0) {
+            fetchPriceLogs();
+        }
+        setPriceLogsOpen(prev => !prev);
+    };
 
     const fetchUsers = async (page: number, limit: number) => {
         try {
@@ -751,7 +853,7 @@ const SettingsPage: React.FC = () => {
         if (tabValue === 5) {
             fetchAgents();
         }
-        if (tabValue === 8) {
+        if (tabValue === 3) {
             fetchSmsLogs(smsPage, smsRowsPerPage);
             fetchSmsSummary();
         }
@@ -790,6 +892,9 @@ const SettingsPage: React.FC = () => {
 
     const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
         setTabValue(newValue);
+        if (newValue === 8 && priceCategories.length === 0) {
+            fetchPriceCategories();
+        }
     };
 
     const handleInputChange = (category: 'restaurant' | 'system' | 'rewards', field: string, value: any) => {
@@ -909,7 +1014,7 @@ const SettingsPage: React.FC = () => {
         }));
     };
 
-    const handleDeliveryChange = (provider: 'doordash' | 'ubereats', field: string, value: any) => {
+    const handleDeliveryChange = (provider: 'builtIn' | 'doordash' | 'ubereats', field: string, value: any) => {
         setSettings(prev => ({
             ...prev,
             delivery: {
@@ -1456,6 +1561,7 @@ const SettingsPage: React.FC = () => {
                     <Tab label="Printers" icon={<PrintIcon />} iconPosition="start" />
                     <Tab label="Loyalty / Rewards" icon={<StarIcon />} iconPosition="start" />
                     <Tab label="Delivery" icon={<DeliveryDiningIcon />} iconPosition="start" />
+                    <Tab label="Menu Prices" icon={<PriceChangeIcon />} iconPosition="start" />
                 </Tabs>
                 <Divider />
 
@@ -4135,6 +4241,123 @@ const SettingsPage: React.FC = () => {
                         </Alert>
 
                         <Grid container spacing={4}>
+                            {/* Built-in Delivery Section */}
+                            <Grid size={{ xs: 12 }}>
+                                <Paper variant="outlined" sx={{ p: 3, borderRadius: 4, borderColor: settings.delivery?.builtIn?.enabled ? 'primary.main' : 'divider', bgcolor: settings.delivery?.builtIn?.enabled ? alpha('#4F46E5', 0.02) : 'background.paper' }}>
+                                    <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                                        <Typography variant="h6" fontWeight="bold">Built-in Delivery</Typography>
+                                        <FormControlLabel
+                                            control={
+                                                <Switch
+                                                    checked={settings.delivery?.builtIn?.enabled || false}
+                                                    onChange={(e) => handleDeliveryChange('builtIn', 'enabled', e.target.checked)}
+                                                />
+                                            }
+                                            label={settings.delivery?.builtIn?.enabled ? 'Enabled' : 'Disabled'}
+                                        />
+                                    </Stack>
+                                    <Divider sx={{ mb: 2 }} />
+                                    <Typography variant="body2" color="text.secondary">
+                                        Use the platform's built-in delivery system to manage and dispatch deliveries directly without a third-party provider.
+                                    </Typography>
+                                    {settings.delivery?.builtIn?.enabled && (
+                                        <Grid container spacing={3} sx={{ mt: 2 }}>
+                                            <Grid size={{ xs: 12, sm: 6 }}>
+                                                <TextField
+                                                    fullWidth
+                                                    type="number"
+                                                    label="Minimum Delivery Range"
+                                                    value={settings.delivery.builtIn.minDeliveryRange ?? 0}
+                                                    onChange={(e) => handleDeliveryChange('builtIn', 'minDeliveryRange', parseFloat(e.target.value) || 0)}
+                                                    slotProps={{ htmlInput: { min: 0 } }}
+                                                    helperText="Minimum distance required for delivery orders"
+                                                    InputProps={{
+                                                        endAdornment: <InputAdornment position="end">Miles</InputAdornment>,
+                                                    }}
+                                                />
+                                            </Grid>
+                                            <Grid size={{ xs: 12, sm: 6 }}>
+                                                <TextField
+                                                    fullWidth
+                                                    type="number"
+                                                    label="Maximum Delivery Range"
+                                                    value={settings.delivery.builtIn.maxDeliveryRange ?? 15}
+                                                    onChange={(e) => handleDeliveryChange('builtIn', 'maxDeliveryRange', parseFloat(e.target.value) || 0)}
+                                                    slotProps={{ htmlInput: { min: 0 } }}
+                                                    helperText="Maximum distance allowed for delivery orders"
+                                                    InputProps={{
+                                                        endAdornment: <InputAdornment position="end">Miles</InputAdornment>,
+                                                    }}
+                                                />
+                                            </Grid>
+                                            <Grid size={{ xs: 12, sm: 4 }}>
+                                                <TextField
+                                                    fullWidth
+                                                    type="number"
+                                                    label="Base Delivery Fee"
+                                                    value={settings.delivery.builtIn.baseFee ?? 2.00}
+                                                    onChange={(e) => handleDeliveryChange('builtIn', 'baseFee', parseFloat(e.target.value) || 0)}
+                                                    slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
+                                                    helperText="Flat fee charged on every delivery order"
+                                                    InputProps={{
+                                                        startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                                                    }}
+                                                />
+                                            </Grid>
+                                            <Grid size={{ xs: 12, sm: 4 }}>
+                                                <TextField
+                                                    fullWidth
+                                                    type="number"
+                                                    label="Base Miles Covered"
+                                                    value={settings.delivery.builtIn.baseMiles ?? 2}
+                                                    onChange={(e) => handleDeliveryChange('builtIn', 'baseMiles', parseFloat(e.target.value) || 0)}
+                                                    slotProps={{ htmlInput: { min: 0, step: 0.5 } }}
+                                                    helperText="Miles included in the base fee before per-mile charges apply"
+                                                    InputProps={{
+                                                        endAdornment: <InputAdornment position="end">Miles</InputAdornment>,
+                                                    }}
+                                                />
+                                            </Grid>
+                                            <Grid size={{ xs: 12, sm: 4 }}>
+                                                <TextField
+                                                    fullWidth
+                                                    type="number"
+                                                    label="Per Mile Rate"
+                                                    value={settings.delivery.builtIn.perMileRate ?? 0.50}
+                                                    onChange={(e) => handleDeliveryChange('builtIn', 'perMileRate', parseFloat(e.target.value) || 0)}
+                                                    slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
+                                                    helperText="Charge per additional mile beyond base miles (rounded up)"
+                                                    InputProps={{
+                                                        startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                                                        endAdornment: <InputAdornment position="end">/ mile</InputAdornment>,
+                                                    }}
+                                                />
+                                            </Grid>
+                                        </Grid>
+                                    )}
+                                    <Box sx={{ mt: 4, display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' } }}>
+                                        <Button
+                                            variant="contained"
+                                            size={isMobile ? "medium" : "large"}
+                                            startIcon={<SaveIcon />}
+                                            onClick={() => handleSave('delivery')}
+                                            disabled={loading}
+                                            sx={{
+                                                borderRadius: 2.5,
+                                                px: 4,
+                                                fontWeight: 800,
+                                                fontFamily: "'Outfit', sans-serif",
+                                                width: { xs: '100%', sm: 'auto' },
+                                                maxWidth: { xs: '320px', sm: 'none' },
+                                                boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.25)}`
+                                            }}
+                                        >
+                                            Save
+                                        </Button>
+                                    </Box>
+                                </Paper>
+                            </Grid>
+
                             {/* DoorDash Section */}
                             <Grid size={{ xs: 12, md: 6 }}>
                                 <Paper variant="outlined" sx={{ p: 3, borderRadius: 4, height: '100%', borderColor: settings.delivery?.doordash?.enabled ? 'primary.main' : 'divider', bgcolor: settings.delivery?.doordash?.enabled ? alpha('#4F46E5', 0.02) : 'background.paper' }}>
@@ -4220,6 +4443,170 @@ const SettingsPage: React.FC = () => {
                             </Grid>
                         </Grid>
 
+                    </Box>
+                </TabPanel>
+
+                {/* Menu Prices Tab */}
+                <TabPanel value={tabValue} index={8}>
+                    <Box sx={{ mb: 3 }}>
+                        <Typography variant="h6" gutterBottom sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif", display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <PriceChangeIcon color="primary" /> Bulk Menu Price Adjustment
+                        </Typography>
+                        <Alert severity="info" sx={{ mb: 3 }}>
+                            Adjust prices for all menu items or by category by a percentage. Preview changes before applying.
+                        </Alert>
+
+                        <Grid container spacing={3} sx={{ mb: 3 }}>
+                            <Grid size={{ xs: 12, sm: 4 }}>
+                                <TextField
+                                    select
+                                    fullWidth
+                                    label="Category"
+                                    value={priceSelectedCategory}
+                                    onChange={e => { setPriceSelectedCategory(e.target.value); setPricePreviewItems([]); }}
+                                    size="small"
+                                >
+                                    <MenuItem value="all">All Categories</MenuItem>
+                                    {priceCategories.map((cat: any) => (
+                                        <MenuItem key={cat._id} value={cat._id}>{cat.name}</MenuItem>
+                                    ))}
+                                </TextField>
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 4 }}>
+                                <TextField
+                                    fullWidth
+                                    label="Adjustment %"
+                                    placeholder="e.g. 10 or -5"
+                                    value={pricePercentage}
+                                    onChange={e => { setPricePercentage(e.target.value); setPricePreviewItems([]); }}
+                                    size="small"
+                                    type="number"
+                                    InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
+                                />
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 4 }}>
+                                <Button
+                                    variant="outlined"
+                                    fullWidth
+                                    onClick={handlePricePreview}
+                                    disabled={pricePreviewLoading || !pricePercentage}
+                                    startIcon={pricePreviewLoading ? <CircularProgress size={16} /> : undefined}
+                                    sx={{ height: 40 }}
+                                >
+                                    {pricePreviewLoading ? 'Loading…' : 'Preview Changes'}
+                                </Button>
+                            </Grid>
+                        </Grid>
+
+                        {pricePreviewItems.length > 0 && (
+                            <Box>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+                                    <Typography variant="subtitle2" color="text.secondary">
+                                        {pricePreviewItems.length} item(s) will be updated
+                                    </Typography>
+                                    <Button
+                                        variant="contained"
+                                        color="warning"
+                                        onClick={handlePriceApply}
+                                        disabled={priceApplyLoading}
+                                        startIcon={priceApplyLoading ? <CircularProgress size={16} color="inherit" /> : undefined}
+                                    >
+                                        {priceApplyLoading ? 'Applying…' : `Apply ${pricePercentage}% to ${pricePreviewItems.length} items`}
+                                    </Button>
+                                </Box>
+                                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+                                    <Table size="small">
+                                        <TableHead>
+                                            <TableRow sx={{ bgcolor: 'grey.50' }}>
+                                                <TableCell><strong>Item</strong></TableCell>
+                                                <TableCell><strong>Category</strong></TableCell>
+                                                <TableCell align="right"><strong>Current Price</strong></TableCell>
+                                                <TableCell align="right"><strong>New Price</strong></TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {pricePreviewItems.map(item => (
+                                                <TableRow key={item._id} hover>
+                                                    <TableCell>{item.name}</TableCell>
+                                                    <TableCell>{typeof item.category === 'object' ? item.category?.name : item.category}</TableCell>
+                                                    <TableCell align="right">{item.currentPrice.toFixed(2)}</TableCell>
+                                                    <TableCell align="right" sx={{ color: parseFloat(pricePercentage) > 0 ? 'success.main' : 'error.main', fontWeight: 600 }}>
+                                                        {item.newPrice.toFixed(2)}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            </Box>
+                        )}
+
+                        {/* Price Adjustment Logs */}
+                        <Box sx={{ mt: 3 }}>
+                            <Button
+                                variant="text"
+                                startIcon={<HistoryIcon />}
+                                endIcon={<ExpandMoreIcon sx={{ transform: priceLogsOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: '0.2s' }} />}
+                                onClick={handleTogglePriceLogs}
+                                sx={{ textTransform: 'none', fontWeight: 600 }}
+                            >
+                                Logs
+                            </Button>
+                            <Collapse in={priceLogsOpen}>
+                                <Box sx={{ mt: 1.5 }}>
+                                    {priceLogsLoading ? (
+                                        <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
+                                            <CircularProgress size={24} />
+                                        </Box>
+                                    ) : priceLogs.length === 0 ? (
+                                        <Typography variant="body2" color="text.secondary" sx={{ py: 2 }}>
+                                            No price adjustments recorded yet.
+                                        </Typography>
+                                    ) : (
+                                        <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+                                            <Table size="small">
+                                                <TableHead>
+                                                    <TableRow sx={{ bgcolor: 'grey.50' }}>
+                                                        <TableCell><strong>Updated By</strong></TableCell>
+                                                        <TableCell><strong>Adjustment</strong></TableCell>
+                                                        <TableCell><strong>Category</strong></TableCell>
+                                                        <TableCell align="right"><strong>Items</strong></TableCell>
+                                                        <TableCell><strong>Date &amp; Time</strong></TableCell>
+                                                    </TableRow>
+                                                </TableHead>
+                                                <TableBody>
+                                                    {priceLogs.map((log: any) => (
+                                                        <TableRow key={log._id} hover>
+                                                            <TableCell>
+                                                                <Typography variant="body2" fontWeight={600}>{log.performedBy?.name || '—'}</Typography>
+                                                                {log.performedBy?.email && (
+                                                                    <Typography variant="caption" color="text.secondary">{log.performedBy.email}</Typography>
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell sx={{ color: log.percentage > 0 ? 'success.main' : 'error.main', fontWeight: 600 }}>
+                                                                {log.percentage > 0 ? '+' : ''}{log.percentage}%
+                                                            </TableCell>
+                                                            <TableCell>{log.categoryName || 'All Categories'}</TableCell>
+                                                            <TableCell align="right">{log.itemsUpdated}</TableCell>
+                                                            <TableCell>
+                                                                {new Date(log.createdAt).toLocaleString('en-US', {
+                                                                    month: '2-digit',
+                                                                    day: '2-digit',
+                                                                    year: 'numeric',
+                                                                    hour: 'numeric',
+                                                                    minute: '2-digit',
+                                                                    hour12: true,
+                                                                })}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        </TableContainer>
+                                    )}
+                                </Box>
+                            </Collapse>
+                        </Box>
                     </Box>
                 </TabPanel>
             </Paper >
