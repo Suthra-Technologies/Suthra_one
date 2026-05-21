@@ -8,6 +8,7 @@ export interface Category {
     order?: number;
     parentCategory?: string | Category | null;
     taxCode?: string;
+    itemCount?: number;
     actionHistory?: any[];
 }
 

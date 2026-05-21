@@ -104,6 +104,14 @@ const MaterialProvidersPage: React.FC = () => {
 
   const handleSave = async () => {
     if (!form.name.trim()) { toast.error('Name is required'); return; }
+    if (!form.phone.trim()) {
+      toast.error('Phone number is required');
+      return;
+    }
+    if (form.phone.length !== 10) {
+      toast.error('Phone number must be exactly 10 digits');
+      return;
+    }
     setSaving(true);
     try {
       if (editing) {
@@ -210,7 +218,7 @@ const MaterialProvidersPage: React.FC = () => {
             onClick={openAdd}
             sx={{ bgcolor: '#d32f2f', '&:hover': { bgcolor: '#b71c1c' } }}
           >
-            + Add Provider
+            Add Provider
           </Button>
         </Stack>
       </Box>
@@ -328,7 +336,17 @@ const MaterialProvidersPage: React.FC = () => {
             <TextField fullWidth label="Name *" value={form.name} onChange={f('name')} />
             <TextField fullWidth label="Contact Person" value={form.contactPerson} onChange={f('contactPerson')} />
             <Stack direction="row" spacing={2}>
-              <TextField fullWidth label="Phone" value={form.phone} onChange={f('phone')} />
+              <TextField
+                fullWidth
+                label="Phone *"
+                value={form.phone}
+                onChange={(e) => {
+                  const cleanVal = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  setForm(prev => ({ ...prev, phone: cleanVal }));
+                }}
+                error={Boolean(form.phone && form.phone.length !== 10)}
+                helperText={Boolean(form.phone && form.phone.length !== 10) ? 'Phone number must be exactly 10 digits' : ''}
+              />
               <TextField fullWidth label="Email" type="email" value={form.email} onChange={f('email')} />
             </Stack>
             <TextField fullWidth label="Address" value={form.address} onChange={f('address')} />
