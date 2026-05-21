@@ -549,7 +549,7 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                             setTableError('');
                                         }}
                                     >
-                                        {tables.filter((t) => t.status === 'available').map((t) => (
+                                        {tables.filter((t) => t.status === 'available' || t._id === selectedTable?._id).map((t) => (
                                             <MenuItem key={t._id} value={t._id}>
                                                 Table {t.tableNumber} (Cap: {t.capacity})
                                                 {(t.isPrimary || t.isMerged) ? ' (Merged)' : ''}

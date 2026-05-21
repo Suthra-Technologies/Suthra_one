@@ -1225,7 +1225,7 @@ const GuestPOSPage: React.FC = () => {
                                     </Box>
                                 )}
                                 <Box display="flex" justifyContent="space-between" mb={1}>
-                                    <Typography>Tax {taxDetails?.taxRate !== undefined ? `(${(taxDetails.taxRate * 100).toFixed(1)}%)` : `(${taxRate}%)`}</Typography>
+                                    <Typography>Tax</Typography>
                                     <Typography>{formatCurrency(calculateTotal().gst)}</Typography>
                                 </Box>
                                 <Box display="flex" justifyContent="space-between" mt={2}>
