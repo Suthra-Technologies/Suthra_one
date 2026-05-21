@@ -203,14 +203,14 @@ export const ordersAPI = {
     api.post(`/orders/${id}/items`, { items, kotNumber }),
 
   // Remove item from order
-  removeItem: (id: string, itemIndex: number) =>
-    api.delete(`/orders/${id}/items/${itemIndex}`),
+  removeItem: (id: string, itemIndex: number, quantity?: number) =>
+    api.delete(`/orders/${id}/items/${itemIndex}`, { params: { quantity } }),
   refundItem: (id: string, itemIndex: number, refundMethod: 'original' | 'cash') =>
     api.post(`/orders/${id}/items/${itemIndex}/refund`, { refundMethod }),
 
   // Kitchen item-wise status updates
-  updateItemStatus: (orderId: string, itemIndex: number, status: string, cancelReason?: string) =>
-    api.patch(`/orders/${orderId}/items/${itemIndex}/status`, { status, cancelReason }),
+  updateItemStatus: (orderId: string, itemIndex: number, status: string, cancelReason?: string, cancelQuantity?: number) =>
+    api.patch(`/orders/${orderId}/items/${itemIndex}/status`, { status, cancelReason, cancelQuantity }),
   updateAllItemsStatus: (orderId: string, status: string) =>
     api.patch(`/orders/${orderId}/items/all/status`, { status }),
 
