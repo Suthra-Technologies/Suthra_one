@@ -190,6 +190,26 @@ const MenuPage: React.FC = () => {
     const getCategoryId = (category?: string | Category | null) =>
         category && typeof category === 'object' ? category._id : (category || '');
 
+    const normalizeKey = (value?: string | null) => String(value || '').trim().toLowerCase();
+
+    const itemBelongsToCategory = (item: IMenuItem, category: Category) => {
+        const categoryKeys = [category._id, category.name].map(normalizeKey).filter(Boolean);
+
+        const itemKeys = [
+            getCategoryId(item.category),
+            typeof item.category === 'string' ? item.category : item.category?.name,
+            ...(Array.isArray(item.categories)
+                ? item.categories.flatMap((value) => (
+                    typeof value === 'string'
+                        ? [value]
+                        : [value._id, value.name]
+                ))
+                : []),
+        ].map(normalizeKey).filter(Boolean);
+
+        return categoryKeys.some((key) => itemKeys.includes(key));
+    };
+
     const getSubcategoryId = (subcategory?: string | Subcategory | null) =>
         subcategory && typeof subcategory === 'object' ? subcategory._id : (subcategory || '');
 
@@ -1444,7 +1464,7 @@ const MenuPage: React.FC = () => {
                                                         <Box sx={{ flexGrow: 1 }}>
                                                             <Typography variant="h6">{category.name}</Typography>
                                                             <Typography variant="caption" color="text.secondary">
-                                                                {menuItems.filter(item => getCategoryId(item.category) === category._id).length} items
+                                                                    {category.itemCount ?? menuItems.filter(item => itemBelongsToCategory(item, category)).length} items
                                                             </Typography>
                                                         </Box>
                                                     </Box>

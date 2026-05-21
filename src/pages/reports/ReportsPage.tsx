@@ -3011,9 +3011,26 @@ const ReportsPage: React.FC = () => {
                                     dataKey="date"
                                     tickFormatter={(str) => new Date(str).toLocaleDateString()}
                                 />
-                                <YAxis yAxisId="left" orientation="left" stroke="#8884d8" />
+                                <YAxis 
+                                    yAxisId="left" 
+                                    orientation="left" 
+                                    stroke="#8884d8" 
+                                    tickFormatter={(val) => typeof val === 'number' ? formatCurrency(val) : val}
+                                />
                                 <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" />
-                                <RechartsTooltip />
+                                <RechartsTooltip
+                                    contentStyle={{
+                                        borderRadius: 12,
+                                        border: "none",
+                                        boxShadow: "0 8px 25px rgba(0,0,0,0.1)"
+                                    }}
+                                    formatter={(value: any, name: any) => {
+                                        if (typeof value === 'number' && name.includes('Sales')) {
+                                            return [formatCurrency(value), name];
+                                        }
+                                        return [value, name];
+                                    }}
+                                />
                                 <Legend />
                                 <Line yAxisId="left" type="monotone" dataKey="totalSales" stroke="#8884d8" name={`Sales (${settings.restaurant.currency})`} strokeWidth={2} isAnimationActive={false} />
                                 <Line yAxisId="right" type="monotone" dataKey="totalOrders" stroke="#82ca9d" name="Orders" strokeWidth={2} isAnimationActive={false} />
@@ -4688,6 +4705,7 @@ const ReportsPage: React.FC = () => {
                                 tick={{ fontSize: 12, fill: "#6b7280" }}
                                 axisLine={false}
                                 tickLine={false}
+                                tickFormatter={(value) => value >= 1000 ? `${(value / 1000).toFixed(1)}k` : value}
                             />
 
                             {/* Tooltip styled like your dashboard */}
@@ -4698,6 +4716,10 @@ const ReportsPage: React.FC = () => {
                                     boxShadow: "0 8px 20px rgba(0,0,0,0.12)"
                                 }}
                                 cursor={{ fill: "rgba(255,107,11,0.08)" }}
+                                formatter={(value: any, name: any) => {
+                                    if (name === "Revenue") return [formatCurrency(value), "Total Revenue"];
+                                    return [value, "Total Bookings"];
+                                }}
                             />
 
                             {/* Legend */}
@@ -4940,7 +4962,17 @@ const ReportsPage: React.FC = () => {
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                     <XAxis dataKey="code" />
                                     <YAxis />
-                                    <RechartsTooltip />
+                                    <RechartsTooltip
+                                        contentStyle={{
+                                            borderRadius: 12,
+                                            border: "none",
+                                            boxShadow: "0 8px 25px rgba(0,0,0,0.1)"
+                                        }}
+                                        formatter={(value: any, name: any) => {
+                                            if (name === "Value Saved") return [formatCurrency(value), "Value Saved"];
+                                            return [value, "Redemptions"];
+                                        }}
+                                    />
                                     <Legend />
                                     <Bar dataKey="count" fill="#4F46E5" name="Redemptions" radius={[4, 4, 0, 0]} />
                                     <Bar dataKey="value" fill="#10B981" name="Value Saved" radius={[4, 4, 0, 0]} />

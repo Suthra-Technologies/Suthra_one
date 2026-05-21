@@ -57,7 +57,7 @@ const TenantPaymentsPage: React.FC = () => {
   const summaryCards = [
     { label: 'Total Gross', value: fmt(totalAmount), sub: 'all charged to customers', color: '#1976d2', border: '#1976d2' },
     { label: 'Total Refunds', value: fmt(totalRefunds), sub: 'refunded back to customers', color: '#ed6c02', border: '#ed6c02' },
-    { label: 'Net Revenue', value: fmt(netRevenue), sub: 'gross minus refunds', color: '#2e7d32', border: '#2e7d32' },
+    { label: 'Platform Earnings', value: fmt(netRevenue), sub: 'delivery + tip + proc fee − stripe fee', color: '#2e7d32', border: '#2e7d32' },
     { label: 'Total Orders', value: String(total), sub: 'platform delivery orders', color: '#7c3aed', border: '#7c3aed' },
   ];
 
@@ -135,7 +135,11 @@ const TenantPaymentsPage: React.FC = () => {
                 </TableCell>
                 <TableCell sx={{ fontWeight: 700 }} align="right">Gross</TableCell>
                 <TableCell sx={{ fontWeight: 700 }} align="right">Refunds</TableCell>
-                <TableCell sx={{ fontWeight: 700, color: '#2e7d32' }} align="right">Net</TableCell>
+                <TableCell sx={{ fontWeight: 700, color: '#2e7d32' }} align="right">
+                  <Tooltip title="Platform earnings: delivery + tip + proc fee − Stripe fee (food refunds deducted from restaurant, not platform)">
+                    <span>Net (Platform)</span>
+                  </Tooltip>
+                </TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
               </TableRow>
             </TableHead>

@@ -16,7 +16,6 @@ import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 
 interface GoogleMeetSettings {
-  calendarId: string;
   clientId: string;
   clientSecret: string;
   refreshToken: string;
@@ -24,7 +23,6 @@ interface GoogleMeetSettings {
 
 export default function SuperAdminSettingsPage() {
   const [settings, setSettings] = useState<GoogleMeetSettings>({
-    calendarId: '',
     clientId: '',
     clientSecret: '',
     refreshToken: '',
@@ -43,7 +41,6 @@ export default function SuperAdminSettingsPage() {
       const response = await api.get('/superadmin/settings/google_meet');
       if (response.data) {
         setSettings({
-          calendarId: response.data.calendarId || '',
           clientId: response.data.clientId || '',
           clientSecret: response.data.clientSecret || '',
           refreshToken: response.data.refreshToken || '',
@@ -120,16 +117,6 @@ export default function SuperAdminSettingsPage() {
             <Divider sx={{ mb: 4, opacity: 0.6 }} />
 
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3.5 }}>
-              <TextField
-                fullWidth
-                label="Google Calendar ID"
-                variant="outlined"
-                placeholder="e.g., dvrmedical@gmail.com or primary"
-                value={settings.calendarId}
-                onChange={(e) => setSettings({ ...settings, calendarId: e.target.value })}
-                sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
-              />
-
               <TextField
                 fullWidth
                 label="OAuth Client ID"

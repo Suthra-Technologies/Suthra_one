@@ -51,17 +51,27 @@ const COUNTRIES = [
 const RestaurantRegisterPage: React.FC = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState<RestaurantRegisterForm>({
-    restaurantName: '',
-    slug: '',
-    logo: '',
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    dialCode: '1',
-    password: '',
-    planId: undefined,
+  const [form, setForm] = useState<RestaurantRegisterForm>(() => {
+    try {
+      const saved = localStorage.getItem('pending_registration_form');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error('Failed to parse saved registration form:', e);
+    }
+    return {
+      restaurantName: '',
+      slug: '',
+      logo: '',
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      dialCode: '1',
+      password: '',
+      planId: undefined,
+    };
   });
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loadingPlans, setLoadingPlans] = useState<boolean>(true);
@@ -252,11 +262,13 @@ const RestaurantRegisterPage: React.FC = () => {
 
       // If a paid plan was selected, redirect to Stripe checkout
       if (data.checkoutUrl) {
+        localStorage.setItem('pending_registration_form', JSON.stringify(form));
         window.location.href = data.checkoutUrl;
         return;
       }
 
       // If it's a trial/free registration, show success popup
+      localStorage.removeItem('pending_registration_form');
       setSuccessData({ restaurantName: form.restaurantName });
     } catch (e: any) {
       setError(e.message || 'Registration failed');
