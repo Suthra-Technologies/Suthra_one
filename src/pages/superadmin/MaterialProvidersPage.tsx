@@ -20,6 +20,12 @@ const EMPTY_FORM = {
   phone: '',
   email: '',
   address: '',
+  address1: '',
+  street: '',
+  city: '',
+  state: '',
+  country: '',
+  zipcode: '',
   website: '',
   categories: [] as string[],
   status: 'active',
@@ -94,6 +100,12 @@ const MaterialProvidersPage: React.FC = () => {
       phone: row.phone || '',
       email: row.email || '',
       address: row.address || '',
+      address1: row.address1 || '',
+      street: row.street || '',
+      city: row.city || '',
+      state: row.state || '',
+      country: row.country || '',
+      zipcode: row.zipcode || '',
       website: row.website || '',
       categories: row.categories || [],
       status: row.status || 'active',
@@ -114,11 +126,25 @@ const MaterialProvidersPage: React.FC = () => {
     }
     setSaving(true);
     try {
+      const combinedAddress = [
+        form.address1.trim(),
+        form.street.trim(),
+        form.city.trim(),
+        form.state.trim(),
+        form.country.trim(),
+        form.zipcode.trim()
+      ].filter(Boolean).join(', ');
+
+      const payload = {
+        ...form,
+        address: combinedAddress,
+      };
+
       if (editing) {
-        await materialProvidersAPI.update(editing._id, form);
+        await materialProvidersAPI.update(editing._id, payload);
         toast.success('Provider updated');
       } else {
-        await materialProvidersAPI.create(form);
+        await materialProvidersAPI.create(payload);
         toast.success('Provider added');
       }
       setDialogOpen(false);
@@ -349,7 +375,16 @@ const MaterialProvidersPage: React.FC = () => {
               />
               <TextField fullWidth label="Email" type="email" value={form.email} onChange={f('email')} />
             </Stack>
-            <TextField fullWidth label="Address" value={form.address} onChange={f('address')} />
+            <TextField fullWidth label="Address 1" value={form.address1} onChange={f('address1')} />
+            <Stack direction="row" spacing={2}>
+              <TextField fullWidth label="Street" value={form.street} onChange={f('street')} />
+              <TextField fullWidth label="City" value={form.city} onChange={f('city')} />
+            </Stack>
+            <Stack direction="row" spacing={2}>
+              <TextField fullWidth label="State" value={form.state} onChange={f('state')} />
+              <TextField fullWidth label="Country" value={form.country} onChange={f('country')} />
+              <TextField fullWidth label="Zip Code" value={form.zipcode} onChange={f('zipcode')} />
+            </Stack>
             <TextField fullWidth label="Website" value={form.website} onChange={f('website')} />
             <FormControl fullWidth>
               <InputLabel>Categories</InputLabel>
