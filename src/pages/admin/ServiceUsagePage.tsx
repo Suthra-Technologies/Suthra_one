@@ -189,6 +189,7 @@ const ServiceUsagePage: React.FC = () => {
     const [topUpType, setTopUpType] = useState<'email' | 'sms'>('email');
     const [topUpPlans, setTopUpPlans] = useState<any[]>([]);
     const [topUpLoading, setTopUpLoading] = useState(false);
+    const [topUpCheckoutLoading, setTopUpCheckoutLoading] = useState<string | null>(null);
 
     // Delivery
     const [deliveryReport, setDeliveryReport] = useState<any>(null);
@@ -300,6 +301,27 @@ const ServiceUsagePage: React.FC = () => {
         if (activeTab === 2) fetchEmailData(emailPage, emailRowsPerPage);
     }, [activeTab, smsPage, smsRowsPerPage, emailPage, emailRowsPerPage, period, startDate, endDate, smsTypeFilter, emailTypeFilter, deliveryProviderFilter]);
 
+    // Handle return from Stripe Checkout for top-up
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const sessionId = params.get('topup_session');
+        if (!sessionId) return;
+        // Clean URL immediately so refresh doesn't re-trigger
+        window.history.replaceState({}, '', window.location.pathname);
+        subscriptionAPI.confirmTopup(sessionId)
+            .then(res => {
+                const { credited, resourceType, newBalance } = res.data;
+                if (credited > 0) {
+                    toast.success(`${credited.toLocaleString()} ${resourceType.toUpperCase()} credits added! New balance: ${newBalance.toLocaleString()}`);
+                } else {
+                    toast.success('Credits already applied.');
+                }
+                fetchSmsData(smsPage, smsRowsPerPage);
+            })
+            .catch(() => toast.error('Failed to confirm top-up payment. Please contact support.'));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     const handleToggleEmailTopup = async (enabled: boolean) => {
         setTogglingEmailTopup(true);
         try {
@@ -345,14 +367,14 @@ const ServiceUsagePage: React.FC = () => {
 
     const handlePurchaseTopUp = async (planId: string) => {
         try {
-            await subscriptionAPI.purchaseTopup(planId);
-            toast.success('Top-up purchased successfully');
-            setTopUpOpen(false);
-            // Refresh data
-            if (activeTab === 0) fetchSmsData(smsPage, smsRowsPerPage);
-            if (activeTab === 2) fetchEmailData(emailPage, emailRowsPerPage);
-        } catch (error) {
-            toast.error('Failed to purchase top-up');
+            setTopUpCheckoutLoading(planId);
+            const successUrl = window.location.href.split('?')[0];
+            const cancelUrl = window.location.href.split('?')[0];
+            const res = await subscriptionAPI.createTopupCheckout(planId, successUrl, cancelUrl);
+            window.location.href = res.data.url;
+        } catch {
+            toast.error('Failed to initiate payment. Please try again.');
+            setTopUpCheckoutLoading(null);
         }
     };
 
@@ -1236,13 +1258,15 @@ const ServiceUsagePage: React.FC = () => {
                                         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
                                             One-time payment
                                         </Typography>
-                                        <Button 
-                                            fullWidth 
-                                            variant="contained" 
+                                        <Button
+                                            fullWidth
+                                            variant="contained"
                                             onClick={() => handlePurchaseTopUp(plan._id)}
+                                            disabled={topUpCheckoutLoading === plan._id}
+                                            startIcon={topUpCheckoutLoading === plan._id ? <CircularProgress size={16} color="inherit" /> : undefined}
                                             sx={{ borderRadius: 2 }}
                                         >
-                                            Purchase
+                                            {topUpCheckoutLoading === plan._id ? 'Redirecting…' : 'Pay with Stripe'}
                                         </Button>
                                     </Paper>
                                 </Grid>

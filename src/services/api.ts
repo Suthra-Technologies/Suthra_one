@@ -310,6 +310,9 @@ export const menuAPI = {
   createSubcategory: (subcategoryData: any) => api.post('/menu/subcategories', subcategoryData),
   updateSubcategory: (id: string, subcategoryData: any) => api.put(`/menu/subcategories/${id}`, subcategoryData),
   deleteSubcategory: (id: string) => api.delete(`/menu/subcategories/${id}`),
+  bulkPriceAdjust: (percentage: number, categoryId?: string) =>
+    api.patch('/menu/bulk-price-adjust', { percentage, categoryId }),
+  getPriceAdjustmentLogs: () => api.get('/menu/price-adjustment-logs'),
 };
 
 // -------------------- Modifier Templates API --------------------
@@ -433,6 +436,9 @@ export const subscriptionAPI = {
   getPlans: () => api.get('/subscription/plans'),
   getTopups: () => api.get('/subscription/topups'),
   purchaseTopup: (planId: string) => api.post('/subscription/purchase-topup', { planId }),
+  createTopupCheckout: (planId: string, successUrl: string, cancelUrl: string) =>
+    api.post('/subscription/topup-checkout', { planId, successUrl, cancelUrl }),
+  confirmTopup: (sessionId: string) => api.post('/subscription/confirm-topup', { sessionId }),
   subscribe: (planId: string) => api.post('/subscription/subscribe', { planId }),
   cancel: () => api.post('/subscription/cancel'),
   createCheckoutSession: (data: {
@@ -604,6 +610,7 @@ export const superAdminAPI = superAPI; // alias for compatibility
 export const materialProvidersAPI = {
   list: (params?: { page?: number; limit?: number; search?: string; status?: string }) =>
     api.get('/superadmin/material-providers', { params }),
+  getAll: (params?: any) => api.get('/superadmin/material-providers/public', { params }),
   create: (data: any) => api.post('/superadmin/material-providers', data),
   update: (id: string, data: any) => api.patch(`/superadmin/material-providers/${id}`, data),
   remove: (id: string) => api.delete(`/superadmin/material-providers/${id}`),

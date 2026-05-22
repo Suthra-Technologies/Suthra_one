@@ -306,9 +306,9 @@ const SuperAdminTeamPage: React.FC = () => {
                           {!member.isRootAdmin && member.roles?.includes('support_admin') && (
                             <Chip label="Support Admin" size="small" color="secondary" variant="outlined" sx={{ height: 18, fontSize: '0.65rem' }} />
                           )}
-                          {!member.isRootAdmin && !member.roles?.includes('sales_admin') && !member.roles?.includes('support_admin') && (
+                          {/* {!member.isRootAdmin && !member.roles?.includes('sales_admin') && !member.roles?.includes('support_admin') && (
                             <Chip label="General Admin" size="small" color="default" variant="outlined" sx={{ height: 18, fontSize: '0.65rem' }} />
-                          )}
+                          )} */}
                         </Stack>
                       </Box>
                     </Stack>
@@ -472,7 +472,7 @@ const SuperAdminTeamPage: React.FC = () => {
                     setForm(prev => ({ ...prev, roles: rolesArray }));
                   }}
                 >
-                  <MenuItem value="superadmin">General Admin</MenuItem>
+                  {/* <MenuItem value="superadmin">General Admin</MenuItem> */}
                   <MenuItem value="sales_admin">Sales Admin</MenuItem>
                   <MenuItem value="support_admin">Support Admin</MenuItem>
                 </Select>
