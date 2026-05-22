@@ -187,6 +187,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
         { path: '/inventory/waste', label: 'Wastage Management', icon: <DeleteSweep />, roles: ['admin', 'manager'], feature: 'wastemanagement' },
         { path: '/purchase-orders', label: 'Purchase Orders', icon: <ShoppingBag />, roles: ['admin', 'manager'] },
         { path: '/vendors', label: 'Vendors', icon: <VendorIcon />, roles: ['admin', 'manager'] },
+        { path: '/material-providers', label: 'Material Providers', icon: <PlaylistAdd />, roles: ['admin', 'manager'] },
         // { path: '/recipes', label: 'Recipes', icon: <MenuBook />, roles: ['admin', 'manager'] },
         { path: '/promocode', label: 'Promo Code', icon: <LocalOffer />, roles: ['admin', 'manager'] },
         { path: '/coupons', label: 'Coupons', icon: <ConfirmationNumber />, roles: ['admin', 'manager'] },
@@ -315,7 +316,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
                     display: 'block',
                     textAlign: 'center',
                   }}>
-                    {restaurantSettings.name || (user?.tenant as any)?.name || 'POS SYSTEM'}
+                    {restaurantSettings.name || (user?.tenant as any)?.name || 'NexZen POS Restaurant'}
                   </Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 500, letterSpacing: 2, textTransform: 'uppercase', display: 'block', textAlign: 'center' }}>
                     Premium Dining

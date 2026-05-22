@@ -147,6 +147,14 @@ export interface TenantPrinterSettings {
 }
 
 export interface DeliverySettings {
+    builtIn: {
+        enabled: boolean;
+        minDeliveryRange: number;
+        maxDeliveryRange: number;
+        baseFee: number;
+        baseMiles: number;
+        perMileRate: number;
+    };
     doordash: {
         enabled: boolean;
         developerId: string;

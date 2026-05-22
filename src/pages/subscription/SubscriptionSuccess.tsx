@@ -30,6 +30,7 @@ const SubscriptionSuccess: React.FC = () => {
                     throw new Error(response?.data?.status || 'Payment not verified');
                 }
                 setSuccess(true);
+                localStorage.removeItem('pending_registration_form');
                 toast.success('Payment verified! Your subscription is active.');
                 // Refresh profile to get the updated subscription status from backend
                 try {

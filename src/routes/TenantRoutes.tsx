@@ -52,6 +52,7 @@ import PurchaseOrdersPage from '../pages/purchase-orders/PurchaseOrdersPage';
 import CreatePOPage from '../pages/purchase-orders/CreatePOPage';
 import PurchaseOrderDetailPage from '../pages/purchase-orders/PurchaseOrderDetailPage';
 import VendorsPage from '../pages/vendors/VendorsPage';
+import MaterialProvidersPage from '../pages/material-providers/MaterialProvidersPage';
 import AssetDashboard from '../pages/assets/AssetDashboard';
 import AssetList from '../pages/assets/AssetList';
 import AssetView from '../pages/assets/AssetView';
@@ -106,6 +107,7 @@ export const TenantRoutes = () => (
           <Route path="inventory/waste" element={<WasteManagementPage />} />
         </Route>
         <Route path="vendors" element={<VendorsPage />} />
+        <Route path="material-providers" element={<MaterialProvidersPage />} />
         <Route path="recipes" element={<RecipesPage />} />
         <Route path="recipes/create" element={<CreateRecipePage />} />
         <Route path="recipes/:id/edit" element={<CreateRecipePage />} />
