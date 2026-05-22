@@ -5254,9 +5254,9 @@ const ReportsPage: React.FC = () => {
                                                 <Box sx={{ mb: 1 }}>
                                                     <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>Item Ratings:</Typography>
                                                     <Box sx={{ pl: 1 }}>
-                                                        {fb.itemRatings.map((item: any) => (
-                                                            <Typography variant="caption" display="block" key={item.menuItem} color="text.secondary">
-                                                                {item.name}: {item.tasteRating} (Taste), {item.quantityRating} (Qty)
+                                                        {fb.itemRatings.map((item: any, idx: number) => (
+                                                            <Typography variant="caption" display="block" key={`${item.menuItem}-${idx}`} color="text.secondary">
+                                                                {item.name}{item.modifiers && item.modifiers.length > 0 ? ` (${item.modifiers.map((m: any) => m.name).join(', ')})` : ''}: {item.tasteRating} (Taste), {item.quantityRating} (Qty)
                                                             </Typography>
                                                         ))}
                                                     </Box>
@@ -5317,9 +5317,9 @@ const ReportsPage: React.FC = () => {
                                                 </TableCell>
                                                 <TableCell>
                                                     <Box sx={{ maxHeight: 100, overflowY: 'auto' }}>
-                                                        {fb.itemRatings && fb.itemRatings.map((item: any) => (
-                                                            <Typography variant="caption" display="block" key={item.menuItem}>
-                                                                {item.name}: {item.tasteRating} (Taste), {item.quantityRating} (Qty)
+                                                        {fb.itemRatings && fb.itemRatings.map((item: any, idx: number) => (
+                                                            <Typography variant="caption" display="block" key={`${item.menuItem}-${idx}`}>
+                                                                {item.name}{item.modifiers && item.modifiers.length > 0 ? ` (${item.modifiers.map((m: any) => m.name).join(', ')})` : ''}: {item.tasteRating} (Taste), {item.quantityRating} (Qty)
                                                             </Typography>
                                                         ))}
                                                     </Box>
