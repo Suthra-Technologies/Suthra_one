@@ -56,8 +56,9 @@ const FeedbackPage: React.FC = () => {
 
             // Initialize item ratings
             const initialRatings: any = {};
-            res.data.items.forEach((item: any) => {
-                initialRatings[item.menuItem] = { taste: 0, quantity: 0 };
+            res.data.items.forEach((item: any, index: number) => {
+                const key = `${item.menuItem}-${index}`;
+                initialRatings[key] = { taste: 0, quantity: 0 };
             });
             setItemRatings(initialRatings);
         } catch (error) {
@@ -68,11 +69,11 @@ const FeedbackPage: React.FC = () => {
         }
     };
 
-    const handleItemRatingChange = (itemId: string, type: 'taste' | 'quantity', value: number | null) => {
+    const handleItemRatingChange = (itemKey: string, type: 'taste' | 'quantity', value: number | null) => {
         setItemRatings(prev => ({
             ...prev,
-            [itemId]: {
-                ...prev[itemId],
+            [itemKey]: {
+                ...prev[itemKey],
                 [type]: value || 0
             }
         }));
@@ -91,12 +92,16 @@ const FeedbackPage: React.FC = () => {
                 serviceRating,
                 ambianceRating,
                 suggestions,
-                itemRatings: Object.keys(itemRatings).map(itemId => ({
-                    menuItem: itemId,
-                    name: order.items.find((i: any) => i.menuItem === itemId)?.name,
-                    tasteRating: itemRatings[itemId].taste,
-                    quantityRating: itemRatings[itemId].quantity
-                }))
+                itemRatings: order.items.map((item: any, index: number) => {
+                    const key = `${item.menuItem}-${index}`;
+                    return {
+                        menuItem: item.menuItem,
+                        name: item.name,
+                        tasteRating: itemRatings[key]?.taste || 0,
+                        quantityRating: itemRatings[key]?.quantity || 0,
+                        modifiers: item.modifiers || []
+                    };
+                })
             };
 
             await feedbackAPI.submitPublic(slug!, payload);
@@ -153,36 +158,50 @@ const FeedbackPage: React.FC = () => {
 
                 <Typography variant="h6" gutterBottom>Food Items</Typography>
                 <List disablePadding>
-                    {order.items.map((item: any) => (
-                        <ListItem key={item.menuItem} sx={{ flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, py: 2, borderBottom: '1px solid #f0f0f0' }}>
-                            <ListItemText
-                                primary={item.name}
-                                secondary={`Qty: ${item.quantity}`}
-                                sx={{ width: { xs: '100%', sm: '30%' }, mb: { xs: 1, sm: 0 } }}
-                            />
+                    {order.items.map((item: any, index: number) => {
+                        const key = `${item.menuItem}-${index}`;
+                        return (
+                            <ListItem key={key} sx={{ flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, py: 2, borderBottom: '1px solid #f0f0f0' }}>
+                                <ListItemText
+                                    primary={item.name}
+                                    secondary={
+                                        <>
+                                            <Typography variant="body2" color="text.secondary">
+                                                Qty: {item.quantity}
+                                            </Typography>
+                                            {item.modifiers && item.modifiers.length > 0 && (
+                                                <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
+                                                    + {item.modifiers.map((m: any) => m.name).join(', ')}
+                                                </Typography>
+                                            )}
+                                        </>
+                                    }
+                                    sx={{ width: { xs: '100%', sm: '30%' }, mb: { xs: 1, sm: 0 } }}
+                                />
 
-                            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} sx={{ width: '100%' }}>
-                                <Box>
-                                    <Typography component="legend" variant="caption">Taste</Typography>
-                                    <Rating
-                                        name={`taste-${item.menuItem}`}
-                                        value={itemRatings[item.menuItem]?.taste || 0}
-                                        onChange={(_, val) => handleItemRatingChange(item.menuItem, 'taste', val)}
-                                        size="small"
-                                    />
-                                </Box>
-                                <Box>
-                                    <Typography component="legend" variant="caption">Quantity</Typography>
-                                    <Rating
-                                        name={`qty-${item.menuItem}`}
-                                        value={itemRatings[item.menuItem]?.quantity || 0}
-                                        onChange={(_, val) => handleItemRatingChange(item.menuItem, 'quantity', val)}
-                                        size="small"
-                                    />
-                                </Box>
-                            </Stack>
-                        </ListItem>
-                    ))}
+                                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={3} sx={{ width: '100%' }}>
+                                    <Box>
+                                        <Typography component="legend" variant="caption">Taste</Typography>
+                                        <Rating
+                                            name={`taste-${key}`}
+                                            value={itemRatings[key]?.taste || 0}
+                                            onChange={(_, val) => handleItemRatingChange(key, 'taste', val)}
+                                            size="small"
+                                        />
+                                    </Box>
+                                    <Box>
+                                        <Typography component="legend" variant="caption">Quantity</Typography>
+                                        <Rating
+                                            name={`qty-${key}`}
+                                            value={itemRatings[key]?.quantity || 0}
+                                            onChange={(_, val) => handleItemRatingChange(key, 'quantity', val)}
+                                            size="small"
+                                        />
+                                    </Box>
+                                </Stack>
+                            </ListItem>
+                        );
+                    })}
                 </List>
 
                 <Box sx={{ mt: 4 }}>

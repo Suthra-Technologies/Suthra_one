@@ -105,6 +105,7 @@ const SuperAdminLayout: React.FC = () => {
         { path: '/superadmin/demo-requests', label: 'Demo Requests', icon: <DemoIcon />, permKey: 'demo_requests' },
         { path: '/superadmin/uber-direct', label: 'Uber Direct', icon: <UberDirectIcon />, permKey: 'delivery' },
         { path: '/superadmin/tickets', label: 'Support Tickets', icon: <SupportIcon />, permKey: 'tickets' },
+        { path: '/superadmin/material-providers', label: 'Material Providers', icon: <MaterialProviderIcon />, permKey: 'logs' },
         {
             label: 'System Logs',
             icon: <HistoryIcon />,
@@ -117,7 +118,6 @@ const SuperAdminLayout: React.FC = () => {
                 { path: '/superadmin/logs/plans', label: 'Plans Log', icon: <LogIcon /> },
                 { path: '/superadmin/logs/demo-requests', label: 'Demo Requests Log', icon: <LogIcon /> },
                 { path: '/superadmin/logs/tickets', label: 'Tickets Log', icon: <LogIcon /> },
-                { path: '/superadmin/material-providers', label: 'Material Providers', icon: <MaterialProviderIcon /> },
             ]
         },
         { path: '/superadmin/team', label: 'Team', icon: <TeamIcon />, permKey: 'team' },
@@ -144,13 +144,25 @@ const SuperAdminLayout: React.FC = () => {
 
     const drawer = (
         <Box>
-            <Box sx={{ p: 3, textAlign: 'center' }}>
-                <Typography variant="h5" fontWeight="bold" color="error.main">
+            <Box sx={{ p: 3, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <Box
+                    component="img"
+                    src="/nexzen_logo.jpg"
+                    alt="NexZen POS Logo"
+                    sx={{
+                        width: 'auto',
+                        height: 80,
+                        objectFit: 'contain',
+                        borderRadius: 1,
+                        mb: 1.5,
+                    }}
+                />
+                <Typography variant="h6" fontWeight="bold" color="error.main" sx={{ lineHeight: 1.2 }}>
                     Super Admin
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                {/* <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                     Platform Management
-                </Typography>
+                </Typography> */}
             </Box>
             <Divider />
 

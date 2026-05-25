@@ -316,7 +316,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
                     display: 'block',
                     textAlign: 'center',
                   }}>
-                    {restaurantSettings.name || (user?.tenant as any)?.name || 'POS SYSTEM'}
+                    {restaurantSettings.name || (user?.tenant as any)?.name || 'NexZen POS Restaurant'}
                   </Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 500, letterSpacing: 2, textTransform: 'uppercase', display: 'block', textAlign: 'center' }}>
                     Premium Dining
