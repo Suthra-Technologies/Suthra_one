@@ -355,26 +355,26 @@ const OrderCard: React.FC<OrderCardProps> = ({
                 {/* Customer & Waiter Info */}
                 <Stack spacing={0.5} sx={{ mb: 1.5 }}>
                     {order.customer?.name && (
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <PersonIcon sx={{ fontSize: 18, mr: 1, color: 'text.secondary' }} />
-                            <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
-                                <strong>Customer:</strong> 
-                                <Box component="span" sx={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: { xs: '100%', sm: '150px', md: '200px' } }}>
-                                    {/^[0-9a-fA-F]{8,24}$/.test(order.customer.name) ? 'Guest' : order.customer.name}
-                                </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'flex-start', minWidth: 0 }}>
+                            <PersonIcon sx={{ fontSize: 18, mr: 1, mt: '2px', color: 'text.secondary', flexShrink: 0 }} />
+                            <Box sx={{ minWidth: 0 }}>
+                                <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', minWidth: 0 }}>
+                                    <strong>Customer:</strong>
+                                    <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+                                        {/^[0-9a-fA-F]{8,24}$/.test(order.customer.name) ? 'Guest' : order.customer.name}
+                                    </Box>
+                                </Typography>
                                 {order.customer?.phone && (
-                                    <Box component="span" sx={{ 
-                                        color: 'text.secondary', 
-                                        fontWeight: 'bold', 
+                                    <Typography variant="body2" sx={{
+                                        color: 'text.secondary',
+                                        fontWeight: 'bold',
                                         fontSize: '0.8rem',
-                                        ml: { xs: 0, sm: 1.5, md: 2 },
-                                        whiteSpace: 'nowrap',
-                                        '@media print': { display: 'none' } 
+                                        '@media print': { display: 'none' }
                                     }}>
                                         Ph: {order.customer.phone}
-                                    </Box>
+                                    </Typography>
                                 )}
-                            </Typography>
+                            </Box>
                         </Box>
                     )}
                     {order.waiter?.name && (
