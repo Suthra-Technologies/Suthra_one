@@ -110,7 +110,44 @@ const KitchenInterface: React.FC = () => {
   const [refundItemRef, setRefundItemRef] = useState<{ orderId: string, itemIndex: number, itemName: string, orderType: string, itemSubtotal: number, itemTax: number } | null>(null);
   const [refundMethod, setRefundMethod] = useState<'original' | 'cash'>('original');
 
-  const handlePrintKOT = (order: Order) => {
+  const handlePrintKOT = async (order: Order) => {
+    // Try direct printing via local print agent first (QZ Tray style fast path)
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 1500); // 1.5s fast timeout
+
+      const response = await fetch('http://127.0.0.1:19001/print', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: 'kot',
+          jobId: `kot_${order._id || Date.now()}_${Date.now()}`,
+          order: {
+            ...order,
+            items: (order.items || []).map((item: any) => ({
+              ...item,
+              spiceLevel: item.spiceLevel || '',
+            })),
+          },
+          timestamp: Date.now(),
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const resData = await response.json();
+        if (resData.success) {
+          return; // Successfully printed locally, skip browser print dialog
+        }
+      }
+    } catch (err) {
+      console.warn('[DirectPrint] Local agent direct KOT print failed, falling back to browser print:', err);
+    }
+
     const printWindow = window.open('', '_blank', 'width=350,height=600');
     if (!printWindow) {
       toast.error('Popups blocked! Please allow popups to print.');
