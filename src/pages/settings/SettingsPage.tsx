@@ -1182,7 +1182,7 @@ const SettingsPage: React.FC = () => {
         const slots = [...(dayConfig.slots || [{ openTime: dayConfig.openTime || '09:00', closeTime: dayConfig.closeTime || '17:00' }])];
 
         let updatedSlot = { ...slots[slotIdx], [field]: value };
-        
+
         // Ensure chronology if closeTime was changed to something before openTime
         if (field === 'closeTime') {
             const startMins = timeToMinutes(updatedSlot.openTime);
@@ -1193,10 +1193,10 @@ const SettingsPage: React.FC = () => {
                 updatedSlot.closeTime = nextValid ? nextValid.value : '23:59';
             }
         }
-        
+
         // Chain subsequent slots if needed (optional Clover behavior: keep them strictly sequential)
         slots[slotIdx] = updatedSlot;
-        
+
         // If a slot's close time changes, subsequent slots might need adjustment if they overlap
         for (let i = slotIdx + 1; i < slots.length; i++) {
             const prevClose = timeToMinutes(slots[i - 1].closeTime);
@@ -1223,7 +1223,7 @@ const SettingsPage: React.FC = () => {
 
         const lastSlot = slots[slots.length - 1];
         const prevCloseMins = lastSlot ? timeToMinutes(lastSlot.closeTime) : 540; // 9:00 AM default
-        
+
         if (prevCloseMins >= 1439) {
             toast.error('Day is already fully scheduled.');
             return;
@@ -2304,7 +2304,7 @@ const SettingsPage: React.FC = () => {
                                                                             let lastGroup = '';
                                                                             const currentOpenMins = timeToMinutes(slot.openTime);
                                                                             const nextSlot = slots[sIdx + 1];
-                                                                            
+
                                                                             return CLOSING_TIME_OPTIONS.filter(opt => {
                                                                                 if (nextSlot) {
                                                                                     const limitMins = timeToMinutes(nextSlot.openTime);
@@ -2356,14 +2356,14 @@ const SettingsPage: React.FC = () => {
                                                                 const lastSlot = slots[slots.length - 1];
                                                                 const isLastSlotValid = lastSlot && lastSlot.openTime && lastSlot.closeTime;
                                                                 const isDayFull = lastSlot && timeToMinutes(lastSlot.closeTime) >= 1439;
-                                                                
+
                                                                 return isLastSlotValid && !isDayFull && (
                                                                     <Button
                                                                         size="small"
                                                                         startIcon={<AddIcon />}
                                                                         onClick={() => handleAddSlot(idx)}
-                                                                        sx={{ 
-                                                                            alignSelf: 'flex-start', 
+                                                                        sx={{
+                                                                            alignSelf: 'flex-start',
                                                                             mt: 0.5,
                                                                             fontWeight: 700,
                                                                             fontFamily: "'Outfit', sans-serif",

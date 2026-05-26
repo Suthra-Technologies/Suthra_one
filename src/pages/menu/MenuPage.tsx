@@ -17,7 +17,9 @@ import {
     PlaylistAdd as PlaylistAddIcon,
     FileUpload as FileUploadIcon,
     PhotoCamera as PhotoCameraIcon,
-    OpenInNew as OpenInNewIcon
+    OpenInNew as OpenInNewIcon,
+    RestoreFromTrash as RestoreIcon,
+    CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
 import {
     Menu,
@@ -113,6 +115,12 @@ const MenuPage: React.FC = () => {
     const PAGE_LIMIT = 50;
     const LOAD_MORE_LIMIT = 10;
 
+    // Deleted items state
+    const [deletedMenuItems, setDeletedMenuItems] = useState<IMenuItem[]>([]);
+    const [deletedCategories, setDeletedCategories] = useState<Category[]>([]);
+    const [deletedSubcategories, setDeletedSubcategories] = useState<Subcategory[]>([]);
+    const [deletedLoading, setDeletedLoading] = useState(false);
+
     // Dialogs State
     const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
     const [menuItemDialogOpen, setMenuItemDialogOpen] = useState(false);
@@ -167,10 +175,38 @@ const MenuPage: React.FC = () => {
         setSelectedSubcategory('all');
     }, [selectedCategory]);
 
+    const fetchDeletedData = async () => {
+        try {
+            setDeletedLoading(true);
+            const [menuRes, categoriesRes, subcategoriesRes] = await Promise.all([
+                menuAPI.getAll({ isDeleted: true, limit: 200 }),
+                menuAPI.getAllCategories({ isDeleted: true }),
+                menuAPI.getAllSubcategories(undefined, true)
+            ]);
+            
+            const data = menuRes.data;
+            const items = Array.isArray(data) ? data : (data?.items || []);
+            setDeletedMenuItems(items);
+
+            const catData = categoriesRes.data;
+            setDeletedCategories(Array.isArray(catData) ? catData : []);
+
+            const subcatData = subcategoriesRes.data;
+            setDeletedSubcategories(Array.isArray(subcatData) ? subcatData : []);
+        } catch (error) {
+            console.error('Error fetching deleted data:', error);
+        } finally {
+            setDeletedLoading(false);
+        }
+    };
+
     useEffect(() => {
         // Only refresh data when switching tabs, not on every render
         if (loading === false) { // Only refresh after initial load is complete
             debouncedFetchData();
+        }
+        if (tabValue === 5) {
+            fetchDeletedData();
         }
     }, [tabValue]);
 
@@ -570,8 +606,8 @@ const MenuPage: React.FC = () => {
             open: true,
             title: deletingSubcategory ? 'Delete Subcategory' : 'Delete Category',
             message: deletingSubcategory
-                ? <>Are you sure you want to delete the subcategory <strong>"{category.name}"</strong>? Items linked to it will lose only the subcategory assignment.</>
-                : <>Are you sure you want to delete the category <strong>"{category.name}"</strong>? This will affect all menu items in this category.</>,
+                ? <>Are you sure you want to delete the subcategory <strong>"{category.name}"</strong>? It can be restored later.</>
+                : <>Are you sure you want to delete the category <strong>"{category.name}"</strong>? It can be restored later.</>,
             onConfirm: async () => {
                 if (isProcessing) return;
                 try {
@@ -594,6 +630,27 @@ const MenuPage: React.FC = () => {
         });
     };
 
+    const handleRestoreCategory = async (category: Category) => {
+        if (isProcessing) return;
+        try {
+            setIsProcessing(true);
+            const isSubcat = isSubcategory(category);
+            if (isSubcat) {
+                await menuAPI.restoreSubcategory(category._id);
+                toast.success(`Subcategory "${category.name}" restored successfully`);
+            } else {
+                await menuAPI.restoreCategory(category._id);
+                toast.success(`Category "${category.name}" restored successfully`);
+            }
+            fetchData();
+        } catch (error: any) {
+            console.error('Error restoring category:', error);
+            toast.error(error.response?.data?.message || 'Failed to restore category');
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
     // Menu Item Management
     const handleOpenMenuItemDialog = (item?: IMenuItem) => {
         setEditingMenuItem(item || null);
@@ -604,7 +661,7 @@ const MenuPage: React.FC = () => {
         setConfirmDelete({
             open: true,
             title: 'Delete Menu Item',
-            message: <>Are you sure you want to delete <strong>"{item.name}"</strong>?</>,
+            message: <>Are you sure you want to delete <strong>"{item.name}"</strong>? It can be restored later.</>,
             onConfirm: async () => {
                 if (isProcessing) return;
                 try {
@@ -620,6 +677,22 @@ const MenuPage: React.FC = () => {
                 }
             }
         });
+    };
+
+    const handleRestoreMenuItem = async (item: IMenuItem) => {
+        if (isProcessing) return;
+        try {
+            setIsProcessing(true);
+            await menuAPI.restore(item._id);
+            toast.success(`Menu item "${item.name}" restored successfully`);
+            fetchData();
+            fetchDeletedData();
+        } catch (error: any) {
+            console.error('Error restoring menu item:', error);
+            toast.error(error.response?.data?.message || 'Failed to restore menu item');
+        } finally {
+            setIsProcessing(false);
+        }
     };
 
     const processImageField = async (imageValue: string): Promise<string> => {
@@ -1020,6 +1093,7 @@ const MenuPage: React.FC = () => {
                 <Tab label="Trays" icon={<StraightenIcon />} iconPosition="start" sx={{ fontWeight: 'bold', textTransform: 'none' }} />
                 <Tab label="Recipes" icon={<MenuBookIcon />} iconPosition="start" sx={{ fontWeight: 'bold', textTransform: 'none' }} />
                 <Tab label="Add-ons" icon={<PlaylistAddIcon />} iconPosition="start" sx={{ fontWeight: 'bold', textTransform: 'none' }} />
+                <Tab label="Deleted" icon={<DeleteIcon />} iconPosition="start" sx={{ fontWeight: 'bold', textTransform: 'none', color: 'error.main' }} />
             </Tabs>
 
             {/* Menu Items Tab */}
@@ -1538,6 +1612,159 @@ const MenuPage: React.FC = () => {
             {tabValue === 4 && (
                 <Box>
                     <AddOnGroupsPage hideHeader />
+                </Box>
+            )}
+
+            {/* Deleted Items Tab */}
+            {tabValue === 5 && (
+                <Box>
+                    <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold', color: 'error.main' }}>
+                        Deleted Items
+                    </Typography>
+                    {deletedLoading ? (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+                            <CircularProgress />
+                        </Box>
+                    ) : deletedMenuItems.length === 0 && deletedCategories.length === 0 && deletedSubcategories.length === 0 ? (
+                        <Box sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            py: 10,
+                            textAlign: 'center',
+                            bgcolor: 'rgba(0,0,0,0.02)',
+                            borderRadius: 4,
+                            border: '2px dashed',
+                            borderColor: 'divider',
+                        }}>
+                            <DeleteIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 2 }} />
+                            <Typography variant="h6" color="text.secondary" fontWeight="bold" gutterBottom>
+                                No deleted items
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                Items you delete will appear here and can be restored.
+                            </Typography>
+                        </Box>
+                    ) : (
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {deletedCategories.length > 0 && (
+                                <Box>
+                                    <Typography variant="subtitle1" fontWeight="bold" mb={1}>Deleted Categories</Typography>
+                                    <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 2 }}>
+                                        <Table>
+                                            <TableHead>
+                                                <TableRow sx={{ bgcolor: 'error.50' }}>
+                                                    <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
+                                                    <TableCell sx={{ fontWeight: 'bold' }}>Deleted At</TableCell>
+                                                    <TableCell sx={{ fontWeight: 'bold' }} align="right">Actions</TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {deletedCategories.map((item: any) => (
+                                                    <TableRow key={item._id} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
+                                                        <TableCell><Typography fontWeight="bold">{item.name}</Typography></TableCell>
+                                                        <TableCell>{item.deletedAt ? new Date(item.deletedAt).toLocaleDateString() : '—'}</TableCell>
+                                                        <TableCell align="right">
+                                                            <Tooltip title="Restore">
+                                                                <IconButton color="success" onClick={() => handleRestoreCategory(item)} disabled={isProcessing}>
+                                                                    <RestoreIcon />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                </Box>
+                            )}
+
+                            {deletedSubcategories.length > 0 && (
+                                <Box>
+                                    <Typography variant="subtitle1" fontWeight="bold" mb={1}>Deleted Subcategories</Typography>
+                                    <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 2 }}>
+                                        <Table>
+                                            <TableHead>
+                                                <TableRow sx={{ bgcolor: 'error.50' }}>
+                                                    <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
+                                                    <TableCell sx={{ fontWeight: 'bold' }}>Parent Category</TableCell>
+                                                    <TableCell sx={{ fontWeight: 'bold' }}>Deleted At</TableCell>
+                                                    <TableCell sx={{ fontWeight: 'bold' }} align="right">Actions</TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {deletedSubcategories.map((item: any) => (
+                                                    <TableRow key={item._id} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
+                                                        <TableCell><Typography fontWeight="bold">{item.name}</Typography></TableCell>
+                                                        <TableCell>{typeof item.parentCategory === 'object' && item.parentCategory?.name ? item.parentCategory.name : '—'}</TableCell>
+                                                        <TableCell>{item.deletedAt ? new Date(item.deletedAt).toLocaleDateString() : '—'}</TableCell>
+                                                        <TableCell align="right">
+                                                            <Tooltip title="Restore">
+                                                                <IconButton color="success" onClick={() => handleRestoreCategory(item)} disabled={isProcessing}>
+                                                                    <RestoreIcon />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                </Box>
+                            )}
+
+                            {deletedMenuItems.length > 0 && (
+                                <Box>
+                                    <Typography variant="subtitle1" fontWeight="bold" mb={1}>Deleted Menu Items</Typography>
+                                    <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 2 }}>
+                                        <Table>
+                                            <TableHead>
+                                                <TableRow sx={{ bgcolor: 'error.50' }}>
+                                                    <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
+                                                    <TableCell sx={{ fontWeight: 'bold' }}>Category</TableCell>
+                                                    <TableCell sx={{ fontWeight: 'bold' }}>Price</TableCell>
+                                                    <TableCell sx={{ fontWeight: 'bold' }}>Deleted At</TableCell>
+                                                    <TableCell sx={{ fontWeight: 'bold' }} align="right">Actions</TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {deletedMenuItems.map((item: any) => (
+                                                    <TableRow key={item._id} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
+                                                        <TableCell>
+                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                                                                {item.image && (
+                                                                    <Box component="img" src={item.image} alt={item.name} sx={{ width: 40, height: 40, borderRadius: 1, objectFit: 'cover' }} />
+                                                                )}
+                                                                <Box>
+                                                                    <Typography fontWeight="bold">{item.name}</Typography>
+                                                                    {item.description && (
+                                                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                                            {item.description}
+                                                                        </Typography>
+                                                                    )}
+                                                                </Box>
+                                                            </Box>
+                                                        </TableCell>
+                                                        <TableCell>{typeof item.category === 'object' && item.category?.name ? item.category.name : '—'}</TableCell>
+                                                        <TableCell>{formatCurrency(item.price)}</TableCell>
+                                                        <TableCell>{item.deletedAt ? new Date(item.deletedAt).toLocaleDateString() : '—'}</TableCell>
+                                                        <TableCell align="right">
+                                                            <Tooltip title="Restore">
+                                                                <IconButton color="success" onClick={() => handleRestoreMenuItem(item)} disabled={isProcessing}>
+                                                                    <RestoreIcon />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                </Box>
+                            )}
+                        </Box>
+                    )}
                 </Box>
             )}
 

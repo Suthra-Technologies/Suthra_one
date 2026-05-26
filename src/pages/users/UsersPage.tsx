@@ -53,6 +53,7 @@ import {
   Person as CustomerIcon,
   Search as SearchIcon,
   DinnerDining as RunnerIcon,
+  SettingsBackupRestore as RestoreIcon,
 } from '@mui/icons-material';
 import { settingsAPI, usersAPI, supportAPI } from '../../services/api';
 import { validateEmail, validatePhone, validateName, validatePassword, validateRequired, getHelperText, hasError } from '../../utils/validation';
@@ -99,6 +100,9 @@ interface User {
   actionHistory?: any[];
   isPortalCustomer?: boolean;
   source?: string;
+  isDeleted?: boolean;
+  deletedAt?: string;
+  deletedBy?: any;
 }
 const allPermissions = [
   'users.read', 'users.create', 'users.update', 'users.delete',
@@ -262,7 +266,7 @@ const UsersPage = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
-  const [counts, setCounts] = useState({ all: 0, management: 0, staff: 0, customers: 0, inactive: 0 });
+  const [counts, setCounts] = useState({ all: 0, management: 0, staff: 0, customers: 0, inactive: 0, deleted: 0 });
   const ROWS_PER_PAGE = 10;
 
   // Dialog states
@@ -276,6 +280,8 @@ const UsersPage = () => {
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [openStatusDialog, setOpenStatusDialog] = useState(false);
   const [statusTarget, setStatusTarget] = useState<User | null>(null);
+  const [openRestoreDialog, setOpenRestoreDialog] = useState(false);
+  const [restoreTarget, setRestoreTarget] = useState<User | null>(null);
   const [showPermissions, setShowPermissions] = useState(false);
 
   // Form states
@@ -352,6 +358,7 @@ const UsersPage = () => {
     try {
       let roleFilter: string | undefined = 'all';
       let activeFilter: boolean | undefined = undefined;
+      let deletedFilter: boolean | undefined = undefined;
 
       switch (tabValue) {
         case 0:
@@ -370,19 +377,27 @@ const UsersPage = () => {
           roleFilter = 'all';
           activeFilter = false;
           break;
+        case 5:
+          roleFilter = 'all';
+          deletedFilter = true;
+          break;
       }
 
       const response = await usersAPI.getUsers({
         page,
         limit: ROWS_PER_PAGE,
         role: roleFilter,
-        isActive: activeFilter
+        isActive: activeFilter,
+        isDeleted: deletedFilter
       });
 
       const extracted = extractUsersFromResponse(response.data);
       if (tabValue === 0) {
         // Show only staff in "All Staff"
         setUsers(extracted.filter(u => !isCustomerUser(u)));
+      } else if (tabValue === 5) {
+        // Show all deleted users
+        setUsers(extracted);
       } else {
         const showCustomers = tabValue === 3;
         setUsers(extracted.filter(u => showCustomers ? isCustomerUser(u) : !isCustomerUser(u)));
@@ -600,7 +615,34 @@ const UsersPage = () => {
       closeDeleteDialog();
     } catch (err: any) {
       toast.error('Deletion failed: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setSubmitting(false);
     }
+  };
+
+  const handleRestoreUser = (user: User) => {
+    setRestoreTarget(user);
+    setOpenRestoreDialog(true);
+  };
+
+  const confirmRestoreUser = async () => {
+    if (!restoreTarget || submitting) return;
+    setSubmitting(true);
+    try {
+      await usersAPI.restoreUser(restoreTarget._id);
+      toast.success(`User "${restoreTarget.firstName} ${restoreTarget.lastName}" restored successfully`);
+      closeRestoreDialog();
+      await fetchUsers();
+    } catch (err: any) {
+      toast.error('Failed to restore user: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const closeRestoreDialog = () => {
+    setOpenRestoreDialog(false);
+    setRestoreTarget(null);
   };
 
   const closeUserDialog = () => {
@@ -877,14 +919,75 @@ const UsersPage = () => {
             </Badge>
           }
         />
+        <Tab
+          label={
+            <Badge badgeContent={counts.deleted || 0} color="warning" sx={{ '& .MuiBadge-badge': { right: -10, top: 4 } }}>
+              Deleted
+            </Badge>
+          }
+        />
       </Tabs>
       {/* Users Display */}
       <Box>
-        {loading && (
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontSize: bodyFontSize }}>
-            Loading users...
-          </Typography>
-        )}
+        {loading ? (
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            minHeight: '350px', 
+            gap: 2,
+            bgcolor: alpha(theme.palette.background.paper, 0.4),
+            backdropFilter: 'blur(8px)',
+            borderRadius: 4,
+            border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+            m: { xs: 2, sm: 0 },
+            py: 6
+          }}>
+            <CircularProgress size={50} thickness={4.5} sx={{ color: 'primary.main' }} />
+            <Typography variant="h6" sx={{ color: 'text.secondary', fontWeight: 700, fontFamily: "'Outfit', sans-serif" }}>
+              Loading Users...
+            </Typography>
+          </Box>
+        ) : users.length === 0 ? (
+          <Box sx={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            minHeight: '350px', 
+            gap: 2,
+            bgcolor: alpha(theme.palette.background.paper, 0.4),
+            backdropFilter: 'blur(8px)',
+            borderRadius: 4,
+            border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+            m: { xs: 2, sm: 0 },
+            py: 6,
+            textAlign: 'center',
+            px: 3
+          }}>
+            <Box sx={{ 
+              width: 80, 
+              height: 80, 
+              borderRadius: '50%', 
+              bgcolor: alpha(theme.palette.text.disabled, 0.1), 
+              color: 'text.disabled',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              mb: 1
+            }}>
+              <CustomerIcon sx={{ fontSize: 40 }} />
+            </Box>
+            <Typography variant="h6" sx={{ color: 'text.primary', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
+              No Users Found
+            </Typography>
+            <Typography variant="body2" sx={{ color: 'text.secondary', fontWeight: 500, fontFamily: "'Outfit', sans-serif", maxWidth: 300 }}>
+              There are no user accounts that match the selected filter or search criteria.
+            </Typography>
+          </Box>
+        ) : (
+          <>
         <Box sx={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -907,6 +1010,7 @@ const UsersPage = () => {
             {tabValue === 2 && 'Staff Members'}
             {tabValue === 3 && 'Customers'}
             {tabValue === 4 && 'Inactive Users'}
+            {tabValue === 5 && 'Deleted Users'}
           </Typography>
           <Box
             sx={{
@@ -1001,10 +1105,30 @@ const UsersPage = () => {
                             fontFamily: "'Outfit', sans-serif",
                             fontSize: { xs: '0.9rem', sm: '1rem' },
                             lineHeight: 1.2,
-                            color: 'text.primary'
+                            color: 'text.primary',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 1,
+                            flexWrap: 'wrap'
                           }}
                         >
                           {getDisplayName(user)}
+                          {user.isDeleted && (
+                            <Chip
+                              label="Deleted"
+                              color="error"
+                              size="small"
+                              sx={{
+                                height: 18,
+                                fontSize: '0.65rem',
+                                fontWeight: 900,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.05em',
+                                borderRadius: 1,
+                                px: 0.5
+                              }}
+                            />
+                          )}
                         </Typography>
                         <Typography 
                           variant="caption" 
@@ -1069,46 +1193,70 @@ const UsersPage = () => {
                       )}
                     </Stack>
 
-                    {user.actionHistory && user.actionHistory.length > 0 && (
+                    {user.isDeleted ? (
                       <Box sx={{ 
                         mt: 2, 
                         pt: 1.5, 
                         borderTop: `1px dashed ${alpha(theme.palette.divider, 0.5)}`,
                         display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between'
+                        flexDirection: 'column',
+                        gap: 1
                       }}>
-                        <Box>
-                          <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mb: 0.25 }}>Created by</Typography>
-                          <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
-                            {(() => {
-                              const createdAction = user.actionHistory.find((action: any) => action.action === 'CREATED');
-                              return createdAction ? (createdAction.performedByName || getUserName(createdAction.performedBy)) : 'System';
-                            })()}
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="caption" sx={{ fontWeight: 600, color: 'error.main', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Deleted On</Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.primary' }}>
+                            {user.deletedAt ? new Date(user.deletedAt).toLocaleDateString('en-GB') : 'N/A'}
                           </Typography>
                         </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography variant="caption" sx={{ fontWeight: 600, color: 'error.main', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Deleted By</Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.primary' }}>
+                            {user.deletedBy ? (typeof user.deletedBy === 'object' ? `${user.deletedBy.firstName || ''} ${user.deletedBy.lastName || ''}`.trim() : user.deletedBy) : 'System'}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    ) : (
+                      user.actionHistory && user.actionHistory.length > 0 && (
+                        <Box sx={{ 
+                          mt: 2, 
+                          pt: 1.5, 
+                          borderTop: `1px dashed ${alpha(theme.palette.divider, 0.5)}`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between'
+                        }}>
+                          <Box>
+                            <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mb: 0.25 }}>Created by</Typography>
+                            <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+                              {(() => {
+                                const createdAction = user.actionHistory.find((action: any) => action.action === 'CREATED');
+                                return createdAction ? (createdAction.performedByName || getUserName(createdAction.performedBy)) : 'System';
+                              })()}
+                            </Typography>
+                          </Box>
 
-                        <Tooltip
-                          title="View History"
-                          slotProps={{
-                            tooltip: {
-                              sx: { p: 0, bgcolor: 'background.paper', boxShadow: 3, border: `1px solid ${theme.palette.divider}`, color: 'text.primary', maxWidth: 260 }
-                            }
-                          }}
-                        >
-                          <IconButton 
-                            size="small" 
-                            onClick={() => openEditUser(user, 1)}
-                            sx={{ 
-                              bgcolor: alpha(theme.palette.primary.main, 0.05),
-                              color: 'primary.main',
-                              '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.1) }
+                          <Tooltip
+                            title="View History"
+                            slotProps={{
+                              tooltip: {
+                                sx: { p: 0, bgcolor: 'background.paper', boxShadow: 3, border: `1px solid ${theme.palette.divider}`, color: 'text.primary', maxWidth: 260 }
+                              }
                             }}
                           >
-                            <HistoryIcon sx={{ fontSize: '1.2rem' }} />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
+                            <IconButton 
+                              size="small" 
+                              onClick={() => openEditUser(user, 1)}
+                              sx={{ 
+                                bgcolor: alpha(theme.palette.primary.main, 0.05),
+                                color: 'primary.main',
+                                '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.1) }
+                              }}
+                            >
+                              <HistoryIcon sx={{ fontSize: '1.2rem' }} />
+                            </IconButton>
+                          </Tooltip>
+                        </Box>
+                      )
                     )}
                   </CardContent>
 
@@ -1120,48 +1268,78 @@ const UsersPage = () => {
                     py: 1, 
                     justifyContent: 'space-between' 
                   }}>
-                    <Stack direction="row" spacing={0.5}>
-                      <Tooltip title="Reset Password">
-                        <IconButton 
-                          size="small" 
-                          onClick={() => openPasswordReset(user)}
-                          sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main', bgcolor: alpha(theme.palette.primary.main, 0.08) } }}
-                        >
-                          <LockIcon sx={{ fontSize: '1.1rem' }} />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Edit Profile">
-                        <IconButton 
-                          size="small" 
-                          onClick={() => openEditUser(user)}
-                          sx={{ color: 'text.secondary', '&:hover': { color: 'info.main', bgcolor: alpha(theme.palette.info.main, 0.08) } }}
-                        >
-                          <EditIcon sx={{ fontSize: '1.1rem' }} />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title={user.isActive ? 'Deactivate' : 'Activate'}>
-                        <IconButton 
-                          size="small" 
-                          onClick={() => handleToggleStatus(user)}
-                          sx={{ 
-                            color: user.isActive ? 'success.main' : 'error.main',
-                            bgcolor: user.isActive ? alpha(theme.palette.success.main, 0.05) : alpha(theme.palette.error.main, 0.05),
-                            '&:hover': { bgcolor: user.isActive ? alpha(theme.palette.success.main, 0.1) : alpha(theme.palette.error.main, 0.1) }
-                          }}
-                        >
-                          {user.isActive ? <ActivateIcon sx={{ fontSize: '1.1rem' }} /> : <DeactivateIcon sx={{ fontSize: '1.1rem' }} />}
-                        </IconButton>
-                      </Tooltip>
-                    </Stack>
+                    {tabValue === 5 || user.isDeleted ? (
+                      <Button
+                        variant="outlined"
+                        color="success"
+                        size="small"
+                        startIcon={<RestoreIcon sx={{ fontSize: '1.1rem' }} />}
+                        onClick={() => handleRestoreUser(user)}
+                        sx={{ 
+                          textTransform: 'none', 
+                          fontWeight: 800, 
+                          borderRadius: 2.5,
+                          fontFamily: "'Outfit', sans-serif",
+                          px: 2,
+                          py: 0.5,
+                          borderColor: alpha(theme.palette.success.main, 0.4),
+                          color: 'success.main',
+                          bgcolor: alpha(theme.palette.success.main, 0.02),
+                          '&:hover': {
+                            borderColor: 'success.main',
+                            bgcolor: alpha(theme.palette.success.main, 0.08)
+                          }
+                        }}
+                        disabled={submitting}
+                      >
+                        Restore User
+                      </Button>
+                    ) : (
+                      <>
+                        <Stack direction="row" spacing={0.5}>
+                          <Tooltip title="Reset Password">
+                            <IconButton 
+                              size="small" 
+                              onClick={() => openPasswordReset(user)}
+                              sx={{ color: 'text.secondary', '&:hover': { color: 'primary.main', bgcolor: alpha(theme.palette.primary.main, 0.08) } }}
+                            >
+                              <LockIcon sx={{ fontSize: '1.1rem' }} />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Edit Profile">
+                            <IconButton 
+                              size="small" 
+                              onClick={() => openEditUser(user)}
+                              sx={{ color: 'text.secondary', '&:hover': { color: 'info.main', bgcolor: alpha(theme.palette.info.main, 0.08) } }}
+                            >
+                              <EditIcon sx={{ fontSize: '1.1rem' }} />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title={user.isActive ? 'Deactivate' : 'Activate'}>
+                            <IconButton 
+                              size="small" 
+                              onClick={() => handleToggleStatus(user)}
+                              sx={{ 
+                                color: user.isActive ? 'success.main' : 'error.main',
+                                bgcolor: user.isActive ? alpha(theme.palette.success.main, 0.05) : alpha(theme.palette.error.main, 0.05),
+                                '&:hover': { bgcolor: user.isActive ? alpha(theme.palette.success.main, 0.1) : alpha(theme.palette.error.main, 0.1) }
+                              }}
+                            >
+                              {user.isActive ? <ActivateIcon sx={{ fontSize: '1.1rem' }} /> : <DeactivateIcon sx={{ fontSize: '1.1rem' }} />}
+                            </IconButton>
+                          </Tooltip>
+                        </Stack>
 
-                    <IconButton 
-                      size="small" 
-                      onClick={() => handleDeleteUser(user)}
-                      sx={{ color: 'error.light', '&:hover': { color: 'error.main', bgcolor: alpha(theme.palette.error.main, 0.08) } }}
-                      disabled={!(activeRole === 'admin' || activeRole === 'superadmin' || currentUser?.roles?.includes('admin') || currentUser?.roles?.includes('superadmin'))}
-                    >
-                      <DeleteIcon sx={{ fontSize: '1.1rem' }} />
-                    </IconButton>
+                        <IconButton 
+                          size="small" 
+                          onClick={() => handleDeleteUser(user)}
+                          sx={{ color: 'error.light', '&:hover': { color: 'error.main', bgcolor: alpha(theme.palette.error.main, 0.08) } }}
+                          disabled={!(activeRole === 'admin' || activeRole === 'superadmin' || currentUser?.roles?.includes('admin') || currentUser?.roles?.includes('superadmin'))}
+                        >
+                          <DeleteIcon sx={{ fontSize: '1.1rem' }} />
+                        </IconButton>
+                      </>
+                    )}
                   </CardActions>
                 </Card>
               </Grid>
@@ -1195,6 +1373,8 @@ const UsersPage = () => {
             />
           </Box>
         )}
+          </>
+        )}
       </Box>
       {/* Add/Edit User Dialog */}
       <Dialog 
@@ -1211,7 +1391,7 @@ const UsersPage = () => {
           }
         }}
       >
-        <DialogTitle sx={{ 
+        <DialogTitle component="div" sx={{ 
           m: 0, 
           p: { xs: 2, sm: 3 }, 
           pt: { xs: isMobile ? '54px' : 2, sm: 3 },
@@ -1862,7 +2042,7 @@ const UsersPage = () => {
           sx: { borderRadius: { xs: 0, sm: 4 } }
         }}
       >
-        <DialogTitle sx={{ 
+        <DialogTitle component="div" sx={{ 
           m: 0, 
           p: { xs: 2.5, sm: 2.5 }, 
           pt: { xs: isMobile ? '54px' : 2.5, sm: 2.5 },
@@ -1996,7 +2176,7 @@ const UsersPage = () => {
 
           return (
             <>
-              <DialogTitle sx={{ 
+              <DialogTitle component="div" sx={{ 
                 m: 0, 
                 p: { xs: 2.5, sm: 3 }, 
                 pt: { xs: isMobile ? '54px' : 2.5, sm: 3 },
@@ -2106,7 +2286,7 @@ const UsersPage = () => {
           sx: { borderRadius: 2, p: 1 }
         }}
       >
-        <DialogTitle sx={{ textAlign: 'center', pb: 0 }}>
+        <DialogTitle component="div" sx={{ textAlign: 'center', pb: 0 }}>
           <Typography variant="h6" fontWeight="bold">
             Confirm {statusTarget?.isActive ? 'Deactivation' : 'Activation'}
           </Typography>
@@ -2136,6 +2316,47 @@ const UsersPage = () => {
             sx={{ borderRadius: 2, minWidth: 100 }}
           >
             {statusTarget?.isActive ? 'Deactivate' : 'Activate'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Restore Confirmation Dialog */}
+      <Dialog
+        open={openRestoreDialog}
+        onClose={closeRestoreDialog}
+        PaperProps={{
+          sx: { borderRadius: 2, p: 1 }
+        }}
+      >
+        <DialogTitle component="div" sx={{ textAlign: 'center', pb: 0 }}>
+          <Typography variant="h6" fontWeight="bold">
+            Confirm User Restoration
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ textAlign: 'center', py: 2 }}>
+          <Typography>
+            Are you sure you want to restore user <Box component="span" sx={{ fontWeight: 'bold' }}>{restoreTarget ? `${restoreTarget.firstName} ${restoreTarget.lastName}` : ''}</Box>?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            This will reactivate their account and restore their access to the system.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', pb: 2, gap: 2 }}>
+          <Button
+            onClick={closeRestoreDialog}
+            variant="outlined"
+            sx={{ borderRadius: 2, minWidth: 100 }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={confirmRestoreUser}
+            variant="contained"
+            color="success"
+            sx={{ borderRadius: 2, minWidth: 100 }}
+            disabled={submitting}
+          >
+            Restore
           </Button>
         </DialogActions>
       </Dialog>

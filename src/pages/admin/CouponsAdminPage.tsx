@@ -35,12 +35,14 @@ import {
     Paper,
     Select,
     Stack,
+    Tab,
     Table,
     TableBody,
     TableCell,
     TableHead,
     TablePagination,
     TableRow,
+    Tabs,
     TextField,
     Tooltip,
     Typography,
@@ -126,6 +128,13 @@ const CouponsAdminPage: React.FC = () => {
     const [unsubscribeSearch, setUnsubscribeSearch] = useState('');
     const [allUnsubscribeLoading, setAllUnsubscribeLoading] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<{ id: string; code: string } | null>(null);
+    const [submitting, setSubmitting] = useState(false);
+
+    // Soft delete & tabs state
+    const [tabValue, setTabValue] = useState(0);
+    const [counts, setCounts] = useState({ all: 0, active: 0, expired: 0, inactive: 0, deleted: 0 });
+    const [openRestoreDialog, setOpenRestoreDialog] = useState(false);
+    const [restoreTarget, setRestoreTarget] = useState<{ id: string; code: string } | null>(null);
 
     // Search
     const [searchQuery, setSearchQuery] = useState('');
@@ -167,12 +176,17 @@ const CouponsAdminPage: React.FC = () => {
             const response = await couponsAPI.getAll({
                 page: page + 1,
                 limit: rowsPerPage,
-                search: debouncedSearch.trim() || undefined
+                search: debouncedSearch.trim() || undefined,
+                isDeleted: tabValue === 4 ? true : undefined,
+                status: tabValue === 1 ? 'active' : tabValue === 2 ? 'expired' : tabValue === 3 ? 'inactive' : undefined
             });
             const data = response.data.coupons || response.data;
             const safeCoupons = Array.isArray(data) ? data : [];
             setCoupons(safeCoupons);
             setTotalCoupons(response.data.total || safeCoupons.length);
+            if (response.data.counts) {
+                setCounts(response.data.counts);
+            }
         } catch (error) {
             console.error('Error fetching coupons:', error);
             toast.error('Failed to load coupons');
@@ -192,7 +206,7 @@ const CouponsAdminPage: React.FC = () => {
 
     useEffect(() => {
         fetchCoupons();
-    }, [page, rowsPerPage, debouncedSearch]);
+    }, [page, rowsPerPage, debouncedSearch, tabValue]);
 
 
 
@@ -351,6 +365,30 @@ const CouponsAdminPage: React.FC = () => {
         } catch (error) {
             console.error('Error deleting coupon:', error);
             toast.error('Failed to delete coupon');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    const handleRestoreCoupon = (coupon: Coupon) => {
+        setRestoreTarget({ id: coupon._id, code: coupon.code });
+        setOpenRestoreDialog(true);
+    };
+
+    const confirmRestoreCoupon = async () => {
+        if (submitting) return;
+        if (!restoreTarget) return;
+
+        try {
+            setSubmitting(true);
+            await couponsAPI.restore(restoreTarget.id);
+            toast.success('Coupon restored successfully');
+            fetchCoupons();
+            setOpenRestoreDialog(false);
+            setRestoreTarget(null);
+        } catch (error) {
+            console.error('Error restoring coupon:', error);
+            toast.error('Failed to restore coupon');
         } finally {
             setSubmitting(false);
         }
@@ -613,6 +651,18 @@ const CouponsAdminPage: React.FC = () => {
         return { label: 'Active', color: 'success' };
     };
 
+    const getDeletedBy = (coupon: any) => {
+        if (!coupon.actionHistory || !Array.isArray(coupon.actionHistory)) return 'Admin';
+        const deleteAction = [...coupon.actionHistory].reverse().find(a => a.action === 'DELETE');
+        return deleteAction?.performedBy || 'Admin';
+    };
+
+    const getDeletedAt = (coupon: any) => {
+        if (!coupon.actionHistory || !Array.isArray(coupon.actionHistory)) return 'N/A';
+        const deleteAction = [...coupon.actionHistory].reverse().find(a => a.action === 'DELETE');
+        return deleteAction?.timestamp ? new Date(deleteAction.timestamp).toLocaleDateString() : 'N/A';
+    };
+
     const today = new Date().toISOString().split('T')[0];
 
     return (
@@ -651,38 +701,42 @@ const CouponsAdminPage: React.FC = () => {
                         Create and distribute digital coupons to boost sales
                     </Typography>
                 </Box>
-                <Button
-                    variant="contained"
-                    startIcon={<AddIcon />}
-                    onClick={() => handleOpenDialog()}
-                    sx={{
-                        borderRadius: 3,
-                        px: 3,
-                        py: 1,
-                        textTransform: 'none',
-                        fontWeight: 'bold',
-                        boxShadow: '0 8px 16px rgba(79, 70, 229, 0.2)',
-                        background: 'linear-gradient(45deg, #4F46E5, #6366F1)',
-                        width: { xs: '100%', sm: 'auto' }
-                    }}
-                >
-                    {isMobile ? "Create Coupon" : "New Coupon"}
-                </Button>
-                <Button
-                    variant="outlined"
-                    color="warning"
-                    onClick={handleOpenUnsubscribesDialog}
-                    sx={{
-                        borderRadius: 3,
-                        px: 3,
-                        py: 1,
-                        textTransform: 'none',
-                        fontWeight: 'bold',
-                        width: { xs: '100%', sm: 'auto' }
-                    }}
-                >
-                    Unsubscribes
-                </Button>
+                {tabValue !== 4 && (
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+                        <Button
+                            variant="contained"
+                            startIcon={<AddIcon />}
+                            onClick={() => handleOpenDialog()}
+                            sx={{
+                                borderRadius: 3,
+                                px: 3,
+                                py: 1,
+                                textTransform: 'none',
+                                fontWeight: 'bold',
+                                boxShadow: '0 8px 16px rgba(79, 70, 229, 0.2)',
+                                background: 'linear-gradient(45deg, #4F46E5, #6366F1)',
+                                width: { xs: '100%', sm: 'auto' }
+                            }}
+                        >
+                            {isMobile ? "Create Coupon" : "New Coupon"}
+                        </Button>
+                        <Button
+                            variant="outlined"
+                            color="warning"
+                            onClick={handleOpenUnsubscribesDialog}
+                            sx={{
+                                borderRadius: 3,
+                                px: 3,
+                                py: 1,
+                                textTransform: 'none',
+                                fontWeight: 'bold',
+                                width: { xs: '100%', sm: 'auto' }
+                            }}
+                        >
+                            Unsubscribes
+                        </Button>
+                    </Stack>
+                )}
             </Box>
 
             {/* Summary Cards */}
@@ -761,6 +815,31 @@ const CouponsAdminPage: React.FC = () => {
                 </Grid>
             </Grid>
 
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+                <Tabs
+                    value={tabValue}
+                    onChange={(e, newValue) => {
+                        setTabValue(newValue);
+                        setPage(0);
+                    }}
+                    variant="scrollable"
+                    scrollButtons="auto"
+                    sx={{
+                        '& .MuiTab-root': {
+                            fontWeight: 'bold',
+                            fontFamily: '"Outfit", sans-serif',
+                            textTransform: 'none',
+                        }
+                    }}
+                >
+                    <Tab label={`All (${counts.all})`} />
+                    <Tab label={`Active (${counts.active})`} />
+                    <Tab label={`Expired (${counts.expired})`} />
+                    <Tab label={`Inactive (${counts.inactive})`} />
+                    <Tab label={`Deleted (${counts.deleted})`} />
+                </Tabs>
+            </Box>
+
             {/* Coupons List & Filters */}
             <Box sx={{ mb: 2, display: 'flex', justifyContent: 'center' }}>
                 <TextField
@@ -830,8 +909,8 @@ const CouponsAdminPage: React.FC = () => {
                                                 }}
                                             />
                                             <Chip
-                                                label={status.label}
-                                                color={status.color}
+                                                label={tabValue === 4 ? "Deleted" : status.label}
+                                                color={tabValue === 4 ? "error" : status.color}
                                                 size="small"
                                                 sx={{
                                                     height: 18,
@@ -856,16 +935,32 @@ const CouponsAdminPage: React.FC = () => {
                                                     </Typography>
                                                 </Grid>
                                                 <Grid item xs={6}>
-                                                    <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ display: 'block', textTransform: 'uppercase', fontSize: '0.6rem', mb: 0.5 }}>
-                                                        Validity
-                                                    </Typography>
-                                                    <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600 }}>
-                                                        Ends {formatDate(coupon.validTo)}
-                                                    </Typography>
-                                                    <Box sx={{ mt: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'text.disabled' }} />
-                                                        <Typography variant="caption" color="text.disabled">{coupon.maxTotalUses || '∞'} limit</Typography>
-                                                    </Box>
+                                                    {tabValue === 4 ? (
+                                                        <>
+                                                            <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ display: 'block', textTransform: 'uppercase', fontSize: '0.6rem', mb: 0.5 }}>
+                                                                Deleted Info
+                                                            </Typography>
+                                                            <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600, color: 'error.main' }}>
+                                                                On {getDeletedAt(coupon)}
+                                                            </Typography>
+                                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontWeight: 500 }}>
+                                                                By {getDeletedBy(coupon)}
+                                                            </Typography>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Typography variant="caption" fontWeight={700} color="text.secondary" sx={{ display: 'block', textTransform: 'uppercase', fontSize: '0.6rem', mb: 0.5 }}>
+                                                                Validity
+                                                            </Typography>
+                                                            <Typography variant="body2" sx={{ fontSize: '0.75rem', fontWeight: 600 }}>
+                                                                Ends {formatDate(coupon.validTo)}
+                                                            </Typography>
+                                                            <Box sx={{ mt: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                                <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'text.disabled' }} />
+                                                                <Typography variant="caption" color="text.disabled">{coupon.maxTotalUses || '∞'} limit</Typography>
+                                                            </Box>
+                                                        </>
+                                                    )}
                                                 </Grid>
                                             </Grid>
                                         </Box>
@@ -880,42 +975,57 @@ const CouponsAdminPage: React.FC = () => {
                                             borderColor: alpha(theme.palette.divider, 0.05),
                                             bgcolor: 'background.paper'
                                         }}>
-                                            <Tooltip title="Send Message">
-                                                <IconButton
+                                            {tabValue === 4 ? (
+                                                <Button
                                                     size="small"
-                                                    color="info"
-                                                    onClick={() => handleOpenEmailDialog(coupon)}
-                                                    disabled={!isCouponActive(coupon)}
-                                                    sx={{ bgcolor: alpha(theme.palette.info.main, 0.05) }}
+                                                    variant="contained"
+                                                    color="success"
+                                                    onClick={() => handleRestoreCoupon(coupon)}
+                                                    startIcon={<CheckCircleIcon sx={{ fontSize: 16 }} />}
+                                                    sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 'bold', px: 2 }}
                                                 >
-                                                    <SendIcon sx={{ fontSize: 18 }} />
-                                                </IconButton>
-                                            </Tooltip>
-                                            <IconButton
-                                                size="small"
-                                                color="success"
-                                                onClick={() => handleOpenSmsDialog(coupon)}
-                                                disabled={!isCouponActive(coupon)}
-                                                sx={{ bgcolor: alpha(theme.palette.success.main, 0.05) }}
-                                            >
-                                                <SmsIcon sx={{ fontSize: 18 }} />
-                                            </IconButton>
-                                            <IconButton
-                                                size="small"
-                                                color="primary"
-                                                onClick={() => handleOpenDialog(coupon)}
-                                                sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}
-                                            >
-                                                <EditIcon sx={{ fontSize: 18 }} />
-                                            </IconButton>
-                                            <IconButton
-                                                size="small"
-                                                color="error"
-                                                onClick={() => handleDeleteCoupon(coupon)}
-                                                sx={{ bgcolor: alpha(theme.palette.error.main, 0.05) }}
-                                            >
-                                                <DeleteIcon sx={{ fontSize: 18 }} />
-                                            </IconButton>
+                                                    Restore
+                                                </Button>
+                                            ) : (
+                                                <>
+                                                    <Tooltip title="Send Message">
+                                                        <IconButton
+                                                            size="small"
+                                                            color="info"
+                                                            onClick={() => handleOpenEmailDialog(coupon)}
+                                                            disabled={!isCouponActive(coupon)}
+                                                            sx={{ bgcolor: alpha(theme.palette.info.main, 0.05) }}
+                                                        >
+                                                            <SendIcon sx={{ fontSize: 18 }} />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <IconButton
+                                                        size="small"
+                                                        color="success"
+                                                        onClick={() => handleOpenSmsDialog(coupon)}
+                                                        disabled={!isCouponActive(coupon)}
+                                                        sx={{ bgcolor: alpha(theme.palette.success.main, 0.05) }}
+                                                    >
+                                                        <SmsIcon sx={{ fontSize: 18 }} />
+                                                    </IconButton>
+                                                    <IconButton
+                                                        size="small"
+                                                        color="primary"
+                                                        onClick={() => handleOpenDialog(coupon)}
+                                                        sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}
+                                                    >
+                                                        <EditIcon sx={{ fontSize: 18 }} />
+                                                    </IconButton>
+                                                    <IconButton
+                                                        size="small"
+                                                        color="error"
+                                                        onClick={() => handleDeleteCoupon(coupon)}
+                                                        sx={{ bgcolor: alpha(theme.palette.error.main, 0.05) }}
+                                                    >
+                                                        <DeleteIcon sx={{ fontSize: 18 }} />
+                                                    </IconButton>
+                                                </>
+                                            )}
                                         </Box>
                                     </CardContent>
                                 </Card>
@@ -933,10 +1043,19 @@ const CouponsAdminPage: React.FC = () => {
                                     <TableCell>Code</TableCell>
                                     <TableCell>Discount</TableCell>
                                     <TableCell>Min Order</TableCell>
-                                    <TableCell>Valid Period</TableCell>
-                                    <TableCell>Max Uses</TableCell>
+                                    {tabValue === 4 ? (
+                                        <>
+                                            <TableCell>Deleted On</TableCell>
+                                            <TableCell>Deleted By</TableCell>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <TableCell>Valid Period</TableCell>
+                                            <TableCell>Max Uses</TableCell>
+                                        </>
+                                    )}
                                     <TableCell>Status</TableCell>
-                                    <TableCell align="center">Actions</TableCell>
+                                    <TableCell align="right">Actions</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
@@ -954,65 +1073,91 @@ const CouponsAdminPage: React.FC = () => {
                                         <TableCell>
                                             {formatCurrency((coupon as any).minBillAmount || coupon.minOrderAmount || 0)}
                                         </TableCell>
-                                        <TableCell>
-                                            {formatDate(coupon.validFrom)} - {formatDate(coupon.validTo)}
-                                        </TableCell>
-                                        <TableCell>
-                                            {coupon.maxTotalUses || 'Unlimited'}
-                                        </TableCell>
+                                        {tabValue === 4 ? (
+                                            <>
+                                                <TableCell>
+                                                    {getDeletedAt(coupon)}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {getDeletedBy(coupon)}
+                                                </TableCell>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <TableCell>
+                                                    {formatDate(coupon.validFrom)} - {formatDate(coupon.validTo)}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {coupon.maxTotalUses || 'Unlimited'}
+                                                </TableCell>
+                                            </>
+                                        )}
                                         <TableCell>
                                             {(() => {
                                                 const status = getCouponStatus(coupon);
                                                 return (
                                                     <Chip
-                                                        label={status.label}
-                                                        color={status.color}
+                                                        label={tabValue === 4 ? "Deleted" : status.label}
+                                                        color={tabValue === 4 ? "error" : status.color}
                                                         size="small"
                                                     />
                                                 );
                                             })()}
                                         </TableCell>
                                         <TableCell align="right">
-                                            <Stack direction="row" spacing={1} justifyContent="flex-end">
-                                                <Tooltip title={isCouponActive(coupon) ? "Send Email to Customers" : "Coupon is not active or expired"}>
-                                                    <span>
-                                                        <IconButton
-                                                            color="info"
-                                                            onClick={() => handleOpenEmailDialog(coupon)}
-                                                            disabled={!isCouponActive(coupon)}
-                                                        >
-                                                            <SendIcon />
-                                                        </IconButton>
-                                                    </span>
-                                                </Tooltip>
-                                                <Tooltip title={isCouponActive(coupon) ? "Send SMS to Customers" : "Coupon is not active or expired"}>
-                                                    <span>
+                                            {tabValue === 4 ? (
+                                                <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                                    <Tooltip title="Restore Coupon">
                                                         <IconButton
                                                             color="success"
-                                                            onClick={() => handleOpenSmsDialog(coupon)}
-                                                            disabled={!isCouponActive(coupon)}
+                                                            onClick={() => handleRestoreCoupon(coupon)}
                                                         >
-                                                            <SmsIcon />
+                                                            <CheckCircleIcon />
                                                         </IconButton>
-                                                    </span>
-                                                </Tooltip>
-                                                <Tooltip title="Edit">
-                                                    <IconButton
-                                                        color="primary"
-                                                        onClick={() => handleOpenDialog(coupon)}
-                                                    >
-                                                        <EditIcon />
-                                                    </IconButton>
-                                                </Tooltip>
-                                                <Tooltip title="Delete">
-                                                    <IconButton
-                                                        color="error"
-                                                        onClick={() => handleDeleteCoupon(coupon)}
-                                                    >
-                                                        <DeleteIcon />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            </Stack>
+                                                    </Tooltip>
+                                                </Stack>
+                                            ) : (
+                                                <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                                    <Tooltip title={isCouponActive(coupon) ? "Send Email to Customers" : "Coupon is not active or expired"}>
+                                                        <span>
+                                                            <IconButton
+                                                                color="info"
+                                                                onClick={() => handleOpenEmailDialog(coupon)}
+                                                                disabled={!isCouponActive(coupon)}
+                                                            >
+                                                                <SendIcon />
+                                                            </IconButton>
+                                                        </span>
+                                                    </Tooltip>
+                                                    <Tooltip title={isCouponActive(coupon) ? "Send SMS to Customers" : "Coupon is not active or expired"}>
+                                                        <span>
+                                                            <IconButton
+                                                                color="success"
+                                                                onClick={() => handleOpenSmsDialog(coupon)}
+                                                                disabled={!isCouponActive(coupon)}
+                                                            >
+                                                                <SmsIcon />
+                                                            </IconButton>
+                                                        </span>
+                                                    </Tooltip>
+                                                    <Tooltip title="Edit">
+                                                        <IconButton
+                                                            color="primary"
+                                                            onClick={() => handleOpenDialog(coupon)}
+                                                        >
+                                                            <EditIcon />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="Delete">
+                                                        <IconButton
+                                                            color="error"
+                                                            onClick={() => handleDeleteCoupon(coupon)}
+                                                        >
+                                                            <DeleteIcon />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                </Stack>
+                                            )}
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -2021,7 +2166,7 @@ const CouponsAdminPage: React.FC = () => {
                         Are you sure you want to delete coupon <Box component="span" sx={{ fontWeight: 'bold' }}>{deleteTarget?.code}</Box>?
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                        This action cannot be undone.
+                        This coupon can be restored later.
                     </Typography>
                 </DialogContent>
                 <DialogActions sx={{ justifyContent: 'center', pb: 2, gap: 2 }}>
@@ -2039,6 +2184,41 @@ const CouponsAdminPage: React.FC = () => {
                         sx={{ borderRadius: 2, minWidth: 100 }}
                     >
                         Delete
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Restore Confirmation Dialog */}
+            <Dialog
+                open={openRestoreDialog}
+                onClose={() => setOpenRestoreDialog(false)}
+                PaperProps={{
+                    sx: { borderRadius: 2, p: 1 }
+                }}
+            >
+                <DialogTitle sx={{ textAlign: 'center', pb: 0 }}>
+                    <Typography variant="h6" fontWeight="bold">Confirm Restore</Typography>
+                </DialogTitle>
+                <DialogContent sx={{ textAlign: 'center', py: 2 }}>
+                    <Typography>
+                        Are you sure you want to restore coupon <Box component="span" sx={{ fontWeight: 'bold' }}>{restoreTarget?.code}</Box>?
+                    </Typography>
+                </DialogContent>
+                <DialogActions sx={{ justifyContent: 'center', pb: 2, gap: 2 }}>
+                    <Button
+                        onClick={() => setOpenRestoreDialog(false)}
+                        variant="outlined"
+                        sx={{ borderRadius: 2, minWidth: 100 }}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={confirmRestoreCoupon}
+                        variant="contained"
+                        color="success"
+                        sx={{ borderRadius: 2, minWidth: 100 }}
+                    >
+                        Restore
                     </Button>
                 </DialogActions>
             </Dialog>
