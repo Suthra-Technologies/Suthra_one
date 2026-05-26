@@ -20,6 +20,12 @@ const EMPTY_FORM = {
   phone: '',
   email: '',
   address: '',
+  address1: '',
+  street: '',
+  city: '',
+  state: '',
+  country: '',
+  zipcode: '',
   website: '',
   categories: [] as string[],
   status: 'active',
@@ -39,6 +45,7 @@ const MaterialProvidersPage: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<any | null>(null);
   const [form, setForm] = useState({ ...EMPTY_FORM });
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
   const [deleteTarget, setDeleteTarget] = useState<any | null>(null);
@@ -83,6 +90,7 @@ const MaterialProvidersPage: React.FC = () => {
   const openAdd = () => {
     setEditing(null);
     setForm({ ...EMPTY_FORM });
+    setErrors({});
     setDialogOpen(true);
   };
 
@@ -94,23 +102,54 @@ const MaterialProvidersPage: React.FC = () => {
       phone: row.phone || '',
       email: row.email || '',
       address: row.address || '',
+      address1: row.address1 || '',
+      street: row.street || '',
+      city: row.city || '',
+      state: row.state || '',
+      country: row.country || '',
+      zipcode: row.zipcode || '',
       website: row.website || '',
       categories: row.categories || [],
       status: row.status || 'active',
       notes: row.notes || '',
     });
+    setErrors({});
     setDialogOpen(true);
   };
 
   const handleSave = async () => {
-    if (!form.name.trim()) { toast.error('Name is required'); return; }
+    const newErrors: Record<string, string> = {};
+    if (!form.name.trim()) newErrors.name = 'Name is required';
+    if (!form.phone.trim()) newErrors.phone = 'Phone number is required';
+    else if (form.phone.length !== 10) newErrors.phone = 'Phone number must be exactly 10 digits';
+    else if (/^0{2,}/.test(form.phone)) newErrors.phone = 'Phone number cannot start with multiple zeros';
+    else if (/(\d)\1{7,}/.test(form.phone)) newErrors.phone = 'Phone number looks invalid';
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
     setSaving(true);
     try {
+      const combinedAddress = [
+        form.address1.trim(),
+        form.street.trim(),
+        form.city.trim(),
+        form.state.trim(),
+        form.country.trim(),
+        form.zipcode.trim()
+      ].filter(Boolean).join(', ');
+
+      const payload = {
+        ...form,
+        address: combinedAddress,
+      };
+
       if (editing) {
-        await materialProvidersAPI.update(editing._id, form);
+        await materialProvidersAPI.update(editing._id, payload);
         toast.success('Provider updated');
       } else {
-        await materialProvidersAPI.create(form);
+        await materialProvidersAPI.create(payload);
         toast.success('Provider added');
       }
       setDialogOpen(false);
@@ -137,8 +176,10 @@ const MaterialProvidersPage: React.FC = () => {
     }
   };
 
-  const f = (key: keyof typeof form) => (e: any) =>
+  const f = (key: keyof typeof form) => (e: any) => {
     setForm(prev => ({ ...prev, [key]: e.target.value }));
+    setErrors(prev => ({ ...prev, [key]: '' }));
+  };
 
   // --- category actions ---
   const openAddCategory = () => {
@@ -210,7 +251,7 @@ const MaterialProvidersPage: React.FC = () => {
             onClick={openAdd}
             sx={{ bgcolor: '#d32f2f', '&:hover': { bgcolor: '#b71c1c' } }}
           >
-            + Add Provider
+            Add Provider
           </Button>
         </Stack>
       </Box>
@@ -325,13 +366,33 @@ const MaterialProvidersPage: React.FC = () => {
         <DialogTitle>{editing ? 'Edit Provider' : 'Add Material Provider'}</DialogTitle>
         <DialogContent>
           <Stack spacing={2.5} sx={{ mt: 1 }}>
-            <TextField fullWidth label="Name *" value={form.name} onChange={f('name')} />
+            <TextField fullWidth label="Name *" value={form.name} onChange={f('name')} error={!!errors.name} helperText={errors.name} />
             <TextField fullWidth label="Contact Person" value={form.contactPerson} onChange={f('contactPerson')} />
             <Stack direction="row" spacing={2}>
-              <TextField fullWidth label="Phone" value={form.phone} onChange={f('phone')} />
+              <TextField
+                fullWidth
+                label="Phone *"
+                value={form.phone}
+                onChange={(e) => {
+                  const cleanVal = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  setForm(prev => ({ ...prev, phone: cleanVal }));
+                  setErrors(prev => ({ ...prev, phone: '' }));
+                }}
+                error={!!errors.phone}
+                helperText={errors.phone}
+              />
               <TextField fullWidth label="Email" type="email" value={form.email} onChange={f('email')} />
             </Stack>
-            <TextField fullWidth label="Address" value={form.address} onChange={f('address')} />
+            <TextField fullWidth label="Address 1" value={form.address1} onChange={f('address1')} />
+            <Stack direction="row" spacing={2}>
+              <TextField fullWidth label="Street" value={form.street} onChange={f('street')} />
+              <TextField fullWidth label="City" value={form.city} onChange={f('city')} />
+            </Stack>
+            <Stack direction="row" spacing={2}>
+              <TextField fullWidth label="State" value={form.state} onChange={f('state')} />
+              <TextField fullWidth label="Country" value={form.country} onChange={f('country')} />
+              <TextField fullWidth label="Zip Code" value={form.zipcode} onChange={f('zipcode')} />
+            </Stack>
             <TextField fullWidth label="Website" value={form.website} onChange={f('website')} />
             <FormControl fullWidth>
               <InputLabel>Categories</InputLabel>

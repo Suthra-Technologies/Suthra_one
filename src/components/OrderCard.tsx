@@ -16,7 +16,10 @@ import {
     Refresh as SyncIcon,
     LocalShipping as DeliveryIcon,
     Phone as PhoneIcon,
-    Launch as LaunchIcon
+    Launch as LaunchIcon,
+    MoneyOff as RefundIcon,
+    Add as AddIcon,
+    Remove as RemoveIcon,
 } from '@mui/icons-material';
 import {
     alpha,
@@ -26,9 +29,17 @@ import {
     CardActions,
     CardContent,
     Chip,
+    CircularProgress,
     Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
     Divider,
+    FormControl,
     IconButton,
+    InputLabel,
+    MenuItem,
+    Select,
     Stack,
     TextField,
     Tooltip,
@@ -88,8 +99,14 @@ const OrderCard: React.FC<OrderCardProps> = ({
     const [cancelOrderDialogOpen, setCancelOrderDialogOpen] = useState(false);
     const [cancelNotes, setCancelNotes] = useState('');
     const [itemToDeleteIndex, setItemToDeleteIndex] = useState<number | null>(null);
+    const [itemToDeleteDetails, setItemToDeleteDetails] = useState<{ maxQuantity: number, itemName: string } | null>(null);
+    const [removeQuantity, setRemoveQuantity] = useState<number>(1);
     const [expanded, setExpanded] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+    const [refundTargetIndex, setRefundTargetIndex] = useState<number | null>(null);
+    const [refundMethod, setRefundMethod] = useState<'original' | 'cash'>('original');
+    const [isRefunding, setIsRefunding] = useState(false);
     const { user, tenantSlug } = useAuth();
     const isDeliveryBoy = user?.role === 'delivery';
 
@@ -130,17 +147,23 @@ const OrderCard: React.FC<OrderCardProps> = ({
         if (onRefresh) onRefresh();
     };
 
-    const handleDeleteItem = (index: number) => {
+    const handleDeleteItem = (index: number, maxQuantity: number, itemName: string) => {
         setItemToDeleteIndex(index);
+        setItemToDeleteDetails({ maxQuantity, itemName });
+        setRemoveQuantity(maxQuantity);
         setDeleteConfirmationOpen(true);
     };
 
     const confirmDelete = async () => {
         if (itemToDeleteIndex === null || isProcessing) return;
+        if (itemToDeleteDetails && (removeQuantity < 1 || removeQuantity > itemToDeleteDetails.maxQuantity)) {
+            toast.error('Invalid quantity selected');
+            return;
+        }
 
         setIsProcessing(true);
         try {
-            await ordersAPI.removeItem(order._id, itemToDeleteIndex);
+            await ordersAPI.removeItem(order._id, itemToDeleteIndex, removeQuantity);
             toast.success('Item removed');
             if (onRefresh) onRefresh();
         } catch (error) {
@@ -149,6 +172,8 @@ const OrderCard: React.FC<OrderCardProps> = ({
         } finally {
             setDeleteConfirmationOpen(false);
             setItemToDeleteIndex(null);
+            setItemToDeleteDetails(null);
+            setRemoveQuantity(1);
             setIsProcessing(false);
         }
     };
@@ -166,6 +191,28 @@ const OrderCard: React.FC<OrderCardProps> = ({
             toast.error('Failed to cancel order');
         } finally {
             setIsProcessing(false);
+        }
+    };
+
+    const openRefundDialog = (e: React.MouseEvent, realIndex: number) => {
+        e.stopPropagation();
+        setRefundTargetIndex(realIndex);
+        setRefundMethod('original');
+        setRefundDialogOpen(true);
+    };
+
+    const handleRefundItem = async () => {
+        if (refundTargetIndex === null || isRefunding) return;
+        setIsRefunding(true);
+        try {
+            await ordersAPI.refundItem(order._id, refundTargetIndex, refundMethod);
+            toast.success('Refund processed successfully');
+            setRefundDialogOpen(false);
+            if (onRefresh) onRefresh();
+        } catch (error: any) {
+            toast.error(error?.response?.data?.message || 'Failed to process refund');
+        } finally {
+            setIsRefunding(false);
         }
     };
 
@@ -458,135 +505,177 @@ const OrderCard: React.FC<OrderCardProps> = ({
 
                 {/* Order Items */}
                 <Box sx={{ mb: 1 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold', mb: 0.5, display: 'block' }}>
-                        Items ({order.items?.length || 0})
-                    </Typography>
-                    <Stack spacing={0.5} sx={{ maxHeight: expanded ? 300 : 120, overflowY: 'auto', mb: 0.5, transition: 'max-height 0.3s' }}>
-                        {(expanded ? order.items : order.items?.slice(0, 3))?.filter((item: any) => item.preparationStatus !== 'cancelled').map((item: any, index: number) => {
-                            return (
-                                <Box
-                                    key={index}
-                                    sx={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        p: 0,
-                                        mb: 0
-                                    }}
-                                >
-                                    <Box
-                                        sx={{
-                                            flex: 1,
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            gap: 0.5,
-                                            color: 'text.primary',
-                                            minWidth: 0,
-                                        }}
-                                    >
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                                            <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                                                {item.quantity}x {item.name || item.menuItem?.name || 'Unknown Item'}
-                                            </Typography>
-                                            {item.preparationStatus === 'ready' && (
-                                                <Tooltip title="Ready to Serve" arrow>
-                                                    <CheckIcon
-                                                        sx={{
-                                                            fontSize: 16,
-                                                            color: '#10b981',
-                                                            animation: 'pulse-green 2s infinite',
-                                                            '@keyframes pulse-green': {
-                                                                '0%': { transform: 'scale(0.95)', opacity: 0.8 },
-                                                                '70%': { transform: 'scale(1.2)', opacity: 1 },
-                                                                '100%': { transform: 'scale(0.95)', opacity: 0.8 }
-                                                            }
-                                                        }}
-                                                    />
-                                                </Tooltip>
-                                            )}
-                                        </Box>
-
-                                        {item.spiceLevel ? (
-                                            <Chip
-                                                icon={<SpiceIcon sx={{ fontSize: 14 }} />}
-                                                label={`Spice: ${formatSpiceLevelLabel(item.spiceLevel)}`}
-                                                size="small"
-                                                sx={{
-                                                    alignSelf: 'flex-start',
-                                                    ml: 2,
-                                                    height: 22,
-                                                    fontSize: '0.72rem',
-                                                    fontWeight: 700,
-                                                    bgcolor: alpha(theme.palette.warning.main, 0.12),
-                                                    color: theme.palette.warning.dark,
-                                                    border: `1px solid ${alpha(theme.palette.warning.main, 0.28)}`,
-                                                    '& .MuiChip-icon': {
-                                                        color: theme.palette.warning.main,
-                                                    },
-                                                }}
-                                            />
-                                        ) : null}
-
-                                        {item.modifiers && item.modifiers.length > 0 && (
-                                            <Typography variant="caption" display="block" color="text.secondary" sx={{ ml: 2 }}>
-                                                + {item.modifiers.map((m: any) => m.name).join(', ')}
-                                            </Typography>
-                                        )}
-                                    </Box>
-                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                        <Typography
-                                            variant="body2"
-                                            fontWeight="medium"
+                    {(() => {
+                        const allItems: any[] = order.items || [];
+                        const activeItems = allItems.map((item: any, i: number) => ({ item, realIndex: i })).filter(({ item }) => item.preparationStatus !== 'cancelled');
+                        const cancelledItems = allItems.map((item: any, i: number) => ({ item, realIndex: i })).filter(({ item }) => item.preparationStatus === 'cancelled');
+                        const visibleActive = expanded ? activeItems : activeItems.slice(0, 3);
+                        const hiddenCount = activeItems.length - 3;
+                        const canRefund = order.paymentStatus === 'paid' && order.paymentIntentId;
+                        return (
+                            <>
+                                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold', mb: 0.5, display: 'block' }}>
+                                    Items ({activeItems.length}{cancelledItems.length > 0 ? ` + ${cancelledItems.length} cancelled` : ''})
+                                </Typography>
+                                <Stack spacing={0.5} sx={{ maxHeight: expanded ? 300 : 120, overflowY: 'auto', mb: 0.5, transition: 'max-height 0.3s' }}>
+                                    {visibleActive.map(({ item, realIndex }) => (
+                                        <Box
+                                            key={realIndex}
                                             sx={{
-                                                mr: 1,
-                                                color: 'text.primary',
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                p: 0,
+                                                mb: 0
                                             }}
                                         >
-                                            {formatCurrency(item.total || item.price * item.quantity)}
-                                        </Typography>
-                                        {['pending', 'confirmed'].includes(order.status) && order.orderType === 'dine_in' && item.preparationStatus !== 'ready' && (
-                                            <IconButton
-                                                size="small"
-                                                color="error"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleDeleteItem(index);
+                                            <Box
+                                                sx={{
+                                                    flex: 1,
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: 0.5,
+                                                    color: 'text.primary',
+                                                    minWidth: 0,
                                                 }}
                                             >
-                                                <DeleteIcon fontSize="small" />
-                                            </IconButton>
-                                        )}
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                                                    <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                                                        {item.quantity}x {item.name || item.menuItem?.name || 'Unknown Item'}
+                                                    </Typography>
+                                                    {item.preparationStatus === 'ready' && (
+                                                        <Tooltip title="Ready to Serve" arrow>
+                                                            <CheckIcon
+                                                                sx={{
+                                                                    fontSize: 16,
+                                                                    color: '#10b981',
+                                                                    animation: 'pulse-green 2s infinite',
+                                                                    '@keyframes pulse-green': {
+                                                                        '0%': { transform: 'scale(0.95)', opacity: 0.8 },
+                                                                        '70%': { transform: 'scale(1.2)', opacity: 1 },
+                                                                        '100%': { transform: 'scale(0.95)', opacity: 0.8 }
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </Tooltip>
+                                                    )}
+                                                </Box>
+
+                                                {item.spiceLevel ? (
+                                                    <Chip
+                                                        icon={<SpiceIcon sx={{ fontSize: 14 }} />}
+                                                        label={`Spice: ${formatSpiceLevelLabel(item.spiceLevel)}`}
+                                                        size="small"
+                                                        sx={{
+                                                            alignSelf: 'flex-start',
+                                                            ml: 2,
+                                                            height: 22,
+                                                            fontSize: '0.72rem',
+                                                            fontWeight: 700,
+                                                            bgcolor: alpha(theme.palette.warning.main, 0.12),
+                                                            color: theme.palette.warning.dark,
+                                                            border: `1px solid ${alpha(theme.palette.warning.main, 0.28)}`,
+                                                            '& .MuiChip-icon': {
+                                                                color: theme.palette.warning.main,
+                                                            },
+                                                        }}
+                                                    />
+                                                ) : null}
+
+                                                {item.modifiers && item.modifiers.length > 0 && (
+                                                    <Typography variant="caption" display="block" color="text.secondary" sx={{ ml: 2 }}>
+                                                        + {item.modifiers.map((m: any) => m.name).join(', ')}
+                                                    </Typography>
+                                                )}
+                                            </Box>
+                                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                <Typography
+                                                    variant="body2"
+                                                    fontWeight="medium"
+                                                    sx={{
+                                                        mr: 1,
+                                                        color: 'text.primary',
+                                                    }}
+                                                >
+                                                    {formatCurrency(item.total || item.price * item.quantity)}
+                                                </Typography>
+                                                {['pending', 'confirmed'].includes(order.status) && order.orderType === 'dine_in' && item.preparationStatus !== 'ready' && (
+                                                    <IconButton
+                                                        size="small"
+                                                        color="error"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDeleteItem(realIndex, item.quantity, item.name || item.menuItem?.name || 'Unknown Item');
+                                                        }}
+                                                    >
+                                                        <DeleteIcon fontSize="small" />
+                                                    </IconButton>
+                                                )}
+                                            </Box>
+                                        </Box>
+                                    ))}
+                                    {!expanded && hiddenCount > 0 && (
+                                        <Typography
+                                            variant="caption"
+                                            color="primary"
+                                            sx={{ fontStyle: 'italic', cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+                                            onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
+                                        >
+                                            +{hiddenCount} more items
+                                        </Typography>
+                                    )}
+                                    {expanded && activeItems.length > 3 && (
+                                        <Typography
+                                            variant="caption"
+                                            color="primary"
+                                            sx={{ fontStyle: 'italic', cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
+                                            onClick={(e) => { e.stopPropagation(); setExpanded(false); }}
+                                        >
+                                            Show less
+                                        </Typography>
+                                    )}
+                                </Stack>
+
+                                {/* Cancelled Items */}
+                                {cancelledItems.length > 0 && (
+                                    <Box sx={{ mt: 1, pt: 1, borderTop: `1px dashed ${alpha(theme.palette.error.main, 0.3)}` }}>
+                                        <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'error.main', display: 'block', mb: 0.5 }}>
+                                            Cancelled Items
+                                        </Typography>
+                                        <Stack spacing={0.5}>
+                                            {cancelledItems.map(({ item, realIndex }) => (
+                                                <Box key={realIndex} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <Typography
+                                                        variant="body2"
+                                                        sx={{ textDecoration: 'line-through', color: 'text.disabled', flex: 1 }}
+                                                    >
+                                                        {item.quantity}x {item.name || item.menuItem?.name || 'Unknown Item'}
+                                                    </Typography>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                        <Typography variant="body2" sx={{ textDecoration: 'line-through', color: 'text.disabled' }}>
+                                                            {formatCurrency(item.total || item.price * item.quantity)}
+                                                        </Typography>
+                                                        {canManage && (
+                                                            <Tooltip title={canRefund ? 'Process Refund' : 'Mark as refunded (cash)'}>
+                                                                <IconButton
+                                                                    size="small"
+                                                                    color="warning"
+                                                                    onClick={(e) => openRefundDialog(e, realIndex)}
+                                                                    sx={{ padding: '2px' }}
+                                                                >
+                                                                    <RefundIcon sx={{ fontSize: 16 }} />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                        )}
+                                                    </Box>
+                                                </Box>
+                                            ))}
+                                        </Stack>
                                     </Box>
-                                </Box>
-                            );
-                        })}
-                        {!expanded && order.items?.length > 3 && (
-                            <Typography
-                                variant="caption"
-                                color="primary"
-                                sx={{ fontStyle: 'italic', cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setExpanded(true);
-                                }}
-                            >
-                                +{order.items.length - 3} more items
-                            </Typography>
-                        )}
-                        {expanded && order.items?.length > 3 && (
-                            <Typography
-                                variant="caption"
-                                color="primary"
-                                sx={{ fontStyle: 'italic', cursor: 'pointer', '&:hover': { textDecoration: 'underline' } }}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setExpanded(false);
-                                }}
-                            >
-                                Show less
-                            </Typography>
-                        )}
-                    </Stack>
+                                )}
+                            </>
+                        );
+                    })()}
                 </Box>
 
                 <Divider sx={{ mt: 'auto', mb: 1 }} />
@@ -968,8 +1057,71 @@ const OrderCard: React.FC<OrderCardProps> = ({
                         Delete Item?
                     </Typography>
                     <Typography variant="body2" color="text.secondary" align="center" sx={{ mb: 3, px: 2 }}>
-                        Are you sure you want to remove <strong>{itemToDeleteIndex !== null && order.items[itemToDeleteIndex] ? (order.items[itemToDeleteIndex].name || order.items[itemToDeleteIndex].menuItem?.name || 'this item') : 'this item'}</strong>? This action cannot be undone.
+                        Are you sure you want to remove <strong>{itemToDeleteDetails?.itemName || (itemToDeleteIndex !== null && order.items[itemToDeleteIndex] ? (order.items[itemToDeleteIndex].name || order.items[itemToDeleteIndex].menuItem?.name || 'this item') : 'this item')}</strong>? This action cannot be undone.
                     </Typography>
+                    {itemToDeleteDetails && itemToDeleteDetails.maxQuantity > 1 && (
+                        <Box sx={{ width: '100%', mb: 3, px: 2 }}>
+                            <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1.5, textAlign: 'center' }}>
+                                Select Quantity to Remove
+                            </Typography>
+                            <Stack direction="row" alignItems="center" justifyContent="center" spacing={3} sx={{ mb: 2 }}>
+                                <IconButton 
+                                    onClick={() => setRemoveQuantity(q => Math.max(1, q - 1))}
+                                    disabled={removeQuantity <= 1}
+                                    sx={{ 
+                                        border: '1.5px solid', 
+                                        borderColor: 'divider',
+                                        bgcolor: 'background.paper',
+                                        '&:hover': { bgcolor: 'action.hover' }
+                                    }}
+                                >
+                                    <RemoveIcon />
+                                </IconButton>
+                                
+                                <Box sx={{ minWidth: 60, textAlign: 'center' }}>
+                                    <Typography variant="h4" fontWeight="800" color="primary.main">
+                                        {removeQuantity}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        of {itemToDeleteDetails.maxQuantity} max
+                                    </Typography>
+                                </Box>
+
+                                <IconButton 
+                                    onClick={() => setRemoveQuantity(q => Math.min(itemToDeleteDetails.maxQuantity, q + 1))}
+                                    disabled={removeQuantity >= itemToDeleteDetails.maxQuantity}
+                                    sx={{ 
+                                        border: '1.5px solid', 
+                                        borderColor: 'divider',
+                                        bgcolor: 'background.paper',
+                                        '&:hover': { bgcolor: 'action.hover' }
+                                    }}
+                                >
+                                    <AddIcon />
+                                </IconButton>
+                            </Stack>
+
+                            <Stack direction="row" spacing={1} justifyContent="center">
+                                <Button 
+                                    size="small" 
+                                    variant="outlined" 
+                                    onClick={() => setRemoveQuantity(1)}
+                                    sx={{ borderRadius: 4, textTransform: 'none', fontWeight: 600 }}
+                                >
+                                    Remove 1
+                                </Button>
+                                <Button 
+                                    size="small" 
+                                    variant="outlined" 
+                                    color="error"
+                                    onClick={() => setRemoveQuantity(itemToDeleteDetails.maxQuantity)}
+                                    sx={{ borderRadius: 4, textTransform: 'none', fontWeight: 600 }}
+                                >
+                                    Remove All ({itemToDeleteDetails.maxQuantity})
+                                </Button>
+                            </Stack>
+                        </Box>
+                    )}
                     <Stack direction="row" spacing={2} width="100%">
                         <Button
                             onClick={() => setDeleteConfirmationOpen(false)}
@@ -1092,6 +1244,56 @@ const OrderCard: React.FC<OrderCardProps> = ({
                         </Button>
                     </Stack>
                 </Box>
+            </Dialog>
+
+            {/* Refund Item Dialog */}
+            <Dialog
+                open={refundDialogOpen}
+                onClose={() => !isRefunding && setRefundDialogOpen(false)}
+                onClick={(e) => e.stopPropagation()}
+                maxWidth="xs"
+                fullWidth
+            >
+                <DialogTitle sx={{ pb: 1 }}>Process Refund</DialogTitle>
+                <DialogContent>
+                    {refundTargetIndex !== null && order.items?.[refundTargetIndex] && (
+                        <Box sx={{ mb: 2 }}>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                Item: <strong>{order.items[refundTargetIndex].name || order.items[refundTargetIndex].menuItem?.name}</strong>
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                Amount: <strong>{formatCurrency(order.items[refundTargetIndex].total || order.items[refundTargetIndex].price * order.items[refundTargetIndex].quantity)}</strong> (+ proportional tax)
+                            </Typography>
+                            <FormControl fullWidth size="small">
+                                <InputLabel>Refund Method</InputLabel>
+                                <Select
+                                    value={refundMethod}
+                                    label="Refund Method"
+                                    onChange={(e) => setRefundMethod(e.target.value as 'original' | 'cash')}
+                                >
+                                    <MenuItem value="original" disabled={!order.paymentIntentId}>
+                                        Original Payment {!order.paymentIntentId ? '(no card payment)' : ''}
+                                    </MenuItem>
+                                    <MenuItem value="cash">Cash</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Box>
+                    )}
+                </DialogContent>
+                <DialogActions sx={{ px: 3, pb: 2 }}>
+                    <Button onClick={() => setRefundDialogOpen(false)} disabled={isRefunding} color="inherit">
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={handleRefundItem}
+                        variant="contained"
+                        color="warning"
+                        disabled={isRefunding}
+                        startIcon={isRefunding ? <CircularProgress size={16} color="inherit" /> : <RefundIcon />}
+                    >
+                        {isRefunding ? 'Processing...' : 'Confirm Refund'}
+                    </Button>
+                </DialogActions>
             </Dialog>
         </Card>
 

@@ -54,6 +54,8 @@ import { useAuth } from '../context/AuthContext';
 import { useGuestCart } from '../context/GuestCartContext';
 import { useSettings } from '../context/SettingsContext';
 import { useActiveTenant } from '../hooks/useActiveTenant';
+import { loadStripe } from '@stripe/stripe-js';
+import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js';
 import { ordersAPI } from '../services/api';
 import { isWithinDeliveryRadius, METERS_PER_MILE } from '../services/googleMapsService';
 
@@ -157,11 +159,14 @@ const CheckoutStripeCard: React.FC<CheckoutStripeWrapperProps> = (props) => {
   const [clientSecret, setClientSecret] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [loadError, setLoadError] = React.useState<string | null>(null);
+  const [retryCount, setRetryCount] = React.useState(0);
 
   React.useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setLoadError(null);
+    setStripePromise(null);
+    setClientSecret(null);
     Promise.all([
       ordersAPI.getPublicPaymentConfig(props.tenantSlug, props.orderType),
       ordersAPI.createPublicPaymentIntent(props.amount, props.tenantSlug, undefined, props.orderType, props.subtotal, props.tax),
@@ -170,19 +175,31 @@ const CheckoutStripeCard: React.FC<CheckoutStripeWrapperProps> = (props) => {
         if (cancelled) return;
         const key = configRes.data?.publishableKey;
         const secret = intentRes.data?.clientSecret;
-        if (!key || !secret) { setLoadError('Payment configuration error.'); return; }
+        if (!key || !secret) {
+          console.error('[Stripe] Missing config — key:', key ? 'present' : 'MISSING', '| secret:', secret ? 'present' : 'MISSING');
+          setLoadError('Payment configuration error.');
+          return;
+        }
         setStripePromise(loadStripe(key));
         setClientSecret(secret);
       })
-      .catch(() => { if (!cancelled) setLoadError('Failed to initialise payment. Please try again.'); })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error('[Stripe] Payment init failed:', err?.response?.data || err?.message || err);
+        setLoadError('Failed to initialise payment. Please try again.');
+      })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-    // Only run once when the card form first mounts — amount is locked at mount time
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.tenantSlug, props.orderType]);
+  }, [props.tenantSlug, props.orderType, retryCount]);
 
   if (loading) return <Box sx={{ py: 2, textAlign: 'center' }}><Spinner size={24} /></Box>;
-  if (loadError || !stripePromise || !clientSecret) return <Typography color="error">{loadError || 'Card payment unavailable.'}</Typography>;
+  if (loadError || !stripePromise || !clientSecret) return (
+    <Box>
+      <Typography color="error">{loadError || 'Card payment unavailable.'}</Typography>
+      <Button size="small" onClick={() => setRetryCount(c => c + 1)} sx={{ mt: 1 }}>Retry</Button>
+    </Box>
+  );
 
   return (
     <Elements stripe={stripePromise} options={{ clientSecret }}>
@@ -480,7 +497,16 @@ const CheckoutPage: React.FC = () => {
       if (orderType === 'delivery') {
         setDeliveryAddress(deliveryInfo.address);
 
-        // Delivery Radius Check
+        // Third-party providers handle their own delivery area validation
+        const THIRD_PARTY_PROVIDERS = ['ubereats', 'doordash', 'uber_eats', 'door_dash'];
+        const isThirdParty = THIRD_PARTY_PROVIDERS.includes(selectedProvider?.toLowerCase());
+
+        if (isThirdParty) {
+          setActiveStep((prev) => prev + 1);
+          return;
+        }
+
+        // Delivery Radius Check (only for self-delivery)
         const checkDeliveryRadius = async () => {
           if (!deliveryInfo.address) {
             toast.error('Please enter a delivery address');
@@ -489,7 +515,7 @@ const CheckoutPage: React.FC = () => {
 
           if (!settings?.restaurant?.address) {
             console.warn('Restaurant address not set in settings');
-            return true; // If restaurant address is missing, we can't check, so allow (or block)
+            return true;
           }
 
           try {
@@ -513,7 +539,6 @@ const CheckoutPage: React.FC = () => {
             return true;
           } catch (err) {
             console.error('Distance check failed:', err);
-            // In case of API failure, we might want to allow it or show a warning
             return true;
           } finally {
             setCheckingDistance(false);

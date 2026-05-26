@@ -203,14 +203,14 @@ export const ordersAPI = {
     api.post(`/orders/${id}/items`, { items, kotNumber }),
 
   // Remove item from order
-  removeItem: (id: string, itemIndex: number) =>
-    api.delete(`/orders/${id}/items/${itemIndex}`),
+  removeItem: (id: string, itemIndex: number, quantity?: number) =>
+    api.delete(`/orders/${id}/items/${itemIndex}`, { params: { quantity } }),
   refundItem: (id: string, itemIndex: number, refundMethod: 'original' | 'cash') =>
     api.post(`/orders/${id}/items/${itemIndex}/refund`, { refundMethod }),
 
   // Kitchen item-wise status updates
-  updateItemStatus: (orderId: string, itemIndex: number, status: string, cancelReason?: string) =>
-    api.patch(`/orders/${orderId}/items/${itemIndex}/status`, { status, cancelReason }),
+  updateItemStatus: (orderId: string, itemIndex: number, status: string, cancelReason?: string, cancelQuantity?: number) =>
+    api.patch(`/orders/${orderId}/items/${itemIndex}/status`, { status, cancelReason, cancelQuantity }),
   updateAllItemsStatus: (orderId: string, status: string) =>
     api.patch(`/orders/${orderId}/items/all/status`, { status }),
 
@@ -259,6 +259,7 @@ export const ubereatsAPI = {
   inviteMember: (organizationId: string, payload: any) => api.post(`/ubereats/organizations/${organizationId}/memberships/invite`, payload),
 
   // Business Locations
+  createBusinessLocation: (organizationId: string, payload: any) => api.post(`/ubereats/organizations/${organizationId}/business-locations`, payload),
   getBusinessLocations: (organizationId: string) => api.get(`/ubereats/organizations/${organizationId}/business-locations`),
   getBusinessLocation: (organizationId: string, businessLocationId: string) => api.get(`/ubereats/organizations/${organizationId}/business-locations/${businessLocationId}`),
   updateBusinessLocation: (organizationId: string, businessLocationId: string, payload: any) => api.patch(`/ubereats/organizations/${organizationId}/business-locations/${businessLocationId}`, payload),
@@ -309,6 +310,9 @@ export const menuAPI = {
   createSubcategory: (subcategoryData: any) => api.post('/menu/subcategories', subcategoryData),
   updateSubcategory: (id: string, subcategoryData: any) => api.put(`/menu/subcategories/${id}`, subcategoryData),
   deleteSubcategory: (id: string) => api.delete(`/menu/subcategories/${id}`),
+  bulkPriceAdjust: (percentage: number, categoryId?: string) =>
+    api.patch('/menu/bulk-price-adjust', { percentage, categoryId }),
+  getPriceAdjustmentLogs: () => api.get('/menu/price-adjustment-logs'),
 };
 
 // -------------------- Modifier Templates API --------------------
@@ -432,6 +436,9 @@ export const subscriptionAPI = {
   getPlans: () => api.get('/subscription/plans'),
   getTopups: () => api.get('/subscription/topups'),
   purchaseTopup: (planId: string) => api.post('/subscription/purchase-topup', { planId }),
+  createTopupCheckout: (planId: string, successUrl: string, cancelUrl: string) =>
+    api.post('/subscription/topup-checkout', { planId, successUrl, cancelUrl }),
+  confirmTopup: (sessionId: string) => api.post('/subscription/confirm-topup', { sessionId }),
   subscribe: (planId: string) => api.post('/subscription/subscribe', { planId }),
   cancel: () => api.post('/subscription/cancel'),
   createCheckoutSession: (data: {
@@ -548,6 +555,7 @@ export const superAPI = {
 
   // Plans management
   listPlans: () => api.get('/superadmin/plans'),
+  listPlansPublic: () => api.get('/superadmin/plans/public'),
   createPlan: (data: any) => api.post('/superadmin/plans', data),
   updatePlan: (id: string, data: any) => api.patch(`/superadmin/plans/${id}`, data),
   deletePlan: (id: string) => api.delete(`/superadmin/plans/${id}`),
@@ -562,6 +570,24 @@ export const superAPI = {
   // Stripe Connect
   updateTenantConnectAccount: (tenantId: string, payload: { stripeConnectAccountId: string; stripeConnectStatus?: string }) =>
     api.patch(`/superadmin/tenants/${tenantId}/connect-account`, payload),
+  onboardConnectAccount: (tenantId: string, returnUrl: string, refreshUrl: string) =>
+    api.post(`/superadmin/tenants/${tenantId}/connect-account/onboard`, { returnUrl, refreshUrl }),
+  getConnectAccountStatus: (tenantId: string) =>
+    api.get(`/superadmin/tenants/${tenantId}/connect-account/status`),
+  getConnectLoginLink: (tenantId: string) =>
+    api.get(`/superadmin/tenants/${tenantId}/connect-account/login-link`),
+  clearConnectAccount: (tenantId: string) =>
+    api.delete(`/superadmin/tenants/${tenantId}/connect-account`),
+
+  // Uber Direct location linking
+  linkUberPickupLocation: (tenantId: string, organizationId: string, businessLocationId: string) =>
+    api.post(`/superadmin/tenants/${tenantId}/uber-link-location`, { organizationId, businessLocationId }),
+
+  // Tenant delivery settings (credentials managed by superadmin)
+  getTenantDeliverySettings: (tenantId: string) =>
+    api.get(`/superadmin/tenants/${tenantId}/delivery-settings`),
+  updateTenantDeliverySettings: (tenantId: string, payload: any) =>
+    api.patch(`/superadmin/tenants/${tenantId}/delivery-settings`, payload),
 
   // Admin activity logs
   getAdminLogs: (params?: any) => api.get('/superadmin/admin-logs', { params }),
@@ -584,6 +610,7 @@ export const superAdminAPI = superAPI; // alias for compatibility
 export const materialProvidersAPI = {
   list: (params?: { page?: number; limit?: number; search?: string; status?: string }) =>
     api.get('/superadmin/material-providers', { params }),
+  getAll: (params?: any) => api.get('/superadmin/material-providers/public', { params }),
   create: (data: any) => api.post('/superadmin/material-providers', data),
   update: (id: string, data: any) => api.patch(`/superadmin/material-providers/${id}`, data),
   remove: (id: string) => api.delete(`/superadmin/material-providers/${id}`),

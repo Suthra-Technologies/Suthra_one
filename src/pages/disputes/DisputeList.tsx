@@ -23,6 +23,7 @@ import {
   InputAdornment,
   Avatar,
   Tooltip,
+  TablePagination,
 } from '@mui/material';
 import {
   Search,
@@ -46,6 +47,8 @@ const DisputeList: React.FC = () => {
   const [disputes, setDisputes] = useState<any[]>([]);
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState('');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const fetchDisputes = async () => {
     setLoading(true);
@@ -63,6 +66,10 @@ const DisputeList: React.FC = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    setPage(0);
+  }, [search, activeFilter]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -164,67 +171,83 @@ const DisputeList: React.FC = () => {
             <CircularProgress />
           </Box>
         ) : (
-          <Table>
-            <TableHead sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}>
-              <TableRow>
-                <TableCell sx={{ fontWeight: 700 }}>Order #</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Reason</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Amount</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Initiated</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
-                <TableCell sx={{ fontWeight: 700 }} align="right">Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {disputes.length === 0 ? (
+          <>
+            <Table>
+              <TableHead sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}>
                 <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 10 }}>
-                    <Typography color="text.secondary">No disputes found</Typography>
-                  </TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Order #</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Reason</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Amount</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Initiated</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }} align="right">Actions</TableCell>
                 </TableRow>
-              ) : (
-                disputes.map((dispute) => (
-                  <TableRow
-                    key={dispute._id}
-                    hover
-                    onClick={() => navigate(`/disputes/${dispute._id}`)}
-                    sx={{ cursor: 'pointer' }}
-                  >
-                    <TableCell>
-                      <Typography variant="subtitle2" fontWeight="700">#{dispute.orderNumber}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{getReasonLabel(dispute.reason)}</Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', maxWidth: 200, noWrap: true, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {dispute.description}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2" fontWeight="600">${dispute.disputedAmount.toFixed(2)}</Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">{new Date(dispute.createdAt).toLocaleDateString()}</Typography>
-                    </TableCell>
-                    <TableCell>{getStatusChip(dispute.status)}</TableCell>
-                    <TableCell align="right">
-                      <Tooltip title="View Details">
-                        <IconButton
-                          size="small"
-                          color="primary"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/disputes/${dispute._id}`);
-                          }}
-                        >
-                          <Visibility />
-                        </IconButton>
-                      </Tooltip>
+              </TableHead>
+              <TableBody>
+                {disputes.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} align="center" sx={{ py: 10 }}>
+                      <Typography color="text.secondary">No disputes found</Typography>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  disputes
+                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                    .map((dispute) => (
+                      <TableRow
+                        key={dispute._id}
+                        hover
+                        onClick={() => navigate(`/disputes/${dispute._id}`)}
+                        sx={{ cursor: 'pointer' }}
+                      >
+                        <TableCell>
+                          <Typography variant="subtitle2" fontWeight="700">#{dispute.orderNumber}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">{getReasonLabel(dispute.reason)}</Typography>
+                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', maxWidth: 200, noWrap: true, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {dispute.description}
+                          </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2" fontWeight="600">${dispute.disputedAmount.toFixed(2)}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Typography variant="body2">{new Date(dispute.createdAt).toLocaleDateString()}</Typography>
+                        </TableCell>
+                        <TableCell>{getStatusChip(dispute.status)}</TableCell>
+                        <TableCell align="right">
+                          <Tooltip title="View Details">
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/disputes/${dispute._id}`);
+                              }}
+                            >
+                              <Visibility />
+                            </IconButton>
+                          </Tooltip>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                )}
+              </TableBody>
+            </Table>
+            <TablePagination
+              rowsPerPageOptions={[5, 10, 25, 50]}
+              component="div"
+              count={disputes.length}
+              rowsPerPage={rowsPerPage}
+              page={page}
+              onPageChange={(_, newPage) => setPage(newPage)}
+              onRowsPerPageChange={(e) => {
+                setRowsPerPage(parseInt(e.target.value, 10));
+                setPage(0);
+              }}
+            />
+          </>
         )}
       </TableContainer>
     </Box>

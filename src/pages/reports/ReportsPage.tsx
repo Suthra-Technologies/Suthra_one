@@ -145,6 +145,10 @@ const ReportsPage: React.FC = () => {
     const [tableStatsRowsPerPage, setTableStatsRowsPerPage] = useState(10);
     const [recentOrdersPage, setRecentOrdersPage] = useState(0);
     const [recentOrdersRowsPerPage, setRecentOrdersRowsPerPage] = useState(10);
+    const [feedbackPage, setFeedbackPage] = useState(0);
+    const [feedbackRowsPerPage, setFeedbackRowsPerPage] = useState(10);
+    const [itemFeedbackPage, setItemFeedbackPage] = useState(0);
+    const [itemFeedbackRowsPerPage, setItemFeedbackRowsPerPage] = useState(10);
     const [tipsReportPage, setTipsReportPage] = useState(0);
     const [tipsReportRowsPerPage, setTipsReportRowsPerPage] = useState(10);
     const [peakHoursPage, setPeakHoursPage] = useState(0);
@@ -199,6 +203,8 @@ const ReportsPage: React.FC = () => {
         setTipsReportPage(0);
         setDeliveryReportPage(0);
         setCateringPage(0);
+        setFeedbackPage(0);
+        setItemFeedbackPage(0);
     }, [activeTab, period, startDate, endDate]);
 
     // Reset payment method filter when switching tabs
@@ -3005,9 +3011,26 @@ const ReportsPage: React.FC = () => {
                                     dataKey="date"
                                     tickFormatter={(str) => new Date(str).toLocaleDateString()}
                                 />
-                                <YAxis yAxisId="left" orientation="left" stroke="#8884d8" />
+                                <YAxis 
+                                    yAxisId="left" 
+                                    orientation="left" 
+                                    stroke="#8884d8" 
+                                    tickFormatter={(val) => typeof val === 'number' ? formatCurrency(val) : val}
+                                />
                                 <YAxis yAxisId="right" orientation="right" stroke="#82ca9d" />
-                                <RechartsTooltip />
+                                <RechartsTooltip
+                                    contentStyle={{
+                                        borderRadius: 12,
+                                        border: "none",
+                                        boxShadow: "0 8px 25px rgba(0,0,0,0.1)"
+                                    }}
+                                    formatter={(value: any, name: any) => {
+                                        if (typeof value === 'number' && name.includes('Sales')) {
+                                            return [formatCurrency(value), name];
+                                        }
+                                        return [value, name];
+                                    }}
+                                />
                                 <Legend />
                                 <Line yAxisId="left" type="monotone" dataKey="totalSales" stroke="#8884d8" name={`Sales (${settings.restaurant.currency})`} strokeWidth={2} isAnimationActive={false} />
                                 <Line yAxisId="right" type="monotone" dataKey="totalOrders" stroke="#82ca9d" name="Orders" strokeWidth={2} isAnimationActive={false} />
@@ -4682,6 +4705,7 @@ const ReportsPage: React.FC = () => {
                                 tick={{ fontSize: 12, fill: "#6b7280" }}
                                 axisLine={false}
                                 tickLine={false}
+                                tickFormatter={(value) => value >= 1000 ? `${(value / 1000).toFixed(1)}k` : value}
                             />
 
                             {/* Tooltip styled like your dashboard */}
@@ -4692,6 +4716,10 @@ const ReportsPage: React.FC = () => {
                                     boxShadow: "0 8px 20px rgba(0,0,0,0.12)"
                                 }}
                                 cursor={{ fill: "rgba(255,107,11,0.08)" }}
+                                formatter={(value: any, name: any) => {
+                                    if (name === "Revenue") return [formatCurrency(value), "Total Revenue"];
+                                    return [value, "Total Bookings"];
+                                }}
                             />
 
                             {/* Legend */}
@@ -4934,7 +4962,17 @@ const ReportsPage: React.FC = () => {
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                     <XAxis dataKey="code" />
                                     <YAxis />
-                                    <RechartsTooltip />
+                                    <RechartsTooltip
+                                        contentStyle={{
+                                            borderRadius: 12,
+                                            border: "none",
+                                            boxShadow: "0 8px 25px rgba(0,0,0,0.1)"
+                                        }}
+                                        formatter={(value: any, name: any) => {
+                                            if (name === "Value Saved") return [formatCurrency(value), "Value Saved"];
+                                            return [value, "Redemptions"];
+                                        }}
+                                    />
                                     <Legend />
                                     <Bar dataKey="count" fill="#4F46E5" name="Redemptions" radius={[4, 4, 0, 0]} />
                                     <Bar dataKey="value" fill="#10B981" name="Value Saved" radius={[4, 4, 0, 0]} />
@@ -5178,60 +5216,62 @@ const ReportsPage: React.FC = () => {
                         {/* Mobile Card View */}
                         <Box sx={{ display: { xs: 'block', md: 'none' } }}>
                             {feedbackData.length > 0 ? (
-                                feedbackData.map((fb: any) => (
-                                    <Paper key={fb._id} sx={{ p: 2, mb: 2, borderRadius: 2 }}>
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5, alignItems: 'flex-start' }}>
-                                            <Box>
-                                                <Typography variant="body2" sx={{ fontWeight: 700, color: '#374151', fontSize: { xs: '0.85rem', sm: '0.95rem', md: '1rem' } }}>
-                                                    {fb.orderNumber}
-                                                </Typography>
-                                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.8rem' } }}>
-                                                    {new Date(fb.createdAt).toLocaleDateString()}
-                                                </Typography>
-                                            </Box>
-                                        </Box>
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                            <Typography variant="body2" color="text.secondary">Customer:</Typography>
-                                            <Typography variant="body2" fontWeight={600}>{fb.customerName}</Typography>
-                                        </Box>
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                            <Typography variant="body2" color="text.secondary">Service:</Typography>
-                                            <Chip
-                                                label={fb.serviceRating}
-                                                color={fb.serviceRating >= 4 ? 'success' : fb.serviceRating >= 3 ? 'warning' : 'error'}
-                                                size="small"
-                                            />
-                                        </Box>
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                            <Typography variant="body2" color="text.secondary">Ambiance:</Typography>
-                                            <Chip
-                                                label={fb.ambianceRating}
-                                                color={fb.ambianceRating >= 4 ? 'success' : fb.ambianceRating >= 3 ? 'warning' : 'error'}
-                                                size="small"
-                                            />
-                                        </Box>
-                                        {fb.itemRatings && fb.itemRatings.length > 0 && (
-                                            <Box sx={{ mb: 1 }}>
-                                                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>Item Ratings:</Typography>
-                                                <Box sx={{ pl: 1 }}>
-                                                    {fb.itemRatings.map((item: any) => (
-                                                        <Typography variant="caption" display="block" key={item.menuItem} color="text.secondary">
-                                                            {item.name}: {item.tasteRating} (Taste), {item.quantityRating} (Qty)
-                                                        </Typography>
-                                                    ))}
+                                feedbackData
+                                    .slice(feedbackPage * feedbackRowsPerPage, feedbackPage * feedbackRowsPerPage + feedbackRowsPerPage)
+                                    .map((fb: any) => (
+                                        <Paper key={fb._id} sx={{ p: 2, mb: 2, borderRadius: 2 }}>
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5, alignItems: 'flex-start' }}>
+                                                <Box>
+                                                    <Typography variant="body2" sx={{ fontWeight: 700, color: '#374151', fontSize: { xs: '0.85rem', sm: '0.95rem', md: '1rem' } }}>
+                                                        {fb.orderNumber}
+                                                    </Typography>
+                                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: { xs: '0.7rem', sm: '0.8rem' } }}>
+                                                        {new Date(fb.createdAt).toLocaleDateString()}
+                                                    </Typography>
                                                 </Box>
                                             </Box>
-                                        )}
-                                        {fb.suggestions && (
-                                            <Box sx={{ pt: 1, borderTop: '1px solid #f0f0f0' }}>
-                                                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>Suggestions:</Typography>
-                                                <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
-                                                    {fb.suggestions}
-                                                </Typography>
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                                <Typography variant="body2" color="text.secondary">Customer:</Typography>
+                                                <Typography variant="body2" fontWeight={600}>{fb.customerName}</Typography>
                                             </Box>
-                                        )}
-                                    </Paper>
-                                ))
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                                <Typography variant="body2" color="text.secondary">Service:</Typography>
+                                                <Chip
+                                                    label={fb.serviceRating}
+                                                    color={fb.serviceRating >= 4 ? 'success' : fb.serviceRating >= 3 ? 'warning' : 'error'}
+                                                    size="small"
+                                                />
+                                            </Box>
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                                <Typography variant="body2" color="text.secondary">Ambiance:</Typography>
+                                                <Chip
+                                                    label={fb.ambianceRating}
+                                                    color={fb.ambianceRating >= 4 ? 'success' : fb.ambianceRating >= 3 ? 'warning' : 'error'}
+                                                    size="small"
+                                                />
+                                            </Box>
+                                            {fb.itemRatings && fb.itemRatings.length > 0 && (
+                                                <Box sx={{ mb: 1 }}>
+                                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>Item Ratings:</Typography>
+                                                    <Box sx={{ pl: 1 }}>
+                                                        {fb.itemRatings.map((item: any, idx: number) => (
+                                                            <Typography variant="caption" display="block" key={`${item.menuItem}-${idx}`} color="text.secondary">
+                                                                {item.name}{item.modifiers && item.modifiers.length > 0 ? ` (${item.modifiers.map((m: any) => m.name).join(', ')})` : ''}: {item.tasteRating} (Taste), {item.quantityRating} (Qty)
+                                                            </Typography>
+                                                        ))}
+                                                    </Box>
+                                                </Box>
+                                            )}
+                                            {fb.suggestions && (
+                                                <Box sx={{ pt: 1, borderTop: '1px solid #f0f0f0' }}>
+                                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>Suggestions:</Typography>
+                                                    <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
+                                                        {fb.suggestions}
+                                                    </Typography>
+                                                </Box>
+                                            )}
+                                        </Paper>
+                                    ))
                             ) : (
                                 <Paper sx={{ p: 3, textAlign: 'center' }}>
                                     <Typography variant="body2" color="text.secondary">No feedback found</Typography>
@@ -5254,41 +5294,43 @@ const ReportsPage: React.FC = () => {
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
-                                    {feedbackData.map((fb: any) => (
-                                        <TableRow key={fb._id}>
-                                            <TableCell>{new Date(fb.createdAt).toLocaleDateString()}</TableCell>
-                                            <TableCell>{fb.orderNumber}</TableCell>
-                                            <TableCell>{fb.customerName}</TableCell>
-                                            <TableCell align="center">
-                                                <Chip
-                                                    label={fb.serviceRating}
-                                                    color={fb.serviceRating >= 4 ? 'success' : fb.serviceRating >= 3 ? 'warning' : 'error'}
-                                                    size="small"
-                                                />
-                                            </TableCell>
-                                            <TableCell align="center">
-                                                <Chip
-                                                    label={fb.ambianceRating}
-                                                    color={fb.ambianceRating >= 4 ? 'success' : fb.ambianceRating >= 3 ? 'warning' : 'error'}
-                                                    size="small"
-                                                />
-                                            </TableCell>
-                                            <TableCell>
-                                                <Box sx={{ maxHeight: 100, overflowY: 'auto' }}>
-                                                    {fb.itemRatings && fb.itemRatings.map((item: any) => (
-                                                        <Typography variant="caption" display="block" key={item.menuItem}>
-                                                            {item.name}: {item.tasteRating} (Taste), {item.quantityRating} (Qty)
-                                                        </Typography>
-                                                    ))}
-                                                </Box>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Typography variant="body2" sx={{ maxWidth: 200, whiteSpace: 'pre-wrap' }}>
-                                                    {fb.suggestions || '-'}
-                                                </Typography>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
+                                    {feedbackData
+                                        .slice(feedbackPage * feedbackRowsPerPage, feedbackPage * feedbackRowsPerPage + feedbackRowsPerPage)
+                                        .map((fb: any) => (
+                                            <TableRow key={fb._id}>
+                                                <TableCell>{new Date(fb.createdAt).toLocaleDateString()}</TableCell>
+                                                <TableCell>{fb.orderNumber}</TableCell>
+                                                <TableCell>{fb.customerName}</TableCell>
+                                                <TableCell align="center">
+                                                    <Chip
+                                                        label={fb.serviceRating}
+                                                        color={fb.serviceRating >= 4 ? 'success' : fb.serviceRating >= 3 ? 'warning' : 'error'}
+                                                        size="small"
+                                                    />
+                                                </TableCell>
+                                                <TableCell align="center">
+                                                    <Chip
+                                                        label={fb.ambianceRating}
+                                                        color={fb.ambianceRating >= 4 ? 'success' : fb.ambianceRating >= 3 ? 'warning' : 'error'}
+                                                        size="small"
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Box sx={{ maxHeight: 100, overflowY: 'auto' }}>
+                                                        {fb.itemRatings && fb.itemRatings.map((item: any, idx: number) => (
+                                                            <Typography variant="caption" display="block" key={`${item.menuItem}-${idx}`}>
+                                                                {item.name}{item.modifiers && item.modifiers.length > 0 ? ` (${item.modifiers.map((m: any) => m.name).join(', ')})` : ''}: {item.tasteRating} (Taste), {item.quantityRating} (Qty)
+                                                            </Typography>
+                                                        ))}
+                                                    </Box>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Typography variant="body2" sx={{ maxWidth: 200, whiteSpace: 'pre-wrap' }}>
+                                                        {fb.suggestions || '-'}
+                                                    </Typography>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
                                     {feedbackData.length === 0 && (
                                         <TableRow>
                                             <TableCell colSpan={7} align="center">No feedback found</TableCell>
@@ -5297,65 +5339,93 @@ const ReportsPage: React.FC = () => {
                                 </TableBody>
                             </Table>
                         </TableContainer>
+                        <TablePagination
+                            rowsPerPageOptions={[5, 10, 25, 50]}
+                            component="div"
+                            count={feedbackData.length}
+                            rowsPerPage={feedbackRowsPerPage}
+                            page={feedbackPage}
+                            onPageChange={(_, newPage) => setFeedbackPage(newPage)}
+                            onRowsPerPageChange={(e) => {
+                                setFeedbackRowsPerPage(parseInt(e.target.value, 10));
+                                setFeedbackPage(0);
+                            }}
+                        />
                     </Box>
                 ) : (
-                    <TableContainer component={Paper}>
-                        <Table>
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell>Item Name</TableCell>
-                                    <TableCell align="center">Total Orders Rated</TableCell>
-                                    <TableCell align="center">Avg Taste Rating</TableCell>
-                                    <TableCell align="center">Avg Quantity Rating</TableCell>
-                                    <TableCell align="center">Overall Score</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {itemWiseReport.map((item: any) => {
-                                    const overallScore = ((item.avgTasteRating + item.avgQuantityRating) / 2).toFixed(1);
-                                    return (
-                                        <TableRow key={item.menuItem}>
-                                            <TableCell sx={{ fontWeight: 'bold' }}>{item.itemName}</TableCell>
-                                            <TableCell align="center">{item.totalOrders}</TableCell>
-                                            <TableCell align="center">
-                                                <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.5}>
-                                                    <Typography
-                                                        color={item.avgTasteRating >= 4 ? 'success.main' : item.avgTasteRating < 3 ? 'error.main' : 'warning.main'}
-                                                        fontWeight="bold"
-                                                    >
-                                                        {item.avgTasteRating}
-                                                    </Typography>
-                                                    <StarIcon fontSize="small" sx={{ color: '#faaf00', fontSize: 14 }} />
-                                                </Stack>
-                                            </TableCell>
-                                            <TableCell align="center">
-                                                <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.5}>
-                                                    <Typography
-                                                        color={item.avgQuantityRating >= 4 ? 'success.main' : item.avgQuantityRating < 3 ? 'error.main' : 'warning.main'}
-                                                        fontWeight="bold"
-                                                    >
-                                                        {item.avgQuantityRating}
-                                                    </Typography>
-                                                    <StarIcon fontSize="small" sx={{ color: '#faaf00', fontSize: 14 }} />
-                                                </Stack>
-                                            </TableCell>
-                                            <TableCell align="center">
-                                                <Chip
-                                                    label={overallScore}
-                                                    color={Number(overallScore) >= 4 ? 'success' : Number(overallScore) >= 3 ? 'warning' : 'error'}
-                                                />
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })}
-                                {itemWiseReport.length === 0 && (
+                    <>
+                        <TableContainer component={Paper}>
+                            <Table>
+                                <TableHead>
                                     <TableRow>
-                                        <TableCell colSpan={5} align="center">No item feedback data available</TableCell>
+                                        <TableCell>Item Name</TableCell>
+                                        <TableCell align="center">Total Orders Rated</TableCell>
+                                        <TableCell align="center">Avg Taste Rating</TableCell>
+                                        <TableCell align="center">Avg Quantity Rating</TableCell>
+                                        <TableCell align="center">Overall Score</TableCell>
                                     </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
+                                </TableHead>
+                                <TableBody>
+                                    {itemWiseReport
+                                        .slice(itemFeedbackPage * itemFeedbackRowsPerPage, itemFeedbackPage * itemFeedbackRowsPerPage + itemFeedbackRowsPerPage)
+                                        .map((item: any) => {
+                                            const overallScore = ((item.avgTasteRating + item.avgQuantityRating) / 2).toFixed(1);
+                                            return (
+                                                <TableRow key={item.menuItem}>
+                                                    <TableCell sx={{ fontWeight: 'bold' }}>{item.itemName}</TableCell>
+                                                    <TableCell align="center">{item.totalOrders}</TableCell>
+                                                    <TableCell align="center">
+                                                        <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.5}>
+                                                            <Typography
+                                                                color={item.avgTasteRating >= 4 ? 'success.main' : item.avgTasteRating < 3 ? 'error.main' : 'warning.main'}
+                                                                fontWeight="bold"
+                                                            >
+                                                                {item.avgTasteRating}
+                                                            </Typography>
+                                                            <StarIcon fontSize="small" sx={{ color: '#faaf00', fontSize: 14 }} />
+                                                        </Stack>
+                                                    </TableCell>
+                                                    <TableCell align="center">
+                                                        <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.5}>
+                                                            <Typography
+                                                                color={item.avgQuantityRating >= 4 ? 'success.main' : item.avgQuantityRating < 3 ? 'error.main' : 'warning.main'}
+                                                                fontWeight="bold"
+                                                            >
+                                                                {item.avgQuantityRating}
+                                                            </Typography>
+                                                            <StarIcon fontSize="small" sx={{ color: '#faaf00', fontSize: 14 }} />
+                                                        </Stack>
+                                                    </TableCell>
+                                                    <TableCell align="center">
+                                                        <Chip
+                                                            label={overallScore}
+                                                            color={Number(overallScore) >= 4 ? 'success' : Number(overallScore) >= 3 ? 'warning' : 'error'}
+                                                        />
+                                                    </TableCell>
+                                                </TableRow>
+                                            );
+                                        })}
+                                    {itemWiseReport.length === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={5} align="center">No item feedback data available</TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                        <TablePagination
+                            rowsPerPageOptions={[5, 10, 25, 50]}
+                            component="div"
+                            count={itemWiseReport.length}
+                            rowsPerPage={itemFeedbackRowsPerPage}
+                            page={itemFeedbackPage}
+                            onPageChange={(_, newPage) => setItemFeedbackPage(newPage)}
+                            onRowsPerPageChange={(e) => {
+                                setItemFeedbackRowsPerPage(parseInt(e.target.value, 10));
+                                setItemFeedbackPage(0);
+                            }}
+                        />
+                    </>
                 )}
             </Paper>
         );

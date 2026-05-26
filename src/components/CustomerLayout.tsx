@@ -252,7 +252,22 @@ const CustomerLayout: React.FC = () => {
             {/* Auth Buttons */}
             {!user ? (
               <Box sx={{ display: { xs: 'none', sm: 'flex' }, gap: 1 }}>
-
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => navigate('/login', { state: { from: location.pathname } })}
+                  sx={{
+                    borderRadius: '10px',
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    px: 2,
+                    borderColor: 'rgba(79,70,229,0.3)',
+                    color: 'primary.main',
+                    '&:hover': { borderColor: 'primary.main', bgcolor: 'rgba(79,70,229,0.04)' },
+                  }}
+                >
+                  Login
+                </Button>
                 <Button
                   variant="contained"
                   size="small"

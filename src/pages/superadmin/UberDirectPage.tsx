@@ -1,23 +1,26 @@
 import React, { useState } from 'react';
 import {
-    Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
+    Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle,
     IconButton, Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead,
-    TableRow, TextField, Typography,
+    TableRow, TextField, Tooltip, Typography,
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import EditIcon from '@mui/icons-material/Edit';
+import LinkIcon from '@mui/icons-material/Link';
 import toast from 'react-hot-toast';
-import { ubereatsAPI } from '../../services/api';
+import { ubereatsAPI, superAPI } from '../../services/api';
 
 const UberDirectPage: React.FC = () => {
     const [customerId, setCustomerId] = useState('');
     const [customerIdInput, setCustomerIdInput] = useState('');
+    const [resolvedTenantId, setResolvedTenantId] = useState('');
 
     const [uberOrg, setUberOrg] = useState<any>(null);
     const [uberOrgLoading, setUberOrgLoading] = useState(false);
     const [uberLocations, setUberLocations] = useState<any[]>([]);
     const [uberLocationsLoading, setUberLocationsLoading] = useState(false);
     const [editLocationDialog, setEditLocationDialog] = useState<any>(null);
+    const [linkingLocationId, setLinkingLocationId] = useState<string | null>(null);
 
     const [inviteDialog, setInviteDialog] = useState(false);
     const [inviteForm, setInviteForm] = useState({ first_name: '', last_name: '', email: '', phone: '' });
@@ -30,11 +33,30 @@ const UberDirectPage: React.FC = () => {
         street1: '', city: '', state: '', zipcode: '', country_iso2: 'US',
     });
 
+
     const handleSetCustomerId = () => {
         if (!customerIdInput.trim()) return;
         setCustomerId(customerIdInput.trim());
         setUberOrg(null);
         setUberLocations([]);
+        setResolvedTenantId('');
+    };
+
+    const handleLinkLocation = async (loc: any) => {
+        if (!resolvedTenantId) {
+            toast.error('Enter the Tenant ID below to link a location');
+            return;
+        }
+        setLinkingLocationId(loc.business_location_id);
+        try {
+            const res = await superAPI.linkUberPickupLocation(resolvedTenantId, customerId, loc.business_location_id);
+            toast.success(`Linked! Pickup lat/lng saved for ${res.data?.tenantSlug}`);
+        } catch (err: any) {
+            const msg = err?.response?.data?.message || err?.message || 'Failed to link location';
+            toast.error(msg);
+        } finally {
+            setLinkingLocationId(null);
+        }
     };
 
     const loadUberOrg = async () => {
@@ -66,17 +88,26 @@ const UberDirectPage: React.FC = () => {
     const handleUpdateLocation = async () => {
         if (!customerId || !editLocationDialog) return;
         try {
-            await ubereatsAPI.updateBusinessLocation(customerId, editLocationDialog.business_location_id, {
+            const res = await ubereatsAPI.updateBusinessLocation(customerId, editLocationDialog.business_location_id, {
                 name: editLocationDialog.name,
                 phone_number: editLocationDialog.phone_number,
                 detailed_address: editLocationDialog.detailed_address,
                 external_business_location_id: editLocationDialog.external_business_location_id,
             });
-            toast.success('Location updated');
+            if (res.data?._addressUpdateSkipped) {
+                toast.warn('Saved — but address was not updated because there are orders in progress. Try again once all deliveries are complete.');
+            } else {
+                toast.success('Location updated');
+            }
             setEditLocationDialog(null);
             loadUberLocations();
-        } catch {
-            toast.error('Failed to update location');
+        } catch (err: any) {
+            const msg = err?.response?.data?.message || '';
+            if (msg.includes('Orders in progress')) {
+                toast.error('Address cannot be updated while deliveries are in progress. Wait until all active orders are complete, then try again.');
+            } else {
+                toast.error('Failed to update location');
+            }
         }
     };
 
@@ -109,7 +140,7 @@ const UberDirectPage: React.FC = () => {
             const res = await ubereatsAPI.createOrganization({
                 info: {
                     name: createOrgForm.name,
-                    billing_type: 'BILLING_TYPE_DECENTRALIZED',
+                    billing_type: 'BILLING_TYPE_CENTRALIZED',
                     merchant_type: 'MERCHANT_TYPE_RESTAURANT',
                     point_of_contact: {
                         email: createOrgForm.email,
@@ -117,7 +148,6 @@ const UberDirectPage: React.FC = () => {
                         last_name: createOrgForm.last_name,
                         phone_details: { phone_number: createOrgForm.phone, country_code: '1', subscriber_number: createOrgForm.phone.slice(-10) },
                     },
-                    contract_type: 'CONTRACT_TYPE_PARENT',
                     address: { street1: createOrgForm.street1, city: createOrgForm.city, state: createOrgForm.state, zipcode: createOrgForm.zipcode, country_iso2: createOrgForm.country_iso2 },
                 },
                 hierarchy_info: { parent_organization_id: customerId },
@@ -166,6 +196,29 @@ const UberDirectPage: React.FC = () => {
                     )}
                 </Stack>
             </Paper>
+
+            {/* Tenant ID for linking */}
+            {customerId && (
+                <Paper variant="outlined" sx={{ p: { xs: 1.5, sm: 3 }, mb: { xs: 2.5, sm: 4 }, borderRadius: 3 }}>
+                    <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Link Pickup Location</Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+                        Enter the Tenant ID (MongoDB _id) to link a business location as the pickup point for that restaurant.
+                    </Typography>
+                    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', sm: 'center' }}>
+                        <TextField
+                            size="small"
+                            label="Tenant ID"
+                            value={resolvedTenantId}
+                            onChange={(e) => setResolvedTenantId(e.target.value)}
+                            sx={{ width: { xs: '100%', sm: 320 } }}
+                            placeholder="e.g. 64abc..."
+                        />
+                        {resolvedTenantId && (
+                            <Chip size="small" label="Ready to link" color="success" variant="outlined" />
+                        )}
+                    </Stack>
+                </Paper>
+            )}
 
             {/* Actions */}
             {customerId && (
@@ -239,6 +292,20 @@ const UberDirectPage: React.FC = () => {
                                                 <TableCell>{loc.phone_number}</TableCell>
                                                 <TableCell>{loc.external_business_location_id}</TableCell>
                                                 <TableCell align="right">
+                                                    <Tooltip title="Set as pickup location for tenant">
+                                                        <span>
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={() => handleLinkLocation(loc)}
+                                                                disabled={linkingLocationId === loc.business_location_id}
+                                                                color="primary"
+                                                            >
+                                                                {linkingLocationId === loc.business_location_id
+                                                                    ? <CircularProgress size={16} />
+                                                                    : <LinkIcon fontSize="small" />}
+                                                            </IconButton>
+                                                        </span>
+                                                    </Tooltip>
                                                     <IconButton size="small" onClick={() => setEditLocationDialog({ ...loc })}>
                                                         <EditIcon fontSize="small" />
                                                     </IconButton>
@@ -265,15 +332,28 @@ const UberDirectPage: React.FC = () => {
                                                 <Typography variant="body2" sx={{ wordBreak: 'break-word' }}>
                                                     <strong>External ID:</strong> {loc.external_business_location_id || '—'}
                                                 </Typography>
-                                                <Button
-                                                    size="small"
-                                                    variant="outlined"
-                                                    startIcon={<EditIcon fontSize="small" />}
-                                                    onClick={() => setEditLocationDialog({ ...loc })}
-                                                    sx={{ alignSelf: 'flex-start' }}
-                                                >
-                                                    Edit
-                                                </Button>
+                                                <Stack direction="row" spacing={1}>
+                                                    <Button
+                                                        size="small"
+                                                        variant="outlined"
+                                                        color="primary"
+                                                        startIcon={linkingLocationId === loc.business_location_id
+                                                            ? <CircularProgress size={14} />
+                                                            : <LinkIcon fontSize="small" />}
+                                                        onClick={() => handleLinkLocation(loc)}
+                                                        disabled={linkingLocationId === loc.business_location_id}
+                                                    >
+                                                        Set as Pickup
+                                                    </Button>
+                                                    <Button
+                                                        size="small"
+                                                        variant="outlined"
+                                                        startIcon={<EditIcon fontSize="small" />}
+                                                        onClick={() => setEditLocationDialog({ ...loc })}
+                                                    >
+                                                        Edit
+                                                    </Button>
+                                                </Stack>
                                             </Stack>
                                         </Paper>
                                     ))}

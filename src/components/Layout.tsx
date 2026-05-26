@@ -877,7 +877,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
               textAlign: 'center'
             }}
           >
-            {settings.restaurant.name || user?.tenantName || 'POS SYSTEM'}
+            {settings.restaurant.name || user?.tenantName || 'NexZen POS Restaurant'}
           </Typography>
           <Typography
             variant="h3"
