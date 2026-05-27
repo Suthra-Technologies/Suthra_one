@@ -81,7 +81,7 @@ api.interceptors.response.use(
 
       // Public customer-facing paths — don't force-redirect to login
       // Guests are allowed to browse these pages without being logged in
-      const publicPaths = ['customer/order', 'customer/catering', 'customer/book-table'];
+      const publicPaths = ['customer/order', 'customer/catering', 'customer/book-table', 'customer/gallery', 'customer/about', 'customer/home'];
       const isPublicPath = publicPaths.some(p => window.location.pathname.includes(p));
 
       if (!isPublicPath) {

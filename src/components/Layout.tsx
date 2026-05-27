@@ -474,7 +474,10 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
     const publicPaths = [
       'customer/order',
       'customer/catering',
-      'customer/book-table'
+      'customer/book-table',
+      'customer/gallery',
+      'customer/about',
+      'customer/home'
     ];
 
     const isPublicPath = publicPaths.some(path => location.pathname.includes(path));
@@ -500,7 +503,10 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
   const publicPaths = [
     'customer/order',
     'customer/catering',
-    'customer/book-table'
+    'customer/book-table',
+    'customer/gallery',
+    'customer/about',
+    'customer/home'
   ];
   const isPublicPath = publicPaths.some(path => location.pathname.includes(path));
 
