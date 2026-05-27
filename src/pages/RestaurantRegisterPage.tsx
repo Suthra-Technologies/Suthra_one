@@ -643,41 +643,19 @@ const RestaurantRegisterPage: React.FC = () => {
             {successData?.restaurantName}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Your account is now ready. Please log in with your credentials to access your dashboard and start managing your restaurant.
+            Your registration is complete! Your account is currently pending approval by the Super Admin. You will receive an email notification once your store has been approved and is ready to log in.
           </Typography>
         </DialogContent>
-        <DialogActions sx={{ justifyContent: 'center', pb: 3, pt: 2, gap: 2 }}>
-          <Button
-            variant="outlined"
-            onClick={() => {
-              setSuccessData(null);
-            }}
-            sx={{ px: 4, py: 1.5, borderRadius: 2, textTransform: 'none', fontWeight: 'bold' }}
-          >
-            Close
-          </Button>
+        <DialogActions sx={{ justifyContent: 'center', pb: 3, pt: 2 }}>
           <Button
             variant="contained"
-            onClick={async () => {
-              setIsLoggingIn(true);
-              try {
-                const loginRes = await login({ email: form.email, password: form.password });
-                if (loginRes.success) {
-                  navigate('/');
-                } else {
-                  navigate('/login');
-                }
-              } catch (err) {
-                console.error("Login failed:", err);
-                navigate('/login');
-              } finally {
-                setIsLoggingIn(false);
-              }
+            onClick={() => {
+              setSuccessData(null);
+              navigate('/login');
             }}
-            disabled={isLoggingIn}
-            sx={{ px: 4, py: 1.5, borderRadius: 2, textTransform: 'none', fontWeight: 'bold' }}
+            sx={{ px: 6, py: 1.5, borderRadius: 2, textTransform: 'none', fontWeight: 'bold' }}
           >
-            {isLoggingIn ? <CircularProgress size={24} color="inherit" /> : 'Login Now'}
+            Go to Login
           </Button>
         </DialogActions>
       </Dialog>

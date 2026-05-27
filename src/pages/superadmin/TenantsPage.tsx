@@ -44,7 +44,8 @@ const TenantsPage: React.FC = () => {
     trialEndsAt: '',
     subscriptionEndsAt: '',
     autoRenew: true,
-    currentPlan: ''
+    currentPlan: '',
+    status: ''
   });
 
   const fetchTenants = async () => {
@@ -85,7 +86,8 @@ const TenantsPage: React.FC = () => {
       trialEndsAt: tenant.trialEndsAt ? new Date(tenant.trialEndsAt).toISOString().split('T')[0] : '',
       subscriptionEndsAt: tenant.subscriptionEndsAt ? new Date(tenant.subscriptionEndsAt).toISOString().split('T')[0] : '',
       autoRenew: tenant.autoRenew,
-      currentPlan: tenant.currentPlan?._id || ''
+      currentPlan: tenant.currentPlan?._id || '',
+      status: tenant.status || 'pending'
     });
     setEditDialogOpen(true);
   };
@@ -171,10 +173,15 @@ const TenantsPage: React.FC = () => {
                         </Typography>
                       </Box>
                       <Chip
-                        label={tenant.status}
-                        color={tenant.status === 'active' ? 'success' : 'default'}
+                        label={tenant.status || 'pending'}
+                        color={
+                          tenant.status === 'active' ? 'success' :
+                          tenant.status === 'pending' ? 'warning' :
+                          tenant.status === 'suspended' ? 'error' :
+                          tenant.status === 'hold' ? 'error' : 'default'
+                        }
                         size="small"
-                        sx={{ fontWeight: 'bold', height: 22, fontSize: '0.7rem' }}
+                        sx={{ fontWeight: 'bold', height: 22, fontSize: '0.7rem', textTransform: 'capitalize' }}
                       />
                     </Box>
 
@@ -303,6 +310,20 @@ const TenantsPage: React.FC = () => {
         </DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1, minWidth: { xs: '100%', sm: 300 } }}>
+            <FormControl fullWidth>
+              <InputLabel>Account Status</InputLabel>
+              <Select
+                value={editForm.status}
+                label="Account Status"
+                onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+              >
+                <MenuItem value="pending">Pending Approval</MenuItem>
+                <MenuItem value="active">Active / Approved</MenuItem>
+                <MenuItem value="suspended">Suspended</MenuItem>
+                <MenuItem value="hold">On Hold</MenuItem>
+              </Select>
+            </FormControl>
+
             <FormControl fullWidth>
               <InputLabel>Current Plan</InputLabel>
               <Select
