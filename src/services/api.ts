@@ -81,7 +81,7 @@ api.interceptors.response.use(
 
       // Public customer-facing paths — don't force-redirect to login
       // Guests are allowed to browse these pages without being logged in
-      const publicPaths = ['customer/order', 'customer/catering', 'customer/book-table'];
+      const publicPaths = ['customer/order', 'customer/catering', 'customer/book-table', 'customer/gallery', 'customer/about', 'customer/home'];
       const isPublicPath = publicPaths.some(p => window.location.pathname.includes(p));
 
       if (!isPublicPath) {
@@ -129,11 +129,12 @@ export const authAPI = {
 
 // -------------------- Users API --------------------
 export const usersAPI = {
-  getUsers: (params?: { page?: number; limit?: number; role?: string; isActive?: boolean; search?: string }) => api.get('/users', { params }),
+  getUsers: (params?: { page?: number; limit?: number; role?: string; isActive?: boolean; search?: string; isDeleted?: boolean }) => api.get('/users', { params }),
   getUser: (id: string) => api.get(`/users/${id}`),
   createUser: (userData: any) => api.post('/users', userData),
   updateUser: (id: string, userData: any) => api.put(`/users/${id}`, userData),
   deleteUser: (id: string) => api.delete(`/users/${id}`),
+  restoreUser: (id: string) => api.patch(`/users/${id}/restore`),
   // Backward compatibility for older callers
   delete: (id: string) => api.delete(`/users/${id}`),
   toggleUserStatus: (id: string) => api.patch(`/users/${id}/toggle-status`),
@@ -298,23 +299,26 @@ export const attendanceAPI = {
 
 // -------------------- Menu API --------------------
 export const menuAPI = {
-  getAll: (params?: { search?: string; cursor?: string; limit?: number; category?: string; subcategory?: string; foodType?: string; isAvailable?: boolean; isCateringAvailable?: boolean }) => api.get('/menu', { params }),
-  getAllCategories: () => api.get('/menu/categories'),
-  getAllSubcategories: (categoryId?: string) => api.get('/menu/subcategories', { params: categoryId ? { categoryId } : undefined }),
+  getAll: (params?: { search?: string; cursor?: string; limit?: number; category?: string; subcategory?: string; foodType?: string; isAvailable?: boolean; isCateringAvailable?: boolean; isDeleted?: boolean }) => api.get('/menu', { params }),
+  getAllCategories: (params?: { isDeleted?: boolean }) => api.get('/menu/categories', { params }),
+  getAllSubcategories: (categoryId?: string, isDeleted?: boolean) => api.get('/menu/subcategories', { params: { ...(categoryId ? { categoryId } : {}), ...(isDeleted ? { isDeleted } : {}) } }),
   getOne: (id: string) => api.get(`/menu/${id}`),
   create: (menuData: any) => api.post('/menu', menuData),
   bulkCreate: (items: any[]) => api.post('/menu/bulk', items),
   update: (id: string, menuData: any) => api.put(`/menu/${id}`, menuData),
   delete: (id: string) => api.delete(`/menu/${id}`),
+  restore: (id: string) => api.patch(`/menu/${id}/restore`),
   getPublicMenu: (tenantSlug?: string, search?: string, cursor?: string | null, limit?: number) => api.get('/menu/public', { params: { tenantSlug, search, cursor: cursor || undefined, limit } }),
 
   // Category management
   createCategory: (categoryData: any) => api.post('/menu/categories', categoryData),
   updateCategory: (id: string, categoryData: any) => api.put(`/menu/categories/${id}`, categoryData),
   deleteCategory: (id: string) => api.delete(`/menu/categories/${id}`),
+  restoreCategory: (id: string) => api.patch(`/menu/categories/${id}/restore`),
   createSubcategory: (subcategoryData: any) => api.post('/menu/subcategories', subcategoryData),
   updateSubcategory: (id: string, subcategoryData: any) => api.put(`/menu/subcategories/${id}`, subcategoryData),
   deleteSubcategory: (id: string) => api.delete(`/menu/subcategories/${id}`),
+  restoreSubcategory: (id: string) => api.patch(`/menu/subcategories/${id}/restore`),
   bulkPriceAdjust: (percentage: number, categoryId?: string) =>
     api.patch('/menu/bulk-price-adjust', { percentage, categoryId }),
   getPriceAdjustmentLogs: () => api.get('/menu/price-adjustment-logs'),
@@ -466,7 +470,7 @@ export const superAdminPaymentsAPI = {
 
 // -------------------- Coupons API --------------------
 export const couponsAPI = {
-  getAll: (params?: { page: number; limit: number; search?: string }) => api.get('/coupons', { params }),
+  getAll: (params?: { page: number; limit: number; search?: string; isDeleted?: boolean; status?: string }) => api.get('/coupons', { params }),
   getActive: (orderType?: string, billAmount?: number) =>
     api.get('/coupons/active', { params: { orderType, billAmount } }),
   validate: (code: string, orderType: string, billAmount: number, customerId?: string) =>
@@ -475,6 +479,7 @@ export const couponsAPI = {
   create: (couponData: any) => api.post('/coupons', couponData),
   update: (id: string, couponData: any) => api.put(`/coupons/${id}`, couponData),
   delete: (id: string) => api.delete(`/coupons/${id}`),
+  restore: (id: string) => api.patch(`/coupons/${id}/restore`),
   apply: (id: string, orderId: string, customerId?: string) =>
     api.post(`/coupons/${id}/apply`, { orderId, customerId }),
   getUnsubscribeDetails: (couponId?: string) =>
@@ -630,8 +635,10 @@ export const materialCategoriesAPI = {
 
 export const supportAPI = {
   listMine: () => api.get('/support/mine'),
+  listTickets: (params?: any) => api.get('/support/mine', { params }),
   listCustomerTickets: () => api.get('/support/tickets/customers'),
   create: (payload: any) => api.post('/support', payload),
+  createTicket: (payload: any) => api.post('/support', payload),
   reply: (id: string, payload: any) => api.post(`/support/${id}/reply`, payload),
   resolve: (id: string, payload: any) => api.post(`/support/${id}/resolve`, payload),
   update: (id: string, payload: any) => api.patch(`/support/${id}`, payload),

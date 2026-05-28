@@ -1,63 +1,63 @@
-import React, { useState, useEffect } from 'react';
+import {
+    Add as AddIcon,
+    LocationOn as AddressIcon,
+    AccountBalance as BankIcon,
+    Close as CloseIcon,
+    Delete as DeleteIcon,
+    Edit as EditIcon,
+    Email as EmailIcon,
+    Inventory as InventoryIcon,
+    ShoppingCart as OrderIcon,
+    Phone as PhoneIcon,
+    Search as SearchIcon,
+    Store as VendorIcon,
+    Warning as WarningIcon,
+    WhatsApp as WhatsAppIcon,
+} from '@mui/icons-material';
 import {
     Box,
-    Typography,
+    Button,
+    Checkbox,
+    Chip,
+    CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    Divider,
+    FormControl,
+    FormControlLabel,
+    FormGroup,
+    Grid,
+    IconButton,
+    InputAdornment,
+    InputLabel,
+    MenuItem,
     Paper,
+    Radio,
+    RadioGroup,
+    Select,
+    Switch,
     Table,
     TableBody,
     TableCell,
     TableContainer,
     TableHead,
-    TableRow,
-    Button,
-    IconButton,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
-    TextField,
-    Chip,
-    Grid,
-    FormControl,
-    InputLabel,
-    Select,
-    MenuItem,
-    Tooltip,
-    InputAdornment,
-    alpha,
-    useTheme,
-    Checkbox,
-    FormControlLabel,
-    FormGroup,
-    Divider,
     TablePagination,
-    CircularProgress,
+    TableRow,
+    TextField,
+    Tooltip,
+    Typography,
+    alpha,
     useMediaQuery,
-    Switch,
-    Radio,
-    RadioGroup,
+    useTheme,
 } from '@mui/material';
-import {
-    Add as AddIcon,
-    Edit as EditIcon,
-    Delete as DeleteIcon,
-    Search as SearchIcon,
-    Store as VendorIcon,
-    Phone as PhoneIcon,
-    Email as EmailIcon,
-    LocationOn as AddressIcon,
-    AccountBalance as BankIcon,
-    Close as CloseIcon,
-    Inventory as InventoryIcon,
-    Warning as WarningIcon,
-    ShoppingCart as OrderIcon,
-    WhatsApp as WhatsAppIcon,
-} from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
-import { vendorsAPI, inventoryAPI } from '../../services/api';
+import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { useSettings } from '../../context/SettingsContext';
+import { useNavigate } from 'react-router-dom';
 import PhoneInput from 'src/components/PhoneInput';
+import { useSettings } from '../../context/SettingsContext';
+import { inventoryAPI, vendorsAPI } from '../../services/api';
 
 interface Vendor {
     _id: string;
@@ -348,7 +348,7 @@ const VendorsPage: React.FC = () => {
     };
 
     const handleReorderItemChange = (itemId: string, field: string, value: any) => {
-        setReorderItems(prev => prev.map(item => 
+        setReorderItems(prev => prev.map(item =>
             item.itemId === itemId ? { ...item, [field]: value } : item
         ));
     };
@@ -358,7 +358,7 @@ const VendorsPage: React.FC = () => {
         try {
             setReorderLoading(true);
             // Specifically save reorder levels back to inventory
-            await Promise.all(reorderItems.map(item => 
+            await Promise.all(reorderItems.map(item =>
                 inventoryAPI.update(item.itemId, { reorderLevel: item.reorderLevel })
             ));
             toast.success('Inventory reorder levels updated successfully');
@@ -386,8 +386,8 @@ const VendorsPage: React.FC = () => {
         }));
 
         // Navigate to Create PO page with pre-filled state
-        navigate('/purchase-orders/create', { 
-            state: { 
+        navigate('/purchase-orders/create', {
+            state: {
                 vendor: {
                     name: selectedVendor.name,
                     contact: selectedVendor.contact,
@@ -396,32 +396,32 @@ const VendorsPage: React.FC = () => {
                 },
                 items: itemsToReorder,
                 notes: `Auto-generated from Reorder Alerts for ${new Date().toLocaleDateString()}`
-            } 
+            }
         });
     };
 
     const handleEmailReorder = () => {
         if (!selectedVendor || reorderItems.length === 0) return;
-        
+
         const restaurantName = settings?.restaurant?.restaurantName || settings?.restaurant?.name || 'our restaurant';
         const dateStr = new Date().toLocaleDateString();
-        
+
         const itemBody = reorderItems.map(item => `- ${item.name}: ${item.lastOrderQuantity} ${item.unit}`).join('\n');
         const subject = encodeURIComponent(`Reorder Request from ${restaurantName} - ${dateStr}`);
         const body = encodeURIComponent(`Hi ${selectedVendor.name},\n\nThis is ${restaurantName}. I would like to place an order for the following items on ${dateStr}:\n\n${itemBody}\n\nPlease confirm receipt and let me know the availability.\n\nBest regards,\n${restaurantName}`);
-        
+
         window.location.href = `mailto:${selectedVendor.email || ''}?subject=${subject}&body=${body}`;
     };
 
     const handleWhatsAppReorder = () => {
         if (!selectedVendor || reorderItems.length === 0) return;
-        
+
         const restaurantName = settings?.restaurant?.restaurantName || settings?.restaurant?.name || 'our restaurant';
         const dateStr = new Date().toLocaleDateString();
-        
+
         const itemBody = reorderItems.map(item => `* ${item.name}: ${item.lastOrderQuantity} ${item.unit}`).join('%0A');
         const text = encodeURIComponent(`*Reorder Request from ${restaurantName}*\n_Date: ${dateStr}_\n\nHi ${selectedVendor.name},\n\nI would like to place an order for the following items:\n${itemBody}\n\nPlease confirm receipt.\n\nBest regards,\n*${restaurantName}*`);
-        
+
         const phoneNumber = selectedVendor.contact?.replace(/\D/g, '');
         window.open(`https://wa.me/${phoneNumber}?text=${text}`, '_blank');
     };
@@ -436,26 +436,26 @@ const VendorsPage: React.FC = () => {
     };
 
     return (
-        <Box sx={{ 
-            p: isMobile ? 1.4 : 4, 
+        <Box sx={{
+            p: isMobile ? 1.4 : 4,
             pt: isMobile ? '20px' : 4, // Minimize top gap on phones only
-            maxWidth: 1600, 
-            mx: 'auto' 
+            maxWidth: 1600,
+            mx: 'auto'
         }}>
             {/* Header */}
-            <Box sx={{ 
-                display: 'flex', 
+            <Box sx={{
+                display: 'flex',
                 flexDirection: { xs: 'column', sm: 'row' },
-                justifyContent: 'space-between', 
-                alignItems: { xs: 'stretch', sm: 'center' }, 
+                justifyContent: 'space-between',
+                alignItems: { xs: 'stretch', sm: 'center' },
                 mb: isMobile ? 2 : 5,
                 gap: { xs: 1.25, sm: 2 }
             }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: { xs: 'center', sm: 'flex-start' }, gap: 1.5 }}>
-                    <Box sx={{ 
-                        p: isMobile ? 1 : 1.5, 
-                        borderRadius: 2, 
-                        bgcolor: alpha(theme.palette.primary.main, 0.1), 
+                    <Box sx={{
+                        p: isMobile ? 1 : 1.5,
+                        borderRadius: 2,
+                        bgcolor: alpha(theme.palette.primary.main, 0.1),
                         color: 'primary.main',
                         display: 'flex'
                     }}>
@@ -478,16 +478,16 @@ const VendorsPage: React.FC = () => {
                     variant="contained"
                     startIcon={<AddIcon />}
                     onClick={() => handleOpenDialog()}
-                    sx={{ 
-                        borderRadius: 2, 
-                        whiteSpace: 'nowrap', 
-                        fontSize: bodyFontSize, 
-                            px: { xs: 2, sm: 3 },
+                    sx={{
+                        borderRadius: 2,
+                        whiteSpace: 'nowrap',
+                        fontSize: bodyFontSize,
+                        px: { xs: 2, sm: 3 },
                         py: isMobile ? 0.75 : 1,
                         textTransform: 'none',
                         fontWeight: 'bold',
-                            boxShadow: '0 4px 14px 0 rgba(0,0,0,0.1)',
-                            width: { xs: '100%', sm: 'auto' }
+                        boxShadow: '0 4px 14px 0 rgba(0,0,0,0.1)',
+                        width: { xs: '100%', sm: 'auto' }
                     }}
                 >
                     Add {isMobile ? '' : 'New'} Vendor
@@ -495,9 +495,9 @@ const VendorsPage: React.FC = () => {
             </Box>
 
             {/* Filters */}
-            <Paper sx={{ 
-                p: isMobile ? 1.25 : 2, 
-                mb: isMobile ? 2 : 4, 
+            <Paper sx={{
+                p: isMobile ? 1.25 : 2,
+                mb: isMobile ? 2 : 4,
                 borderRadius: isMobile ? 3 : 2,
                 boxShadow: isMobile ? '0 1px 4px rgba(0,0,0,0.05)' : alpha(theme.palette.divider, 0.1),
                 border: isMobile ? `1px solid ${alpha(theme.palette.divider, 0.1)}` : 'none'
@@ -552,11 +552,11 @@ const VendorsPage: React.FC = () => {
                     <Grid container spacing={isMobile ? 0.75 : 2} justifyContent="center" sx={{ width: '100%', m: 0 }}>
                         {vendors.map((vendor) => (
                             <Grid item xs={12} key={vendor._id} sx={{ display: 'flex', justifyContent: 'center' }}>
-                                <Paper 
-                                    sx={{ 
-                                        p: 1.15, 
-                                        borderRadius: 3, 
-                                        width: '100%', 
+                                <Paper
+                                    sx={{
+                                        p: 1.15,
+                                        borderRadius: 3,
+                                        width: '100%',
                                         maxWidth: 500,
                                         position: 'relative',
                                         border: `1px solid ${alpha(theme.palette.divider, 0.05)}`,
@@ -607,12 +607,12 @@ const VendorsPage: React.FC = () => {
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1.25 }}>
                                         <Box sx={{ display: 'flex', gap: 0.5 }}>
                                             {vendor.categories?.slice(0, 2).map((cat) => (
-                                                <Chip 
-                                                    key={cat} 
-                                                    label={CATEGORIES.find(c => c.value === cat)?.label || cat} 
-                                                    size="small" 
-                                                    variant="outlined" 
-                                                    sx={{ fontSize: '0.65rem', height: 20, fontWeight: 700 }} 
+                                                <Chip
+                                                    key={cat}
+                                                    label={CATEGORIES.find(c => c.value === cat)?.label || cat}
+                                                    size="small"
+                                                    variant="outlined"
+                                                    sx={{ fontSize: '0.65rem', height: 20, fontWeight: 700 }}
                                                 />
                                             ))}
                                             {vendor.categories?.length > 2 && <Chip label={`+${vendor.categories.length - 2}`} size="small" sx={{ height: 20, fontSize: '0.65rem' }} />}
@@ -646,8 +646,8 @@ const VendorsPage: React.FC = () => {
                 )}
             </Box>
 
-{/* Desktop Table */}
-<TableContainer component={Paper} sx={{ borderRadius: 2, display: { xs: 'none', md: 'block' } }}>
+            {/* Desktop Table */}
+            <TableContainer component={Paper} sx={{ borderRadius: 2, display: { xs: 'none', md: 'block' } }}>
                 <Table>
                     <TableHead>
                         <TableRow sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1) }}>
@@ -749,7 +749,7 @@ const VendorsPage: React.FC = () => {
                                             />
                                         </Box>
                                     </TableCell>
-                                     <TableCell align="center">
+                                    <TableCell align="center">
                                         <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
                                             <Tooltip title="Edit">
                                                 <IconButton onClick={() => handleOpenDialog(vendor)} size="small" sx={{ color: 'primary.main' }}>
@@ -757,9 +757,9 @@ const VendorsPage: React.FC = () => {
                                                 </IconButton>
                                             </Tooltip>
                                             <Tooltip title="Reorder Needed Items">
-                                                <IconButton 
-                                                    onClick={() => handleReorderClick(vendor)} 
-                                                    size="small" 
+                                                <IconButton
+                                                    onClick={() => handleReorderClick(vendor)}
+                                                    size="small"
                                                     sx={{ color: 'warning.main' }}
                                                 >
                                                     <InventoryIcon fontSize="small" />
@@ -796,10 +796,10 @@ const VendorsPage: React.FC = () => {
             />
 
             {/* Add/Edit Dialog */}
-            <Dialog 
-                open={dialogOpen} 
-                onClose={handleCloseDialog} 
-                maxWidth="md" 
+            <Dialog
+                open={dialogOpen}
+                onClose={handleCloseDialog}
+                maxWidth="md"
                 fullWidth
                 fullScreen={isMobile}
                 PaperProps={{
@@ -809,31 +809,31 @@ const VendorsPage: React.FC = () => {
                     }
                 }}
             >
-                <DialogTitle sx={{ 
+                <DialogTitle sx={{
                     p: isMobile ? 2 : 2.5,
-                    pt: isMobile ? '60px' : 2.5, 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center', 
+                    pt: isMobile ? '60px' : 2.5,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
                     bgcolor: 'white',
                     borderBottom: '1px solid',
                     borderColor: alpha(theme.palette.divider, 0.1)
                 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Box sx={{ 
-                            p: 1, 
-                            borderRadius: 1.5, 
-                            bgcolor: alpha(theme.palette.primary.main, 0.1), 
+                        <Box sx={{
+                            p: 1,
+                            borderRadius: 1.5,
+                            bgcolor: alpha(theme.palette.primary.main, 0.1),
                             color: 'primary.main',
                             display: 'flex'
                         }}>
-                             <VendorIcon fontSize={isMobile ? "small" : "medium"} />
+                            <VendorIcon fontSize={isMobile ? "small" : "medium"} />
                         </Box>
-                        <Typography 
-                            variant={isMobile ? "subtitle1" : "h6"} 
-                            fontWeight={700} 
-                            sx={{ 
-                                letterSpacing: '-0.01em', 
+                        <Typography
+                            variant={isMobile ? "subtitle1" : "h6"}
+                            fontWeight={700}
+                            sx={{
+                                letterSpacing: '-0.01em',
                                 textTransform: 'uppercase',
                                 fontFamily: '"Outfit", sans-serif',
                                 fontSize: isMobile ? '0.95rem' : '1.25rem'
@@ -854,32 +854,32 @@ const VendorsPage: React.FC = () => {
                         <CloseIcon fontSize="small" />
                     </IconButton>
                 </DialogTitle>
-                <DialogContent sx={{ 
+                <DialogContent sx={{
                     p: isMobile ? 1.5 : 3,
                     bgcolor: '#f8f9fa',
-                    '& .MuiFormLabel-asterisk': { color: 'red' } 
+                    '& .MuiFormLabel-asterisk': { color: 'red' }
                 }}>
                     <Grid container spacing={isMobile ? 1.5 : 3}>
                         {/* Basic Info */}
                         <Grid item xs={12} sx={{ display: 'flex', justifyContent: isMobile ? 'center' : 'stretch' }}>
-                            <Paper sx={{ 
-                                p: isMobile ? 2 : 3, 
-                                borderRadius: 3, 
-                                width: '100%', 
+                            <Paper sx={{
+                                p: isMobile ? 2 : 3,
+                                borderRadius: 3,
+                                width: '100%',
                                 maxWidth: isMobile ? 500 : 'none',
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                                 border: '1px solid',
                                 borderColor: alpha(theme.palette.divider, 0.05),
                                 bgcolor: 'white'
                             }}>
-                                <Typography 
-                                    variant="caption" 
-                                    fontWeight={700} 
-                                    color="primary" 
-                                    sx={{ 
-                                        display: 'block', 
-                                        mb: 2, 
-                                        textTransform: 'uppercase', 
+                                <Typography
+                                    variant="caption"
+                                    fontWeight={700}
+                                    color="primary"
+                                    sx={{
+                                        display: 'block',
+                                        mb: 2,
+                                        textTransform: 'uppercase',
                                         letterSpacing: '0.05em',
                                         fontFamily: '"Outfit", sans-serif'
                                     }}
@@ -978,24 +978,24 @@ const VendorsPage: React.FC = () => {
 
                         {/* Categories */}
                         <Grid item xs={12} sx={{ display: 'flex', justifyContent: isMobile ? 'center' : 'stretch' }}>
-                            <Paper sx={{ 
-                                p: isMobile ? 2 : 3, 
-                                borderRadius: 3, 
-                                width: '100%', 
+                            <Paper sx={{
+                                p: isMobile ? 2 : 3,
+                                borderRadius: 3,
+                                width: '100%',
                                 maxWidth: isMobile ? 500 : 'none',
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                                 border: '1px solid',
                                 borderColor: alpha(theme.palette.divider, 0.05),
                                 bgcolor: 'white'
                             }}>
-                                <Typography 
-                                    variant="caption" 
-                                    fontWeight={700} 
-                                    color="primary" 
-                                    sx={{ 
-                                        display: 'block', 
-                                        mb: 1, 
-                                        textTransform: 'uppercase', 
+                                <Typography
+                                    variant="caption"
+                                    fontWeight={700}
+                                    color="primary"
+                                    sx={{
+                                        display: 'block',
+                                        mb: 1,
+                                        textTransform: 'uppercase',
                                         letterSpacing: '0.05em',
                                         fontFamily: '"Outfit", sans-serif'
                                     }}
@@ -1022,10 +1022,10 @@ const VendorsPage: React.FC = () => {
 
                         {/* Bank Details */}
                         <Grid item xs={12} sx={{ display: 'flex', justifyContent: isMobile ? 'center' : 'stretch' }}>
-                            <Paper sx={{ 
-                                p: isMobile ? 2 : 3, 
-                                borderRadius: 3, 
-                                width: '100%', 
+                            <Paper sx={{
+                                p: isMobile ? 2 : 3,
+                                borderRadius: 3,
+                                width: '100%',
                                 maxWidth: isMobile ? 500 : 'none',
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                                 border: '1px solid',
@@ -1033,15 +1033,15 @@ const VendorsPage: React.FC = () => {
                                 bgcolor: 'white'
                             }}>
                                 <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'flex-start', sm: 'center' }, mb: 2, gap: 2 }}>
-                                    <Typography 
-                                        variant="caption" 
-                                        fontWeight={700} 
-                                        color="primary" 
-                                        sx={{ 
-                                            display: 'flex', 
-                                            alignItems: 'center', 
-                                            gap: 1, 
-                                            textTransform: 'uppercase', 
+                                    <Typography
+                                        variant="caption"
+                                        fontWeight={700}
+                                        color="primary"
+                                        sx={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 1,
+                                            textTransform: 'uppercase',
                                             letterSpacing: '0.05em',
                                             fontFamily: '"Outfit", sans-serif'
                                         }}
@@ -1151,24 +1151,24 @@ const VendorsPage: React.FC = () => {
 
                         {/* Notes */}
                         <Grid item xs={12} sx={{ display: 'flex', justifyContent: isMobile ? 'center' : 'stretch' }}>
-                            <Paper sx={{ 
-                                p: isMobile ? 2 : 3, 
-                                borderRadius: 3, 
-                                width: '100%', 
+                            <Paper sx={{
+                                p: isMobile ? 2 : 3,
+                                borderRadius: 3,
+                                width: '100%',
                                 maxWidth: isMobile ? 500 : 'none',
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                                 border: '1px solid',
                                 borderColor: alpha(theme.palette.divider, 0.05),
                                 bgcolor: 'white'
                             }}>
-                                <Typography 
-                                    variant="caption" 
-                                    fontWeight={700} 
-                                    color="primary" 
-                                    sx={{ 
-                                        display: 'block', 
-                                        mb: 2, 
-                                        textTransform: 'uppercase', 
+                                <Typography
+                                    variant="caption"
+                                    fontWeight={700}
+                                    color="primary"
+                                    sx={{
+                                        display: 'block',
+                                        mb: 2,
+                                        textTransform: 'uppercase',
                                         letterSpacing: '0.05em',
                                         fontFamily: '"Outfit", sans-serif'
                                     }}
@@ -1188,25 +1188,25 @@ const VendorsPage: React.FC = () => {
                         </Grid>
                     </Grid>
                 </DialogContent>
-                
+
                 <DialogActions sx={{ p: isMobile ? 2 : 3, bgcolor: 'white', borderTop: '1px solid', borderColor: 'divider', gap: 1.5 }}>
-                    <Button 
-                        onClick={handleCloseDialog} 
-                        sx={{ 
-                            textTransform: 'none', 
+                    <Button
+                        onClick={handleCloseDialog}
+                        sx={{
+                            textTransform: 'none',
                             fontWeight: 'bold',
                             color: 'text.secondary'
                         }}
                     >
                         Cancel
                     </Button>
-                    <Button 
-                        variant="contained" 
+                    <Button
+                        variant="contained"
                         onClick={handleSubmit}
-                        sx={{ 
-                            borderRadius: 2, 
-                            px: 4, 
-                            textTransform: 'none', 
+                        sx={{
+                            borderRadius: 2,
+                            px: 4,
+                            textTransform: 'none',
                             fontWeight: 'bold',
                             boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                         }}
@@ -1249,12 +1249,12 @@ const VendorsPage: React.FC = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
-            
+
             {/* Reorder Alerts Dialog */}
-            <Dialog 
-                open={reorderDialogOpen} 
-                onClose={() => setReorderDialogOpen(false)} 
-                maxWidth="md" 
+            <Dialog
+                open={reorderDialogOpen}
+                onClose={() => setReorderDialogOpen(false)}
+                maxWidth="md"
                 fullWidth
             >
                 <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: 'bold' }}>
@@ -1277,7 +1277,7 @@ const VendorsPage: React.FC = () => {
                         </Typography>
                     ) : (
                         <TableContainer>
-                                <Table size="small">
+                            <Table size="small">
                                 <TableHead>
                                     <TableRow>
                                         <TableCell>Item Name</TableCell>
@@ -1311,11 +1311,11 @@ const VendorsPage: React.FC = () => {
                                                     value={item.lastOrderQuantity}
                                                     onChange={(e) => handleReorderItemChange(item.itemId, 'lastOrderQuantity', parseFloat(e.target.value) || 0)}
                                                     InputProps={{ inputProps: { min: 1, style: { textAlign: 'right' } } }}
-                                                    sx={{ 
+                                                    sx={{
                                                         width: 100,
-                                                        '& .MuiInputBase-input': { 
-                                                            color: 'primary.main', 
-                                                            fontWeight: 'bold' 
+                                                        '& .MuiInputBase-input': {
+                                                            color: 'primary.main',
+                                                            fontWeight: 'bold'
                                                         }
                                                     }}
                                                 />
@@ -1330,9 +1330,9 @@ const VendorsPage: React.FC = () => {
                 </DialogContent>
                 <DialogActions sx={{ p: 2, gap: 1 }}>
                     <Button onClick={() => setReorderDialogOpen(false)}>Close</Button>
-                     {reorderItems.length > 0 && (
+                    {reorderItems.length > 0 && (
                         <>
-                            <Button 
+                            <Button
                                 variant="outlined"
                                 color="warning"
                                 startIcon={reorderLoading ? <CircularProgress size={20} /> : <EditIcon />}
@@ -1341,25 +1341,25 @@ const VendorsPage: React.FC = () => {
                             >
                                 Save Levels
                             </Button>
-                            <Button 
-                                variant="outlined" 
-                                color="info" 
+                            <Button
+                                variant="outlined"
+                                color="info"
                                 startIcon={<EmailIcon />}
                                 onClick={handleEmailReorder}
                             >
                                 Email
                             </Button>
-                            <Button 
-                                variant="outlined" 
-                                color="success" 
+                            <Button
+                                variant="outlined"
+                                color="success"
                                 startIcon={<WhatsAppIcon />}
                                 onClick={handleWhatsAppReorder}
                             >
                                 WhatsApp
                             </Button>
-                            <Button 
-                                variant="contained" 
-                                color="primary" 
+                            <Button
+                                variant="contained"
+                                color="primary"
                                 startIcon={<OrderIcon />}
                                 onClick={handleCreatePOFromReorder}
                             >

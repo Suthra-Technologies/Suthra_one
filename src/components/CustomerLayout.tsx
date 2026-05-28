@@ -38,6 +38,8 @@ import {
   Home as HomeIcon,
   Person,
   History as HistoryIcon,
+  Collections as CollectionsIcon,
+  Info as InfoIcon,
 } from '@mui/icons-material';
 import { useAuth } from 'src/context/AuthContext';
 import { useSettings } from 'src/context/SettingsContext';
@@ -65,9 +67,12 @@ const CustomerLayout: React.FC = () => {
   const restaurantName = (restaurant?.name || 'Restaurant').trim();
 
   const baseNavLinks = [
+    { label: 'Home', path: getRelativePath('/customer/home'), icon: <HomeIcon fontSize="small" /> },
     { label: 'Order', path: getRelativePath('/customer/order'), icon: <ShoppingCart fontSize="small" /> },
     { label: 'Book Table', path: getRelativePath('/customer/book-table'), icon: <EventSeat fontSize="small" /> },
     { label: 'Catering', path: getRelativePath('/customer/catering'), icon: <MenuBook fontSize="small" /> },
+    { label: 'Gallery', path: getRelativePath('/customer/gallery'), icon: <CollectionsIcon fontSize="small" /> },
+    { label: 'About', path: getRelativePath('/customer/about'), icon: <InfoIcon fontSize="small" /> },
   ];
 
   // Show 'My Activity' only for logged-in customers
@@ -80,7 +85,7 @@ const CustomerLayout: React.FC = () => {
   // Auth guard for public paths
   React.useEffect(() => {
     if (isLoading) return;
-    const publicPaths = ['customer/order', 'customer/catering', 'customer/book-table'];
+    const publicPaths = ['customer/order', 'customer/catering', 'customer/book-table', 'customer/gallery', 'customer/about', 'customer/home'];
     const isPublicPath = publicPaths.some(p => location.pathname.includes(p));
     const token = localStorage.getItem('jwt');
     if (!isPublicPath && (!token || !user)) {

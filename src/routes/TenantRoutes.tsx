@@ -1,5 +1,5 @@
 import React from 'react';
-import { Route, Routes, Outlet } from 'react-router-dom';
+import { Route, Routes, Outlet, Navigate } from 'react-router-dom';
 import CustomerLayout from '../components/CustomerLayout';
 import Layout from '../components/Layout';
 import { RequireFeature } from '../components/RequireFeature';
@@ -48,6 +48,9 @@ import CheckoutPage from '../pages/CheckoutPage';
 import TableBookingPage from '../pages/customer/TableBookingPage';
 import MyBookingsPage from '../pages/customer/MyBookingsPage';
 import CustomerOrderPage from '../pages/customer/CustomerOrderPage';
+import GalleryPage from '../pages/customer/GalleryPage';
+import CustomerAboutPage from '../pages/customer/CustomerAboutPage';
+import CustomerHomePage from '../pages/customer/CustomerHomePage';
 import PurchaseOrdersPage from '../pages/purchase-orders/PurchaseOrdersPage';
 import CreatePOPage from '../pages/purchase-orders/CreatePOPage';
 import PurchaseOrderDetailPage from '../pages/purchase-orders/PurchaseOrderDetailPage';
@@ -71,11 +74,15 @@ export const TenantRoutes = () => (
 
     {/* ─── Customer Routes (No Sidebar, Single Page Layout) ─── */}
     <Route element={<CustomerLayout />}>
+      <Route path="customer" element={<Navigate replace to="home" />} />
+      <Route path="customer/home" element={<CustomerHomePage />} />
       <Route path="customer/order" element={<CustomerOrderPage />} />
       <Route path="customer/checkout" element={<CheckoutPage />} />
       <Route path="customer/book-table" element={<TableBookingPage />} />
       <Route path="customer/bookings" element={<MyBookingsPage />} />
       <Route path="customer/profile" element={<ProfilePage />} />
+      <Route path="customer/gallery" element={<GalleryPage />} />
+      <Route path="customer/about" element={<CustomerAboutPage />} />
       {/* Guest-accessible customer catering routes */}
       <Route element={<RequireFeature feature="catering" guestAllowed />}>
         <Route path="customer/catering" element={<CateringPage />} />
