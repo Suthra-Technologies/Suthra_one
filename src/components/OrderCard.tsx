@@ -107,6 +107,13 @@ const OrderCard: React.FC<OrderCardProps> = ({
     const [refundTargetIndex, setRefundTargetIndex] = useState<number | null>(null);
     const [refundMethod, setRefundMethod] = useState<'original' | 'cash'>('original');
     const [isRefunding, setIsRefunding] = useState(false);
+    // In-house delivery state
+    const [inHouseRiders, setInHouseRiders] = useState<any[]>([]);
+    const [ridersLoaded, setRidersLoaded] = useState(false);
+    const [assigningRider, setAssigningRider] = useState(false);
+    const [selectedRider, setSelectedRider] = useState<string>(
+        (order.assignedDeliveryUser?._id || order.assignedDeliveryUser || '') as string
+    );
     const { user, tenantSlug } = useAuth();
     const isDeliveryBoy = user?.role === 'delivery';
 
@@ -801,7 +808,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                 </Box>
             </CardContent>
 
-            <CardActions sx={{ p: 1, pt: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', bgcolor: alpha(theme.palette.background.default, 0.5) }}>
+            <CardActions sx={{ p: 1, pt: 0, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', bgcolor: alpha(theme.palette.background.default, 0.5), gap: 0.5 }}>
                 <Stack direction="row" spacing={0.5}>
                     <Tooltip title="View Details">
                         <IconButton size="small" color="primary" onClick={() => onView(order)} sx={{ padding: '4px' }}>
@@ -874,7 +881,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                     }}
                                     sx={{ textTransform: 'none', fontSize: '0.75rem', padding: '4px 8px', minWidth: '48px' }}
                                 >
-                                    {hasFeedback ? 'Rated' : 'Rating'}
+                                     {hasFeedback ? 'Rated' : 'Rating'}
                                 </Button>
                             </span>
                         </Tooltip>
@@ -930,6 +937,128 @@ const OrderCard: React.FC<OrderCardProps> = ({
                         </Tooltip>
                     )}
                 </Stack>
+
+                {/* ── In-House Delivery Banner ── */}
+                {order.inHouseDelivery && order.delivery?.provider === 'in_house' && canManage && (
+                    <Box
+                        sx={{
+                            mt: 1,
+                            p: 1.5,
+                            borderRadius: 2,
+                            width: '100%',
+                            background: (theme) =>
+                                `linear-gradient(135deg, ${alpha(theme.palette.warning.light, 0.18)} 0%, ${alpha(theme.palette.warning.main, 0.08)} 100%)`,
+                            border: (theme) => `1.5px solid ${alpha(theme.palette.warning.main, 0.45)}`,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 1,
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                            <DeliveryIcon sx={{ fontSize: 17, color: 'warning.dark' }} />
+                            <Typography variant="caption" fontWeight={800} color="warning.dark" sx={{ textTransform: 'uppercase', letterSpacing: 0.6 }}>
+                                In-House Delivery
+                            </Typography>
+                            <Chip
+                                label={order.delivery?.status === 'assigned' ? 'Assigned' : 'Pending Assignment'}
+                                size="small"
+                                sx={{
+                                    ml: 'auto',
+                                    height: 18,
+                                    fontSize: '0.64rem',
+                                    fontWeight: 700,
+                                    bgcolor: order.delivery?.status === 'assigned' ? alpha('#10b981', 0.15) : alpha('#f59e0b', 0.15),
+                                    color: order.delivery?.status === 'assigned' ? '#059669' : '#b45309',
+                                }}
+                            />
+                        </Box>
+                        {order.delivery?.status === 'assigned' && order.assignedDeliveryUser && (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                <PersonIcon sx={{ fontSize: 14, color: 'text.secondary' }} />
+                                <Typography variant="caption" color="text.secondary">
+                                    Assigned to:{' '}
+                                    <strong>
+                                        {typeof order.assignedDeliveryUser === 'object'
+                                            ? `${order.assignedDeliveryUser.firstName || ''} ${order.assignedDeliveryUser.lastName || ''}`.trim()
+                                            : 'Rider'}
+                                    </strong>
+                                </Typography>
+                            </Box>
+                        )}
+                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                            <FormControl size="small" sx={{ flex: 1, minWidth: 0 }}>
+                                <InputLabel id={`rider-label-${order._id}`} sx={{ fontSize: '0.75rem' }}>Select Rider</InputLabel>
+                                <Select
+                                    labelId={`rider-label-${order._id}`}
+                                    label="Select Rider"
+                                    value={selectedRider}
+                                    onChange={(e) => setSelectedRider(e.target.value as string)}
+                                    onOpen={async () => {
+                                        if (!ridersLoaded) {
+                                            try {
+                                                const res = await ordersAPI.getDeliveryStaff();
+                                                setInHouseRiders(res.data || []);
+                                                setRidersLoaded(true);
+                                            } catch {
+                                                toast.error('Could not load delivery staff');
+                                            }
+                                        }
+                                    }}
+                                    sx={{ fontSize: '0.8rem', height: 34 }}
+                                    disabled={assigningRider}
+                                >
+                                    {inHouseRiders.length === 0 && !ridersLoaded && (
+                                        <MenuItem value="" disabled>Loading...</MenuItem>
+                                    )}
+                                    {inHouseRiders.length === 0 && ridersLoaded && (
+                                        <MenuItem value="" disabled>No riders available</MenuItem>
+                                    )}
+                                    {inHouseRiders.map((r: any) => (
+                                        <MenuItem key={r._id} value={r._id}>
+                                            {r.firstName} {r.lastName}
+                                            {r.phone ? ` · ${r.phone}` : ''}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                            <Button
+                                variant="contained"
+                                size="small"
+                                disabled={!selectedRider || assigningRider}
+                                onClick={async (e) => {
+                                    e.stopPropagation();
+                                    if (!selectedRider) return;
+                                    setAssigningRider(true);
+                                    try {
+                                        await ordersAPI.assignDeliveryUser(order._id, selectedRider);
+                                        toast.success('Rider assigned!');
+                                        if (onRefresh) onRefresh();
+                                    } catch (err: any) {
+                                        toast.error(err?.response?.data?.message || 'Failed to assign rider');
+                                    } finally {
+                                        setAssigningRider(false);
+                                    }
+                                }}
+                                sx={{
+                                    fontSize: '0.7rem',
+                                    height: 34,
+                                    px: 1.5,
+                                    whiteSpace: 'nowrap',
+                                    background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                                    color: '#fff',
+                                    '&:hover': { background: 'linear-gradient(135deg, #d97706, #b45309)' },
+                                    '&:disabled': { opacity: 0.5 },
+                                    boxShadow: '0 2px 8px rgba(245,158,11,0.3)',
+                                    textTransform: 'none',
+                                    fontWeight: 700,
+                                }}
+                            >
+                                {assigningRider ? <CircularProgress size={14} color="inherit" /> : 'Assign'}
+                            </Button>
+                        </Box>
+                    </Box>
+                )}
 
                 <Stack direction="row" spacing={0.5} alignItems="center">
                     {canManage && nextStatus && (isDeliveryBoy ? ['ready_to_pickup', 'on_the_way', 'ready_to_pick'].includes(order.status) : true) && (

@@ -152,6 +152,8 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
     maxUsablePoints = 0,
     isApplyingCoupon = false,
 }) => {
+    const isIndia = settings?.restaurant?.country?.toLowerCase() === 'india';
+
     // Set default payment method for dine-in orders
     useEffect(() => {
         if (orderType === 'dine_in') {
@@ -503,13 +505,29 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                 {(settings.system?.posPaymentMethods?.cash ?? true) && (
                                     <FormControlLabel value="cash" control={<Radio size="small" />} label="Cash" />
                                 )}
-                                {(settings.system?.posPaymentMethods?.zelle ?? true) && (
-                                    <FormControlLabel value="zelle" control={<Radio size="small" />} label="Zelle" />
+                                {isIndia ? (
+                                    <>
+                                        {(settings.system?.posPaymentMethods?.zelle ?? true) && (
+                                            <FormControlLabel value="phonepe" control={<Radio size="small" />} label="PhonePe" />
+                                        )}
+                                        {(settings.system?.posPaymentMethods?.zelle ?? true) && (
+                                            <FormControlLabel value="gpay" control={<Radio size="small" />} label="GPay" />
+                                        )}
+                                        {(settings.system?.posPaymentMethods?.venmo ?? true) && (
+                                            <FormControlLabel value="paytm" control={<Radio size="small" />} label="Paytm" />
+                                        )}
+                                    </>
+                                ) : (
+                                    <>
+                                        {(settings.system?.posPaymentMethods?.zelle ?? true) && (
+                                            <FormControlLabel value="zelle" control={<Radio size="small" />} label="Zelle" />
+                                        )}
+                                    </>
                                 )}
                                 {(settings.system?.posPaymentMethods?.card ?? true) && (
                                     <FormControlLabel value="card" control={<Radio size="small" />} label="Card" />
                                 )}
-                                {(settings.system?.posPaymentMethods?.venmo ?? true) && (
+                                {!isIndia && (settings.system?.posPaymentMethods?.venmo ?? true) && (
                                     <FormControlLabel value="venmo" control={<Radio size="small" />} label="Venmo" />
                                 )}
                             </RadioGroup>

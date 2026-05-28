@@ -287,7 +287,7 @@ const POSPage: React.FC = () => {
     const [deliveryAddress, setDeliveryAddress] = useState<any>({});
     const [discountPercent, setDiscountPercent] = useState(0);
     const [tip, setTip] = useState(0);
-    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'online' | 'card' | 'zelle' | 'venmo'>('cash');
+    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'online' | 'card' | 'zelle' | 'venmo' | 'phonepe' | 'gpay' | 'paytm'>('cash');
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
     const [manualPaymentDialogOpen, setManualPaymentDialogOpen] = useState(false);
     const [selectedTable, setSelectedTable] = useState<any>(null);
@@ -1312,7 +1312,7 @@ const POSPage: React.FC = () => {
                 return;
             }
 
-            if (paymentMethod === 'zelle' || paymentMethod === 'venmo') {
+            if (['zelle', 'venmo', 'phonepe', 'gpay', 'paytm'].includes(paymentMethod)) {
                 setManualPaymentDialogOpen(true);
                 return;
             }
@@ -3212,7 +3212,7 @@ const POSPage: React.FC = () => {
                         <CloseIcon sx={{ fontSize: 16 }} />
                     </IconButton>
                     <Typography variant="h6" gutterBottom>
-                        Payment via {paymentMethod === 'zelle' ? 'Zelle' : 'Venmo'}
+                        Payment via {paymentMethod === 'zelle' ? 'Zelle' : paymentMethod === 'venmo' ? 'Venmo' : paymentMethod === 'phonepe' ? 'PhonePe' : paymentMethod === 'gpay' ? 'GPay' : paymentMethod === 'paytm' ? 'Paytm' : paymentMethod.toUpperCase()}
                     </Typography>
                     <Typography variant="body1" sx={{ mb: 3 }}>
                         Please collect <strong>{formatSmartPrice(finalTotal)}</strong> from the customer.
