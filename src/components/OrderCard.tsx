@@ -71,6 +71,40 @@ import AddItemsDialog from './AddItemsDialog';
 import DeliveryTracker from './DeliveryTracker';
 import PaymentCollectionDialog from './PaymentCollectionDialog';
 
+const getCustomerCoordinates = (order: any) => {
+    if (!order) return undefined;
+    const dLoc = order.delivery?.location || 
+                 order.deliveryAddress?.location || 
+                 order.deliveryAddress || 
+                 order.location?.coordinates || 
+                 order.location;
+    if (!dLoc) return undefined;
+    const lat = dLoc.lat || dLoc.latitude || (dLoc.coordinates && dLoc.coordinates.lat);
+    const lng = dLoc.lng || dLoc.longitude || (dLoc.coordinates && dLoc.coordinates.lng);
+    return (lat && lng) ? { lat: Number(lat), lng: Number(lng) } : undefined;
+};
+
+const getCustomerAddress = (order: any) => {
+    if (!order) return '';
+    const loc = order.location;
+    let cateringAddress = '';
+    if (loc && typeof loc === 'object') {
+        const parts = [
+            loc.address || loc.street,
+            loc.city,
+            loc.state,
+            loc.zipCode || loc.pincode
+        ].filter(Boolean);
+        cateringAddress = parts.join(', ');
+    }
+    return order.delivery?.address || 
+           order.deliveryAddress?.formattedAddress || 
+           order.deliveryAddress?.fullAddress || 
+           (typeof order.deliveryAddress === 'string' ? order.deliveryAddress : '') ||
+           cateringAddress ||
+           '';
+};
+
 interface OrderCardProps {
     order: any;
     onView: (order: any) => void;
@@ -498,12 +532,8 @@ const OrderCard: React.FC<OrderCardProps> = ({
                     <Box sx={{ mt: 2 }}>
                         <DeliveryTracker
                             orderId={order._id}
-                            customerPosition={(() => {
-                                const dLoc = order.delivery?.location || order.deliveryAddress;
-                                const lat = dLoc?.lat || dLoc?.latitude;
-                                const lng = dLoc?.lng || dLoc?.longitude;
-                                return (lat && lng) ? { lat: Number(lat), lng: Number(lng) } : undefined;
-                            })()}
+                            customerPosition={getCustomerCoordinates(order)}
+                            customerAddress={getCustomerAddress(order)}
                         />
                     </Box>
                 )}
