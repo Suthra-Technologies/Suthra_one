@@ -46,6 +46,7 @@ import {
     CloudUpload as BulkUploadIcon,
     Assignment as ItemNotesIcon,
     Notes as NotesIcon,
+    RestoreFromTrash as RestoreIcon,
 } from '@mui/icons-material';
 import { Drawer } from '@mui/material';
 import { toast } from 'react-hot-toast';
@@ -309,6 +310,7 @@ const InventoryPage: React.FC = () => {
     const [dailyReport, setDailyReport] = useState<DailyReport | null>(null);
     const [loading, setLoading] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [showDeleted, setShowDeleted] = useState(false);
 // Notes History Feature
     // const { openTab, activeTabs } = useNotesHistory();
     const [notesDrawerOpen, setNotesDrawerOpen] = useState(false);
@@ -351,12 +353,12 @@ const InventoryPage: React.FC = () => {
         if (tabValue === 0) {
             loadRawMaterials();
         }
-    }, [page, limit, tabValue]);
+    }, [page, limit, tabValue, showDeleted]);
 
     const loadRawMaterials = async () => {
         try {
             setLoading(true);
-            const response = await inventoryAPI.getRawMaterials({ page: page + 1, limit });
+            const response = await inventoryAPI.getRawMaterials({ page: page + 1, limit, isDeleted: showDeleted || undefined });
             const materials = Array.isArray(response.data?.materials) ? response.data.materials : [];
             setRawMaterials(materials);
             setTotalMaterials(response.data?.total ?? materials.length);
@@ -402,7 +404,7 @@ const InventoryPage: React.FC = () => {
         setConfirmDelete({
             open: true,
             title: 'Delete Material',
-            message: <>Are you sure you want to delete <strong>"{material.name}"</strong>? This action cannot be undone.</>,
+            message: <>Are you sure you want to delete <strong>"{material.name}"</strong>? The item will be moved to the deleted items list and can be restored later.</>,
             onConfirm: async () => {
                 if (isDeleting) return;
                 try {
@@ -418,6 +420,16 @@ const InventoryPage: React.FC = () => {
                 }
             }
         });
+    }, [loadRawMaterials]);
+
+    const handleRestoreMaterial = React.useCallback(async (material: RawMaterial) => {
+        try {
+            await inventoryAPI.restore(material._id);
+            toast.success(`Material "${material.name}" restored successfully`);
+            loadRawMaterials();
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || 'Failed to restore material');
+        }
     }, [loadRawMaterials]);
 
     const handleRecordUsage = React.useCallback((material: RawMaterial) => {
@@ -526,33 +538,49 @@ const InventoryPage: React.FC = () => {
             {/* Raw Materials Tab */}
             {tabValue === 0 && (
                 <Box>
-                    <Box sx={{ mb: 2, display: 'flex', justifyContent: { xs: 'center', sm: 'flex-end' } }}>
-                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ width: { xs: '100%', sm: 'auto' } }}>
-                            <Button
-                                variant="outlined"
-                                startIcon={<BulkUploadIcon />}
-                                onClick={() => setBulkUploadDialogOpen(true)}
-                                sx={{
-                                    width: { xs: '100%', sm: 'auto' },
-                                    py: { xs: 1.2, sm: 1 },
-                                    borderColor: 'primary.main',
-                                    '&:hover': {
-                                        borderColor: 'primary.dark',
-                                        bgcolor: alpha(theme.palette.primary.main, 0.05),
-                                    }
+                    <Box sx={{ mb: 2, display: 'flex', justifyContent: { xs: 'center', sm: 'space-between' }, alignItems: 'center', flexWrap: 'wrap', gap: 1.5 }}>
+                        <FormControl size="small" sx={{ minWidth: 160 }}>
+                            <InputLabel>Filter</InputLabel>
+                            <Select
+                                value={showDeleted ? 'deleted' : 'active'}
+                                label="Filter"
+                                onChange={(e) => {
+                                    setShowDeleted(e.target.value === 'deleted');
+                                    setPage(0);
                                 }}
                             >
-                                Bulk Upload
-                            </Button>
-                            <Button
-                                variant="contained"
-                                startIcon={<AddIcon />}
-                                onClick={handleAddMaterial}
-                                sx={{ width: { xs: '100%', sm: 'auto' }, py: { xs: 1.2, sm: 1 } }}
-                            >
-                                Add Material
-                            </Button>
-                        </Stack>
+                                <MenuItem value="active">Active Items</MenuItem>
+                                <MenuItem value="deleted">Deleted Items</MenuItem>
+                            </Select>
+                        </FormControl>
+                        {!showDeleted && (
+                            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+                                <Button
+                                    variant="outlined"
+                                    startIcon={<BulkUploadIcon />}
+                                    onClick={() => setBulkUploadDialogOpen(true)}
+                                    sx={{
+                                        width: { xs: '100%', sm: 'auto' },
+                                        py: { xs: 1.2, sm: 1 },
+                                        borderColor: 'primary.main',
+                                        '&:hover': {
+                                            borderColor: 'primary.dark',
+                                            bgcolor: alpha(theme.palette.primary.main, 0.05),
+                                        }
+                                    }}
+                                >
+                                    Bulk Upload
+                                </Button>
+                                <Button
+                                    variant="contained"
+                                    startIcon={<AddIcon />}
+                                    onClick={handleAddMaterial}
+                                    sx={{ width: { xs: '100%', sm: 'auto' }, py: { xs: 1.2, sm: 1 } }}
+                                >
+                                    Add Material
+                                </Button>
+                            </Stack>
+                        )}
                     </Box>
 
                     {loading ? (
@@ -562,23 +590,48 @@ const InventoryPage: React.FC = () => {
                     ) : rawMaterials.length === 0 ? (
                         <Box sx={{ p: 4, textAlign: 'center' }}>
                             <Typography color="text.secondary" sx={{ fontSize: bodyFontSize, textAlign: 'center' }}>
-                                No raw materials found. Click "Add Material" to get started.
+                        No raw materials found. {showDeleted ? 'No deleted items.' : 'Click "Add Material" to get started.'}
                             </Typography>
                         </Box>
                     ) : isTabletOrMobile ? (
                         // Mobile Card View for Raw Materials
                         <Stack spacing={2}>
                             {rawMaterials.map((material) => (
-                                <MemoizedMaterialCard
-                                    key={material._id}
-                                    material={material}
-                                    onUsage={handleRecordUsage}
-                                    onNotes={handleVendorNotes}
-                                    // onItemNotes={handleItemNotes}
-                                    onEdit={handleEditMaterial}
-                                    onDelete={handleDeleteMaterial}
-                                    getStatus={getStockStatus}
-                                />
+                                showDeleted ? (
+                                    <Card key={material._id}>
+                                        <CardContent>
+                                            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+                                                <Box>
+                                                    <Typography variant="subtitle1" fontWeight="bold">{material.name}</Typography>
+                                                    <Typography variant="caption" color="text.secondary">
+                                                        {material.currentStock} {material.unit} · {material.category}
+                                                    </Typography>
+                                                </Box>
+                                                <Chip label="Deleted" color="error" size="small" />
+                                            </Stack>
+                                            <Button
+                                                size="small"
+                                                variant="outlined"
+                                                color="success"
+                                                startIcon={<RestoreIcon />}
+                                                onClick={() => handleRestoreMaterial(material)}
+                                            >
+                                                Restore
+                                            </Button>
+                                        </CardContent>
+                                    </Card>
+                                ) : (
+                                    <MemoizedMaterialCard
+                                        key={material._id}
+                                        material={material}
+                                        onUsage={handleRecordUsage}
+                                        onNotes={handleVendorNotes}
+                                        // onItemNotes={handleItemNotes}
+                                        onEdit={handleEditMaterial}
+                                        onDelete={handleDeleteMaterial}
+                                        getStatus={getStockStatus}
+                                    />
+                                )
                             ))}
                         </Stack>
                     ) : (
@@ -600,15 +653,35 @@ const InventoryPage: React.FC = () => {
                                 </TableHead>
                                 <TableBody>
                                     {rawMaterials.map((material) => (
-                                        <MemoizedMaterialRow
-                                            key={material._id}
-                                            material={material}
-                                            onUsage={handleRecordUsage}
-                                            // onItemNotes={handleItemNotes}
-                                            onEdit={handleEditMaterial}
-                                            onDelete={handleDeleteMaterial}
-                                            getStatus={getStockStatus}
-                                        />
+                                        showDeleted ? (
+                                            <TableRow key={material._id} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
+                                                <TableCell>{material.name}</TableCell>
+                                                <TableCell align="right"><strong>{parseFloat((material.currentStock || 0).toFixed(2))}</strong></TableCell>
+                                                <TableCell align="right">{parseFloat((material.minimumStock || 0).toFixed(2))}</TableCell>
+                                                <TableCell align="right">{parseFloat((material.reorderLevel || 0).toFixed(2))}</TableCell>
+                                                <TableCell>{material.unit}</TableCell>
+                                                <TableCell><Chip label="Deleted" color="error" size="small" /></TableCell>
+                                                <TableCell>{material.supplier?.name || '-'}</TableCell>
+                                                <TableCell>
+                                                    <Typography variant="caption" color="text.secondary">{new Date(material.updatedAt).toLocaleString()}</Typography>
+                                                </TableCell>
+                                                <TableCell align="center">
+                                                    <IconButton size="small" color="success" onClick={() => handleRestoreMaterial(material)} title="Restore">
+                                                        <RestoreIcon />
+                                                    </IconButton>
+                                                </TableCell>
+                                            </TableRow>
+                                        ) : (
+                                            <MemoizedMaterialRow
+                                                key={material._id}
+                                                material={material}
+                                                onUsage={handleRecordUsage}
+                                                // onItemNotes={handleItemNotes}
+                                                onEdit={handleEditMaterial}
+                                                onDelete={handleDeleteMaterial}
+                                                getStatus={getStockStatus}
+                                            />
+                                        )
                                     ))}
                                 </TableBody>
                             </Table>

@@ -1107,14 +1107,16 @@ const CouponsAdminPage: React.FC = () => {
                                         <TableCell align="right">
                                             {tabValue === 4 ? (
                                                 <Stack direction="row" spacing={1} justifyContent="flex-end">
-                                                    <Tooltip title="Restore Coupon">
-                                                        <IconButton
-                                                            color="success"
-                                                            onClick={() => handleRestoreCoupon(coupon)}
-                                                        >
-                                                            <CheckCircleIcon />
-                                                        </IconButton>
-                                                    </Tooltip>
+                                                    <Button
+                                                        size="small"
+                                                        variant="contained"
+                                                        color="success"
+                                                        onClick={() => handleRestoreCoupon(coupon)}
+                                                        startIcon={<CheckCircleIcon sx={{ fontSize: 16 }} />}
+                                                        sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 'bold', px: 2 }}
+                                                    >
+                                                        Restore
+                                                    </Button>
                                                 </Stack>
                                             ) : (
                                                 <Stack direction="row" spacing={1} justifyContent="flex-end">
@@ -1441,7 +1443,7 @@ const CouponsAdminPage: React.FC = () => {
                                             value={formData.discountValue}
                                             onChange={(e) => setFormData({ ...formData, discountValue: Number(e.target.value) })}
                                             onFocus={(e) => e.target.select()}
-                                            InputProps={{ 
+                                            InputProps={{
                                                 sx: { borderRadius: 2, fontWeight: 700 },
                                                 endAdornment: (
                                                     <InputAdornment position="end">

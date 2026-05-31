@@ -350,11 +350,12 @@ export const traysAPI = {
 
 // -------------------- Tables API --------------------
 export const tablesAPI = {
-  getAll: () => api.get('/tables'),
+  getAll: (params?: { isDeleted?: boolean; includeDeleted?: boolean }) => api.get('/tables', { params }),
   getOne: (id: string) => api.get(`/tables/${id}`),
   create: (tableData: any) => api.post('/tables', tableData),
   update: (id: string, tableData: any) => api.put(`/tables/${id}`, tableData),
   delete: (id: string) => api.delete(`/tables/${id}`),
+  restore: (id: string) => api.patch(`/tables/${id}/restore`),
   updateStatus: (id: string, status: string) => api.patch(`/tables/${id}/status`, { status }),
   merge: (primaryId: string, secondaryIds: string[]) => api.post('/tables/merge', { primaryId, secondaryIds }),
   unmerge: (primaryId: string) => api.post('/tables/unmerge', { primaryId }),
@@ -362,15 +363,15 @@ export const tablesAPI = {
 
 // -------------------- Inventory API --------------------
 export const inventoryAPI = {
-  getAll: () => api.get('/inventory'),
+  getAll: (params?: any) => api.get('/inventory', { params }),
   getOne: (id: string) => api.get(`/inventory/${id}`),
   create: (itemData: any) => api.post('/inventory', itemData),
   update: (id: string, itemData: any) => api.put(`/inventory/${id}`, itemData),
   delete: (id: string) => api.delete(`/inventory/${id}`),
+  restore: (id: string) => api.patch(`/inventory/${id}/restore`),
 
-  // Raw materials specific
   // Raw Materials specific
-  getRawMaterials: (params?: { page: number; limit: number }) => api.get('/inventory/raw-materials/all', { params }),
+  getRawMaterials: (params?: { page: number; limit: number; isDeleted?: boolean }) => api.get('/inventory/raw-materials/all', { params }),
   bulkUploadRawMaterials: (items: any[]) => api.post('/inventory/raw-materials/bulk-upload', { items }),
 
   // Usage tracking
@@ -483,7 +484,7 @@ export const couponsAPI = {
 
 // New Promos API – separate endpoints for promo codes
 export const promosAPI = {
-  getAll: (params?: { page: number; limit: number; search?: string }) => api.get('/promos', { params }),
+  getAll: (params?: { page: number; limit: number; search?: string; isDeleted?: boolean; status?: string }) => api.get('/promos', { params }),
   getActive: (orderType?: string, billAmount?: number) =>
     api.get('/promos/active', { params: { orderType, billAmount } }),
   validate: (code: string, orderType: string, billAmount: number, customerId?: string) =>
@@ -492,6 +493,7 @@ export const promosAPI = {
   create: (promoData: any) => api.post('/promos', promoData),
   update: (id: string, promoData: any) => api.put(`/promos/${id}`, promoData),
   delete: (id: string) => api.delete(`/promos/${id}`),
+  restore: (id: string) => api.patch(`/promos/${id}/restore`),
   // apply endpoint can be added if needed
   sendBulkEmail: (data: { promoId: string; subject: string; message: string; recipients: string[] }) =>
     api.post('/promos/send-bulk-email', data),
@@ -689,6 +691,7 @@ export const vendorsAPI = {
   getOne: (id: string) => api.get(`/vendors/${id}`),
   update: (id: string, data: any) => api.put(`/vendors/${id}`, data),
   delete: (id: string) => api.delete(`/vendors/${id}`),
+  restore: (id: string) => api.patch(`/vendors/${id}/restore`),
   toggleStatus: (id: string) => api.patch(`/vendors/${id}/toggle-status`),
   getReorderAlerts: (id: string) => api.get(`/vendors/${id}/reorder-alerts`),
 };
@@ -842,6 +845,7 @@ export const expensesAPI = {
   getOne: (id: string) => api.get(`/expenses/${id}`),
   update: (id: string, data: any) => api.put(`/expenses/${id}`, data),
   delete: (id: string) => api.delete(`/expenses/${id}`),
+  restore: (id: string) => api.patch(`/expenses/${id}/restore`),
   getStats: () => api.get('/expenses/stats'),
   getSuggestions: () => api.get('/expenses/suggestions'),
   getHistory: (id: string) => api.get(`/expenses/${id}/history`),

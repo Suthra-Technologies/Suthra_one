@@ -126,8 +126,8 @@ export const validateAddress = (address: string): ValidationResult => {
         return { isValid: false, message: 'Address is required' };
     }
 
-    if (address.trim().length < 10) {
-        return { isValid: false, message: 'Please enter a complete address (at least 10 characters)' };
+    if (address.trim().length < 5) {
+        return { isValid: false, message: 'Please enter a complete address (at least 5 characters)' };
     }
 
     if (address.trim().length > 200) {

@@ -50,6 +50,8 @@ import {
     TableHead,
     TablePagination,
     TableRow,
+    Tabs,
+    Tab,
     TextField,
     Tooltip,
     Typography,
@@ -200,6 +202,12 @@ const PromoCodePage: React.FC = () => {
     const [editingPromo, setEditingPromo] = useState<PromoCode | null>(null);
     const [formLoading, setFormLoading] = useState(false);
 
+    // Soft delete & tabs state
+    const [tabValue, setTabValue] = useState(0);
+    const [counts, setCounts] = useState({ all: 0, active: 0, expired: 0, inactive: 0, deleted: 0 });
+    const [openRestoreDialog, setOpenRestoreDialog] = useState(false);
+    const [restoreTarget, setRestoreTarget] = useState<{ id: string; code: string } | null>(null);
+
     // Messaging dialogs
     const [openEmailDialog, setOpenEmailDialog] = useState(false);
     const [openSmsDialog, setOpenSmsDialog] = useState(false);
@@ -259,9 +267,15 @@ const PromoCodePage: React.FC = () => {
             const response = await promosAPI.getAll({ 
                 page: page + 1, 
                 limit: rowsPerPage,
-                search: debouncedSearch.trim() || undefined
+                search: debouncedSearch.trim() || undefined,
+                isDeleted: tabValue === 4 ? true : undefined,
+                status: tabValue === 1 ? 'active' : tabValue === 2 ? 'expired' : tabValue === 3 ? 'inactive' : undefined
             });
             const responseData = response.data;
+
+            if (responseData.counts) {
+                setCounts(responseData.counts);
+            }
 
             if (responseData && (responseData.promos || responseData.coupons) && Array.isArray(responseData.promos || responseData.coupons)) {
                 const promosList = responseData.promos || responseData.coupons;
@@ -315,7 +329,7 @@ const PromoCodePage: React.FC = () => {
     useEffect(() => {
         fetchPromos();
         fetchCustomers();
-    }, [page, rowsPerPage, debouncedSearch]);
+    }, [page, rowsPerPage, debouncedSearch, tabValue]);
 
     const handleOpenDialog = (promo?: PromoCode) => {
         if (promo) {
@@ -407,6 +421,29 @@ const PromoCodePage: React.FC = () => {
             fetchPromos();
         } catch (error) {
             toast.error('Failed to delete promo code');
+        } finally {
+            setFormLoading(false);
+        }
+    };
+
+    const handleRestorePromo = (promo: PromoCode) => {
+        setRestoreTarget({ id: promo._id, code: promo.code });
+        setOpenRestoreDialog(true);
+    };
+
+    const confirmRestorePromo = async () => {
+        if (formLoading) return;
+        if (!restoreTarget) return;
+        try {
+            setFormLoading(true);
+            await promosAPI.restore(restoreTarget.id);
+            toast.success('Promo code restored successfully');
+            setOpenRestoreDialog(false);
+            setRestoreTarget(null);
+            fetchPromos();
+        } catch (error) {
+            console.error('Error restoring promo:', error);
+            toast.error('Failed to restore promo code');
         } finally {
             setFormLoading(false);
         }
@@ -680,6 +717,31 @@ const PromoCodePage: React.FC = () => {
                 </Grid>
             </Grid>
 
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+                <Tabs
+                    value={tabValue}
+                    onChange={(e, newValue) => {
+                        setTabValue(newValue);
+                        setPage(0);
+                    }}
+                    variant="scrollable"
+                    scrollButtons="auto"
+                    sx={{
+                        '& .MuiTab-root': {
+                            fontWeight: 'bold',
+                            fontFamily: '"Outfit", sans-serif',
+                            textTransform: 'none',
+                        }
+                    }}
+                >
+                    <Tab label={`All (${counts.all})`} />
+                    <Tab label={`Active (${counts.active})`} />
+                    <Tab label={`Expired (${counts.expired})`} />
+                    <Tab label={`Inactive (${counts.inactive})`} />
+                    <Tab label={`Deleted (${counts.deleted})`} />
+                </Tabs>
+            </Box>
+
             {/* Content Section */}
             {loading && promos.length === 0 ? (
                 <Box sx={{ display: 'flex', justifyContent: 'center', p: 10 }}>
@@ -709,27 +771,29 @@ const PromoCodePage: React.FC = () => {
                                         {/* Card Header with Status */}
                                         <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', bgcolor: alpha(theme.palette.background.paper, 0.5) }}>
                                             <Chip
-                                                label={status.label}
-                                                color={status.color as any}
+                                                label={tabValue === 4 ? "Deleted" : status.label}
+                                                color={tabValue === 4 ? "error" : status.color as any}
                                                 size="small"
-                                                icon={status.icon}
+                                                icon={tabValue === 4 ? undefined : status.icon}
                                                 sx={{ fontWeight: 700, borderRadius: 1.5 }}
                                             />
-                                            <Stack direction="row" spacing={0.5}>
-                                                <Tooltip title="Send Email">
-                                                    <IconButton size="small" color="info" onClick={() => handleOpenEmailDialog(promo)}>
-                                                        <EmailIcon fontSize="small" />
-                                                    </IconButton>
-                                                </Tooltip>
-                                                <Tooltip title="Toggle Active">
-                                                    <Switch
-                                                        checked={promo.active}
-                                                        onChange={() => toggleStatus(promo)}
-                                                        size="small"
-                                                        color="success"
-                                                    />
-                                                </Tooltip>
-                                            </Stack>
+                                            {tabValue !== 4 && (
+                                                <Stack direction="row" spacing={0.5}>
+                                                    <Tooltip title="Send Email">
+                                                        <IconButton size="small" color="info" onClick={() => handleOpenEmailDialog(promo)}>
+                                                            <EmailIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="Toggle Active">
+                                                        <Switch
+                                                            checked={promo.active}
+                                                            onChange={() => toggleStatus(promo)}
+                                                            size="small"
+                                                            color="success"
+                                                        />
+                                                    </Tooltip>
+                                                </Stack>
+                                            )}
                                         </Box>
 
                                         {/* Card Body - Coupon Style */}
@@ -816,27 +880,43 @@ const PromoCodePage: React.FC = () => {
                                             backdropFilter: 'blur(4px)',
                                             boxShadow: '0 -4px 10px rgba(0,0,0,0.05)'
                                         }}>
-                                            <Button
-                                                fullWidth
-                                                variant="outlined"
-                                                size="small"
-                                                startIcon={<EditIcon fontSize="small" />}
-                                                onClick={() => handleOpenDialog(promo)}
-                                                sx={{ borderRadius: 2 }}
-                                            >
-                                                Edit
-                                            </Button>
-                                            <Button
-                                                fullWidth
-                                                variant="outlined"
-                                                size="small"
-                                                color="error"
-                                                startIcon={<DeleteIcon fontSize="small" />}
-                                                onClick={() => handleDelete(promo)}
-                                                sx={{ borderRadius: 2 }}
-                                            >
-                                                Delete
-                                            </Button>
+                                            {tabValue === 4 ? (
+                                                <Button
+                                                    fullWidth
+                                                    variant="contained"
+                                                    size="small"
+                                                    color="success"
+                                                    startIcon={<CheckCircleIcon fontSize="small" />}
+                                                    onClick={() => handleRestorePromo(promo)}
+                                                    sx={{ borderRadius: 2 }}
+                                                >
+                                                    Restore
+                                                </Button>
+                                            ) : (
+                                                <>
+                                                    <Button
+                                                        fullWidth
+                                                        variant="outlined"
+                                                        size="small"
+                                                        startIcon={<EditIcon fontSize="small" />}
+                                                        onClick={() => handleOpenDialog(promo)}
+                                                        sx={{ borderRadius: 2 }}
+                                                    >
+                                                        Edit
+                                                    </Button>
+                                                    <Button
+                                                        fullWidth
+                                                        variant="outlined"
+                                                        size="small"
+                                                        color="error"
+                                                        startIcon={<DeleteIcon fontSize="small" />}
+                                                        onClick={() => handleDelete(promo)}
+                                                        sx={{ borderRadius: 2 }}
+                                                    >
+                                                        Delete
+                                                    </Button>
+                                                </>
+                                            )}
                                         </Box>
                                     </Card>
                                 </Fade>
@@ -881,8 +961,8 @@ const PromoCodePage: React.FC = () => {
                                             <CopyIcon sx={{ fontSize: 14, color: 'primary.main' }} />
                                         </Box>
                                         <Chip
-                                            label={status.label}
-                                            color={status.color as any}
+                                            label={tabValue === 4 ? "Deleted" : status.label}
+                                            color={tabValue === 4 ? "error" : status.color as any}
                                             size="small"
                                             sx={{ fontWeight: 700, height: 24 }}
                                         />
@@ -922,30 +1002,46 @@ const PromoCodePage: React.FC = () => {
                                         </Grid>
                                     </Grid>
 
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                        <Switch
-                                            checked={promo.active}
-                                            onChange={() => toggleStatus(promo)}
-                                            size="small"
-                                            color="success"
-                                        />
-                                        <Stack direction="row" spacing={0.5}>
-                                            <Tooltip title="Send Email">
-                                                <IconButton size="small" color="info" onClick={() => handleOpenEmailDialog(promo)}>
-                                                    <EmailIcon fontSize="small" />
-                                                </IconButton>
-                                            </Tooltip>
-                                            <Tooltip title="Edit">
-                                                <IconButton size="small" onClick={() => handleOpenDialog(promo)}>
-                                                    <EditIcon fontSize="small" />
-                                                </IconButton>
-                                            </Tooltip>
-                                            <Tooltip title="Delete">
-                                                <IconButton size="small" color="error" onClick={() => handleDelete(promo)}>
-                                                    <DeleteIcon fontSize="small" />
-                                                </IconButton>
-                                            </Tooltip>
-                                        </Stack>
+                                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                        {tabValue === 4 ? (
+                                            <Button
+                                                variant="contained"
+                                                size="small"
+                                                color="success"
+                                                startIcon={<CheckCircleIcon fontSize="small" />}
+                                                onClick={() => handleRestorePromo(promo)}
+                                                sx={{ borderRadius: 1.5, textTransform: 'none', fontWeight: 'bold' }}
+                                            >
+                                                Restore
+                                            </Button>
+                                        ) : (
+                                            <>
+                                                <Switch
+                                                    checked={promo.active}
+                                                    onChange={() => toggleStatus(promo)}
+                                                    size="small"
+                                                    color="success"
+                                                    sx={{ mr: 'auto' }}
+                                                />
+                                                <Stack direction="row" spacing={0.5}>
+                                                    <Tooltip title="Send Email">
+                                                        <IconButton size="small" color="info" onClick={() => handleOpenEmailDialog(promo)}>
+                                                            <EmailIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="Edit">
+                                                        <IconButton size="small" onClick={() => handleOpenDialog(promo)}>
+                                                            <EditIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="Delete">
+                                                        <IconButton size="small" color="error" onClick={() => handleDelete(promo)}>
+                                                            <DeleteIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                </Stack>
+                                            </>
+                                        )}
                                     </Box>
                                 </CardContent>
                             </Card>
@@ -1031,37 +1127,52 @@ const PromoCodePage: React.FC = () => {
                                         <TableCell>
                                             <Stack direction="row" spacing={1} alignItems="center">
                                                 <Chip
-                                                    label={status.label}
-                                                    color={status.color as any}
+                                                    label={tabValue === 4 ? "Deleted" : status.label}
+                                                    color={tabValue === 4 ? "error" : status.color as any}
                                                     size="small"
                                                     sx={{ fontWeight: 700, height: 24 }}
                                                 />
-                                                <Switch
-                                                    checked={promo.active}
-                                                    onChange={() => toggleStatus(promo)}
-                                                    size="small"
-                                                    color="success"
-                                                />
+                                                {tabValue !== 4 && (
+                                                    <Switch
+                                                        checked={promo.active}
+                                                        onChange={() => toggleStatus(promo)}
+                                                        size="small"
+                                                        color="success"
+                                                    />
+                                                )}
                                             </Stack>
                                         </TableCell>
                                         <TableCell align="right">
-                                            <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-                                                <Tooltip title="Send Email">
-                                                    <IconButton size="small" color="info" onClick={() => handleOpenEmailDialog(promo)}>
-                                                        <EmailIcon fontSize="small" />
-                                                    </IconButton>
-                                                </Tooltip>
-                                                <Tooltip title="Edit">
-                                                    <IconButton size="small" onClick={() => handleOpenDialog(promo)}>
-                                                        <EditIcon fontSize="small" />
-                                                    </IconButton>
-                                                </Tooltip>
-                                                <Tooltip title="Delete">
-                                                    <IconButton size="small" color="error" onClick={() => handleDelete(promo)}>
-                                                        <DeleteIcon fontSize="small" />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            </Stack>
+                                            {tabValue === 4 ? (
+                                                <Stack direction="row" spacing={1} justifyContent="flex-end">
+                                                    <Tooltip title="Restore Promo">
+                                                        <IconButton
+                                                            color="success"
+                                                            onClick={() => handleRestorePromo(promo)}
+                                                        >
+                                                            <CheckCircleIcon />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                </Stack>
+                                            ) : (
+                                                <Stack direction="row" spacing={0.5} justifyContent="flex-end">
+                                                    <Tooltip title="Send Email">
+                                                        <IconButton size="small" color="info" onClick={() => handleOpenEmailDialog(promo)}>
+                                                            <EmailIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="Edit">
+                                                        <IconButton size="small" onClick={() => handleOpenDialog(promo)}>
+                                                            <EditIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="Delete">
+                                                        <IconButton size="small" color="error" onClick={() => handleDelete(promo)}>
+                                                            <DeleteIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                </Stack>
+                                            )}
                                         </TableCell>
                                     </TableRow>
                                 );
@@ -1711,7 +1822,7 @@ const PromoCodePage: React.FC = () => {
                         </Box>
                     </Typography>
                     <Typography variant="body2" color="text.disabled" sx={{ mt: 2, fontStyle: 'italic' }}>
-                        This action cannot be undone and this code will no longer be usable by customers.
+                        This promo code will be soft-deleted. You can restore it from the Deleted tab later.
                     </Typography>
                 </DialogContent>
                 <DialogActions sx={{ 
@@ -1750,6 +1861,107 @@ const PromoCodePage: React.FC = () => {
                         }}
                     >
                         Confirm Delete
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Restore Confirmation Dialog */}
+            <Dialog
+                open={openRestoreDialog}
+                onClose={() => setOpenRestoreDialog(false)}
+                fullScreen={isMobile}
+                PaperProps={{
+                    sx: { borderRadius: { xs: 0, sm: 4 }, backgroundImage: 'none' }
+                }}
+            >
+                <DialogTitle component="div" sx={{ 
+                    m: 0, 
+                    p: { xs: 2.5, sm: 3 }, 
+                    pt: { xs: isMobile ? '54px' : 2.5, sm: 3 },
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center'
+                }}>
+                    <Typography 
+                        variant="h6" 
+                        sx={{ 
+                            fontWeight: 800, 
+                            fontFamily: "'Outfit', sans-serif",
+                            fontSize: { xs: '1.25rem', sm: '1.25rem' }
+                        }}
+                    >
+                        Confirm Restore
+                    </Typography>
+                    <IconButton
+                        onClick={() => setOpenRestoreDialog(false)}
+                        size="small"
+                        sx={{
+                            color: 'text.secondary',
+                            '&:hover': { bgcolor: alpha(theme.palette.divider, 0.1) }
+                        }}
+                    >
+                        <CloseIcon />
+                    </IconButton>
+                </DialogTitle>
+                <DialogContent sx={{ p: { xs: 3, sm: 4 }, textAlign: 'center' }}>
+                    <Box sx={{ 
+                        width: 80, 
+                        height: 80, 
+                        borderRadius: '50%', 
+                        bgcolor: alpha(theme.palette.success.main, 0.1), 
+                        color: 'success.main',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        mx: 'auto',
+                        mb: 3
+                    }}>
+                        <CheckCircleIcon sx={{ fontSize: 40 }} />
+                    </Box>
+                    <Typography sx={{ color: 'text.secondary', fontWeight: 500, mb: 1 }}>
+                        Are you sure you want to restore promo code:
+                        <br />
+                        <Box component="span" sx={{ color: 'text.primary', fontWeight: 800, fontFamily: 'monospace', letterSpacing: 1 }}>
+                            {restoreTarget?.code}
+                        </Box>
+                    </Typography>
+                </DialogContent>
+                <DialogActions sx={{ 
+                    p: { xs: 2.5, sm: 3 }, 
+                    pb: { xs: isMobile ? '32px' : 2.5, sm: 3 },
+                    gap: 1.5,
+                    borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`
+                }}>
+                    <Button
+                        onClick={() => setOpenRestoreDialog(false)}
+                        sx={{ 
+                            flex: 1,
+                            borderRadius: 2.5,
+                            py: 1.25,
+                            textTransform: 'none',
+                            fontWeight: 700,
+                            fontFamily: "'Outfit', sans-serif",
+                            color: 'text.secondary'
+                        }}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={confirmRestorePromo}
+                        variant="contained"
+                        color="success"
+                        sx={{ 
+                            flex: 1,
+                            borderRadius: 2.5,
+                            py: 1.25,
+                            textTransform: 'none',
+                            fontWeight: 800,
+                            fontFamily: "'Outfit', sans-serif",
+                            boxShadow: `0 8px 16px ${alpha(theme.palette.success.main, 0.3)}`,
+                            background: 'linear-gradient(45deg, #10B981, #059669)'
+                        }}
+                    >
+                        Restore
                     </Button>
                 </DialogActions>
             </Dialog>

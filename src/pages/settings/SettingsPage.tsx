@@ -1295,7 +1295,7 @@ const SettingsPage: React.FC = () => {
         setErrors(prev => ({ ...prev, [`restaurant_${field}`]: validation }));
     };
 
-    const validateRestaurantForm = (): boolean => {
+    const validateRestaurantForm = (): { isValid: boolean; message?: string } => {
         const newErrors: Record<string, ValidationResult> = {
             restaurant_name: validateCompanyName(settings.restaurant.name),
             restaurant_email: validateEmail(settings.restaurant.email),
@@ -1304,7 +1304,11 @@ const SettingsPage: React.FC = () => {
         };
 
         setErrors(newErrors);
-        return Object.values(newErrors).every(v => v.isValid);
+        const firstInvalid = Object.values(newErrors).find(v => !v.isValid);
+        return {
+            isValid: !firstInvalid,
+            message: firstInvalid?.message
+        };
     };
 
     const handleSoundChange = async (soundId: string) => {
@@ -1390,9 +1394,12 @@ const SettingsPage: React.FC = () => {
 
     const handleSave = async (category: keyof SettingsState) => {
         if (loading) return;
-        if (category === 'restaurant' && !validateRestaurantForm()) {
-            toast.error('Please fix the errors in the form');
-            return;
+        if (category === 'restaurant') {
+            const validation = validateRestaurantForm();
+            if (!validation.isValid) {
+                toast.error(validation.message || 'Please fix the errors in the form');
+                return;
+            }
         }
 
         if (category === 'restaurant') {

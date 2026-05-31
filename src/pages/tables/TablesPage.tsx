@@ -73,6 +73,7 @@ import {
     LinkOff as LinkOffIcon,
     PlaylistAddCheck as SelectionIcon,
     AccessTime as TimeIcon,
+    RestoreFromTrash as RestoreIcon,
 } from '@mui/icons-material';
 import { validatePhone, validateEmail } from '../../utils/validation';
 import { useSettings } from '../../context/SettingsContext';
@@ -197,12 +198,12 @@ const TablesPage: React.FC = () => {
     const fetchTables = async () => {
         try {
             setLoading(true);
-            const response = await tablesAPI.getAll();
+            const response = await tablesAPI.getAll({ includeDeleted: true });
             const tablesData = Array.isArray(response.data) ? response.data : [];
             setTables(tablesData);
 
             const defaultLocations = ['indoor', 'outdoor', 'private_room', 'bar', 'patio', 'main_dining', 'vip_section', 'party_hall', 'terrace'];
-            const locations = tablesData.map((t: any) => t.location).filter(Boolean);
+            const locations = tablesData.filter((t: any) => t.isActive !== false).map((t: any) => t.location).filter(Boolean);
             const uniqueCustom = [...new Set(locations)].filter(loc => !defaultLocations.includes(loc as string)) as string[];
             setCustomLocations(uniqueCustom);
         } catch (error) {
@@ -297,13 +298,29 @@ const TablesPage: React.FC = () => {
         try {
             setIsProcessing(true);
             await tablesAPI.delete(tableToDelete._id);
-            toast.success('Table deleted successfully');
+            toast.success('Table moved to deleted items');
             setDeleteDialogOpen(false);
             setTableToDelete(null);
             fetchTables();
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error deleting table:', error);
-            toast.error('Failed to delete table');
+            toast.error(error.response?.data?.message || 'Failed to delete table');
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleRestoreTable = async (table: any) => {
+        if (!table || isProcessing) return;
+        try {
+            setIsProcessing(true);
+            await tablesAPI.restore(table._id);
+            toast.success('Table restored successfully');
+            handleCloseMenu();
+            fetchTables();
+        } catch (error: any) {
+            console.error('Error restoring table:', error);
+            toast.error(error.response?.data?.message || 'Failed to restore table');
         } finally {
             setIsProcessing(false);
         }
@@ -533,20 +550,27 @@ const TablesPage: React.FC = () => {
         }
     };
 
+    const activeTables = React.useMemo(() => tables.filter(t => t.isActive !== false), [tables]);
+    const deletedTables = React.useMemo(() => tables.filter(t => t.isActive === false), [tables]);
+
     // Count tables by status
     const statusCounts = React.useMemo(() => ({
-        all: tables.length,
-        available: tables.filter(t => t.status === 'available').length,
-        occupied: tables.filter(t => t.status === 'occupied').length,
-        partially_occupied: tables.filter(t => t.status === 'partially_occupied').length,
-        reserved: tables.filter(t => t.status === 'reserved').length,
-        cleaning: tables.filter(t => t.status === 'cleaning').length,
-    }), [tables]);
+        all: activeTables.length,
+        available: activeTables.filter(t => t.status === 'available').length,
+        occupied: activeTables.filter(t => t.status === 'occupied').length,
+        partially_occupied: activeTables.filter(t => t.status === 'partially_occupied').length,
+        reserved: activeTables.filter(t => t.status === 'reserved').length,
+        cleaning: activeTables.filter(t => t.status === 'cleaning').length,
+        deleted: deletedTables.length,
+    }), [activeTables, deletedTables]);
 
     // Filter tables based on status
-    const filteredTables = React.useMemo(() => statusFilter === 'all'
-        ? tables
-        : tables.filter(t => t.status === statusFilter), [tables, statusFilter]);
+    const filteredTables = React.useMemo(() => {
+        if (statusFilter === 'deleted') return deletedTables;
+        return statusFilter === 'all'
+            ? activeTables
+            : activeTables.filter(t => t.status === statusFilter);
+    }, [activeTables, deletedTables, statusFilter]);
 
     // Filter bookings based on date, status, and search
     const filteredBookings = React.useMemo(() => bookings.filter(booking => {
@@ -764,7 +788,7 @@ const TablesPage: React.FC = () => {
             <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)} sx={{ mb: { xs: 1, sm: 2 } }} variant="scrollable" scrollButtons="auto" allowScrollButtonsMobile>
                 <Tab
                     label={
-                        <Badge badgeContent={tables.length} color="primary" max={99}>
+                        <Badge badgeContent={statusCounts.all} color="primary" max={99}>
                             <Box sx={{ pr: { xs: 1, sm: 2 } }}>Tables</Box>
                         </Badge>
                     }
@@ -816,6 +840,14 @@ const TablesPage: React.FC = () => {
                         color={statusFilter === 'reserved' ? 'primary' : 'default'}
                         variant={statusFilter === 'reserved' ? 'filled' : 'outlined'}
                         onClick={() => setStatusFilter('reserved')}
+                        size={isMobile ? "small" : "medium"}
+                    />
+                    <Chip
+                        icon={<RestoreIcon />}
+                        label={`Deleted (${statusCounts.deleted})`}
+                        color={statusFilter === 'deleted' ? 'warning' : 'default'}
+                        variant={statusFilter === 'deleted' ? 'filled' : 'outlined'}
+                        onClick={() => setStatusFilter('deleted')}
                         size={isMobile ? "small" : "medium"}
                     />
                 </Box>
@@ -870,10 +902,10 @@ const TablesPage: React.FC = () => {
                                             left: 0, 
                                             bottom: 0, 
                                             width: 3, 
-                                            bgcolor: `${getStatusColor(table.status)}.main` 
+                                            bgcolor: table.isActive === false ? 'warning.main' : `${getStatusColor(table.status)}.main` 
                                         }} 
                                     />
-                                    <CardActionArea onClick={() => selectionMode ? handleToggleSelection(table._id) : handleOpenBooking(table)}>
+                                    <CardActionArea onClick={() => table.isActive === false ? undefined : (selectionMode ? handleToggleSelection(table._id) : handleOpenBooking(table))}>
                                         <CardContent sx={{ textAlign: 'center', p: 0, pb: { xs: 0.75, sm: 1.5 } }}>
                                             <Box sx={{ mb: { xs: 0.75, sm: 2 }, position: 'relative', width: '100%', mx: 0 }}>
                                                 <Box
@@ -884,15 +916,15 @@ const TablesPage: React.FC = () => {
                                                         width: '100%',
                                                         height: { xs: 90, sm: 180 },
                                                         objectFit: 'cover',
-                                                        opacity: table.status === 'occupied' ? 0.7 : 1,
-                                                        filter: table.status === 'occupied' ? 'grayscale(50%)' : 'none',
+                                                        opacity: table.isActive === false ? 0.45 : (table.status === 'occupied' ? 0.7 : 1),
+                                                        filter: table.isActive === false ? 'grayscale(100%)' : (table.status === 'occupied' ? 'grayscale(50%)' : 'none'),
                                                         transition: 'all 0.3s ease',
                                                     }}
                                                 />
                                                 <Chip
-                                                    icon={getStatusIcon(table.status)}
-                                                    label={table.status.toUpperCase()}
-                                                    color={getStatusColor(table.status) as any}
+                                                    icon={table.isActive === false ? <RestoreIcon /> : getStatusIcon(table.status)}
+                                                    label={table.isActive === false ? 'DELETED' : table.status.toUpperCase()}
+                                                    color={(table.isActive === false ? 'warning' : getStatusColor(table.status)) as any}
                                                     size="small"
                                                     sx={{ 
                                                         position: 'absolute', 
@@ -932,6 +964,11 @@ const TablesPage: React.FC = () => {
                                             >
                                                 Cap: {table.capacity} | {table.location}
                                             </Typography>
+                                            {table.isActive === false && (
+                                                <Typography variant="caption" color="warning.main" fontWeight="bold" sx={{ display: 'block', mt: 0.5, fontSize: { xs: '0.6rem', sm: '0.75rem' } }}>
+                                                    Deleted {table.deletedAt ? new Date(table.deletedAt).toLocaleDateString() : ''}
+                                                </Typography>
+                                            )}
                                             {(table.isMerged || table.isPrimary) && (
                                                 <Box sx={{ mt: 0.5, px: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5 }}>
                                                     <LinkIcon sx={{ fontSize: { xs: 12, sm: 16 } }} color="warning" />
@@ -946,11 +983,19 @@ const TablesPage: React.FC = () => {
                                     {/* Quick Actions */}
                                     <Box sx={{ p: 1, pt: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <Stack direction="row" spacing={0.5}>
-                                            <Tooltip title={table.status === 'occupied' || table.status === 'partially_occupied' || table.status === 'served' ? "View Order / Checkout" : "Take Order"}>
-                                                <IconButton size="small" color={table.status === 'occupied' || table.status === 'partially_occupied' || table.status === 'served' ? "warning" : "primary"} onClick={() => navigate(`/${tenantSlug}/pos?tableId=${table._id}`)}>
-                                                    <OrderIcon fontSize="small" />
-                                                </IconButton>
-                                            </Tooltip>
+                                            {table.isActive === false ? (
+                                                <Tooltip title="Restore Table">
+                                                    <IconButton size="small" color="success" onClick={() => handleRestoreTable(table)} disabled={isProcessing}>
+                                                        <RestoreIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            ) : (
+                                                <Tooltip title={table.status === 'occupied' || table.status === 'partially_occupied' || table.status === 'served' ? "View Order / Checkout" : "Take Order"}>
+                                                    <IconButton size="small" color={table.status === 'occupied' || table.status === 'partially_occupied' || table.status === 'served' ? "warning" : "primary"} onClick={() => navigate(`/${tenantSlug}/pos?tableId=${table._id}`)}>
+                                                        <OrderIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            )}
 
                                             {/* {table.status !== 'available' && (
                                                 <Tooltip title="Set Available">
@@ -1475,7 +1520,7 @@ const TablesPage: React.FC = () => {
                     <>
                         {isMobile ? (
                             <Stack spacing={2}>
-                                {tables.map(table => {
+                                {activeTables.map(table => {
                                     const tableBookings = bookings.filter(b => {
                                         if (!b.date) return false;
                                         const bDate = new Date(b.date);
@@ -1557,7 +1602,7 @@ const TablesPage: React.FC = () => {
                                     </Box>
 
                                     {/* Tables Timeline Rows */}
-                                    {tables.map(table => (
+                                    {activeTables.map(table => (
                                         <Box key={table._id} sx={{ display: 'flex', mb: 2, alignItems: 'center', height: 50 }}>
                                             {/* Table Label */}
                                             <Box sx={{ width: '150px', pr: 2, borderRight: 1, borderColor: 'divider' }}>
@@ -1649,57 +1694,74 @@ const TablesPage: React.FC = () => {
                     }
                 }}
             >
-                <MenuItem 
-                    onClick={() => menuTable && handleOpenBooking(menuTable)}
-                    sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
-                >
-                    <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
-                        <BookIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
-                    </ListItemIcon>
-                    <ListItemText 
-                        primary="Book Table" 
-                        primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }} 
-                    />
-                </MenuItem>
-                <MenuItem 
-                    onClick={() => menuTable && handleEditTable(menuTable)}
-                    sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
-                >
-                    <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
-                        <EditIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
-                    </ListItemIcon>
-                    <ListItemText 
-                        primary="Edit Table" 
-                        primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }} 
-                    />
-                </MenuItem>
-                {(menuTable?.isMerged || menuTable?.isPrimary) && (
-                    <MenuItem 
-                        onClick={() => menuTable && handleUnmerge(menuTable)}
-                        sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
+                {menuTable?.isActive === false ? (
+                    <MenuItem
+                        onClick={() => menuTable && handleRestoreTable(menuTable)}
+                        sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 }, color: 'success.main' }}
                     >
                         <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
-                            <LinkOffIcon sx={{ fontSize: { xs: 16, sm: 20 } }} color="error" />
+                            <RestoreIcon sx={{ fontSize: { xs: 16, sm: 20 } }} color="success" />
                         </ListItemIcon>
-                        <ListItemText 
-                            primary="Unmerge Table(s)" 
-                            primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, color: 'error.main', my: 0 } }} 
+                        <ListItemText
+                            primary="Restore Table"
+                            primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, color: 'success.main', my: 0 } }}
                         />
                     </MenuItem>
+                ) : (
+                    <>
+                        <MenuItem 
+                            onClick={() => menuTable && handleOpenBooking(menuTable)}
+                            sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
+                        >
+                            <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
+                                <BookIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
+                            </ListItemIcon>
+                            <ListItemText 
+                                primary="Book Table" 
+                                primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }} 
+                            />
+                        </MenuItem>
+                        <MenuItem 
+                            onClick={() => menuTable && handleEditTable(menuTable)}
+                            sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
+                        >
+                            <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
+                                <EditIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
+                            </ListItemIcon>
+                            <ListItemText 
+                                primary="Edit Table" 
+                                primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }} 
+                            />
+                        </MenuItem>
+                        {(menuTable?.isMerged || menuTable?.isPrimary) && (
+                            <MenuItem 
+                                onClick={() => menuTable && handleUnmerge(menuTable)}
+                                sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
+                            >
+                                <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
+                                    <LinkOffIcon sx={{ fontSize: { xs: 16, sm: 20 } }} color="error" />
+                                </ListItemIcon>
+                                <ListItemText 
+                                    primary="Unmerge Table(s)" 
+                                    primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, color: 'error.main', my: 0 } }} 
+                                />
+                            </MenuItem>
+                        )}
+                        <Divider sx={{ my: { xs: 0.25, sm: 1 } }} />
+                        <MenuItem 
+                            onClick={() => menuTable && handleDeleteTable(menuTable)}
+                            sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 }, color: 'error.main' }}
+                        >
+                            <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
+                                <DeleteIcon sx={{ fontSize: { xs: 16, sm: 20 } }} color="error" />
+                            </ListItemIcon>
+                            <ListItemText 
+                                primary="Delete Table" 
+                                primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, color: 'error.main', my: 0 } }} 
+                            />
+                        </MenuItem>
+                    </>
                 )}
-                <Divider sx={{ my: { xs: 0.25, sm: 1 } }} />
-                <MenuItem 
-                    onClick={() => menuTable && handleDeleteTable(menuTable)}
-                    sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 }, color: 'error.main' }}
-                >
-                    <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
-                        <DeleteIcon sx={{ fontSize: { xs: 16, sm: 20 } }} color="error" />
-                    </ListItemIcon>
-                    <ListItemText 
-                        primary="Delete Table" 
-                        primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, color: 'error.main', my: 0 } }} 
-                    />
-                </MenuItem>
             </Menu>
 
             {/* Add Table Dialog */}
@@ -1770,7 +1832,7 @@ const TablesPage: React.FC = () => {
                         Are you sure you want to delete table <strong>{tableToDelete?.tableName || tableToDelete?.tableNumber}</strong>?
                     </Typography>
                     <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                        This action cannot be undone.
+                        The table will move to Deleted and can be restored later.
                     </Typography>
                 </DialogContent>
                 <DialogActions sx={{ justifyContent: 'center', gap: 2, pb: 3, px: 3 }}>

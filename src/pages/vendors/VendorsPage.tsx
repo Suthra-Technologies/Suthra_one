@@ -13,6 +13,7 @@ import {
     Store as VendorIcon,
     Warning as WarningIcon,
     WhatsApp as WhatsAppIcon,
+    RestoreFromTrash as RestoreIcon,
 } from '@mui/icons-material';
 import {
     Box,
@@ -161,7 +162,11 @@ const VendorsPage: React.FC = () => {
                 limit: rowsPerPage,
             };
             if (searchTerm) params.search = searchTerm;
-            if (statusFilter) params.status = statusFilter;
+            if (statusFilter === 'deleted') {
+                params.isDeleted = true;
+            } else if (statusFilter) {
+                params.status = statusFilter;
+            }
 
             const response = await vendorsAPI.getAll(params);
             setVendors(response.data.vendors || []);
@@ -315,6 +320,16 @@ const VendorsPage: React.FC = () => {
             toast.error(error.response?.data?.message || 'Failed to delete vendor');
         } finally {
             setIsDeleting(false);
+        }
+    };
+
+    const handleRestore = async (vendor: Vendor) => {
+        try {
+            await vendorsAPI.restore(vendor._id);
+            toast.success('Vendor restored successfully');
+            fetchVendors();
+        } catch (error: any) {
+            toast.error(error.response?.data?.message || 'Failed to restore vendor');
         }
     };
 
@@ -532,6 +547,7 @@ const VendorsPage: React.FC = () => {
                                 <MenuItem value="">All Statuses</MenuItem>
                                 <MenuItem value="active">Active</MenuItem>
                                 <MenuItem value="inactive">Inactive</MenuItem>
+                                <MenuItem value="deleted">Deleted</MenuItem>
                             </Select>
                         </FormControl>
                     </Grid>
@@ -574,8 +590,18 @@ const VendorsPage: React.FC = () => {
                                             </Box>
                                         </Box>
                                         <Box sx={{ display: 'flex', gap: 0.5 }}>
-                                            <IconButton onClick={() => handleOpenDialog(vendor)} size="small" sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05), color: 'primary.main' }}><EditIcon fontSize="small" /></IconButton>
-                                            <IconButton onClick={() => { setSelectedVendor(vendor); setDeleteDialogOpen(true); }} size="small" sx={{ bgcolor: alpha(theme.palette.error.main, 0.05), color: 'error.main' }}><DeleteIcon fontSize="small" /></IconButton>
+                                            {statusFilter === 'deleted' ? (
+                                                <Tooltip title="Restore Vendor">
+                                                    <IconButton onClick={() => handleRestore(vendor)} size="small" sx={{ bgcolor: alpha(theme.palette.success.main, 0.05), color: 'success.main' }}>
+                                                        <RestoreIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            ) : (
+                                                <>
+                                                    <IconButton onClick={() => handleOpenDialog(vendor)} size="small" sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05), color: 'primary.main' }}><EditIcon fontSize="small" /></IconButton>
+                                                    <IconButton onClick={() => { setSelectedVendor(vendor); setDeleteDialogOpen(true); }} size="small" sx={{ bgcolor: alpha(theme.palette.error.main, 0.05), color: 'error.main' }}><DeleteIcon fontSize="small" /></IconButton>
+                                                </>
+                                            )}
                                         </Box>
                                     </Box>
 
@@ -630,13 +656,15 @@ const VendorsPage: React.FC = () => {
                                             >
                                                 {vendor.status}
                                             </Typography>
-                                            <Switch
-                                                size="small"
-                                                checked={vendor.status === 'active'}
-                                                onChange={() => handleToggleStatus(vendor)}
-                                                color="success"
-                                                inputProps={{ 'aria-label': `Toggle ${vendor.name} status` }}
-                                            />
+                                            {statusFilter !== 'deleted' && (
+                                                <Switch
+                                                    size="small"
+                                                    checked={vendor.status === 'active'}
+                                                    onChange={() => handleToggleStatus(vendor)}
+                                                    color="success"
+                                                    inputProps={{ 'aria-label': `Toggle ${vendor.name} status` }}
+                                                />
+                                            )}
                                         </Box>
                                     </Box>
                                 </Paper>
@@ -740,43 +768,55 @@ const VendorsPage: React.FC = () => {
                                             >
                                                 {vendor.status}
                                             </Typography>
-                                            <Switch
-                                                size="small"
-                                                checked={vendor.status === 'active'}
-                                                onChange={() => handleToggleStatus(vendor)}
-                                                color="success"
-                                                inputProps={{ 'aria-label': `Toggle ${vendor.name} status` }}
-                                            />
+                                            {statusFilter !== 'deleted' && (
+                                                <Switch
+                                                    size="small"
+                                                    checked={vendor.status === 'active'}
+                                                    onChange={() => handleToggleStatus(vendor)}
+                                                    color="success"
+                                                    inputProps={{ 'aria-label': `Toggle ${vendor.name} status` }}
+                                                />
+                                            )}
                                         </Box>
                                     </TableCell>
                                     <TableCell align="center">
                                         <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
-                                            <Tooltip title="Edit">
-                                                <IconButton onClick={() => handleOpenDialog(vendor)} size="small" sx={{ color: 'primary.main' }}>
-                                                    <EditIcon fontSize="small" />
-                                                </IconButton>
-                                            </Tooltip>
-                                            <Tooltip title="Reorder Needed Items">
-                                                <IconButton
-                                                    onClick={() => handleReorderClick(vendor)}
-                                                    size="small"
-                                                    sx={{ color: 'warning.main' }}
-                                                >
-                                                    <InventoryIcon fontSize="small" />
-                                                </IconButton>
-                                            </Tooltip>
-                                            <Tooltip title="Delete">
-                                                <IconButton
-                                                    onClick={() => {
-                                                        setSelectedVendor(vendor);
-                                                        setDeleteDialogOpen(true);
-                                                    }}
-                                                    size="small"
-                                                    color="error"
-                                                >
-                                                    <DeleteIcon fontSize="small" />
-                                                </IconButton>
-                                            </Tooltip>
+                                            {statusFilter === 'deleted' ? (
+                                                <Tooltip title="Restore">
+                                                    <IconButton onClick={() => handleRestore(vendor)} size="small" sx={{ color: 'success.main' }}>
+                                                        <RestoreIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            ) : (
+                                                <>
+                                                    <Tooltip title="Edit">
+                                                        <IconButton onClick={() => handleOpenDialog(vendor)} size="small" sx={{ color: 'primary.main' }}>
+                                                            <EditIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="Reorder Needed Items">
+                                                        <IconButton
+                                                            onClick={() => handleReorderClick(vendor)}
+                                                            size="small"
+                                                            sx={{ color: 'warning.main' }}
+                                                        >
+                                                            <InventoryIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="Delete">
+                                                        <IconButton
+                                                            onClick={() => {
+                                                                setSelectedVendor(vendor);
+                                                                setDeleteDialogOpen(true);
+                                                            }}
+                                                            size="small"
+                                                            color="error"
+                                                        >
+                                                            <DeleteIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                </>
+                                            )}
                                         </Box>
                                     </TableCell>
                                 </TableRow>

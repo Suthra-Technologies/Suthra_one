@@ -53,7 +53,8 @@ import {
     Warning as AlertIcon,
     History as HistoryIcon,
     CalendarToday as CalendarIcon,
-    RestaurantMenuOutlined as RestaurantMenuOutlinedIcon
+    RestaurantMenuOutlined as RestaurantMenuOutlinedIcon,
+    RestoreFromTrash as RestoreIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { expensesAPI, cateringAPI } from '../../services/api';
@@ -80,12 +81,14 @@ const ExpensesPage: React.FC = () => {
         maxAmount: undefined,
     });
     const [search, setSearch] = useState('');
+    const [showDeleted, setShowDeleted] = useState(false);
     const [timeFilter, setTimeFilter] = useState<'daily' | 'weekly' | 'monthly' | 'custom'>('monthly');
     const [showTimeFilterModal, setShowTimeFilterModal] = useState(false);
     const [customAmountRange, setCustomAmountRange] = useState({ min: 0, max: 5000 });
     const [amountRange, setAmountRange] = useState({ min: 0, max: 5000 });
     const [inputValues, setInputValues] = useState({ min: '', max: '' });
     const [customDateRange, setCustomDateRange] = useState({ startDate: null, endDate: null });
+    const [deleteTarget, setDeleteTarget] = useState<any>(null);
 
     const fetchData = async () => {
         setLoading(true);
@@ -109,6 +112,7 @@ const ExpensesPage: React.FC = () => {
             const cleanFilters = {
                 page,
                 limit: 10,
+                isDeleted: showDeleted || undefined,
                 ...Object.fromEntries(
                     Object.entries(filters).filter(([_, value]) => 
                         value !== undefined && value !== null && value !== ''
@@ -132,7 +136,7 @@ const ExpensesPage: React.FC = () => {
             const [listRes, statsRes, commissionsRes] = await Promise.all([
                 expensesAPI.getAll(cleanFilters),
                 expensesAPI.getStats(),
-                cateringAPI.getCommissions(commissionFilters)
+                showDeleted ? Promise.resolve({ data: { commissions: [], data: [], total: 0 } }) : cateringAPI.getCommissions(commissionFilters)
             ]);
             
             // Map commissions to expense format
@@ -164,7 +168,9 @@ const ExpensesPage: React.FC = () => {
             setTotalPages(Math.ceil(totalCount / 10));
             
             // Get ALL commissions for the period to calculate accurate totals for the cards
-            const allCommsRes = await cateringAPI.getCommissions({ ...commissionFilters, limit: 1000, page: 1 });
+            const allCommsRes = showDeleted
+                ? { data: { commissions: [], data: [] } }
+                : await cateringAPI.getCommissions({ ...commissionFilters, limit: 1000, page: 1 });
             const allComms = allCommsRes.data.commissions || allCommsRes.data.data || [];
             
             const commStats = allComms.reduce((acc: any, curr: any) => {
@@ -209,16 +215,31 @@ const ExpensesPage: React.FC = () => {
 
     useEffect(() => {
         fetchData();
-    }, [page, filters]);
+    }, [page, filters, showDeleted]);
 
-    const handleDelete = async (id: string) => {
-        if (!window.confirm('Are you sure you want to delete this record?')) return;
+    const handleDelete = (expense: any) => {
+        setDeleteTarget(expense);
+    };
+
+    const confirmDelete = async () => {
+        if (!deleteTarget) return;
         try {
-            await expensesAPI.delete(id);
-            toast.success('Expense deleted');
+            await expensesAPI.delete(deleteTarget._id);
+            toast.success('Expense moved to deleted items');
+            setDeleteTarget(null);
             fetchData();
         } catch (error) {
             toast.error('Failed to delete');
+        }
+    };
+
+    const handleRestore = async (id: string) => {
+        try {
+            await expensesAPI.restore(id);
+            toast.success('Expense restored');
+            fetchData();
+        } catch (error) {
+            toast.error('Failed to restore');
         }
     };
 
@@ -487,7 +508,19 @@ const ExpensesPage: React.FC = () => {
             )}
 
             {/* Filters */}
-            <Paper sx={{ p: 2, mb: 4, borderRadius: 4, bgcolor: '#111827', display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+            <Paper
+                sx={{
+                    p: 2,
+                    mb: 4,
+                    borderRadius: 3,
+                    bgcolor: 'background.paper',
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    display: 'flex',
+                    gap: 2,
+                    flexWrap: 'wrap'
+                }}
+            >
                 <TextField
                     placeholder="Search payee, notes..."
                     size="small"
@@ -495,18 +528,32 @@ const ExpensesPage: React.FC = () => {
                     onChange={(e) => setSearch(e.target.value)}
                     sx={{
                         minWidth: 280,
-                        '& .MuiOutlinedInput-root': { color: 'white', '& fieldset': { border: 'none' } },
-                        bgcolor: alpha('#fff', 0.05), borderRadius: 3
+                        bgcolor: 'background.default',
+                        borderRadius: 1
                     }}
-                    InputProps={{ startAdornment: <SearchIcon sx={{ color: alpha('#fff', 0.5), mr: 1 }} /> }}
+                    InputProps={{ startAdornment: <SearchIcon sx={{ color: 'text.secondary', mr: 1 }} /> }}
                 />
+                <TextField
+                    select
+                    size="small"
+                    label="Records"
+                    value={showDeleted ? 'deleted' : 'active'}
+                    onChange={(e) => {
+                        setShowDeleted(e.target.value === 'deleted');
+                        setPage(1);
+                    }}
+                    sx={{ minWidth: 150 }}
+                >
+                    <MenuItem value="active">Active</MenuItem>
+                    <MenuItem value="deleted">Deleted</MenuItem>
+                </TextField>
                 <TextField
                     select
                     size="small"
                     label="Type"
                     value={filters.type}
                     onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-                    sx={{ minWidth: 150, '& .MuiOutlinedInput-root': { color: 'white' }, '& .MuiInputLabel-root': { color: alpha('#fff', 0.5) } }}
+                    sx={{ minWidth: 150 }}
                 >
                     <MenuItem value="">All Types</MenuItem>
                     <MenuItem value="one_time">One-Time</MenuItem>
@@ -518,7 +565,7 @@ const ExpensesPage: React.FC = () => {
                     label="Status"
                     value={filters.status}
                     onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                    sx={{ minWidth: 150, '& .MuiOutlinedInput-root': { color: 'white' }, '& .MuiInputLabel-root': { color: alpha('#fff', 0.5) } }}
+                    sx={{ minWidth: 150 }}
                 >
                     <MenuItem value="">All Status</MenuItem>
                     <MenuItem value="pending">Pending</MenuItem>
@@ -533,7 +580,9 @@ const ExpensesPage: React.FC = () => {
             ) : expenses.length === 0 ? (
                 <Paper sx={{ p: 10, textAlign: 'center', borderRadius: 4 }}>
                     <ExpenseIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
-                    <Typography variant="h6" color="text.secondary">No expenses found</Typography>
+                    <Typography variant="h6" color="text.secondary">
+                        {showDeleted ? 'No deleted expenses found' : 'No expenses found'}
+                    </Typography>
                 </Paper>
             ) : (
                 <TableContainer component={Paper} sx={{ borderRadius: 4 }}>
@@ -557,6 +606,11 @@ const ExpensesPage: React.FC = () => {
                                         <TableCell>
                                             <Typography variant="body2" fontWeight="bold">#{exp.expenseNumber}</Typography>
                                             <Typography variant="caption" color="text.secondary">{new Date(exp.createdAt).toLocaleDateString()}</Typography>
+                                            {exp.isDeleted && (
+                                                <Typography variant="caption" display="block" color="warning.main">
+                                                    Deleted {exp.deletedAt ? new Date(exp.deletedAt).toLocaleDateString() : ''}
+                                                </Typography>
+                                            )}
                                         </TableCell>
                                         <TableCell>
                                             <Stack direction="row" spacing={1} alignItems="center">
@@ -589,7 +643,13 @@ const ExpensesPage: React.FC = () => {
                                             )}
                                         </TableCell>
                                         <TableCell align="right">
-                                            {exp.isCateringCommission ? (
+                                            {exp.isDeleted ? (
+                                                <Tooltip title="Restore">
+                                                    <IconButton size="small" color="success" onClick={() => handleRestore(exp._id)}>
+                                                        <RestoreIcon />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            ) : exp.isCateringCommission ? (
                                                 <Typography variant="body2" color="text.disabled" sx={{ pr: 2 }}>—</Typography>
                                             ) : (
                                                 <Stack direction="row" spacing={1} justifyContent="flex-end">
@@ -605,7 +665,7 @@ const ExpensesPage: React.FC = () => {
                                                         <IconButton size="small" onClick={() => navigate(`edit/${exp._id}`)}><EditIcon color="secondary" /></IconButton>
                                                     </Tooltip>
                                                     <Tooltip title="Delete">
-                                                        <IconButton size="small" onClick={() => handleDelete(exp._id)}>
+                                                        <IconButton size="small" onClick={() => handleDelete(exp)}>
                                                             <DeleteIcon color="error" />
                                                         </IconButton>
                                                     </Tooltip>
@@ -623,6 +683,45 @@ const ExpensesPage: React.FC = () => {
             <Box sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
                 <Pagination count={totalPages} page={page} onChange={(_, p) => setPage(p)} color="primary" />
             </Box>
+
+            <Dialog
+                open={Boolean(deleteTarget)}
+                onClose={() => setDeleteTarget(null)}
+                maxWidth="xs"
+                fullWidth
+                PaperProps={{
+                    sx: {
+                        borderRadius: 3,
+                    }
+                }}
+            >
+                <DialogTitle sx={{ pb: 1 }}>
+                    <Stack direction="row" spacing={1.5} alignItems="center">
+                        <Avatar sx={{ bgcolor: alpha(theme.palette.error.main, 0.12), color: 'error.main' }}>
+                            <DeleteIcon />
+                        </Avatar>
+                        <Box>
+                            <Typography variant="h6" fontWeight={700}>Delete Expense</Typography>
+                            <Typography variant="body2" color="text.secondary">
+                                Move this record to deleted items
+                            </Typography>
+                        </Box>
+                    </Stack>
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" color="text.secondary">
+                        {deleteTarget?.expenseNumber ? `Expense #${deleteTarget.expenseNumber}` : 'This expense'} will be hidden from active lists and can be restored later.
+                    </Typography>
+                </DialogContent>
+                <DialogActions sx={{ px: 3, pb: 3 }}>
+                    <Button onClick={() => setDeleteTarget(null)} variant="outlined">
+                        Cancel
+                    </Button>
+                    <Button onClick={confirmDelete} variant="contained" color="error">
+                        Delete
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
             {/* Custom Amount Filter Dialog */}
             <LocalizationProvider dateAdapter={AdapterDateFns}>
