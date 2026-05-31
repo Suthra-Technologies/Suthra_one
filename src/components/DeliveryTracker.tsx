@@ -16,10 +16,11 @@ import MapComponent from './MapComponent';
 interface DeliveryTrackerProps {
     orderId: string;
     customerPosition?: { lat: number; lng: number };
+    customerAddress?: string;
     onStatusChange?: (isTracking: boolean) => void;
 }
 
-const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ orderId, customerPosition, onStatusChange }) => {
+const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ orderId, customerPosition, customerAddress, onStatusChange }) => {
     const [isTracking, setIsTracking] = useState(false);
     const [lastPosition, setLastPosition] = useState<{ lat: number; lng: number } | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -136,7 +137,7 @@ const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ orderId, customerPosi
                     {isTracking ? "Stop Sharing Location" : "Start Sharing Location"}
                 </Button>
 
-                {(isTracking || customerPosition) && (
+                {(isTracking || customerPosition || customerAddress) && (
                     <Box sx={{ mt: 1, borderRadius: 2, overflow: 'hidden', position: 'relative' }}>
                         {routeInfo && (
                             <Box sx={{ position: 'absolute', top: 10, left: 10, zIndex: 1, display: 'flex', gap: 1 }}>
@@ -148,6 +149,7 @@ const DeliveryTracker: React.FC<DeliveryTrackerProps> = ({ orderId, customerPosi
                             center={lastPosition || customerPosition || { lat: 0, lng: 0 }}
                             markerPosition={lastPosition || undefined}
                             customerPosition={customerPosition || undefined}
+                            customerAddress={customerAddress}
                             height="200px"
                             zoom={14}
                             onRouteInfo={setRouteInfo}

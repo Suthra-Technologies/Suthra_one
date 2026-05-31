@@ -3,11 +3,13 @@ import { Box, Typography, CircularProgress, Chip, Stack, Paper } from '@mui/mate
 import { loadGoogleMapsScript } from '../utils/googleMaps';
 import { Navigation as NavIcon, Route as RouteIcon, Traffic as TrafficIcon } from '@mui/icons-material';
 import { mapsAPI } from '../services/api';
+import { useSettings } from '../context/SettingsContext';
 
 interface MapComponentProps {
     center: { lat: number; lng: number };
     markerPosition?: { lat: number; lng: number };
     customerPosition?: { lat: number; lng: number };
+    customerAddress?: string;
     zoom?: number;
     height?: string | number;
     onRouteInfo?: (info: {
@@ -21,10 +23,12 @@ const MapComponent: React.FC<MapComponentProps> = ({
     center,
     markerPosition,
     customerPosition,
+    customerAddress,
     zoom = 15,
     height = '300px',
     onRouteInfo
 }) => {
+    const { settings } = useSettings();
     const mapRef = useRef<HTMLDivElement>(null);
     const googleMap = useRef<google.maps.Map | null>(null);
     const driverMarker = useRef<google.maps.Marker | null>(null);
@@ -35,6 +39,31 @@ const MapComponent: React.FC<MapComponentProps> = ({
     const [loadError, setLoadError] = useState<string | null>(null);
     const [bestRoute, setBestRoute] = useState<{ distance: string, duration: string, summary: string } | null>(null);
     const [authError, setAuthError] = useState((window as any).googleMapsAuthError || false);
+    const [resolvedCustomerPosition, setResolvedCustomerPosition] = useState<{ lat: number; lng: number } | null>(null);
+
+    useEffect(() => {
+        const isValidCoord = (coord?: { lat: any; lng: any } | null) => {
+            if (!coord) return false;
+            const lat = Number(coord.lat);
+            const lng = Number(coord.lng);
+            return !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
+        };
+
+        if (isValidCoord(customerPosition)) {
+            setResolvedCustomerPosition({ lat: Number(customerPosition!.lat), lng: Number(customerPosition!.lng) });
+        } else if (customerAddress && isLoaded) {
+            const geocoder = new google.maps.Geocoder();
+            geocoder.geocode({ address: customerAddress }, (results, status) => {
+                if (status === google.maps.GeocoderStatus.OK && results && results[0]) {
+                    const loc = results[0].geometry.location;
+                    setResolvedCustomerPosition({ lat: loc.lat(), lng: loc.lng() });
+                } else {
+                    console.warn('Geocoding failed for address:', customerAddress, status);
+                }
+            });
+        }
+    }, [customerPosition, customerAddress, isLoaded]);
+
 
     useEffect(() => {
         const handleAuthError = () => {
@@ -43,15 +72,16 @@ const MapComponent: React.FC<MapComponentProps> = ({
         };
         window.addEventListener('google-maps-auth-failure', handleAuthError);
 
-        const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+        const apiKey = settings?.system?.googleMapsApiKey || import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
         if (!apiKey) {
-            setLoadError('Google Maps API Key is missing');
+            // Keep waiting for settings to load if they haven't finished yet
             return;
         }
 
         loadGoogleMapsScript(apiKey)
             .then(() => {
                 setIsLoaded(true);
+                setLoadError(null);
             })
             .catch((err) => {
                 console.error('Failed to load Google Maps:', err);
@@ -59,7 +89,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
             });
 
         return () => window.removeEventListener('google-maps-auth-failure', handleAuthError);
-    }, []);
+    }, [settings?.system?.googleMapsApiKey]);
 
     useEffect(() => {
         if (!isLoaded || !mapRef.current || googleMap.current) return;
@@ -101,11 +131,23 @@ const MapComponent: React.FC<MapComponentProps> = ({
     useEffect(() => {
         if (!googleMap.current || !isLoaded) return;
 
+        const isValid = (coord?: { lat: any; lng: any } | null) => {
+            if (!coord) return false;
+            const lat = Number(coord.lat);
+            const lng = Number(coord.lng);
+            return !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
+        };
+
+        const finalCustomerPos = resolvedCustomerPosition || customerPosition;
+        const hasDriver = isValid(markerPosition);
+        const hasCustomer = isValid(finalCustomerPos);
+
         // 1. Manage Driver Marker with Pulse effect simulation (via Marker icon)
-        if (markerPosition) {
+        if (hasDriver) {
+            const driverPos = { lat: Number(markerPosition!.lat), lng: Number(markerPosition!.lng) };
             if (!driverMarker.current) {
                 driverMarker.current = new google.maps.Marker({
-                    position: markerPosition,
+                    position: driverPos,
                     map: googleMap.current,
                     icon: {
                         url: 'https://cdn-icons-png.flaticon.com/512/1048/1048313.png',
@@ -115,15 +157,21 @@ const MapComponent: React.FC<MapComponentProps> = ({
                     zIndex: 1000
                 });
             } else {
-                driverMarker.current.setPosition(markerPosition);
+                driverMarker.current.setPosition(driverPos);
+            }
+            driverMarker.current.setMap(googleMap.current);
+        } else {
+            if (driverMarker.current) {
+                driverMarker.current.setMap(null);
             }
         }
 
         // 2. Manage Customer Marker
-        if (customerPosition) {
+        if (hasCustomer) {
+            const customerPos = { lat: Number(finalCustomerPos!.lat), lng: Number(finalCustomerPos!.lng) };
             if (!customerMarker.current) {
                 customerMarker.current = new google.maps.Marker({
-                    position: customerPosition,
+                    position: customerPos,
                     map: googleMap.current,
                     icon: {
                         url: 'https://cdn-icons-png.flaticon.com/512/1673/1673188.png',
@@ -133,7 +181,12 @@ const MapComponent: React.FC<MapComponentProps> = ({
                     zIndex: 1000
                 });
             } else {
-                customerMarker.current.setPosition(customerPosition);
+                customerMarker.current.setPosition(customerPos);
+            }
+            customerMarker.current.setMap(googleMap.current);
+        } else {
+            if (customerMarker.current) {
+                customerMarker.current.setMap(null);
             }
         }
 
@@ -142,11 +195,13 @@ const MapComponent: React.FC<MapComponentProps> = ({
         altRenderers.current = [];
 
         // 4. Update Route and Alternatives
-        if (markerPosition && customerPosition && primaryRenderer.current) {
+        if (hasDriver && hasCustomer && primaryRenderer.current) {
+            const driverPos = { lat: Number(markerPosition!.lat), lng: Number(markerPosition!.lng) };
+            const customerPos = { lat: Number(finalCustomerPos!.lat), lng: Number(finalCustomerPos!.lng) };
             const directionsService = new google.maps.DirectionsService();
             const request: google.maps.DirectionsRequest = {
-                origin: markerPosition,
-                destination: customerPosition,
+                origin: driverPos,
+                destination: customerPos,
                 travelMode: google.maps.TravelMode.DRIVING,
                 drivingOptions: {
                     departureTime: new Date(),
@@ -156,7 +211,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
             };
 
             const drawFallbackRoute = () => {
-                const path = [markerPosition, customerPosition];
+                const path = [driverPos, customerPos];
                 const fallbackPolyline = new google.maps.Polyline({
                     path: path,
                     strokeColor: '#0047AB',
@@ -168,7 +223,6 @@ const MapComponent: React.FC<MapComponentProps> = ({
                     }]
                 });
                 fallbackPolyline.setMap(googleMap.current);
-                // Store in primaryRenderer's internal polyline if possible or just let it be
                 console.warn('MapComponent: Drawing straight-line fallback. Please enable "Directions API" in Google Cloud Console.');
             };
 
@@ -220,8 +274,8 @@ const MapComponent: React.FC<MapComponentProps> = ({
                     console.warn(`Directions Service failed with status: ${status}. Attempting backend fallback...`);
 
                     // Try fetching route from backend (Routes API)
-                    const originStr = `${markerPosition.lat},${markerPosition.lng}`;
-                    const destStr = `${customerPosition.lat},${customerPosition.lng}`;
+                    const originStr = `${driverPos.lat},${driverPos.lng}`;
+                    const destStr = `${customerPos.lat},${customerPos.lng}`;
 
                     mapsAPI.getDirections(originStr, destStr)
                         .then((res) => {
@@ -251,17 +305,12 @@ const MapComponent: React.FC<MapComponentProps> = ({
                                     });
                                     backendPolyline.setMap(googleMap.current);
 
-                                    // Store for cleanup if needed (e.g. add to altRenderers or track separately)
-                                    // For simplicity in this effect, we just let it render. 
-                                    // Ideally, we'd track it to clear on unmount/update.
-
                                     // Update UI info
                                     setBestRoute({
                                         distance: route.distanceMeters ? `${(route.distanceMeters / 1609.34).toFixed(1)} mi` : '',
-                                        duration: route.duration ? route.duration.replace('s', ' sec') : '', // Crude formatting, better to parse
+                                        duration: route.duration ? route.duration.replace('s', ' sec') : '',
                                         summary: ' Optimized Route'
                                     });
-
 
                                     // Fit bounds to path
                                     const bounds = new google.maps.LatLngBounds();
@@ -279,11 +328,31 @@ const MapComponent: React.FC<MapComponentProps> = ({
                         });
                 }
             });
-        } else if (markerPosition) {
-            googleMap.current.setCenter(markerPosition);
+        } else if (hasDriver) {
+            const driverPos = { lat: Number(markerPosition!.lat), lng: Number(markerPosition!.lng) };
+            googleMap.current.setCenter(driverPos);
+            googleMap.current.setZoom(15);
+        } else if (hasCustomer) {
+            const customerPos = { lat: Number(finalCustomerPos!.lat), lng: Number(finalCustomerPos!.lng) };
+            googleMap.current.setCenter(customerPos);
+            googleMap.current.setZoom(15);
+        } else {
+            // Geocode restaurant address from settings as a premium fallback
+            const restAddress = settings?.restaurant?.address || settings?.restaurant?.street || settings?.restaurant?.city;
+            if (restAddress && isLoaded) {
+                const geocoder = new google.maps.Geocoder();
+                geocoder.geocode({ address: restAddress }, (results, status) => {
+                    if (status === google.maps.GeocoderStatus.OK && results && results[0] && googleMap.current) {
+                        const loc = results[0].geometry.location;
+                        googleMap.current.setCenter({ lat: loc.lat(), lng: loc.lng() });
+                        googleMap.current.setZoom(15);
+                    }
+                });
+            }
         }
 
-    }, [markerPosition, customerPosition, isLoaded]);
+    }, [markerPosition, resolvedCustomerPosition, customerPosition, isLoaded, settings?.restaurant]);
+
 
     if (loadError || authError) {
         return null; // Silently hide in UI

@@ -1663,7 +1663,7 @@ const CheckoutPage: React.FC = () => {
                     </Box>
                     {selectedProvider && !isFetchingQuote && activeStep >= 2 && (
                       <Typography variant="caption" align="right" display="block" color="primary" sx={{ fontWeight: 700, mb: 1, textTransform: 'uppercase', letterSpacing: 0.5, fontSize: '0.65rem' }}>
-                        via {selectedProvider === 'doordash' ? 'DoorDash' : 'Uber Eats'}
+                        via {selectedProvider === 'doordash' ? 'DoorDash' : selectedProvider === 'in_house' ? 'In-House Delivery' : 'Uber Eats'}
                       </Typography>
                     )}
                   </>

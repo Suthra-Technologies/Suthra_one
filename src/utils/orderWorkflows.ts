@@ -92,7 +92,10 @@ export const PAYMENT_METHOD_LABELS: Record<string, string> = {
     online: 'ONLINE',
     zelle: 'ZELLE',
     venmo: 'VENMO',
-    cod: 'COD'
+    cod: 'COD',
+    phonepe: 'PhonePe',
+    gpay: 'GPay',
+    paytm: 'Paytm'
 };
 
 /**

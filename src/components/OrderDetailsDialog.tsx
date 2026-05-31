@@ -54,6 +54,42 @@ import { formatSpiceLevelLabel } from '../utils/spiceLevel';
 import AddItemsDialog from './AddItemsDialog';
 import PaymentCollectionDialog from './PaymentCollectionDialog';
 import DisputeInitiationDialog from './DisputeInitiationDialog';
+import MapComponent from './MapComponent';
+import { useNotifications } from '../context/NotificationProvider';
+
+const getCustomerCoordinates = (order: any) => {
+    if (!order) return undefined;
+    const dLoc = order.delivery?.location || 
+                 order.deliveryAddress?.location || 
+                 order.deliveryAddress || 
+                 order.location?.coordinates || 
+                 order.location;
+    if (!dLoc) return undefined;
+    const lat = dLoc.lat || dLoc.latitude || (dLoc.coordinates && dLoc.coordinates.lat);
+    const lng = dLoc.lng || dLoc.longitude || (dLoc.coordinates && dLoc.coordinates.lng);
+    return (lat && lng) ? { lat: Number(lat), lng: Number(lng) } : undefined;
+};
+
+const getCustomerAddress = (order: any) => {
+    if (!order) return '';
+    const loc = order.location;
+    let cateringAddress = '';
+    if (loc && typeof loc === 'object') {
+        const parts = [
+            loc.address || loc.street,
+            loc.city,
+            loc.state,
+            loc.zipCode || loc.pincode
+        ].filter(Boolean);
+        cateringAddress = parts.join(', ');
+    }
+    return order.delivery?.address || 
+           order.deliveryAddress?.formattedAddress || 
+           order.deliveryAddress?.fullAddress || 
+           (typeof order.deliveryAddress === 'string' ? order.deliveryAddress : '') ||
+           cateringAddress ||
+           '';
+};
 
 interface OrderDetailsDialogProps {
     open: boolean;
@@ -65,7 +101,9 @@ interface OrderDetailsDialogProps {
 const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, onClose, onUpdate }) => {
     const { formatCurrency } = useSettings();
     const { user } = useAuth();
+    const { deliveryLocations } = useNotifications();
     const theme = useTheme();
+    const [routeInfo, setRouteInfo] = useState<{ distance: string; duration: string } | null>(null);
     const [addItemsDialogOpen, setAddItemsDialogOpen] = useState(false);
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
     const [simulating, setSimulating] = useState(false);
@@ -334,7 +372,7 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                             <Divider sx={{ my: 2 }} />
                             <Box sx={{ mb: 3 }}>
                                 <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
-                                    Delivery Details ({order.uberEatsDeliveryId ? 'Uber Eats' : 'DoorDash'})
+                                    Delivery Details {order.uberEatsDeliveryId ? '(Uber Eats)' : order.doordashDeliveryId ? '(DoorDash)' : '(In-House)'}
                                 </Typography>
                                 <Stack spacing={1}>
                                     {order.driverName && (
@@ -411,6 +449,57 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                                                 </Box>
                                             )}
                                         </Stack>
+                                    )}
+
+                                    {/* Live Tracking Map for Cashier */}
+                                    {((['delivery', 'online'].includes(order.orderType)) && 
+                                      (['on_the_way', 'out_for_delivery'].includes(order.status) || deliveryLocations[order._id])) && (
+                                        <Box sx={{ mt: 2 }}>
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                                <Typography variant="subtitle2" color="primary" sx={{ display: 'flex', alignItems: 'center', fontWeight: 'bold' }}>
+                                                    <Box sx={{ width: 8, height: 8, bgcolor: 'error.main', borderRadius: '50%', mr: 1, animation: 'pulse 1.5s infinite' }} />
+                                                    LIVE TRACKING ACTIVE
+                                                </Typography>
+                                                {routeInfo && (
+                                                    <Stack direction="row" spacing={1}>
+                                                        <Chip
+                                                            size="small"
+                                                            color="primary"
+                                                            variant="outlined"
+                                                            label={`${routeInfo.distance} away`}
+                                                            sx={{ fontWeight: 'bold' }}
+                                                        />
+                                                        <Chip
+                                                            size="small"
+                                                            color="secondary"
+                                                            variant="outlined"
+                                                            label={`${routeInfo.duration} arrival`}
+                                                            sx={{ fontWeight: 'bold' }}
+                                                        />
+                                                    </Stack>
+                                                )}
+                                            </Box>
+                                            <MapComponent
+                                                center={
+                                                    deliveryLocations[order._id] || 
+                                                    order.delivery?.currentLocation ||
+                                                    getCustomerCoordinates(order) || 
+                                                    { lat: 0, lng: 0 }
+                                                }
+                                                markerPosition={deliveryLocations[order._id] || order.delivery?.currentLocation}
+                                                customerPosition={getCustomerCoordinates(order)}
+                                                customerAddress={getCustomerAddress(order)}
+                                                height="250px"
+                                                onRouteInfo={setRouteInfo}
+                                            />
+                                            <style>{`
+                                                @keyframes pulse {
+                                                    0% { opacity: 1; transform: scale(1); }
+                                                    50% { opacity: 0.5; transform: scale(1.2); }
+                                                    100% { opacity: 1; transform: scale(1); }
+                                                }
+                                            `}</style>
+                                        </Box>
                                     )}
                                 </Stack>
                             </Box>

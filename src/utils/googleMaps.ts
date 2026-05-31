@@ -31,18 +31,24 @@ export const loadGoogleMapsScript = (apiKey: string): Promise<void> => {
             originalAlert(message);
         };
 
+        // Define the initialization callback
+        const callbackName = `initGoogleMaps_${Math.random().toString(36).substring(2)}`;
+        (window as any)[callbackName] = () => {
+            console.log('Google Maps Script loaded successfully via callback');
+            resolve();
+            delete (window as any)[callbackName];
+        };
+
         const script = document.createElement('script');
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry`;
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places,geometry&loading=async&callback=${callbackName}`;
         script.async = true;
         script.defer = true;
-        script.onload = () => {
-            console.log('Google Maps Script loaded successfully');
-            resolve();
-        };
+        
         script.onerror = (error) => {
             console.error('Error loading Google Maps Script:', error);
             reject(error);
             googleMapsScriptLoadingPromise = null;
+            delete (window as any)[callbackName];
         };
         document.body.appendChild(script);
     });

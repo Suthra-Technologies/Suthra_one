@@ -236,6 +236,11 @@ export const ordersAPI = {
   syncDoordashStatus: (orderId: string) => api.post(`/doordash/sync/${orderId}`),
   dispatchUberEatsDelivery: (orderId: string) => api.post(`/ubereats/dispatch/${orderId}`),
   simulateUberEatsStatus: (orderId: string, status: string) => api.post(`/ubereats/simulate/${orderId}`, { status }),
+
+  // In-house delivery
+  getDeliveryStaff: () => api.get('/orders/delivery-staff'),
+  assignDeliveryUser: (orderId: string, userId: string) =>
+    api.post(`/orders/${orderId}/assign-delivery-user`, { userId }),
 };
 
 // -------------------- Uber Direct API --------------------
