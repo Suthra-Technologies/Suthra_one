@@ -47,6 +47,7 @@ import {
     useTheme
 } from '@mui/material';
 import React, { useState, useEffect, useRef } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { toast } from 'react-hot-toast';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -473,13 +474,28 @@ const OrderCard: React.FC<OrderCardProps> = ({
                 </Stack>
 
                 {/* Dasher Information Container */}
-                {['delivery', 'online'].includes(order.orderType) && (order.driverName || order.driverPhone || order.dasherPickupPhone || order.dasherDropoffPhone || order.trackingUrl) && (
+                {['delivery', 'online'].includes(order.orderType) && (order.driverName || order.driverPhone || order.dasherPickupPhone || order.dasherDropoffPhone || order.trackingUrl || order.uberPickupVerificationCode) && (
                     <Box sx={{ mb: 2, p: 1.5, borderRadius: 1.5, bgcolor: alpha(theme.palette.info.main, 0.08), border: `1px solid ${alpha(theme.palette.info.main, 0.2)}` }}>
                         <Typography variant="caption" color="info.main" sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', mb: 1 }}>
                             <DeliveryIcon sx={{ fontSize: 16, mr: 0.5 }} />
                             Dasher Details
                         </Typography>
                         <Stack spacing={0.5}>
+                            {order.uberPickupVerificationCode && (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1, mb: 0.5, borderRadius: 1, bgcolor: alpha(theme.palette.warning.main, 0.15), border: `1px solid ${alpha(theme.palette.warning.main, 0.4)}` }}>
+                                    <Box sx={{ bgcolor: '#fff', p: 0.5, borderRadius: 0.5, lineHeight: 0 }}>
+                                        <QRCodeSVG value={order.uberPickupVerificationCode} size={56} />
+                                    </Box>
+                                    <Box sx={{ minWidth: 0 }}>
+                                        <Typography variant="caption" sx={{ fontWeight: 'bold', color: 'warning.dark', display: 'block' }}>
+                                            Pickup verification — rider scans at handoff
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ fontWeight: 700, color: 'warning.dark', wordBreak: 'break-all' }}>
+                                            {order.uberPickupVerificationCode}
+                                        </Typography>
+                                    </Box>
+                                </Box>
+                            )}
                             {order.driverName && (
                                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                     <PersonIcon sx={{ fontSize: 14, mr: 1, color: 'text.secondary' }} />

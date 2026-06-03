@@ -107,6 +107,10 @@ export interface PaymentSettings {
     stripeSecretKey?: string;
     stripeWebhookSecret?: string;
     stripeMode?: 'test' | 'live';
+    phonePeClientId?: string;
+    phonePeClientSecret?: string;
+    phonePeClientVersion?: string;
+    phonePeEnv?: 'UAT' | 'PROD';
 }
 
 export interface NotificationSettings {
@@ -169,6 +173,7 @@ export interface DeliverySettings {
         customerId: string;
         storeId: string;
         isSandbox: boolean;
+        pickupBarcodeType?: string;
     };
 }
 

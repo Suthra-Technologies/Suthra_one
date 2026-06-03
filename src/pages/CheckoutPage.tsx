@@ -54,6 +54,7 @@ import { useAuth } from '../context/AuthContext';
 import { useGuestCart } from '../context/GuestCartContext';
 import { useSettings } from '../context/SettingsContext';
 import { useActiveTenant } from '../hooks/useActiveTenant';
+import PhonePeQrModal from '../components/PhonePeQrModal';
 import { loadStripe } from '@stripe/stripe-js';
 import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js';
 import { ordersAPI } from '../services/api';
@@ -167,26 +168,40 @@ const CheckoutStripeCard: React.FC<CheckoutStripeWrapperProps> = (props) => {
     setLoadError(null);
     setStripePromise(null);
     setClientSecret(null);
-    Promise.all([
-      ordersAPI.getPublicPaymentConfig(props.tenantSlug, props.orderType),
-      ordersAPI.createPublicPaymentIntent(props.amount, props.tenantSlug, undefined, props.orderType, props.subtotal, props.tax),
-    ])
-      .then(([configRes, intentRes]) => {
-        if (cancelled) return;
+    ordersAPI.getPublicPaymentConfig(props.tenantSlug, props.orderType)
+      .then((configRes) => {
+        if (cancelled) return null;
+        // Tenant has no Stripe payout account — card payment would strand the
+        // funds, so don't even create an intent. Guide the customer to cash.
+        if (configRes.data?.connectReady === false) {
+          setLoadError('Card payments are not available for this restaurant yet. Please choose cash on delivery/pickup.');
+          return null;
+        }
         const key = configRes.data?.publishableKey;
-        const secret = intentRes.data?.clientSecret;
-        if (!key || !secret) {
-          console.error('[Stripe] Missing config — key:', key ? 'present' : 'MISSING', '| secret:', secret ? 'present' : 'MISSING');
+        if (!key) {
+          console.error('[Stripe] Missing publishable key');
+          setLoadError('Payment configuration error.');
+          return null;
+        }
+        return ordersAPI
+          .createPublicPaymentIntent(props.amount, props.tenantSlug, undefined, props.orderType, props.subtotal, props.tax)
+          .then((intentRes) => ({ key, secret: intentRes.data?.clientSecret as string | undefined }));
+      })
+      .then((result) => {
+        if (cancelled || !result) return;
+        if (!result.secret) {
+          console.error('[Stripe] Missing client secret');
           setLoadError('Payment configuration error.');
           return;
         }
-        setStripePromise(loadStripe(key));
-        setClientSecret(secret);
+        setStripePromise(loadStripe(result.key));
+        setClientSecret(result.secret);
       })
       .catch((err) => {
         if (cancelled) return;
         console.error('[Stripe] Payment init failed:', err?.response?.data || err?.message || err);
-        setLoadError('Failed to initialise payment. Please try again.');
+        // A 400 here is the backend's no-Connect guard; show its message if present.
+        setLoadError(err?.response?.data?.message || 'Failed to initialise payment. Please try again.');
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
@@ -280,6 +295,14 @@ const CheckoutPage: React.FC = () => {
   const stripeSubmitRef = React.useRef<(() => void) | null>(null);
   const [stripeSubmitting, setStripeSubmitting] = useState<boolean>(false);
   const [stripePaymentIntentId, setStripePaymentIntentId] = useState<string | null>(null);
+  // India: collect via PhonePe UPI instead of Stripe.
+  const isIndia = settings.restaurant.country?.toLowerCase() === 'india';
+  const [phonePeOpen, setPhonePeOpen] = useState<boolean>(false);
+  const paymentAmount =
+    cart.totalAmount +
+    (orderType === 'delivery' ? deliveryFee + (Number(deliveryInfo.tip) || 0) : 0) +
+    ((cart.totalAmount * processingFeeRate) / 100) +
+    cart.totalAmount * (taxRate / 100);
 
   // Tip selection state
   const TIP_PERCENTAGES = [5, 10, 15, 20];
@@ -571,8 +594,13 @@ const CheckoutPage: React.FC = () => {
 
   const handlePlaceOrder = async (intentId?: string) => {
     const resolvedIntentId = intentId ?? stripePaymentIntentId;
+    // India: paid methods are collected via PhonePe UPI QR.
+    if (isIndia && paymentMethod !== 'cash' && !resolvedIntentId) {
+      setPhonePeOpen(true);
+      return;
+    }
     // For card payments, confirm the card first if not yet authorised
-    if (paymentMethod === 'card' && !resolvedIntentId) {
+    if (!isIndia && paymentMethod === 'card' && !resolvedIntentId) {
       if (!stripeSubmitRef.current) return;
       stripeSubmitRef.current();
       return;
@@ -1453,7 +1481,7 @@ const CheckoutPage: React.FC = () => {
                 <CreditCard fontSize="large" color={paymentMethod === 'card' ? 'primary' : 'action'} />
                 <Typography variant="subtitle1" fontWeight="bold">Card Payment</Typography>
                 <Typography variant="body2" color="text.secondary" align="center">
-                  Secure payment via Stripe
+                  {isIndia ? 'Pay via PhonePe / UPI' : 'Secure payment via Stripe'}
                 </Typography>
                 {paymentMethod === 'card' && <CheckCircle color="primary" />}
               </Stack>
@@ -1475,7 +1503,14 @@ const CheckoutPage: React.FC = () => {
           </Typography>
         </Box>
       )}
-      {paymentMethod === 'card' && (
+      {paymentMethod === 'card' && isIndia && (
+        <Box sx={{ p: 3, bgcolor: 'grey.50', borderRadius: 1, textAlign: 'center' }}>
+          <Typography variant="body2" color="text.secondary">
+            You'll scan a PhonePe / UPI QR to pay ₹{paymentAmount.toFixed(2)} when you place the order.
+          </Typography>
+        </Box>
+      )}
+      {paymentMethod === 'card' && !isIndia && (
         <Box sx={{ p: 3, bgcolor: 'grey.50', borderRadius: 1 }}>
           <Typography variant="subtitle2" gutterBottom fontWeight="700">Enter Card Details</Typography>
           <CheckoutStripeCard
@@ -1605,6 +1640,18 @@ const CheckoutPage: React.FC = () => {
 
   return (
     <Container maxWidth="lg" sx={{ py: 4 }}>
+      {/* India: PhonePe / UPI QR payment */}
+      <PhonePeQrModal
+        open={phonePeOpen}
+        onClose={() => setPhonePeOpen(false)}
+        amount={paymentAmount}
+        tenantSlug={slug || undefined}
+        onSuccess={(merchantTransactionId) => {
+          setPhonePeOpen(false);
+          setStripePaymentIntentId(merchantTransactionId);
+          handlePlaceOrder(merchantTransactionId);
+        }}
+      />
       <Typography variant="h4" gutterBottom align="center">
         Checkout
       </Typography>

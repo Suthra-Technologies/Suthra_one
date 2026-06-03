@@ -49,6 +49,7 @@ import { toast } from 'react-hot-toast';
 import { useSearchParams } from "react-router-dom";
 import theme from 'src/theme/theme';
 import PaymentModal from '../../components/PaymentModal';
+import PhonePeQrModal from '../../components/PhonePeQrModal';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { couponsAPI, menuAPI, ordersAPI, rewardsAPI, settingsAPI, tablesAPI, taxAPI, traysAPI, usersAPI } from '../../services/api';
@@ -230,6 +231,7 @@ const MemoizedCartItem = React.memo(({
 const POSPage: React.FC = () => {
     const { user, getUserFullName, tenantSlug } = useAuth();
     const { formatCurrency, settings } = useSettings();
+    const isIndia = settings?.restaurant?.country?.toLowerCase() === 'india';
     const headingFontSize = { xs: '1.1rem', sm: '1.35rem', md: '1.75rem' };
     const bodyFontSize = { xs: '0.78rem', sm: '0.88rem', md: '0.95rem' };
 
@@ -290,6 +292,7 @@ const POSPage: React.FC = () => {
     const [paymentMethod, setPaymentMethod] = useState<'cash' | 'online' | 'card' | 'zelle' | 'venmo' | 'phonepe' | 'gpay' | 'paytm'>('cash');
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
     const [manualPaymentDialogOpen, setManualPaymentDialogOpen] = useState(false);
+    const [phonePeQrOpen, setPhonePeQrOpen] = useState(false);
     const [selectedTable, setSelectedTable] = useState<any>(null);
     const [cardPrintReceipt, setCardPrintReceipt] = useState(false);
     const [cardSignInForApiCall, setCardSignInForApiCall] = useState(false);
@@ -1312,6 +1315,13 @@ const POSPage: React.FC = () => {
                 return;
             }
 
+            // India: PhonePe/GPay/Paytm are collected through the real PhonePe UPI
+            // gateway (dynamic QR), not recorded as a manual marker.
+            if (isIndia && ['phonepe', 'gpay', 'paytm'].includes(paymentMethod)) {
+                setPhonePeQrOpen(true);
+                return;
+            }
+
             if (['zelle', 'venmo', 'phonepe', 'gpay', 'paytm'].includes(paymentMethod)) {
                 setManualPaymentDialogOpen(true);
                 return;
@@ -1329,6 +1339,11 @@ const POSPage: React.FC = () => {
     const handleManualPaymentConfirm = async () => {
         setManualPaymentDialogOpen(false);
         await submitOrder(`MANUAL_${paymentMethod.toUpperCase()}`);
+    };
+
+    const handlePhonePeQrSuccess = async (merchantTransactionId: string) => {
+        setPhonePeQrOpen(false);
+        await submitOrder(merchantTransactionId);
     };
     const fetchTables = async () => {
         try {
@@ -1403,10 +1418,13 @@ const POSPage: React.FC = () => {
             const isVerifiedStripePayment =
                 (paymentMethod === 'card' || paymentMethod === 'online') &&
                 Boolean(paymentIntentId?.startsWith('pi_'));
+            // PhonePe UPI (India) order ids are minted as ORD_* and are only passed
+            // here after the QR modal confirmed COMPLETED status, so they are paid.
+            const isVerifiedPhonePePayment = Boolean(paymentIntentId?.startsWith('ORD_'));
 
             // For dine-in orders, dynamically replace card/online with alternative payment methods
             let finalPaymentMethod = paymentMethod;
-            let finalPaymentStatus = isManualCollectedPayment || isVerifiedStripePayment ? "paid" : "pending";
+            let finalPaymentStatus = isManualCollectedPayment || isVerifiedStripePayment || isVerifiedPhonePePayment ? "paid" : "pending";
             let finalPaymentIntentId = paymentIntentId;
 
             // Handle fully paid by rewards
@@ -3186,8 +3204,23 @@ const POSPage: React.FC = () => {
                 open={paymentModalOpen}
                 onClose={() => setPaymentModalOpen(false)}
                 amount={finalTotal}
+                // POS has no processing fee, so the whole POS payment goes to the
+                // tenant (food + tax + tip + service charge). We intentionally omit
+                // subtotal/tax: for Connect-routed tenants that makes the platform
+                // application fee just the Stripe cost (2.9%+$0.30), which the
+                // platform recovers — everything else is transferred to the tenant.
+                // (If a POS processing fee is added later, pass subtotal/tax so the
+                // platform keeps total − subtotal − tax = that fee.)
                 onSuccess={handlePaymentSuccess}
                 showTips={false}
+            />
+
+            {/* PhonePe UPI QR (India) */}
+            <PhonePeQrModal
+                open={phonePeQrOpen}
+                onClose={() => setPhonePeQrOpen(false)}
+                amount={finalTotal}
+                onSuccess={handlePhonePeQrSuccess}
             />
 
             {/* Manual Payment Confirmation Dialog */}

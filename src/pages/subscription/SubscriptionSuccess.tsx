@@ -3,7 +3,7 @@ import { Box, Typography, Button, Card, CardContent, CircularProgress } from '@m
 import { CheckCircle, Error as ErrorIcon } from '@mui/icons-material';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
-import { subscriptionAPI } from '../../services/api';
+import { subscriptionAPI, phonePeAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { isSubdomainAccess } from '../../utils/tenant.utils';
 
@@ -11,14 +11,38 @@ const SubscriptionSuccess: React.FC = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const sessionId = searchParams.get('session_id');
+    const phonePeTxn = searchParams.get('phonepe_txn');
     const [verifying, setVerifying] = useState(true);
     const [success, setSuccess] = useState(false);
     const { tenantSlug, refreshProfile } = useAuth();
-    
+
     const dashboardPath = isSubdomainAccess() ? '/dashboard' : (tenantSlug ? `/${tenantSlug}/dashboard` : '/login');
 
     useEffect(() => {
         const verify = async () => {
+            // PhonePe return — poll status (which fulfills the purchase server-side).
+            if (phonePeTxn) {
+                try {
+                    let paid = false;
+                    for (let i = 0; i < 5; i++) {
+                        const res = await phonePeAPI.status(phonePeTxn);
+                        if (res?.data?.state === 'COMPLETED' || res?.data?.paid) { paid = true; break; }
+                        if (res?.data?.state === 'FAILED') break;
+                        await new Promise(r => setTimeout(r, 2000));
+                    }
+                    if (!paid) throw new Error('Payment not completed');
+                    setSuccess(true);
+                    toast.success('Payment verified! Your subscription is active.');
+                    try { await refreshProfile(); } catch { /* ignore */ }
+                } catch (error) {
+                    console.error('PhonePe verification failed:', error);
+                    toast.error('Could not verify payment status. Please contact support.');
+                } finally {
+                    setVerifying(false);
+                }
+                return;
+            }
+
             if (!sessionId) {
                 setVerifying(false);
                 return;
@@ -47,7 +71,7 @@ const SubscriptionSuccess: React.FC = () => {
         };
 
         verify();
-    }, [sessionId]);
+    }, [sessionId, phonePeTxn]);
 
     return (
         <Box sx={{ p: 4, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>

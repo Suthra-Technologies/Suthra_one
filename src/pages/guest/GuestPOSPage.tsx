@@ -45,6 +45,7 @@ import { format } from 'date-fns';
 import { useSettings } from '../../context/SettingsContext';
 import { useActiveTenant } from '../../hooks/useActiveTenant';
 import { menuAPI, ordersAPI } from '../../services/api';
+import PhonePeQrModal from '../../components/PhonePeQrModal';
 
 interface MenuItem {
     _id: string;
@@ -106,8 +107,12 @@ const GuestPOSPage: React.FC = () => {
     const [redirectError, setRedirectError] = useState<string | null>(null);
     const [redirectPaymentId, setRedirectPaymentId] = useState<string | null>(null);
 
+    // India tenants collect via PhonePe UPI QR instead of Stripe card.
+    const isIndia = restaurantSettings?.country?.toLowerCase() === 'india';
+
     useEffect(() => {
-        if (!showPayment || !slug) return;
+        // India uses PhonePe (no Stripe intent needed).
+        if (!showPayment || !slug || isIndia) return;
         let cancelled = false;
         setStripeLoading(true);
         setStripeError(null);
@@ -405,7 +410,7 @@ const GuestPOSPage: React.FC = () => {
         setStripeError(null);
     };
 
-    const handlePlaceOrder = async (paymentIntentId: string) => {
+    const handlePlaceOrder = async (paymentIntentId: string, method: string = 'card') => {
         if (!slug) return;
         try {
             setSubmitting(true);
@@ -422,7 +427,7 @@ const GuestPOSPage: React.FC = () => {
                 })),
                 orderType,
                 customer: { name: 'Guest Customer', phone: '' },
-                paymentMethod: 'card',
+                paymentMethod: method,
                 paymentStatus: 'paid',
                 paymentIntentId,
                 status: 'confirmed',
@@ -1249,7 +1254,17 @@ const GuestPOSPage: React.FC = () => {
                 </DialogActions>
             </Dialog>
 
-            {PaymentDialog()}
+            {isIndia ? (
+                <PhonePeQrModal
+                    open={showPayment}
+                    onClose={handleClosePayment}
+                    amount={calculateTotal().total}
+                    tenantSlug={slug || undefined}
+                    onSuccess={(merchantTransactionId) => handlePlaceOrder(merchantTransactionId, 'phonepe')}
+                />
+            ) : (
+                PaymentDialog()
+            )}
             {SuccessData()}
 
             {/* Redirect payment processing overlay */}

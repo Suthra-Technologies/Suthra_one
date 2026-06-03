@@ -401,6 +401,10 @@ const createDefaultSettings = (): SettingsState => ({
         stripeSecretKey: '',
         stripeWebhookSecret: '',
         stripeMode: 'test',
+        phonePeClientId: '',
+        phonePeClientSecret: '',
+        phonePeClientVersion: '1',
+        phonePeEnv: 'UAT',
     },
     notification: {
         sms: {
@@ -470,6 +474,8 @@ const createDefaultSettings = (): SettingsState => ({
             customerId: '',
             storeId: '',
             isSandbox: true,
+            pickupBarcodeType: 'QR_CODE',
+            dropoffPinEnabled: true,
         }
     }
 });
@@ -581,6 +587,7 @@ const SettingsPage: React.FC = () => {
     const [fetchingTax, setFetchingTax] = useState(false);
     const [webhookUrl, setWebhookUrl] = useState<string>('');
     const [stripeStatus, setStripeStatus] = useState<{ stripeMode?: string; hasPublishableKey?: boolean; hasSecretKey?: boolean; hasWebhookSecret?: boolean }>({});
+    const [phonePeStatus, setPhonePeStatus] = useState<{ phonePeEnv?: string; phonePeClientId?: string; phonePeClientVersion?: string; hasClientId?: boolean; hasClientSecret?: boolean }>({});
     const [usersList, setUsersList] = useState<any[]>([]);
     const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
     const [pairedAgents, setPairedAgents] = useState<any[]>([]);
@@ -785,10 +792,11 @@ const SettingsPage: React.FC = () => {
     const fetchSettings = async () => {
         try {
             setLoading(true);
-            const [response, webhookResp, stripeStatusResp] = await Promise.all([
+            const [response, webhookResp, stripeStatusResp, phonePeStatusResp] = await Promise.all([
                 settingsAPI.getAll(),
                 paymentsAPI.getWebhookUrl(),
                 tenantAPI.getStripeSettings(),
+                tenantAPI.getPhonePeSettings().catch(() => ({ data: {} })),
             ]);
             const defaults = createDefaultSettings();
 
@@ -810,6 +818,7 @@ const SettingsPage: React.FC = () => {
                 setSettings(merged);
                 setWebhookUrl(webhookResp.data?.url || '');
                 setStripeStatus(stripeStatusResp.data || {});
+                setPhonePeStatus(phonePeStatusResp.data || {});
             } else if (response.data && typeof response.data === 'object') {
                 const fetched = response.data;
                 const merged = mergeSettingsWithDefaults(defaults, fetched);
@@ -823,6 +832,7 @@ const SettingsPage: React.FC = () => {
                 setSettings(merged);
                 setWebhookUrl(webhookResp.data?.url || '');
                 setStripeStatus(stripeStatusResp.data || {});
+                setPhonePeStatus(phonePeStatusResp.data || {});
             } else {
                 defaults.restaurant.name = (user?.tenant)?.name || '';
                 defaults.restaurant.logo = (user?.tenant)?.logo || '';
@@ -832,6 +842,7 @@ const SettingsPage: React.FC = () => {
                 setSettings(defaults);
                 setWebhookUrl(webhookResp.data?.url || '');
                 setStripeStatus(stripeStatusResp.data || {});
+                setPhonePeStatus(phonePeStatusResp.data || {});
             }
         } catch (error) {
             console.error('Error fetching settings:', error);
@@ -3409,34 +3420,44 @@ const SettingsPage: React.FC = () => {
 
                         <Paper variant="outlined" sx={{ p: 3, borderRadius: 3, mb: 2 }}>
                             <Grid container spacing={2}>
-                                {['cash', 'card', 'zelle', 'venmo'].map((method) => (
-                                    <Grid size={{ xs: 6, sm: 3 }} key={method}>
-                                        <FormControlLabel
-                                            control={
-                                                <Checkbox
-                                                    checked={settings.system.posPaymentMethods?.[method as keyof typeof settings.system.posPaymentMethods] ?? true}
-                                                    onChange={(e) => {
-                                                        const isChecked = e.target.checked;
-                                                        setSettings(prev => {
-                                                            const currentMethods = prev.system.posPaymentMethods || { cash: true, card: true, zelle: true, venmo: true };
-                                                            return {
-                                                                ...prev,
-                                                                system: {
-                                                                    ...prev.system,
-                                                                    posPaymentMethods: {
-                                                                        ...currentMethods,
-                                                                        [method]: isChecked
+                                {(() => {
+                                    // The POS page swaps the Zelle/Venmo methods for India-specific
+                                    // payment apps (see CustomerInfoSection.tsx). Zelle controls both
+                                    // PhonePe & GPay, and Venmo controls Paytm. Relabel the checkboxes
+                                    // here so Settings matches what is shown on the POS.
+                                    const isIndia = settings.restaurant.country?.toLowerCase() === 'india';
+                                    const methodLabels: Record<string, string> = isIndia
+                                        ? { cash: 'Cash', card: 'Card', zelle: 'PhonePe / GPay', venmo: 'Paytm' }
+                                        : { cash: 'Cash', card: 'Card', zelle: 'Zelle', venmo: 'Venmo' };
+                                    return ['cash', 'card', 'zelle', 'venmo'].map((method) => (
+                                        <Grid size={{ xs: 6, sm: 3 }} key={method}>
+                                            <FormControlLabel
+                                                control={
+                                                    <Checkbox
+                                                        checked={settings.system.posPaymentMethods?.[method as keyof typeof settings.system.posPaymentMethods] ?? true}
+                                                        onChange={(e) => {
+                                                            const isChecked = e.target.checked;
+                                                            setSettings(prev => {
+                                                                const currentMethods = prev.system.posPaymentMethods || { cash: true, card: true, zelle: true, venmo: true };
+                                                                return {
+                                                                    ...prev,
+                                                                    system: {
+                                                                        ...prev.system,
+                                                                        posPaymentMethods: {
+                                                                            ...currentMethods,
+                                                                            [method]: isChecked
+                                                                        }
                                                                     }
-                                                                }
-                                                            };
-                                                        });
-                                                    }}
-                                                />
-                                            }
-                                            label={<Typography sx={{ textTransform: 'capitalize' }}>{method}</Typography>}
-                                        />
-                                    </Grid>
-                                ))}
+                                                                };
+                                                            });
+                                                        }}
+                                                    />
+                                                }
+                                                label={<Typography>{methodLabels[method]}</Typography>}
+                                            />
+                                        </Grid>
+                                    ));
+                                })()}
                             </Grid>
                         </Paper>
 
@@ -3661,6 +3682,166 @@ const SettingsPage: React.FC = () => {
                             </Button>
                         </Grid>
                     </Grid>
+
+                    {/* ── PhonePe (India) ─────────────────────────────────────── */}
+                    {settings.restaurant.country?.toLowerCase() === 'india' && (
+                        <>
+                            <Divider sx={{ my: 4 }} />
+                            <Paper
+                                variant="outlined"
+                                sx={{
+                                    p: 2.5,
+                                    mb: 3,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    borderRadius: 3,
+                                    bgcolor: (phonePeStatus?.hasClientId && phonePeStatus?.hasClientSecret) ? alpha('#22c55e', 0.08) : alpha('#f59e0b', 0.08),
+                                    borderColor: (phonePeStatus?.hasClientId && phonePeStatus?.hasClientSecret) ? alpha('#22c55e', 0.3) : alpha('#f59e0b', 0.3),
+                                }}
+                            >
+                                <Stack direction="row" spacing={2} alignItems="center">
+                                    <Avatar sx={{ bgcolor: '#5f259f', color: '#fff' }}>
+                                        <CreditCardIcon />
+                                    </Avatar>
+                                    <Box>
+                                        <Typography variant="subtitle1" fontWeight={700}>PhonePe / UPI</Typography>
+                                        <Typography variant="body2" color="text.secondary">
+                                            {(phonePeStatus?.hasClientId && phonePeStatus?.hasClientSecret) ? 'Configured and connected' : 'Not connected'}
+                                        </Typography>
+                                    </Box>
+                                </Stack>
+                                {(phonePeStatus?.hasClientId && phonePeStatus?.hasClientSecret) ? <CheckCircleIcon sx={{ color: '#16a34a' }} /> : null}
+                            </Paper>
+                            <Typography variant="h6" sx={{ mb: 1, fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
+                                PhonePe Payments
+                            </Typography>
+                            <Typography color="text.secondary" sx={{ mb: 3, fontWeight: 500, fontFamily: "'Outfit', sans-serif" }}>
+                                Configure your restaurant’s PhonePe Standard Checkout v2 keys (Developer Settings → API Keys). Used to collect customer payments (UPI) in INR.
+                            </Typography>
+                            <Grid container spacing={3}>
+                                {(phonePeStatus?.hasClientId || phonePeStatus?.hasClientSecret) && (
+                                    <Grid size={{ xs: 12 }}>
+                                        <Alert severity="info" sx={{ mb: 2 }}>
+                                            PhonePe credentials are stored securely. The client secret is never shown back. Enter a new value only to replace it.
+                                        </Alert>
+                                    </Grid>
+                                )}
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        label="Client ID"
+                                        value={settings.payment.phonePeClientId || ''}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({
+                                            ...prev,
+                                            payment: { ...prev.payment, phonePeClientId: e.target.value.trim() }
+                                        }))}
+                                        placeholder="e.g. M22..._2606011154"
+                                        autoComplete="off"
+                                        helperText={phonePeStatus.hasClientId ? 'Already set. Leave blank to keep current value.' : ''}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        label="Client Secret"
+                                        type="password"
+                                        value={settings.payment.phonePeClientSecret || ''}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({
+                                            ...prev,
+                                            payment: { ...prev.payment, phonePeClientSecret: e.target.value.trim() }
+                                        }))}
+                                        placeholder="Client secret"
+                                        autoComplete="new-password"
+                                        helperText={phonePeStatus.hasClientSecret ? 'Already set. Leave blank to keep current value.' : ''}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        label="Client Version"
+                                        value={settings.payment.phonePeClientVersion || ''}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({
+                                            ...prev,
+                                            payment: { ...prev.payment, phonePeClientVersion: e.target.value.trim() }
+                                        }))}
+                                        placeholder="1"
+                                        autoComplete="off"
+                                        helperText="Shown next to your keys in the PhonePe dashboard (usually 1)."
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        select
+                                        fullWidth
+                                        label="Environment"
+                                        value={settings.payment.phonePeEnv || 'UAT'}
+                                        onChange={(e) => setSettings(prev => ({
+                                            ...prev,
+                                            payment: { ...prev.payment, phonePeEnv: e.target.value as 'UAT' | 'PROD' }
+                                        }))}
+                                    >
+                                        <MenuItem value="UAT">UAT (Test)</MenuItem>
+                                        <MenuItem value="PROD">Production</MenuItem>
+                                    </TextField>
+                                </Grid>
+                                <Grid size={{ xs: 12 }}>
+                                    <Alert severity="warning" sx={{ mb: 2 }}>
+                                        Keep your Client Secret safe. Only admins should update these.
+                                    </Alert>
+                                    <Button
+                                        variant="contained"
+                                        startIcon={<SaveIcon />}
+                                        size="medium"
+                                        disabled={loading}
+                                        onClick={async () => {
+                                            if (loading) return;
+                                            try {
+                                                setLoading(true);
+                                                const payload: any = {};
+                                                const cid = settings.payment.phonePeClientId?.trim();
+                                                const secret = settings.payment.phonePeClientSecret?.trim();
+                                                const ver = settings.payment.phonePeClientVersion?.trim();
+                                                if (cid) payload.phonePeClientId = cid;
+                                                if (secret) payload.phonePeClientSecret = secret;
+                                                if (ver) payload.phonePeClientVersion = ver;
+                                                if (settings.payment.phonePeEnv && settings.payment.phonePeEnv !== phonePeStatus.phonePeEnv) {
+                                                    payload.phonePeEnv = settings.payment.phonePeEnv;
+                                                }
+                                                if (Object.keys(payload).length === 0) {
+                                                    toast.error('No changes to save');
+                                                    return;
+                                                }
+                                                await tenantAPI.updatePhonePeSettings(payload);
+                                                toast.success('PhonePe settings saved');
+                                                const statusResp = await tenantAPI.getPhonePeSettings();
+                                                setPhonePeStatus(statusResp.data || {});
+                                                setSettings(prev => ({
+                                                    ...prev,
+                                                    payment: { ...prev.payment, phonePeClientSecret: '' },
+                                                }));
+                                            } catch (error) {
+                                                console.error('Failed to save PhonePe settings', error);
+                                                toast.error((error as any)?.response?.data?.message || 'Failed to save PhonePe settings');
+                                            } finally {
+                                                setLoading(false);
+                                            }
+                                        }}
+                                        sx={{
+                                            borderRadius: 2.5,
+                                            px: { xs: 3, sm: 4 },
+                                            fontWeight: 800,
+                                            fontFamily: "'Outfit', sans-serif",
+                                            boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.2)}`,
+                                            mt: { xs: 2, md: 0 }
+                                        }}
+                                    >
+                                        Save PhonePe Settings
+                                    </Button>
+                                </Grid>
+                            </Grid>
+                        </>
+                    )}
                 </TabPanel>
 
                 {/* Printers Tab */}
@@ -4426,6 +4607,34 @@ const SettingsPage: React.FC = () => {
                                     <Typography variant="body2" color="text.secondary">
                                         Uber Direct credentials are configured by your platform administrator. Toggle to enable or disable Uber Direct delivery for your store.
                                     </Typography>
+                                    {settings.delivery?.ubereats?.enabled && (
+                                        <TextField
+                                            select
+                                            fullWidth
+                                            size="small"
+                                            label="Pickup verification barcode type"
+                                            value={settings.delivery?.ubereats?.pickupBarcodeType || 'QR_CODE'}
+                                            onChange={(e) => handleDeliveryChange('ubereats', 'pickupBarcodeType', e.target.value)}
+                                            helperText="Symbology sent to Uber for the pickup scan. The order card renders a QR, so QR_CODE is recommended."
+                                            sx={{ mt: 2 }}
+                                        >
+                                            <MenuItem value="QR_CODE">QR Code (recommended)</MenuItem>
+                                            <MenuItem value="CODE128">Code 128</MenuItem>
+                                            <MenuItem value="CODE39">Code 39</MenuItem>
+                                        </TextField>
+                                    )}
+                                    {settings.delivery?.ubereats?.enabled && (
+                                        <FormControlLabel
+                                            sx={{ mt: 1 }}
+                                            control={
+                                                <Switch
+                                                    checked={settings.delivery?.ubereats?.dropoffPinEnabled !== false}
+                                                    onChange={(e) => handleDeliveryChange('ubereats', 'dropoffPinEnabled', e.target.checked)}
+                                                />
+                                            }
+                                            label="Require delivery PIN (customer gives a code to the courier at drop-off)"
+                                        />
+                                    )}
                                     <Box sx={{ mt: 4, display: 'flex', justifyContent: { xs: 'center', md: 'flex-end' } }}>
                                         <Button
                                             variant="contained"

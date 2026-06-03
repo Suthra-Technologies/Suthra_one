@@ -526,11 +526,11 @@ export const bookingsAPI = {
 
 // -------------------- Payments API --------------------
 export const paymentsAPI = {
-  createIntent: (data: { amount: number; currency?: string }) =>
+  createIntent: (data: { amount: number; currency?: string; subtotal?: number; tax?: number }) =>
     api.post('/payments/create-intent', data),
   getConfig: () => api.post('/payments/config'),
   getWebhookUrl: () => api.get('/payments/webhook-url'),
-  createTerminalIntent: (data: { amount: number; currency?: string }) =>
+  createTerminalIntent: (data: { amount: number; currency?: string; subtotal?: number; tax?: number }) =>
     api.post('/payments/terminal/create-intent', data),
   createTerminalConnectionToken: () => api.post('/payments/terminal/connection-token'),
   verifyIntent: (intentId: string) => api.get(`/payments/verify-intent/${intentId}`),
@@ -540,6 +540,31 @@ export const paymentsAPI = {
   syncTransactions: () => api.post('/payments/transactions/sync'),
   verifyTransactionsInDb: (paymentIntentIds: string[]) =>
     api.post('/payments/transactions/verify-db', { paymentIntentIds }),
+};
+
+// -------------------- PhonePe API (India tenants) --------------------
+export const phonePeAPI = {
+  getConfig: () => api.get('/payments/phonepe/config'),
+  // Online ordering — PG redirect
+  initiate: (data: { amount: number; redirectUrl?: string; mobileNumber?: string; metadata?: Record<string, any> }) =>
+    api.post('/payments/phonepe/initiate', data),
+  // POS / kiosk — dynamic UPI QR
+  posInitiate: (data: { amount: number; metadata?: Record<string, any> }) =>
+    api.post('/payments/phonepe/pos-initiate', data),
+  // Subscription / top-up — platform account
+  platformInitiate: (data: { planId: string; purpose: 'subscription' | 'topup'; redirectUrl: string }) =>
+    api.post('/payments/phonepe/platform-initiate', data),
+  status: (merchantTransactionId: string) =>
+    api.get(`/payments/phonepe/status/${merchantTransactionId}`),
+  refundStatus: (merchantRefundId: string) =>
+    api.get(`/payments/phonepe/refund-status/${merchantRefundId}`),
+  getSettings: () => api.get('/tenants/phonepe-settings'),
+  updateSettings: (data: any) => api.patch('/tenants/phonepe-settings', data),
+  // Public (guest/kiosk, no-auth) — tenant resolved by slug
+  publicInitiate: (tenantSlug: string, data: { amount: number; instrument?: 'PAY_PAGE' | 'UPI_QR'; redirectUrl?: string; mobileNumber?: string; metadata?: Record<string, any> }) =>
+    api.post('/public/orders/phonepe/initiate', data, { params: { tenantSlug } }),
+  publicStatus: (merchantTransactionId: string) =>
+    api.get(`/public/orders/phonepe/status/${merchantTransactionId}`),
 };
 
 // -------------------- Invoices API --------------------
@@ -657,6 +682,8 @@ export const tenantAPI = {
   updateSettings: (data: any) => api.patch('/tenants/settings', data),
   getStripeSettings: () => api.get('/tenants/stripe-settings'),
   updateStripeSettings: (data: any) => api.patch('/tenants/stripe-settings', data),
+  getPhonePeSettings: () => api.get('/tenants/phonepe-settings'),
+  updatePhonePeSettings: (data: any) => api.patch('/tenants/phonepe-settings', data),
   // Restaurant open/close status
   updateRestaurantStatus: (data: { isOpen: boolean; reopenAt?: string; closeReason?: string; customerMessage?: string }) => api.patch('/tenants/restaurant-status', data),
   getRestaurantStatus: (slug: string) => api.get(`/tenants/${slug}/status`),

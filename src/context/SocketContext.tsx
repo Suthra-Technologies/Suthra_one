@@ -157,11 +157,25 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     });
 
     socket.on('paymentStatus', (data) => {
+      const orderRef = data.orderNumber ? ` for order ${data.orderNumber}` : '';
+      let title = 'Payment Update';
+      let message = data.status ? `Payment ${data.status}` : 'Payment status update';
+      let priority: 'low' | 'medium' | 'high' = 'medium';
+
+      if (data.event === 'refund_failed') {
+        title = 'Refund Failed';
+        message = `Refund${orderRef} did not go through${data.error ? `: ${data.error}` : ''}. Please retry or refund manually.`;
+        priority = 'high';
+      } else if (data.event === 'refund_succeeded' || data.event === 'payment_refunded') {
+        title = 'Refund Processed';
+        message = `Refund${orderRef} was processed successfully.`;
+      }
+
       addNotification({
         type: 'payment',
-        title: 'Payment Update',
-        message: data.status ? `Payment ${data.status}` : 'Payment status update',
-        priority: 'medium',
+        title,
+        message,
+        priority,
         data,
       });
       window.dispatchEvent(new CustomEvent('paymentStatus', { detail: data }));

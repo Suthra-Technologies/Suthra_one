@@ -26,7 +26,7 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
-import { subscriptionAPI, tenantAPI } from '../../services/api';
+import { subscriptionAPI, tenantAPI, phonePeAPI } from '../../services/api';
 import { getTenantSlugFromHostname, isSubdomainAccess } from '../../utils/tenant.utils';
 
 interface Plan {
@@ -46,7 +46,8 @@ interface Plan {
 
 const SubscriptionPage: React.FC = () => {
     const { user } = useAuth();
-    const { formatCurrency } = useSettings();
+    const { formatCurrency, settings } = useSettings();
+    const isIndia = settings?.restaurant?.country?.toLowerCase() === 'india';
     const theme = useTheme();
     const [plans, setPlans] = useState<Plan[]>([]);
     const [loading, setLoading] = useState(true);
@@ -110,6 +111,27 @@ const SubscriptionPage: React.FC = () => {
             const cancelUrl = isSubdomain
                 ? `${baseUrl}/subscription`
                 : `${baseUrl}/${currentSlug || window.location.pathname.split('/')[1]}/subscription`;
+
+            // India tenants pay the platform via PhonePe instead of Stripe Checkout.
+            if (isIndia) {
+                // PhonePe needs a plain return URL (no Stripe session template); the
+                // backend appends ?phonepe_txn=<id> for the success page to poll.
+                const phonePeSuccessUrl = isSubdomain
+                    ? `${baseUrl}/subscription/success`
+                    : `${baseUrl}/${currentSlug || window.location.pathname.split('/')[1]}/subscription/success`;
+                const ppRes = await phonePeAPI.platformInitiate({
+                    planId: plan._id,
+                    purpose: 'subscription',
+                    redirectUrl: phonePeSuccessUrl,
+                });
+                if (ppRes.data?.redirectUrl) {
+                    window.location.href = ppRes.data.redirectUrl;
+                } else {
+                    toast.error('Failed to start PhonePe payment');
+                    setSubscribing(null);
+                }
+                return;
+            }
 
             const response = await subscriptionAPI.createCheckoutSession({
                 planId: plan._id,
