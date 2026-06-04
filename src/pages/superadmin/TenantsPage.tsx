@@ -301,6 +301,22 @@ const TenantsPage: React.FC = () => {
                           />
                         </Box>
                       </Grid>
+                      <Grid size={{ xs: 6 }}>
+                        <Typography variant="caption" color="textSecondary" sx={{ textTransform: 'uppercase', fontWeight: 'bold', fontSize: '0.65rem', letterSpacing: 0.5 }}>Registered</Typography>
+                        <Typography variant="body2" fontWeight={600}>
+                          {tenant.createdAt
+                            ? new Date(tenant.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+                            : '—'}
+                        </Typography>
+                      </Grid>
+                      <Grid size={{ xs: 6 }}>
+                        <Typography variant="caption" color="textSecondary" sx={{ textTransform: 'uppercase', fontWeight: 'bold', fontSize: '0.65rem', letterSpacing: 0.5 }}>Activated</Typography>
+                        <Typography variant="body2" fontWeight={600}>
+                          {tenant.activatedAt
+                            ? new Date(tenant.activatedAt).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+                            : (tenant.status === 'active' ? 'Active' : 'Not yet')}
+                        </Typography>
+                      </Grid>
                       {tenant.subscriptionEndsAt && (
                         <Grid size={{ xs: 12 }}>
                           <Typography variant="caption" color="textSecondary" sx={{ textTransform: 'uppercase', fontWeight: 'bold', fontSize: '0.65rem', letterSpacing: 0.5 }}>Expires</Typography>
