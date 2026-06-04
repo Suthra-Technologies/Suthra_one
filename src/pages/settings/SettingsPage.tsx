@@ -394,6 +394,7 @@ const createDefaultSettings = (): SettingsState => ({
             card: true,
             zelle: true,
             venmo: true,
+            cheque: true,
         }
     },
     payment: {
@@ -488,6 +489,7 @@ const mergeSettingsWithDefaults = (defaults: SettingsState, partial: Partial<Set
             card: fetchedSystem.posPaymentMethods?.card ?? (defaults.system.posPaymentMethods?.card ?? true),
             zelle: fetchedSystem.posPaymentMethods?.zelle ?? (defaults.system.posPaymentMethods?.zelle ?? true),
             venmo: fetchedSystem.posPaymentMethods?.venmo ?? (defaults.system.posPaymentMethods?.venmo ?? true),
+            cheque: fetchedSystem.posPaymentMethods?.cheque ?? (defaults.system.posPaymentMethods?.cheque ?? true),
         }
     };
 
@@ -859,36 +861,36 @@ const SettingsPage: React.FC = () => {
         }
     }, [tabValue, smsPage, smsRowsPerPage]);
 
-    // Auto-fetch tax rate when zipCode changes
-    useEffect(() => {
-        const zipCode = settings.restaurant.zipCode;
-        const state = settings.restaurant.state;
-        if (zipCode && zipCode.length >= 5) {
-            const timer = setTimeout(async () => {
-                try {
-                    setFetchingTax(true);
-                    const res = await settingsAPI.getTaxRate(zipCode, state);
-                    if (res.data && typeof res.data.rate === 'number') {
-                        if (res.data.breakdown) {
-                            handleTaxBreakdownChange('enabled', true);
-                            handleTaxBreakdownChange('country', res.data.breakdown.country.rate);
-                            handleTaxBreakdownChange('state', res.data.breakdown.state.rate);
-                            handleTaxBreakdownChange('city', res.data.breakdown.city.rate);
-                            handleTaxBreakdownChange('county', res.data.breakdown.county.rate);
-                        } else {
-                            handleInputChange('restaurant', 'taxRate', res.data.rate);
-                        }
-                        console.log(`Auto-updated tax rate to ${res.data.rate}% for ZIP ${zipCode}, State: ${state || 'N/A'}`);
-                    }
-                } catch (error) {
-                    console.warn('Auto tax rate fetch failed:', error);
-                } finally {
-                    setFetchingTax(false);
-                }
-            }, 500);
-            return () => clearTimeout(timer);
-        }
-    }, [settings.restaurant.zipCode, settings.restaurant.state]);
+    // MANUAL TAX REMOVED — auto-detecting/storing a manual tax rate is no longer used; TaxJar is the source of truth.
+    // useEffect(() => {
+    //     const zipCode = settings.restaurant.zipCode;
+    //     const state = settings.restaurant.state;
+    //     if (zipCode && zipCode.length >= 5) {
+    //         const timer = setTimeout(async () => {
+    //             try {
+    //                 setFetchingTax(true);
+    //                 const res = await settingsAPI.getTaxRate(zipCode, state);
+    //                 if (res.data && typeof res.data.rate === 'number') {
+    //                     if (res.data.breakdown) {
+    //                         handleTaxBreakdownChange('enabled', true);
+    //                         handleTaxBreakdownChange('country', res.data.breakdown.country.rate);
+    //                         handleTaxBreakdownChange('state', res.data.breakdown.state.rate);
+    //                         handleTaxBreakdownChange('city', res.data.breakdown.city.rate);
+    //                         handleTaxBreakdownChange('county', res.data.breakdown.county.rate);
+    //                     } else {
+    //                         handleInputChange('restaurant', 'taxRate', res.data.rate);
+    //                     }
+    //                     console.log(`Auto-updated tax rate to ${res.data.rate}% for ZIP ${zipCode}, State: ${state || 'N/A'}`);
+    //                 }
+    //             } catch (error) {
+    //                 console.warn('Auto tax rate fetch failed:', error);
+    //             } finally {
+    //                 setFetchingTax(false);
+    //             }
+    //         }, 500);
+    //         return () => clearTimeout(timer);
+    //     }
+    // }, [settings.restaurant.zipCode, settings.restaurant.state]);
 
     const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
         setTabValue(newValue);
@@ -1243,34 +1245,35 @@ const SettingsPage: React.FC = () => {
         handleInputChange('restaurant', 'businessHours', updated);
     };
 
-    const fetchTaxRate = async () => {
-        if (!settings.restaurant.zipCode) {
-            toast.error('Please enter a Zip Code first');
-            return;
-        }
-        try {
-            setFetchingTax(true);
-            const res = await settingsAPI.getTaxRate(settings.restaurant.zipCode, settings.restaurant.state);
-            if (res.data && typeof res.data.rate === 'number') {
-                if (res.data.breakdown) {
-                    handleTaxBreakdownChange('enabled', true);
-                    handleTaxBreakdownChange('country', res.data.breakdown.country.rate);
-                    handleTaxBreakdownChange('state', res.data.breakdown.state.rate);
-                    handleTaxBreakdownChange('city', res.data.breakdown.city.rate);
-                    handleTaxBreakdownChange('county', res.data.breakdown.county.rate);
-                } else {
-                    handleInputChange('restaurant', 'taxRate', res.data.rate);
-                }
-                toast.success(`Tax rate updated to ${res.data.rate}% based on ${settings.restaurant.zipCode}`);
-            } else {
-                toast.error('Could not fetch tax rate');
-            }
-        } catch (error) {
-            toast.error('Failed to fetch tax rate');
-        } finally {
-            setFetchingTax(false);
-        }
-    };
+    // MANUAL TAX REMOVED — "Auto Detect" manual rate lookup is no longer used; TaxJar handles tax calculation.
+    // const fetchTaxRate = async () => {
+    //     if (!settings.restaurant.zipCode) {
+    //         toast.error('Please enter a Zip Code first');
+    //         return;
+    //     }
+    //     try {
+    //         setFetchingTax(true);
+    //         const res = await settingsAPI.getTaxRate(settings.restaurant.zipCode, settings.restaurant.state);
+    //         if (res.data && typeof res.data.rate === 'number') {
+    //             if (res.data.breakdown) {
+    //                 handleTaxBreakdownChange('enabled', true);
+    //                 handleTaxBreakdownChange('country', res.data.breakdown.country.rate);
+    //                 handleTaxBreakdownChange('state', res.data.breakdown.state.rate);
+    //                 handleTaxBreakdownChange('city', res.data.breakdown.city.rate);
+    //                 handleTaxBreakdownChange('county', res.data.breakdown.county.rate);
+    //             } else {
+    //                 handleInputChange('restaurant', 'taxRate', res.data.rate);
+    //             }
+    //             toast.success(`Tax rate updated to ${res.data.rate}% based on ${settings.restaurant.zipCode}`);
+    //         } else {
+    //             toast.error('Could not fetch tax rate');
+    //         }
+    //     } catch (error) {
+    //         toast.error('Failed to fetch tax rate');
+    //     } finally {
+    //         setFetchingTax(false);
+    //     }
+    // };
 
     const handleBlur = (field: keyof RestaurantSettings) => {
         let validation: ValidationResult = { isValid: true };
@@ -1929,6 +1932,7 @@ const SettingsPage: React.FC = () => {
                                 onChange={(e) => handleInputChange('restaurant', 'zipCode', e.target.value)}
                             />
                         </Grid>
+                        {/* MANUAL TAX REMOVED — tax is now calculated exclusively via the TaxJar engine.
                         <Grid size={{ xs: 12, md: 6 }}>
                             <TextField
                                 fullWidth
@@ -1953,17 +1957,20 @@ const SettingsPage: React.FC = () => {
                                 }}
                             />
                         </Grid>
+                        */}
                         <Grid size={{ xs: 12, md: 6 }}>
                             <TextField
                                 fullWidth
                                 type="number"
                                 label="Processing Fee (%)"
                                 value={settings.restaurant.processingFee ?? 3}
-                                onChange={(e) => handleInputChange('restaurant', 'processingFee', parseFloat(e.target.value))}
-                                helperText="Default processing fee"
+                                InputProps={{ readOnly: true }}
+                                disabled
+                                helperText="Set by the platform administrator. Contact support to change it."
                             />
                         </Grid>
 
+                        {/* MANUAL TAX REMOVED — Tax Breakdown Configuration is replaced by the TaxJar engine.
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 2 }} />
                             <Typography variant="h6" gutterBottom>
@@ -2033,6 +2040,7 @@ const SettingsPage: React.FC = () => {
                                 </Grid>
                             </Grid>
                         )}
+                        */}
 
                         {/* <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 2 }} />
@@ -2115,6 +2123,7 @@ const SettingsPage: React.FC = () => {
                                 </Grid>
                             </>
                         )} */}
+                        {/* DELIVERY SETTINGS REMOVED
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 2 }} />
                             <Typography variant="h6" gutterBottom>
@@ -2137,6 +2146,7 @@ const SettingsPage: React.FC = () => {
                                 </Grid>
                             </Grid>
                         </Grid>
+                        */}
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 2 }} />
                             <Typography variant="h6" gutterBottom sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -2396,6 +2406,7 @@ const SettingsPage: React.FC = () => {
                             </Box>
                         </Grid>
 
+                        {/* MAILING SETTINGS REMOVED
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 2 }} />
                             <Typography variant="h6" gutterBottom>
@@ -2551,6 +2562,7 @@ const SettingsPage: React.FC = () => {
                                 )}
                             </Grid>
                         </Grid>
+                        */}
 
                         <Grid size={{ xs: 12 }} sx={{ display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' }, mt: { xs: 2.5, md: 0 } }}>
                             <Button
@@ -2641,6 +2653,7 @@ const SettingsPage: React.FC = () => {
                                 Save Preferences
                             </Button>
                         </Grid>
+                        {/* EXTERNAL INTEGRATIONS REMOVED — Google Maps API key is managed via env (VITE_GOOGLE_MAPS_API_KEY) / stored value, not editable here.
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 2 }} />
                             <Typography variant="h6" gutterBottom sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
@@ -2657,6 +2670,7 @@ const SettingsPage: React.FC = () => {
                                 autoComplete="new-password"
                             />
                         </Grid>
+                        */}
                     </Grid>
                 </TabPanel>
 
@@ -2866,6 +2880,7 @@ const SettingsPage: React.FC = () => {
 
                 <TabPanel value={tabValue} index={3}>
                     <Grid container spacing={3}>
+                        {/* TWILIO SMS SETTINGS REMOVED — SMS is now handled via the credits top-up feature.
                         <Grid size={{ xs: 12 }}>
                             <Paper
                                 variant="outlined"
@@ -2965,6 +2980,7 @@ const SettingsPage: React.FC = () => {
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 1 }} />
                         </Grid>
+                        */}
 
                         {/* ── Notification Sound Picker ── */}
                         <Grid size={{ xs: 12 }}>
@@ -3409,7 +3425,7 @@ const SettingsPage: React.FC = () => {
 
                         <Paper variant="outlined" sx={{ p: 3, borderRadius: 3, mb: 2 }}>
                             <Grid container spacing={2}>
-                                {['cash', 'card', 'zelle', 'venmo'].map((method) => (
+                                {['cash', 'card', 'zelle', 'venmo', 'cheque'].map((method) => (
                                     <Grid size={{ xs: 6, sm: 3 }} key={method}>
                                         <FormControlLabel
                                             control={
@@ -3418,7 +3434,7 @@ const SettingsPage: React.FC = () => {
                                                     onChange={(e) => {
                                                         const isChecked = e.target.checked;
                                                         setSettings(prev => {
-                                                            const currentMethods = prev.system.posPaymentMethods || { cash: true, card: true, zelle: true, venmo: true };
+                                                            const currentMethods = prev.system.posPaymentMethods || { cash: true, card: true, zelle: true, venmo: true, cheque: true };
                                                             return {
                                                                 ...prev,
                                                                 system: {
@@ -4379,7 +4395,12 @@ const SettingsPage: React.FC = () => {
                                                         handleDeliveryChange('builtIn', 'baseMiles', parseFloat(val) || 0);
                                                     }}
                                                     slotProps={{ htmlInput: { min: 0, step: 0.5 } }}
-                                                    helperText="Miles included in the base fee before per-mile charges apply"
+                                                    error={(settings.delivery.builtIn.baseMiles ?? 2) > (settings.delivery.builtIn.maxDeliveryRange ?? 15)}
+                                                    helperText={
+                                                        (settings.delivery.builtIn.baseMiles ?? 2) > (settings.delivery.builtIn.maxDeliveryRange ?? 15)
+                                                            ? "Base miles covered cannot exceed the maximum delivery range"
+                                                            : "Miles included in the base fee before per-mile charges apply"
+                                                    }
                                                     InputProps={{
                                                         endAdornment: <InputAdornment position="end">Miles</InputAdornment>,
                                                     }}
@@ -4412,8 +4433,14 @@ const SettingsPage: React.FC = () => {
                                             variant="contained"
                                             size={isMobile ? "medium" : "large"}
                                             startIcon={<SaveIcon />}
-                                            onClick={() => handleSave('delivery')}
-                                            disabled={loading}
+                                            onClick={() => {
+                                                if ((settings.delivery?.builtIn?.baseMiles ?? 2) > (settings.delivery?.builtIn?.maxDeliveryRange ?? 15)) {
+                                                    toast.error('Base miles covered cannot exceed the maximum delivery range');
+                                                    return;
+                                                }
+                                                handleSave('delivery');
+                                            }}
+                                            disabled={loading || (settings.delivery?.builtIn?.baseMiles ?? 2) > (settings.delivery?.builtIn?.maxDeliveryRange ?? 15)}
                                             sx={{
                                                 borderRadius: 2.5,
                                                 px: 4,

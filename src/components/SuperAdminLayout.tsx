@@ -41,6 +41,7 @@ import React from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
+import SuperAdminNotifications from './SuperAdminNotifications';
 
 const DRAWER_WIDTH = 280;
 
@@ -323,6 +324,7 @@ const SuperAdminLayout: React.FC = () => {
                     <Typography variant="h6" component="h1" sx={{ flexGrow: 1 }}>
                         Super Admin Portal
                     </Typography>
+                    <SuperAdminNotifications />
                     <IconButton onClick={handleProfileMenuOpen} color="inherit">
                         <Avatar sx={{ width: 32, height: 32, bgcolor: 'error.main' }}>
                             {user?.email?.charAt(0)?.toUpperCase() || 'S'}
