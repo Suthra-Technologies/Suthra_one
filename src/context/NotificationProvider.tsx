@@ -356,6 +356,71 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     }, [user, playNotificationSound, showNotification, getOrderNotificationDetails]);
 
+    const handleStaleOrder = useCallback((data: any) => {
+        console.log('🔔 [NotificationProvider] RAW staleOrder event:', data);
+        if (!user) return;
+
+        // Only staff who act on orders should be reminded.
+        const userRole = user.role?.toLowerCase() || '';
+        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
+        if (!staffRoles.includes(userRole)) {
+            console.log('🔕 [NotificationProvider] User not eligible for stale-order reminder.');
+            return;
+        }
+
+        playNotificationSound();
+
+        const { displayTokenNo, displayOrderType, displayStatus } = getOrderNotificationDetails(data);
+        const staleForMinutes = Number(data?.staleForMinutes) || 60;
+        const hours = Math.floor(staleForMinutes / 60);
+        const minutes = staleForMinutes % 60;
+        const durationLabel = hours > 0
+            ? `${hours}h${minutes ? ` ${minutes}m` : ''}`
+            : `${minutes}m`;
+
+        const title = 'Order Needs Attention';
+        const message = `Token No #${displayTokenNo}\nType: ${displayOrderType}\nStill "${displayStatus}" for ${durationLabel}`;
+
+        showNotification(title, message);
+
+        toast.custom((t) => (
+            <Box
+                sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 2,
+                    bgcolor: 'warning.main',
+                    color: 'white',
+                    p: 2,
+                    borderRadius: 2,
+                    boxShadow: 3,
+                    minWidth: 300,
+                    cursor: 'pointer',
+                }}
+                onClick={() => toast.dismiss(t.id)}
+            >
+                <RestaurantIcon />
+                <Box sx={{ flexGrow: 1 }}>
+                    <Typography variant="subtitle1" fontWeight="bold">{title}</Typography>
+                    <Typography variant="body2">{message}</Typography>
+                </Box>
+                <IconButton size="small" sx={{ color: 'white' }}><CloseIcon /></IconButton>
+            </Box>
+        ), { duration: 6000, position: 'top-right' });
+
+        const newNotif: Notification = {
+            id: 'stale-' + (data?.orderId || Date.now()) + '-' + Date.now(),
+            timestamp: new Date(),
+            read: false,
+            type: 'stale_order',
+            title,
+            message,
+            priority: 'high',
+            data,
+        };
+        setNotifications(prev => [newNotif, ...prev].slice(0, 50));
+    }, [user, playNotificationSound, showNotification, getOrderNotificationDetails]);
+
     const handleNewCateringOrder = useCallback((data: any) => {
         console.log('🔔 [NotificationProvider] RAW newCateringOrder event:', data);
         if (!user) return;
@@ -527,6 +592,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
         socketService.on('newOrder', handleNewOrder);
         socketService.on('orderStatusUpdate', handleOrderStatusUpdate);
+        socketService.on('staleOrder', handleStaleOrder);
         socketService.on('locationUpdate', handleLocationUpdate);
         
         // Catering events
@@ -538,6 +604,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             console.log('🔌 [NotificationProvider] Cleanup: removing listeners');
             socketService.off('newOrder', handleNewOrder);
             socketService.off('orderStatusUpdate', handleOrderStatusUpdate);
+            socketService.off('staleOrder', handleStaleOrder);
             socketService.off('locationUpdate', handleLocationUpdate);
             
             socketService.off('newCateringOrder', handleNewCateringOrder);
@@ -547,7 +614,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             // Usually disconnecting is safer to prevent duplicate handlers if remounted.
             socketService.disconnect();
         };
-    }, [user?.sub, user?.role, handleNewOrder, handleOrderStatusUpdate, handleNewCateringOrder, handleCateringOrderStatusUpdate, handleCateringOrderUpdate]); // Re-connect only if identity changes
+    }, [user?.sub, user?.role, handleNewOrder, handleOrderStatusUpdate, handleStaleOrder, handleNewCateringOrder, handleCateringOrderStatusUpdate, handleCateringOrderUpdate]); // Re-connect only if identity changes
 
     const clearNotifications = useCallback(() => setNotifications([]), []);
     const markAsRead = useCallback((id: string | number) => {
