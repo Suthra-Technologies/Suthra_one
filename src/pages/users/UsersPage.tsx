@@ -1644,7 +1644,10 @@ const UsersPage = () => {
                             type="number"
                             value={userForm.salary}
                             onChange={(e) => {
-                              setUserForm({ ...userForm, salary: e.target.value });
+                              let val = e.target.value;
+                              if (val.length > 7) return;
+                              if (/^0[0-9]+/.test(val)) { val = val.replace(/^0+/, ''); e.target.value = val; }
+                              setUserForm({ ...userForm, salary: val });
                               if (userErrors.salary) setUserErrors(prev => ({ ...prev, salary: { isValid: true } }));
                             }}
                             onBlur={() => {

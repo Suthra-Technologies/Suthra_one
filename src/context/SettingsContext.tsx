@@ -312,7 +312,7 @@ const defaultSettings: SettingsState = {
         kitchen: { name: 'Kitchen Printer', type: 'none', ip: '', port: 80, paperWidth: 80, deviceId: 'local_printer' },
     },
     rewards: {
-        isEnabled: true,
+        isEnabled: false,
         displayName: 'Points',
         pointValue: 0.05,
         earnRate: 1,

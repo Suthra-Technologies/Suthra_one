@@ -236,6 +236,16 @@ const RestaurantRegisterPage: React.FC = () => {
     return Object.values(newErrors).every(v => v.isValid);
   };
 
+  const isReadyToRegister = Boolean(
+    form.restaurantName.trim() &&
+    form.slug.trim() &&
+    form.firstName.trim() &&
+    form.lastName.trim() &&
+    form.email.trim() &&
+    form.phone.trim() &&
+    form.password.trim()
+  );
+
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
@@ -474,10 +484,9 @@ const RestaurantRegisterPage: React.FC = () => {
             ) : plans.length > 0 ? (
               <Box sx={{ mt: 5, mb: 2, width: '100%' }}>
                 <Typography variant="h6" fontWeight="bold" sx={{ textAlign: 'center', color: 'text.primary' }}>
-                  Choose Your Subscription Plan
+                  Choose Your Subscription Plan (Optional)
                 </Typography>
                 <Typography variant="body2" sx={{ mb: 3, textAlign: 'center', color: 'text.secondary' }}>
-                  (Optional - You can skip this and start with a free trial)
                 </Typography>
                 <Box
                   sx={{
@@ -573,6 +582,9 @@ const RestaurantRegisterPage: React.FC = () => {
                     )
                   })}
                 </Box>
+                <Typography variant="body2" sx={{ mt: 3, textAlign: 'center', color: 'text.secondary', fontStyle: 'italic' }}>
+                  Choose a plan to unlock all premium features, or skip this step to begin your free trial.
+                </Typography>
               </Box>
             ) : null}
 
@@ -583,8 +595,21 @@ const RestaurantRegisterPage: React.FC = () => {
               fullWidth
               variant="contained"
               size="large"
-              sx={{ mt: 4, mb: 2, height: 48, borderRadius: 2, textTransform: 'none', fontSize: '1.1rem', fontWeight: 600 }}
-              disabled={loading}
+              sx={{ 
+                mt: 4, 
+                mb: 2, 
+                height: 48, 
+                borderRadius: 2, 
+                textTransform: 'none', 
+                fontSize: '1.1rem', 
+                fontWeight: 600,
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  transform: (!loading && isReadyToRegister) ? 'translateY(-2px)' : 'none',
+                  boxShadow: (!loading && isReadyToRegister) ? '0 6px 20px rgba(25, 118, 210, 0.4)' : 'none',
+                }
+              }}
+              disabled={loading || !isReadyToRegister}
             >
               {loading ? <CircularProgress size={24} color="inherit" /> : 'Start Your Journey'}
             </Button>
@@ -643,7 +668,7 @@ const RestaurantRegisterPage: React.FC = () => {
             {successData?.restaurantName}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Your registration is complete! Your account is currently pending approval by the Super Admin. You will receive an email notification once your store has been approved and is ready to log in.
+            Your account is currently under review by the NexZen POS team. You'll get an email once your restaurant gets approved and is ready to use!
           </Typography>
         </DialogContent>
         <DialogActions sx={{ justifyContent: 'center', pb: 3, pt: 2 }}>
