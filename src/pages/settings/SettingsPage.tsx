@@ -395,6 +395,8 @@ const createDefaultSettings = (): SettingsState => ({
             zelle: true,
             venmo: true,
             cheque: true,
+            creditCard: true,
+            debitCard: true,
         }
     },
     payment: {
@@ -490,6 +492,8 @@ const mergeSettingsWithDefaults = (defaults: SettingsState, partial: Partial<Set
             zelle: fetchedSystem.posPaymentMethods?.zelle ?? (defaults.system.posPaymentMethods?.zelle ?? true),
             venmo: fetchedSystem.posPaymentMethods?.venmo ?? (defaults.system.posPaymentMethods?.venmo ?? true),
             cheque: fetchedSystem.posPaymentMethods?.cheque ?? (defaults.system.posPaymentMethods?.cheque ?? true),
+            creditCard: fetchedSystem.posPaymentMethods?.creditCard ?? (defaults.system.posPaymentMethods?.creditCard ?? true),
+            debitCard: fetchedSystem.posPaymentMethods?.debitCard ?? (defaults.system.posPaymentMethods?.debitCard ?? true),
         }
     };
 
@@ -3454,6 +3458,45 @@ const SettingsPage: React.FC = () => {
                                     </Grid>
                                 ))}
                             </Grid>
+
+                            {/* Card sub-types — shown only when Card is enabled */}
+                            {(settings.system.posPaymentMethods?.card ?? true) && (
+                                <Box sx={{ mt: 1, pl: { xs: 1, sm: 4 }, pt: 2, borderTop: '1px dashed', borderColor: 'divider' }}>
+                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontWeight: 600 }}>
+                                        Accepted Card Types
+                                    </Typography>
+                                    <Grid container spacing={2}>
+                                        {[{ key: 'creditCard', label: 'Credit Card' }, { key: 'debitCard', label: 'Debit Card' }].map((ct) => (
+                                            <Grid size={{ xs: 6, sm: 3 }} key={ct.key}>
+                                                <FormControlLabel
+                                                    control={
+                                                        <Checkbox
+                                                            checked={settings.system.posPaymentMethods?.[ct.key as keyof typeof settings.system.posPaymentMethods] ?? true}
+                                                            onChange={(e) => {
+                                                                const isChecked = e.target.checked;
+                                                                setSettings(prev => {
+                                                                    const currentMethods = prev.system.posPaymentMethods || { cash: true, card: true, zelle: true, venmo: true, cheque: true, creditCard: true, debitCard: true };
+                                                                    return {
+                                                                        ...prev,
+                                                                        system: {
+                                                                            ...prev.system,
+                                                                            posPaymentMethods: {
+                                                                                ...currentMethods,
+                                                                                [ct.key]: isChecked
+                                                                            }
+                                                                        }
+                                                                    };
+                                                                });
+                                                            }}
+                                                        />
+                                                    }
+                                                    label={<Typography>{ct.label}</Typography>}
+                                                />
+                                            </Grid>
+                                        ))}
+                                    </Grid>
+                                </Box>
+                            )}
                         </Paper>
 
                         <Box sx={{ mt: 4, display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' } }}>

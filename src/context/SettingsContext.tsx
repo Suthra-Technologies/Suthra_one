@@ -100,6 +100,8 @@ export interface SystemSettings {
         zelle?: boolean;
         venmo?: boolean;
         cheque?: boolean;
+        creditCard?: boolean;
+        debitCard?: boolean;
     };
 }
 
@@ -282,6 +284,8 @@ const defaultSettings: SettingsState = {
             zelle: true,
             venmo: true,
             cheque: true,
+            creditCard: true,
+            debitCard: true,
         }
     },
     payment: {
@@ -515,6 +519,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                         zelle: fetched.system?.posPaymentMethods?.zelle ?? defaultSettings.system.posPaymentMethods?.zelle ?? true,
                         venmo: fetched.system?.posPaymentMethods?.venmo ?? defaultSettings.system.posPaymentMethods?.venmo ?? true,
                         cheque: fetched.system?.posPaymentMethods?.cheque ?? defaultSettings.system.posPaymentMethods?.cheque ?? true,
+                        creditCard: fetched.system?.posPaymentMethods?.creditCard ?? defaultSettings.system.posPaymentMethods?.creditCard ?? true,
+                        debitCard: fetched.system?.posPaymentMethods?.debitCard ?? defaultSettings.system.posPaymentMethods?.debitCard ?? true,
                     }
                 },
                 payment: {

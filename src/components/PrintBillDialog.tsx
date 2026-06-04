@@ -622,6 +622,7 @@ const PrintBillDialog: React.FC<PrintBillDialogProps> = ({ open, order, onClose 
                                             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.75 }}>
                                                 <Typography variant="body2" fontWeight="bold">
                                                     {billData.paymentStatus === 'pending' ? 'PENDING' : getPaymentMethodLabel(billData.payments && billData.payments.length > 0 ? billData.payments.map((p: any) => p.method) : billData.paymentMethod)}
+                                                    {billData.paymentMethod === 'card' && billData.cardType ? ` (${billData.cardType === 'debit' ? 'Debit' : 'Credit'})` : ''}
                                                 </Typography>
                                                 {billData.paymentStatus === 'paid' && (
                                                     <Typography variant="body2" fontWeight="bold" sx={{ color: 'success.main' }}>

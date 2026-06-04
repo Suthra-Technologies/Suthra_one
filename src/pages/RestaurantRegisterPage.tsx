@@ -349,9 +349,17 @@ const RestaurantRegisterPage: React.FC = () => {
                   onChange={onChange}
                   onBlur={() => handleBlur('slug')}
                   error={hasError(errors.slug)}
-                  helperText={getHelperText(errors.slug) || "URL identifier"}
+                  helperText={
+                    getHelperText(errors.slug) ||
+                    (form.slug.trim()
+                      ? `Your store will be at: ${form.slug.trim().toLowerCase()}.nexzenpos.com`
+                      : "URL identifier — your store address will be yourname.nexzenpos.com")
+                  }
                   required
                   placeholder="e.g. my-bistro"
+                  InputProps={{
+                    endAdornment: <InputAdornment position="end">.nexzenpos.com</InputAdornment>,
+                  }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>

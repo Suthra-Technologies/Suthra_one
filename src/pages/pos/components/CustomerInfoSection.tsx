@@ -40,6 +40,8 @@ interface CustomerInfoSectionProps {
     setOrderType: (val: any) => void;
     paymentMethod: string;
     setPaymentMethod: (val: any) => void;
+    cardType?: 'credit' | 'debit';
+    setCardType?: (val: 'credit' | 'debit') => void;
     guestCount: number;
     setGuestCount: (val: number) => void;
     tableNumber: string;
@@ -103,6 +105,8 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
     setOrderType,
     paymentMethod,
     setPaymentMethod,
+    cardType = 'credit',
+    setCardType,
     guestCount,
     setGuestCount,
     tableNumber,
@@ -535,6 +539,22 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                 )}
                             </RadioGroup>
                         </FormControl>
+                    )}
+
+                    {/* Card type — Credit / Debit (shown when Card is selected) */}
+                    {paymentMethod === 'card' && setCardType &&
+                        ((settings.system?.posPaymentMethods?.creditCard ?? true) || (settings.system?.posPaymentMethods?.debitCard ?? true)) && (
+                        <Box sx={{ mt: 1, pl: 1 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>Card Type</Typography>
+                            <RadioGroup row value={cardType} onChange={(e) => setCardType(e.target.value as 'credit' | 'debit')}>
+                                {(settings.system?.posPaymentMethods?.creditCard ?? true) && (
+                                    <FormControlLabel value="credit" control={<Radio size="small" />} label="Credit Card" />
+                                )}
+                                {(settings.system?.posPaymentMethods?.debitCard ?? true) && (
+                                    <FormControlLabel value="debit" control={<Radio size="small" />} label="Debit Card" />
+                                )}
+                            </RadioGroup>
+                        </Box>
                     )}
 
                     {/* Dine-in Payment Method - Only Card and Cash */}

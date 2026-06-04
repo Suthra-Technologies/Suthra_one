@@ -288,6 +288,7 @@ const POSPage: React.FC = () => {
     const [discountPercent, setDiscountPercent] = useState(0);
     const [tip, setTip] = useState(0);
     const [paymentMethod, setPaymentMethod] = useState<'cash' | 'online' | 'card' | 'zelle' | 'venmo' | 'cheque' | 'phonepe' | 'gpay' | 'paytm'>('cash');
+    const [cardType, setCardType] = useState<'credit' | 'debit'>('credit');
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
     const [manualPaymentDialogOpen, setManualPaymentDialogOpen] = useState(false);
     const [selectedTable, setSelectedTable] = useState<any>(null);
@@ -989,6 +990,15 @@ const POSPage: React.FC = () => {
         }
     }, [settings.system?.posPaymentMethods, paymentMethod, orderType]);
 
+    // Keep the selected card type valid based on which card types are enabled.
+    useEffect(() => {
+        if (paymentMethod !== 'card') return;
+        const credit = settings.system?.posPaymentMethods?.creditCard ?? true;
+        const debit = settings.system?.posPaymentMethods?.debitCard ?? true;
+        if (cardType === 'credit' && !credit && debit) setCardType('debit');
+        else if (cardType === 'debit' && !debit && credit) setCardType('credit');
+    }, [paymentMethod, cardType, settings.system?.posPaymentMethods]);
+
     // Initialise data
     useEffect(() => {
         initialLoad();
@@ -1457,6 +1467,7 @@ const POSPage: React.FC = () => {
                 paymentStatus: finalPaymentStatus,
                 paymentIntentId: finalPaymentIntentId,
                 ...(finalPaymentMethod === 'card' && {
+                    cardType,
                     cardOptions: {
                         printReceipt: cardPrintReceipt,
                         signInForApiCall: cardSignInForApiCall,
@@ -1835,6 +1846,8 @@ const POSPage: React.FC = () => {
                     setOrderType={setOrderType}
                     paymentMethod={paymentMethod}
                     setPaymentMethod={setPaymentMethod}
+                    cardType={cardType}
+                    setCardType={setCardType}
                     guestCount={guestCount}
                     setGuestCount={setGuestCount}
                     tableNumber={tableNumber}

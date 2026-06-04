@@ -836,6 +836,19 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                 fontWeight: 'bold',
                             }}
                         />
+                        {order.paymentMethod === 'card' && order.cardType && (
+                            <Chip
+                                label={order.cardType === 'debit' ? 'DEBIT' : 'CREDIT'}
+                                size="small"
+                                sx={{
+                                    height: 20,
+                                    fontSize: '0.7rem',
+                                    bgcolor: alpha(theme.palette.info.main, 0.12),
+                                    color: theme.palette.info.main,
+                                    fontWeight: 'bold',
+                                }}
+                            />
+                        )}
                         {order.paymentStatus === 'paid' && (
                             <Chip
                                 label="PAID"
