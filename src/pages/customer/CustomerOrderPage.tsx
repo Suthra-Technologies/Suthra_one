@@ -239,6 +239,7 @@ const CustomerOrderPage: React.FC = () => {
             }}
         >
             <SpiceLevelDialog />
+
             {/* Elegant Hero Section */}
             <Box sx={{
                 position: 'relative',
@@ -290,44 +291,51 @@ const CustomerOrderPage: React.FC = () => {
                 mx: { xs: 0, sm: 2 },
                 mb: { xs: 1, sm: 4 }
             }}>
-                <Box sx={{
-                    display: 'flex',
-                    overflowX: 'auto',
-                    gap: { xs: 0.35, sm: 1.5 },
-                    p: { xs: 0.65, sm: 2 },
-                    '&::-webkit-scrollbar': { display: 'none' },
-                    '-ms-overflow-style': 'none',
-                    scrollbarWidth: 'none',
-                }}>
-                    {categories.map(cat => (
-                        <Button
-                            key={cat}
-                            onClick={() => setSelectedCategory(cat)}
-                            variant={selectedCategory === cat ? "contained" : "text"}
-                            sx={{
-                                minWidth: 'fit-content',
-                                px: { xs: 1.1, sm: 3 },
-                                py: { xs: 0.35 },
-                                borderRadius: 10,
-                                fontWeight: '700',
-                                textTransform: 'none',
-                                fontSize: bodyFontSize,
-                                color: selectedCategory === cat ? 'white' : 'text.secondary',
-                                bgcolor: selectedCategory === cat ? 'primary.main' : 'transparent',
-                                '&:hover': {
-                                    bgcolor: selectedCategory === cat ? 'primary.dark' : alpha(theme.palette.primary.main, 0.05),
-                                }
-                            }}
-                        >
-                            {cat}
-                        </Button>
-                    ))}
+                <Box sx={{ display: 'flex', alignItems: 'center', pr: { xs: 1, sm: 2 } }}>
+                    <Box sx={{
+                        display: 'flex',
+                        flex: 1,
+                        overflowX: 'auto',
+                        gap: { xs: 0.35, sm: 1.5 },
+                        p: { xs: 0.65, sm: 2 },
+                        '&::-webkit-scrollbar': { display: 'none' },
+                        '-ms-overflow-style': 'none',
+                        scrollbarWidth: 'none',
+                    }}>
+                        {categories.map(cat => (
+                            <Button
+                                key={cat}
+                                onClick={() => setSelectedCategory(cat)}
+                                variant={selectedCategory === cat ? "contained" : "text"}
+                                sx={{
+                                    minWidth: 'fit-content',
+                                    px: { xs: 1.1, sm: 3 },
+                                    py: { xs: 0.35 },
+                                    borderRadius: 10,
+                                    fontWeight: '700',
+                                    textTransform: 'none',
+                                    fontSize: bodyFontSize,
+                                    color: selectedCategory === cat ? 'white' : 'text.secondary',
+                                    bgcolor: selectedCategory === cat ? 'primary.main' : 'transparent',
+                                    '&:hover': {
+                                        bgcolor: selectedCategory === cat ? 'primary.dark' : alpha(theme.palette.primary.main, 0.05),
+                                    }
+                                }}
+                            >
+                                {cat}
+                            </Button>
+                        ))}
+                    </Box>
+
+
                 </Box>
             </Paper>
 
+
+
             {/* Menu Items Showcase */}
             <Container maxWidth="lg">
-                <Box sx={{ mb: { xs: 0.75, sm: 2 }, px: { xs: 0.5, sm: 1 } }}>
+                <Box sx={{ mb: { xs: 0.75, sm: 2 }, px: { xs: 0.5, sm: 1 }, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Typography
                         variant="h5"
                         fontWeight="800"
@@ -336,6 +344,7 @@ const CustomerOrderPage: React.FC = () => {
                     >
                         {selectedCategory === 'All' ? 'Our Menu Items' : selectedCategory}
                     </Typography>
+
                 </Box>
 
                 <Grid container spacing={{ xs: 1.25, sm: 3 }}>
@@ -478,94 +487,6 @@ const CustomerOrderPage: React.FC = () => {
                 </Grid>
             </Container>
 
-            {/* Premium Sticky Floating Cart Bar */}
-           {cart.items.length > 0 && (
-    <Box sx={{
-        position: 'fixed',
-        bottom: { xs: 12, sm: 24 },
-        left: 0,
-        right: 0,
-        display: 'flex',
-        justifyContent: 'center',
-        zIndex: 1000,
-        px: { xs: 1, sm: 2 },
-        pointerEvents: 'none', // let clicks pass through the wrapper
-    }}>
-        <Zoom in>
-            <Paper
-                elevation={15}
-                sx={{
-                    p: { xs: 1.25, sm: 1.5 },
-                    bgcolor: '#1a1a1a',
-                    color: 'white',
-                    borderRadius: { xs: 4, sm: 10 },
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    gap: { xs: 1, sm: 2 },
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    backdropFilter: 'blur(20px)',
-                    width: { xs: '100%', sm: '420px' },
-                    maxWidth: { xs: '100%', sm: 420 },
-                    pointerEvents: 'auto', // re-enable clicks on the actual bar
-                }}
-            >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.25, sm: 2 }, ml: { xs: 0.25, sm: 1 }, minWidth: 0 }}>
-                    <Badge
-                        badgeContent={totalQuantity}
-                        color="error"
-                        overlap="circular"
-                        sx={{
-                            '& .MuiBadge-badge': {
-                                fontWeight: 'bold',
-                                fontSize: '0.75rem',
-                                height: 22,
-                                minWidth: 22,
-                                border: '2px solid #1a1a1a'
-                            }
-                        }}
-                    >
-                        <Box sx={{
-                            width: 44,
-                            height: 44,
-                            bgcolor: alpha(theme.palette.primary.main, 0.2),
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'primary.main'
-                        }}>
-                            <CartIcon />
-                        </Box>
-                    </Badge>
-                    <Box>
-                        <Typography variant="caption" sx={{ opacity: 0.6, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1, fontSize: bodyFontSize }}>Total Order</Typography>
-                        <Typography variant="h6" fontWeight="900" sx={{ lineHeight: 1.1, fontSize: headingFontSize }}>{formatCurrency(calculateTotal())}</Typography>
-                    </Box>
-                </Box>
-                <Button
-                    variant="contained"
-                    onClick={() => navigate(getRelativePath('/customer/checkout'))}
-                    endIcon={<ChevronIcon />}
-                    sx={{
-                        bgcolor: 'primary.main',
-                        color: 'white',
-                        fontWeight: '900',
-                        borderRadius: { xs: 3, sm: 10 },
-                        height: { xs: 44, sm: 52 },
-                        px: { xs: 2, sm: 4 },
-                        textTransform: 'none',
-                        fontSize: bodyFontSize,
-                        whiteSpace: 'nowrap',
-                        '&:hover': { bgcolor: 'primary.dark' }
-                    }}
-                >
-                    Checkout
-                </Button>
-            </Paper>
-        </Zoom>
-    </Box>
-)}
         </Box>
     );
 };

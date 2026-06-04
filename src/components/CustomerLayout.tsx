@@ -22,6 +22,12 @@ import {
   Typography,
   useMediaQuery,
   useTheme,
+  Badge,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  Stack,
+  alpha,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -40,9 +46,12 @@ import {
   History as HistoryIcon,
   Collections as CollectionsIcon,
   Info as InfoIcon,
+  Add as AddIcon,
+  Remove as RemoveIcon,
 } from '@mui/icons-material';
 import { useAuth } from 'src/context/AuthContext';
 import { useSettings } from 'src/context/SettingsContext';
+import { useGuestCart } from 'src/context/GuestCartContext';
 import { useActiveTenant } from 'src/hooks/useActiveTenant';
 import { usePullToRefresh } from 'src/hooks/usePullToRefresh';
 import { Capacitor } from '@capacitor/core';
@@ -56,10 +65,37 @@ const CustomerLayout: React.FC = () => {
   const location = useLocation();
   const { slug, getRelativePath } = useActiveTenant();
   const { user, logout, isLoading } = useAuth();
-  const { settings } = useSettings();
+  const { settings, formatCurrency } = useSettings();
+  const { cart, updateQuantity, addItem } = useGuestCart();
+  
+  const totalQuantity = cart.totalItems;
+  
+  const calculateTotal = () => {
+      const subtotal = cart.totalAmount;
+      const processingFeeRate = settings?.restaurant?.processingFee || 0;
+      const taxRate = settings?.restaurant?.taxRate || 0;
+      const processingFeeAmount = (subtotal * processingFeeRate) / 100;
+      const taxAmount = (subtotal * taxRate) / 100;
+      return subtotal + processingFeeAmount + taxAmount;
+  };
+
+  const removeFromCart = (itemId: string) => {
+      const itemIndex = cart.items.findIndex((c: any) => c.id === itemId);
+      if (itemIndex >= 0) {
+          updateQuantity(itemIndex, cart.items[itemIndex].quantity - 1);
+      }
+  };
+
+  const addToCart = (item: any) => {
+      const itemIndex = cart.items.findIndex((c: any) => c.id === item.id);
+      if (itemIndex >= 0) {
+          updateQuantity(itemIndex, cart.items[itemIndex].quantity + 1);
+      }
+  };
+
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-
+  const [isCartModalOpen, setIsCartModalOpen] = useState(false);
   // Pull-to-refresh for mobile apps
   usePullToRefresh();
 
@@ -253,6 +289,23 @@ const CustomerLayout: React.FC = () => {
             )}
 
             <Box sx={{ flexGrow: 1 }} />
+
+            {/* Cart Button */}
+            {cart.items.length > 0 && (
+                <IconButton
+                    onClick={() => setIsCartModalOpen(true)}
+                    sx={{
+                        mr: { xs: 1, sm: 2 },
+                        bgcolor: 'rgba(79,70,229,0.08)',
+                        color: 'primary.main',
+                        '&:hover': { bgcolor: 'rgba(79,70,229,0.16)' },
+                    }}
+                >
+                    <Badge badgeContent={totalQuantity} color="error" sx={{ '& .MuiBadge-badge': { fontWeight: 'bold' } }}>
+                        <ShoppingCart fontSize="small" />
+                    </Badge>
+                </IconButton>
+            )}
 
             {/* Auth Buttons */}
             {!user ? (
@@ -777,7 +830,7 @@ const CustomerLayout: React.FC = () => {
               >
                 Developed by{' '}
                 <Link
-                  href="https://suthratech.com/"
+                  href="https://nexzentek.com/"
                   target="_blank"
                   rel="noopener noreferrer"
                   underline="hover"
@@ -787,7 +840,7 @@ const CustomerLayout: React.FC = () => {
                     '&:hover': { color: '#a5b4fc !important' }
                   }}
                 >
-                  Suthra Technologies
+                  NexZenTek
                 </Link>
               </Typography>
             </Box>
@@ -802,6 +855,69 @@ const CustomerLayout: React.FC = () => {
           50% { opacity: 0.6; transform: scale(0.95); }
         }
       `}</style>
+
+      {/* Cart Modal */}
+      <Dialog
+          open={isCartModalOpen}
+          onClose={() => setIsCartModalOpen(false)}
+          fullWidth
+          maxWidth="xs"
+          PaperProps={{ sx: { borderRadius: 4, p: 1 } }}
+      >
+          <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="h6" fontWeight="900">Your Cart</Typography>
+              <IconButton onClick={() => setIsCartModalOpen(false)} size="small" sx={{ color: 'text.secondary' }}>
+                  <Close />
+              </IconButton>
+          </DialogTitle>
+          <DialogContent sx={{ px: 2, pb: 3 }}>
+              {cart.items.length === 0 ? (
+                  <Typography color="text.secondary" textAlign="center" py={4}>Your cart is empty.</Typography>
+              ) : (
+                  <Stack spacing={2} sx={{ mt: 1 }}>
+                      {cart.items.map((item) => (
+                          <Box key={item.cartId} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Box sx={{ flex: 1, minWidth: 0, mr: 1 }}>
+                                  <Typography variant="subtitle2" fontWeight="700" noWrap>{item.name}</Typography>
+                                  <Typography variant="caption" color="text.secondary">
+                                      {formatCurrency(item.price)} x {item.quantity}
+                                  </Typography>
+                              </Box>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: alpha(theme.palette.primary.main, 0.1), borderRadius: 2, px: 1, py: 0.5 }}>
+                                  <IconButton size="small" onClick={() => removeFromCart(item.id)} sx={{ p: 0.5 }}>
+                                      <RemoveIcon fontSize="small" color="primary.main" />
+                                  </IconButton>
+                                  <Typography fontWeight="bold" color="primary.main">{item.quantity}</Typography>
+                                  <IconButton size="small" onClick={() => addToCart(item)} sx={{ p: 0.5 }}>
+                                      <AddIcon fontSize="small" color="primary.main" />
+                                  </IconButton>
+                              </Box>
+                          </Box>
+                      ))}
+                      
+                      <Divider sx={{ my: 1 }} />
+                      
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography fontWeight="600" color="text.secondary">Subtotal</Typography>
+                          <Typography fontWeight="600">{formatCurrency(cart.totalAmount)}</Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Typography fontWeight="900" fontSize="1.1rem">Total</Typography>
+                          <Typography fontWeight="900" fontSize="1.1rem" color="primary.main">{formatCurrency(calculateTotal())}</Typography>
+                      </Box>
+                      
+                      <Button
+                          variant="contained"
+                          fullWidth
+                          onClick={() => { setIsCartModalOpen(false); navigate(slug ? getRelativePath('/customer/checkout') : '/customer/checkout'); }}
+                          sx={{ py: 1.5, borderRadius: 3, fontWeight: '900', mt: 2 }}
+                      >
+                          Proceed to Checkout
+                      </Button>
+                  </Stack>
+              )}
+          </DialogContent>
+      </Dialog>
     </Box>
   );
 };

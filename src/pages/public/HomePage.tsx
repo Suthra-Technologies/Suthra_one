@@ -2672,7 +2672,7 @@ const HomePage: React.FC = () => {
                 Developed by{" "}
                 <Box
                   component="a"
-                  href="https://suthratech.com/"
+                  href="https://nexzentek.com/"
                   target="_blank"
                   rel="noopener noreferrer"
                   sx={{
@@ -2682,7 +2682,7 @@ const HomePage: React.FC = () => {
                     "&:hover": { textDecoration: "underline", color: "#a5b4fc !important" },
                   }}
                 >
-                  Suthra Technologies
+                  NexZenTek
                 </Box>
               </Typography>
             </Box>
