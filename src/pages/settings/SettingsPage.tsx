@@ -4051,7 +4051,7 @@ const SettingsPage: React.FC = () => {
                             <FormControlLabel
                                 control={
                                     <Switch
-                                        checked={settings.rewards?.isEnabled ?? true}
+                                        checked={settings.rewards?.isEnabled ?? false}
                                         onChange={(e) => handleInputChange('rewards', 'isEnabled', e.target.checked)}
                                         color="primary"
                                     />
@@ -4060,7 +4060,7 @@ const SettingsPage: React.FC = () => {
                                 sx={{ mb: 2 }}
                             />
 
-                            <Collapse in={settings.rewards?.isEnabled ?? true}>
+                            <Collapse in={settings.rewards?.isEnabled ?? false}>
                                 <Grid container spacing={3}>
                                     <Grid size={{ xs: 12, md: 6 }}>
                                         <TextField
@@ -4077,7 +4077,12 @@ const SettingsPage: React.FC = () => {
                                             type="number"
                                             label="Point Value ($)"
                                             value={settings.rewards?.pointValue ?? 0.05}
-                                            onChange={(e) => handleInputChange('rewards', 'pointValue', Number(e.target.value))}
+                                            onChange={(e) => {
+                                                let val = e.target.value;
+                                                if (val.length > 4) return;
+                                                if (/^0[0-9]+/.test(val)) { val = val.replace(/^0+/, ''); e.target.value = val; }
+                                                handleInputChange('rewards', 'pointValue', Number(val) || 0);
+                                            }}
                                             slotProps={{ htmlInput: { min: 0, step: "0.01" } }}
                                             helperText="Value of 1 point in dollars (e.g. 0.05 = $5 for 100 pts)"
                                         />
@@ -4094,7 +4099,12 @@ const SettingsPage: React.FC = () => {
                                             type="number"
                                             label="Points per $1 Spent"
                                             value={settings.rewards?.earnRate ?? 1}
-                                            onChange={(e) => handleInputChange('rewards', 'earnRate', Number(e.target.value))}
+                                            onChange={(e) => {
+                                                let val = e.target.value;
+                                                if (val.length > 4) return;
+                                                if (/^0[0-9]+/.test(val)) { val = val.replace(/^0+/, ''); e.target.value = val; }
+                                                handleInputChange('rewards', 'earnRate', Number(val) || 0);
+                                            }}
                                             slotProps={{ htmlInput: { min: 0 } }}
                                         />
                                     </Grid>
@@ -4117,7 +4127,12 @@ const SettingsPage: React.FC = () => {
                                             type="number"
                                             label="Min Order to Earn"
                                             value={settings.rewards?.minOrderValueToEarn ?? 0}
-                                            onChange={(e) => handleInputChange('rewards', 'minOrderValueToEarn', Number(e.target.value))}
+                                            onChange={(e) => {
+                                                let val = e.target.value;
+                                                if (val.length > 4) return;
+                                                if (/^0[0-9]+/.test(val)) { val = val.replace(/^0+/, ''); e.target.value = val; }
+                                                handleInputChange('rewards', 'minOrderValueToEarn', Number(val) || 0);
+                                            }}
                                             slotProps={{ htmlInput: { min: 0 } }}
                                             InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
                                         />
@@ -4134,7 +4149,12 @@ const SettingsPage: React.FC = () => {
                                             type="number"
                                             label="Welcome Bonus"
                                             value={settings.rewards?.welcomeBonus ?? 100}
-                                            onChange={(e) => handleInputChange('rewards', 'welcomeBonus', Number(e.target.value))}
+                                            onChange={(e) => {
+                                                let val = e.target.value;
+                                                if (val.length > 4) return;
+                                                if (/^0[0-9]+/.test(val)) { val = val.replace(/^0+/, ''); e.target.value = val; }
+                                                handleInputChange('rewards', 'welcomeBonus', Number(val) || 0);
+                                            }}
                                             slotProps={{ htmlInput: { min: 0 } }}
                                             helperText="Points given on sign up"
                                         />
@@ -4145,7 +4165,12 @@ const SettingsPage: React.FC = () => {
                                             type="number"
                                             label="First Order Bonus"
                                             value={settings.rewards?.firstOrderBonus ?? 0}
-                                            onChange={(e) => handleInputChange('rewards', 'firstOrderBonus', Number(e.target.value))}
+                                            onChange={(e) => {
+                                                let val = e.target.value;
+                                                if (val.length > 4) return;
+                                                if (/^0[0-9]+/.test(val)) { val = val.replace(/^0+/, ''); e.target.value = val; }
+                                                handleInputChange('rewards', 'firstOrderBonus', Number(val) || 0);
+                                            }}
                                             slotProps={{ htmlInput: { min: 0 } }}
                                         />
                                     </Grid>
@@ -4155,7 +4180,12 @@ const SettingsPage: React.FC = () => {
                                             type="number"
                                             label="Feedback/Rating Bonus"
                                             value={settings.rewards?.pointsPerRating ?? 0}
-                                            onChange={(e) => handleInputChange('rewards', 'pointsPerRating', Number(e.target.value))}
+                                            onChange={(e) => {
+                                                let val = e.target.value;
+                                                if (val.length > 4) return;
+                                                if (/^0[0-9]+/.test(val)) { val = val.replace(/^0+/, ''); e.target.value = val; }
+                                                handleInputChange('rewards', 'pointsPerRating', Number(val) || 0);
+                                            }}
                                             slotProps={{ htmlInput: { min: 0 } }}
                                             helperText="Points per submitted rating"
                                         />
@@ -4172,7 +4202,12 @@ const SettingsPage: React.FC = () => {
                                             type="number"
                                             label="Min Points to Redeem"
                                             value={settings.rewards?.minPointsToRedeem ?? 100}
-                                            onChange={(e) => handleInputChange('rewards', 'minPointsToRedeem', Number(e.target.value))}
+                                            onChange={(e) => {
+                                                let val = e.target.value;
+                                                if (val.length > 7) return;
+                                                if (/^0[0-9]+/.test(val)) { val = val.replace(/^0+/, ''); e.target.value = val; }
+                                                handleInputChange('rewards', 'minPointsToRedeem', Number(val) || 0);
+                                            }}
                                             slotProps={{ htmlInput: { min: 0 } }}
                                         />
                                     </Grid>
@@ -4182,7 +4217,12 @@ const SettingsPage: React.FC = () => {
                                             type="number"
                                             label="Max Redemption % of Bill"
                                             value={settings.rewards?.maxRedemptionPercentage ?? 100}
-                                            onChange={(e) => handleInputChange('rewards', 'maxRedemptionPercentage', Number(e.target.value))}
+                                            onChange={(e) => {
+                                                let val = e.target.value;
+                                                if (val.length > 3) return;
+                                                if (/^0[0-9]+/.test(val)) { val = val.replace(/^0+/, ''); e.target.value = val; }
+                                                handleInputChange('rewards', 'maxRedemptionPercentage', Math.min(100, Number(val) || 0));
+                                            }}
                                             slotProps={{ htmlInput: { min: 0, max: 100 } }}
                                             InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
                                             helperText="Cap points usage to X% of the order total"
@@ -4212,7 +4252,7 @@ const SettingsPage: React.FC = () => {
                                 </Grid>
                             </Collapse>
 
-                            {!(settings.rewards?.isEnabled ?? true) && (
+                            {!(settings.rewards?.isEnabled ?? false) && (
                                 <Box sx={{ mt: 2, display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' } }}>
                                     <Button
                                         variant="contained"
@@ -4275,7 +4315,12 @@ const SettingsPage: React.FC = () => {
                                                     type="number"
                                                     label="Minimum Delivery Range"
                                                     value={settings.delivery.builtIn.minDeliveryRange ?? 0}
-                                                    onChange={(e) => handleDeliveryChange('builtIn', 'minDeliveryRange', parseFloat(e.target.value) || 0)}
+                                                    onChange={(e) => {
+                                                        let val = e.target.value;
+                                                        if (val.length > 4) return;
+                                                        if (/^0[0-9]+/.test(val)) { val = val.replace(/^0+/, ''); e.target.value = val; }
+                                                        handleDeliveryChange('builtIn', 'minDeliveryRange', parseFloat(val) || 0);
+                                                    }}
                                                     slotProps={{ htmlInput: { min: 0 } }}
                                                     helperText="Minimum distance required for delivery orders"
                                                     InputProps={{
@@ -4289,7 +4334,12 @@ const SettingsPage: React.FC = () => {
                                                     type="number"
                                                     label="Maximum Delivery Range"
                                                     value={settings.delivery.builtIn.maxDeliveryRange ?? 15}
-                                                    onChange={(e) => handleDeliveryChange('builtIn', 'maxDeliveryRange', parseFloat(e.target.value) || 0)}
+                                                    onChange={(e) => {
+                                                        let val = e.target.value;
+                                                        if (val.length > 4) return;
+                                                        if (/^0[0-9]+/.test(val)) { val = val.replace(/^0+/, ''); e.target.value = val; }
+                                                        handleDeliveryChange('builtIn', 'maxDeliveryRange', parseFloat(val) || 0);
+                                                    }}
                                                     slotProps={{ htmlInput: { min: 0 } }}
                                                     helperText="Maximum distance allowed for delivery orders"
                                                     InputProps={{
@@ -4303,7 +4353,12 @@ const SettingsPage: React.FC = () => {
                                                     type="number"
                                                     label="Base Delivery Fee"
                                                     value={settings.delivery.builtIn.baseFee ?? 2.00}
-                                                    onChange={(e) => handleDeliveryChange('builtIn', 'baseFee', parseFloat(e.target.value) || 0)}
+                                                    onChange={(e) => {
+                                                        let val = e.target.value;
+                                                        if (val.length > 4) return;
+                                                        if (/^0[0-9]+/.test(val)) { val = val.replace(/^0+/, ''); e.target.value = val; }
+                                                        handleDeliveryChange('builtIn', 'baseFee', parseFloat(val) || 0);
+                                                    }}
                                                     slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
                                                     helperText="Flat fee charged on every delivery order"
                                                     InputProps={{
@@ -4317,7 +4372,12 @@ const SettingsPage: React.FC = () => {
                                                     type="number"
                                                     label="Base Miles Covered"
                                                     value={settings.delivery.builtIn.baseMiles ?? 2}
-                                                    onChange={(e) => handleDeliveryChange('builtIn', 'baseMiles', parseFloat(e.target.value) || 0)}
+                                                    onChange={(e) => {
+                                                        let val = e.target.value;
+                                                        if (val.length > 4) return;
+                                                        if (/^0[0-9]+/.test(val)) { val = val.replace(/^0+/, ''); e.target.value = val; }
+                                                        handleDeliveryChange('builtIn', 'baseMiles', parseFloat(val) || 0);
+                                                    }}
                                                     slotProps={{ htmlInput: { min: 0, step: 0.5 } }}
                                                     helperText="Miles included in the base fee before per-mile charges apply"
                                                     InputProps={{
@@ -4331,7 +4391,12 @@ const SettingsPage: React.FC = () => {
                                                     type="number"
                                                     label="Per Mile Rate"
                                                     value={settings.delivery.builtIn.perMileRate ?? 0.50}
-                                                    onChange={(e) => handleDeliveryChange('builtIn', 'perMileRate', parseFloat(e.target.value) || 0)}
+                                                    onChange={(e) => {
+                                                        let val = e.target.value;
+                                                        if (val.length > 4) return;
+                                                        if (/^0[0-9]+/.test(val)) { val = val.replace(/^0+/, ''); e.target.value = val; }
+                                                        handleDeliveryChange('builtIn', 'perMileRate', parseFloat(val) || 0);
+                                                    }}
                                                     slotProps={{ htmlInput: { min: 0, step: 0.01 } }}
                                                     helperText="Charge per additional mile beyond base miles (rounded up)"
                                                     InputProps={{
