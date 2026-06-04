@@ -53,12 +53,14 @@ const SubscriptionStatus: React.FC = () => {
         statusText = 'Cancelled';
     }
 
-    const formatDate = (dateString: string) =>
-        new Date(dateString).toLocaleDateString('en-US', {
+    const formatDateTime = (dateString: string) => {
+        if (!dateString) return 'N/A';
+        return new Date(dateString).toLocaleDateString('en-US', {
             month: 'short',
             day: 'numeric',
-            year: 'numeric',
+            year: 'numeric'
         });
+    };
 
     return (
         <>
@@ -80,13 +82,13 @@ const SubscriptionStatus: React.FC = () => {
                         color="text.secondary"
                         sx={{ ml: 0.5, display: { xs: 'none', sm: 'block' } }}
                     >
-                        {currentPlan.name} • {formatDate(expiryDate)}
+                        {currentPlan.name}
                     </Typography>
                 )}
-                <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 0.5 }}>
+                <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 0.5, ml: 1 }}>
                     <CalendarToday sx={{ fontSize: 14, color: 'text.secondary' }} />
                     <Typography variant="caption" color="text.secondary">
-                        {daysRemaining > 0 ? `${daysRemaining}d left` : formatDate(expiryDate)}
+                        <strong>{tenant.createdAt ? formatDateTime(tenant.createdAt) : 'N/A'}</strong> — <strong>{formatDateTime(expiryDate)}</strong>
                     </Typography>
                 </Box>
             </Box>

@@ -129,7 +129,7 @@ const SubscriptionStatusCard: React.FC<SubscriptionStatusCardProps> = ({ tenant,
                     <Typography variant="body2" color="text.secondary">
                         {daysRemaining > 0 ? (
                             <>
-                                {subscriptionStatus === 'trial' ? 'Trial ends' : 'Renews'} on <b>{formattedDate}</b>
+                                {subscriptionStatus === 'trial' ? 'Trial ends' : 'Expires'} on <b>{formattedDate}</b>
                             </>
                         ) : (
                             <span style={{ color: theme.palette.error.main, fontWeight: 'bold' }}>
