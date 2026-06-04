@@ -108,6 +108,8 @@ interface Order {
         timestamp?: string;
     }>;
     canCancel?: boolean;
+    uberDropoffVerificationCode?: string;
+    trackingUrl?: string;
 }
 
 const MyBookingsPage: React.FC = () => {
@@ -646,6 +648,17 @@ const MyBookingsPage: React.FC = () => {
                                                         {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(o.totalAmount)}
                                                     </Typography>
                                                 </Box>
+
+                                                {o.uberDropoffVerificationCode && !['delivered', 'cancelled', 'completed'].includes(o.status) && (
+                                                    <Box sx={{ mt: 1.75, p: 1.5, borderRadius: 2.5, bgcolor: 'rgba(245,158,11,0.12)', border: '1px solid rgba(245,158,11,0.4)', textAlign: 'center' }}>
+                                                        <Typography variant="caption" fontWeight={800} sx={{ color: '#b45309', display: 'block', mb: 0.25 }}>
+                                                            Delivery PIN — give this to your courier
+                                                        </Typography>
+                                                        <Typography variant="h5" fontWeight={900} sx={{ letterSpacing: 4, color: '#b45309' }}>
+                                                            {o.uberDropoffVerificationCode}
+                                                        </Typography>
+                                                    </Box>
+                                                )}
 
                                                 {o.status === 'cancelled' && (
                                                     <Box sx={{ mt: 1.75, p: 1.25, bgcolor: 'rgba(0,0,0,0.025)', borderRadius: 2.5 }}>
