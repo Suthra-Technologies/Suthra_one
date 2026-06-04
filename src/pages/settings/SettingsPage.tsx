@@ -2276,82 +2276,26 @@ const SettingsPage: React.FC = () => {
                                                             {slots.map((slot, sIdx) => (
                                                                 <Box key={sIdx} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
                                                                     <TextField
-                                                                        select
+                                                                        type="time"
                                                                         label="Opens"
                                                                         size="small"
                                                                         value={slot.openTime}
                                                                         onChange={(e) => handleSlotChange(idx, sIdx, 'openTime', e.target.value)}
                                                                         sx={{ width: { xs: '100%', sm: 160 }, flex: { xs: 1, sm: 'none' } }}
-                                                                    >
-                                                                        {(() => {
-                                                                            let lastGroup = '';
-                                                                            return TIME_OPTIONS.filter(opt => {
-                                                                                if (slot.closeTime && opt.minutes >= timeToMinutes(slot.closeTime)) return false;
-
-                                                                                // Constraint: Subsequent slots must start at or after previous slot's end
-                                                                                if (sIdx > 0) {
-                                                                                    const prevSlot = slots[sIdx - 1];
-                                                                                    return opt.minutes >= timeToMinutes(prevSlot.closeTime);
-                                                                                }
-                                                                                return true;
-                                                                            }).map(opt => {
-                                                                                const showHeader = opt.group !== lastGroup;
-                                                                                lastGroup = opt.group;
-                                                                                return [
-                                                                                    showHeader && (
-                                                                                        <MenuItem key={`${opt.group}-header`} disabled sx={{ opacity: 1, fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', color: 'primary.main', bgcolor: alpha(theme.palette.primary.main, 0.05), minHeight: 'auto', py: 0.5 }}>
-                                                                                            {opt.group}
-                                                                                        </MenuItem>
-                                                                                    ),
-                                                                                    <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
-                                                                                ];
-                                                                            });
-                                                                        })()}
-                                                                    </TextField>
+                                                                        InputLabelProps={{ shrink: true }}
+                                                                        inputProps={{ step: 60 }}
+                                                                    />
                                                                     <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>to</Typography>
                                                                     <TextField
-                                                                        select
+                                                                        type="time"
                                                                         label="Closes"
                                                                         size="small"
                                                                         value={slot.closeTime}
                                                                         onChange={(e) => handleSlotChange(idx, sIdx, 'closeTime', e.target.value)}
                                                                         sx={{ width: { xs: '100%', sm: 160 }, flex: { xs: 1, sm: 'none' } }}
-                                                                    >
-                                                                        {(() => {
-                                                                            let lastGroup = '';
-                                                                            const currentOpenMins = timeToMinutes(slot.openTime);
-                                                                            const nextSlot = slots[sIdx + 1];
-
-                                                                            return CLOSING_TIME_OPTIONS.filter(opt => {
-                                                                                if (nextSlot) {
-                                                                                    const limitMins = timeToMinutes(nextSlot.openTime);
-                                                                                    return opt.minutes > currentOpenMins && opt.minutes <= limitMins;
-                                                                                }
-                                                                                // For the last slot, allow any time except the exact opening time
-                                                                                return opt.value !== slot.openTime;
-                                                                            }).map(opt => {
-                                                                                const showHeader = opt.group !== lastGroup;
-                                                                                lastGroup = opt.group;
-                                                                                const isNextDay = opt.minutes <= currentOpenMins;
-
-                                                                                return [
-                                                                                    showHeader && (
-                                                                                        <MenuItem key={`${opt.group}-header`} disabled sx={{ opacity: 1, fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', color: 'primary.main', bgcolor: alpha(theme.palette.primary.main, 0.05), minHeight: 'auto', py: 0.5 }}>
-                                                                                            {opt.group}
-                                                                                        </MenuItem>
-                                                                                    ),
-                                                                                    <MenuItem key={opt.value} value={opt.value}>
-                                                                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', gap: 1 }}>
-                                                                                            <Typography variant="body2">{opt.label}</Typography>
-                                                                                            {isNextDay && (
-                                                                                                <Chip label="Next Day" size="small" color="info" variant="outlined" sx={{ height: 20, fontSize: '0.6rem', borderRadius: 1 }} />
-                                                                                            )}
-                                                                                        </Box>
-                                                                                    </MenuItem>
-                                                                                ];
-                                                                            });
-                                                                        })()}
-                                                                    </TextField>
+                                                                        InputLabelProps={{ shrink: true }}
+                                                                        inputProps={{ step: 60 }}
+                                                                    />
 
                                                                     {slots.length > 1 && (
                                                                         <IconButton
