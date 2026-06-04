@@ -601,6 +601,12 @@ export const superAPI = {
   updateTenantDeliverySettings: (tenantId: string, payload: any) =>
     api.patch(`/superadmin/tenants/${tenantId}/delivery-settings`, payload),
 
+  // Tenant platform processing fee (managed by superadmin only)
+  getTenantProcessingFee: (tenantId: string) =>
+    api.get(`/superadmin/tenants/${tenantId}/processing-fee`),
+  updateTenantProcessingFee: (tenantId: string, processingFee: number) =>
+    api.patch(`/superadmin/tenants/${tenantId}/processing-fee`, { processingFee }),
+
   // Admin activity logs
   getAdminLogs: (params?: any) => api.get('/superadmin/admin-logs', { params }),
 

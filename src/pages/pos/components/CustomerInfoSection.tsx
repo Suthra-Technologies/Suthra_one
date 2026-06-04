@@ -530,6 +530,9 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                 {!isIndia && (settings.system?.posPaymentMethods?.venmo ?? true) && (
                                     <FormControlLabel value="venmo" control={<Radio size="small" />} label="Venmo" />
                                 )}
+                                {(settings.system?.posPaymentMethods?.cheque ?? true) && (
+                                    <FormControlLabel value="cheque" control={<Radio size="small" />} label="Cheque" />
+                                )}
                             </RadioGroup>
                         </FormControl>
                     )}
