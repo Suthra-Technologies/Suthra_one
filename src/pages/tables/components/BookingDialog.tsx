@@ -316,7 +316,25 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
                             type="number"
                             value={guestCount}
                             onChange={e => {
-                                const val = Number(e.target.value);
+                                let valStr = e.target.value;
+                                if (valStr === '') {
+                                    setGuestCount(0);
+                                    if (bookingTouched.guests) validateBookingField('guests', 0);
+                                    return;
+                                }
+                                if (valStr.length > 2) {
+                                    valStr = valStr.slice(0, 2);
+                                    e.target.value = valStr;
+                                }
+                                if (/^0[0-9]+/.test(valStr)) {
+                                    valStr = valStr.replace(/^0+/, '');
+                                    e.target.value = valStr;
+                                }
+                                let val = parseInt(valStr, 10);
+                                if (val > 20) {
+                                    val = 20;
+                                    e.target.value = '20';
+                                }
                                 setGuestCount(val);
                                 if (bookingTouched.guests) validateBookingField('guests', val);
                             }}
