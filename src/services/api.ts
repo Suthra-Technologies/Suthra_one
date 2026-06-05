@@ -689,6 +689,10 @@ export const purchaseOrdersAPI = {
   delete: (id: string) => api.delete(`/purchase-orders/${id}`),
   updateStatus: (id: string, status: string) => api.patch(`/purchase-orders/${id}/status`, { status }),
   receive: (id: string) => api.patch(`/purchase-orders/${id}/receive`),
+  // Material-provider orders (free-text orders placed to global material providers)
+  createMaterialOrder: (data: any) => api.post('/purchase-orders/material-orders', data),
+  listMaterialOrders: (providerId?: string) => api.get('/purchase-orders/material-orders', { params: providerId ? { providerId } : {} }),
+  receiveMaterialOrder: (id: string, data?: any) => api.patch(`/purchase-orders/material-orders/${id}/receive`, data || {}),
   getAnalytics: (params?: any) => api.get('/purchase-orders/analytics', { params }),
   extractInvoice: (formData: FormData) => api.post('/purchase-orders/extract-invoice', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }

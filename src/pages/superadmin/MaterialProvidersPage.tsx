@@ -5,13 +5,16 @@ import {
   TextField, InputAdornment, Stack, Dialog, DialogTitle, DialogContent,
   DialogActions, FormControl, InputLabel, Select, MenuItem, OutlinedInput,
   Divider, List, ListItem, ListItemText, ListItemSecondaryAction, Tooltip,
+  Avatar, Autocomplete,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
 import CategoryIcon from '@mui/icons-material/Category';
-import { materialProvidersAPI, materialCategoriesAPI } from '../../services/api';
+import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
+import { materialProvidersAPI, materialCategoriesAPI, uploadAPI } from '../../services/api';
+import AddressAutocomplete from '../../components/AddressAutocomplete';
 import { toast } from 'react-hot-toast';
 
 const EMPTY_FORM = {
@@ -30,9 +33,13 @@ const EMPTY_FORM = {
   categories: [] as string[],
   status: 'active',
   notes: '',
+  logo: '',
+  materialImage: '',
 };
 
 const MaterialProvidersPage: React.FC = () => {
+  // Google Maps key for address autocomplete — sourced from the frontend .env (VITE_GOOGLE_MAPS_API_KEY).
+  const googleMapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
   // --- providers state ---
   const [rows, setRows] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
@@ -112,9 +119,27 @@ const MaterialProvidersPage: React.FC = () => {
       categories: row.categories || [],
       status: row.status || 'active',
       notes: row.notes || '',
+      logo: row.logo || '',
+      materialImage: row.materialImage || '',
     });
     setErrors({});
     setDialogOpen(true);
+  };
+
+  const handleUploadImage = async (field: 'logo' | 'materialImage', e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file
+    if (!file) return;
+    const loadingToast = toast.loading('Uploading image...');
+    try {
+      const res = await uploadAPI.uploadImage(file);
+      setForm(prev => ({ ...prev, [field]: res.data.url }));
+      toast.success('Image uploaded');
+    } catch {
+      toast.error('Failed to upload image');
+    } finally {
+      toast.dismiss(loadingToast);
+    }
   };
 
   const handleSave = async () => {
@@ -383,7 +408,21 @@ const MaterialProvidersPage: React.FC = () => {
               />
               <TextField fullWidth label="Email" type="email" value={form.email} onChange={f('email')} />
             </Stack>
-            <TextField fullWidth label="Address 1" value={form.address1} onChange={f('address1')} />
+            <AddressAutocomplete
+              label="Address 1"
+              value={form.address1}
+              apiKey={googleMapsApiKey}
+              onChange={(val) => setForm(prev => ({ ...prev, address1: val }))}
+              onSelect={(addr) => setForm(prev => ({
+                ...prev,
+                address1: addr.fullAddress || addr.street || prev.address1,
+                street: addr.street || prev.street,
+                city: addr.city || prev.city,
+                state: addr.state || prev.state,
+                country: addr.country || prev.country,
+                zipcode: addr.zipCode || prev.zipcode,
+              }))}
+            />
             <Stack direction="row" spacing={2}>
               <TextField fullWidth label="Street" value={form.street} onChange={f('street')} />
               <TextField fullWidth label="City" value={form.city} onChange={f('city')} />
@@ -394,30 +433,29 @@ const MaterialProvidersPage: React.FC = () => {
               <TextField fullWidth label="Zip Code" value={form.zipcode} onChange={f('zipcode')} />
             </Stack>
             <TextField fullWidth label="Website" value={form.website} onChange={f('website')} />
-            <FormControl fullWidth>
-              <InputLabel>Categories</InputLabel>
-              <Select
-                multiple
-                value={form.categories}
-                onChange={(e) => setForm(prev => ({ ...prev, categories: typeof e.target.value === 'string' ? [e.target.value] : e.target.value as string[] }))}
-                input={<OutlinedInput label="Categories" />}
-                renderValue={(selected) => (
-                  <Stack direction="row" spacing={0.5} flexWrap="wrap">
-                    {(selected as string[]).map((v) => (
-                      <Chip key={v} label={v} size="small" />
-                    ))}
-                  </Stack>
-                )}
-              >
-                {categories.length === 0 ? (
-                  <MenuItem disabled>
-                    <Typography variant="caption" color="text.secondary">No categories yet — use "Manage Categories" to add</Typography>
-                  </MenuItem>
-                ) : categories.map((c) => (
-                  <MenuItem key={c._id} value={c.name}>{c.name}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Autocomplete
+              multiple
+              freeSolo
+              options={categories.map((c: any) => c.name)}
+              value={form.categories}
+              onChange={(_e, val) => setForm(prev => ({
+                ...prev,
+                categories: (val as string[]).map(v => v.trim()).filter(Boolean),
+              }))}
+              renderTags={(value: readonly string[], getTagProps) =>
+                value.map((option, index) => (
+                  <Chip label={option} size="small" {...getTagProps({ index })} key={`${option}-${index}`} />
+                ))
+              }
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Categories"
+                  placeholder="Select or type a custom item name"
+                  helperText='Pick from the list or type your own and press Enter'
+                />
+              )}
+            />
             <FormControl fullWidth>
               <InputLabel>Status</InputLabel>
               <Select label="Status" value={form.status} onChange={f('status')}>
@@ -426,6 +464,38 @@ const MaterialProvidersPage: React.FC = () => {
               </Select>
             </FormControl>
             <TextField fullWidth label="Notes" multiline rows={2} value={form.notes} onChange={f('notes')} />
+
+            <Divider textAlign="left">
+              <Typography variant="caption" color="text.secondary" fontWeight={700}>IMAGES</Typography>
+            </Divider>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              {([
+                { field: 'logo' as const, label: 'Company / Brand Logo' },
+                { field: 'materialImage' as const, label: 'Material Image' },
+              ]).map(({ field, label }) => (
+                <Box key={field} sx={{ flex: 1, border: '1px dashed', borderColor: 'divider', borderRadius: 2, p: 1.5, textAlign: 'center' }}>
+                  <Typography variant="caption" color="text.secondary" fontWeight={600} sx={{ display: 'block', mb: 1 }}>{label}</Typography>
+                  <Avatar
+                    variant="rounded"
+                    src={form[field] || undefined}
+                    sx={{ width: 84, height: 84, mx: 'auto', mb: 1, bgcolor: 'grey.100', color: 'text.disabled' }}
+                  >
+                    {!form[field] && <PhotoCameraIcon />}
+                  </Avatar>
+                  <Stack direction="row" spacing={1} justifyContent="center">
+                    <Button component="label" size="small" variant="outlined">
+                      {form[field] ? 'Change' : 'Upload'}
+                      <input hidden type="file" accept="image/*" onChange={(e) => handleUploadImage(field, e)} />
+                    </Button>
+                    {form[field] && (
+                      <Button size="small" color="error" onClick={() => setForm(prev => ({ ...prev, [field]: '' }))}>
+                        Remove
+                      </Button>
+                    )}
+                  </Stack>
+                </Box>
+              ))}
+            </Stack>
           </Stack>
         </DialogContent>
         <DialogActions>
