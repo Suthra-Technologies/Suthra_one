@@ -17,6 +17,7 @@ interface RestaurantRegisterForm {
   phone: string;
   dialCode: string;
   password: string;
+  confirmPassword?: string;
   planId?: string;
 }
 
@@ -70,6 +71,7 @@ const RestaurantRegisterPage: React.FC = () => {
       phone: '',
       dialCode: '1',
       password: '',
+      confirmPassword: '',
       planId: undefined,
     };
   });
@@ -77,6 +79,7 @@ const RestaurantRegisterPage: React.FC = () => {
   const [loadingPlans, setLoadingPlans] = useState<boolean>(true);
   const [loading, setLoading] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
   const [uploadingLogo, setUploadingLogo] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [successData, setSuccessData] = useState<{ restaurantName: string } | null>(null);
@@ -144,7 +147,14 @@ const RestaurantRegisterPage: React.FC = () => {
 
     setForm({ ...form, [name]: value });
 
-    if (errors[name]) {
+    if (name === 'password') {
+      setErrors(prev => ({ ...prev, [name]: validatePassword(value) }));
+      if (form.confirmPassword) {
+        setErrors(prev => ({ ...prev, confirmPassword: { isValid: value === form.confirmPassword, message: value === form.confirmPassword ? '' : 'Passwords do not match' } }));
+      }
+    } else if (name === 'confirmPassword') {
+      setErrors(prev => ({ ...prev, [name]: { isValid: value === form.password, message: value === form.password ? '' : 'Passwords do not match' } }));
+    } else if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: { isValid: true } }));
     }
   };
@@ -209,6 +219,9 @@ const RestaurantRegisterPage: React.FC = () => {
       case 'password':
         validation = validatePassword(value);
         break;
+      case 'confirmPassword':
+        validation = { isValid: value === form.password, message: value === form.password ? '' : 'Passwords do not match' };
+        break;
       default:
         validation = { isValid: true };
     }
@@ -225,6 +238,7 @@ const RestaurantRegisterPage: React.FC = () => {
       email: validateEmail(form.email),
       phone: validatePhone(form.phone),
       password: validatePassword(form.password),
+      confirmPassword: { isValid: form.password === form.confirmPassword, message: form.password === form.confirmPassword ? '' : 'Passwords do not match' },
     };
 
     // Additional slug validation
@@ -243,7 +257,8 @@ const RestaurantRegisterPage: React.FC = () => {
     form.lastName.trim() &&
     form.email.trim() &&
     form.phone.trim() &&
-    form.password.trim()
+    form.password.trim() &&
+    form.password === form.confirmPassword
   );
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -476,6 +491,32 @@ const RestaurantRegisterPage: React.FC = () => {
                           edge="end"
                         >
                           {showPassword ? <Visibility /> : <VisibilityOff />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Confirm Password"
+                  name="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={form.confirmPassword}
+                  onChange={onChange}
+                  onBlur={() => handleBlur('confirmPassword')}
+                  error={hasError(errors.confirmPassword)}
+                  helperText={getHelperText(errors.confirmPassword)}
+                  required
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          edge="end"
+                        >
+                          {showConfirmPassword ? <Visibility /> : <VisibilityOff />}
                         </IconButton>
                       </InputAdornment>
                     ),

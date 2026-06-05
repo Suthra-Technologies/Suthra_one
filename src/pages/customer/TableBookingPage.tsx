@@ -382,7 +382,27 @@ const TableBookingPage = () => {
                                             label="Number of Guests"
                                             type="number"
                                             value={guestCount}
-                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setGuestCount(parseInt(e.target.value) || 0)}
+                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                                let val = e.target.value;
+                                                if (val === '') {
+                                                    setGuestCount(0);
+                                                    return;
+                                                }
+                                                if (val.length > 2) {
+                                                    val = val.slice(0, 2);
+                                                    e.target.value = val;
+                                                }
+                                                if (/^0[0-9]+/.test(val)) {
+                                                    val = val.replace(/^0+/, '');
+                                                    e.target.value = val;
+                                                }
+                                                let num = parseInt(val, 10);
+                                                if (num > 20) {
+                                                    num = 20;
+                                                    e.target.value = '20';
+                                                }
+                                                setGuestCount(num);
+                                            }}
                                             InputProps={{
                                                 inputProps: { min: 1, max: 20 },
                                                 startAdornment: <PeopleIcon sx={{ mr: 1, color: 'text.secondary', fontSize: 20 }} />

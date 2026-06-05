@@ -145,7 +145,13 @@ const SuperAdminLayout: React.FC = () => {
 
     const drawer = (
         <Box>
-            <Box sx={{ p: 3, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <Box 
+                sx={{ p: 3, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer' }}
+                onClick={() => {
+                    navigate('/superadmin');
+                    setMobileOpen(false);
+                }}
+            >
                 <Box
                     component="img"
                     src="/nexzen_logo.jpg"

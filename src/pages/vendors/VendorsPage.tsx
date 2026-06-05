@@ -1177,7 +1177,7 @@ const VendorsPage: React.FC = () => {
                                                     value={formData.bankDetails.zelleValue}
                                                     onChange={(e) => setFormData({
                                                         ...formData,
-                                                        bankDetails: { ...formData.bankDetails, zelleValue: e.target.value }
+                                                        bankDetails: { ...formData.bankDetails, zelleValue: e.target.value.replace(/\D/g, '').slice(0, 10) }
                                                     })}
                                                 />
                                             </Grid>

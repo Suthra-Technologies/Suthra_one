@@ -1274,7 +1274,18 @@ const TablesPage: React.FC = () => {
                                                                     <SearchIcon sx={{ fontSize: 16, color: 'primary.main' }} />
                                                                     <Box>
                                                                         <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.65rem' }}>Contact</Typography>
-                                                                        <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>{booking.guestInfo?.phone}</Typography>
+                                                                        <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>
+                                                                            {(() => {
+                                                                                const phone = booking.guestInfo?.phone || '';
+                                                                                const cleaned = phone.replace(/\D/g, '');
+                                                                                if (cleaned.length === 10) {
+                                                                                    return `(${cleaned.slice(0,3)}) ${cleaned.slice(3,6)}-${cleaned.slice(6)}`;
+                                                                                } else if (cleaned.length === 11 && cleaned.startsWith('1')) {
+                                                                                    return `+1 (${cleaned.slice(1,4)}) ${cleaned.slice(4,7)}-${cleaned.slice(7)}`;
+                                                                                }
+                                                                                return phone;
+                                                                            })()}
+                                                                        </Typography>
                                                                     </Box>
                                                                 </Box>
                                                             </Grid>
@@ -1407,7 +1418,16 @@ const TablesPage: React.FC = () => {
                                                                     {booking.guestInfo?.firstName} {booking.guestInfo?.lastName}
                                                                 </Typography>
                                                                 <Typography variant="caption" color="text.secondary">
-                                                                    {booking.guestInfo?.phone}
+                                                                    {(() => {
+                                                                        const phone = booking.guestInfo?.phone || '';
+                                                                        const cleaned = phone.replace(/\D/g, '');
+                                                                        if (cleaned.length === 10) {
+                                                                            return `(${cleaned.slice(0,3)}) ${cleaned.slice(3,6)}-${cleaned.slice(6)}`;
+                                                                        } else if (cleaned.length === 11 && cleaned.startsWith('1')) {
+                                                                            return `+1 (${cleaned.slice(1,4)}) ${cleaned.slice(4,7)}-${cleaned.slice(7)}`;
+                                                                        }
+                                                                        return phone;
+                                                                    })()}
                                                                 </Typography>
                                                                 {booking.guestInfo?.email && (
                                                                     <Typography variant="caption" display="block" color="text.secondary">

@@ -838,7 +838,10 @@ const CateringPage = () => {
                                     }}
                                 >
                                     <TextField label="Full Name" fullWidth required value={formData.customerName} onChange={e => setFormData({ ...formData, customerName: e.target.value })} InputLabelProps={{ sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }} />
-                                    <TextField label="Phone Number" fullWidth required value={formData.customerPhone} onChange={e => setFormData({ ...formData, customerPhone: e.target.value })} InputLabelProps={{ sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }} />
+                                    <TextField label="Phone Number" fullWidth required value={formData.customerPhone} onChange={e => {
+                                        const numericValue = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                        setFormData({ ...formData, customerPhone: numericValue });
+                                    }} InputLabelProps={{ sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }} />
                                     <TextField label="Email" fullWidth value={formData.customerEmail} onChange={e => setFormData({ ...formData, customerEmail: e.target.value })} />
 
                                     <Grid
@@ -935,15 +938,39 @@ const CateringPage = () => {
                                             <Grid item xs={12} sm={6}>
                                                 <Typography variant="caption" fontWeight={700} sx={{ display: 'block', mb: 1, fontSize: bodyFontSize }}>Adults</Typography>
                                                 <Box display="flex" gap={1}>
-                                                    <TextField label="Veg" size="small" type="number" value={guests.adults.veg} onChange={e => setGuests({ ...guests, adults: { ...guests.adults, veg: Math.max(0, parseInt(e.target.value) || 0) } })} inputProps={{ min: 0 }} />
-                                                    <TextField label="Non-Veg" size="small" type="number" value={guests.adults.nonVeg} onChange={e => setGuests({ ...guests, adults: { ...guests.adults, nonVeg: Math.max(0, parseInt(e.target.value) || 0) } })} inputProps={{ min: 0 }} />
+                                                    <TextField label="Veg" size="small" type="number" value={guests.adults.veg} onChange={e => {
+                                                        let val = e.target.value.replace(/^0+/, '');
+                                                        if (!val) val = '0';
+                                                        const num = parseInt(val) || 0;
+                                                        e.target.value = num.toString();
+                                                        setGuests({ ...guests, adults: { ...guests.adults, veg: num } });
+                                                    }} inputProps={{ min: 0 }} />
+                                                    <TextField label="Non-Veg" size="small" type="number" value={guests.adults.nonVeg} onChange={e => {
+                                                        let val = e.target.value.replace(/^0+/, '');
+                                                        if (!val) val = '0';
+                                                        const num = parseInt(val) || 0;
+                                                        e.target.value = num.toString();
+                                                        setGuests({ ...guests, adults: { ...guests.adults, nonVeg: num } });
+                                                    }} inputProps={{ min: 0 }} />
                                                 </Box>
                                             </Grid>
                                             <Grid item xs={12} sm={6}>
                                                 <Typography variant="caption" fontWeight={700} sx={{ display: 'block', mb: 1, fontSize: bodyFontSize }}>Kids</Typography>
                                                 <Box display="flex" gap={1}>
-                                                    <TextField label="Veg" size="small" type="number" value={guests.kids.veg} onChange={e => setGuests({ ...guests, kids: { ...guests.kids, veg: Math.max(0, parseInt(e.target.value) || 0) } })} inputProps={{ min: 0 }} />
-                                                    <TextField label="Non-Veg" size="small" type="number" value={guests.kids.nonVeg} onChange={e => setGuests({ ...guests, kids: { ...guests.kids, nonVeg: Math.max(0, parseInt(e.target.value) || 0) } })} inputProps={{ min: 0 }} />
+                                                    <TextField label="Veg" size="small" type="number" value={guests.kids.veg} onChange={e => {
+                                                        let val = e.target.value.replace(/^0+/, '');
+                                                        if (!val) val = '0';
+                                                        const num = parseInt(val) || 0;
+                                                        e.target.value = num.toString();
+                                                        setGuests({ ...guests, kids: { ...guests.kids, veg: num } });
+                                                    }} inputProps={{ min: 0 }} />
+                                                    <TextField label="Non-Veg" size="small" type="number" value={guests.kids.nonVeg} onChange={e => {
+                                                        let val = e.target.value.replace(/^0+/, '');
+                                                        if (!val) val = '0';
+                                                        const num = parseInt(val) || 0;
+                                                        e.target.value = num.toString();
+                                                        setGuests({ ...guests, kids: { ...guests.kids, nonVeg: num } });
+                                                    }} inputProps={{ min: 0 }} />
                                                 </Box>
                                             </Grid>
                                         </Grid>
