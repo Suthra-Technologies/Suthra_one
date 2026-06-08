@@ -45,6 +45,7 @@ import { toast } from 'react-hot-toast';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import AddressAutocomplete from '../../components/AddressAutocomplete';
 import PhoneInput from '../../components/PhoneInput';
+import CustomInput from '../../components/common/CustomInput';
 import { isWithinDeliveryRadius, METERS_PER_MILE } from '../../services/googleMapsService';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
@@ -837,7 +838,7 @@ const CateringPage = () => {
                                         '& > *': { width: '100%' },
                                     }}
                                 >
-                                    <TextField label="Full Name" fullWidth required value={formData.customerName} onChange={e => setFormData({ ...formData, customerName: e.target.value })} InputLabelProps={{ sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }} />
+                                    <CustomInput type="name" label="Full Name" fullWidth required value={formData.customerName} onChange={e => setFormData({ ...formData, customerName: e.target.value })} InputLabelProps={{ sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }} />
                                     <TextField label="Phone Number" fullWidth required value={formData.customerPhone} onChange={e => {
                                         const numericValue = e.target.value.replace(/\D/g, '').slice(0, 10);
                                         setFormData({ ...formData, customerPhone: numericValue });
@@ -927,7 +928,7 @@ const CateringPage = () => {
                                         </Grid>
                                         {isCelebratoryOccasion && (
                                             <Grid item xs={12}>
-                                                <TextField label="Occasion For (Person Name)" fullWidth value={formData.occasionPersonName} onChange={e => setFormData({ ...formData, occasionPersonName: e.target.value })} />
+                                                <CustomInput type="name" label="Occasion For (Person Name)" fullWidth value={formData.occasionPersonName} onChange={e => setFormData({ ...formData, occasionPersonName: e.target.value })} />
                                             </Grid>
                                         )}
                                     </Grid>

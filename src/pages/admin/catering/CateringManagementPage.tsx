@@ -2828,7 +2828,7 @@ const CateringManagementPage = () => {
                                                                 : ""
                                                         }
                                                         FormHelperTextProps={{ sx: { color: 'error.main' } }}
-                                                        onChange={(e) => setNewOrder({ ...newOrder, customerEmail: e.target.value })}
+                                                        onChange={(e) => setNewOrder({ ...newOrder, customerEmail: e.target.value.toLowerCase() })}
                                                     />
                                                 </Grid>
                                             </Grid>

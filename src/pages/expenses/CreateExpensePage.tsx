@@ -49,7 +49,7 @@ const CreateExpensePage: React.FC = () => {
     const [formData, setFormData] = useState({
         type: 'one_time',
         category: 'other',
-        amount: 0,
+        amount: 0 as number | string,
         payee: { name: '', type: 'organization' },
         dueDate: '',
         frequency: 1,
@@ -142,19 +142,36 @@ const CreateExpensePage: React.FC = () => {
 
 
     const totalPaid = formData.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+    const numericAmount = Number(formData.amount || 0);
+
+    const handleAmountChange = (rawValue: string) => {
+        let cleanValue = rawValue.replace(/[-e+]/ig, '');
+        if (cleanValue.length > 1 && cleanValue.startsWith('0') && !cleanValue.startsWith('0.')) {
+            cleanValue = cleanValue.replace(/^0+/, '');
+            if (cleanValue === '') cleanValue = '0';
+        }
+        const parts = cleanValue.split('.');
+        if (parts[0].length > 5) return;
+        
+        setFormData(prev => ({ ...prev, amount: cleanValue === '' ? '' : cleanValue }));
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         if (loading) return;
         e.preventDefault();
         
-        if (totalPaid > formData.amount) {
+        if (totalPaid > numericAmount) {
             toast.error('Total payments cannot exceed expense amount');
             return;
         }
 
         setLoading(true);
         try {
-            const dataToSave = { ...formData };
+            const dataToSave = {
+                ...formData,
+                amount: numericAmount,
+                payments: formData.payments.map(p => ({ ...p, amount: Number(p.amount || 0) }))
+            };
             // Remove sensitive/system fields
             delete (dataToSave as any)._id;
             delete (dataToSave as any).tenant;
@@ -339,7 +356,7 @@ const CreateExpensePage: React.FC = () => {
                                         label="Total Amount"
                                         required
                                         value={formData.amount}
-                                        onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })}
+                                        onChange={(e) => handleAmountChange(e.target.value)}
                                         InputProps={{ startAdornment: <InputAdornment position="start">$</InputAdornment> }}
                                     />
                                 </Grid>
@@ -490,7 +507,7 @@ const CreateExpensePage: React.FC = () => {
 
                             <Box sx={{ flexGrow: 1, mb: 3 }}>
                                 <Typography variant="subtitle2" color="text.secondary" mb={1}>Select Payment Methods & Amounts</Typography>
-                                {formData.amount <= 0 && (
+                                {numericAmount <= 0 && (
                                     <Typography variant="caption" color="error" sx={{ mb: 2, display: 'block' }}>
                                         Please enter Total Amount first to enable payments.
                                     </Typography>
@@ -499,8 +516,8 @@ const CreateExpensePage: React.FC = () => {
                                     {paymentMethods.map((method) => {
                                         const activePayment = formData.payments.find(p => p.method === method);
                                         const isActive = !!activePayment;
-                                        const isFullyPaid = totalPaid >= formData.amount && formData.amount > 0;
-                                        const isDisabled = formData.amount <= 0 || (isFullyPaid && !isActive);
+                                        const isFullyPaid = totalPaid >= numericAmount && numericAmount > 0;
+                                        const isDisabled = numericAmount <= 0 || (isFullyPaid && !isActive);
 
                                         const handleToggle = () => {
                                             if (isDisabled) return;
@@ -508,7 +525,7 @@ const CreateExpensePage: React.FC = () => {
                                                 const newPayments = formData.payments.filter(p => p.method !== method);
                                                 setFormData({ ...formData, payments: newPayments });
                                             } else {
-                                                const remaining = formData.amount - totalPaid;
+                                                const remaining = numericAmount - totalPaid;
                                                 const newPayment = {
                                                     method,
                                                     amount: Math.max(0, remaining),
@@ -518,11 +535,19 @@ const CreateExpensePage: React.FC = () => {
                                             }
                                         };
 
-                                        const handleLocalAmountChange = (val: number) => {
+                                        const handleLocalAmountChange = (rawValue: string) => {
+                                            let cleanValue = rawValue.replace(/[-e+]/ig, '');
+                                            if (cleanValue.length > 1 && cleanValue.startsWith('0') && !cleanValue.startsWith('0.')) {
+                                                cleanValue = cleanValue.replace(/^0+/, '');
+                                                if (cleanValue === '') cleanValue = '0';
+                                            }
+                                            const parts = cleanValue.split('.');
+                                            if (parts[0].length > 5) return;
+
                                             const newPayments = [...formData.payments];
                                             const idx = newPayments.findIndex(p => p.method === method);
                                             if (idx !== -1) {
-                                                newPayments[idx].amount = val;
+                                                newPayments[idx].amount = cleanValue === '' ? '' : cleanValue;
                                                 
                                                 // Autofill logic for the "next" active payment if needed
                                                 const otherActiveIndices = newPayments
@@ -539,7 +564,7 @@ const CreateExpensePage: React.FC = () => {
                                                             if (i === nextIdx) return sum;
                                                             return sum + Number(p.amount || 0);
                                                         }, 0);
-                                                        newPayments[nextIdx].amount = Math.max(0, formData.amount - totalExcludingNext);
+                                                        newPayments[nextIdx].amount = Math.max(0, numericAmount - totalExcludingNext);
                                                     }
                                                 }
                                                 
@@ -580,9 +605,9 @@ const CreateExpensePage: React.FC = () => {
                                                             type="number"
                                                             placeholder="Amount"
                                                             value={activePayment.amount}
-                                                            disabled={formData.amount <= 0}
-                                                            onChange={(e) => handleLocalAmountChange(Number(e.target.value))}
-                                                            error={totalPaid > formData.amount}
+                                                            disabled={numericAmount <= 0}
+                                                            onChange={(e) => handleLocalAmountChange(e.target.value)}
+                                                            error={totalPaid > numericAmount}
                                                             sx={{ maxWidth: 150 }}
                                                             InputProps={{
                                                                 startAdornment: <InputAdornment position="start">$</InputAdornment>,
@@ -601,7 +626,7 @@ const CreateExpensePage: React.FC = () => {
                             <Box sx={{ p: 2, bgcolor: alpha(theme.palette.primary.main, 0.05), borderRadius: 2 }}>
                                 <Stack direction="row" justifyContent="space-between" mb={1}>
                                     <Typography variant="body2">Total Expense:</Typography>
-                                    <Typography variant="body2" fontWeight="bold">${formData.amount.toFixed(2)}</Typography>
+                                    <Typography variant="body2" fontWeight="bold">${numericAmount.toFixed(2)}</Typography>
                                 </Stack>
                                 <Stack direction="row" justifyContent="space-between" mb={1}>
                                     <Typography variant="body2">Total Paid:</Typography>
@@ -609,8 +634,8 @@ const CreateExpensePage: React.FC = () => {
                                 </Stack>
                                 <Stack direction="row" justifyContent="space-between">
                                     <Typography variant="body2">Remaining:</Typography>
-                                    <Typography variant="body2" fontWeight="bold" color={totalPaid < formData.amount ? 'error.main' : 'success.main'}>
-                                        ${(formData.amount - totalPaid).toFixed(2)}
+                                    <Typography variant="body2" fontWeight="bold" color={totalPaid < numericAmount ? 'error.main' : 'success.main'}>
+                                        ${(numericAmount - totalPaid).toFixed(2)}
                                     </Typography>
                                 </Stack>
                             </Box>

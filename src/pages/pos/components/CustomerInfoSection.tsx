@@ -349,10 +349,11 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                         type="email"
                         value={customerEmail}
                         onChange={(e) => {
-                            setCustomerEmail(e.target.value);
+                            const val = e.target.value.toLowerCase();
+                            setCustomerEmail(val);
                             if (customerEmailTouched) {
                                 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                                if (e.target.value && !emailRegex.test(e.target.value)) {
+                                if (val && !emailRegex.test(val)) {
                                     setCustomerEmailError('Please enter a valid email address');
                                 } else {
                                     setCustomerEmailError('');

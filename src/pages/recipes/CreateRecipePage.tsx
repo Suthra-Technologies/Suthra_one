@@ -35,6 +35,7 @@ import { toast } from 'react-hot-toast';
 import ActionHistoryList from '../../components/common/ActionHistoryList';
 import { useSettings } from '../../context/SettingsContext';
 import { useActiveTenant } from '../../hooks/useActiveTenant';
+import CustomInput from '../../components/common/CustomInput';
 
 const CreateRecipePage: React.FC = () => {
     const navigate = useNavigate();
@@ -278,29 +279,32 @@ const CreateRecipePage: React.FC = () => {
                                 <TextField {...params} label="Menu Item" placeholder="Select menu item" required />
                             )}
                         />
-                        <TextField
+                        <CustomInput
+                            type="alphanumeric"
                             label="Recipe Name"
                             value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            onChange={(val) => setFormData({ ...formData, name: val })}
                             fullWidth
                             required
                             size={isMobile ? "small" : "medium"}
                         />
                     </Stack>
                     <Stack direction={isMobile ? "column" : "row"} spacing={isMobile ? 1.5 : 2}>
-                        <TextField
-                            label="Serving Size"
+                        <CustomInput
                             type="number"
+                            label="Serving Size"
                             value={formData.servingSize}
-                            onChange={(e) => setFormData({ ...formData, servingSize: parseInt(e.target.value) || 1 })}
+                            onChange={(val) => setFormData({ ...formData, servingSize: parseInt(val) || 1 })}
+                            allowDecimals={false}
                             fullWidth
                             size={isMobile ? "small" : "medium"}
                         />
-                        <TextField
-                            label="Preparation Time (minutes)"
+                        <CustomInput
                             type="number"
+                            label="Preparation Time (minutes)"
                             value={formData.preparationTime}
-                            onChange={(e) => setFormData({ ...formData, preparationTime: parseInt(e.target.value) || 0 })}
+                            onChange={(val) => setFormData({ ...formData, preparationTime: parseInt(val) || 0 })}
+                            allowDecimals={false}
                             fullWidth
                             size={isMobile ? "small" : "medium"}
                         />
@@ -370,13 +374,13 @@ const CreateRecipePage: React.FC = () => {
                                     />
 
                                     <Stack direction="row" spacing={1.5}>
-                                        <TextField
-                                            label="Quantity"
+                                        <CustomInput
                                             type="number"
+                                            label="Quantity"
                                             value={ingredient.quantity}
-                                            onChange={(e) => {
-                                                const val = parseFloat(e.target.value);
-                                                handleIngredientChange(index, 'quantity', Math.max(0, isNaN(val) ? 0 : val));
+                                            onChange={(val) => {
+                                                const parsedVal = parseFloat(val);
+                                                handleIngredientChange(index, 'quantity', Math.max(0, isNaN(parsedVal) ? 0 : parsedVal));
                                             }}
                                             inputProps={{ min: 0 }}
                                             size="small"
@@ -430,12 +434,12 @@ const CreateRecipePage: React.FC = () => {
                                             />
                                         </TableCell>
                                         <TableCell>
-                                            <TextField
+                                            <CustomInput
                                                 type="number"
                                                 value={ingredient.quantity}
-                                                onChange={(e) => {
-                                                    const val = parseFloat(e.target.value);
-                                                    handleIngredientChange(index, 'quantity', Math.max(0, isNaN(val) ? 0 : val));
+                                                onChange={(val) => {
+                                                    const parsedVal = parseFloat(val);
+                                                    handleIngredientChange(index, 'quantity', Math.max(0, isNaN(parsedVal) ? 0 : parsedVal));
                                                 }}
                                                 inputProps={{ min: 0 }}
                                                 size="small"
@@ -557,13 +561,16 @@ const CreateRecipePage: React.FC = () => {
                 <Typography variant={isMobile ? "subtitle1" : "h6"} fontWeight="bold" gutterBottom sx={{ color: 'primary.main', mb: isMobile ? 1.5 : 2 }}>
                     Instructions
                 </Typography>
-                <TextField
+                <CustomInput
+                    type="textarea"
                     label="Preparation Instructions"
                     value={formData.instructions}
-                    onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
+                    onChange={(val) => setFormData({ ...formData, instructions: val })}
                     multiline
                     rows={isMobile ? 3 : 5}
                     fullWidth
+                    maxLength={1000}
+                    showCounter={true}
                     size={isMobile ? "small" : "medium"}
                     placeholder="Enter step-by-step preparation instructions..."
                 />

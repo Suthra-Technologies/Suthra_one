@@ -1473,7 +1473,8 @@ const UsersPage = () => {
                           label="First Name"
                           value={userForm.firstName}
                           onChange={(e) => {
-                            setUserForm({ ...userForm, firstName: e.target.value });
+                            const val = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                            setUserForm({ ...userForm, firstName: val });
                             if (userErrors.firstName) setUserErrors(prev => ({ ...prev, firstName: { isValid: true } }));
                           }}
                           onBlur={() => {
@@ -1491,7 +1492,8 @@ const UsersPage = () => {
                           label="Last Name"
                           value={userForm.lastName}
                           onChange={(e) => {
-                            setUserForm({ ...userForm, lastName: e.target.value });
+                            const val = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                            setUserForm({ ...userForm, lastName: val });
                             if (userErrors.lastName) setUserErrors(prev => ({ ...prev, lastName: { isValid: true } }));
                           }}
                           onBlur={() => {
@@ -1510,7 +1512,7 @@ const UsersPage = () => {
                           type="email"
                           value={userForm.email}
                           onChange={(e) => {
-                            setUserForm({ ...userForm, email: e.target.value });
+                            setUserForm({ ...userForm, email: e.target.value.toLowerCase() });
                             if (userErrors.email) setUserErrors(prev => ({ ...prev, email: { isValid: true } }));
                           }}
                           onBlur={() => {

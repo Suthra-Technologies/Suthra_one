@@ -385,8 +385,9 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
                         label="Customer Name"
                         value={customerName}
                         onChange={e => {
-                            setCustomerName(e.target.value);
-                            if (bookingTouched.customerName) validateBookingField('customerName', e.target.value);
+                            const val = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                            setCustomerName(val);
+                            if (bookingTouched.customerName) validateBookingField('customerName', val);
                         }}
                         onBlur={() => {
                             setBookingTouched(prev => ({ ...prev, customerName: true }));

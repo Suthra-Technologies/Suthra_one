@@ -63,6 +63,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
 import { promosAPI, customersAPI, reportsAPI, menuAPI } from '../../services/api';
+import CustomInput from '../../components/common/CustomInput';
 
 interface Customer {
     name: string;
@@ -374,6 +375,25 @@ const PromoCodePage: React.FC = () => {
         setOpenDialog(true);
     };
 
+    const handleNumberFieldChange = (field: string, rawValue: string, options?: { maxLimit?: number, allowDecimals?: boolean }) => {
+        let cleanValue = rawValue.replace(/-/g, '');
+        if (options && options.allowDecimals === false) {
+            cleanValue = cleanValue.replace(/\./g, '');
+        }
+        if (cleanValue.length > 1 && cleanValue.startsWith('0') && !cleanValue.startsWith('0.')) {
+            cleanValue = cleanValue.replace(/^0+/, '');
+            if (cleanValue === '') cleanValue = '0';
+        }
+        const parts = cleanValue.split('.');
+        if (parts[0].length > 3) return;
+        
+        if (options?.maxLimit !== undefined && Number(cleanValue) > options.maxLimit) {
+            return;
+        }
+
+        setFormData(prev => ({ ...prev, [field]: cleanValue }));
+    };
+
     const handleSave = async () => {
         if (formLoading) return;
         if (!formData.code || !formData.name || !formData.discountValue) {
@@ -385,6 +405,8 @@ const PromoCodePage: React.FC = () => {
             setFormLoading(true);
             const payload = {
                 ...formData,
+                discountValue: Number(formData.discountValue) || 0,
+                minBillAmount: Number(formData.minBillAmount) || 0,
                 code: formData.code.toUpperCase()
             };
 
@@ -1306,39 +1328,44 @@ const PromoCodePage: React.FC = () => {
                                 </Typography>
                                 <Grid container spacing={2}>
                                     <Grid item xs={12} sm={6}>
-                                        <TextField
+                                        <CustomInput
+                                            type="code"
                                             fullWidth
                                             label="Promo Code"
                                             required
                                             size="small"
                                             value={formData.code}
-                                            onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                                            onChange={(val) => setFormData({ ...formData, code: val.toUpperCase() })}
                                             placeholder="E.g. SUMMER2026"
                                             helperText={isMobile ? "" : "This is what customers will enter"}
                                             InputProps={{ sx: { borderRadius: 2, fontWeight: 700, fontFamily: 'monospace' } }}
                                         />
                                     </Grid>
                                     <Grid item xs={12} sm={6}>
-                                        <TextField
+                                        <CustomInput
+                                            type="alphanumeric"
                                             fullWidth
                                             label="Internal Name"
                                             required
                                             size="small"
                                             value={formData.name}
-                                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                            onChange={(val) => setFormData({ ...formData, name: val })}
                                             placeholder="E.g. Summer Festival Offer"
                                             InputProps={{ sx: { borderRadius: 2 } }}
                                         />
                                     </Grid>
                                     <Grid item xs={12}>
-                                        <TextField
+                                        <CustomInput
+                                            type="textarea"
+                                            maxLength={150}
+                                            showCounter={true}
                                             fullWidth
                                             label="Description"
                                             multiline
                                             rows={isMobile ? 2 : 1}
                                             size="small"
                                             value={formData.description}
-                                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                            onChange={(val) => setFormData({ ...formData, description: val })}
                                             placeholder="Short description for customers..."
                                             InputProps={{ sx: { borderRadius: 2 } }}
                                         />
@@ -1396,12 +1423,7 @@ const PromoCodePage: React.FC = () => {
                                             required
                                             value={formData.discountValue === 0 ? '' : formData.discountValue}
                                             onFocus={(e) => e.target.select()}
-                                            onChange={(e) =>
-                                                setFormData({
-                                                    ...formData,
-                                                    discountValue: e.target.value === '' ? 0 : Math.max(0, Number(e.target.value))
-                                                })
-                                            }
+                                            onChange={(e) => handleNumberFieldChange('discountValue', e.target.value)}
                                             inputProps={{ min: 0 }}
                                             InputProps={{
                                                 endAdornment: <InputAdornment position="end" sx={{ opacity: 0.5 }}>{formData.discountType === 'percentage' ? '%' : '$'}</InputAdornment>,
@@ -1417,12 +1439,7 @@ const PromoCodePage: React.FC = () => {
                                             size="small"
                                             value={formData.minBillAmount === 0 ? '' : formData.minBillAmount}
                                             onFocus={(e) => e.target.select()}
-                                            onChange={(e) =>
-                                                setFormData({
-                                                    ...formData,
-                                                    minBillAmount: e.target.value === '' ? 0 : Math.max(0, Number(e.target.value))
-                                                })
-                                            }
+                                            onChange={(e) => handleNumberFieldChange('minBillAmount', e.target.value)}
                                             inputProps={{ min: 0 }}
                                             InputProps={{
                                                 startAdornment: <InputAdornment position="start" sx={{ opacity: 0.5 }}>$</InputAdornment>,
@@ -1502,7 +1519,7 @@ const PromoCodePage: React.FC = () => {
                                             size="small"
                                             value={formData.maxTotalUses}
                                             onFocus={(e) => e.target.select()}
-                                            onChange={(e) => setFormData({ ...formData, maxTotalUses: Math.max(0, Number(e.target.value)) })}
+                                            onChange={(e) => handleNumberFieldChange('maxTotalUses', e.target.value, { allowDecimals: false })}
                                             inputProps={{ min: 0 }}
                                             InputProps={{ sx: { borderRadius: 2 } }}
                                         />
@@ -1515,8 +1532,8 @@ const PromoCodePage: React.FC = () => {
                                             size="small"
                                             value={formData.maxUsesPerCustomer}
                                             onFocus={(e) => e.target.select()}
-                                            onChange={(e) => setFormData({ ...formData, maxUsesPerCustomer: Math.max(0, Number(e.target.value)) })}
-                                            inputProps={{ min: 0 }}
+                                            onChange={(e) => handleNumberFieldChange('maxUsesPerCustomer', e.target.value, { maxLimit: 100, allowDecimals: false })}
+                                            inputProps={{ min: 0, max: 100 }}
                                             InputProps={{ sx: { borderRadius: 2 } }}
                                         />
                                     </Grid>

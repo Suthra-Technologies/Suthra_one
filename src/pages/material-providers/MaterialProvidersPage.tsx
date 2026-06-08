@@ -182,8 +182,20 @@ const MaterialProvidersPage: React.FC = () => {
         setReceiveNotes('');
     };
     const closeReceive = () => { setReceiveTarget(null); setReceiveItems([]); setReceiveNotes(''); };
-    const updateItem = (i: number, field: keyof ReceiveItem, value: string) =>
-        setReceiveItems(prev => prev.map((it, idx) => idx === i ? { ...it, [field]: value } : it));
+    const updateItem = (i: number, field: keyof ReceiveItem, value: string) => {
+        if (field === 'quantity' || field === 'unitPrice') {
+            let cleanValue = value;
+            if (cleanValue.length > 1 && cleanValue.startsWith('0') && !cleanValue.startsWith('0.')) {
+                cleanValue = cleanValue.replace(/^0+/, '');
+                if (cleanValue === '') cleanValue = '0';
+            }
+            const parts = cleanValue.split('.');
+            if (parts[0].length > 5) return;
+            setReceiveItems(prev => prev.map((it, idx) => idx === i ? { ...it, [field]: cleanValue } : it));
+        } else {
+            setReceiveItems(prev => prev.map((it, idx) => idx === i ? { ...it, [field]: value } : it));
+        }
+    };
     const addItem = () => setReceiveItems(prev => [...prev, { description: '', quantity: '1', unit: '', unitPrice: '' }]);
     const removeItem = (i: number) => setReceiveItems(prev => prev.filter((_, idx) => idx !== i));
 
