@@ -60,6 +60,7 @@ import PhoneInput from 'src/components/PhoneInput';
 import AddressAutocomplete from '../../components/AddressAutocomplete';
 import { useSettings } from '../../context/SettingsContext';
 import { inventoryAPI, vendorsAPI } from '../../services/api';
+import CustomInput from '../../components/common/CustomInput';
 
 interface Vendor {
     _id: string;
@@ -941,15 +942,16 @@ const VendorsPage: React.FC = () => {
                                 </Typography>
                                 <Grid container spacing={isMobile ? 1.5 : 2.5}>
                                     <Grid item xs={12} md={6}>
-                                        <TextField
+                                        <CustomInput
+                                            type="name"
                                             fullWidth
                                             label="Vendor Name"
                                             value={formData.name}
-                                            onChange={(e) => {
-                                                setFormData({ ...formData, name: e.target.value });
-                                                if (errors.name) validateField('name', e.target.value);
+                                            onChange={(val) => {
+                                                setFormData({ ...formData, name: val });
+                                                if (errors.name) validateField('name', val);
                                             }}
-                                            onBlur={(e) => validateField('name', e.target.value)}
+                                            onBlur={() => validateField('name', formData.name)}
                                             error={!!errors.name}
                                             helperText={errors.name}
                                             required

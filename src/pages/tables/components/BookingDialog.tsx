@@ -23,6 +23,7 @@ import { toast } from 'react-hot-toast';
 import { bookingsAPI } from '../../../services/api';
 import { validatePhone, validateEmail } from '../../../utils/validation';
 import PhoneInput from '../../../components/PhoneInput';
+import CustomInput from '../../../components/common/CustomInput';
 
 interface BookingDialogProps {
     open: boolean;
@@ -381,11 +382,11 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
                         />
                     </Stack>
 
-                    <TextField
+                    <CustomInput
+                        type="name"
                         label="Customer Name"
                         value={customerName}
-                        onChange={e => {
-                            const val = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                        onChange={val => {
                             setCustomerName(val);
                             if (bookingTouched.customerName) validateBookingField('customerName', val);
                         }}

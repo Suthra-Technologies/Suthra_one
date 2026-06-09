@@ -29,6 +29,7 @@ import { toast } from 'react-hot-toast';
 import { validateRequired, validateSKU, validateNumber, validateEmail, validatePhone, getHelperText, hasError } from '../utils/validation';
 import type { ValidationResult } from '../utils/validation';
 import { useSettings, getUnitsForCountry } from '../context/SettingsContext';
+import CustomInput from './common/CustomInput';
 
 // Vendor interface
 interface Vendor {
@@ -382,11 +383,12 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
                 {tabValue === 0 && (
                     <Grid container spacing={2} sx={{ mt: 1 }}>
                         <Grid item xs={12} md={6}>
-                            <TextField
+                            <CustomInput
+                                type="name"
                                 fullWidth
                                 label="Name"
                                 value={formData.name}
-                                onChange={(e) => handleChange('name', e.target.value)}
+                                onChange={(val) => handleChange('name', val)}
                                 onBlur={() => handleBlur('name')}
                                 error={hasError(errors.name)}
                                 helperText={getHelperText(errors.name)}

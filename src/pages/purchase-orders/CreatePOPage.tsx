@@ -246,7 +246,9 @@ const CreatePOPage: React.FC = () => {
 
     const handleVendorChange = (field: string, value: string) => {
         let finalValue = value;
-        if (field === 'contact') {
+        if (field === 'name') {
+            finalValue = value.replace(/[^a-zA-Z\s]/g, '');
+        } else if (field === 'contact') {
             finalValue = value.replace(/\D/g, '').slice(0, 10);
         }
         setFormData({ ...formData, vendor: { ...formData.vendor, [field]: finalValue } });

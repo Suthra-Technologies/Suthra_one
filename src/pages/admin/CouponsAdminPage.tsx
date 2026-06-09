@@ -1293,7 +1293,7 @@ const CouponsAdminPage: React.FC = () => {
                                     </Grid>
                                     <Grid item xs={12} sm={6}>
                                         <CustomInput
-                                            type="alphanumeric"
+                                            type="name"
                                             fullWidth
                                             label="Coupon Name"
                                             required
