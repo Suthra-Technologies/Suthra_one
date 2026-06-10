@@ -305,11 +305,13 @@ const OrderCard: React.FC<OrderCardProps> = ({
 
     return (
         <Card
+            onClick={() => onView(order)}
             sx={{
                 width: '100%',
                 height: '100%', // Fill grid item height
                 display: 'flex', // Flex layout
                 flexDirection: 'column', // Column direction
+                cursor: 'pointer',
                 transition: 'transform 0.2s, box-shadow 0.2s',
                 '&:hover': {
                     transform: 'translateY(-4px)',
@@ -517,6 +519,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                         size="small"
                                         href={order.trackingUrl}
                                         target="_blank"
+                                        onClick={(e) => e.stopPropagation()}
                                         sx={{ padding: 0, minWidth: 'auto', fontSize: '0.8rem', textTransform: 'none' }}
                                     >
                                         Track Delivery
@@ -869,13 +872,13 @@ const OrderCard: React.FC<OrderCardProps> = ({
             <CardActions sx={{ p: 1, pt: 0, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', bgcolor: alpha(theme.palette.background.default, 0.5), gap: 0.5 }}>
                 <Stack direction="row" spacing={0.5}>
                     <Tooltip title="View Details">
-                        <IconButton size="small" color="primary" onClick={() => onView(order)} sx={{ padding: '4px' }}>
+                        <IconButton size="small" color="primary" onClick={(e) => { e.stopPropagation(); onView(order); }} sx={{ padding: '4px' }}>
                             <ViewIcon />
                         </IconButton>
                     </Tooltip>
 
                     <Tooltip title="Print Bill">
-                        <IconButton size="small" onClick={() => onPrint(order)} sx={{ padding: '4px' }}>
+                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); onPrint(order); }} sx={{ padding: '4px' }}>
                             <ReceiptIcon />
                         </IconButton>
                     </Tooltip>
@@ -1051,6 +1054,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                     labelId={`rider-label-${order._id}`}
                                     label="Select Rider"
                                     value={selectedRider}
+                                    onClick={(e) => e.stopPropagation()}
                                     onChange={(e) => setSelectedRider(e.target.value as string)}
                                     onOpen={async () => {
                                         if (!ridersLoaded) {
@@ -1174,7 +1178,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                     )}
                     {canAddMoreItems && (
                         <Button
-                            onClick={() => setAddItemsDialogOpen(true)}
+                            onClick={(e) => { e.stopPropagation(); setAddItemsDialogOpen(true); }}
                             variant="outlined"
                             color="primary"
                             size="small"
@@ -1185,7 +1189,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                     )}
                     {canCollectPayment && (
                         <Button
-                            onClick={() => setPaymentDialogOpen(true)}
+                            onClick={(e) => { e.stopPropagation(); setPaymentDialogOpen(true); }}
                             variant="contained"
                             color="success"
                             size="small"

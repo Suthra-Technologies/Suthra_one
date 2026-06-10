@@ -315,6 +315,7 @@ export const menuAPI = {
   updateCategory: (id: string, categoryData: any) => api.put(`/menu/categories/${id}`, categoryData),
   deleteCategory: (id: string) => api.delete(`/menu/categories/${id}`),
   restoreCategory: (id: string) => api.patch(`/menu/categories/${id}/restore`),
+  reorderCategories: (items: { id: string; sortOrder: number }[]) => api.put('/menu/categories/reorder', items),
   createSubcategory: (subcategoryData: any) => api.post('/menu/subcategories', subcategoryData),
   updateSubcategory: (id: string, subcategoryData: any) => api.put(`/menu/subcategories/${id}`, subcategoryData),
   deleteSubcategory: (id: string) => api.delete(`/menu/subcategories/${id}`),
