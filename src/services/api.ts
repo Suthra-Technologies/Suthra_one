@@ -309,6 +309,7 @@ export const menuAPI = {
   delete: (id: string) => api.delete(`/menu/${id}`),
   restore: (id: string) => api.patch(`/menu/${id}/restore`),
   getPublicMenu: (tenantSlug?: string, search?: string, cursor?: string | null, limit?: number) => api.get('/menu/public', { params: { tenantSlug, search, cursor: cursor || undefined, limit } }),
+  exportExcel: () => api.get(`/menu/export/excel?t=${new Date().getTime()}`, { responseType: 'blob' }),
 
   // Category management
   createCategory: (categoryData: any) => api.post('/menu/categories', categoryData),

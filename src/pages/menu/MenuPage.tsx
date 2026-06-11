@@ -3,6 +3,7 @@ import {
     Category as CategoryIcon,
     Close as CloseIcon,
     CloudUpload as CloudUploadIcon,
+    CloudDownload as CloudDownloadIcon,
     DeleteForever as DeleteForeverIcon,
     Delete as DeleteIcon,
     Edit as EditIcon,
@@ -162,7 +163,7 @@ const MenuPage: React.FC = () => {
             } catch (err: any) {
                 console.error('Failed to reorder categories:', err);
                 toast.error('Failed to save category order');
-                fetchCategories();
+                fetchData();
             }
         }
     };
@@ -871,12 +872,13 @@ const MenuPage: React.FC = () => {
                         return key ? row[key] : undefined;
                     };
 
+                    const id = findValue(['id', 'item id', '_id']);
                     const name = findValue(['name', 'item', 'product', 'title']);
                     const price = findValue(['price', 'rate', 'cost', 'amount']);
                     const category = findValue(['category', 'cat']);
                     const subcategory = findValue(['subcategory', 'subcat', 'sub category']);
                     const description = findValue(['description', 'desc', 'details']);
-                    const image = findValue(['image', 'photo', 'img', 'url', 'link']);
+                    const image = findValue(['image url', 'imageurl', 'image', 'photo', 'img', 'url', 'link']);
                     const foodType = findValue(['food type', 'foodtype', 'veg', 'type']);
                     const isAvailable = findValue(['available', 'isavailable', 'stock']);
                     const isCateringAvailable = findValue(['catering', 'iscatering']);
@@ -890,6 +892,7 @@ const MenuPage: React.FC = () => {
                     const processedImage = await processImageField(image || '');
 
                     return {
+                        _id: id ? String(id).trim() : undefined,
                         name: String(name).trim(),
                         price: parseFloat(price) || 0,
                         category: String(category || '').trim(),
@@ -988,7 +991,10 @@ const MenuPage: React.FC = () => {
                 if (parts.length < 2 && row.includes('\t')) parts = row.split('\t').map(p => p.trim());
                 if (parts.length < 2 && row.includes('|')) parts = row.split('|').map(p => p.trim());
 
-                // Expected: Name, Price, Category, Subcategory, Description, ImageURL, FoodType, IsAvailable, IsCateringAvailable
+                // Expected: Item ID, Image URL, Name, Price, Category, Subcategory, Description, ImageURL, FoodType, IsAvailable, IsCateringAvailable
+                // This is a bit ambiguous for pasted CSV if columns change, but we assume a fixed format or mostly we rely on Excel upload.
+                // Let's assume the first column might be ID if it's 24 chars, or we just rely on handleFileUpload for Excel.
+                // We'll leave the old CSV parsing alone for now, but handleFileUpload is what they use for Excel.
                 const [name, priceStr, category, subcategory, description, image, foodType, isAvailableStr, isCateringAvailableStr] = parts;
 
                 if (!name || !priceStr) {
@@ -1106,6 +1112,29 @@ const MenuPage: React.FC = () => {
 
         return filtered;
     }, [menuItems, searchQuery, selectedCategory, selectedSubcategory, categories, subcategories]);
+
+    const [isExporting, setIsExporting] = useState(false);
+
+    const handleExportExcel = async () => {
+        try {
+            setIsExporting(true);
+            const response = await menuAPI.exportExcel();
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'Menu_Export.xlsx');
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            toast.success('Menu exported successfully!');
+        } catch (error) {
+            console.error('Error exporting menu:', error);
+            toast.error('Failed to export menu.');
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     const handleOpenBulkDialog = () => {
         setBulkPreviewItems([]);
         setDialogTab(0);
@@ -1219,6 +1248,28 @@ const MenuPage: React.FC = () => {
                                 {filteredMenuItems.length} Items Found
                             </Typography>
                             <Box sx={{ display: 'flex', gap: 1 }}>
+                                <Button
+                                    variant="outlined"
+                                    size={isMobile ? "small" : "medium"}
+                                    startIcon={isExporting ? <CircularProgress size={16} color="inherit" /> : <CloudDownloadIcon sx={{ fontSize: isMobile ? '0.9rem !important' : 'inherit' }} />}
+                                    onClick={handleExportExcel}
+                                    disabled={isExporting}
+                                    sx={{ 
+                                        width: 'auto',
+                                        fontSize: isMobile ? '0.7rem' : '0.85rem',
+                                        px: isMobile ? 1.5 : 2,
+                                        fontWeight: 700,
+                                        whiteSpace: 'nowrap',
+                                        color: theme.palette.success.main,
+                                        borderColor: theme.palette.success.main,
+                                        '&:hover': {
+                                            backgroundColor: alpha(theme.palette.success.main, 0.04),
+                                            borderColor: theme.palette.success.dark,
+                                        }
+                                    }}
+                                >
+                                    Export Menu
+                                </Button>
                                 <Button
                                     variant="outlined"
                                     size={isMobile ? "small" : "medium"}

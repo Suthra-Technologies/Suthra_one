@@ -959,11 +959,12 @@ const VendorsPage: React.FC = () => {
                                         />
                                     </Grid>
                                     <Grid item xs={12} md={6}>
-                                        <TextField
+                                        <CustomInput
+                                            type="name"
                                             fullWidth
                                             label="Shop Name"
                                             value={formData.shopName}
-                                            onChange={(e) => setFormData({ ...formData, shopName: e.target.value })}
+                                            onChange={(val) => setFormData({ ...formData, shopName: val })}
                                             size={isMobile ? "small" : "medium"}
                                         />
                                     </Grid>
