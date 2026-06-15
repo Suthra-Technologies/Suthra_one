@@ -236,6 +236,27 @@ const TenantsPage: React.FC = () => {
                         <Typography variant="caption" color="primary" sx={{ fontWeight: 600 }} noWrap>
                           {tenant.slug}
                         </Typography>
+                        <Tooltip title={`Click to copy Tenant ID: ${tenant._id}`}>
+                          <Typography
+                            variant="caption"
+                            color="textSecondary"
+                            noWrap
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigator.clipboard.writeText(tenant._id);
+                              toast.success('Tenant ID copied');
+                            }}
+                            sx={{
+                              display: 'block',
+                              fontFamily: 'monospace',
+                              fontSize: '0.6rem',
+                              cursor: 'pointer',
+                              '&:hover': { color: 'primary.main' },
+                            }}
+                          >
+                            ID: {tenant._id}
+                          </Typography>
+                        </Tooltip>
                       </Box>
                       <Tooltip title="Click to change account status">
                         <Chip

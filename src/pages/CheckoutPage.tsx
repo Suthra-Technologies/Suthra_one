@@ -50,6 +50,7 @@ import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import CustomerRegistration from '../components/auth/CustomerRegistration';
 import GooglePlacesAutocomplete from '../components/common/GooglePlacesAutocomplete';
+import MapLocationPicker from '../components/common/MapLocationPicker';
 import { useAuth } from '../context/AuthContext';
 import { useGuestCart } from '../context/GuestCartContext';
 import { useSettings } from '../context/SettingsContext';
@@ -276,6 +277,7 @@ const CheckoutPage: React.FC = () => {
   const [selectedAddressMode, setSelectedAddressMode] = useState<'saved' | 'new'>(
     user?.savedAddresses?.length ? 'saved' : 'new'
   );
+  const [mapPickerOpen, setMapPickerOpen] = useState(false);
   const [customizeDialogOpen, setCustomizeDialogOpen] = useState(false);
   const [customizeIndex, setCustomizeIndex] = useState<number>(-1);
   const [customizeNote, setCustomizeNote] = useState('');
@@ -455,7 +457,7 @@ const CheckoutPage: React.FC = () => {
         if (!tenantSlug) return;
 
         const response = await ordersAPI.getDeliveryQuote(
-          { fullAddress: deliveryInfo.address },
+          { fullAddress: deliveryInfo.address, latitude: deliveryInfo.latitude, longitude: deliveryInfo.longitude },
           cart.items.map(i => ({ menuItem: i.id, name: i.name, quantity: i.quantity, price: i.price })),
           tenantSlug
         );
@@ -507,7 +509,7 @@ const CheckoutPage: React.FC = () => {
       isCancelled = true;
       clearTimeout(debounceTimer);
     };
-  }, [orderType, deliveryInfo.address, cart.items, slug, activeStep]);
+  }, [orderType, deliveryInfo.address, deliveryInfo.latitude, deliveryInfo.longitude, cart.items, slug, activeStep]);
 
   const handleNext = () => {
     if (activeStep === 1 && !isAuthenticated && authMethod !== 'guest') {
@@ -1033,8 +1035,8 @@ const CheckoutPage: React.FC = () => {
                     setDeliveryInfo((prev) => ({
                       ...prev,
                       address: placeData.formattedAddress,
-                      latitude: placeData.lat,
-                      longitude: placeData.lng,
+                      latitude: placeData.location?.lat ?? placeData.lat,
+                      longitude: placeData.location?.lng ?? placeData.lng,
                       businessName: (placeData.name && placeData.name !== placeData.formattedAddress) ? placeData.name : prev.businessName
                     }));
                   }
@@ -1044,6 +1046,16 @@ const CheckoutPage: React.FC = () => {
                 required
                 apiKey={settings?.system?.googleMapsApiKey}
               />
+              <Box sx={{ mt: 1 }}>
+                <Button
+                  size="small"
+                  variant="text"
+                  startIcon={<LocationOn />}
+                  onClick={() => setMapPickerOpen(true)}
+                >
+                  Choose location on map
+                </Button>
+              </Box>
             </Grid>
           )}
 
@@ -1878,6 +1890,26 @@ const CheckoutPage: React.FC = () => {
         </DialogContent>
       </Dialog>
       {renderCustomizeDialog()}
+      <MapLocationPicker
+        open={mapPickerOpen}
+        onClose={() => setMapPickerOpen(false)}
+        apiKey={settings?.system?.googleMapsApiKey}
+        initialAddress={deliveryInfo.address}
+        initialCenter={
+          deliveryInfo.latitude != null && deliveryInfo.longitude != null
+            ? { lat: deliveryInfo.latitude, lng: deliveryInfo.longitude }
+            : undefined
+        }
+        onConfirm={(loc) => {
+          setSelectedAddressMode('new');
+          setDeliveryInfo((prev) => ({
+            ...prev,
+            address: loc.address,
+            latitude: loc.latitude,
+            longitude: loc.longitude,
+          }));
+        }}
+      />
     </Container>
   );
 };

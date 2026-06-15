@@ -504,6 +504,7 @@ const TenantDetailsPage: React.FC = () => {
               <TextField size="small" fullWidth type="password" label="Client Secret" value={deliverySettings.ubereats?.clientSecret || ''} onChange={e => setUber('clientSecret', e.target.value)} />
               <TextField size="small" fullWidth label="Customer ID" value={deliverySettings.ubereats?.customerId || ''} onChange={e => setUber('customerId', e.target.value)} />
               <TextField size="small" fullWidth label="Store ID" value={deliverySettings.ubereats?.storeId || ''} onChange={e => setUber('storeId', e.target.value)} />
+              <TextField size="small" fullWidth type="password" label="Webhook Signing Secret" value={deliverySettings.ubereats?.webhookSecret || ''} onChange={e => setUber('webhookSecret', e.target.value)} />
               <FormControlLabel
                 control={<Switch size="small" checked={!!deliverySettings.ubereats?.isSandbox} onChange={e => setUber('isSandbox', e.target.checked)} />}
                 label="Sandbox Mode"

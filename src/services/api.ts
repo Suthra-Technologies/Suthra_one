@@ -264,8 +264,7 @@ export const ubereatsAPI = {
   getOrganization: (organizationId: string) => api.get(`/ubereats/organizations/${organizationId}`),
   inviteMember: (organizationId: string, payload: any) => api.post(`/ubereats/organizations/${organizationId}/memberships/invite`, payload),
 
-  // Business Locations
-  createBusinessLocation: (organizationId: string, payload: any) => api.post(`/ubereats/organizations/${organizationId}/business-locations`, payload),
+  // Business Locations (Uber supports list/get/update only — no create endpoint)
   getBusinessLocations: (organizationId: string) => api.get(`/ubereats/organizations/${organizationId}/business-locations`),
   getBusinessLocation: (organizationId: string, businessLocationId: string) => api.get(`/ubereats/organizations/${organizationId}/business-locations/${businessLocationId}`),
   updateBusinessLocation: (organizationId: string, businessLocationId: string, payload: any) => api.patch(`/ubereats/organizations/${organizationId}/business-locations/${businessLocationId}`, payload),
