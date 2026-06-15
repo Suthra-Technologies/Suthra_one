@@ -64,6 +64,7 @@ import { toast } from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
 import { promosAPI, customersAPI, reportsAPI, menuAPI } from '../../services/api';
 import CustomInput from '../../components/common/CustomInput';
+import CustomInput from '../../components/common/CustomInput';
 
 interface Customer {
     name: string;
@@ -265,8 +266,8 @@ const PromoCodePage: React.FC = () => {
     const fetchPromos = async () => {
         try {
             setLoading(true);
-            const response = await promosAPI.getAll({ 
-                page: page + 1, 
+            const response = await promosAPI.getAll({
+                page: page + 1,
                 limit: rowsPerPage,
                 search: debouncedSearch.trim() || undefined,
                 isDeleted: tabValue === 4 ? true : undefined,
@@ -311,7 +312,7 @@ const PromoCodePage: React.FC = () => {
             const response = await customersAPI.getAll({ page: 1, limit: 1000 });
             const raw = response.data.customers || response.data;
             const fetched: Customer[] = Array.isArray(raw) ? raw : [];
-            
+
             // Filter unique by email or phone to avoid key errors
             const uniqueMap = new Map();
             fetched.forEach(c => {
@@ -320,7 +321,7 @@ const PromoCodePage: React.FC = () => {
                     uniqueMap.set(identifier, c);
                 }
             });
-            
+
             setCustomers(Array.from(uniqueMap.values()));
         } catch (error) {
             console.error('Error fetching customers:', error);
@@ -386,7 +387,7 @@ const PromoCodePage: React.FC = () => {
         }
         const parts = cleanValue.split('.');
         if (parts[0].length > 3) return;
-        
+
         if (options?.maxLimit !== undefined && Number(cleanValue) > options.maxLimit) {
             return;
         }
@@ -476,10 +477,10 @@ const PromoCodePage: React.FC = () => {
             const newActiveStatus = !promo.active;
             // ONLY send the 'active' field to avoid any backend side-effects or field conflicts
             await promosAPI.update(promo._id, { active: newActiveStatus });
-            
+
             // Update local state directly to prevent visual disappearance and jumping
             setPromos(prev => prev.map(p => p._id === promo._id ? { ...p, active: newActiveStatus } : p));
-            
+
             toast.success(`Promo ${newActiveStatus ? 'activated' : 'deactivated'}`);
         } catch (error: any) {
             console.error('Toggle status error:', error);
@@ -495,7 +496,7 @@ const PromoCodePage: React.FC = () => {
     // --- Email Handlers ---
     const handleSelectCustomer = (email: string, checked: boolean) => {
         setEmailData(prev => {
-            const selected = checked 
+            const selected = checked
                 ? [...prev.selectedCustomers, email]
                 : prev.selectedCustomers.filter(e => e !== email);
             return { ...prev, selectedCustomers: selected, selectAll: selected.length === customers.filter(c => c.email).length };
@@ -562,12 +563,12 @@ const PromoCodePage: React.FC = () => {
         try {
             setSmsLoading(true);
             const message = `Special Offer! Use code ${selectedForMessage.code} to get ${selectedForMessage.discountValue}${selectedForMessage.discountType === 'percentage' ? '%' : '$'} off your next order. Valid until ${safeFormatDate(selectedForMessage.validTo)}.`;
-            
+
             await promosAPI.sendBulkSms({
                 promoId: selectedForMessage._id,
                 phoneNumbers: selectedSmsPhones
             });
-            
+
             toast.success('SMS broadcast sent successfully');
             setOpenSmsDialog(false);
             setSelectedSmsPhones([]);
@@ -1250,49 +1251,49 @@ const PromoCodePage: React.FC = () => {
                 </Paper>
             )}
             {/* Create/Edit Dialog */}
-            <Dialog 
-                open={openDialog} 
-                onClose={() => setOpenDialog(false)} 
-                maxWidth="md" 
-                fullWidth 
+            <Dialog
+                open={openDialog}
+                onClose={() => setOpenDialog(false)}
+                maxWidth="md"
+                fullWidth
                 fullScreen={isMobile}
                 PaperProps={{ sx: { borderRadius: isMobile ? 0 : 4, bgcolor: 'background.default' } }}
             >
-                <DialogTitle component="div" sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center', 
-                    borderBottom: '1px solid', 
+                <DialogTitle component="div" sx={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    borderBottom: '1px solid',
                     borderColor: alpha(theme.palette.divider, 0.1),
                     bgcolor: 'background.paper',
                     p: isMobile ? 2 : 2.5,
                     pt: isMobile ? '60px' : 2.5
                 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Box sx={{ 
-                            p: 1, 
-                            borderRadius: 1.5, 
-                            bgcolor: alpha(theme.palette.primary.main, 0.1), 
+                        <Box sx={{
+                            p: 1,
+                            borderRadius: 1.5,
+                            bgcolor: alpha(theme.palette.primary.main, 0.1),
                             color: 'primary.main',
                             display: 'flex'
                         }}>
-                             <LocalOfferIcon fontSize={isMobile ? "small" : "medium"} />
+                            <LocalOfferIcon fontSize={isMobile ? "small" : "medium"} />
                         </Box>
-                        <Typography 
-                            variant={isMobile ? "subtitle1" : "h6"} 
+                        <Typography
+                            variant={isMobile ? "subtitle1" : "h6"}
                             fontWeight={700}
                             sx={{ fontFamily: '"Outfit", sans-serif', textTransform: 'uppercase', letterSpacing: '0.02em' }}
                         >
                             {editingPromo ? 'Edit Promo Code' : 'Create New Promo'}
                         </Typography>
                     </Box>
-                    <IconButton 
-                        onClick={() => setOpenDialog(false)} 
-                        size="small" 
-                        sx={{ 
-                            bgcolor: alpha(theme.palette.error.main, 0.1), 
-                            color: 'error.main', 
-                            '&:hover': { bgcolor: 'error.main', color: 'white' } 
+                    <IconButton
+                        onClick={() => setOpenDialog(false)}
+                        size="small"
+                        sx={{
+                            bgcolor: alpha(theme.palette.error.main, 0.1),
+                            color: 'error.main',
+                            '&:hover': { bgcolor: 'error.main', color: 'white' }
                         }}
                     >
                         <CloseIcon fontSize="small" />
@@ -1302,24 +1303,24 @@ const PromoCodePage: React.FC = () => {
                     <Grid container spacing={isMobile ? 1.5 : 3} sx={{ mt: 0.5 }}>
                         {/* Basic Info */}
                         <Grid item xs={12} sx={{ display: 'flex', justifyContent: isMobile ? 'center' : 'stretch' }}>
-                            <Paper sx={{ 
-                                p: isMobile ? 2 : 3, 
-                                borderRadius: 3, 
-                                width: '100%', 
+                            <Paper sx={{
+                                p: isMobile ? 2 : 3,
+                                borderRadius: 3,
+                                width: '100%',
                                 maxWidth: isMobile ? 600 : 'none',
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                                 border: '1px solid',
                                 borderColor: alpha(theme.palette.divider, 0.05),
                                 bgcolor: 'background.paper'
                             }}>
-                                <Typography 
-                                    variant="caption" 
-                                    fontWeight={700} 
-                                    color="primary" 
-                                    sx={{ 
-                                        display: 'block', 
-                                        mb: 2, 
-                                        textTransform: 'uppercase', 
+                                <Typography
+                                    variant="caption"
+                                    fontWeight={700}
+                                    color="primary"
+                                    sx={{
+                                        display: 'block',
+                                        mb: 2,
+                                        textTransform: 'uppercase',
                                         letterSpacing: '0.05em',
                                         fontFamily: '"Outfit", sans-serif'
                                     }}
@@ -1343,7 +1344,7 @@ const PromoCodePage: React.FC = () => {
                                     </Grid>
                                     <Grid item xs={12} sm={6}>
                                         <CustomInput
-                                            type="alphanumeric"
+                                            type="name"
                                             fullWidth
                                             label="Internal Name"
                                             required
@@ -1375,24 +1376,24 @@ const PromoCodePage: React.FC = () => {
                         </Grid>
                         {/* Discount Rules */}
                         <Grid item xs={12} sx={{ display: 'flex', justifyContent: isMobile ? 'center' : 'stretch' }}>
-                            <Paper sx={{ 
-                                p: isMobile ? 2 : 3, 
-                                borderRadius: 3, 
-                                width: '100%', 
+                            <Paper sx={{
+                                p: isMobile ? 2 : 3,
+                                borderRadius: 3,
+                                width: '100%',
                                 maxWidth: isMobile ? 600 : 'none',
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                                 border: '1px solid',
                                 borderColor: alpha(theme.palette.divider, 0.05),
                                 bgcolor: 'background.paper'
                             }}>
-                                <Typography 
-                                    variant="caption" 
-                                    fontWeight={700} 
-                                    color="primary" 
-                                    sx={{ 
-                                        display: 'block', 
-                                        mb: 2, 
-                                        textTransform: 'uppercase', 
+                                <Typography
+                                    variant="caption"
+                                    fontWeight={700}
+                                    color="primary"
+                                    sx={{
+                                        display: 'block',
+                                        mb: 2,
+                                        textTransform: 'uppercase',
                                         letterSpacing: '0.05em',
                                         fontFamily: '"Outfit", sans-serif'
                                     }}
@@ -1452,24 +1453,24 @@ const PromoCodePage: React.FC = () => {
                         </Grid>
                         {/* Validity & Limits */}
                         <Grid item xs={12} sx={{ display: 'flex', justifyContent: isMobile ? 'center' : 'stretch' }}>
-                            <Paper sx={{ 
-                                p: isMobile ? 2 : 3, 
-                                borderRadius: 3, 
-                                width: '100%', 
+                            <Paper sx={{
+                                p: isMobile ? 2 : 3,
+                                borderRadius: 3,
+                                width: '100%',
                                 maxWidth: isMobile ? 600 : 'none',
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                                 border: '1px solid',
                                 borderColor: alpha(theme.palette.divider, 0.05),
                                 bgcolor: 'background.paper'
                             }}>
-                                <Typography 
-                                    variant="caption" 
-                                    fontWeight={700} 
-                                    color="primary" 
-                                    sx={{ 
-                                        display: 'block', 
-                                        mb: 2, 
-                                        textTransform: 'uppercase', 
+                                <Typography
+                                    variant="caption"
+                                    fontWeight={700}
+                                    color="primary"
+                                    sx={{
+                                        display: 'block',
+                                        mb: 2,
+                                        textTransform: 'uppercase',
                                         letterSpacing: '0.05em',
                                         fontFamily: '"Outfit", sans-serif'
                                     }}
@@ -1487,8 +1488,8 @@ const PromoCodePage: React.FC = () => {
                                             value={formData.validFrom}
                                             onChange={(e) => setFormData({ ...formData, validFrom: e.target.value })}
                                             InputLabelProps={{ shrink: true }}
-                                            inputProps={{ 
-                                                min: editingPromo ? formData.validFrom : format(new Date(), 'yyyy-MM-dd') 
+                                            inputProps={{
+                                                min: editingPromo ? formData.validFrom : format(new Date(), 'yyyy-MM-dd')
                                             }}
                                             InputProps={{ sx: { borderRadius: 2 } }}
                                         />
@@ -1503,10 +1504,10 @@ const PromoCodePage: React.FC = () => {
                                             value={formData.validTo}
                                             onChange={(e) => setFormData({ ...formData, validTo: e.target.value })}
                                             InputLabelProps={{ shrink: true }}
-                                            inputProps={{ 
-                                                min: (formData.validFrom && formData.validFrom > format(new Date(), 'yyyy-MM-dd')) 
-                                                    ? formData.validFrom 
-                                                    : format(new Date(), 'yyyy-MM-dd') 
+                                            inputProps={{
+                                                min: (formData.validFrom && formData.validFrom > format(new Date(), 'yyyy-MM-dd'))
+                                                    ? formData.validFrom
+                                                    : format(new Date(), 'yyyy-MM-dd')
                                             }}
                                             InputProps={{ sx: { borderRadius: 2 } }}
                                         />
@@ -1543,24 +1544,24 @@ const PromoCodePage: React.FC = () => {
 
                         {/* Availability */}
                         <Grid item xs={12} sx={{ display: 'flex', justifyContent: isMobile ? 'center' : 'stretch' }}>
-                            <Paper sx={{ 
-                                p: isMobile ? 2 : 3, 
-                                borderRadius: 3, 
-                                width: '100%', 
+                            <Paper sx={{
+                                p: isMobile ? 2 : 3,
+                                borderRadius: 3,
+                                width: '100%',
                                 maxWidth: isMobile ? 600 : 'none',
                                 boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                                 border: '1px solid',
                                 borderColor: alpha(theme.palette.divider, 0.05),
                                 bgcolor: 'background.paper'
                             }}>
-                                <Typography 
-                                    variant="caption" 
-                                    fontWeight={700} 
-                                    color="primary" 
-                                    sx={{ 
-                                        display: 'block', 
-                                        mb: 1.5, 
-                                        textTransform: 'uppercase', 
+                                <Typography
+                                    variant="caption"
+                                    fontWeight={700}
+                                    color="primary"
+                                    sx={{
+                                        display: 'block',
+                                        mb: 1.5,
+                                        textTransform: 'uppercase',
                                         letterSpacing: '0.05em',
                                         fontFamily: '"Outfit", sans-serif'
                                     }}
@@ -1605,10 +1606,10 @@ const PromoCodePage: React.FC = () => {
                     </Grid>
                 </DialogContent>
                 <DialogActions sx={{ p: isMobile ? 2 : 3, bgcolor: 'background.paper', borderTop: '1px solid', borderColor: 'divider', gap: 1.5 }}>
-                    <Button 
-                        onClick={() => setOpenDialog(false)} 
-                        sx={{ 
-                            textTransform: 'none', 
+                    <Button
+                        onClick={() => setOpenDialog(false)}
+                        sx={{
+                            textTransform: 'none',
                             fontWeight: 'bold',
                             color: 'text.secondary'
                         }}
@@ -1619,10 +1620,10 @@ const PromoCodePage: React.FC = () => {
                         variant="contained"
                         onClick={handleSave}
                         disabled={formLoading}
-                        sx={{ 
-                            borderRadius: 2, 
-                            px: 4, 
-                            textTransform: 'none', 
+                        sx={{
+                            borderRadius: 2,
+                            px: 4,
+                            textTransform: 'none',
                             fontWeight: 'bold',
                             boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
                         }}
@@ -1784,18 +1785,18 @@ const PromoCodePage: React.FC = () => {
                     sx: { borderRadius: { xs: 0, sm: 4 }, backgroundImage: 'none' }
                 }}
             >
-                <DialogTitle component="div" sx={{ 
-                    m: 0, 
-                    p: { xs: 2.5, sm: 3 }, 
+                <DialogTitle component="div" sx={{
+                    m: 0,
+                    p: { xs: 2.5, sm: 3 },
                     pt: { xs: isMobile ? '54px' : 2.5, sm: 3 },
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
+                    display: 'flex',
+                    justifyContent: 'space-between',
                     alignItems: 'center'
                 }}>
-                    <Typography 
-                        variant="h6" 
-                        sx={{ 
-                            fontWeight: 800, 
+                    <Typography
+                        variant="h6"
+                        sx={{
+                            fontWeight: 800,
                             fontFamily: "'Outfit', sans-serif",
                             fontSize: { xs: '1.25rem', sm: '1.25rem' }
                         }}
@@ -1814,11 +1815,11 @@ const PromoCodePage: React.FC = () => {
                     </IconButton>
                 </DialogTitle>
                 <DialogContent sx={{ p: { xs: 3, sm: 4 }, textAlign: 'center' }}>
-                    <Box sx={{ 
-                        width: 80, 
-                        height: 80, 
-                        borderRadius: '50%', 
-                        bgcolor: alpha(theme.palette.error.main, 0.1), 
+                    <Box sx={{
+                        width: 80,
+                        height: 80,
+                        borderRadius: '50%',
+                        bgcolor: alpha(theme.palette.error.main, 0.1),
                         color: 'error.main',
                         display: 'flex',
                         alignItems: 'center',
@@ -1842,15 +1843,15 @@ const PromoCodePage: React.FC = () => {
                         This promo code will be soft-deleted. You can restore it from the Deleted tab later.
                     </Typography>
                 </DialogContent>
-                <DialogActions sx={{ 
-                    p: { xs: 2.5, sm: 3 }, 
+                <DialogActions sx={{
+                    p: { xs: 2.5, sm: 3 },
                     pb: { xs: isMobile ? '32px' : 2.5, sm: 3 },
                     gap: 1.5,
                     borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`
                 }}>
                     <Button
                         onClick={() => setOpenDeleteDialog(false)}
-                        sx={{ 
+                        sx={{
                             flex: 1,
                             borderRadius: 2.5,
                             py: 1.25,
@@ -1866,7 +1867,7 @@ const PromoCodePage: React.FC = () => {
                         onClick={confirmDelete}
                         variant="contained"
                         color="error"
-                        sx={{ 
+                        sx={{
                             flex: 1,
                             borderRadius: 2.5,
                             py: 1.25,
@@ -1891,18 +1892,18 @@ const PromoCodePage: React.FC = () => {
                     sx: { borderRadius: { xs: 0, sm: 4 }, backgroundImage: 'none' }
                 }}
             >
-                <DialogTitle component="div" sx={{ 
-                    m: 0, 
-                    p: { xs: 2.5, sm: 3 }, 
+                <DialogTitle component="div" sx={{
+                    m: 0,
+                    p: { xs: 2.5, sm: 3 },
                     pt: { xs: isMobile ? '54px' : 2.5, sm: 3 },
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
+                    display: 'flex',
+                    justifyContent: 'space-between',
                     alignItems: 'center'
                 }}>
-                    <Typography 
-                        variant="h6" 
-                        sx={{ 
-                            fontWeight: 800, 
+                    <Typography
+                        variant="h6"
+                        sx={{
+                            fontWeight: 800,
                             fontFamily: "'Outfit', sans-serif",
                             fontSize: { xs: '1.25rem', sm: '1.25rem' }
                         }}
@@ -1921,11 +1922,11 @@ const PromoCodePage: React.FC = () => {
                     </IconButton>
                 </DialogTitle>
                 <DialogContent sx={{ p: { xs: 3, sm: 4 }, textAlign: 'center' }}>
-                    <Box sx={{ 
-                        width: 80, 
-                        height: 80, 
-                        borderRadius: '50%', 
-                        bgcolor: alpha(theme.palette.success.main, 0.1), 
+                    <Box sx={{
+                        width: 80,
+                        height: 80,
+                        borderRadius: '50%',
+                        bgcolor: alpha(theme.palette.success.main, 0.1),
                         color: 'success.main',
                         display: 'flex',
                         alignItems: 'center',
@@ -1943,15 +1944,15 @@ const PromoCodePage: React.FC = () => {
                         </Box>
                     </Typography>
                 </DialogContent>
-                <DialogActions sx={{ 
-                    p: { xs: 2.5, sm: 3 }, 
+                <DialogActions sx={{
+                    p: { xs: 2.5, sm: 3 },
                     pb: { xs: isMobile ? '32px' : 2.5, sm: 3 },
                     gap: 1.5,
                     borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`
                 }}>
                     <Button
                         onClick={() => setOpenRestoreDialog(false)}
-                        sx={{ 
+                        sx={{
                             flex: 1,
                             borderRadius: 2.5,
                             py: 1.25,
@@ -1967,7 +1968,7 @@ const PromoCodePage: React.FC = () => {
                         onClick={confirmRestorePromo}
                         variant="contained"
                         color="success"
-                        sx={{ 
+                        sx={{
                             flex: 1,
                             borderRadius: 2.5,
                             py: 1.25,

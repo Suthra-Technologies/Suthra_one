@@ -398,6 +398,9 @@ const createDefaultSettings = (): SettingsState => ({
             cheque: true,
             creditCard: true,
             debitCard: true,
+            cheque: true,
+            creditCard: true,
+            debitCard: true,
         }
     },
     payment: {
@@ -2523,10 +2526,6 @@ const SettingsPage: React.FC = () => {
                             </Grid>
                         </Grid>
                         */}
-
-                        <Grid size={{ xs: 12 }}>
-                            <KioskQRCard slug={tenantSlug || undefined} restaurantName={settings.restaurant.name} />
-                        </Grid>
 
                         <Grid size={{ xs: 12 }} sx={{ display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' }, mt: { xs: 2.5, md: 0 } }}>
                             <Button

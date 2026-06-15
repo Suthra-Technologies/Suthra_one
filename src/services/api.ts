@@ -308,12 +308,14 @@ export const menuAPI = {
   delete: (id: string) => api.delete(`/menu/${id}`),
   restore: (id: string) => api.patch(`/menu/${id}/restore`),
   getPublicMenu: (tenantSlug?: string, search?: string, cursor?: string | null, limit?: number) => api.get('/menu/public', { params: { tenantSlug, search, cursor: cursor || undefined, limit } }),
+  exportExcel: () => api.get(`/menu/export/excel?t=${new Date().getTime()}`, { responseType: 'blob' }),
 
   // Category management
   createCategory: (categoryData: any) => api.post('/menu/categories', categoryData),
   updateCategory: (id: string, categoryData: any) => api.put(`/menu/categories/${id}`, categoryData),
   deleteCategory: (id: string) => api.delete(`/menu/categories/${id}`),
   restoreCategory: (id: string) => api.patch(`/menu/categories/${id}/restore`),
+  reorderCategories: (items: { id: string; sortOrder: number }[]) => api.put('/menu/categories/reorder', items),
   createSubcategory: (subcategoryData: any) => api.post('/menu/subcategories', subcategoryData),
   updateSubcategory: (id: string, subcategoryData: any) => api.put(`/menu/subcategories/${id}`, subcategoryData),
   deleteSubcategory: (id: string) => api.delete(`/menu/subcategories/${id}`),

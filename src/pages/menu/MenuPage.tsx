@@ -3,6 +3,7 @@ import {
     Category as CategoryIcon,
     Close as CloseIcon,
     CloudUpload as CloudUploadIcon,
+    CloudDownload as CloudDownloadIcon,
     DeleteForever as DeleteForeverIcon,
     Delete as DeleteIcon,
     Edit as EditIcon,
@@ -80,7 +81,22 @@ import MenuItemDialog from './components/MenuItemDialog';
 import AddOnGroupsPage from './AddOnGroupsPage';
 import TaxCategorySelector from './components/TaxCategorySelector';
 import { useActiveTenant } from '../../hooks/useActiveTenant';
-
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+} from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    rectSortingStrategy,
+} from '@dnd-kit/sortable';
+import { SortableCategoryItem } from './SortableCategoryItem';
 
 const MenuPage: React.FC = () => {
     const theme = useTheme();
@@ -122,6 +138,36 @@ const MenuPage: React.FC = () => {
     const [deletedLoading, setDeletedLoading] = useState(false);
 
     // Dialogs State
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
+
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (over && active.id !== over.id) {
+            const oldIndex = categories.findIndex(c => c._id === active.id);
+            const newIndex = categories.findIndex(c => c._id === over.id);
+
+            const newCategories = arrayMove(categories, oldIndex, newIndex);
+            setCategories(newCategories);
+
+            const payload = newCategories.map((c, index) => ({
+                id: c._id,
+                sortOrder: index,
+            }));
+
+            try {
+                await menuAPI.reorderCategories(payload);
+                toast.success('Category order saved');
+            } catch (err: any) {
+                console.error('Failed to reorder categories:', err);
+                toast.error('Failed to save category order');
+                fetchData();
+            }
+        }
+    };
+
     const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
     const [menuItemDialogOpen, setMenuItemDialogOpen] = useState(false);
     // Confirmation shown before adding a menu item (lists existing categories / offer to add more)
@@ -826,12 +872,13 @@ const MenuPage: React.FC = () => {
                         return key ? row[key] : undefined;
                     };
 
+                    const id = findValue(['id', 'item id', '_id']);
                     const name = findValue(['name', 'item', 'product', 'title']);
                     const price = findValue(['price', 'rate', 'cost', 'amount']);
                     const category = findValue(['category', 'cat']);
                     const subcategory = findValue(['subcategory', 'subcat', 'sub category']);
                     const description = findValue(['description', 'desc', 'details']);
-                    const image = findValue(['image', 'photo', 'img', 'url', 'link']);
+                    const image = findValue(['image url', 'imageurl', 'image', 'photo', 'img', 'url', 'link']);
                     const foodType = findValue(['food type', 'foodtype', 'veg', 'type']);
                     const isAvailable = findValue(['available', 'isavailable', 'stock']);
                     const isCateringAvailable = findValue(['catering', 'iscatering']);
@@ -845,6 +892,7 @@ const MenuPage: React.FC = () => {
                     const processedImage = await processImageField(image || '');
 
                     return {
+                        _id: id ? String(id).trim() : undefined,
                         name: String(name).trim(),
                         price: parseFloat(price) || 0,
                         category: String(category || '').trim(),
@@ -943,7 +991,10 @@ const MenuPage: React.FC = () => {
                 if (parts.length < 2 && row.includes('\t')) parts = row.split('\t').map(p => p.trim());
                 if (parts.length < 2 && row.includes('|')) parts = row.split('|').map(p => p.trim());
 
-                // Expected: Name, Price, Category, Subcategory, Description, ImageURL, FoodType, IsAvailable, IsCateringAvailable
+                // Expected: Item ID, Image URL, Name, Price, Category, Subcategory, Description, ImageURL, FoodType, IsAvailable, IsCateringAvailable
+                // This is a bit ambiguous for pasted CSV if columns change, but we assume a fixed format or mostly we rely on Excel upload.
+                // Let's assume the first column might be ID if it's 24 chars, or we just rely on handleFileUpload for Excel.
+                // We'll leave the old CSV parsing alone for now, but handleFileUpload is what they use for Excel.
                 const [name, priceStr, category, subcategory, description, image, foodType, isAvailableStr, isCateringAvailableStr] = parts;
 
                 if (!name || !priceStr) {
@@ -1061,6 +1112,29 @@ const MenuPage: React.FC = () => {
 
         return filtered;
     }, [menuItems, searchQuery, selectedCategory, selectedSubcategory, categories, subcategories]);
+
+    const [isExporting, setIsExporting] = useState(false);
+
+    const handleExportExcel = async () => {
+        try {
+            setIsExporting(true);
+            const response = await menuAPI.exportExcel();
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', 'Menu_Export.xlsx');
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            toast.success('Menu exported successfully!');
+        } catch (error) {
+            console.error('Error exporting menu:', error);
+            toast.error('Failed to export menu.');
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     const handleOpenBulkDialog = () => {
         setBulkPreviewItems([]);
         setDialogTab(0);
@@ -1174,6 +1248,28 @@ const MenuPage: React.FC = () => {
                                 {filteredMenuItems.length} Items Found
                             </Typography>
                             <Box sx={{ display: 'flex', gap: 1 }}>
+                                <Button
+                                    variant="outlined"
+                                    size={isMobile ? "small" : "medium"}
+                                    startIcon={isExporting ? <CircularProgress size={16} color="inherit" /> : <CloudDownloadIcon sx={{ fontSize: isMobile ? '0.9rem !important' : 'inherit' }} />}
+                                    onClick={handleExportExcel}
+                                    disabled={isExporting}
+                                    sx={{ 
+                                        width: 'auto',
+                                        fontSize: isMobile ? '0.7rem' : '0.85rem',
+                                        px: isMobile ? 1.5 : 2,
+                                        fontWeight: 700,
+                                        whiteSpace: 'nowrap',
+                                        color: theme.palette.success.main,
+                                        borderColor: theme.palette.success.main,
+                                        '&:hover': {
+                                            backgroundColor: alpha(theme.palette.success.main, 0.04),
+                                            borderColor: theme.palette.success.dark,
+                                        }
+                                    }}
+                                >
+                                    Export Menu
+                                </Button>
                                 <Button
                                     variant="outlined"
                                     size={isMobile ? "small" : "medium"}
@@ -1540,79 +1636,32 @@ const MenuPage: React.FC = () => {
                                     </Button>
                                 </Box>
                             ) : (
-                                <Grid container spacing={3}>
-                                    {categories.map(category => (
-                                        <Grid item xs={12} sm={6} md={4} key={category._id}>
-                                            <Card
-                                                sx={{
-                                                    height: '100%',
-                                                    display: 'flex',
-                                                    flexDirection: 'column',
-                                                    transition: 'transform 0.2s, box-shadow 0.2s',
-                                                    '&:hover': {
-                                                        transform: 'translateY(-4px)',
-                                                        boxShadow: theme.shadows[8],
-                                                    },
-                                                }}
-                                            >
-                                                <CardContent sx={{ flexGrow: 1 }}>
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                                                        <CategoryIcon sx={{ fontSize: 40, color: 'primary.main', mr: 2 }} />
-                                                        <Box sx={{ flexGrow: 1 }}>
-                                                            <Typography variant="h6">{category.name}</Typography>
-                                                            <Typography variant="caption" color="text.secondary">
-                                                                    {category.itemCount ?? menuItems.filter(item => itemBelongsToCategory(item, category)).length} items
-                                                            </Typography>
-                                                        </Box>
-                                                    </Box>
-                                                    {category.description && (
-                                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                                            {category.description}
-                                                        </Typography>
-                                                    )}
-
-                                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                                                        {subcategories
-                                                            .filter((subcategory) => getSubcategoryParentId(subcategory) === category._id)
-                                                            .map((subcategory) => (
-                                                                <Chip
-                                                                    key={subcategory._id}
-                                                                    label={`${subcategory.name} (${menuItems.filter((item) => getSubcategoryId(item.subcategory) === subcategory._id).length})`}
-                                                                    variant="outlined"
-                                                                    onClick={() => handleOpenCategoryDialog(subcategory)}
-                                                                    onDelete={() => handleDeleteCategory(subcategory)}
-                                                                    deleteIcon={<DeleteIcon />}
-                                                                    sx={{ borderRadius: '10px' }}
-                                                                />
-                                                            ))}
-                                                        {subcategories.filter((subcategory) => getSubcategoryParentId(subcategory) === category._id).length === 0 && (
-                                                            <Typography variant="caption" color="text.secondary">
-                                                                No subcategories yet
-                                                            </Typography>
-                                                        )}
-                                                    </Box>
-                                                </CardContent>
-                                                <CardActions sx={{ justifyContent: 'flex-end' }}>
-                                                    <Tooltip title="Add Subcategory">
-                                                        <IconButton size="small" color="secondary" onClick={() => handleOpenCategoryDialog(undefined, category._id)}>
-                                                            <AddIcon />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                    <Tooltip title="Edit">
-                                                        <IconButton size="small" color="primary" onClick={() => handleOpenCategoryDialog(category)}>
-                                                            <EditIcon />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                    <Tooltip title="Delete">
-                                                        <IconButton size="small" color="error" onClick={() => handleDeleteCategory(category)}>
-                                                            <DeleteIcon />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                </CardActions>
-                                            </Card>
+                                <DndContext
+                                    sensors={sensors}
+                                    collisionDetection={closestCenter}
+                                    onDragEnd={handleDragEnd}
+                                >
+                                    <SortableContext
+                                        items={categories.map(c => c._id)}
+                                        strategy={rectSortingStrategy}
+                                    >
+                                        <Grid container spacing={3}>
+                                            {categories.map(category => (
+                                                <SortableCategoryItem
+                                                    key={category._id}
+                                                    category={category}
+                                                    menuItems={menuItems}
+                                                    subcategories={subcategories}
+                                                    itemBelongsToCategory={itemBelongsToCategory}
+                                                    getSubcategoryParentId={getSubcategoryParentId}
+                                                    getSubcategoryId={getSubcategoryId}
+                                                    handleOpenCategoryDialog={handleOpenCategoryDialog}
+                                                    handleDeleteCategory={handleDeleteCategory}
+                                                />
+                                            ))}
                                         </Grid>
-                                    ))}
-                                </Grid>
+                                    </SortableContext>
+                                </DndContext>
                             )}
                         </>
                     )}
