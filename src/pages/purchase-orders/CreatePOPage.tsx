@@ -246,7 +246,9 @@ const CreatePOPage: React.FC = () => {
 
     const handleVendorChange = (field: string, value: string) => {
         let finalValue = value;
-        if (field === 'contact') {
+        if (field === 'name') {
+            finalValue = value.replace(/[^a-zA-Z\s]/g, '');
+        } else if (field === 'contact') {
             finalValue = value.replace(/\D/g, '').slice(0, 10);
         }
         setFormData({ ...formData, vendor: { ...formData.vendor, [field]: finalValue } });
@@ -254,6 +256,17 @@ const CreatePOPage: React.FC = () => {
 
     const handleMetadataChange = (field: string, value: any) => {
         setFormData({ ...formData, metadata: { ...formData.metadata, [field]: value } });
+    };
+
+    const handleNumberInput = (index: number, field: string, rawValue: string) => {
+        let cleanValue = rawValue;
+        if (cleanValue.length > 1 && cleanValue.startsWith('0') && !cleanValue.startsWith('0.')) {
+            cleanValue = cleanValue.replace(/^0+/, '');
+            if (cleanValue === '') cleanValue = '0';
+        }
+        const parts = cleanValue.split('.');
+        if (parts[0].length > 5) return;
+        handleItemChange(index, field, cleanValue);
     };
 
     const handleItemChange = (index: number, field: string, value: any) => {
@@ -274,7 +287,9 @@ const CreatePOPage: React.FC = () => {
         } else {
             newItems[index] = { ...newItems[index], [field]: value };
             if (field === 'quantity' || field === 'unitPrice') {
-                newItems[index].total = (newItems[index].quantity || 0) * (newItems[index].unitPrice || 0);
+                const q = parseFloat(newItems[index].quantity as any) || 0;
+                const p = parseFloat(newItems[index].unitPrice as any) || 0;
+                newItems[index].total = q * p;
             }
         }
 
@@ -1132,10 +1147,7 @@ const CreatePOPage: React.FC = () => {
                                                         <TextField
                                                             type="number" size="small" label={isSalary ? "Amount" : "Qty"}
                                                             value={isSalary ? item.unitPrice : item.quantity}
-                                                            onChange={(e) => {
-                                                                const val = parseFloat(e.target.value);
-                                                                handleItemChange(index, isSalary ? 'unitPrice' : 'quantity', val >= 0 ? val : 0);
-                                                            }}
+                                                            onChange={(e) => handleNumberInput(index, isSalary ? 'unitPrice' : 'quantity', e.target.value)}
                                                             sx={{ flex: 1, '& .MuiInputLabel-root': { fontSize: '0.75rem' } }}
                                                         />
 
@@ -1143,10 +1155,7 @@ const CreatePOPage: React.FC = () => {
                                                             <TextField
                                                                 type="number" size="small" label="Price"
                                                                 value={item.unitPrice}
-                                                                onChange={(e) => {
-                                                                    const val = parseFloat(e.target.value);
-                                                                    handleItemChange(index, 'unitPrice', val >= 0 ? val : 0);
-                                                                }}
+                                                                onChange={(e) => handleNumberInput(index, 'unitPrice', e.target.value)}
                                                                 sx={{ flex: 1, '& .MuiInputLabel-root': { fontSize: '0.75rem' } }}
                                                                 InputProps={{ startAdornment: <InputAdornment position="start" sx={{ '& p': { fontSize: '0.75rem' } }}>$</InputAdornment> }}
                                                             />
@@ -1240,12 +1249,12 @@ const CreatePOPage: React.FC = () => {
                                                         </TableCell>
                                                         {!isSalary && (
                                                             <TableCell align="right">
-                                                                <TextField type="number" size="small" value={item.quantity} onChange={(e) => handleItemChange(index, 'quantity', parseFloat(e.target.value))} />
+                                                                <TextField type="number" size="small" value={item.quantity} onChange={(e) => handleNumberInput(index, 'quantity', e.target.value)} />
                                                             </TableCell>
                                                         )}
                                                         {!isSalary && (
                                                             <TableCell align="right">
-                                                                <TextField type="number" size="small" value={item.unitPrice} onChange={(e) => handleItemChange(index, 'unitPrice', parseFloat(e.target.value))} />
+                                                                <TextField type="number" size="small" value={item.unitPrice} onChange={(e) => handleNumberInput(index, 'unitPrice', e.target.value)} />
                                                             </TableCell>
                                                         )}
                                                         <TableCell align="right">${(isSalary ? item.unitPrice : item.total || 0).toFixed(2)}</TableCell>

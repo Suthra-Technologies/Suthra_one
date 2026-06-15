@@ -23,6 +23,7 @@ import { toast } from 'react-hot-toast';
 import { bookingsAPI } from '../../../services/api';
 import { validatePhone, validateEmail } from '../../../utils/validation';
 import PhoneInput from '../../../components/PhoneInput';
+import CustomInput from '../../../components/common/CustomInput';
 
 interface BookingDialogProps {
     open: boolean;
@@ -316,7 +317,25 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
                             type="number"
                             value={guestCount}
                             onChange={e => {
-                                const val = Number(e.target.value);
+                                let valStr = e.target.value;
+                                if (valStr === '') {
+                                    setGuestCount(0);
+                                    if (bookingTouched.guests) validateBookingField('guests', 0);
+                                    return;
+                                }
+                                if (valStr.length > 2) {
+                                    valStr = valStr.slice(0, 2);
+                                    e.target.value = valStr;
+                                }
+                                if (/^0[0-9]+/.test(valStr)) {
+                                    valStr = valStr.replace(/^0+/, '');
+                                    e.target.value = valStr;
+                                }
+                                let val = parseInt(valStr, 10);
+                                if (val > 20) {
+                                    val = 20;
+                                    e.target.value = '20';
+                                }
                                 setGuestCount(val);
                                 if (bookingTouched.guests) validateBookingField('guests', val);
                             }}
@@ -363,12 +382,13 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
                         />
                     </Stack>
 
-                    <TextField
+                    <CustomInput
+                        type="name"
                         label="Customer Name"
                         value={customerName}
-                        onChange={e => {
-                            setCustomerName(e.target.value);
-                            if (bookingTouched.customerName) validateBookingField('customerName', e.target.value);
+                        onChange={val => {
+                            setCustomerName(val);
+                            if (bookingTouched.customerName) validateBookingField('customerName', val);
                         }}
                         onBlur={() => {
                             setBookingTouched(prev => ({ ...prev, customerName: true }));

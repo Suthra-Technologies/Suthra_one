@@ -29,6 +29,7 @@ import { toast } from 'react-hot-toast';
 import { validateRequired, validateSKU, validateNumber, validateEmail, validatePhone, getHelperText, hasError } from '../utils/validation';
 import type { ValidationResult } from '../utils/validation';
 import { useSettings, getUnitsForCountry } from '../context/SettingsContext';
+import CustomInput from './common/CustomInput';
 
 // Vendor interface
 interface Vendor {
@@ -46,11 +47,11 @@ interface RawMaterial {
     sku: string;
     category: string;
     unit: string;
-    currentStock: number;
-    minimumStock: number;
-    maximumStock: number;
-    reorderLevel: number;
-    costPrice: number;
+    currentStock: number | string;
+    minimumStock: number | string;
+    maximumStock: number | string;
+    reorderLevel: number | string;
+    costPrice: number | string;
     supplier?: {
         name?: string;
         contact?: string;
@@ -167,6 +168,22 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
             return { ...prev, [field]: { isValid: true } };
         });
     }, []);
+
+    const handleNumberFieldChange = React.useCallback((field: string, rawValue: string) => {
+        let cleanValue = rawValue;
+        
+        // Remove leading zeros unless it's "0" or starts with "0."
+        if (cleanValue.length > 1 && cleanValue.startsWith('0') && !cleanValue.startsWith('0.')) {
+            cleanValue = cleanValue.replace(/^0+/, '');
+            if (cleanValue === '') cleanValue = '0';
+        }
+
+        // Limit to 5 digits before the decimal
+        const parts = cleanValue.split('.');
+        if (parts[0].length > 5) return;
+
+        handleChange(field, cleanValue);
+    }, [handleChange]);
 
     const handleSupplierChange = React.useCallback((field: string, value: string) => {
         let finalValue = value;
@@ -304,11 +321,11 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
                 sku: formData.sku,
                 category: formData.category,
                 unit: formData.unit,
-                currentStock: formData.currentStock,
-                minimumStock: formData.minimumStock,
-                maximumStock: formData.maximumStock,
-                reorderLevel: formData.reorderLevel,
-                costPrice: formData.costPrice,
+                currentStock: formData.currentStock === '' ? 0 : parseFloat(formData.currentStock as string),
+                minimumStock: formData.minimumStock === '' ? 0 : parseFloat(formData.minimumStock as string),
+                maximumStock: formData.maximumStock === '' ? 0 : parseFloat(formData.maximumStock as string),
+                reorderLevel: formData.reorderLevel === '' ? 0 : parseFloat(formData.reorderLevel as string),
+                costPrice: formData.costPrice === '' ? 0 : parseFloat(formData.costPrice as string),
                 supplier: formData.supplier,
             };
 
@@ -366,11 +383,12 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
                 {tabValue === 0 && (
                     <Grid container spacing={2} sx={{ mt: 1 }}>
                         <Grid item xs={12} md={6}>
-                            <TextField
+                            <CustomInput
+                                type="name"
                                 fullWidth
                                 label="Name"
                                 value={formData.name}
-                                onChange={(e) => handleChange('name', e.target.value)}
+                                onChange={(val) => handleChange('name', val)}
                                 onBlur={() => handleBlur('name')}
                                 error={hasError(errors.name)}
                                 helperText={getHelperText(errors.name)}
@@ -413,10 +431,7 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
                                 label="Current Stock"
                                 type="number"
                                 value={formData.currentStock}
-                                onChange={(e) => {
-                                    const val = parseFloat(e.target.value);
-                                    handleChange('currentStock', isNaN(val) ? 0 : Math.max(0, val));
-                                }}
+                                onChange={(e) => handleNumberFieldChange('currentStock', e.target.value)}
                                 onBlur={() => handleBlur('currentStock')}
                                 error={hasError(errors.currentStock)}
                                 helperText={getHelperText(errors.currentStock)}
@@ -433,10 +448,7 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
                                 label="Minimum Stock"
                                 type="number"
                                 value={formData.minimumStock}
-                                onChange={(e) => {
-                                    const val = parseFloat(e.target.value);
-                                    handleChange('minimumStock', isNaN(val) ? 0 : Math.max(0, val));
-                                }}
+                                onChange={(e) => handleNumberFieldChange('minimumStock', e.target.value)}
                                 onBlur={() => handleBlur('minimumStock')}
                                 error={hasError(errors.minimumStock)}
                                 helperText={getHelperText(errors.minimumStock)}
@@ -453,10 +465,7 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
                                 label="Maximum Stock"
                                 type="number"
                                 value={formData.maximumStock}
-                                onChange={(e) => {
-                                    const val = parseFloat(e.target.value);
-                                    handleChange('maximumStock', isNaN(val) ? 0 : Math.max(0, val));
-                                }}
+                                onChange={(e) => handleNumberFieldChange('maximumStock', e.target.value)}
                                 onBlur={() => handleBlur('maximumStock')}
                                 error={hasError(errors.maximumStock)}
                                 helperText={getHelperText(errors.maximumStock)}
@@ -473,10 +482,7 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
                                 label="Reorder Level"
                                 type="number"
                                 value={formData.reorderLevel}
-                                onChange={(e) => {
-                                    const val = parseFloat(e.target.value);
-                                    handleChange('reorderLevel', isNaN(val) ? 0 : Math.max(0, val));
-                                }}
+                                onChange={(e) => handleNumberFieldChange('reorderLevel', e.target.value)}
                                 onBlur={() => handleBlur('reorderLevel')}
                                 error={hasError(errors.reorderLevel)}
                                 helperText={getHelperText(errors.reorderLevel) || "Alert when stock falls below"}
@@ -493,10 +499,7 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
                                 label="Cost Price"
                                 type="number"
                                 value={formData.costPrice}
-                                onChange={(e) => {
-                                    const val = parseFloat(e.target.value);
-                                    handleChange('costPrice', isNaN(val) ? 0 : Math.max(0, val));
-                                }}
+                                onChange={(e) => handleNumberFieldChange('costPrice', e.target.value)}
                                 onBlur={() => handleBlur('costPrice')}
                                 error={hasError(errors.costPrice)}
                                 helperText={getHelperText(errors.costPrice)}

@@ -22,7 +22,10 @@ import {
   Card,
   CardContent,
   Divider,
+  Menu,
+  Tooltip,
 } from '@mui/material';
+import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import Grid from '@mui/material/Grid2';
 import { Edit as EditIcon, Search as SearchIcon, Close as CloseIcon, Visibility as VisibilityIcon } from '@mui/icons-material';
 import { superAPI } from '../../services/api';
@@ -47,6 +50,22 @@ const TenantsPage: React.FC = () => {
     currentPlan: '',
     status: ''
   });
+  // Quick account-status change via the card chip
+  const [statusMenuAnchor, setStatusMenuAnchor] = useState<null | HTMLElement>(null);
+  const [statusMenuTenant, setStatusMenuTenant] = useState<any | null>(null);
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+  // Note prompt shown before applying a status change
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const [noteTenant, setNoteTenant] = useState<any | null>(null);
+  const [pendingStatus, setPendingStatus] = useState('');
+  const [statusNote, setStatusNote] = useState('');
+
+  const ACCOUNT_STATUS_OPTIONS = [
+    { value: 'pending', label: 'Pending Approval' },
+    { value: 'active', label: 'Active / Approved' },
+    { value: 'suspended', label: 'Suspended' },
+    { value: 'hold', label: 'On Hold' },
+  ];
 
   const fetchTenants = async () => {
     setLoading(true);
@@ -90,6 +109,52 @@ const TenantsPage: React.FC = () => {
       status: tenant.status || 'pending'
     });
     setEditDialogOpen(true);
+  };
+
+  const handleStatusChipClick = (e: React.MouseEvent<HTMLElement>, tenant: any) => {
+    e.stopPropagation();
+    setStatusMenuTenant(tenant);
+    setStatusMenuAnchor(e.currentTarget);
+  };
+
+  const handleStatusMenuClose = () => {
+    setStatusMenuAnchor(null);
+    setStatusMenuTenant(null);
+  };
+
+  const handleStatusSelect = (newStatus: string) => {
+    const tenant = statusMenuTenant;
+    handleStatusMenuClose();
+    if (!tenant || newStatus === (tenant.status || 'pending')) return;
+    // Require a note for every status change before applying it.
+    setNoteTenant(tenant);
+    setPendingStatus(newStatus);
+    setStatusNote('');
+    setNoteDialogOpen(true);
+  };
+
+  const closeNoteDialog = () => {
+    setNoteDialogOpen(false);
+    setNoteTenant(null);
+    setPendingStatus('');
+    setStatusNote('');
+  };
+
+  const confirmStatusUpdate = async () => {
+    if (!noteTenant || !statusNote.trim()) return;
+    const tenant = noteTenant;
+    try {
+      setUpdatingStatusId(tenant._id);
+      await superAPI.updateTenantSubscription(tenant._id, { status: pendingStatus, statusNote: statusNote.trim() });
+      toast.success(`Account status updated to "${pendingStatus}"`);
+      closeNoteDialog();
+      fetchTenants();
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast.error('Failed to update account status');
+    } finally {
+      setUpdatingStatusId(null);
+    }
   };
 
   const handleUpdate = async () => {
@@ -172,17 +237,27 @@ const TenantsPage: React.FC = () => {
                           {tenant.slug}
                         </Typography>
                       </Box>
-                      <Chip
-                        label={tenant.status || 'pending'}
-                        color={
-                          tenant.status === 'active' ? 'success' :
-                          tenant.status === 'pending' ? 'warning' :
-                          tenant.status === 'suspended' ? 'error' :
-                          tenant.status === 'hold' ? 'error' : 'default'
-                        }
-                        size="small"
-                        sx={{ fontWeight: 'bold', height: 22, fontSize: '0.7rem', textTransform: 'capitalize' }}
-                      />
+                      <Tooltip title="Click to change account status">
+                        <Chip
+                          label={tenant.status || 'pending'}
+                          color={
+                            tenant.status === 'active' ? 'success' :
+                            tenant.status === 'pending' ? 'warning' :
+                            tenant.status === 'suspended' ? 'error' :
+                            tenant.status === 'hold' ? 'error' : 'default'
+                          }
+                          size="small"
+                          clickable
+                          disabled={updatingStatusId === tenant._id}
+                          onClick={(e) => handleStatusChipClick(e, tenant)}
+                          icon={updatingStatusId === tenant._id
+                            ? <CircularProgress size={12} sx={{ ml: 0.5, color: 'inherit' }} />
+                            : undefined}
+                          deleteIcon={<ArrowDropDownIcon />}
+                          onDelete={(e) => handleStatusChipClick(e as any, tenant)}
+                          sx={{ fontWeight: 'bold', height: 22, fontSize: '0.7rem', textTransform: 'capitalize' }}
+                        />
+                      </Tooltip>
                     </Box>
 
                     <Divider sx={{ mb: 1.5, borderStyle: 'dashed' }} />
@@ -225,6 +300,22 @@ const TenantsPage: React.FC = () => {
                             sx={{ height: 20, fontSize: '0.7rem', fontWeight: 600 }}
                           />
                         </Box>
+                      </Grid>
+                      <Grid size={{ xs: 6 }}>
+                        <Typography variant="caption" color="textSecondary" sx={{ textTransform: 'uppercase', fontWeight: 'bold', fontSize: '0.65rem', letterSpacing: 0.5 }}>Registered</Typography>
+                        <Typography variant="body2" fontWeight={600}>
+                          {tenant.createdAt
+                            ? new Date(tenant.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+                            : '—'}
+                        </Typography>
+                      </Grid>
+                      <Grid size={{ xs: 6 }}>
+                        <Typography variant="caption" color="textSecondary" sx={{ textTransform: 'uppercase', fontWeight: 'bold', fontSize: '0.65rem', letterSpacing: 0.5 }}>Activated</Typography>
+                        <Typography variant="body2" fontWeight={600}>
+                          {tenant.activatedAt
+                            ? new Date(tenant.activatedAt).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+                            : (tenant.status === 'active' ? 'Active' : 'Not yet')}
+                        </Typography>
                       </Grid>
                       {tenant.subscriptionEndsAt && (
                         <Grid size={{ xs: 12 }}>
@@ -285,6 +376,60 @@ const TenantsPage: React.FC = () => {
         </>
       )}
 
+      {/* Quick account-status change menu (opened from the card chip) */}
+      <Menu
+        anchorEl={statusMenuAnchor}
+        open={Boolean(statusMenuAnchor)}
+        onClose={handleStatusMenuClose}
+      >
+        {ACCOUNT_STATUS_OPTIONS.map((opt) => (
+          <MenuItem
+            key={opt.value}
+            selected={(statusMenuTenant?.status || 'pending') === opt.value}
+            onClick={() => handleStatusSelect(opt.value)}
+          >
+            {opt.label}
+          </MenuItem>
+        ))}
+      </Menu>
+
+      {/* Note prompt — required for every account-status change */}
+      <Dialog open={noteDialogOpen} onClose={closeNoteDialog} fullWidth maxWidth="xs">
+        <DialogTitle sx={{ pb: 1 }}>Update Account Status</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Changing <strong>{noteTenant?.name}</strong> status from{' '}
+            <Box component="span" sx={{ textTransform: 'capitalize', fontWeight: 600 }}>{noteTenant?.status || 'pending'}</Box>{' '}
+            to{' '}
+            <Box component="span" sx={{ textTransform: 'capitalize', fontWeight: 600 }}>{pendingStatus}</Box>.
+            Please add a note explaining this change — it will be recorded in the activity log.
+          </Typography>
+          <TextField
+            label="Note"
+            placeholder="Reason for this status change..."
+            value={statusNote}
+            onChange={(e) => setStatusNote(e.target.value)}
+            fullWidth
+            multiline
+            minRows={3}
+            autoFocus
+            required
+            error={noteDialogOpen && statusNote.length > 0 && !statusNote.trim()}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeNoteDialog} disabled={updatingStatusId === noteTenant?._id}>Cancel</Button>
+          <Button
+            onClick={confirmStatusUpdate}
+            variant="contained"
+            disabled={!statusNote.trim() || updatingStatusId === noteTenant?._id}
+            startIcon={updatingStatusId === noteTenant?._id ? <CircularProgress size={16} color="inherit" /> : undefined}
+          >
+            Update Status
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)}>
         <DialogTitle sx={{ m: 0, p: 2, pr: 6, position: 'relative' }}>
           Edit Subscription: {selectedTenant?.name}
@@ -310,20 +455,7 @@ const TenantsPage: React.FC = () => {
         </DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1, minWidth: { xs: '100%', sm: 300 } }}>
-            <FormControl fullWidth>
-              <InputLabel>Account Status</InputLabel>
-              <Select
-                value={editForm.status}
-                label="Account Status"
-                onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-              >
-                <MenuItem value="pending">Pending Approval</MenuItem>
-                <MenuItem value="active">Active / Approved</MenuItem>
-                <MenuItem value="suspended">Suspended</MenuItem>
-                <MenuItem value="hold">On Hold</MenuItem>
-              </Select>
-            </FormControl>
-
+            {/* Account Status is now changed directly from the store card chip. */}
             <FormControl fullWidth>
               <InputLabel>Current Plan</InputLabel>
               <Select

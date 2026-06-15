@@ -51,6 +51,7 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
     const [editingTemplate, setEditingTemplate] = useState<ModifierGroupTemplate | null>(null);
     const [formData, setFormData] = useState<Partial<ModifierGroupTemplate>>({
         name: '',
+        menuItem: '',
         selectionType: 'single',
         required: false,
         options: [],
@@ -97,6 +98,7 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
             setEditingTemplate(template);
             setFormData({
                 name: template.name,
+                menuItem: (template.menuItem as any) || '',
                 selectionType: template.selectionType,
                 required: template.required,
                 options: template.options ? [...template.options] : [],
@@ -106,6 +108,7 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
             setEditingTemplate(null);
             setFormData({
                 name: '',
+                menuItem: '',
                 selectionType: 'single',
                 required: false,
                 options: [],
@@ -163,8 +166,9 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
         e.preventDefault();
 
         // Validation
-        if (!formData.name?.trim()) {
-            toast.error('Group name is required');
+        const selectedMenuItem = menuItems.find((m: any) => m._id === formData.menuItem);
+        if (!formData.menuItem || !selectedMenuItem) {
+            toast.error('Please select a menu item');
             return;
         }
         if (!formData.options || formData.options.length === 0) {
@@ -176,13 +180,16 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
             return;
         }
 
+        // Name is derived from the mapped menu item.
+        const payload = { ...formData, name: selectedMenuItem.name };
+
         try {
             setSubmitting(true);
             if (editingTemplate) {
-                await modifierTemplatesAPI.update(editingTemplate._id, formData);
+                await modifierTemplatesAPI.update(editingTemplate._id, payload);
                 toast.success('Add-on group updated');
             } else {
-                await modifierTemplatesAPI.create(formData);
+                await modifierTemplatesAPI.create(payload);
                 toast.success('Add-on group created');
             }
             handleCloseDialog();
@@ -229,7 +236,7 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
                     onClick={() => handleOpenDialog()}
                     sx={{ borderRadius: 2 }}
                 >
-                    Create Group
+                    Create Add on
                 </Button>
             </Box>
 
@@ -243,7 +250,7 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
                         Create your first global add-on group to reuse across your menu.
                     </Typography>
                     <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenDialog()}>
-                        Create First Group
+                        Create First Add on
                     </Button>
                 </Paper>
             ) : (
@@ -310,13 +317,16 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
                     <DialogContent dividers>
                         <Grid container spacing={3}>
                             <Grid item xs={12} md={6}>
-                                <TextField
+                                <Autocomplete
                                     fullWidth
-                                    label="Group Name"
-                                    required
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    placeholder="e.g., Choice of Bread, Toppings"
+                                    options={menuItems}
+                                    getOptionLabel={(item: any) => item.name || ''}
+                                    isOptionEqualToValue={(opt, val) => opt._id === (val?._id || val)}
+                                    value={menuItems.find((m: any) => m._id === formData.menuItem) || null}
+                                    onChange={(_e, val) => setFormData({ ...formData, menuItem: val?._id || '', name: val?.name || '' })}
+                                    renderInput={(params) => (
+                                        <TextField {...params} label="Menu Item" required placeholder="Select the menu item for these add-ons" />
+                                    )}
                                     sx={{ mb: 2 }}
                                 />
                                 <Grid container spacing={2}>

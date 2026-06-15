@@ -2032,13 +2032,13 @@ const CateringManagementPage = () => {
                                                             <TableBody>
                                                                 <TableRow>
                                                                     <TableCell sx={{ py: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Adults</TableCell>
-                                                                    <TableCell align="center" sx={{ py: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{selectedOrder.guests.adults?.veg || 0}</TableCell>
-                                                                    <TableCell align="center" sx={{ py: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{selectedOrder.guests.adults?.nonVeg || 0}</TableCell>
+                                                                    <TableCell align="center" sx={{ py: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{selectedOrder.guests?.adults?.veg || 0}</TableCell>
+                                                                    <TableCell align="center" sx={{ py: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{selectedOrder.guests?.adults?.nonVeg || 0}</TableCell>
                                                                 </TableRow>
                                                                 <TableRow>
                                                                     <TableCell sx={{ py: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>Kids</TableCell>
-                                                                    <TableCell align="center" sx={{ py: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{selectedOrder.guests.kids?.veg || 0}</TableCell>
-                                                                    <TableCell align="center" sx={{ py: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{selectedOrder.guests.kids?.nonVeg || 0}</TableCell>
+                                                                    <TableCell align="center" sx={{ py: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{selectedOrder.guests?.kids?.veg || 0}</TableCell>
+                                                                    <TableCell align="center" sx={{ py: 1, fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>{selectedOrder.guests?.kids?.nonVeg || 0}</TableCell>
                                                                 </TableRow>
                                                             </TableBody>
                                                         </Table>
@@ -2828,7 +2828,7 @@ const CateringManagementPage = () => {
                                                                 : ""
                                                         }
                                                         FormHelperTextProps={{ sx: { color: 'error.main' } }}
-                                                        onChange={(e) => setNewOrder({ ...newOrder, customerEmail: e.target.value })}
+                                                        onChange={(e) => setNewOrder({ ...newOrder, customerEmail: e.target.value.toLowerCase() })}
                                                     />
                                                 </Grid>
                                             </Grid>
@@ -3142,7 +3142,7 @@ const CateringManagementPage = () => {
                                                                             <TextField 
                                                                                 size="small" 
                                                                                 type="number" 
-                                                                                value={newOrder.guests.adults.veg || ''} 
+                                                                                value={newOrder.guests?.adults?.veg || ''} 
                                                                                 onKeyDown={preventScientificNotation}
                                                                                 onChange={(e) => handleGuestCountChange('newOrder', 'adults', 'veg', e.target.value)} 
                                                                                 inputProps={{ min: 0, max: 9999 }} 
@@ -3153,7 +3153,7 @@ const CateringManagementPage = () => {
                                                                             <TextField 
                                                                                 size="small" 
                                                                                 type="number" 
-                                                                                value={newOrder.guests.adults.nonVeg || ''} 
+                                                                                value={newOrder.guests?.adults?.nonVeg || ''} 
                                                                                 onKeyDown={preventScientificNotation}
                                                                                 onChange={(e) => handleGuestCountChange('newOrder', 'adults', 'nonVeg', e.target.value)} 
                                                                                 inputProps={{ min: 0, max: 9999 }} 
@@ -3169,7 +3169,7 @@ const CateringManagementPage = () => {
                                                                             <TextField 
                                                                                 size="small" 
                                                                                 type="number" 
-                                                                                value={newOrder.guests.kids.veg || ''} 
+                                                                                value={newOrder.guests?.kids?.veg || ''} 
                                                                                 onKeyDown={preventScientificNotation}
                                                                                 onChange={(e) => handleGuestCountChange('newOrder', 'kids', 'veg', e.target.value)} 
                                                                                 inputProps={{ min: 0, max: 9999 }} 
@@ -3180,7 +3180,7 @@ const CateringManagementPage = () => {
                                                                             <TextField 
                                                                                 size="small" 
                                                                                 type="number" 
-                                                                                value={newOrder.guests.kids.nonVeg || ''} 
+                                                                                value={newOrder.guests?.kids?.nonVeg || ''} 
                                                                                 onKeyDown={preventScientificNotation}
                                                                                 onChange={(e) => handleGuestCountChange('newOrder', 'kids', 'nonVeg', e.target.value)} 
                                                                                 inputProps={{ min: 0, max: 9999 }} 
@@ -3194,12 +3194,12 @@ const CateringManagementPage = () => {
                                                                         </TableCell>
                                                                         <TableCell align="center" sx={{ py: 1.2 }}>
                                                                             <Typography variant="body2" fontWeight={700}>
-                                                                                {(newOrder.guests.adults.veg || 0) + (newOrder.guests.kids.veg || 0)}
+                                                                                {(newOrder.guests?.adults?.veg || 0) + (newOrder.guests?.kids?.veg || 0)}
                                                                             </Typography>
                                                                         </TableCell>
                                                                         <TableCell align="center" sx={{ py: 1.2 }}>
                                                                             <Typography variant="body2" fontWeight={700}>
-                                                                                {(newOrder.guests.adults.nonVeg || 0) + (newOrder.guests.kids.nonVeg || 0)}
+                                                                                {(newOrder.guests?.adults?.nonVeg || 0) + (newOrder.guests?.kids?.nonVeg || 0)}
                                                                             </Typography>
                                                                         </TableCell>
                                                                     </TableRow>

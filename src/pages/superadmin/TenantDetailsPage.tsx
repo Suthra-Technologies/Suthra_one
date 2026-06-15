@@ -13,6 +13,7 @@ import ReceiptIcon from '@mui/icons-material/Receipt';
 import StoreIcon from '@mui/icons-material/Store';
 import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import PaymentIcon from '@mui/icons-material/Payment';
+import PercentIcon from '@mui/icons-material/Percent';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import DeliveryDiningIcon from '@mui/icons-material/DeliveryDining';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
@@ -217,6 +218,43 @@ const TenantDetailsPage: React.FC = () => {
       .finally(() => setDeliveryLoading(false));
   }, [tenantId]);
 
+  // Platform processing fee (superadmin-managed) state
+  const [processingFee, setProcessingFee] = useState<string>('');
+  const [feeLoading, setFeeLoading] = useState(false);
+  const [feeSaving, setFeeSaving] = useState(false);
+  const [feeError, setFeeError] = useState('');
+  const [feeInfo, setFeeInfo] = useState('');
+
+  useEffect(() => {
+    if (!tenantId) return;
+    setFeeLoading(true);
+    superAPI.getTenantProcessingFee(tenantId)
+      .then(res => setProcessingFee(String(res.data?.processingFee ?? '')))
+      .catch(() => {})
+      .finally(() => setFeeLoading(false));
+  }, [tenantId]);
+
+  const handleSaveProcessingFee = async () => {
+    if (!tenantId) return;
+    const fee = parseFloat(processingFee);
+    if (isNaN(fee) || fee < 0) {
+      setFeeError('Enter a valid non-negative number');
+      setFeeInfo('');
+      return;
+    }
+    setFeeSaving(true);
+    setFeeError('');
+    setFeeInfo('');
+    try {
+      await superAPI.updateTenantProcessingFee(tenantId, fee);
+      setFeeInfo('Processing fee updated.');
+    } catch (err: any) {
+      setFeeError(err?.response?.data?.message || 'Failed to update processing fee');
+    } finally {
+      setFeeSaving(false);
+    }
+  };
+
   const setUber = (field: string, value: any) =>
     setDeliverySettings((p: any) => ({ ...p, ubereats: { ...p.ubereats, [field]: value } }));
 
@@ -277,6 +315,41 @@ const TenantDetailsPage: React.FC = () => {
       </Grid>
 
       <Divider sx={{ my: 4 }} />
+
+      {/* Platform Fee Section (superadmin-managed) */}
+      <Card elevation={2} sx={{ borderRadius: 3, p: 3, mb: 4 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+          <PercentIcon sx={{ color: '#7c3aed', fontSize: 28 }} />
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>Platform Fee</Typography>
+          {feeLoading && <CircularProgress size={18} />}
+        </Box>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+          Processing fee charged on this store's orders. Only superadmins can change it.
+          The store admin can see this value in their settings but cannot edit it.
+        </Typography>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'flex-start' }}>
+          <TextField
+            label="Processing Fee (%)"
+            type="number"
+            size="small"
+            value={processingFee}
+            onChange={(e) => { setProcessingFee(e.target.value); setFeeError(''); setFeeInfo(''); }}
+            disabled={feeLoading}
+            inputProps={{ min: 0, step: 0.01 }}
+            sx={{ minWidth: 220 }}
+          />
+          <Button
+            variant="contained"
+            startIcon={feeSaving ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />}
+            onClick={handleSaveProcessingFee}
+            disabled={feeSaving || feeLoading}
+          >
+            {feeSaving ? 'Saving...' : 'Save Fee'}
+          </Button>
+        </Stack>
+        {feeError && <Alert severity="error" sx={{ mt: 2 }}>{feeError}</Alert>}
+        {feeInfo && <Alert severity="success" sx={{ mt: 2 }}>{feeInfo}</Alert>}
+      </Card>
 
       {/* Stripe Connect Section */}
       <Card elevation={2} sx={{ borderRadius: 3, p: 3 }}>

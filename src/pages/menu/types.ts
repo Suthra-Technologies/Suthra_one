@@ -44,6 +44,7 @@ export interface ModifierGroup {
 export interface ModifierGroupTemplate extends ModifierGroup {
     _id: string;
     isActive: boolean;
+    menuItem?: string;
 }
 
 export interface TrayOption {

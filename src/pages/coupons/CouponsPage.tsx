@@ -40,6 +40,7 @@ import {
     TablePagination
 } from '@mui/material';
 import ActionHistoryList from '../../components/common/ActionHistoryList';
+import CustomInput from '../../components/common/CustomInput';
 import {
     Edit as EditIcon,
     Delete as DeleteIcon,
@@ -391,6 +392,25 @@ const CouponsPage: React.FC = () => {
             ...prev,
             [name]: type === 'checkbox' ? checked : value
         }));
+    };
+
+    const handleNumberFieldChange = (field: string, rawValue: string, options?: { maxLimit?: number, allowDecimals?: boolean }) => {
+        let cleanValue = rawValue.replace(/-/g, '');
+        if (options && options.allowDecimals === false) {
+            cleanValue = cleanValue.replace(/\./g, '');
+        }
+        if (cleanValue.length > 1 && cleanValue.startsWith('0') && !cleanValue.startsWith('0.')) {
+            cleanValue = cleanValue.replace(/^0+/, '');
+            if (cleanValue === '') cleanValue = '0';
+        }
+        const parts = cleanValue.split('.');
+        if (parts[0].length > 3) return;
+        
+        if (options?.maxLimit !== undefined && Number(cleanValue) > options.maxLimit) {
+            return;
+        }
+
+        setFormData(prev => ({ ...prev, [field]: cleanValue }));
     };
 
     const handleNameInputChange = (
@@ -804,13 +824,14 @@ const CouponsPage: React.FC = () => {
                     {dialogTab === 0 && (
                         <Grid container spacing={2} sx={{ mt: 1 }}>
                             <Grid item xs={12} sm={6}>
-                                <TextField
+                                <CustomInput
+                                    type="code"
                                     label="Coupon Code"
                                     name="code"
                                     value={formData.code}
-                                    onChange={(e) => {
-                                        handleInputChange(e as React.ChangeEvent<HTMLInputElement>);
-                                        validateField('code', e.target.value);
+                                    onChange={(val) => {
+                                        setFormData(prev => ({ ...prev, code: val.toUpperCase() }));
+                                        validateField('code', val.toUpperCase());
                                     }}
                                     onBlur={() => {
                                         setTouched(prev => ({ ...prev, code: true }));
@@ -828,13 +849,14 @@ const CouponsPage: React.FC = () => {
                                 />
                             </Grid>
                             <Grid item xs={12} sm={6}>
-                                <TextField
+                                <CustomInput
+                                    type="name"
                                     label="Coupon Name"
                                     name="name"
                                     value={formData.name}
-                                    onChange={(e) => {
-                                        handleNameInputChange(e);
-                                        validateField("name", e.target.value);
+                                    onChange={(val) => {
+                                        setFormData(prev => ({ ...prev, name: val }));
+                                        validateField("name", val);
                                     }}
                                     onBlur={() => {
                                         setTouched(prev => ({ ...prev, name: true }));
@@ -847,11 +869,12 @@ const CouponsPage: React.FC = () => {
                                 />
                             </Grid>
                             <Grid item xs={12}>
-                                <TextField
+                                <CustomInput
+                                    type="textarea"
                                     label="Description"
                                     name="description"
                                     value={formData.description}
-                                    onChange={handleInputChange}
+                                    onChange={(val) => setFormData(prev => ({ ...prev, description: val }))}
                                     fullWidth
                                     multiline
                                     rows={2}
@@ -872,14 +895,14 @@ const CouponsPage: React.FC = () => {
                                 </TextField>
                             </Grid>
                             <Grid item xs={12} sm={4}>
-                                <TextField
+                                <CustomInput
+                                    type="number"
                                     label={formData.discountType === 'percentage' ? 'Discount %' : 'Discount Amount ($)'}
                                     name="discountValue"
-                                    type="number"
                                     value={formData.discountValue}
-                                    onChange={(e) => {
-                                        handleInputChange(e as React.ChangeEvent<HTMLInputElement>);
-                                        validateField('discountValue', e.target.value, { discountType: formData.discountType });
+                                    onChange={(val) => {
+                                        handleNumberFieldChange('discountValue', val);
+                                        validateField('discountValue', val, { discountType: formData.discountType });
                                     }}
                                     onBlur={() => {
                                         setTouched(prev => ({ ...prev, discountValue: true }));
@@ -894,12 +917,14 @@ const CouponsPage: React.FC = () => {
                             </Grid>
                             {formData.discountType === 'percentage' && (
                                 <Grid item xs={12} sm={4}>
-                                    <TextField
+                                    <CustomInput
+                                        type="number"
                                         label="Max Discount Amount ($)"
                                         name="maxDiscountAmount"
-                                        type="number"
                                         value={formData.maxDiscountAmount}
-                                        onChange={handleInputChange}
+                                        onChange={(val) => {
+                                            handleNumberFieldChange('maxDiscountAmount', val);
+                                        }}
                                         onBlur={() => {
                                             setTouched(prev => ({ ...prev, maxDiscountAmount: true }));
                                             validateField('maxDiscountAmount', formData.maxDiscountAmount);
@@ -916,12 +941,14 @@ const CouponsPage: React.FC = () => {
                                 </Grid>
                             )}
                             <Grid item xs={12} sm={6}>
-                                <TextField
+                                <CustomInput
+                                    type="number"
                                     label="Minimum Bill Amount ($)"
                                     name="minBillAmount"
-                                    type="number"
                                     value={formData.minBillAmount}
-                                    onChange={handleInputChange}
+                                    onChange={(val) => {
+                                        handleNumberFieldChange('minBillAmount', val);
+                                    }}
                                     onBlur={() => {
                                         setTouched(prev => ({ ...prev, minBillAmount: true }));
                                         validateField('minBillAmount', formData.minBillAmount);
@@ -956,12 +983,15 @@ const CouponsPage: React.FC = () => {
                                 </FormControl>
                             </Grid>
                             <Grid item xs={12} sm={6}>
-                                <TextField
+                                <CustomInput
+                                    type="number"
+                                    allowDecimals={false}
                                     label="Max Total Uses"
                                     name="maxTotalUses"
-                                    type="number"
                                     value={formData.maxTotalUses}
-                                    onChange={handleInputChange}
+                                    onChange={(val) => {
+                                        handleNumberFieldChange('maxTotalUses', val, { allowDecimals: false });
+                                    }}
                                     onBlur={() => {
                                         setTouched(prev => ({ ...prev, maxTotalUses: true }));
                                         validateField('maxTotalUses', formData.maxTotalUses);
@@ -977,12 +1007,15 @@ const CouponsPage: React.FC = () => {
                                 />
                             </Grid>
                             <Grid item xs={12} sm={6}>
-                                <TextField
+                                <CustomInput
+                                    type="number"
+                                    allowDecimals={false}
                                     label="Max Uses Per Customer"
                                     name="maxUsesPerCustomer"
-                                    type="number"
                                     value={formData.maxUsesPerCustomer}
-                                    onChange={handleInputChange}
+                                    onChange={(val) => {
+                                        handleNumberFieldChange('maxUsesPerCustomer', val, { maxLimit: 100, allowDecimals: false });
+                                    }}
                                     onBlur={() => {
                                         setTouched(prev => ({ ...prev, maxUsesPerCustomer: true }));
                                         validateField('maxUsesPerCustomer', formData.maxUsesPerCustomer);
@@ -1034,12 +1067,15 @@ const CouponsPage: React.FC = () => {
                                 />
                             </Grid>
                             <Grid item xs={12} sm={4}>
-                                <TextField
+                                <CustomInput
+                                    type="number"
+                                    allowDecimals={false}
                                     label="Or Valid For (Days)"
                                     name="validForDays"
-                                    type="number"
                                     value={formData.validForDays}
-                                    onChange={handleInputChange}
+                                    onChange={(val) => {
+                                        handleNumberFieldChange('validForDays', val, { allowDecimals: false });
+                                    }}
                                     fullWidth
                                     inputProps={{ min: 1, step: 1 }}
                                     helperText="e.g., 2, 4, 7 days"

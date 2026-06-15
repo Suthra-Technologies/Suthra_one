@@ -34,6 +34,7 @@ import {
   Pagination,
   CircularProgress,
   Stack,
+  InputAdornment,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -54,6 +55,8 @@ import {
   Search as SearchIcon,
   DinnerDining as RunnerIcon,
   SettingsBackupRestore as RestoreIcon,
+  Visibility as VisibilityIcon,
+  VisibilityOff as VisibilityOffIcon,
 } from '@mui/icons-material';
 import { settingsAPI, usersAPI, supportAPI } from '../../services/api';
 import { validateEmail, validatePhone, validateName, validatePassword, validateRequired, getHelperText, hasError } from '../../utils/validation';
@@ -272,6 +275,9 @@ const UsersPage = () => {
   // Dialog states
   const [userDialog, setUserDialog] = useState(false);
   const [passwordDialog, setPasswordDialog] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [dialogTab, setDialogTab] = useState(0);
 
@@ -1467,7 +1473,8 @@ const UsersPage = () => {
                           label="First Name"
                           value={userForm.firstName}
                           onChange={(e) => {
-                            setUserForm({ ...userForm, firstName: e.target.value });
+                            const val = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                            setUserForm({ ...userForm, firstName: val });
                             if (userErrors.firstName) setUserErrors(prev => ({ ...prev, firstName: { isValid: true } }));
                           }}
                           onBlur={() => {
@@ -1485,7 +1492,8 @@ const UsersPage = () => {
                           label="Last Name"
                           value={userForm.lastName}
                           onChange={(e) => {
-                            setUserForm({ ...userForm, lastName: e.target.value });
+                            const val = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                            setUserForm({ ...userForm, lastName: val });
                             if (userErrors.lastName) setUserErrors(prev => ({ ...prev, lastName: { isValid: true } }));
                           }}
                           onBlur={() => {
@@ -1504,7 +1512,7 @@ const UsersPage = () => {
                           type="email"
                           value={userForm.email}
                           onChange={(e) => {
-                            setUserForm({ ...userForm, email: e.target.value });
+                            setUserForm({ ...userForm, email: e.target.value.toLowerCase() });
                             if (userErrors.email) setUserErrors(prev => ({ ...prev, email: { isValid: true } }));
                           }}
                           onBlur={() => {
@@ -1581,16 +1589,28 @@ const UsersPage = () => {
                           <TextField
                             fullWidth
                             label="Password"
+                            type={showPassword ? 'text' : 'password'}
                             placeholder="Click icon to auto-generate"
                             value={userForm.password}
                             onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
                             InputProps={{
                               endAdornment: (
-                                <Tooltip title="Auto-generate password">
-                                  <IconButton onClick={generateRandomPassword} edge="end" color="primary">
-                                    <LockIcon fontSize="small" />
-                                  </IconButton>
-                                </Tooltip>
+                                <InputAdornment position="end">
+                                  <Tooltip title={showPassword ? 'Hide password' : 'Show password'}>
+                                    <IconButton
+                                      onClick={() => setShowPassword(!showPassword)}
+                                      edge="end"
+                                      sx={{ mr: 0.5 }}
+                                    >
+                                      {showPassword ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+                                    </IconButton>
+                                  </Tooltip>
+                                  <Tooltip title="Auto-generate password">
+                                    <IconButton onClick={generateRandomPassword} edge="end" color="primary">
+                                      <LockIcon fontSize="small" />
+                                    </IconButton>
+                                  </Tooltip>
+                                </InputAdornment>
                               )
                             }}
                             helperText="Recommended: firstName + 3 random digits"
@@ -2085,7 +2105,7 @@ const UsersPage = () => {
           <TextField
             fullWidth
             label="New Password"
-            type="password"
+            type={showResetPassword ? 'text' : 'password'}
             value={passwordForm.newPassword}
             onChange={(e) => {
               setPasswordForm({ ...passwordForm, newPassword: e.target.value });
@@ -2099,11 +2119,22 @@ const UsersPage = () => {
             helperText={getHelperText(passwordErrors.newPassword) || "Minimum 6 characters"}
             margin="normal"
             required
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <Tooltip title={showResetPassword ? 'Hide password' : 'Show password'}>
+                    <IconButton onClick={() => setShowResetPassword(!showResetPassword)} edge="end">
+                      {showResetPassword ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+                    </IconButton>
+                  </Tooltip>
+                </InputAdornment>
+              )
+            }}
           />
           <TextField
             fullWidth
             label="Confirm Password"
-            type="password"
+            type={showConfirmPassword ? 'text' : 'password'}
             value={passwordForm.confirmPassword}
             onChange={(e) => {
               setPasswordForm({ ...passwordForm, confirmPassword: e.target.value });
@@ -2119,6 +2150,17 @@ const UsersPage = () => {
             helperText={getHelperText(passwordErrors.confirmPassword)}
             margin="normal"
             required
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <Tooltip title={showConfirmPassword ? 'Hide password' : 'Show password'}>
+                    <IconButton onClick={() => setShowConfirmPassword(!showConfirmPassword)} edge="end">
+                      {showConfirmPassword ? <VisibilityOffIcon fontSize="small" /> : <VisibilityIcon fontSize="small" />}
+                    </IconButton>
+                  </Tooltip>
+                </InputAdornment>
+              )
+            }}
           />
         </DialogContent>
         <DialogActions sx={{ 

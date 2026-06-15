@@ -269,7 +269,10 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
           justifyContent: 'center',
           width: '100%',
           boxSizing: 'border-box',
-        }}>
+          cursor: 'pointer',
+        }}
+        onClick={() => handleNavigation('/dashboard')}
+        >
           {(restaurantSettings.logo || (user?.tenant as any)?.logo) ? (
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, width: '100%' }}>
               <Avatar

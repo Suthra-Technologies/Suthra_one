@@ -61,6 +61,7 @@ import { useTheme } from '@mui/material/styles';
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import AddressAutocomplete from '../../components/AddressAutocomplete';
+import KioskQRCard from '../../components/KioskQRCard';
 import PhoneInput from '../../components/PhoneInput';
 import { useAuth } from '../../context/AuthContext';
 import {
@@ -394,6 +395,9 @@ const createDefaultSettings = (): SettingsState => ({
             card: true,
             zelle: true,
             venmo: true,
+            cheque: true,
+            creditCard: true,
+            debitCard: true,
         }
     },
     payment: {
@@ -494,6 +498,9 @@ const mergeSettingsWithDefaults = (defaults: SettingsState, partial: Partial<Set
             card: fetchedSystem.posPaymentMethods?.card ?? (defaults.system.posPaymentMethods?.card ?? true),
             zelle: fetchedSystem.posPaymentMethods?.zelle ?? (defaults.system.posPaymentMethods?.zelle ?? true),
             venmo: fetchedSystem.posPaymentMethods?.venmo ?? (defaults.system.posPaymentMethods?.venmo ?? true),
+            cheque: fetchedSystem.posPaymentMethods?.cheque ?? (defaults.system.posPaymentMethods?.cheque ?? true),
+            creditCard: fetchedSystem.posPaymentMethods?.creditCard ?? (defaults.system.posPaymentMethods?.creditCard ?? true),
+            debitCard: fetchedSystem.posPaymentMethods?.debitCard ?? (defaults.system.posPaymentMethods?.debitCard ?? true),
         }
     };
 
@@ -574,7 +581,7 @@ const mergeSettingsWithDefaults = (defaults: SettingsState, partial: Partial<Set
 
 
 const SettingsPage: React.FC = () => {
-    const { user } = useAuth();
+    const { user, tenantSlug } = useAuth();
     const { updateSettings: updateGlobalSettings } = useSettings();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -870,36 +877,36 @@ const SettingsPage: React.FC = () => {
         }
     }, [tabValue, smsPage, smsRowsPerPage]);
 
-    // Auto-fetch tax rate when zipCode changes
-    useEffect(() => {
-        const zipCode = settings.restaurant.zipCode;
-        const state = settings.restaurant.state;
-        if (zipCode && zipCode.length >= 5) {
-            const timer = setTimeout(async () => {
-                try {
-                    setFetchingTax(true);
-                    const res = await settingsAPI.getTaxRate(zipCode, state);
-                    if (res.data && typeof res.data.rate === 'number') {
-                        if (res.data.breakdown) {
-                            handleTaxBreakdownChange('enabled', true);
-                            handleTaxBreakdownChange('country', res.data.breakdown.country.rate);
-                            handleTaxBreakdownChange('state', res.data.breakdown.state.rate);
-                            handleTaxBreakdownChange('city', res.data.breakdown.city.rate);
-                            handleTaxBreakdownChange('county', res.data.breakdown.county.rate);
-                        } else {
-                            handleInputChange('restaurant', 'taxRate', res.data.rate);
-                        }
-                        console.log(`Auto-updated tax rate to ${res.data.rate}% for ZIP ${zipCode}, State: ${state || 'N/A'}`);
-                    }
-                } catch (error) {
-                    console.warn('Auto tax rate fetch failed:', error);
-                } finally {
-                    setFetchingTax(false);
-                }
-            }, 500);
-            return () => clearTimeout(timer);
-        }
-    }, [settings.restaurant.zipCode, settings.restaurant.state]);
+    // MANUAL TAX REMOVED — auto-detecting/storing a manual tax rate is no longer used; TaxJar is the source of truth.
+    // useEffect(() => {
+    //     const zipCode = settings.restaurant.zipCode;
+    //     const state = settings.restaurant.state;
+    //     if (zipCode && zipCode.length >= 5) {
+    //         const timer = setTimeout(async () => {
+    //             try {
+    //                 setFetchingTax(true);
+    //                 const res = await settingsAPI.getTaxRate(zipCode, state);
+    //                 if (res.data && typeof res.data.rate === 'number') {
+    //                     if (res.data.breakdown) {
+    //                         handleTaxBreakdownChange('enabled', true);
+    //                         handleTaxBreakdownChange('country', res.data.breakdown.country.rate);
+    //                         handleTaxBreakdownChange('state', res.data.breakdown.state.rate);
+    //                         handleTaxBreakdownChange('city', res.data.breakdown.city.rate);
+    //                         handleTaxBreakdownChange('county', res.data.breakdown.county.rate);
+    //                     } else {
+    //                         handleInputChange('restaurant', 'taxRate', res.data.rate);
+    //                     }
+    //                     console.log(`Auto-updated tax rate to ${res.data.rate}% for ZIP ${zipCode}, State: ${state || 'N/A'}`);
+    //                 }
+    //             } catch (error) {
+    //                 console.warn('Auto tax rate fetch failed:', error);
+    //             } finally {
+    //                 setFetchingTax(false);
+    //             }
+    //         }, 500);
+    //         return () => clearTimeout(timer);
+    //     }
+    // }, [settings.restaurant.zipCode, settings.restaurant.state]);
 
     const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
         setTabValue(newValue);
@@ -1254,34 +1261,35 @@ const SettingsPage: React.FC = () => {
         handleInputChange('restaurant', 'businessHours', updated);
     };
 
-    const fetchTaxRate = async () => {
-        if (!settings.restaurant.zipCode) {
-            toast.error('Please enter a Zip Code first');
-            return;
-        }
-        try {
-            setFetchingTax(true);
-            const res = await settingsAPI.getTaxRate(settings.restaurant.zipCode, settings.restaurant.state);
-            if (res.data && typeof res.data.rate === 'number') {
-                if (res.data.breakdown) {
-                    handleTaxBreakdownChange('enabled', true);
-                    handleTaxBreakdownChange('country', res.data.breakdown.country.rate);
-                    handleTaxBreakdownChange('state', res.data.breakdown.state.rate);
-                    handleTaxBreakdownChange('city', res.data.breakdown.city.rate);
-                    handleTaxBreakdownChange('county', res.data.breakdown.county.rate);
-                } else {
-                    handleInputChange('restaurant', 'taxRate', res.data.rate);
-                }
-                toast.success(`Tax rate updated to ${res.data.rate}% based on ${settings.restaurant.zipCode}`);
-            } else {
-                toast.error('Could not fetch tax rate');
-            }
-        } catch (error) {
-            toast.error('Failed to fetch tax rate');
-        } finally {
-            setFetchingTax(false);
-        }
-    };
+    // MANUAL TAX REMOVED — "Auto Detect" manual rate lookup is no longer used; TaxJar handles tax calculation.
+    // const fetchTaxRate = async () => {
+    //     if (!settings.restaurant.zipCode) {
+    //         toast.error('Please enter a Zip Code first');
+    //         return;
+    //     }
+    //     try {
+    //         setFetchingTax(true);
+    //         const res = await settingsAPI.getTaxRate(settings.restaurant.zipCode, settings.restaurant.state);
+    //         if (res.data && typeof res.data.rate === 'number') {
+    //             if (res.data.breakdown) {
+    //                 handleTaxBreakdownChange('enabled', true);
+    //                 handleTaxBreakdownChange('country', res.data.breakdown.country.rate);
+    //                 handleTaxBreakdownChange('state', res.data.breakdown.state.rate);
+    //                 handleTaxBreakdownChange('city', res.data.breakdown.city.rate);
+    //                 handleTaxBreakdownChange('county', res.data.breakdown.county.rate);
+    //             } else {
+    //                 handleInputChange('restaurant', 'taxRate', res.data.rate);
+    //             }
+    //             toast.success(`Tax rate updated to ${res.data.rate}% based on ${settings.restaurant.zipCode}`);
+    //         } else {
+    //             toast.error('Could not fetch tax rate');
+    //         }
+    //     } catch (error) {
+    //         toast.error('Failed to fetch tax rate');
+    //     } finally {
+    //         setFetchingTax(false);
+    //     }
+    // };
 
     const handleBlur = (field: keyof RestaurantSettings) => {
         let validation: ValidationResult = { isValid: true };
@@ -1940,6 +1948,7 @@ const SettingsPage: React.FC = () => {
                                 onChange={(e) => handleInputChange('restaurant', 'zipCode', e.target.value)}
                             />
                         </Grid>
+                        {/* MANUAL TAX REMOVED — tax is now calculated exclusively via the TaxJar engine.
                         <Grid size={{ xs: 12, md: 6 }}>
                             <TextField
                                 fullWidth
@@ -1964,17 +1973,20 @@ const SettingsPage: React.FC = () => {
                                 }}
                             />
                         </Grid>
+                        */}
                         <Grid size={{ xs: 12, md: 6 }}>
                             <TextField
                                 fullWidth
                                 type="number"
                                 label="Processing Fee (%)"
                                 value={settings.restaurant.processingFee ?? 3}
-                                onChange={(e) => handleInputChange('restaurant', 'processingFee', parseFloat(e.target.value))}
-                                helperText="Default processing fee"
+                                InputProps={{ readOnly: true }}
+                                disabled
+                                helperText="Set by the platform administrator. Contact support to change it."
                             />
                         </Grid>
 
+                        {/* MANUAL TAX REMOVED — Tax Breakdown Configuration is replaced by the TaxJar engine.
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 2 }} />
                             <Typography variant="h6" gutterBottom>
@@ -2044,6 +2056,7 @@ const SettingsPage: React.FC = () => {
                                 </Grid>
                             </Grid>
                         )}
+                        */}
 
                         {/* <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 2 }} />
@@ -2126,6 +2139,7 @@ const SettingsPage: React.FC = () => {
                                 </Grid>
                             </>
                         )} */}
+                        {/* DELIVERY SETTINGS REMOVED
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 2 }} />
                             <Typography variant="h6" gutterBottom>
@@ -2148,6 +2162,7 @@ const SettingsPage: React.FC = () => {
                                 </Grid>
                             </Grid>
                         </Grid>
+                        */}
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 2 }} />
                             <Typography variant="h6" gutterBottom sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -2277,82 +2292,26 @@ const SettingsPage: React.FC = () => {
                                                             {slots.map((slot, sIdx) => (
                                                                 <Box key={sIdx} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
                                                                     <TextField
-                                                                        select
+                                                                        type="time"
                                                                         label="Opens"
                                                                         size="small"
                                                                         value={slot.openTime}
                                                                         onChange={(e) => handleSlotChange(idx, sIdx, 'openTime', e.target.value)}
                                                                         sx={{ width: { xs: '100%', sm: 160 }, flex: { xs: 1, sm: 'none' } }}
-                                                                    >
-                                                                        {(() => {
-                                                                            let lastGroup = '';
-                                                                            return TIME_OPTIONS.filter(opt => {
-                                                                                if (slot.closeTime && opt.minutes >= timeToMinutes(slot.closeTime)) return false;
-
-                                                                                // Constraint: Subsequent slots must start at or after previous slot's end
-                                                                                if (sIdx > 0) {
-                                                                                    const prevSlot = slots[sIdx - 1];
-                                                                                    return opt.minutes >= timeToMinutes(prevSlot.closeTime);
-                                                                                }
-                                                                                return true;
-                                                                            }).map(opt => {
-                                                                                const showHeader = opt.group !== lastGroup;
-                                                                                lastGroup = opt.group;
-                                                                                return [
-                                                                                    showHeader && (
-                                                                                        <MenuItem key={`${opt.group}-header`} disabled sx={{ opacity: 1, fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', color: 'primary.main', bgcolor: alpha(theme.palette.primary.main, 0.05), minHeight: 'auto', py: 0.5 }}>
-                                                                                            {opt.group}
-                                                                                        </MenuItem>
-                                                                                    ),
-                                                                                    <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
-                                                                                ];
-                                                                            });
-                                                                        })()}
-                                                                    </TextField>
+                                                                        InputLabelProps={{ shrink: true }}
+                                                                        inputProps={{ step: 60 }}
+                                                                    />
                                                                     <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>to</Typography>
                                                                     <TextField
-                                                                        select
+                                                                        type="time"
                                                                         label="Closes"
                                                                         size="small"
                                                                         value={slot.closeTime}
                                                                         onChange={(e) => handleSlotChange(idx, sIdx, 'closeTime', e.target.value)}
                                                                         sx={{ width: { xs: '100%', sm: 160 }, flex: { xs: 1, sm: 'none' } }}
-                                                                    >
-                                                                        {(() => {
-                                                                            let lastGroup = '';
-                                                                            const currentOpenMins = timeToMinutes(slot.openTime);
-                                                                            const nextSlot = slots[sIdx + 1];
-
-                                                                            return CLOSING_TIME_OPTIONS.filter(opt => {
-                                                                                if (nextSlot) {
-                                                                                    const limitMins = timeToMinutes(nextSlot.openTime);
-                                                                                    return opt.minutes > currentOpenMins && opt.minutes <= limitMins;
-                                                                                }
-                                                                                // For the last slot, allow any time except the exact opening time
-                                                                                return opt.value !== slot.openTime;
-                                                                            }).map(opt => {
-                                                                                const showHeader = opt.group !== lastGroup;
-                                                                                lastGroup = opt.group;
-                                                                                const isNextDay = opt.minutes <= currentOpenMins;
-
-                                                                                return [
-                                                                                    showHeader && (
-                                                                                        <MenuItem key={`${opt.group}-header`} disabled sx={{ opacity: 1, fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', color: 'primary.main', bgcolor: alpha(theme.palette.primary.main, 0.05), minHeight: 'auto', py: 0.5 }}>
-                                                                                            {opt.group}
-                                                                                        </MenuItem>
-                                                                                    ),
-                                                                                    <MenuItem key={opt.value} value={opt.value}>
-                                                                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', gap: 1 }}>
-                                                                                            <Typography variant="body2">{opt.label}</Typography>
-                                                                                            {isNextDay && (
-                                                                                                <Chip label="Next Day" size="small" color="info" variant="outlined" sx={{ height: 20, fontSize: '0.6rem', borderRadius: 1 }} />
-                                                                                            )}
-                                                                                        </Box>
-                                                                                    </MenuItem>
-                                                                                ];
-                                                                            });
-                                                                        })()}
-                                                                    </TextField>
+                                                                        InputLabelProps={{ shrink: true }}
+                                                                        inputProps={{ step: 60 }}
+                                                                    />
 
                                                                     {slots.length > 1 && (
                                                                         <IconButton
@@ -2407,6 +2366,7 @@ const SettingsPage: React.FC = () => {
                             </Box>
                         </Grid>
 
+                        {/* MAILING SETTINGS REMOVED
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 2 }} />
                             <Typography variant="h6" gutterBottom>
@@ -2562,6 +2522,7 @@ const SettingsPage: React.FC = () => {
                                 )}
                             </Grid>
                         </Grid>
+                        */}
 
                         <Grid size={{ xs: 12 }} sx={{ display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' }, mt: { xs: 2.5, md: 0 } }}>
                             <Button
@@ -2652,6 +2613,7 @@ const SettingsPage: React.FC = () => {
                                 Save Preferences
                             </Button>
                         </Grid>
+                        {/* EXTERNAL INTEGRATIONS REMOVED — Google Maps API key is managed via env (VITE_GOOGLE_MAPS_API_KEY) / stored value, not editable here.
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 2 }} />
                             <Typography variant="h6" gutterBottom sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
@@ -2668,6 +2630,7 @@ const SettingsPage: React.FC = () => {
                                 autoComplete="new-password"
                             />
                         </Grid>
+                        */}
                     </Grid>
                 </TabPanel>
 
@@ -2877,6 +2840,7 @@ const SettingsPage: React.FC = () => {
 
                 <TabPanel value={tabValue} index={3}>
                     <Grid container spacing={3}>
+                        {/* TWILIO SMS SETTINGS REMOVED — SMS is now handled via the credits top-up feature.
                         <Grid size={{ xs: 12 }}>
                             <Paper
                                 variant="outlined"
@@ -2976,6 +2940,7 @@ const SettingsPage: React.FC = () => {
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 1 }} />
                         </Grid>
+                        */}
 
                         {/* ── Notification Sound Picker ── */}
                         <Grid size={{ xs: 12 }}>
@@ -3420,45 +3385,74 @@ const SettingsPage: React.FC = () => {
 
                         <Paper variant="outlined" sx={{ p: 3, borderRadius: 3, mb: 2 }}>
                             <Grid container spacing={2}>
-                                {(() => {
-                                    // The POS page swaps the Zelle/Venmo methods for India-specific
-                                    // payment apps (see CustomerInfoSection.tsx). Zelle controls both
-                                    // PhonePe & GPay, and Venmo controls Paytm. Relabel the checkboxes
-                                    // here so Settings matches what is shown on the POS.
-                                    const isIndia = settings.restaurant.country?.toLowerCase() === 'india';
-                                    const methodLabels: Record<string, string> = isIndia
-                                        ? { cash: 'Cash', card: 'Card', zelle: 'PhonePe / GPay', venmo: 'Paytm' }
-                                        : { cash: 'Cash', card: 'Card', zelle: 'Zelle', venmo: 'Venmo' };
-                                    return ['cash', 'card', 'zelle', 'venmo'].map((method) => (
-                                        <Grid size={{ xs: 6, sm: 3 }} key={method}>
-                                            <FormControlLabel
-                                                control={
-                                                    <Checkbox
-                                                        checked={settings.system.posPaymentMethods?.[method as keyof typeof settings.system.posPaymentMethods] ?? true}
-                                                        onChange={(e) => {
-                                                            const isChecked = e.target.checked;
-                                                            setSettings(prev => {
-                                                                const currentMethods = prev.system.posPaymentMethods || { cash: true, card: true, zelle: true, venmo: true };
-                                                                return {
-                                                                    ...prev,
-                                                                    system: {
-                                                                        ...prev.system,
-                                                                        posPaymentMethods: {
-                                                                            ...currentMethods,
-                                                                            [method]: isChecked
-                                                                        }
+                                {['cash', 'card', 'zelle', 'venmo', 'cheque'].map((method) => (
+                                    <Grid size={{ xs: 6, sm: 3 }} key={method}>
+                                        <FormControlLabel
+                                            control={
+                                                <Checkbox
+                                                    checked={settings.system.posPaymentMethods?.[method as keyof typeof settings.system.posPaymentMethods] ?? true}
+                                                    onChange={(e) => {
+                                                        const isChecked = e.target.checked;
+                                                        setSettings(prev => {
+                                                            const currentMethods = prev.system.posPaymentMethods || { cash: true, card: true, zelle: true, venmo: true, cheque: true };
+                                                            return {
+                                                                ...prev,
+                                                                system: {
+                                                                    ...prev.system,
+                                                                    posPaymentMethods: {
+                                                                        ...currentMethods,
+                                                                        [method]: isChecked
                                                                     }
-                                                                };
-                                                            });
-                                                        }}
-                                                    />
-                                                }
-                                                label={<Typography>{methodLabels[method]}</Typography>}
-                                            />
-                                        </Grid>
-                                    ));
-                                })()}
+                                                                }
+                                                            };
+                                                        });
+                                                    }}
+                                                />
+                                            }
+                                            label={<Typography sx={{ textTransform: 'capitalize' }}>{method}</Typography>}
+                                        />
+                                    </Grid>
+                                ))}
                             </Grid>
+
+                            {/* Card sub-types — shown only when Card is enabled */}
+                            {(settings.system.posPaymentMethods?.card ?? true) && (
+                                <Box sx={{ mt: 1, pl: { xs: 1, sm: 4 }, pt: 2, borderTop: '1px dashed', borderColor: 'divider' }}>
+                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontWeight: 600 }}>
+                                        Accepted Card Types
+                                    </Typography>
+                                    <Grid container spacing={2}>
+                                        {[{ key: 'creditCard', label: 'Credit Card' }, { key: 'debitCard', label: 'Debit Card' }].map((ct) => (
+                                            <Grid size={{ xs: 6, sm: 3 }} key={ct.key}>
+                                                <FormControlLabel
+                                                    control={
+                                                        <Checkbox
+                                                            checked={settings.system.posPaymentMethods?.[ct.key as keyof typeof settings.system.posPaymentMethods] ?? true}
+                                                            onChange={(e) => {
+                                                                const isChecked = e.target.checked;
+                                                                setSettings(prev => {
+                                                                    const currentMethods = prev.system.posPaymentMethods || { cash: true, card: true, zelle: true, venmo: true, cheque: true, creditCard: true, debitCard: true };
+                                                                    return {
+                                                                        ...prev,
+                                                                        system: {
+                                                                            ...prev.system,
+                                                                            posPaymentMethods: {
+                                                                                ...currentMethods,
+                                                                                [ct.key]: isChecked
+                                                                            }
+                                                                        }
+                                                                    };
+                                                                });
+                                                            }}
+                                                        />
+                                                    }
+                                                    label={<Typography>{ct.label}</Typography>}
+                                                />
+                                            </Grid>
+                                        ))}
+                                    </Grid>
+                                </Box>
+                            )}
                         </Paper>
 
                         <Box sx={{ mt: 4, display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' } }}>
@@ -4560,7 +4554,12 @@ const SettingsPage: React.FC = () => {
                                                         handleDeliveryChange('builtIn', 'baseMiles', parseFloat(val) || 0);
                                                     }}
                                                     slotProps={{ htmlInput: { min: 0, step: 0.5 } }}
-                                                    helperText="Miles included in the base fee before per-mile charges apply"
+                                                    error={(settings.delivery.builtIn.baseMiles ?? 2) > (settings.delivery.builtIn.maxDeliveryRange ?? 15)}
+                                                    helperText={
+                                                        (settings.delivery.builtIn.baseMiles ?? 2) > (settings.delivery.builtIn.maxDeliveryRange ?? 15)
+                                                            ? "Base miles covered cannot exceed the maximum delivery range"
+                                                            : "Miles included in the base fee before per-mile charges apply"
+                                                    }
                                                     InputProps={{
                                                         endAdornment: <InputAdornment position="end">Miles</InputAdornment>,
                                                     }}
@@ -4593,8 +4592,14 @@ const SettingsPage: React.FC = () => {
                                             variant="contained"
                                             size={isMobile ? "medium" : "large"}
                                             startIcon={<SaveIcon />}
-                                            onClick={() => handleSave('delivery')}
-                                            disabled={loading}
+                                            onClick={() => {
+                                                if ((settings.delivery?.builtIn?.baseMiles ?? 2) > (settings.delivery?.builtIn?.maxDeliveryRange ?? 15)) {
+                                                    toast.error('Base miles covered cannot exceed the maximum delivery range');
+                                                    return;
+                                                }
+                                                handleSave('delivery');
+                                            }}
+                                            disabled={loading || (settings.delivery?.builtIn?.baseMiles ?? 2) > (settings.delivery?.builtIn?.maxDeliveryRange ?? 15)}
                                             sx={{
                                                 borderRadius: 2.5,
                                                 px: 4,

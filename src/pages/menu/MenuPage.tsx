@@ -124,6 +124,8 @@ const MenuPage: React.FC = () => {
     // Dialogs State
     const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
     const [menuItemDialogOpen, setMenuItemDialogOpen] = useState(false);
+    // Confirmation shown before adding a menu item (lists existing categories / offer to add more)
+    const [categoryConfirmOpen, setCategoryConfirmOpen] = useState(false);
 
     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
     const [editingMenuItem, setEditingMenuItem] = useState<IMenuItem | null>(null);
@@ -653,7 +655,28 @@ const MenuPage: React.FC = () => {
 
     // Menu Item Management
     const handleOpenMenuItemDialog = (item?: IMenuItem) => {
-        setEditingMenuItem(item || null);
+        // Editing an existing item — no category gate needed.
+        if (item) {
+            setEditingMenuItem(item);
+            setMenuItemDialogOpen(true);
+            return;
+        }
+
+        // Adding a new item: a menu item must belong to a category.
+        if (categories.length === 0) {
+            toast.error('Please add a category before adding menu items.');
+            handleOpenCategoryDialog();
+            return;
+        }
+
+        // Categories exist — confirm with the user (and offer to add more) before continuing.
+        setCategoryConfirmOpen(true);
+    };
+
+    // Proceed from the confirmation dialog to actually add the menu item.
+    const proceedToAddMenuItem = () => {
+        setCategoryConfirmOpen(false);
+        setEditingMenuItem(null);
         setMenuItemDialogOpen(true);
     };
 
@@ -2224,6 +2247,45 @@ const MenuPage: React.FC = () => {
                         sx={{ borderRadius: 2, px: 3, fontWeight: 'bold' }}
                     >
                         {confirmAction.confirmLabel || 'Confirm'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Confirm categories before adding a menu item */}
+            <Dialog
+                open={categoryConfirmOpen}
+                onClose={() => setCategoryConfirmOpen(false)}
+                PaperProps={{ sx: { borderRadius: 3, maxWidth: 460 } }}
+                fullWidth
+            >
+                <DialogTitle sx={{ pb: 1 }}>Add Menu Item</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        Your menu item will be added under one of these {categories.length} categor{categories.length === 1 ? 'y' : 'ies'}.
+                        Want to add another category first, or continue?
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                        {categories.map((cat) => (
+                            <Chip
+                                key={cat._id}
+                                label={cat.name}
+                                size="small"
+                                variant="outlined"
+                                color="primary"
+                            />
+                        ))}
+                    </Box>
+                </DialogContent>
+                <DialogActions sx={{ p: 2.5, pt: 1.5, gap: 1 }}>
+                    <Button onClick={() => setCategoryConfirmOpen(false)}>Cancel</Button>
+                    <Button
+                        variant="outlined"
+                        onClick={() => { setCategoryConfirmOpen(false); handleOpenCategoryDialog(); }}
+                    >
+                        Add Category
+                    </Button>
+                    <Button variant="contained" onClick={proceedToAddMenuItem}>
+                        Continue to Add Item
                     </Button>
                 </DialogActions>
             </Dialog>
