@@ -26,6 +26,7 @@ interface AddressAutocompleteProps {
     required?: boolean;
     onBlur?: () => void;
     sx?: any;
+    countryRestrictions?: string | string[];
 }
 
 const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
@@ -38,7 +39,8 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
     helperText,
     required,
     onBlur,
-    sx
+    sx,
+    countryRestrictions
 }) => {
     const [loading, setLoading] = useState(false);
     const [scriptLoaded, setScriptLoaded] = useState(false);
@@ -69,16 +71,30 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
 
     useEffect(() => {
         if (scriptLoaded && inputRef.current && !autocompleteRef.current) {
-            autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
-                // types: ['address'], // Removed to allow all types (establishments, geocodes, etc.)
-                fields: ['address_components', 'formatted_address', 'geometry'],
-            });
+            // Safe check in case Google Maps API was blocked by referrer restrictions
+            if (window.google && window.google.maps && window.google.maps.places) {
+                const options: google.maps.places.AutocompleteOptions = {
+                    fields: ['address_components', 'formatted_address', 'geometry'],
+                };
+                if (countryRestrictions) {
+                    options.componentRestrictions = { country: countryRestrictions };
+                }
 
-            if (autocompleteRef.current) {
-                autocompleteRef.current.addListener('place_changed', handlePlaceSelect);
+                autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, options);
+
+                if (autocompleteRef.current) {
+                    autocompleteRef.current.addListener('place_changed', handlePlaceSelect);
+                }
+            } else {
+                console.warn("Google Maps Places API failed to initialize. Falling back to manual entry.");
+                // We can't use Autocomplete, so it silently falls back to standard text input
+            }
+        } else if (autocompleteRef.current && scriptLoaded) {
+            if (countryRestrictions) {
+                autocompleteRef.current.setComponentRestrictions({ country: countryRestrictions });
             }
         }
-    }, [scriptLoaded]);
+    }, [scriptLoaded, countryRestrictions]);
 
     const handlePlaceSelect = () => {
         const place = autocompleteRef.current?.getPlace();

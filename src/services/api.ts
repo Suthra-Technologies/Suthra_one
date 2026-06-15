@@ -83,10 +83,12 @@ api.interceptors.response.use(
       // Guests are allowed to browse these pages without being logged in
       const publicPaths = ['customer/order', 'customer/catering', 'customer/book-table', 'customer/gallery', 'customer/about', 'customer/home'];
       const isPublicPath = publicPaths.some(p => window.location.pathname.includes(p));
+      const isLoginScreen = window.location.pathname.includes('/login');
+      const isLoginRequest = error.config?.url?.includes('/auth/login');
 
       if (!isPublicPath) {
-        toast.error('Session expired. Please login again.');
-        if (!window.location.pathname.includes('/login')) {
+        if (!isLoginScreen && !isLoginRequest) {
+          toast.error('Session expired. Please login again.');
           window.location.href = '/login';
         }
       }

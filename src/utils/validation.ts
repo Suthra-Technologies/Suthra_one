@@ -11,7 +11,7 @@ export const validateEmail = (email: string): ValidationResult => {
         return { isValid: false, message: 'Email is required' };
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[a-zA-Z0-9._+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!emailRegex.test(email.trim())) {
         return { isValid: false, message: 'Please enter a valid email address' };
     }
@@ -20,7 +20,7 @@ export const validateEmail = (email: string): ValidationResult => {
 };
 
 // Phone number validation (Indian format)
-export const validatePhone = (phone: string): ValidationResult => {
+export const validatePhone = (phone: string, countryCode?: string): ValidationResult => {
     if (!phone || phone.trim() === '') {
         return { isValid: false, message: 'Phone number is required' };
     }
@@ -30,6 +30,15 @@ export const validatePhone = (phone: string): ValidationResult => {
 
     if (digits.length !== 10) {
         return { isValid: false, message: 'Please enter exactly 10 digits' };
+    }
+
+    if (countryCode === '1' || countryCode === '+1') {
+        if (digits[0] === '0' || digits[0] === '1') {
+            return { isValid: false, message: 'Invalid phone number. Please provide a valid US phone number.' };
+        }
+        if (digits[3] === '0' || digits[3] === '1') {
+            return { isValid: false, message: 'Invalid phone number. Please provide a valid US phone number.' };
+        }
     }
 
     return { isValid: true };
@@ -68,24 +77,17 @@ export const validatePassword = (password: string): ValidationResult => {
         return { isValid: false, message: 'Password must be at least 8 characters long' };
     }
 
-    if (password.length > 128) {
-        return { isValid: false, message: 'Password must not exceed 128 characters' };
+    if (password.length > 20) {
+        return { isValid: false, message: 'Password must not exceed 20 characters' };
     }
 
-    if (!/[A-Z]/.test(password)) {
-        return { isValid: false, message: 'Password must contain at least one uppercase letter' };
-    }
+    const hasUpper = /[A-Z]/.test(password);
+    const hasLower = /[a-z]/.test(password);
+    const hasNumber = /\d/.test(password);
+    const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
 
-    if (!/[a-z]/.test(password)) {
-        return { isValid: false, message: 'Password must contain at least one lowercase letter' };
-    }
-
-    if (!/\d/.test(password)) {
-        return { isValid: false, message: 'Password must contain at least one number' };
-    }
-
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-        return { isValid: false, message: 'Password must contain at least one special character' };
+    if (!hasUpper || !hasLower || !hasNumber || !hasSpecial) {
+        return { isValid: false, message: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character' };
     }
 
     return { isValid: true };

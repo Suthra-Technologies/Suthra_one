@@ -197,7 +197,7 @@ const DisputeList: React.FC = () => {
                       <TableRow
                         key={dispute._id}
                         hover
-                        onClick={() => navigate(`/disputes/${dispute._id}`)}
+                        onClick={() => navigate(dispute._id)}
                         sx={{ cursor: 'pointer' }}
                       >
                         <TableCell>
@@ -223,7 +223,7 @@ const DisputeList: React.FC = () => {
                               color="primary"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                navigate(`/disputes/${dispute._id}`);
+                                navigate(dispute._id);
                               }}
                             >
                               <Visibility />

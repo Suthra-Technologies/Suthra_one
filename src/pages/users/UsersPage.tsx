@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import Grid from '@mui/material/Grid2';
 import { alpha } from '@mui/material/styles';
+import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import {
   useTheme,
   useMediaQuery,
@@ -219,15 +221,34 @@ const getPermissionStrings = (permissions?: User['permissions']): string[] => {
   }, []);
 };
 
-const getSafeDateString = (value?: string, includeTime = false): string => {
+const getSafeDateString = (value?: string, includeTime = false, countryCode?: string): string => {
   if (!value) return 'N/A';
 
-  const date = new Date(value);
+  let date: Date;
+  if (!includeTime && value.length >= 10 && value.includes('-')) {
+    // Parse YYYY-MM-DD natively in local time to prevent 1-day timezone backwards shift
+    const parts = value.substring(0, 10).split('-');
+    if (parts.length === 3) {
+      date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    } else {
+      date = new Date(value);
+    }
+  } else {
+    date = new Date(value);
+  }
+
   if (Number.isNaN(date.getTime())) {
     return 'N/A';
   }
 
-  return includeTime ? date.toLocaleString() : date.toLocaleDateString();
+  let locale = undefined;
+  if (countryCode === '1' || countryCode === '+1') {
+    locale = 'en-US';
+  } else if (countryCode === '91' || countryCode === '+91') {
+    locale = 'en-IN';
+  }
+
+  return includeTime ? date.toLocaleString(locale) : date.toLocaleDateString(locale);
 };
 
 const getDisplayName = (user?: User | null): string => {
@@ -284,6 +305,7 @@ const UsersPage = () => {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleteReason, setDeleteReason] = useState('');
   const [openStatusDialog, setOpenStatusDialog] = useState(false);
   const [statusTarget, setStatusTarget] = useState<User | null>(null);
   const [openRestoreDialog, setOpenRestoreDialog] = useState(false);
@@ -324,6 +346,11 @@ const UsersPage = () => {
 
   const [userErrors, setUserErrors] = useState<Record<string, ValidationResult>>({});
   const [passwordErrors, setPasswordErrors] = useState<Record<string, ValidationResult>>({});
+  const [localPassword, setLocalPassword] = useState('');
+
+  useEffect(() => {
+    setLocalPassword(userForm.password || '');
+  }, [userForm.password]);
 
   const roles = [
     { value: 'admin', label: 'Administrator', icon: AdminIcon, color: '#f44336' },
@@ -427,7 +454,8 @@ const UsersPage = () => {
       firstName: validateName(userForm.firstName, 'First name'),
       lastName: validateName(userForm.lastName, 'Last name'),
       email: validateEmail(userForm.email),
-      phone: validatePhone(userForm.phone),
+      phone: validatePhone(userForm.phone, userForm.countryCode),
+      password: !editingUser ? validatePassword(userForm.password) : { isValid: true },
       salary: isCustomer
         ? { isValid: true }
         : (!userForm.salary || userForm.salary.trim() === ''
@@ -444,6 +472,9 @@ const UsersPage = () => {
       city: isCustomer ? validateRequired(userForm.address.city, 'City') : { isValid: true },
       state: isCustomer ? validateRequired(userForm.address.state, 'State') : { isValid: true },
       zipCode: isCustomer ? validateRequired(userForm.address.zipCode, 'Zip Code') : { isValid: true },
+      'emergencyContact.name': userForm.emergencyContact?.name && userForm.emergencyContact.name.trim() !== '' 
+        ? validateName(userForm.emergencyContact.name, 'Contact name') 
+        : { isValid: true },
     };
 
     setUserErrors(newErrors);
@@ -577,11 +608,20 @@ const UsersPage = () => {
     try {
       await usersAPI.toggleUserStatus(userId);
       toast.success('User status updated successfully');
-      await fetchUsers();
+      
+      setUsers(prev => prev.map(u => 
+        u._id === userId ? { ...u, isActive: !u.isActive } : u
+      ));
+      
+      if (tabValue === 1 || tabValue === 2) {
+        setUsers(prev => prev.filter(u => u._id !== userId));
+        setTotalRecords(prev => Math.max(0, prev - 1));
+      }
     } catch (err: any) {
       toast.error('Failed to update user status: ' + (err.response?.data?.message || err.message));
     } finally {
       closeStatusDialog();
+      setSubmitting(false);
     }
   };
 
@@ -607,14 +647,15 @@ const UsersPage = () => {
         // DELETE DIRECTLY
         await usersAPI.deleteUser(deleteTarget.id);
         toast.success(`User "${deleteTarget.name}" deleted successfully`);
-        await fetchUsers();
+        setUsers(prev => prev.filter(u => u._id !== deleteTarget.id));
+        setTotalRecords(prev => Math.max(0, prev - 1));
       } else {
         // RAISE TICKET (if an admin is trying to delete an admin, or other restricted case)
         await supportAPI.create({
           subject: `User Deletion Request: ${deleteTarget.name}`,
           category: 'User Deletion',
           priority: 'high',
-          message: `I would like to request the permanent deletion of user "${deleteTarget.name}" (ID: ${deleteTarget.id}) from the system. Please review and confirm the request.`
+          message: `I would like to request the permanent deletion of user "${deleteTarget.name}" (ID: ${deleteTarget.id}) from the system.\n\nReason: ${deleteReason || 'No reason provided.'}`
         });
         toast.success('Deletion request has been sent to the Super Admin');
       }
@@ -666,6 +707,7 @@ const UsersPage = () => {
   const closeDeleteDialog = () => {
     setOpenDeleteDialog(false);
     setDeleteTarget(null);
+    setDeleteReason('');
   };
 
   const closeStatusDialog = () => {
@@ -725,7 +767,7 @@ const UsersPage = () => {
       phone: user.phone || '',
       countryCode: user.countryCode || settings?.restaurant?.dialCode || '',
       roles: resolvedRoles,
-      permissions: convertedPermissions.length > 0 ? convertedPermissions : getPermissionsForRoles(resolvedRoles),
+      permissions: Array.isArray(user.permissions) ? convertedPermissions : getPermissionsForRoles(resolvedRoles),
       isActive: user.isActive !== false,
       address: {
         street: user.address?.street || '',
@@ -810,10 +852,21 @@ const UsersPage = () => {
       toast.error('Please enter first name first');
       return;
     }
-    const trimmedName = userForm.firstName.trim();
+    let trimmedName = userForm.firstName.trim();
+    // Capitalize first letter to ensure uppercase requirement
+    if (trimmedName.length > 0) {
+      trimmedName = trimmedName.charAt(0).toUpperCase() + trimmedName.slice(1);
+    }
     const randomDigits = Math.floor(100 + Math.random() * 900);
-    const generated = `${trimmedName}${randomDigits}`;
+    let generated = `${trimmedName}${randomDigits}@`;
+    
+    // Ensure max length 20
+    if (generated.length > 20) {
+      generated = generated.substring(0, 19) + '@';
+    }
+    
     setUserForm(prev => ({ ...prev, password: generated }));
+    if (userErrors.password) setUserErrors(prev => ({ ...prev, password: { isValid: true } }));
     toast.success('Password generated!');
   };
 
@@ -1186,7 +1239,7 @@ const UsersPage = () => {
                       {!isCustomerUser(user) && user.hireDate && (
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.disabled', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Hired</Typography>
-                          <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.primary' }}>{getSafeDateString(user.hireDate)}</Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.primary' }}>{getSafeDateString(user.hireDate, false, user.countryCode)}</Typography>
                         </Box>
                       )}
                       {user.salary && !isCustomerUser(user) && (
@@ -1591,9 +1644,18 @@ const UsersPage = () => {
                             label="Password"
                             type={showPassword ? 'text' : 'password'}
                             placeholder="Click icon to auto-generate"
-                            value={userForm.password}
-                            onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+                            value={localPassword}
+                            onChange={(e) => {
+                              setLocalPassword(e.target.value);
+                            }}
+                            onBlur={(e) => {
+                              setUserForm({ ...userForm, password: e.target.value });
+                              if (userErrors.password) setUserErrors(prev => ({ ...prev, password: { isValid: true } }));
+                            }}
+                            error={hasError(userErrors.password)}
+                            helperText={getHelperText(userErrors.password) || "Recommended: firstName + 3 random digits"}
                             InputProps={{
+                              inputProps: { maxLength: 20 },
                               endAdornment: (
                                 <InputAdornment position="end">
                                   <Tooltip title={showPassword ? 'Hide password' : 'Show password'}>
@@ -1613,7 +1675,6 @@ const UsersPage = () => {
                                 </InputAdornment>
                               )
                             }}
-                            helperText="Recommended: firstName + 3 random digits"
                           />
                         </Grid>
                       )}
@@ -1661,12 +1722,13 @@ const UsersPage = () => {
                           <TextField
                             fullWidth
                             label={`Monthly Salary (${settings?.restaurant?.currencySymbol || '$'})`}
-                            type="number"
-                            value={userForm.salary}
+                            type="text"
+                            value={userForm.salary ? Number(userForm.salary.toString().replace(/,/g, '')).toLocaleString('en-US') : ''}
                             onChange={(e) => {
-                              let val = e.target.value;
-                              if (val.length > 7) return;
-                              if (/^0[0-9]+/.test(val)) { val = val.replace(/^0+/, ''); e.target.value = val; }
+                              let val = e.target.value.replace(/,/g, '');
+                              if (!/^\d*$/.test(val)) return; // Only allow digits
+                              if (val.length > 7) return; // Prevent excessively large salaries
+                              if (/^0[0-9]+/.test(val)) { val = val.replace(/^0+/, ''); }
                               setUserForm({ ...userForm, salary: val });
                               if (userErrors.salary) setUserErrors(prev => ({ ...prev, salary: { isValid: true } }));
                             }}
@@ -1687,32 +1749,40 @@ const UsersPage = () => {
                           />
                         </Grid>
                         <Grid size={{ xs: 12 }}>
-                          <TextField
-                            fullWidth
-                            label="Date of Hire"
-                            type="date"
-                            value={userForm.hireDate}
-                            onChange={(e) => {
-                              setUserForm({ ...userForm, hireDate: e.target.value });
-                              if (userErrors.hireDate) setUserErrors(prev => ({ ...prev, hireDate: { isValid: true } }));
-                            }}
-                            onBlur={() => {
-                              const isCustomer = userForm.roles.includes('customer');
-                              let hireDateValidation;
-                              if (isCustomer) {
-                                hireDateValidation = { isValid: true };
-                              } else if (!userForm.hireDate || userForm.hireDate.trim() === '') {
-                                hireDateValidation = { isValid: false, message: 'Hire date is required' };
-                              } else {
-                                hireDateValidation = { isValid: true };
-                              }
-                              setUserErrors(prev => ({ ...prev, hireDate: hireDateValidation }));
-                            }}
-                            error={hasError(userErrors.hireDate)}
-                            helperText={getHelperText(userErrors.hireDate)}
-                            InputLabelProps={{ shrink: true }}
-                            required
-                          />
+                          <LocalizationProvider dateAdapter={AdapterDateFns}>
+                            <DatePicker
+                              label="Date of Hire"
+                              format={userForm.countryCode === '1' || userForm.countryCode === '+1' ? 'MM/dd/yyyy' : 'dd/MM/yyyy'}
+                              value={userForm.hireDate ? new Date(userForm.hireDate) : null}
+                              onChange={(newValue: Date | null) => {
+                                const dateStr = newValue && !Number.isNaN(newValue.getTime()) 
+                                  ? newValue.toISOString().split('T')[0] 
+                                  : '';
+                                setUserForm({ ...userForm, hireDate: dateStr });
+                                if (userErrors.hireDate) setUserErrors(prev => ({ ...prev, hireDate: { isValid: true } }));
+                              }}
+                              slotProps={{
+                                textField: {
+                                  fullWidth: true,
+                                  error: hasError(userErrors.hireDate),
+                                  helperText: getHelperText(userErrors.hireDate),
+                                  required: true,
+                                  onBlur: () => {
+                                    const isCustomer = userForm.roles.includes('customer');
+                                    let hireDateValidation;
+                                    if (isCustomer) {
+                                      hireDateValidation = { isValid: true };
+                                    } else if (!userForm.hireDate || userForm.hireDate.trim() === '') {
+                                      hireDateValidation = { isValid: false, message: 'Hire date is required' };
+                                    } else {
+                                      hireDateValidation = { isValid: true };
+                                    }
+                                    setUserErrors(prev => ({ ...prev, hireDate: hireDateValidation }));
+                                  }
+                                }
+                              }}
+                            />
+                          </LocalizationProvider>
                         </Grid>
                       </Grid>
                     </CardContent>
@@ -1742,6 +1812,7 @@ const UsersPage = () => {
                         <AddressAutocomplete
                           label="Full Street Address"
                           value={userForm.address.street}
+                          countryRestrictions={userForm.countryCode === '1' || userForm.countryCode === '+1' ? 'us' : userForm.countryCode === '91' || userForm.countryCode === '+91' ? 'in' : undefined}
                           onChange={(val) => {
                             setUserForm(prev => ({
                               ...prev,
@@ -1866,10 +1937,22 @@ const UsersPage = () => {
                       fullWidth
                       label="Contact Name"
                       value={userForm.emergencyContact.name}
-                      onChange={(e) => setUserForm({
-                        ...userForm,
-                        emergencyContact: { ...userForm.emergencyContact, name: e.target.value }
-                      })}
+                      onChange={(e) => {
+                        setUserForm({
+                          ...userForm,
+                          emergencyContact: { ...userForm.emergencyContact, name: e.target.value }
+                        });
+                        if (userErrors['emergencyContact.name']) setUserErrors(prev => ({ ...prev, 'emergencyContact.name': { isValid: true } }));
+                      }}
+                      onBlur={() => {
+                        if (userForm.emergencyContact.name && userForm.emergencyContact.name.trim() !== '') {
+                          setUserErrors(prev => ({ ...prev, 'emergencyContact.name': validateName(userForm.emergencyContact.name, 'Contact name') }));
+                        } else {
+                          setUserErrors(prev => ({ ...prev, 'emergencyContact.name': { isValid: true } }));
+                        }
+                      }}
+                      error={hasError(userErrors['emergencyContact.name'])}
+                      helperText={getHelperText(userErrors['emergencyContact.name'])}
                       margin="normal"
                     />
                   </Grid>
@@ -2116,9 +2199,10 @@ const UsersPage = () => {
               setPasswordErrors(prev => ({ ...prev, newPassword: validation }));
             }}
             error={hasError(passwordErrors.newPassword)}
-            helperText={getHelperText(passwordErrors.newPassword) || "Minimum 6 characters"}
+            helperText={getHelperText(passwordErrors.newPassword) || "Password must be between 8 and 20 characters."}
             margin="normal"
             required
+            inputProps={{ maxLength: 20 }}
             InputProps={{
               endAdornment: (
                 <InputAdornment position="end">
@@ -2150,6 +2234,7 @@ const UsersPage = () => {
             helperText={getHelperText(passwordErrors.confirmPassword)}
             margin="normal"
             required
+            inputProps={{ maxLength: 20 }}
             InputProps={{
               endAdornment: (
                 <InputAdornment position="end">
@@ -2276,11 +2361,22 @@ const UsersPage = () => {
                   <br />
                   <Box component="span" sx={{ color: 'text.primary', fontWeight: 800 }}>{deleteTarget?.name}</Box>
                 </Typography>
-                <Typography variant="body2" color="text.disabled" sx={{ mt: 2, fontStyle: 'italic' }}>
+                <Typography variant="body2" color="text.disabled" sx={{ mt: 2, mb: 3, fontStyle: 'italic' }}>
                   {willDeleteDirectly
                     ? 'This action cannot be undone and all data associated with this user will be purged.'
                     : 'A formal request will be sent to the Super Administrator for secondary verification.'}
                 </Typography>
+                {!willDeleteDirectly && (
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={2}
+                    label="Reason for Deletion"
+                    placeholder="Please briefly explain why this user needs to be deleted..."
+                    value={deleteReason}
+                    onChange={(e) => setDeleteReason(e.target.value)}
+                  />
+                )}
               </DialogContent>
               <DialogActions sx={{ 
                 p: { xs: 2.5, sm: 3 }, 
