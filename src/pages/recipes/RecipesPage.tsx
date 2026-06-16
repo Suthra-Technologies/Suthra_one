@@ -149,6 +149,20 @@ const RecipesPage: React.FC<RecipesPageProps> = ({ hideHeader }) => {
                 </Box>
             )}
 
+            {hideHeader && (
+                <Box display="flex" justifyContent="flex-end" mb={2}>
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        startIcon={<AddIcon />}
+                        onClick={() => navigate(getRelativePath('/recipes/create'))}
+                        sx={{ fontSize: bodyFontSize }}
+                    >
+                        Create Recipe
+                    </Button>
+                </Box>
+            )}
+
             {/* Search */}
             <Paper sx={{ p: { xs: 1.25, sm: 2 }, mb: { xs: 2, sm: 3 } }}>
                 <TextField

@@ -110,11 +110,36 @@ const CreateRecipePage: React.FC = () => {
 
     const fetchMenuItems = async () => {
         try {
-            const response = await menuAPI.getAll();
-            const data = response.data;
-            const items = Array.isArray(data) ? data : (data?.items || []);
-            setMenuItems(items);
-            return items;
+            const [menuRes, recipesRes] = await Promise.all([
+                menuAPI.getAll(),
+                recipesAPI.getAll({ limit: 1000 })
+            ]);
+            
+            const data = menuRes.data;
+            const allItems = Array.isArray(data) ? data : (data?.items || []);
+            const recipes = recipesRes.data?.data || recipesRes.data || [];
+            
+            let currentMenuItemId = null;
+            if (isEditMode && id) {
+                const currentRecipe = recipes.find((r: any) => r._id === id);
+                if (currentRecipe) {
+                    currentMenuItemId = typeof currentRecipe.menuItem === 'object' ? currentRecipe.menuItem?._id : currentRecipe.menuItem;
+                }
+            }
+
+            const itemsWithRecipes = new Set(recipes.map((r: any) => 
+                typeof r.menuItem === 'object' ? r.menuItem?._id : r.menuItem
+            ).filter(Boolean));
+
+            const filteredItems = allItems.filter((item: any) => {
+                if (currentMenuItemId && item._id === currentMenuItemId) return true;
+                if (item.inventoryTrackingMode === 'direct') return false;
+                if (itemsWithRecipes.has(item._id)) return false;
+                return true;
+            });
+
+            setMenuItems(filteredItems);
+            return allItems;
         } catch (error) {
             console.error('Error fetching menu items:', error);
             return [];

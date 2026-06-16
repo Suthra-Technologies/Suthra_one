@@ -8,7 +8,7 @@ import {
     TimelineDot,
     TimelineOppositeContent,
 } from '@mui/lab';
-import { Typography, Paper, Box, Chip } from '@mui/material';
+import { Typography, Paper, Box, Chip, Tooltip } from '@mui/material';
 import {
     PersonAdd as PersonAddIcon,
     Edit as EditIcon,
@@ -109,9 +109,11 @@ const ActionHistoryList: React.FC<ActionHistoryListProps> = ({ history, emptyMes
                         />
                     </TimelineOppositeContent>
                     <TimelineSeparator>
-                        <TimelineDot color={getActionColor(item.action)}>
-                            {getActionIcon(item.action)}
-                        </TimelineDot>
+                        <Tooltip title={item.action.replace(/_/g, ' ')} placement="top">
+                            <TimelineDot color={getActionColor(item.action)}>
+                                {getActionIcon(item.action)}
+                            </TimelineDot>
+                        </Tooltip>
                         {index < history.length - 1 && <TimelineConnector />}
                     </TimelineSeparator>
                     <TimelineContent>

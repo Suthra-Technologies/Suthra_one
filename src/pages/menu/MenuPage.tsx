@@ -1879,14 +1879,18 @@ const MenuPage: React.FC = () => {
                     {dialogTab === 0 && (
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
                             <TextField
-                                label="Category Name"
+                                label={(editingCategory ? isSubcategory(editingCategory) : !!categoryForm.parentCategory) ? "Subcategory Name" : "Category Name"}
                                 value={categoryForm.name}
-                                onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
-                                onBlur={() => setCategoryTouched((prev) => ({ ...prev, name: true }))}
+                                onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value.trimStart().replace(/[^a-zA-Z\s]/g, '') })}
+                                onBlur={() => {
+                                    setCategoryForm({ ...categoryForm, name: categoryForm.name.trim() });
+                                    setCategoryTouched((prev) => ({ ...prev, name: true }));
+                                }}
                                 error={categoryTouched.name && !categoryForm.name.trim()}
-                                helperText={categoryTouched.name && !categoryForm.name.trim() ? 'Category name is required' : ''}
+                                helperText={categoryTouched.name && !categoryForm.name.trim() ? ((editingCategory ? isSubcategory(editingCategory) : !!categoryForm.parentCategory) ? 'Subcategory name is required' : 'Category name is required') : `${categoryForm.name.length}/50 characters`}
                                 fullWidth
                                 required
+                                inputProps={{ maxLength: 50 }}
                             />
                             <TaxCategorySelector
                                 value={categoryForm.taxCode}

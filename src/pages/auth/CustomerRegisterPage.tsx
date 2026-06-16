@@ -206,7 +206,7 @@ const CustomerRegisterPage: React.FC = () => {
                                 label="Phone Number"
                                 value={formData.phone}
                                 onChange={handleChange}
-                                inputProps={{ maxLength: 10, inputMode: 'numeric', pattern: '[0-9]*' }}
+                                inputProps={{ inputMode: 'numeric', pattern: '[0-9]*' }}
                                 InputProps={{
                                     startAdornment: (
                                         <InputAdornment position="start">
