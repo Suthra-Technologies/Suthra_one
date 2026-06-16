@@ -261,6 +261,15 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
     const { defaultDialCode } = useSettings();
     const effectiveDialCode = dialCode || defaultDialCode || '1';
 
+    const formatDisplayValue = (val: string, code: string) => {
+        if (code !== '1') return val;
+        const cleaned = ('' + val).replace(/\D/g, '');
+        const match = cleaned.match(/^(\d{0,3})(\d{0,3})(\d{0,4})$/);
+        if (!match) return val;
+        if (!match[2]) return match[1];
+        return `(${match[1]}) ${match[2]}${match[3] ? '-' + match[3] : ''}`;
+    };
+
     const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
     const [search, setSearch] = useState('');
     const searchRef = useRef<HTMLInputElement>(null);
@@ -311,7 +320,7 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
             <TextField
                 fullWidth={fullWidth}
                 label={label}
-                value={value}
+                value={formatDisplayValue(value, effectiveDialCode)}
                 onChange={(e) => onChange(e.target.value)}
                 required={required}
                 error={error}

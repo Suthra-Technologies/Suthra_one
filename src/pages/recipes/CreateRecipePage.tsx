@@ -297,6 +297,7 @@ const CreateRecipePage: React.FC = () => {
                             onChange={(val) => setFormData({ ...formData, servingSize: parseInt(val) || 1 })}
                             allowDecimals={false}
                             fullWidth
+                            maxLength={4}
                             size={isMobile ? "small" : "medium"}
                         />
                         <CustomInput
@@ -306,6 +307,7 @@ const CreateRecipePage: React.FC = () => {
                             onChange={(val) => setFormData({ ...formData, preparationTime: parseInt(val) || 0 })}
                             allowDecimals={false}
                             fullWidth
+                            maxLength={3}
                             size={isMobile ? "small" : "medium"}
                         />
                     </Stack>
@@ -383,6 +385,7 @@ const CreateRecipePage: React.FC = () => {
                                                 handleIngredientChange(index, 'quantity', Math.max(0, isNaN(parsedVal) ? 0 : parsedVal));
                                             }}
                                             inputProps={{ min: 0 }}
+                                            maxLength={4}
                                             size="small"
                                             fullWidth
                                             required
@@ -442,6 +445,7 @@ const CreateRecipePage: React.FC = () => {
                                                     handleIngredientChange(index, 'quantity', Math.max(0, isNaN(parsedVal) ? 0 : parsedVal));
                                                 }}
                                                 inputProps={{ min: 0 }}
+                                                maxLength={4}
                                                 size="small"
                                                 fullWidth
                                             />

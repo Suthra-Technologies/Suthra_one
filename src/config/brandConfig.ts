@@ -5,7 +5,7 @@
 export const BRAND_CONFIG = {
   appName: "NexZen POS",
   appId: "com.nexzen.pos",
-  primaryColor: "#9C27B0",
+  primaryColor: "#1452ff",
   secondaryColor: "#E91E63",
   accentColor: "#FF9800",
   apiBaseUrl: "https://atlantafence.net",
