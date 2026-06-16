@@ -1,9 +1,16 @@
 package com.restaurant.pos;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.util.Base64;
+
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
@@ -141,11 +148,83 @@ public final class EscPosFormatter {
         e.raw(GS, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x51, 0x30);
     }
 
+    // ── Logo: fetch URL → scaled 1-bit raster ──────────────────────────────
+    private static final int LOGO_MAX_W = 384;
+
+    /** Holds a converted logo: ESC/POS GS v 0 bytes + ePOS base64 + dims. Null on failure. */
+    static class Logo {
+        byte[] escpos;
+        String base64;
+        int width;
+        int height;
+    }
+
+    private static Bitmap downloadBitmap(String url) {
+        if (url == null || url.isEmpty()) return null;
+        HttpURLConnection conn = null;
+        try {
+            conn = (HttpURLConnection) new URL(url).openConnection();
+            conn.setConnectTimeout(4000);
+            conn.setReadTimeout(6000);
+            conn.setRequestMethod("GET");
+            InputStream is = conn.getInputStream();
+            Bitmap bmp = BitmapFactory.decodeStream(is);
+            is.close();
+            return bmp;
+        } catch (Exception e) {
+            return null;
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
+    }
+
+    static Logo buildLogo(String url) {
+        Bitmap src = downloadBitmap(url);
+        if (src == null) return null;
+        int w = Math.min(LOGO_MAX_W, src.getWidth());
+        w = Math.max(8, w - (w % 8));
+        int h = Math.max(1, Math.round(((float) src.getHeight() / src.getWidth()) * w));
+        Bitmap scaled = Bitmap.createScaledBitmap(src, w, h, true);
+
+        int bytesPerRow = w / 8;
+        byte[] mono = new byte[bytesPerRow * h];
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                int px = scaled.getPixel(x, y);
+                int a = (px >>> 24) & 0xff;
+                int r = (px >> 16) & 0xff, g = (px >> 8) & 0xff, b = px & 0xff;
+                // Treat transparent pixels as white (no dot).
+                double lum = a < 128 ? 255 : (0.299 * r + 0.587 * g + 0.114 * b);
+                if (lum < 160) mono[y * bytesPerRow + (x >> 3)] |= (byte) (0x80 >> (x & 7));
+            }
+        }
+        Logo logo = new Logo();
+        logo.width = w;
+        logo.height = h;
+        logo.base64 = Base64.encodeToString(mono, Base64.NO_WRAP);
+        ByteArrayOutputStream bb = new ByteArrayOutputStream();
+        bb.write(0x1d); bb.write(0x76); bb.write(0x30); bb.write(0x00);
+        bb.write(bytesPerRow & 0xff); bb.write((bytesPerRow >> 8) & 0xff);
+        bb.write(h & 0xff); bb.write((h >> 8) & 0xff);
+        bb.write(mono, 0, mono.length);
+        logo.escpos = bb.toByteArray();
+        return logo;
+    }
+
     // ── BILL (ESC/POS) ─────────────────────────────────────────────────────
     public static byte[] buildBill(JSONObject bill) {
         Esc e = new Esc();
         JSONObject r = bill.optJSONObject("restaurant");
         e.raw(INIT);
+        // Logo at top (best-effort).
+        if (r != null) {
+            Logo logo = buildLogo(r.optString("logo", ""));
+            if (logo != null) {
+                e.raw(AC);
+                for (byte b : logo.escpos) e.b.write(b & 0xff);
+                e.raw(0x0a).raw(AL);
+            }
+        }
         e.raw(AC).raw(BOLD_ON).raw(DBL_ON).line(r != null ? r.optString("name", "Restaurant") : "Restaurant").raw(DBL_OFF).raw(BOLD_OFF);
         if (r != null) {
             if (!r.optString("address", "").isEmpty()) e.line(r.optString("address"));
@@ -271,6 +350,16 @@ public final class EscPosFormatter {
     public static String buildBillEpos(JSONObject bill) {
         StringBuilder p = new StringBuilder();
         JSONObject r = bill.optJSONObject("restaurant");
+        // Logo at top (best-effort) via ePOS <image>.
+        if (r != null) {
+            Logo logo = buildLogo(r.optString("logo", ""));
+            if (logo != null) {
+                p.append("<text align=\"center\"/>");
+                p.append("<image width=\"").append(logo.width).append("\" height=\"").append(logo.height)
+                        .append("\" color=\"color_1\" mode=\"mono\">").append(logo.base64).append("</image>");
+                p.append("<text align=\"left\"/>");
+            }
+        }
         p.append("<text align=\"center\"/><text em=\"true\" dw=\"true\" dh=\"true\"/>");
         p.append(t(r != null ? r.optString("name", "Restaurant") : "Restaurant"));
         p.append("<text dw=\"false\" dh=\"false\" em=\"false\"/>");

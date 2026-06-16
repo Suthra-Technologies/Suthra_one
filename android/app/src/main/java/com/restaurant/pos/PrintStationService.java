@@ -110,7 +110,7 @@ public class PrintStationService extends Service {
 
     // ── Networking ──────────────────────────────────────────────────────
     private JSONArray fetchPrintQueue() throws Exception {
-        URL url = new URL(apiBase + "/api/orders/print-queue?lookbackMinutes=30");
+        URL url = new URL(apiBase + "/api/orders/station/print-queue?lookbackMinutes=30");
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         try {
             conn.setConnectTimeout(5000);
@@ -131,7 +131,7 @@ public class PrintStationService extends Service {
     }
 
     private void markPrinted(String orderId) throws Exception {
-        URL url = new URL(apiBase + "/api/orders/" + orderId + "/mark-printed");
+        URL url = new URL(apiBase + "/api/orders/station/" + orderId + "/mark-printed");
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
         try {
             conn.setConnectTimeout(5000);
