@@ -86,7 +86,7 @@ import {
     type UnitConfig
 } from '../../context/SettingsContext';
 
-import { menuAPI, paymentsAPI, printersAPI, settingsAPI, smsAPI, tenantAPI, usersAPI } from '../../services/api';
+import { apiBaseUrl, menuAPI, paymentsAPI, printersAPI, settingsAPI, smsAPI, tenantAPI, usersAPI } from '../../services/api';
 
 import { NOTIFICATION_SOUNDS, previewSound } from '../../utils/notificationSounds';
 import { printBillThermal } from '../../utils/printBillThermal';
@@ -1106,12 +1106,15 @@ const SettingsPage: React.FC = () => {
     };
 
 
-    const [printStationOn, setPrintStationOn] = useState(false);
+    const [printStationOn, setPrintStationOn] = useState(() => localStorage.getItem('printStationOn') === '1');
     const handleTogglePrintStation = async (on: boolean) => {
         try {
             if (on) {
                 const jwt = localStorage.getItem('jwt') || '';
-                const apiBase = (import.meta.env.VITE_API_URL as string) || window.location.origin;
+                // Reuse the app's resolved API base (VITE_API_URL → BRAND_CONFIG → origin)
+                // so the background print station can never point at a different server.
+                // apiBaseUrl includes a trailing /api; strip it since the station builds its own paths.
+                const apiBase = apiBaseUrl.replace(/\/api$/, '');
                 const billing = settings.printer.billing;
                 if (!billing?.ip) {
                     toast.error('Set the Billing printer IP first.');
@@ -1126,10 +1129,12 @@ const SettingsPage: React.FC = () => {
                     devId: billing.deviceId || 'local_printer',
                 });
                 setPrintStationOn(true);
+                localStorage.setItem('printStationOn', '1');
                 toast.success('Print station started — orders will print in the background.');
             } else {
                 await stopPrintStation();
                 setPrintStationOn(false);
+                localStorage.setItem('printStationOn', '0');
                 toast.success('Print station stopped.');
             }
         } catch (e: any) {

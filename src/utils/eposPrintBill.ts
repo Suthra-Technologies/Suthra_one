@@ -88,6 +88,15 @@ export function buildBillEposXml(data: EscPosBillData): string {
     const b = new EposBuilder();
     const m = data.formatMoney;
 
+    // Logo (centered, top) — ePOS-Print <image> with 1-bit raster base64.
+    if (data.logoEpos) {
+        (b as any).parts.push('<text align="center"/>');
+        (b as any).parts.push(
+            `<image width="${data.logoEpos.width}" height="${data.logoEpos.height}" color="color_1" mode="mono">${data.logoEpos.base64}</image>`,
+        );
+        (b as any).parts.push('<text align="left"/>');
+    }
+
     // Header
     b.line(data.restaurantName, { align: 'center', bold: true, doubleW: true, doubleH: true });
     if (data.restaurantAddress) b.line(data.restaurantAddress, { align: 'center' });

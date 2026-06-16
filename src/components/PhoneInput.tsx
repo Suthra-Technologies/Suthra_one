@@ -331,6 +331,7 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
                 onBlur={onBlur}
                 inputProps={{
                     inputMode: 'tel',
+                    maxLength: 14,
                     ...inputProps,
                 }}
                 InputLabelProps={{

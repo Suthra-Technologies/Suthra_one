@@ -1,6 +1,7 @@
 import { buildBillEscPos } from './escposBill';
 import { buildBillStarLine } from './starlineBill';
 import { buildBillEposXml } from './eposPrintBill';
+import { buildLogoRaster } from './logoRaster';
 import type { EscPosBillData, EscPosBillItem } from './escposBill';
 import { sendToThermalPrinter, sendEposPrint, isThermalPrintAvailable } from '../services/thermalPrint';
 import {
@@ -9,6 +10,22 @@ import {
     getPaymentMethodLabel,
 } from './orderWorkflows';
 import type { TenantPrinterSettings } from '../context/SettingsContext';
+
+/**
+ * Public site base for QR/feedback links. In the native app window.location.origin is
+ * "localhost", so prefer the configured public URL (env), then the API host, then origin.
+ */
+function getPublicSiteBase(): string {
+    const env = (import.meta as any).env || {};
+    const explicit = (env.VITE_PUBLIC_SITE_URL as string) || '';
+    if (explicit) return explicit.replace(/\/$/, '');
+    const api = (env.VITE_API_URL as string) || '';
+    if (api && !/localhost|127\.0\.0\.1/.test(api)) return api.replace(/\/api\/?$/, '').replace(/\/$/, '');
+    if (typeof window !== 'undefined' && !/localhost|127\.0\.0\.1/.test(window.location.origin)) {
+        return window.location.origin;
+    }
+    return 'https://nexzenpos.com';
+}
 
 /**
  * Maps a bill/order object (the same shape PrintBillDialog fetches via ordersAPI.getBillData)
@@ -93,11 +110,25 @@ export async function printBillThermal(
         paid: billData.paymentStatus === 'paid',
         qrUrl:
             billData.restaurant?.slug && billData._id
-                ? `${typeof window !== 'undefined' ? window.location.origin : ''}/${billData.restaurant.slug}/feedback/${billData._id}`
+                ? `${getPublicSiteBase()}/${billData.restaurant.slug}/feedback/${billData._id}`
                 : undefined,
         qrCaption: 'Scan to Rate Us',
         formatMoney,
     };
+
+    // Convert the brand logo to a printer raster (best-effort; skipped if it can't load).
+    const logoUrl = billData.restaurant?.logo;
+    if (logoUrl) {
+        try {
+            const raster = await buildLogoRaster(logoUrl);
+            if (raster) {
+                data.logoEscposBytes = raster.escposBytes;
+                data.logoEpos = { base64: raster.eposBase64, width: raster.width, height: raster.height };
+            }
+        } catch {
+            // Logo failed to render — print the bill without it.
+        }
+    }
 
     // Epson TM-m30III (and other TM printers) use ePOS-Print over HTTP — works when raw 9100 is off.
     if (billing.commandMode === 'epos-print') {

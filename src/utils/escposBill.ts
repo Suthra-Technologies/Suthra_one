@@ -53,6 +53,10 @@ export interface EscPosBillData {
     /** Optional feedback URL — printed as a QR code ("Scan to Rate Us") at the bottom. */
     qrUrl?: string;
     qrCaption?: string;
+    /** Optional pre-rendered logo raster (ESC/POS GS v 0 bytes) printed at the very top. */
+    logoEscposBytes?: Uint8Array;
+    /** Optional pre-rendered logo for ePOS-Print <image> (1-bit raster base64 + dimensions). */
+    logoEpos?: { base64: string; width: number; height: number };
     /** Currency formatter, e.g. (n) => `₹${n.toFixed(2)}`. Avoid the ₹ glyph — see formatMoney. */
     formatMoney: (n: number) => string;
 }
@@ -128,6 +132,11 @@ export function buildBillEscPos(data: EscPosBillData): Uint8Array {
     const m = data.formatMoney;
 
     b.raw(INIT);
+
+    // ── Logo (centered, top) ──
+    if (data.logoEscposBytes && data.logoEscposBytes.length) {
+        b.raw(ALIGN_CENTER).raw(Array.from(data.logoEscposBytes)).raw([0x0a]).raw(ALIGN_LEFT);
+    }
 
     // ── Header ──
     b.raw(ALIGN_CENTER).raw(BOLD_ON).raw(DOUBLE_ON).line(data.restaurantName).raw(DOUBLE_OFF).raw(BOLD_OFF);
