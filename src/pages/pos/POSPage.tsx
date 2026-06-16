@@ -48,9 +48,11 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useSearchParams } from "react-router-dom";
 import theme from 'src/theme/theme';
+import { calcCustomerProcessingFee } from 'src/utils/processingFee';
 import PaymentModal from '../../components/PaymentModal';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
+import { autoPrintOrder } from '../../utils/autoPrintOrder';
 import { couponsAPI, menuAPI, ordersAPI, rewardsAPI, settingsAPI, tablesAPI, taxAPI, traysAPI, usersAPI } from '../../services/api';
 import { isWithinDeliveryRadius, METERS_PER_MILE } from '../../services/googleMapsService';
 import CustomerInfoSection from './components/CustomerInfoSection';
@@ -1261,10 +1263,25 @@ const POSPage: React.FC = () => {
         }
     }, [pointsToRedeem, rewardPointsInfo, totalBeforeRewards, cartTotal]);
 
+    // Processing fee charged on the order = platform fee (+ Stripe commission when the
+    // store's fee responsibility is "customer" and the order is paid by card).
+    const processingFeeAmount = useMemo(() => {
+        const subtotal = cartTotal;
+        const disc = (subtotal * discountPercent) / 100;
+        const otherCharges = taxAmount - disc - couponDiscount + serviceChargeAmount + (Number(tip) || 0) - rewardDiscount;
+        return calcCustomerProcessingFee({
+            subtotal,
+            otherCharges,
+            restaurant: settings?.restaurant,
+            feeResponsibility: settings?.system?.feeResponsibility,
+            isStripePayment: paymentMethod === 'card',
+        }).total;
+    }, [cartTotal, discountPercent, taxAmount, couponDiscount, serviceChargeAmount, tip, rewardDiscount, paymentMethod, settings?.restaurant, settings?.system?.feeResponsibility]);
+
     const finalTotal = useMemo(() => {
-        const total = totalBeforeRewards - rewardDiscount;
+        const total = totalBeforeRewards - rewardDiscount + processingFeeAmount;
         return Math.max(0, total);
-    }, [totalBeforeRewards, rewardDiscount]);
+    }, [totalBeforeRewards, rewardDiscount, processingFeeAmount]);
 
     const handlePlaceOrder = async () => {
         if (cart.length === 0) return;
@@ -1457,6 +1474,7 @@ const POSPage: React.FC = () => {
                 })),
                 totalAmount: finalTotal,
                 subtotal: cartTotal,
+                processingFee: processingFeeAmount,
                 tip: tipValue,
                 discountPercent,
                 couponCode: couponCode || undefined,
@@ -1501,12 +1519,26 @@ const POSPage: React.FC = () => {
                     : null,
             };
 
+            let savedOrderId: string | undefined;
             if (isEditMode && existingOrderId) {
                 await ordersAPI.update(existingOrderId, payload);
+                savedOrderId = existingOrderId;
                 toast.success("Order updated");
             } else {
-                await ordersAPI.create(payload);
+                const createRes = await ordersAPI.create(payload);
+                // The created order id may come back as data._id or data.data._id depending on the endpoint.
+                savedOrderId = createRes?.data?._id || createRes?.data?.data?._id || createRes?.data?.order?._id;
                 // toast.success("Order placed");
+            }
+
+            // Auto-print the bill to the Wi-Fi thermal printer (Android only, when enabled).
+            console.log('[AutoPrint] savedOrderId:', savedOrderId, 'autoPrint setting:', settings.system.autoPrint);
+            if (savedOrderId && settings.system.autoPrint) {
+                autoPrintBill(savedOrderId);
+            } else if (savedOrderId && !settings.system.autoPrint) {
+                console.warn('[AutoPrint] Skipped — Auto-print is OFF in Settings → General.');
+            } else if (!savedOrderId) {
+                console.warn('[AutoPrint] Skipped — could not read created order id from API response.');
             }
 
             // Set guard BEFORE clearing URL/state to prevent useEffect from re-loading stale order data
@@ -1549,6 +1581,18 @@ const POSPage: React.FC = () => {
 
 
 
+
+    // On order placement, auto-print KOT (kitchen ticket) then bill — matching the Electron
+    // behavior. Uses the shared autoPrintOrder which dedupes against the socket newOrder path,
+    // so an order placed here won't print twice when its own newOrder event arrives.
+    const autoPrintBill = async (orderId: string) => {
+        try {
+            await autoPrintOrder(orderId, settings.printer, settings.system.autoPrint, formatCurrency);
+        } catch (err) {
+            console.error('[ThermalPrint] Auto-print failed:', err);
+            toast.error('Auto-print to thermal printer failed. Check the printer Wi-Fi connection.');
+        }
+    };
 
     const handlePaymentSuccess = async (paymentIntentId: string, tipAmount: number) => {
         setPaymentModalOpen(false);
@@ -3189,6 +3233,7 @@ const POSPage: React.FC = () => {
                     setTip={setTip}
                     finalTotal={finalTotal}
                     rewardDiscount={rewardDiscount}
+                    processingFeeAmount={processingFeeAmount}
                     placingOrder={placingOrder}
                     handlePlaceOrder={handlePlaceOrder}
                 />

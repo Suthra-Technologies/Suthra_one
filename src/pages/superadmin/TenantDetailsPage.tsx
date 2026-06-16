@@ -218,8 +218,11 @@ const TenantDetailsPage: React.FC = () => {
       .finally(() => setDeliveryLoading(false));
   }, [tenantId]);
 
-  // Platform processing fee (superadmin-managed) state
+  // Platform processing fee (superadmin-managed) state.
+  // processingFee is a FLAT $ amount; processingFeeOrderValue is the $ order-value
+  // threshold the fee applies up to (orders above it are not charged).
   const [processingFee, setProcessingFee] = useState<string>('');
+  const [processingFeeOrderValue, setProcessingFeeOrderValue] = useState<string>('');
   const [feeLoading, setFeeLoading] = useState(false);
   const [feeSaving, setFeeSaving] = useState(false);
   const [feeError, setFeeError] = useState('');
@@ -229,16 +232,29 @@ const TenantDetailsPage: React.FC = () => {
     if (!tenantId) return;
     setFeeLoading(true);
     superAPI.getTenantProcessingFee(tenantId)
-      .then(res => setProcessingFee(String(res.data?.processingFee ?? '')))
+      .then(res => {
+        setProcessingFee(String(res.data?.processingFee ?? ''));
+        setProcessingFeeOrderValue(String(res.data?.processingFeeOrderValue ?? ''));
+      })
       .catch(() => {})
       .finally(() => setFeeLoading(false));
   }, [tenantId]);
 
+  // Drop leading zeros from a numeric input ("01" -> "1") while keeping a lone "0"
+  // and decimals like "0.5" intact.
+  const stripLeadingZeros = (v: string) => v.replace(/^0+(?=\d)/, '');
+
   const handleSaveProcessingFee = async () => {
     if (!tenantId) return;
     const fee = parseFloat(processingFee);
+    const orderValue = parseFloat(processingFeeOrderValue);
     if (isNaN(fee) || fee < 0) {
-      setFeeError('Enter a valid non-negative number');
+      setFeeError('Enter a valid non-negative processing fee');
+      setFeeInfo('');
+      return;
+    }
+    if (isNaN(orderValue) || orderValue < 0) {
+      setFeeError('Enter a valid non-negative order value');
       setFeeInfo('');
       return;
     }
@@ -246,7 +262,7 @@ const TenantDetailsPage: React.FC = () => {
     setFeeError('');
     setFeeInfo('');
     try {
-      await superAPI.updateTenantProcessingFee(tenantId, fee);
+      await superAPI.updateTenantProcessingFee(tenantId, fee, orderValue);
       setFeeInfo('Processing fee updated.');
     } catch (err: any) {
       setFeeError(err?.response?.data?.message || 'Failed to update processing fee');
@@ -324,19 +340,32 @@ const TenantDetailsPage: React.FC = () => {
           {feeLoading && <CircularProgress size={18} />}
         </Box>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
-          Processing fee charged on this store's orders. Only superadmins can change it.
-          The store admin can see this value in their settings but cannot edit it.
+          Processing fee charged on this store's orders. The "Processing Fee" is added for
+          every "Order Value" slab of the order (rounded up). E.g. $2 per $50 → orders
+          $0–50 = $2, $50–100 = $4, $100–150 = $6, and so on. Only superadmins can change it.
+          The store admin can see these values in their settings but cannot edit them.
         </Typography>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'flex-start' }}>
           <TextField
-            label="Processing Fee (%)"
+            label="Processing Fee ($)"
             type="number"
             size="small"
             value={processingFee}
-            onChange={(e) => { setProcessingFee(e.target.value); setFeeError(''); setFeeInfo(''); }}
+            onChange={(e) => { setProcessingFee(stripLeadingZeros(e.target.value)); setFeeError(''); setFeeInfo(''); }}
             disabled={feeLoading}
             inputProps={{ min: 0, step: 0.01 }}
-            sx={{ minWidth: 220 }}
+            sx={{ minWidth: 200 }}
+          />
+          <TextField
+            label="Order Value ($)"
+            type="number"
+            size="small"
+            value={processingFeeOrderValue}
+            onChange={(e) => { setProcessingFeeOrderValue(stripLeadingZeros(e.target.value)); setFeeError(''); setFeeInfo(''); }}
+            disabled={feeLoading}
+            inputProps={{ min: 0, step: 0.01 }}
+            helperText="Charge the fee for every slab of this amount"
+            sx={{ minWidth: 200 }}
           />
           <Button
             variant="contained"

@@ -45,6 +45,7 @@ import { format } from 'date-fns';
 import { useSettings } from '../../context/SettingsContext';
 import { useActiveTenant } from '../../hooks/useActiveTenant';
 import { menuAPI, ordersAPI } from '../../services/api';
+import { calcCustomerProcessingFee } from '../../utils/processingFee';
 
 interface MenuItem {
     _id: string;
@@ -390,7 +391,17 @@ const GuestPOSPage: React.FC = () => {
                 return sum + (item.price * item.quantity * (itemTaxRate / 100));
             }, 0);
 
-        return { subtotal, discount: discountAmt, gst, total: subtotal - discountAmt + gst };
+        // Guest POS orders are paid by card (Stripe), so the Stripe commission applies
+        // under the "customer pays both" fee responsibility setting.
+        const { total: processingFee } = calcCustomerProcessingFee({
+            subtotal,
+            otherCharges: gst - discountAmt,
+            restaurant: restaurantSettings,
+            feeResponsibility: paymentSettings?.system?.feeResponsibility,
+            isStripePayment: true,
+        });
+
+        return { subtotal, discount: discountAmt, gst, processingFee, total: subtotal - discountAmt + gst + processingFee };
     };
 
     const handleProceedToPayment = () => {
@@ -428,6 +439,7 @@ const GuestPOSPage: React.FC = () => {
                 status: 'confirmed',
                 subtotal: totals.subtotal,
                 totalAmount: totals.total,
+                processingFee: totals.processingFee,
                 discount: totals.discount,
                 couponCode: appliedCoupon?.code,
                 tax: {
@@ -485,6 +497,7 @@ const GuestPOSPage: React.FC = () => {
                 status: 'confirmed',
                 subtotal: totals.subtotal,
                 totalAmount: totals.total,
+                processingFee: totals.processingFee,
                 discount: totals.discount,
                 couponCode: appliedCoupon?.code,
                 tax: {
@@ -1228,6 +1241,12 @@ const GuestPOSPage: React.FC = () => {
                                     <Typography>Tax</Typography>
                                     <Typography>{formatCurrency(calculateTotal().gst)}</Typography>
                                 </Box>
+                                {calculateTotal().processingFee > 0 && (
+                                    <Box display="flex" justifyContent="space-between" mb={1}>
+                                        <Typography>Processing Fee</Typography>
+                                        <Typography>{formatCurrency(calculateTotal().processingFee)}</Typography>
+                                    </Box>
+                                )}
                                 <Box display="flex" justifyContent="space-between" mt={2}>
                                     <Typography variant="h6">Total</Typography>
                                     <Typography variant="h6" color="primary">{formatCurrency(calculateTotal().total)}</Typography>

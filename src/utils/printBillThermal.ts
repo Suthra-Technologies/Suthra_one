@@ -1,0 +1,116 @@
+import { buildBillEscPos } from './escposBill';
+import { buildBillStarLine } from './starlineBill';
+import { buildBillEposXml } from './eposPrintBill';
+import type { EscPosBillData, EscPosBillItem } from './escposBill';
+import { sendToThermalPrinter, sendEposPrint, isThermalPrintAvailable } from '../services/thermalPrint';
+import {
+    formatDateTime,
+    getOrderTypeLabel,
+    getPaymentMethodLabel,
+} from './orderWorkflows';
+import type { TenantPrinterSettings } from '../context/SettingsContext';
+
+/**
+ * Maps a bill/order object (the same shape PrintBillDialog fetches via ordersAPI.getBillData)
+ * into ESC/POS bytes and sends them to the configured Wi-Fi thermal printer.
+ *
+ * Returns true if it actually printed via the thermal printer; false if thermal printing
+ * isn't available/configured (caller can then fall back to the browser print path).
+ * Throws only when configured but the socket/print genuinely fails.
+ */
+export async function printBillThermal(
+    billData: any,
+    printerSettings: TenantPrinterSettings | undefined,
+    formatMoney: (n: number) => string,
+): Promise<boolean> {
+    const billing = printerSettings?.billing;
+
+    // Only proceed when running natively, printing is enabled, and a TCP printer IP is set.
+    if (
+        !isThermalPrintAvailable() ||
+        !printerSettings?.enabled ||
+        !billing ||
+        billing.type !== 'escpos-tcp' ||
+        !billing.ip
+    ) {
+        return false;
+    }
+
+    const items: EscPosBillItem[] = (billData.items || [])
+        .filter((it: any) => it.preparationStatus !== 'cancelled')
+        .map((it: any) => ({
+            name: (it.name || it.menuItem?.name || 'Item').replace(/[<>]/g, '').replace(/\s{2,}/g, ' ').trim(),
+            quantity: it.quantity ?? 1,
+            price: it.price ?? 0,
+            total: it.total ?? (it.price ?? 0) * (it.quantity ?? 1),
+        }));
+
+    const tableLabel =
+        billData.tableNumber ||
+        billData.table?.tableNumber ||
+        billData.table?.number ||
+        billData.table?.tableName ||
+        billData.table?.name ||
+        undefined;
+
+    const customerNameRaw = billData.customer?.name;
+    const customerName =
+        customerNameRaw && !/^[0-9a-fA-F]{8,24}$/.test(customerNameRaw)
+            ? customerNameRaw
+            : undefined;
+
+    const data: EscPosBillData = {
+        restaurantName: billData.restaurant?.name || 'Restaurant',
+        restaurantAddress: billData.restaurant?.address,
+        restaurantPhone: billData.restaurant?.phone,
+        gstNo: billData.restaurant?.gstNo,
+        orderNumber:
+            billData.orderNumber ||
+            (billData._id ? billData._id.slice(-8).toUpperCase() : ''),
+        dateText: formatDateTime(billData.date || billData.createdAt),
+        orderTypeLabel: getOrderTypeLabel(billData.orderType),
+        tableLabel: billData.orderType === 'dine_in' ? tableLabel : undefined,
+        tokenNumber: billData.dailyTokenNumber,
+        customerName,
+        items,
+        subtotal: billData.subtotal ?? 0,
+        taxAndFees: (billData.tax?.amount || 0) + (billData.processingFee || 0) || undefined,
+        deliveryCharge: billData.deliveryCharge || undefined,
+        serviceCharge: billData.serviceCharge?.amount || undefined,
+        discount:
+            (billData.discount?.amount || 0) +
+                (billData.couponDiscount || 0) +
+                (billData.rewardDiscount || 0) || undefined,
+        totalAmount: billData.totalAmount ?? 0,
+        paymentMethodLabel:
+            billData.paymentStatus === 'pending'
+                ? 'PENDING'
+                : getPaymentMethodLabel(
+                      billData.payments?.length
+                          ? billData.payments.map((p: any) => p.method)
+                          : billData.paymentMethod,
+                  ),
+        paid: billData.paymentStatus === 'paid',
+        qrUrl:
+            billData.restaurant?.slug && billData._id
+                ? `${typeof window !== 'undefined' ? window.location.origin : ''}/${billData.restaurant.slug}/feedback/${billData._id}`
+                : undefined,
+        qrCaption: 'Scan to Rate Us',
+        formatMoney,
+    };
+
+    // Epson TM-m30III (and other TM printers) use ePOS-Print over HTTP — works when raw 9100 is off.
+    if (billing.commandMode === 'epos-print') {
+        const xml = buildBillEposXml(data);
+        await sendEposPrint(xml, billing.ip, billing.deviceId || 'local_printer');
+        return true;
+    }
+
+    // Star printers (SP700/SP742) default to Star Line Mode; everything else uses raw ESC/POS over 9100.
+    const bytes =
+        billing.commandMode === 'star-line'
+            ? buildBillStarLine(data)
+            : buildBillEscPos(data);
+    await sendToThermalPrinter(bytes, billing.ip, billing.port || 9100);
+    return true;
+}

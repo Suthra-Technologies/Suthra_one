@@ -60,6 +60,7 @@ export interface RestaurantSettings {
     currencySymbol: string;
     taxRate: number;
     processingFee?: number;
+    processingFeeOrderValue?: number;
     logo: string;
     stamp?: string;
     country: string;
@@ -103,6 +104,11 @@ export interface SystemSettings {
         creditCard?: boolean;
         debitCard?: boolean;
     };
+    // Who absorbs the Stripe charge and the platform processing fee:
+    //  'customer' — customer pays both
+    //  'admin'    — restaurant pays both
+    //  'split'    — customer pays processing fee, restaurant pays Stripe charge (default)
+    feeResponsibility?: 'customer' | 'admin' | 'split';
 }
 
 export interface PaymentSettings {
@@ -140,6 +146,13 @@ export interface PrinterConfig {
     port: number;
     paperWidth: number;
     deviceId?: string;
+    /**
+     * Printer command language. Only relevant for type 'escpos-tcp':
+     *  - 'epos-print': Epson ePOS-Print over HTTP — for Epson TM-m30III/TM series (works when raw 9100 is off)
+     *  - 'escpos': raw ESC/POS over TCP 9100 — most generic thermal printers
+     *  - 'star-line': Star Line Mode over TCP 9100 — Star SP700/SP742/TSP
+     */
+    commandMode?: 'epos-print' | 'escpos' | 'star-line';
 }
 
 export interface TenantPrinterSettings {
@@ -209,7 +222,8 @@ const defaultSettings: SettingsState = {
         currency: 'USD',
         currencySymbol: '$',
         taxRate: 5,
-        processingFee: 3,
+        processingFee: 0,
+        processingFeeOrderValue: 0,
         city: '',
         state: '',
         zipCode: '',
@@ -286,7 +300,8 @@ const defaultSettings: SettingsState = {
             cheque: true,
             creditCard: true,
             debitCard: true,
-        }
+        },
+        feeResponsibility: 'split',
     },
     payment: {
         stripePublishableKey: '',
@@ -521,7 +536,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                         cheque: fetched.system?.posPaymentMethods?.cheque ?? defaultSettings.system.posPaymentMethods?.cheque ?? true,
                         creditCard: fetched.system?.posPaymentMethods?.creditCard ?? defaultSettings.system.posPaymentMethods?.creditCard ?? true,
                         debitCard: fetched.system?.posPaymentMethods?.debitCard ?? defaultSettings.system.posPaymentMethods?.debitCard ?? true,
-                    }
+                    },
+                    feeResponsibility: fetched.system?.feeResponsibility ?? defaultSettings.system.feeResponsibility ?? 'split',
                 },
                 payment: {
                     ...defaultSettings.payment,

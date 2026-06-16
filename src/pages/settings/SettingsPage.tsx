@@ -33,12 +33,15 @@ import {
     DialogContent,
     DialogTitle,
     Divider,
+    FormControl,
     FormControlLabel,
+    FormLabel,
     IconButton,
     InputAdornment,
     MenuItem,
     Paper,
     Radio,
+    RadioGroup,
     Stack,
     Switch,
     Tab,
@@ -86,6 +89,8 @@ import {
 import { menuAPI, paymentsAPI, printersAPI, settingsAPI, smsAPI, tenantAPI, usersAPI } from '../../services/api';
 
 import { NOTIFICATION_SOUNDS, previewSound } from '../../utils/notificationSounds';
+import { printBillThermal } from '../../utils/printBillThermal';
+import { isThermalPrintAvailable, startPrintStation, stopPrintStation } from '../../services/thermalPrint';
 import type { ValidationResult } from '../../utils/validation';
 import { getHelperText, hasError, validateAddress, validateCompanyName, validateEmail, validatePhone } from '../../utils/validation';
 
@@ -397,7 +402,8 @@ const createDefaultSettings = (): SettingsState => ({
             cheque: true,
             creditCard: true,
             debitCard: true,
-        }
+        },
+        feeResponsibility: 'split' as 'customer' | 'admin' | 'split',
     },
     payment: {
         stripePublishableKey: '',
@@ -494,7 +500,8 @@ const mergeSettingsWithDefaults = (defaults: SettingsState, partial: Partial<Set
             cheque: fetchedSystem.posPaymentMethods?.cheque ?? (defaults.system.posPaymentMethods?.cheque ?? true),
             creditCard: fetchedSystem.posPaymentMethods?.creditCard ?? (defaults.system.posPaymentMethods?.creditCard ?? true),
             debitCard: fetchedSystem.posPaymentMethods?.debitCard ?? (defaults.system.posPaymentMethods?.debitCard ?? true),
-        }
+        },
+        feeResponsibility: fetchedSystem.feeResponsibility ?? defaults.system.feeResponsibility ?? 'split',
     };
 
     // Stripe settings come from tenant API; ensure defaults filled
@@ -575,7 +582,7 @@ const mergeSettingsWithDefaults = (defaults: SettingsState, partial: Partial<Set
 
 const SettingsPage: React.FC = () => {
     const { user } = useAuth();
-    const { updateSettings: updateGlobalSettings } = useSettings();
+    const { updateSettings: updateGlobalSettings, formatCurrency } = useSettings();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const headingFontSize = { xs: '1.12rem', sm: '1.4rem', md: '2.125rem' };
@@ -1053,6 +1060,41 @@ const SettingsPage: React.FC = () => {
             return;
         }
 
+        // Wi-Fi thermal printer: print directly from the phone (the backend can't reach a LAN printer).
+        if (config.type === 'escpos-tcp') {
+            if (!isThermalPrintAvailable()) {
+                toast.error('Wi-Fi test print only works inside the installed Android app.');
+                return;
+            }
+            const sampleBill = {
+                restaurant: {
+                    name: settings.restaurant.name || 'Test Restaurant',
+                    address: settings.restaurant.address,
+                    phone: settings.restaurant.phone,
+                },
+                orderNumber: 'TEST-0001',
+                orderType: 'dine_in',
+                createdAt: new Date().toISOString(),
+                items: [
+                    { name: 'Test Item A', quantity: 2, price: 120, total: 240 },
+                    { name: 'Test Item B', quantity: 1, price: 80, total: 80 },
+                ],
+                subtotal: 320,
+                totalAmount: 320,
+                paymentStatus: 'paid',
+                paymentMethod: 'cash',
+            };
+            try {
+                toast.loading('Sending test print...', { id: 'test-print' });
+                await printBillThermal(sampleBill, { ...settings.printer, billing: config }, formatCurrency);
+                toast.success('Test print sent to printer', { id: 'test-print' });
+            } catch (error: any) {
+                console.error('Wi-Fi test print failed:', error);
+                toast.error(error?.message || 'Could not reach the printer. Check Wi-Fi and IP.', { id: 'test-print' });
+            }
+            return;
+        }
+
         try {
             toast.loading(`Sending test print to ${role}...`, { id: 'test-print' });
             const response = await printersAPI.testPrint(config);
@@ -1063,6 +1105,37 @@ const SettingsPage: React.FC = () => {
         }
     };
 
+
+    const [printStationOn, setPrintStationOn] = useState(false);
+    const handleTogglePrintStation = async (on: boolean) => {
+        try {
+            if (on) {
+                const jwt = localStorage.getItem('jwt') || '';
+                const apiBase = (import.meta.env.VITE_API_URL as string) || window.location.origin;
+                const billing = settings.printer.billing;
+                if (!billing?.ip) {
+                    toast.error('Set the Billing printer IP first.');
+                    return;
+                }
+                await startPrintStation({
+                    jwt,
+                    apiBase,
+                    printerIp: billing.ip,
+                    printerPort: billing.port || 9100,
+                    commandMode: billing.commandMode || 'epos-print',
+                    devId: billing.deviceId || 'local_printer',
+                });
+                setPrintStationOn(true);
+                toast.success('Print station started — orders will print in the background.');
+            } else {
+                await stopPrintStation();
+                setPrintStationOn(false);
+                toast.success('Print station stopped.');
+            }
+        } catch (e: any) {
+            toast.error(e?.message || 'Failed to toggle print station.');
+        }
+    };
 
     const validateRestaurantMailingSettings = (): string | null => {
         const mailing = settings.restaurant.mailing || createDefaultMailingSettings();
@@ -1966,11 +2039,22 @@ const SettingsPage: React.FC = () => {
                             <TextField
                                 fullWidth
                                 type="number"
-                                label="Processing Fee (%)"
-                                value={settings.restaurant.processingFee ?? 3}
+                                label="Processing Fee ($)"
+                                value={settings.restaurant.processingFee ?? 0}
                                 InputProps={{ readOnly: true }}
                                 disabled
-                                helperText="Set by the platform administrator. Contact support to change it."
+                                helperText="Fee charged per order-value slab. Set by the platform administrator; contact support to change it."
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <TextField
+                                fullWidth
+                                type="number"
+                                label="Order Value ($)"
+                                value={settings.restaurant.processingFeeOrderValue ?? 0}
+                                InputProps={{ readOnly: true }}
+                                disabled
+                                helperText="Slab size: the processing fee is charged for every slab of this amount. Set by the platform administrator."
                             />
                         </Grid>
 
@@ -3443,6 +3527,45 @@ const SettingsPage: React.FC = () => {
                             )}
                         </Paper>
 
+                        <Typography variant="h6" sx={{ mt: 4, mb: 1, fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
+                            Stripe Charge & Processing Fee
+                        </Typography>
+                        <Typography color="text.secondary" sx={{ mb: 3, fontWeight: 500, fontFamily: "'Outfit', sans-serif" }}>
+                            Choose who covers the Stripe charge and the platform processing fee on orders.
+                        </Typography>
+
+                        <Paper variant="outlined" sx={{ p: 3, borderRadius: 3, mb: 2 }}>
+                            <FormControl>
+                                <FormLabel sx={{ mb: 1.5, fontWeight: 700 }}>Fee responsibility</FormLabel>
+                                <RadioGroup
+                                    value={settings.system.feeResponsibility ?? 'split'}
+                                    onChange={(e) => {
+                                        const value = e.target.value as 'customer' | 'admin' | 'split';
+                                        setSettings(prev => ({
+                                            ...prev,
+                                            system: { ...prev.system, feeResponsibility: value },
+                                        }));
+                                    }}
+                                >
+                                    <FormControlLabel
+                                        value="customer"
+                                        control={<Radio />}
+                                        label="Customer pays both — Stripe charge + processing fee added to the customer's total"
+                                    />
+                                    <FormControlLabel
+                                        value="admin"
+                                        control={<Radio />}
+                                        label="Restaurant pays both — Stripe charge + processing fee absorbed by the store"
+                                    />
+                                    <FormControlLabel
+                                        value="split"
+                                        control={<Radio />}
+                                        label="Split (default) — customer pays the processing fee, restaurant pays the Stripe charge"
+                                    />
+                                </RadioGroup>
+                            </FormControl>
+                        </Paper>
+
                         <Box sx={{ mt: 4, display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' } }}>
                             <Button
                                 variant="contained"
@@ -3713,6 +3836,26 @@ const SettingsPage: React.FC = () => {
                             </Paper>
                         </Grid>
 
+                        {/* Background Print Station (mobile app only) */}
+                        {isThermalPrintAvailable() && (
+                            <Grid size={{ xs: 12 }}>
+                                <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <Box>
+                                        <Typography variant="subtitle1" fontWeight={700}>
+                                            Run as Print Station (Background)
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary">
+                                            Keeps printing KOT + bill for all orders even when the app is in the background or the screen is off. Keep this device on Wi-Fi and charged. Uses the Billing printer settings.
+                                        </Typography>
+                                    </Box>
+                                    <Switch
+                                        checked={printStationOn}
+                                        onChange={(e) => handleTogglePrintStation(e.target.checked)}
+                                    />
+                                </Paper>
+                            </Grid>
+                        )}
+
                         {/* Billing Printer Section */}
                         <Grid size={{ xs: 12, md: 6 }}>
                             <Box sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
@@ -3732,10 +3875,80 @@ const SettingsPage: React.FC = () => {
                                         >
                                             <MenuItem value="none">None (Disabled)</MenuItem>
                                             <MenuItem value="print-agent">Print Agent (Electron)</MenuItem>
+                                            <MenuItem value="escpos-tcp">Wi-Fi Thermal Printer (Mobile App)</MenuItem>
                                         </TextField>
                                     </Grid>
 
-                                    {settings.printer.billing?.type !== 'none' && (
+                                    {/* Wi-Fi / LAN thermal printer (Android app): direct TCP to printer IP:9100 */}
+                                    {settings.printer.billing?.type === 'escpos-tcp' && (
+                                        <>
+                                            <Grid size={{ xs: 12, md: 8 }}>
+                                                <TextField
+                                                    fullWidth
+                                                    label="Printer IP Address"
+                                                    placeholder="192.168.1.50"
+                                                    value={settings.printer.billing?.ip || ''}
+                                                    onChange={(e) => handlePrinterChange('billing', 'ip', e.target.value.trim())}
+                                                    helperText="The Wi-Fi/LAN IP of the printer. Power off, hold FEED, power on to print the SP700's network config."
+                                                />
+                                            </Grid>
+                                            <Grid size={{ xs: 12, md: 4 }}>
+                                                <TextField
+                                                    fullWidth
+                                                    type="number"
+                                                    label="Port"
+                                                    value={settings.printer.billing?.port ?? 9100}
+                                                    onChange={(e) => handlePrinterChange('billing', 'port', parseInt(e.target.value, 10) || 9100)}
+                                                    helperText="Usually 9100"
+                                                />
+                                            </Grid>
+                                            <Grid size={{ xs: 12, md: 6 }}>
+                                                <TextField
+                                                    select
+                                                    fullWidth
+                                                    label="Command Mode"
+                                                    value={settings.printer.billing?.commandMode || 'epos-print'}
+                                                    onChange={(e) => handlePrinterChange('billing', 'commandMode', e.target.value)}
+                                                    helperText="Epson TM-m30III = ePOS-Print. Star SP700/SP742 = Star Line. Generic = ESC/POS."
+                                                >
+                                                    <MenuItem value="epos-print">ePOS-Print (Epson TM-m30III / TM series)</MenuItem>
+                                                    <MenuItem value="escpos">ESC/POS raw (generic, port 9100)</MenuItem>
+                                                    <MenuItem value="star-line">Star Line (Star printers)</MenuItem>
+                                                </TextField>
+                                            </Grid>
+                                            <Grid size={{ xs: 12, md: 6 }}>
+                                                <TextField
+                                                    select
+                                                    fullWidth
+                                                    label="Paper Width"
+                                                    value={settings.printer.billing?.paperWidth ?? 76}
+                                                    onChange={(e) => handlePrinterChange('billing', 'paperWidth', parseInt(e.target.value, 10))}
+                                                >
+                                                    <MenuItem value={58}>58mm (2 inch)</MenuItem>
+                                                    <MenuItem value={76}>76mm / 3 inch (SP700)</MenuItem>
+                                                    <MenuItem value={80}>80mm</MenuItem>
+                                                </TextField>
+                                            </Grid>
+                                            <Grid size={{ xs: 12 }}>
+                                                <Alert severity="info">
+                                                    Wi-Fi printing runs from the installed mobile app (Android). The phone and printer must be on the same Wi-Fi network. Turn on <strong>Auto-print</strong> under General settings to print bills automatically.
+                                                </Alert>
+                                            </Grid>
+                                            <Grid size={{ xs: 12 }}>
+                                                <Button
+                                                    variant="outlined"
+                                                    fullWidth
+                                                    onClick={() => handleTestPrint('billing')}
+                                                    startIcon={<PrintIcon />}
+                                                    disabled={!settings.printer.billing?.ip}
+                                                >
+                                                    Send Test Print (from this phone)
+                                                </Button>
+                                            </Grid>
+                                        </>
+                                    )}
+
+                                    {settings.printer.billing?.type === 'print-agent' && (
                                         <>
                                             <Grid size={{ xs: 12, md: 6 }}>
                                                 <TextField
@@ -3796,10 +4009,75 @@ const SettingsPage: React.FC = () => {
                                         >
                                             <MenuItem value="none">None (Disabled)</MenuItem>
                                             <MenuItem value="print-agent">Print Agent (Electron)</MenuItem>
+                                            <MenuItem value="escpos-tcp">Wi-Fi Thermal Printer (Mobile App)</MenuItem>
                                         </TextField>
                                     </Grid>
 
-                                    {settings.printer.kitchen?.type !== 'none' && (
+                                    {/* Wi-Fi / LAN kitchen printer (Android app) */}
+                                    {settings.printer.kitchen?.type === 'escpos-tcp' && (
+                                        <>
+                                            <Grid size={{ xs: 12, md: 8 }}>
+                                                <TextField
+                                                    fullWidth
+                                                    label="Kitchen Printer IP"
+                                                    placeholder="192.168.1.60"
+                                                    value={settings.printer.kitchen?.ip || ''}
+                                                    onChange={(e) => handlePrinterChange('kitchen', 'ip', e.target.value.trim())}
+                                                    helperText="The Wi-Fi/LAN IP of the kitchen printer."
+                                                />
+                                            </Grid>
+                                            <Grid size={{ xs: 12, md: 4 }}>
+                                                <TextField
+                                                    fullWidth
+                                                    type="number"
+                                                    label="Port"
+                                                    value={settings.printer.kitchen?.port ?? 9100}
+                                                    onChange={(e) => handlePrinterChange('kitchen', 'port', parseInt(e.target.value, 10) || 9100)}
+                                                    helperText="Usually 9100"
+                                                />
+                                            </Grid>
+                                            <Grid size={{ xs: 12, md: 6 }}>
+                                                <TextField
+                                                    select
+                                                    fullWidth
+                                                    label="Command Mode"
+                                                    value={settings.printer.kitchen?.commandMode || 'epos-print'}
+                                                    onChange={(e) => handlePrinterChange('kitchen', 'commandMode', e.target.value)}
+                                                    helperText="Epson TM-m30III = ePOS-Print. Star = Star Line. Generic = ESC/POS."
+                                                >
+                                                    <MenuItem value="epos-print">ePOS-Print (Epson TM-m30III / TM series)</MenuItem>
+                                                    <MenuItem value="escpos">ESC/POS raw (generic, port 9100)</MenuItem>
+                                                    <MenuItem value="star-line">Star Line (Star printers)</MenuItem>
+                                                </TextField>
+                                            </Grid>
+                                            <Grid size={{ xs: 12, md: 6 }}>
+                                                <TextField
+                                                    select
+                                                    fullWidth
+                                                    label="Paper Width"
+                                                    value={settings.printer.kitchen?.paperWidth ?? 80}
+                                                    onChange={(e) => handlePrinterChange('kitchen', 'paperWidth', parseInt(e.target.value, 10))}
+                                                >
+                                                    <MenuItem value={58}>58mm (2 inch)</MenuItem>
+                                                    <MenuItem value={76}>76mm / 3 inch</MenuItem>
+                                                    <MenuItem value={80}>80mm</MenuItem>
+                                                </TextField>
+                                            </Grid>
+                                            <Grid size={{ xs: 12 }}>
+                                                <Button
+                                                    variant="outlined"
+                                                    fullWidth
+                                                    onClick={() => handleTestPrint('kitchen')}
+                                                    startIcon={<PrintIcon />}
+                                                    disabled={!settings.printer.kitchen?.ip}
+                                                >
+                                                    Send Test Print (from this phone)
+                                                </Button>
+                                            </Grid>
+                                        </>
+                                    )}
+
+                                    {settings.printer.kitchen?.type === 'print-agent' && (
                                         <>
                                             <Grid size={{ xs: 12, md: 6 }}>
                                                 <TextField

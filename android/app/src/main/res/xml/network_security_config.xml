@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Allow cleartext HTTP to local LAN devices: the dev backend and the thermal printer. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">192.168.0.0</domain>
+        <domain includeSubdomains="true">192.168.1.30</domain>
+        <domain includeSubdomains="true">192.168.1.56</domain>
+        <domain includeSubdomains="true">10.0.0.0</domain>
+        <domain includeSubdomains="true">localhost</domain>
+    </domain-config>
+    <!-- Fallback: permit cleartext generally for this build (local testing). -->
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
