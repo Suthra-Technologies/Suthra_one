@@ -39,6 +39,8 @@ import {
     Tab,
     TablePagination
 } from '@mui/material';
+import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import ActionHistoryList from '../../components/common/ActionHistoryList';
 import CustomInput from '../../components/common/CustomInput';
 import {
@@ -846,6 +848,7 @@ const CouponsPage: React.FC = () => {
                                             : "e.g., FESTIVAL25, DIWALI50"
                                     }
                                     inputProps={{ style: { textTransform: 'uppercase' } }}
+                                    maxLength={15}
                                 />
                             </Grid>
                             <Grid item xs={12} sm={6}>
@@ -866,6 +869,7 @@ const CouponsPage: React.FC = () => {
                                     helperText={touched.name && errors.name}
                                     fullWidth
                                     required
+                                    maxLength={20}
                                 />
                             </Grid>
                             <Grid item xs={12}>
@@ -1032,39 +1036,55 @@ const CouponsPage: React.FC = () => {
                                 />
                             </Grid>
                             <Grid item xs={12} sm={4}>
-                                <TextField
-                                    label="Valid From"
-                                    name="validFrom"
-                                    type="date"
-                                    value={formData.validFrom}
-                                    onChange={handleInputChange}
-                                    onBlur={() => {
-                                        setTouched(prev => ({ ...prev, validFrom: true }));
-                                        validateField('validFrom', formData.validFrom);
-                                    }}
-                                    fullWidth
-                                    required
-                                    InputLabelProps={{ shrink: true }}
-                                    error={touched.validFrom && Boolean(errors.validFrom)}
-                                    helperText={touched.validFrom && errors.validFrom ? errors.validFrom : ''}
-                                />
+                                <LocalizationProvider dateAdapter={AdapterDateFns}>
+                                    <DatePicker
+                                        label="Valid From"
+                                        format="MM/dd/yyyy"
+                                        value={formData.validFrom ? new Date(formData.validFrom + 'T00:00:00') : null}
+                                        onChange={(newValue: Date | null) => {
+                                            const dateStr = newValue && !isNaN(newValue.getTime()) ? format(newValue, 'yyyy-MM-dd') : '';
+                                            setFormData(prev => ({ ...prev, validFrom: dateStr }));
+                                            validateField('validFrom', dateStr);
+                                        }}
+                                        slotProps={{
+                                            textField: {
+                                                fullWidth: true,
+                                                required: true,
+                                                onBlur: () => {
+                                                    setTouched(prev => ({ ...prev, validFrom: true }));
+                                                    validateField('validFrom', formData.validFrom);
+                                                },
+                                                error: touched.validFrom && Boolean(errors.validFrom),
+                                                helperText: touched.validFrom && errors.validFrom ? errors.validFrom : ''
+                                            }
+                                        }}
+                                    />
+                                </LocalizationProvider>
                             </Grid>
                             <Grid item xs={12} sm={4}>
-                                <TextField
-                                    label="Valid To"
-                                    name="validTo"
-                                    type="date"
-                                    value={formData.validTo}
-                                    onChange={handleInputChange}
-                                    onBlur={() => {
-                                        setTouched(prev => ({ ...prev, validTo: true }));
-                                        validateField('validTo', formData.validTo, { validFrom: formData.validFrom });
-                                    }}
-                                    fullWidth
-                                    InputLabelProps={{ shrink: true }}
-                                    error={touched.validTo && Boolean(errors.validTo)}
-                                    helperText={touched.validTo && errors.validTo ? errors.validTo : ''}
-                                />
+                                <LocalizationProvider dateAdapter={AdapterDateFns}>
+                                    <DatePicker
+                                        label="Valid To"
+                                        format="MM/dd/yyyy"
+                                        value={formData.validTo ? new Date(formData.validTo + 'T00:00:00') : null}
+                                        onChange={(newValue: Date | null) => {
+                                            const dateStr = newValue && !isNaN(newValue.getTime()) ? format(newValue, 'yyyy-MM-dd') : '';
+                                            setFormData(prev => ({ ...prev, validTo: dateStr }));
+                                            validateField('validTo', dateStr, { validFrom: formData.validFrom });
+                                        }}
+                                        slotProps={{
+                                            textField: {
+                                                fullWidth: true,
+                                                onBlur: () => {
+                                                    setTouched(prev => ({ ...prev, validTo: true }));
+                                                    validateField('validTo', formData.validTo, { validFrom: formData.validFrom });
+                                                },
+                                                error: touched.validTo && Boolean(errors.validTo),
+                                                helperText: touched.validTo && errors.validTo ? errors.validTo : ''
+                                            }
+                                        }}
+                                    />
+                                </LocalizationProvider>
                             </Grid>
                             <Grid item xs={12} sm={4}>
                                 <CustomInput
@@ -1107,7 +1127,6 @@ const CouponsPage: React.FC = () => {
                     <Button
                         variant="contained"
                         onClick={handleSubmit}
-                        disabled={!formData.code || !formData.name || !formData.discountValue || !formData.validFrom}
                     >
                         {editingCoupon ? 'Update' : 'Create'}
                     </Button>

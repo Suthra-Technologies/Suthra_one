@@ -61,6 +61,7 @@ interface MenuItem {
 interface CartItem extends MenuItem {
     quantity: number;
     cartId: string; // unique id for cart item (in case of variants later)
+    spiceLevel?: string;
 }
 
 const GuestPOSPage: React.FC = () => {
@@ -94,6 +95,7 @@ const GuestPOSPage: React.FC = () => {
     const [orderType, setOrderType] = useState<'global_dine_in' | 'global_takeaway' | 'delivery' | 'online_takeaway'>('global_dine_in');
     const [tableNumber, setTableNumber] = useState<string>('');
     const [taxRate, setTaxRate] = useState<number>(5); // Default 5%, will be updated from settings
+    const [spiceSelectionItem, setSpiceSelectionItem] = useState<any>(null);
 
     // Stripe card payment
     const [stripePromise, setStripePromise] = useState<Promise<any> | null>(null);
@@ -302,16 +304,22 @@ const GuestPOSPage: React.FC = () => {
         return () => clearTimeout(timer);
     }, [cart, appliedCoupon, restaurantSettings, slug]);
 
-    const addToCart = (item: MenuItem) => {
-        const cartId = item._id;
+    const addToCart = (item: MenuItem, spiceLevel?: string) => {
+        if ((item as any).isSpiceLevelAvailable && !spiceLevel) {
+            setSpiceSelectionItem(item);
+            return;
+        }
+
+        const cartId = spiceLevel ? `${item._id}::${spiceLevel}` : item._id;
+
         setCart(prev => {
             const existing = prev.find(c => c.cartId === cartId);
             if (existing) {
                 return prev.map(c => c.cartId === cartId ? { ...c, quantity: c.quantity + 1 } : c);
             }
-            return [...prev, { ...item, quantity: 1, cartId }];
+            return [...prev, { ...item, quantity: 1, cartId, spiceLevel: spiceLevel || '' }];
         });
-        // toast.success(`${item.name} added`);
+        if (spiceLevel) setSpiceSelectionItem(null);
     };
 
     const removeFromCart = (cartId: string) => {
@@ -697,8 +705,64 @@ const GuestPOSPage: React.FC = () => {
             return cName === selectedCategory;
         });
 
+    const handleConfirmSpice = (level: string) => {
+        if (spiceSelectionItem) {
+            addToCart(spiceSelectionItem, level);
+        }
+    };
+
+    const SpiceLevelDialog = () => {
+        if (!spiceSelectionItem) return null;
+        const levels = (spiceSelectionItem as any).spiceLevels && (spiceSelectionItem as any).spiceLevels.length > 0
+            ? (spiceSelectionItem as any).spiceLevels
+            : ['mild', 'medium', 'hot', 'extra hot'];
+
+        return (
+            <Dialog
+                open={Boolean(spiceSelectionItem)}
+                onClose={() => setSpiceSelectionItem(null)}
+                PaperProps={{
+                    sx: { borderRadius: 3, width: '100%', maxWidth: 350, p: 1 }
+                }}
+            >
+                <DialogTitle sx={{ textAlign: 'center', pb: 1 }}>
+                    <Typography variant="h6" fontWeight="bold">Select Spice Level</Typography>
+                    <Typography variant="body2" color="text.secondary">{spiceSelectionItem?.name}</Typography>
+                </DialogTitle>
+                <DialogContent>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
+                        {levels.map((level: string) => (
+                            <Button
+                                key={level}
+                                variant="outlined"
+                                fullWidth
+                                onClick={() => handleConfirmSpice(level.toLowerCase())}
+                                sx={{
+                                    py: 1.5,
+                                    borderRadius: 2,
+                                    textTransform: 'capitalize',
+                                    fontWeight: 'bold',
+                                    color: 'text.primary',
+                                    borderColor: 'divider',
+                                    '&:hover': {
+                                        bgcolor: 'primary.50',
+                                        borderColor: 'primary.main',
+                                        color: 'primary.main'
+                                    }
+                                }}
+                            >
+                                {level.replace(/_/g, ' ')}
+                            </Button>
+                        ))}
+                    </Box>
+                </DialogContent>
+            </Dialog>
+        );
+    };
+
     return (
         <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+            <SpiceLevelDialog />
             {/* Header */}
             <AppBar 
                 position="sticky" 
@@ -962,8 +1026,9 @@ const GuestPOSPage: React.FC = () => {
                                                 {formatCurrency(item.price)}
                                             </Typography>
                                             {(() => {
-                                                const cartItem = cart.find(c => c.cartId === item._id);
-                                                return cartItem ? (
+                                                const cartItems = cart.filter(c => c._id === item._id);
+                                                const totalQuantity = cartItems.reduce((acc, curr) => acc + curr.quantity, 0);
+                                                return totalQuantity > 0 ? (
                                                     <Box
                                                         sx={{
                                                             display: 'flex',
@@ -978,7 +1043,7 @@ const GuestPOSPage: React.FC = () => {
                                                     >
                                                         <IconButton
                                                             size="small"
-                                                            onClick={() => removeFromCart(item._id)}
+                                                            onClick={() => removeFromCart(cartItems[0].cartId)}
                                                             sx={{ 
                                                                 color: 'white', 
                                                                 p: { xs: 0.5, sm: 0.75 },
@@ -988,11 +1053,11 @@ const GuestPOSPage: React.FC = () => {
                                                             <RemoveIcon fontSize="small" sx={{ fontSize: { xs: '0.8rem', sm: '1rem' } }} />
                                                         </IconButton>
                                                         <Typography fontWeight="bold" sx={{ minWidth: { xs: 14, sm: 20 }, textAlign: 'center', userSelect: 'none', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
-                                                            {cartItem.quantity}
+                                                            {totalQuantity}
                                                         </Typography>
                                                         <IconButton
                                                             size="small"
-                                                            onClick={() => addToCart(item)}
+                                                            onClick={() => addToCart(item, cartItems[0].spiceLevel)}
                                                             sx={{ 
                                                                 color: 'white', 
                                                                 p: { xs: 0.5, sm: 0.75 },
@@ -1098,6 +1163,11 @@ const GuestPOSPage: React.FC = () => {
                                 <Box key={item.cartId} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, p: 1, border: '1px solid #eee', borderRadius: 2 }}>
                                     <Box>
                                         <Typography variant="subtitle1" fontWeight="medium">{item.name}</Typography>
+                                        {item.spiceLevel && (
+                                            <Typography variant="caption" color="error" display="block">
+                                                Spice: {item.spiceLevel.charAt(0).toUpperCase() + item.spiceLevel.slice(1).replace(/_/g, ' ')}
+                                            </Typography>
+                                        )}
                                         <Typography variant="caption" color="text.secondary">
                                             {formatCurrency(item.price)} x {item.quantity}
                                         </Typography>
@@ -1124,7 +1194,7 @@ const GuestPOSPage: React.FC = () => {
                                         </Typography>
                                         <IconButton
                                             size="small"
-                                            onClick={() => addToCart(item)}
+                                            onClick={() => addToCart(item, item.spiceLevel)}
                                             sx={{ color: 'inherit', p: 0.5 }}
                                         >
                                             <AddIcon fontSize="small" />

@@ -56,6 +56,9 @@ import { toast } from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
 import { couponsAPI } from '../../services/api';
 import CustomInput from '../../components/common/CustomInput';
+import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { format } from 'date-fns';
 
 interface Coupon {
     _id: string;
@@ -130,6 +133,7 @@ const CouponsAdminPage: React.FC = () => {
     const [allUnsubscribeLoading, setAllUnsubscribeLoading] = useState(false);
     const [deleteTarget, setDeleteTarget] = useState<{ id: string; code: string } | null>(null);
     const [submitting, setSubmitting] = useState(false);
+    const [formSubmitted, setFormSubmitted] = useState(false);
 
     // Soft delete & tabs state
     const [tabValue, setTabValue] = useState(0);
@@ -284,6 +288,7 @@ const CouponsAdminPage: React.FC = () => {
                 comboConfig: [],
             });
         }
+        setFormSubmitted(false);
         setOpenDialog(true);
     };
 
@@ -313,6 +318,7 @@ const CouponsAdminPage: React.FC = () => {
 
     const handleSaveCoupon = async () => {
         if (submitting) return;
+        setFormSubmitted(true);
         if (
             !formData.code ||
             !formData.name ||
@@ -1289,6 +1295,9 @@ const CouponsAdminPage: React.FC = () => {
                                             onChange={(val) => setFormData({ ...formData, code: val.toUpperCase() })}
                                             placeholder="E.g. VIP2026"
                                             InputProps={{ sx: { borderRadius: 2, fontWeight: 700, fontFamily: 'monospace' } }}
+                                            maxLength={15}
+                                            error={formSubmitted && !formData.code}
+                                            helperText={formSubmitted && !formData.code ? "Coupon Code is required" : ""}
                                         />
                                     </Grid>
                                     <Grid item xs={12} sm={6}>
@@ -1302,6 +1311,9 @@ const CouponsAdminPage: React.FC = () => {
                                             onChange={(val) => setFormData({ ...formData, name: val })}
                                             placeholder="E.g. VIP Customer Reward"
                                             InputProps={{ sx: { borderRadius: 2 } }}
+                                            maxLength={20}
+                                            error={formSubmitted && !formData.name}
+                                            helperText={formSubmitted && !formData.name ? "Coupon Name is required" : ""}
                                         />
                                     </Grid>
                                 </Grid>
@@ -1520,32 +1532,50 @@ const CouponsAdminPage: React.FC = () => {
                                 </Typography>
                                 <Grid container spacing={1}>
                                     <Grid item xs={6}>
-                                        <TextField
-                                            fullWidth
-                                            label="Starts"
-                                            type="date"
-                                            size="small"
-                                            required
-                                            value={formData.validFrom}
-                                            onChange={(e) => setFormData({ ...formData, validFrom: e.target.value })}
-                                            InputLabelProps={{ shrink: true }}
-                                            InputProps={{ sx: { borderRadius: 2 } }}
-                                            inputProps={{ min: today }}
-                                        />
+                                        <LocalizationProvider dateAdapter={AdapterDateFns}>
+                                            <DatePicker
+                                                label="Starts"
+                                                format="MM/dd/yyyy"
+                                                value={formData.validFrom ? new Date(formData.validFrom + 'T00:00:00') : null}
+                                                onChange={(newValue: Date | null) => {
+                                                    const dateStr = newValue && !isNaN(newValue.getTime()) ? format(newValue, 'yyyy-MM-dd') : '';
+                                                    setFormData(prev => ({ ...prev, validFrom: dateStr }));
+                                                }}
+                                                slotProps={{
+                                                    textField: {
+                                                        fullWidth: true,
+                                                        required: true,
+                                                        size: "small",
+                                                        InputProps: { sx: { borderRadius: 2 } },
+                                                        error: formSubmitted && !formData.validFrom,
+                                                        helperText: formSubmitted && !formData.validFrom ? "Start date is required" : ""
+                                                    }
+                                                }}
+                                            />
+                                        </LocalizationProvider>
                                     </Grid>
                                     <Grid item xs={6}>
-                                        <TextField
-                                            fullWidth
-                                            label="Ends"
-                                            type="date"
-                                            size="small"
-                                            required
-                                            value={formData.validTo}
-                                            onChange={(e) => setFormData({ ...formData, validTo: e.target.value })}
-                                            InputLabelProps={{ shrink: true }}
-                                            InputProps={{ sx: { borderRadius: 2 } }}
-                                            inputProps={{ min: formData.validFrom || today }}
-                                        />
+                                        <LocalizationProvider dateAdapter={AdapterDateFns}>
+                                            <DatePicker
+                                                label="Ends"
+                                                format="MM/dd/yyyy"
+                                                value={formData.validTo ? new Date(formData.validTo + 'T00:00:00') : null}
+                                                onChange={(newValue: Date | null) => {
+                                                    const dateStr = newValue && !isNaN(newValue.getTime()) ? format(newValue, 'yyyy-MM-dd') : '';
+                                                    setFormData(prev => ({ ...prev, validTo: dateStr }));
+                                                }}
+                                                slotProps={{
+                                                    textField: {
+                                                        fullWidth: true,
+                                                        required: true,
+                                                        size: "small",
+                                                        InputProps: { sx: { borderRadius: 2 } },
+                                                        error: formSubmitted && (!formData.validTo || (formData.validFrom && formData.validTo && new Date(formData.validFrom) > new Date(formData.validTo))),
+                                                        helperText: formSubmitted && !formData.validTo ? "End date is required" : (formSubmitted && formData.validFrom && formData.validTo && new Date(formData.validFrom) > new Date(formData.validTo) ? "Must be after start date" : "")
+                                                    }
+                                                }}
+                                            />
+                                        </LocalizationProvider>
                                     </Grid>
                                     <Grid item xs={6}>
                                         <CustomInput
