@@ -2960,7 +2960,7 @@ const POSPage: React.FC = () => {
                                                     </Box>
                                                     <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                                                         {group.selectionType === 'single' ? 'Choose 1' : 
-                                                            group.minSelection ? `Choose at least ${group.minSelection}` : 'Optional'}
+                                                            (group.minSelection || group.required) ? `Choose at least ${group.minSelection || 1}` : 'Optional'}
                                                     </Typography>
                                                 </Box>
 

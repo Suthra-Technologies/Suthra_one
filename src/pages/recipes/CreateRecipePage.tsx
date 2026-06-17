@@ -21,6 +21,7 @@ import {
     useMediaQuery,
     alpha,
     MenuItem,
+    CircularProgress,
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -58,6 +59,7 @@ const CreateRecipePage: React.FC = () => {
     };
 
     const [loading, setLoading] = useState(false);
+    const [initialLoading, setInitialLoading] = useState(true);
     const [menuItems, setMenuItems] = useState<any[]>([]);
     const [inventoryItems, setInventoryItems] = useState<any[]>([]);
     const [trays, setTrays] = useState<any[]>([]);
@@ -94,6 +96,7 @@ const CreateRecipePage: React.FC = () => {
                     }));
                 }
             }
+            setInitialLoading(false);
             setLoading(false);
         };
         init();
@@ -187,7 +190,7 @@ const CreateRecipePage: React.FC = () => {
                 ingredients: ingredients,
                 preparationTime: recipe.preparationTime || 0,
                 instructions: recipe.instructions || '',
-                isActive: recipe.isActive,
+                isActive: recipe.isActive === false || recipe.isActive === 'false' ? false : true,
                 actionHistory: recipe.actionHistory || [],
             };
 
@@ -253,6 +256,8 @@ const CreateRecipePage: React.FC = () => {
                 })),
             };
 
+            console.log('[DEBUG Frontend] Recipe Payload:', payload);
+
             if (isEditMode) {
                 await recipesAPI.update(id!, payload);
                 toast.success('Recipe updated successfully');
@@ -267,6 +272,14 @@ const CreateRecipePage: React.FC = () => {
             setLoading(false);
         }
     };
+
+    if (initialLoading) {
+        return (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+                <CircularProgress />
+            </Box>
+        );
+    }
 
     return (
         <Box sx={{ p: { xs: 1.5, sm: 3 }, pt: { xs: 1, sm: 3 } }}>
@@ -381,11 +394,18 @@ const CreateRecipePage: React.FC = () => {
                                 <Stack spacing={1.5}>
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <Typography variant="caption" fontWeight="bold" color="text.secondary">Ingredient #{index + 1}</Typography>
-                                        {formData.ingredients.length > 1 && (
-                                            <IconButton size="small" color="error" onClick={() => removeIngredient(index)} sx={{ p: 0.5 }}>
-                                                <DeleteIcon fontSize="small" />
-                                            </IconButton>
-                                        )}
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            {ingredient.inventoryItem && (
+                                                <Typography variant="caption" fontWeight="bold" color="primary">
+                                                    Cost: {formatCurrency((ingredient.quantity || 0) * ((ingredient.inventoryItem as any).costPrice || 0))}
+                                                </Typography>
+                                            )}
+                                            {formData.ingredients.length > 1 && (
+                                                <IconButton size="small" color="error" onClick={() => removeIngredient(index)} sx={{ p: 0.5 }}>
+                                                    <DeleteIcon fontSize="small" />
+                                                </IconButton>
+                                            )}
+                                        </Box>
                                     </Box>
                                     
                                     <Autocomplete
@@ -443,6 +463,7 @@ const CreateRecipePage: React.FC = () => {
                                     <TableCell>Inventory Item <Box component="span" sx={{ color: 'error.main' }}>*</Box></TableCell>
                                     <TableCell width={150}>Quantity <Box component="span" sx={{ color: 'error.main' }}>*</Box></TableCell>
                                     <TableCell width={180}>Unit</TableCell>
+                                    <TableCell width={100}>Est. Cost</TableCell>
                                     <TableCell width={50}></TableCell>
                                 </TableRow>
                             </TableHead>
@@ -490,6 +511,11 @@ const CreateRecipePage: React.FC = () => {
                                                     </MenuItem>
                                                 ))}
                                             </TextField>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Typography variant="body2" fontWeight="bold" color="primary">
+                                                {ingredient.inventoryItem ? formatCurrency((ingredient.quantity || 0) * ((ingredient.inventoryItem as any).costPrice || 0)) : formatCurrency(0)}
+                                            </Typography>
                                         </TableCell>
                                         <TableCell>
                                             {formData.ingredients.length > 1 && (

@@ -73,7 +73,7 @@ import { toast } from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import ActionHistoryList from '../../components/common/ActionHistoryList';
 import { useSettings } from '../../context/SettingsContext';
-import { menuAPI, traysAPI, uploadAPI } from '../../services/api';
+import { menuAPI, traysAPI, uploadAPI, recipesAPI, modifierTemplatesAPI } from '../../services/api';
 import TraysPage from './TraysPage';
 import RecipesPage from '../recipes/RecipesPage';
 import type { Category, Subcategory, IMenuItem } from './types';
@@ -135,6 +135,9 @@ const MenuPage: React.FC = () => {
     const [deletedMenuItems, setDeletedMenuItems] = useState<IMenuItem[]>([]);
     const [deletedCategories, setDeletedCategories] = useState<Category[]>([]);
     const [deletedSubcategories, setDeletedSubcategories] = useState<Subcategory[]>([]);
+    const [deletedTrays, setDeletedTrays] = useState<any[]>([]);
+    const [deletedRecipes, setDeletedRecipes] = useState<any[]>([]);
+    const [deletedAddOns, setDeletedAddOns] = useState<any[]>([]);
     const [deletedLoading, setDeletedLoading] = useState(false);
 
     // Dialogs State
@@ -226,21 +229,34 @@ const MenuPage: React.FC = () => {
     const fetchDeletedData = async () => {
         try {
             setDeletedLoading(true);
-            const [menuRes, categoriesRes, subcategoriesRes] = await Promise.all([
+            const [menuRes, categoriesRes, subcategoriesRes, traysRes, recipesRes, addOnsRes] = await Promise.all([
                 menuAPI.getAll({ isDeleted: true, limit: 200 }),
                 menuAPI.getAllCategories({ isDeleted: true }),
-                menuAPI.getAllSubcategories(undefined, true)
+                menuAPI.getAllSubcategories(undefined, true),
+                traysAPI.getAll({ isDeleted: true }),
+                recipesAPI.getAll({ isDeleted: true }),
+                modifierTemplatesAPI.getAll({ isDeleted: true })
             ]);
             
             const data = menuRes.data;
             const items = Array.isArray(data) ? data : (data?.items || []);
             setDeletedMenuItems(items);
 
-            const catData = categoriesRes.data;
-            setDeletedCategories(Array.isArray(catData) ? catData : []);
+            console.log('[DEBUG] Deleted Data fetched:', {
+                traysResData: traysRes.data,
+                recipesResData: recipesRes.data,
+                addOnsResData: addOnsRes.data,
+                isTraysArray: Array.isArray(traysRes.data)
+            });
 
-            const subcatData = subcategoriesRes.data;
+            const catData = categoriesRes.data?.data || categoriesRes.data;
+            const subcatData = subcategoriesRes.data?.data || subcategoriesRes.data;
+            
+            setDeletedCategories(Array.isArray(catData) ? catData : []);
             setDeletedSubcategories(Array.isArray(subcatData) ? subcatData : []);
+            setDeletedTrays(Array.isArray(traysRes.data) ? traysRes.data : []);
+            setDeletedRecipes(Array.isArray(recipesRes.data?.data) ? recipesRes.data.data : (Array.isArray(recipesRes.data) ? recipesRes.data : []));
+            setDeletedAddOns(Array.isArray(addOnsRes.data) ? addOnsRes.data : []);
         } catch (error) {
             console.error('Error fetching deleted data:', error);
         } finally {
@@ -759,6 +775,51 @@ const MenuPage: React.FC = () => {
         } catch (error: any) {
             console.error('Error restoring menu item:', error);
             toast.error(error.response?.data?.message || 'Failed to restore menu item');
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleRestoreTray = async (item: any) => {
+        if (isProcessing) return;
+        try {
+            setIsProcessing(true);
+            await traysAPI.restore(item._id);
+            toast.success(`Tray "${item.name}" restored successfully`);
+            fetchDeletedData();
+        } catch (error: any) {
+            console.error('Error restoring tray:', error);
+            toast.error(error.response?.data?.message || 'Failed to restore tray');
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleRestoreRecipe = async (item: any) => {
+        if (isProcessing) return;
+        try {
+            setIsProcessing(true);
+            await recipesAPI.restore(item._id);
+            toast.success(`Recipe "${item.name}" restored successfully`);
+            fetchDeletedData();
+        } catch (error: any) {
+            console.error('Error restoring recipe:', error);
+            toast.error(error.response?.data?.message || 'Failed to restore recipe');
+        } finally {
+            setIsProcessing(false);
+        }
+    };
+
+    const handleRestoreAddOn = async (item: any) => {
+        if (isProcessing) return;
+        try {
+            setIsProcessing(true);
+            await menuAPI.restoreTemplate(item._id);
+            toast.success(`Add-on group "${item.name}" restored successfully`);
+            fetchDeletedData();
+        } catch (error: any) {
+            console.error('Error restoring add-on group:', error);
+            toast.error(error.response?.data?.message || 'Failed to restore add-on group');
         } finally {
             setIsProcessing(false);
         }
@@ -1697,7 +1758,7 @@ const MenuPage: React.FC = () => {
                         <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
                             <CircularProgress />
                         </Box>
-                    ) : deletedMenuItems.length === 0 && deletedCategories.length === 0 && deletedSubcategories.length === 0 ? (
+                    ) : deletedMenuItems.length === 0 && deletedCategories.length === 0 && deletedSubcategories.length === 0 && deletedTrays.length === 0 && deletedRecipes.length === 0 && deletedAddOns.length === 0 ? (
                         <Box sx={{
                             display: 'flex',
                             flexDirection: 'column',
@@ -1824,6 +1885,106 @@ const MenuPage: React.FC = () => {
                                                         <TableCell align="right">
                                                             <Tooltip title="Restore">
                                                                 <IconButton color="success" onClick={() => handleRestoreMenuItem(item)} disabled={isProcessing}>
+                                                                    <RestoreIcon />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                </Box>
+                            )}
+
+                            {deletedTrays.length > 0 && (
+                                <Box>
+                                    <Typography variant="subtitle1" fontWeight="bold" mb={1}>Deleted Trays</Typography>
+                                    <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 2 }}>
+                                        <Table>
+                                            <TableHead>
+                                                <TableRow sx={{ bgcolor: 'error.50' }}>
+                                                    <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
+                                                    <TableCell sx={{ fontWeight: 'bold' }}>Deleted At</TableCell>
+                                                    <TableCell sx={{ fontWeight: 'bold' }} align="right">Actions</TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {deletedTrays.map((item: any) => (
+                                                    <TableRow key={item._id} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
+                                                        <TableCell><Typography fontWeight="bold">{item.name}</Typography></TableCell>
+                                                        <TableCell>{item.deletedAt ? new Date(item.deletedAt).toLocaleDateString() : '—'}</TableCell>
+                                                        <TableCell align="right">
+                                                            <Tooltip title="Restore">
+                                                                <IconButton color="success" onClick={() => handleRestoreTray(item)} disabled={isProcessing}>
+                                                                    <RestoreIcon />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                </Box>
+                            )}
+
+                            {deletedRecipes.length > 0 && (
+                                <Box>
+                                    <Typography variant="subtitle1" fontWeight="bold" mb={1}>Deleted Recipes</Typography>
+                                    <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 2 }}>
+                                        <Table>
+                                            <TableHead>
+                                                <TableRow sx={{ bgcolor: 'error.50' }}>
+                                                    <TableCell sx={{ fontWeight: 'bold' }}>Menu Item</TableCell>
+                                                    <TableCell sx={{ fontWeight: 'bold' }}>Serving Size</TableCell>
+                                                    <TableCell sx={{ fontWeight: 'bold' }}>Deleted At</TableCell>
+                                                    <TableCell sx={{ fontWeight: 'bold' }} align="right">Actions</TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {deletedRecipes.map((item: any) => (
+                                                    <TableRow key={item._id} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
+                                                        <TableCell><Typography fontWeight="bold">{item.menuItem?.name || 'Unknown'}</Typography></TableCell>
+                                                        <TableCell>{item.servingSize}</TableCell>
+                                                        <TableCell>{item.deletedAt ? new Date(item.deletedAt).toLocaleDateString() : '—'}</TableCell>
+                                                        <TableCell align="right">
+                                                            <Tooltip title="Restore">
+                                                                <IconButton color="success" onClick={() => handleRestoreRecipe(item)} disabled={isProcessing}>
+                                                                    <RestoreIcon />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                </Box>
+                            )}
+
+                            {deletedAddOns.length > 0 && (
+                                <Box>
+                                    <Typography variant="subtitle1" fontWeight="bold" mb={1}>Deleted Add-on Groups</Typography>
+                                    <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 2 }}>
+                                        <Table>
+                                            <TableHead>
+                                                <TableRow sx={{ bgcolor: 'error.50' }}>
+                                                    <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
+                                                    <TableCell sx={{ fontWeight: 'bold' }}>Modifiers</TableCell>
+                                                    <TableCell sx={{ fontWeight: 'bold' }}>Deleted At</TableCell>
+                                                    <TableCell sx={{ fontWeight: 'bold' }} align="right">Actions</TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {deletedAddOns.map((item: any) => (
+                                                    <TableRow key={item._id} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
+                                                        <TableCell><Typography fontWeight="bold">{item.name}</Typography></TableCell>
+                                                        <TableCell>{item.modifiers?.length || 0} items</TableCell>
+                                                        <TableCell>{item.deletedAt ? new Date(item.deletedAt).toLocaleDateString() : '—'}</TableCell>
+                                                        <TableCell align="right">
+                                                            <Tooltip title="Restore">
+                                                                <IconButton color="success" onClick={() => handleRestoreAddOn(item)} disabled={isProcessing}>
                                                                     <RestoreIcon />
                                                                 </IconButton>
                                                             </Tooltip>
