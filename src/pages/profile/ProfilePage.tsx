@@ -170,7 +170,7 @@ const ProfilePage: React.FC = () => {
     // ensure phone input contains only digits and at most 10 characters
     const handlePhoneInput = (raw: string) => {
         const digitsOnly = raw.replace(/\D+/g, '');
-        const limited = digitsOnly.slice(0, 15);
+        const limited = digitsOnly.slice(0, 10);
         handleProfileChange('phone', limited);
     };
 
@@ -207,7 +207,7 @@ const ProfilePage: React.FC = () => {
                 } else if (cleaned.length < 10) {
                     validation = { isValid: true };
                 } else {
-                    validation = validatePhone(value, profileData.dialCode);
+                    validation = validatePhone(value);
                 }
                 break;
             default:
@@ -247,7 +247,7 @@ const ProfilePage: React.FC = () => {
             firstName: validateName(profileData.firstName, 'First name'),
             lastName: validateName(profileData.lastName, 'Last name'),
             email: validateEmail(profileData.email),
-            phone: validatePhone(profileData.phone, profileData.dialCode),
+            phone: validatePhone(profileData.phone),
         };
 
         setProfileErrors(newErrors);
@@ -658,7 +658,7 @@ const ProfilePage: React.FC = () => {
                                         <PhoneInput
                                             value={profileData.phone}
                                             onChange={(val) => {
-                                                const clean = val.replace(/\D/g, '').slice(0, 15);
+                                                const clean = val.replace(/\D/g, '').slice(0, 10);
                                                 handleProfileChange('phone', clean);
                                             }}
                                             dialCode={profileData.dialCode || '1'}

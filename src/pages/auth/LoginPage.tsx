@@ -205,19 +205,11 @@ const LoginPage: React.FC = () => {
             }
           } else {
             console.log('LoginPage: Staff/Admin detected. isSubdomain:', isSubdomain);
-            let defaultPage = '/dashboard';
-            
-            if (userRole === 'kitchen_staff' || userRole === 'kitchen') {
-              defaultPage = '/kot';
-            } else if (userRole === 'delivery' || userRole === 'delivery_driver' || userRole === 'driver') {
-              defaultPage = '/orders';
-            }
-            
             if (isSubdomain) {
-              console.log(`LoginPage: Navigating to ${defaultPage}`);
-              setTimeout(() => navigate(defaultPage, { replace: true }), 100);
+              console.log('LoginPage: Navigating to /dashboard');
+              setTimeout(() => navigate('/dashboard', { replace: true }), 100);
             } else {
-              const url = getTenantUrl(targetSlug, defaultPage, result.token);
+              const url = getTenantUrl(targetSlug, '/dashboard', result.token);
               console.log('LoginPage: Redirecting to subdomain URL:', url);
               window.location.href = url;
             }

@@ -5,7 +5,7 @@ import { Visibility, VisibilityOff } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
 import { validateEmail, validatePhone, validateName, validatePassword, getHelperText, hasError } from '../utils/validation';
 import type { ValidationResult } from '../utils/validation';
-import { Select, MenuItem } from '@mui/material';
+import { InputAdornment, Select, MenuItem } from '@mui/material';
 
 
 const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5006'}/api`;
@@ -48,7 +48,7 @@ const CustomerRegisterPage: React.FC = () => {
     // Special rule for phone input
     if (name === "phone") {
       const numeric = value.replace(/\D/g, ""); // keep only digits
-      if (numeric.length > 15) return; // stop typing beyond 15 digits
+      if (numeric.length > 10) return; // stop typing beyond 10 digits
       setForm({ ...form, [name]: numeric });
 
       if (errors[name]) {
@@ -80,7 +80,7 @@ const CustomerRegisterPage: React.FC = () => {
         validation = validateEmail(value);
         break;
       case 'phone':
-        validation = validatePhone(value, form.countryCode);
+        validation = validatePhone(value);
         break;
       case 'password':
         validation = validatePassword(value);
@@ -97,7 +97,7 @@ const CustomerRegisterPage: React.FC = () => {
       firstName: validateName(form.firstName, 'First name'),
       lastName: validateName(form.lastName, 'Last name'),
       email: validateEmail(form.email),
-      phone: validatePhone(form.phone, form.countryCode),
+      phone: validatePhone(form.phone),
       password: validatePassword(form.password),
     };
 

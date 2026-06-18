@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "396692808593",
+    "project_id": "nexzen-pos",
+    "storage_bucket": "nexzen-pos.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:396692808593:android:6d38d2df6b995a7283f030",
+        "android_client_info": {
+          "package_name": "com.nexzen.pos"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDwwmkrrRzcW822JwY47bVTtruPP3i8rSc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

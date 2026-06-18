@@ -83,23 +83,19 @@ function cartReducer(state: CartState, action: any): CartState {
   switch (action.type) {
     case CART_ACTIONS.ADD_ITEM: {
       const { item, quantity = 1, customizations = [], spiceLevel } = action.payload;
-      
-      const effectiveSpiceLevel = spiceLevel !== undefined ? spiceLevel : (item.isSpiceLevelAvailable ? state.customerPreferences.spiceLevel : '');
-      const effectiveCustomizations = customizations || [];
-
       const existingItemIndex = state.items.findIndex(
         cartItem =>
           cartItem.id === item._id &&
-          JSON.stringify(cartItem.customizations || []) === JSON.stringify(effectiveCustomizations) &&
-          cartItem.spiceLevel === effectiveSpiceLevel
+          JSON.stringify(cartItem.customizations) === JSON.stringify(customizations) &&
+          cartItem.spiceLevel === spiceLevel
       );
       let updatedItems;
       if (existingItemIndex >= 0) {
         updatedItems = state.items.map((cartItem, index) => {
           if (index === existingItemIndex) {
             const nextQty = cartItem.quantity + quantity;
-            const itemCustomizations = cartItem.customizations ?? [];
-            const basePrice = cartItem.price + itemCustomizations.reduce((sum: number, c: any) => sum + (c.price || 0), 0);
+            const customizations = cartItem.customizations ?? [];
+            const basePrice = cartItem.price + customizations.reduce((sum: number, c: any) => sum + (c.price || 0), 0);
             return { 
               ...cartItem, 
               quantity: nextQty,
@@ -116,11 +112,11 @@ function cartReducer(state: CartState, action: any): CartState {
           image: item.image,
           category: item.category,
           quantity,
-          customizations: effectiveCustomizations,
-          spiceLevel: effectiveSpiceLevel,
+          customizations,
+          spiceLevel: spiceLevel !== undefined ? spiceLevel : (item.isSpiceLevelAvailable ? state.customerPreferences.spiceLevel : ''),
           isAlcohol: item.isAlcohol,
           categoryName: typeof item.category === 'string' ? item.category : item.category?.name,
-          itemTotal: (item.price + effectiveCustomizations.reduce((sum: number, c: any) => sum + (c.price || 0), 0)) * quantity,
+          itemTotal: (item.price + customizations.reduce((sum: number, c: any) => sum + (c.price || 0), 0)) * quantity,
         };
         updatedItems = [...state.items, newItem];
       }

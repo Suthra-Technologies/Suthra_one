@@ -43,7 +43,6 @@ import CustomerSupportPage from '../pages/support/CustomerSupportPage';
 import TablesPage from '../pages/tables/TablesPage';
 import UsersPage from '../pages/users/UsersPage';
 import CustomerRegisterPage from '../pages/auth/CustomerRegisterPage';
-import ResetPasswordPage from '../pages/auth/ResetPasswordPage';
 import FeedbackPage from '../pages/public/FeedbackPage';
 import CheckoutPage from '../pages/CheckoutPage';
 import TableBookingPage from '../pages/customer/TableBookingPage';
@@ -71,7 +70,6 @@ export const TenantRoutes = () => (
   <>
     <Route index element={<GuestPOSPage />} />
     <Route path="register" element={<CustomerRegisterPage />} />
-    <Route path="reset-password" element={<ResetPasswordPage />} />
     <Route path="feedback/:orderId" element={<FeedbackPage />} />
 
     {/* ─── Customer Routes (No Sidebar, Single Page Layout) ─── */}

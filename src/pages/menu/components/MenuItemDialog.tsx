@@ -300,9 +300,9 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
         }
 
         const parsedPrice = parseFloat(menuItemForm.price as any);
-        if (isNaN(parsedPrice) || parsedPrice <= 0) {
+        if (isNaN(parsedPrice) || parsedPrice < 0) {
             setMenuItemTouched(prev => ({ ...prev, price: true }));
-            toast.error('Enter a valid base price greater than 0');
+            toast.error('Enter a valid base price');
             return;
         }
 
@@ -445,11 +445,8 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                         <TextField
                                             label="Item Name"
                                             value={menuItemForm.name}
-                                            onChange={(e) => setMenuItemForm({ ...menuItemForm, name: e.target.value.trimStart().replace(/[^a-zA-Z0-9\s]/g, '') })}
-                                            onBlur={() => {
-                                                setMenuItemForm({ ...menuItemForm, name: menuItemForm.name.trim() });
-                                                setMenuItemTouched({ ...menuItemTouched, name: true });
-                                            }}
+                                            onChange={(e) => setMenuItemForm({ ...menuItemForm, name: e.target.value.replace(/[^a-zA-Z0-9\s]/g, '') })}
+                                            onBlur={() => setMenuItemTouched({ ...menuItemTouched, name: true })}
                                             error={menuItemTouched.name && !menuItemForm.name.trim()}
                                             helperText={menuItemTouched.name && !menuItemForm.name.trim() ? 'Item name is required' : ''}
                                             fullWidth
@@ -549,14 +546,10 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                             label="Standard Price (Per Item) ($)"
                                             type="number"
                                             value={menuItemForm.price}
-                                            onKeyDown={(e) => {
-                                                if (['+', '-', 'e', 'E'].includes(e.key)) e.preventDefault();
-                                            }}
                                             onChange={(e) => {
                                                 const val = e.target.value;
                                                 const parts = val.split('.');
                                                 if (parts.length > 1 && parts[1].length > 3) return;
-                                                if (val.length > 8) return;
                                                 if (val === '' || parseFloat(val) >= 0) setMenuItemForm({ ...menuItemForm, price: val });
                                             }}
                                             onBlur={() => setMenuItemTouched({ ...menuItemTouched, price: true })}
@@ -569,43 +562,29 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
 
                                         {menuItemForm.isCateringAvailable && (
                                             <Box sx={{ p: isMobile ? 1 : 2, bgcolor: 'background.paper', borderRadius: 2, border: '1px solid', borderColor: 'divider' }}>
-                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                                                    <FormControl fullWidth size="small">
-                                                        <InputLabel>Primary Tray for Display</InputLabel>
-                                                        <Select
-                                                            value={menuItemForm.baseTray}
-                                                            label="Primary Tray for Display"
-                                                            onChange={(e) => setMenuItemForm({ ...menuItemForm, baseTray: e.target.value })}
-                                                        >
-                                                            <MenuItem value=""><em>None</em></MenuItem>
-                                                            {trays.map((t) => (
-                                                                <MenuItem key={t._id} value={t._id}>{t.name}</MenuItem>
-                                                            ))}
-                                                        </Select>
-                                                    </FormControl>
-                                                    {menuItemForm.baseTray && (
-                                                        <IconButton size="small" onClick={() => setMenuItemForm({ ...menuItemForm, baseTray: '' })} color="error" title="Clear Primary Tray">
-                                                            <CloseIcon fontSize="small" />
-                                                        </IconButton>
-                                                    )}
-                                                </Box>
-                                                <Typography variant="caption" fontWeight="bold" color="secondary" sx={{ mb: 1, display: 'block', textTransform: 'uppercase' }}>
+                                                <FormControl fullWidth size="small" sx={{ mb: 1 }}>
+                                                    <InputLabel>Primary Tray for Display</InputLabel>
+                                                    <Select
+                                                        value={menuItemForm.baseTray}
+                                                        label="Primary Tray for Display"
+                                                        onChange={(e) => setMenuItemForm({ ...menuItemForm, baseTray: e.target.value })}
+                                                    >
+                                                        {trays.map((t) => (
+                                                            <MenuItem key={t._id} value={t._id}>{t.name}</MenuItem>
+                                                        ))}
+                                                    </Select>
+                                                </FormControl>
+                                                <Typography variant="caption" fontWeight="bold" color="secondary" sx={{ mb: 0.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', textTransform: 'uppercase' }}>
                                                     Catering Tray Pricing
                                                 </Typography>
-                                                <Box sx={{ display: 'flex', px: 1, pb: 0.5, mb: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
-                                                    <Typography variant="caption" sx={{ flex: 1, fontWeight: 'bold', color: 'text.secondary' }}>Tray Name</Typography>
-                                                    <Typography variant="caption" sx={{ width: 70, fontWeight: 'bold', color: 'text.secondary', textAlign: 'center' }}>Serves</Typography>
-                                                    <Typography variant="caption" sx={{ width: 90, fontWeight: 'bold', color: 'text.secondary', textAlign: 'center', ml: 1 }}>Price ($)</Typography>
-                                                </Box>
-                                                <Stack spacing={1}>
+                                                <Stack spacing={0.5}>
                                                     {trays.map((t) => {
                                                         const option = menuItemForm.trayOptions.find(o => o.tray === t._id);
                                                         return (
-                                                            <Stack key={t._id} direction="row" alignItems="center" spacing={1} sx={{ px: 1 }}>
-                                                                <Typography variant="caption" sx={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</Typography>
+                                                            <Stack key={t._id} direction="row" alignItems="center" spacing={1} sx={{ mb: 0.25 }}>
+                                                                <Box sx={{ flex: 1, minWidth: 0 }}><Typography variant="caption" noWrap>{t.name}</Typography></Box>
                                                                 <TextField
-                                                                    size="small" sx={{ width: 70, '& .MuiInputBase-root': { fontSize: '0.8rem', height: 32 } }}
-                                                                    placeholder="Qty" type="number"
+                                                                    size="small" sx={{ width: 60 }} label="Serves" type="number"
                                                                     value={option?.servingSize || menuItemForm.servingSize || 1}
                                                                     onChange={(e) => {
                                                                         const val = parseInt(e.target.value);
@@ -618,8 +597,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                                                     }}
                                                                 />
                                                                 <TextField
-                                                                    size="small" sx={{ width: 90, '& .MuiInputBase-root': { fontSize: '0.8rem', height: 32 } }}
-                                                                    placeholder="0.00" type="number"
+                                                                    size="small" sx={{ width: 70 }} label="Price" type="number"
                                                                     value={option?.price || ''}
                                                                     onChange={(e) => {
                                                                         const valStr = e.target.value;
@@ -885,19 +863,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                                 <Select
                                                     value={menuItemForm.displayOption || 'normal'}
                                                     label="Display Options"
-                                                    onChange={(e) => {
-                                                        const displayOption = e.target.value as any;
-                                                        let availableDays = menuItemForm.availableDays || [];
-                                                        if (displayOption === 'todays_special') {
-                                                            const todayIndex = new Date().getDay();
-                                                            const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-                                                            const today = days[todayIndex];
-                                                            if (!availableDays.includes(today)) {
-                                                                availableDays = [...availableDays, today];
-                                                            }
-                                                        }
-                                                        setMenuItemForm({ ...menuItemForm, displayOption, availableDays });
-                                                    }}
+                                                    onChange={(e) => setMenuItemForm({ ...menuItemForm, displayOption: e.target.value as any })}
                                                 >
                                                     <MenuItem value="normal">Normal</MenuItem>
                                                     <MenuItem value="weekly_special">Weekly Special</MenuItem>

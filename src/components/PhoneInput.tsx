@@ -238,7 +238,6 @@ interface PhoneInputProps {
 }
 
 import { useSettings } from '../context/SettingsContext';
-import { getPhoneMaxLength } from '../utils/inputSanitizers';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -261,15 +260,6 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
 }) => {
     const { defaultDialCode } = useSettings();
     const effectiveDialCode = dialCode || defaultDialCode || '1';
-
-    const formatDisplayValue = (val: string, code: string) => {
-        if (code !== '1') return val;
-        const cleaned = ('' + val).replace(/\D/g, '');
-        const match = cleaned.match(/^(\d{0,3})(\d{0,3})(\d{0,4})$/);
-        if (!match) return val;
-        if (!match[2]) return match[1];
-        return `(${match[1]}) ${match[2]}${match[3] ? '-' + match[3] : ''}`;
-    };
 
     const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
     const [search, setSearch] = useState('');
@@ -321,12 +311,8 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
             <TextField
                 fullWidth={fullWidth}
                 label={label}
-                value={formatDisplayValue(value, effectiveDialCode)}
-                onChange={(e) => {
-                    const limit = getPhoneMaxLength(effectiveDialCode);
-                    const cleaned = e.target.value.replace(/\D/g, '');
-                    onChange(cleaned.slice(0, limit));
-                }}
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
                 required={required}
                 error={error}
                 helperText={helperText}
@@ -336,7 +322,7 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
                 onBlur={onBlur}
                 inputProps={{
                     inputMode: 'tel',
-                    maxLength: 20,
+                    maxLength: 10,
                     ...inputProps,
                 }}
                 InputLabelProps={{

@@ -32,7 +32,6 @@ import { customerRegister } from '../../services/authService';
 import GooglePlacesAutocomplete from '../common/GooglePlacesAutocomplete';
 import PhoneInput from '../PhoneInput';
 import { useSettings } from '../../context/SettingsContext';
-import { validatePhone } from '../../utils/validation';
 
 const steps = ['Basic Info', 'Delivery Address', 'Food Preferences'];
 
@@ -135,9 +134,8 @@ const CustomerRegistration: React.FC<CustomerRegistrationProps> = ({ onClose, on
       setError('Passwords do not match');
       return;
     }
-    const phoneValidation = validatePhone(formData.phone, formData.dialCode);
-    if (!phoneValidation.isValid) {
-      setError(phoneValidation.message || 'Invalid phone number');
+    if (formData.phone.length !== 10) {
+      setError('Phone number must be exactly 10 digits');
       return;
     }
     setLoading(true);

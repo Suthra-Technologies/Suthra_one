@@ -53,8 +53,6 @@ import GooglePlacesAutocomplete from '../components/common/GooglePlacesAutocompl
 import { useAuth } from '../context/AuthContext';
 import { useGuestCart } from '../context/GuestCartContext';
 import { useSettings } from '../context/SettingsContext';
-import { getPhoneMaxLength } from '../utils/inputSanitizers';
-import { calcCustomerProcessingFee } from '../utils/processingFee';
 import { useActiveTenant } from '../hooks/useActiveTenant';
 import { loadStripe } from '@stripe/stripe-js';
 import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js';
@@ -241,6 +239,7 @@ const CheckoutPage: React.FC = () => {
   const theme = useTheme();
 
   const taxRate = settings?.restaurant?.taxRate ?? 0;
+  const processingFeeRate = settings?.restaurant?.processingFee ?? 0;
 
   const [activeStep, setActiveStep] = useState<number>(0);
   const [authMethod, setAuthMethod] = useState<'register' | 'login' | 'guest'>('register');
@@ -276,21 +275,6 @@ const CheckoutPage: React.FC = () => {
   const [showDistanceDialog, setShowDistanceDialog] = useState<boolean>(false);
   const [placingOrder, setPlacingOrder] = useState<boolean>(false);
   const [placedOrder, setPlacedOrder] = useState<any>(null);
-
-  // Processing fee charged to the customer = platform fee (+ Stripe commission when the
-  // store's fee responsibility is "customer" and the order is paid by card/QR).
-  const processingFeeAmount = React.useMemo(() => {
-    const taxAmount = cart.totalAmount * (taxRate / 100);
-    const deliveryPart = orderType === 'delivery' ? deliveryFee + (Number(deliveryInfo.tip) || 0) : 0;
-    const isStripePayment = paymentMethod === 'card' || paymentMethod === 'qr';
-    return calcCustomerProcessingFee({
-      subtotal: cart.totalAmount,
-      otherCharges: taxAmount + deliveryPart,
-      restaurant: settings?.restaurant,
-      feeResponsibility: settings?.system?.feeResponsibility,
-      isStripePayment,
-    }).total;
-  }, [cart.totalAmount, taxRate, orderType, deliveryFee, deliveryInfo.tip, paymentMethod, settings?.restaurant, settings?.system?.feeResponsibility]);
 
   // Stripe card payment state
   const stripeSubmitRef = React.useRef<(() => void) | null>(null);
@@ -598,7 +582,7 @@ const CheckoutPage: React.FC = () => {
       setPlacingOrder(true);
       setError('');
       const isPaidMethod = paymentMethod === 'card' || paymentMethod === 'qr';
-      const calculatedProcessingFee = processingFeeAmount;
+      const calculatedProcessingFee = (cart.totalAmount * processingFeeRate) / 100;
 
       const orderData = {
         items: cart.items.map(item => ({
@@ -1076,8 +1060,7 @@ const CheckoutPage: React.FC = () => {
               label="Phone Number *"
               value={deliveryInfo.phone}
               onChange={(e) => {
-                const limit = getPhoneMaxLength('1'); // Checkout assumes 1 for now or we use 1
-                const value = e.target.value.replace(/\D/g, '').slice(0, limit);
+                const value = e.target.value.replace(/\D/g, '').slice(0, 10);
                 setDeliveryInfo((prev) => ({ ...prev, phone: value }));
               }}
               placeholder="10-digit mobile number"
@@ -1317,8 +1300,7 @@ const CheckoutPage: React.FC = () => {
                 label="Phone Number *"
                 value={deliveryInfo.phone}
                 onChange={(e) => {
-                  const limit = getPhoneMaxLength('1');
-                  const value = e.target.value.replace(/\D/g, '').slice(0, limit);
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 10);
                   setDeliveryInfo((prev) => ({ ...prev, phone: value }));
                 }}
                 placeholder="10-digit mobile number"
@@ -1487,7 +1469,7 @@ const CheckoutPage: React.FC = () => {
             Amount Due: ${(
               cart.totalAmount +
               (orderType === 'delivery' && activeStep >= 2 ? deliveryFee + (Number(deliveryInfo.tip) || 0) : 0) +
-              processingFeeAmount +
+              ((cart.totalAmount * processingFeeRate) / 100) +
               cart.totalAmount * (taxRate / 100)
             ).toFixed(2)}
           </Typography>
@@ -1500,7 +1482,7 @@ const CheckoutPage: React.FC = () => {
             amount={
               cart.totalAmount +
               (orderType === 'delivery' ? deliveryFee + (Number(deliveryInfo.tip) || 0) : 0) +
-              processingFeeAmount +
+              ((cart.totalAmount * processingFeeRate) / 100) +
               cart.totalAmount * (taxRate / 100)
             }
             subtotal={cart.totalAmount}
@@ -1695,10 +1677,10 @@ const CheckoutPage: React.FC = () => {
                   <Typography>Tax </Typography>
                   <Typography>${(cart.totalAmount * (taxRate / 100)).toFixed(2)}</Typography>
                 </Box>
-                {processingFeeAmount > 0 && (
+                {processingFeeRate > 0 && (
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                     <Typography>Processing Fee</Typography>
-                    <Typography>${processingFeeAmount.toFixed(2)}</Typography>
+                    <Typography>${((cart.totalAmount * processingFeeRate) / 100).toFixed(2)}</Typography>
                   </Box>
                 )}
                 <Divider sx={{ mb: 2 }} />
@@ -1714,7 +1696,7 @@ const CheckoutPage: React.FC = () => {
                     ${(
                       cart.totalAmount +
                       (orderType === 'delivery' && activeStep >= 2 ? deliveryFee + (Number(deliveryInfo.tip) || 0) : 0) +
-                      processingFeeAmount +
+                      ((cart.totalAmount * processingFeeRate) / 100) +
                       cart.totalAmount * (taxRate / 100)
                     ).toFixed(2)}
                   </Typography>

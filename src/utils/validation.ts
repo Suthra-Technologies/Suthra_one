@@ -11,7 +11,7 @@ export const validateEmail = (email: string): ValidationResult => {
         return { isValid: false, message: 'Email is required' };
     }
 
-    const emailRegex = /^[a-zA-Z0-9._+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email.trim())) {
         return { isValid: false, message: 'Please enter a valid email address' };
     }
@@ -19,10 +19,8 @@ export const validateEmail = (email: string): ValidationResult => {
     return { isValid: true };
 };
 
-// Phone number validation
-import { isValidPhoneNumber } from 'libphonenumber-js';
-
-export const validatePhone = (phone: string, countryCode?: string): ValidationResult => {
+// Phone number validation (Indian format)
+export const validatePhone = (phone: string): ValidationResult => {
     if (!phone || phone.trim() === '') {
         return { isValid: false, message: 'Phone number is required' };
     }
@@ -30,16 +28,11 @@ export const validatePhone = (phone: string, countryCode?: string): ValidationRe
     // Keep only digits
     const digits = phone.replace(/\D/g, '');
 
-    const code = countryCode ? countryCode.replace(/\D/g, '') : '1';
-    const fullNumber = `+${code}${digits}`;
-    try {
-        if (!isValidPhoneNumber(fullNumber)) {
-            return { isValid: false, message: 'Please enter a valid phone number for the selected country' };
-        }
-        return { isValid: true };
-    } catch (e) {
-        return { isValid: false, message: 'Invalid phone number format' };
+    if (digits.length !== 10) {
+        return { isValid: false, message: 'Please enter exactly 10 digits' };
     }
+
+    return { isValid: true };
 };
 
 // Name validation (first name, last name, etc.)
@@ -75,17 +68,24 @@ export const validatePassword = (password: string): ValidationResult => {
         return { isValid: false, message: 'Password must be at least 8 characters long' };
     }
 
-    if (password.length > 20) {
-        return { isValid: false, message: 'Password must not exceed 20 characters' };
+    if (password.length > 128) {
+        return { isValid: false, message: 'Password must not exceed 128 characters' };
     }
 
-    const hasUpper = /[A-Z]/.test(password);
-    const hasLower = /[a-z]/.test(password);
-    const hasNumber = /\d/.test(password);
-    const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+    if (!/[A-Z]/.test(password)) {
+        return { isValid: false, message: 'Password must contain at least one uppercase letter' };
+    }
 
-    if (!hasUpper || !hasLower || !hasNumber || !hasSpecial) {
-        return { isValid: false, message: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character' };
+    if (!/[a-z]/.test(password)) {
+        return { isValid: false, message: 'Password must contain at least one lowercase letter' };
+    }
+
+    if (!/\d/.test(password)) {
+        return { isValid: false, message: 'Password must contain at least one number' };
+    }
+
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+        return { isValid: false, message: 'Password must contain at least one special character' };
     }
 
     return { isValid: true };

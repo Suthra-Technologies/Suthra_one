@@ -52,8 +52,6 @@ import {
 import Grid from '@mui/material/Grid2';
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
-import { useSettings } from '../../context/SettingsContext';
-import { printKotThermal } from '../../utils/kotThermal';
 import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
 import { ordersAPI } from '../../services/api';
@@ -90,7 +88,6 @@ interface Order {
 }
 
 const KitchenInterface: React.FC = () => {
-  const { settings } = useSettings();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -117,15 +114,6 @@ const KitchenInterface: React.FC = () => {
   const [refundMethod, setRefundMethod] = useState<'original' | 'cash'>('original');
 
   const handlePrintKOT = async (order: Order) => {
-    // Native Android Wi-Fi kitchen printer (ESC/POS or ePOS over the LAN). Fastest, no dialog.
-    try {
-      const printed = await printKotThermal(order, settings.printer);
-      if (printed) return; // Sent to kitchen printer, skip all other paths.
-    } catch (err) {
-      console.error('[KOT ThermalPrint] Wi-Fi kitchen print failed, falling back:', err);
-      toast.error('Could not reach the kitchen printer. Check Wi-Fi and the kitchen printer IP.');
-    }
-
     // Try direct printing via local print agent first (QZ Tray style fast path)
     try {
       const controller = new AbortController();

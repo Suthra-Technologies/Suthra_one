@@ -57,7 +57,7 @@ const DisputeDetails: React.FC = () => {
       setResolution(prev => ({ ...prev, amount: res.data.disputedAmount }));
     } catch (error) {
       toast.error('Failed to load dispute details');
-      navigate(window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')));
+      navigate('/disputes');
     } finally {
       setLoading(false);
     }
@@ -105,7 +105,7 @@ const DisputeDetails: React.FC = () => {
   return (
     <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
       <Stack direction="row" spacing={2} alignItems="center" mb={4}>
-        <Button onClick={() => navigate(window.location.pathname.substring(0, window.location.pathname.lastIndexOf('/')))}>Back to List</Button>
+        <Button onClick={() => navigate('/disputes')}>Back to List</Button>
         <Typography variant="h4" fontWeight="800">Dispute #{dispute.orderNumber}</Typography>
       </Stack>
 

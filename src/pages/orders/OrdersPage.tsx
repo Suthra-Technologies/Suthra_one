@@ -157,6 +157,37 @@ const OrdersPage = () => {
     }
   }, [page, statusFilter, typeFilter, dateFilter, posActiveTab]);
 
+  // Handle deep linking for order selection
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const openOrderId = searchParams.get('open');
+    if (openOrderId) {
+      (async () => {
+        try {
+          const response = await ordersAPI.getOne(openOrderId);
+          if (response.data) {
+            setSelectedOrder(response.data);
+            if (isCustomer) {
+              setTrackingDialogOpen(true);
+            } else {
+              setDetailsDialogOpen(true);
+            }
+            
+            // Clean up the URL query parameter so it doesn't reopen on subsequent renders/navigation
+            const cleanSearch = window.location.search
+              .replace(/open=[^&]+&?/, '')
+              .replace(/&$/, '');
+            const newSearch = cleanSearch === '?' || cleanSearch === '' ? '' : cleanSearch;
+            const newUrl = window.location.pathname + newSearch;
+            window.history.replaceState({}, '', newUrl);
+          }
+        } catch (error) {
+          console.error('Error fetching order for deep link:', error);
+        }
+      })();
+    }
+  }, [window.location.search, isCustomer]);
+
   // Real-time synchronization
   useEffect(() => {
     const handleRealtimeUpdate = (e?: any) => {

@@ -9,7 +9,6 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 
 import { getSoundSrc } from '../utils/notificationSounds';
 import { useSettings } from './SettingsContext';
-import { autoPrintOrder } from '../utils/autoPrintOrder';
 
 interface Notification {
     id: number | string;
@@ -47,19 +46,11 @@ export const useNotifications = () => useContext(NotificationContext);
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { user } = useAuth();
-    const { settings, formatCurrency } = useSettings();
+    const { settings } = useSettings();
     const [notifications, setNotifications] = useState<Notification[]>([]);
 
     const soundTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const audioRef        = useRef<HTMLAudioElement | null>(null);
-
-    // Hold the latest printer settings + currency formatter in a ref so the socket event
-    // handlers can read fresh values WITHOUT being recreated. Recreating handleNewOrder would
-    // tear down and rebuild the socket connection (causing missed orders), so we must keep it stable.
-    const printCtxRef = useRef({ printer: settings.printer, autoPrint: settings.system?.autoPrint, formatCurrency });
-    useEffect(() => {
-        printCtxRef.current = { printer: settings.printer, autoPrint: settings.system?.autoPrint, formatCurrency };
-    }, [settings.printer, settings.system?.autoPrint, formatCurrency]);
 
     const playNotificationSound = useCallback(() => {
         // Stop and discard any currently playing audio
@@ -293,21 +284,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             data: data,
         };
         setNotifications(prev => [newNotif, ...prev].slice(0, 50));
-
-        // Auto-print KOT + bill on the restaurant device for ANY new order (POS, customer
-        // portal, web, guest/QR). Only staff devices reach here, so customer phones won't print.
-        // autoPrintOrder dedupes by id, so POS orders already printed directly won't double-print.
-        // Reads from printCtxRef so this handler stays stable and doesn't recreate the socket.
-        const { printer, autoPrint, formatCurrency: fmt } = printCtxRef.current;
-        if (isStaff && autoPrint) {
-            const newOrderId = data.order?._id || data.orderId || data._id;
-            if (newOrderId) {
-                autoPrintOrder(newOrderId, printer, !!autoPrint, fmt)
-                    .catch(() => {
-                        toast.error('Auto-print failed. Check the printer Wi-Fi connection.');
-                    });
-            }
-        }
 
     }, [user, playNotificationSound, showNotification]);
 
@@ -571,12 +547,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             // Usually disconnecting is safer to prevent duplicate handlers if remounted.
             socketService.disconnect();
         };
-        // IMPORTANT: depend ONLY on user identity. The handler callbacks are intentionally left
-        // out — they change whenever settings change, and including them would tear down and
-        // rebuild the socket on every settings update, dropping incoming orders (missed auto-print).
-        // The handlers read fresh values via refs/closures, so a stable socket is correct here.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [user?.sub, user?.role]); // Re-connect only if identity changes
+    }, [user?.sub, user?.role, handleNewOrder, handleOrderStatusUpdate, handleNewCateringOrder, handleCateringOrderStatusUpdate, handleCateringOrderUpdate]); // Re-connect only if identity changes
 
     const clearNotifications = useCallback(() => setNotifications([]), []);
     const markAsRead = useCallback((id: string | number) => {

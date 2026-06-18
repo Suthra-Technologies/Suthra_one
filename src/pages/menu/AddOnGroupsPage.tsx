@@ -382,9 +382,8 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
                                                     type="number"
                                                     placeholder="Price"
                                                     value={option.price}
-                                                    onChange={(e) => handleOptionChange(index, 'price', Math.max(0, parseFloat(e.target.value) || 0))}
+                                                    onChange={(e) => handleOptionChange(index, 'price', parseFloat(e.target.value) || 0)}
                                                     sx={{ flex: 1 }}
-                                                    InputProps={{ inputProps: { min: 0, step: 0.01 } }}
                                                 />
                                                 <Tooltip title="Set as default">
                                                     <Switch
@@ -466,9 +465,9 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
                                                         type="number"
                                                         label="Qty"
                                                         value={option.consumptionQty ?? 1}
-                                                        onChange={(e) => handleOptionChange(index, 'consumptionQty', Math.max(1, parseInt(e.target.value, 10) || 1))}
+                                                        onChange={(e) => handleOptionChange(index, 'consumptionQty', parseFloat(e.target.value) || 1)}
                                                         sx={{ width: 80 }}
-                                                        InputProps={{ inputProps: { min: 1, step: 1 } }}
+                                                        InputProps={{ inputProps: { min: 0.01, step: 0.1 } }}
                                                     />
                                                 )}
                                             </Box>
