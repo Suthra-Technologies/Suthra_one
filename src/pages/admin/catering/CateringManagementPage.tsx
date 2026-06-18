@@ -90,6 +90,27 @@ import { useAuth } from '../../../context/AuthContext';
 import { downloadFromUrl } from '../../../utils/fileDownload';
 import { apiBaseUrl } from '../../../services/api';
 
+const formatDisplayPhone = (phone?: string) => {
+    if (!phone) return '';
+    let p = phone.trim();
+    // remove duplicate +1 combinations
+    p = p.replace(/^(\+1\s*){2,}/, '+1 ');
+    p = p.replace(/^(\+1)(\+1)+/, '+1');
+    p = p.replace(/^\+1\s*1(\d{10})$/, '+1 $1');
+    p = p.replace(/^1(\d{10})$/, '+1 $1');
+    p = p.replace(/^\+1(\d{10})$/, '+1 $1');
+
+    // format as +1 (555) 123-4567 if it's a 10 digit number with/without +1
+    const match = p.match(/^\+1\s*(\d{3})(\d{3})(\d{4})$/);
+    if (match) return `+1 (${match[1]}) ${match[2]}-${match[3]}`;
+    
+    const matchNoCode = p.match(/^(\d{3})(\d{3})(\d{4})$/);
+    if (matchNoCode) return `(${matchNoCode[1]}) ${matchNoCode[2]}-${matchNoCode[3]}`;
+    
+    return p;
+};
+
+
 const CateringManagementPage = () => {
     const { formatCurrency, settings, refreshSettings } = useSettings();
     const availablePaymentMethods = useMemo(() => [
@@ -297,16 +318,16 @@ const CateringManagementPage = () => {
         "Business Meeting"
     ]).filter(o => o !== 'Others' && o !== 'Other'));
     
-    const [reminderOccasionsList, setReminderOccasionsList] = useState<string[]>(settings?.restaurant?.reminderOccasions || []);
+    const [reminderOccasionsList, setReminderOccasionsList] = useState<string[]>((settings?.restaurant as any)?.reminderOccasions || []);
 
     useEffect(() => {
         if (settings?.restaurant?.occasions) {
             setOccasionsList(settings.restaurant.occasions.filter(o => o !== 'Others' && o !== 'Other'));
         }
-        if (settings?.restaurant?.reminderOccasions) {
-            setReminderOccasionsList(settings.restaurant.reminderOccasions);
+        if ((settings?.restaurant as any)?.reminderOccasions) {
+            setReminderOccasionsList((settings.restaurant as any).reminderOccasions);
         }
-    }, [settings?.restaurant?.occasions, settings?.restaurant?.reminderOccasions]);
+    }, [settings?.restaurant?.occasions, (settings?.restaurant as any)?.reminderOccasions]);
     
     const [occasionInputValue, setOccasionInputValue] = useState('');
     const [isOccasionDialogOpen, setIsOccasionDialogOpen] = useState(false);
@@ -413,7 +434,7 @@ const CateringManagementPage = () => {
                 }
             }));
         } else {
-            setEditData(prev => ({
+            setEditData((prev: any) => ({
                 ...prev,
                 guests: {
                     ...prev.guests,
@@ -550,6 +571,29 @@ const CateringManagementPage = () => {
         const defaultMethod = availablePaymentMethods[0]?.value || 'cash';
         newPayments.push({ amount: remainingBalance, method: defaultMethod, timestamp: new Date(), notes: '' });
         setEditData({ ...editData, payments: newPayments });
+    };
+
+    const handleAddItemsToEdit = (finalizedItems: any[]) => {
+        recalculateEditTotals([...editData.items, ...finalizedItems]);
+    };
+
+    const handleUpdateEditItemQty = (index: number, newQty: number) => {
+        const newItems = [...editData.items];
+        newItems[index].quantity = newQty;
+        newItems[index].total = newItems[index].unitPrice * newQty;
+        recalculateEditTotals(newItems);
+    };
+
+    const handleUpdateEditItemPrice = (index: number, newPrice: number) => {
+        const newItems = [...editData.items];
+        newItems[index].unitPrice = newPrice;
+        newItems[index].total = newPrice * newItems[index].quantity;
+        recalculateEditTotals(newItems);
+    };
+
+    const handleRemoveItemFromEdit = (index: number) => {
+        const newItems = editData.items.filter((_: any, i: number) => i !== index);
+        recalculateEditTotals(newItems);
     };
 
     const handleRemovePaymentFromEdit = (index: number) => {
@@ -1494,6 +1538,7 @@ const CateringManagementPage = () => {
                 extCustomer: null,
                 extName: '',
                 extContact: '',
+                extDialCode: settings?.restaurant?.dialCode || '+1',
                 extEmail: '',
                 extNotes: '',
                 intUser: null,
@@ -1581,6 +1626,7 @@ const CateringManagementPage = () => {
                             extCustomer: null,
                             extName: '',
                             extContact: '',
+                            extDialCode: settings?.restaurant?.dialCode || '+1',
                             extEmail: '',
                             extNotes: '',
                             intUser: null,
@@ -1638,7 +1684,7 @@ const CateringManagementPage = () => {
                                             {order.customerName}
                                         </Typography>
                                         <Typography variant="caption" color="textSecondary">
-                                            {order.customerPhone}
+                                            {formatDisplayPhone(order.customerPhone)}
                                         </Typography>
                                     </Box>
                                     {getStatusChip(order.status)}
@@ -1754,7 +1800,7 @@ const CateringManagementPage = () => {
                                     <TableCell>
                                         <Box>
                                             <Typography variant="body2" fontWeight="bold">{order.customerName}</Typography>
-                                            <Typography variant="caption" color="textSecondary">{order.customerPhone}</Typography>
+                                            <Typography variant="caption" color="textSecondary">{formatDisplayPhone(order.customerPhone)}</Typography>
                                         </Box>
                                     </TableCell>
                                     <TableCell>{new Date(order.requiredDate).toLocaleString()}</TableCell>
@@ -1992,9 +2038,9 @@ const CateringManagementPage = () => {
                                         <Box>
                                             <Grid container spacing={2}>
                                                 <Grid item xs={12} sm={6}>
-                                                    <Typography variant="subtitle2">Customer Info</Typography>
+                                                    <Typography variant="subtitle2" color="text.secondary">Customer Info</Typography>
                                                     <Typography>{selectedOrder.customerName}</Typography>
-                                                    <Typography>{selectedOrder.customerPhone}</Typography>
+                                                    <Typography>{formatDisplayPhone(selectedOrder.customerPhone)}</Typography>
                                                     {selectedOrder.occasionDate && (
                                                         <Typography variant="body2" sx={{ mt: 1 }}>
                                                             <strong>Occasion Date:</strong> {new Date(selectedOrder.occasionDate).toLocaleDateString()}

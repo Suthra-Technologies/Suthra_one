@@ -53,6 +53,7 @@ import GooglePlacesAutocomplete from '../components/common/GooglePlacesAutocompl
 import { useAuth } from '../context/AuthContext';
 import { useGuestCart } from '../context/GuestCartContext';
 import { useSettings } from '../context/SettingsContext';
+import { getPhoneMaxLength } from '../utils/inputSanitizers';
 import { calcCustomerProcessingFee } from '../utils/processingFee';
 import { useActiveTenant } from '../hooks/useActiveTenant';
 import { loadStripe } from '@stripe/stripe-js';
@@ -1075,7 +1076,8 @@ const CheckoutPage: React.FC = () => {
               label="Phone Number *"
               value={deliveryInfo.phone}
               onChange={(e) => {
-                const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                const limit = getPhoneMaxLength('1'); // Checkout assumes 1 for now or we use 1
+                const value = e.target.value.replace(/\D/g, '').slice(0, limit);
                 setDeliveryInfo((prev) => ({ ...prev, phone: value }));
               }}
               placeholder="10-digit mobile number"
@@ -1315,7 +1317,8 @@ const CheckoutPage: React.FC = () => {
                 label="Phone Number *"
                 value={deliveryInfo.phone}
                 onChange={(e) => {
-                  const value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  const limit = getPhoneMaxLength('1');
+                  const value = e.target.value.replace(/\D/g, '').slice(0, limit);
                   setDeliveryInfo((prev) => ({ ...prev, phone: value }));
                 }}
                 placeholder="10-digit mobile number"

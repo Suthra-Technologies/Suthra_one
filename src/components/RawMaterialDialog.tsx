@@ -27,6 +27,7 @@ import {
 import { inventoryAPI, vendorsAPI } from '../services/api';
 import { toast } from 'react-hot-toast';
 import { validateRequired, validateSKU, validateNumber, validateEmail, validatePhone, getHelperText, hasError } from '../utils/validation';
+import { getPhoneMaxLength } from '../utils/inputSanitizers';
 import type { ValidationResult } from '../utils/validation';
 import { useSettings, getUnitsForCountry } from '../context/SettingsContext';
 import CustomInput from './common/CustomInput';
@@ -188,8 +189,8 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
     const handleSupplierChange = React.useCallback((field: string, value: string) => {
         let finalValue = value;
         if (field === 'contact') {
-            // Only allow numbers and limit to 10 digits
-            finalValue = value.replace(/\D/g, '').slice(0, 10);
+            const limit = getPhoneMaxLength('1');
+            finalValue = value.replace(/\D/g, '').slice(0, limit);
         }
         setFormData((prev) => ({
             ...prev,
@@ -574,7 +575,6 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
                                 onBlur={() => handleBlur('supplier_contact')}
                                 error={hasError(errors.supplier_contact)}
                                 helperText={getHelperText(errors.supplier_contact) || "Auto-filled from vendor (editable)"}
-                                inputProps={{ maxLength: 10 }}
                                 disabled={!selectedVendor}
                             />
                         </Grid>

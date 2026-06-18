@@ -1583,7 +1583,7 @@ const UsersPage = () => {
                           label="Phone Number"
                           value={userForm.phone}
                           onChange={(val) => {
-                            const clean = val.replace(/\D/g, '').slice(0, 10);
+                            const clean = val.replace(/\D/g, '').slice(0, 15);
                             setUserForm({ ...userForm, phone: clean });
                             if (userErrors.phone) setUserErrors(prev => ({ ...prev, phone: { isValid: true } }));
                           }}

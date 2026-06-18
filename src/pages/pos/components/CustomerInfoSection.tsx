@@ -26,6 +26,7 @@ import {
 import React, { useEffect } from 'react';
 import AddressAutocomplete from '../../../components/AddressAutocomplete';
 import PhoneInput from '../../../components/PhoneInput';
+import { validatePhone } from '../../../utils/validation';
 
 interface CustomerInfoSectionProps {
     customerName: string;
@@ -302,21 +303,17 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                         fullWidth
                         value={customerPhone}
                         onChange={(value) => {
-                            const cleaned = value.replace(/\D/g, '').slice(0, 10);
+                            const cleaned = value.replace(/\D/g, '').slice(0, 15);
                             setCustomerPhone(cleaned);
                             if (customerPhoneTouched && cleaned) {
-                                setCustomerPhoneError('');
+                                const validation = validatePhone(cleaned, customerDialCode);
+                                setCustomerPhoneError(validation.isValid ? '' : validation.message || '');
                             }
                         }}
                         onBlur={() => {
                             setCustomerPhoneTouched(true);
-                            if (!customerPhone) {
-                                setCustomerPhoneError('Phone number is required');
-                            } else if (customerPhone.length !== 10) {
-                                setCustomerPhoneError('Phone number must be exactly 10 digits');
-                            } else {
-                                setCustomerPhoneError('');
-                            }
+                            const validation = validatePhone(customerPhone, customerDialCode);
+                            setCustomerPhoneError(validation.isValid ? '' : validation.message || '');
                         }}
                         error={customerPhoneTouched && !!customerPhoneError}
                         helperText={suggestedPhone ? (
@@ -327,7 +324,7 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                     variant="outlined"
                                     sx={{ height: 20, px: 1, minWidth: 0, textTransform: 'none', fontSize: '0.65rem' }}
                                     onClick={() => {
-                                        const clean = suggestedPhone.replace(/\D/g, '').slice(-10);
+                                        const clean = suggestedPhone.replace(/\D/g, '').slice(0, 15);
                                         setCustomerPhone(clean);
                                     }}
                                 >

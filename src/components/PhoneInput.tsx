@@ -238,6 +238,7 @@ interface PhoneInputProps {
 }
 
 import { useSettings } from '../context/SettingsContext';
+import { getPhoneMaxLength } from '../utils/inputSanitizers';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -321,7 +322,11 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
                 fullWidth={fullWidth}
                 label={label}
                 value={formatDisplayValue(value, effectiveDialCode)}
-                onChange={(e) => onChange(e.target.value)}
+                onChange={(e) => {
+                    const limit = getPhoneMaxLength(effectiveDialCode);
+                    const cleaned = e.target.value.replace(/\D/g, '');
+                    onChange(cleaned.slice(0, limit));
+                }}
                 required={required}
                 error={error}
                 helperText={helperText}
@@ -331,7 +336,7 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
                 onBlur={onBlur}
                 inputProps={{
                     inputMode: 'tel',
-                    maxLength: 14,
+                    maxLength: 20,
                     ...inputProps,
                 }}
                 InputLabelProps={{

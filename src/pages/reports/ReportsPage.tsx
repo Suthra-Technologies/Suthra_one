@@ -895,7 +895,7 @@ const ReportsPage: React.FC = () => {
                                                         minAngle={3}
                                                         paddingAngle={2}
                                                         labelLine={itemCount > 1}
-                                                        label={({ cx, cy, midAngle, outerRadius, percent }) => {
+                                                        label={({ cx, cy, midAngle = 0, outerRadius = 0, percent = 0 }: any) => {
                                                             if (!percent) return null;
 
                                                             const value = Math.round(percent * 100);
@@ -1435,7 +1435,7 @@ const ReportsPage: React.FC = () => {
                                                             paddingAngle={0}
                                                             isAnimationActive={false}
                                                             labelLine={true}
-                                                            label={({ cx, cy, midAngle, outerRadius, percent }) => {
+                                                            label={({ cx, cy, midAngle = 0, outerRadius = 0, percent = 0 }: any) => {
                                                                 if (!percent) return null;
                                                                 const value = Math.round(percent * 100);
                                                                 if (value < 2) return null;
@@ -2395,7 +2395,7 @@ const ReportsPage: React.FC = () => {
                                                     paddingAngle={3}
                                                     isAnimationActive={false}
 
-                                                    label={isMobile ? false : ({ percent, cx, cy, midAngle, outerRadius }) => {
+                                                    label={isMobile ? false : ({ percent = 0, cx, cy, midAngle = 0, outerRadius = 0 }: any) => {
                                                         if (!percent) return null;
 
                                                         const value = Math.round(percent * 100);
@@ -3382,8 +3382,8 @@ const ReportsPage: React.FC = () => {
                                         innerRadius={isMobile ? 45 : 0}
                                         outerRadius={isMobile ? 75 : 120}
                                         stroke="none"
-                                        label={isMobile ? false : ({ percent }) =>
-                                            `${(percent * 100).toFixed(0)}%`
+                                        label={isMobile ? false : ({ percent = 0 }: any) =>
+                                            `${((percent || 0) * 100).toFixed(0)}%`
                                         }
                                         isAnimationActive={false}
                                     >
@@ -3703,8 +3703,8 @@ const ReportsPage: React.FC = () => {
                                         innerRadius={isMobile ? 45 : 70}
                                         outerRadius={isMobile ? 75 : 120}
                                         stroke="none"
-                                        label={isMobile ? false : ({ percent }) =>
-                                            `${(percent * 100).toFixed(0)}%`
+                                        label={isMobile ? false : ({ percent = 0 }: any) =>
+                                            `${((percent || 0) * 100).toFixed(0)}%`
                                         }
                                         isAnimationActive={false}
                                     >

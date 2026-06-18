@@ -30,12 +30,60 @@ export const sanitizeCode = (value: string): string => {
   return value.replace(/[^a-zA-Z0-9]/g, '');
 };
 
-export const sanitizePhone = (value: string): string => {
-  if (!value) return '';
-  // Allow only digits, max 10 digits
-  const sanitized = value.replace(/\D/g, '').slice(0, 10);
-  return sanitized;
+export const getPhoneMaxLength = (dialCode?: string): number => {
+  const code = dialCode?.replace(/\D/g, '') || '1';
+  return (code === '1' || code === '91') ? 10 : 15;
 };
+
+export const sanitizePhone = (value: string, dialCode?: string): string => {
+  if (!value) return '';
+  let sanitized = value.replace(/\D/g, '');
+  const code = dialCode?.replace(/\D/g, '') || '1';
+  
+  if (code === '1' && sanitized.startsWith('1') && sanitized.length > 10) {
+      sanitized = sanitized.substring(1);
+  }
+  
+  const limit = getPhoneMaxLength(dialCode);
+  return sanitized.slice(0, limit);
+};
+
+export const formatPhoneForInput = (value: string, dialCode?: string): string => {
+  let cleaned = value.replace(/\D/g, '');
+  const code = dialCode?.replace(/\D/g, '') || '1';
+  if (code === '1') {
+      if (cleaned.startsWith('1') && cleaned.length > 10) {
+          cleaned = cleaned.substring(1);
+      }
+      cleaned = cleaned.slice(0, 10);
+      if (cleaned.length === 0) return '';
+      if (cleaned.length <= 3) return `(${cleaned}`;
+      if (cleaned.length <= 6) return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3)}`;
+      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6, 10)}`;
+  }
+  return cleaned.slice(0, 15);
+};
+
+export const formatDisplayPhone = (phone?: string): string => {
+    if (!phone) return '';
+    let p = phone.trim();
+    // remove duplicate +1 combinations
+    p = p.replace(/^(\+1\s*){2,}/, '+1 ');
+    p = p.replace(/^(\+1)(\+1)+/, '+1');
+    p = p.replace(/^\+1\s*1(\d{10})$/, '+1 $1');
+    p = p.replace(/^1(\d{10})$/, '+1 $1');
+    p = p.replace(/^\+1(\d{10})$/, '+1 $1');
+
+    // format as +1 (555) 123-4567 if it's a 10 digit number with/without +1
+    const match = p.match(/^\+1\s*(\d{3})(\d{3})(\d{4})$/);
+    if (match) return `+1 (${match[1]}) ${match[2]}-${match[3]}`;
+    
+    const matchNoCode = p.match(/^(\d{3})(\d{3})(\d{4})$/);
+    if (matchNoCode) return `(${matchNoCode[1]}) ${matchNoCode[2]}-${matchNoCode[3]}`;
+    
+    return p;
+};
+
 
 export const sanitizeEmail = (value: string): string => {
   if (!value) return '';

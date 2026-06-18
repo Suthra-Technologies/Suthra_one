@@ -19,7 +19,9 @@ export const validateEmail = (email: string): ValidationResult => {
     return { isValid: true };
 };
 
-// Phone number validation (Indian format)
+// Phone number validation
+import { isValidPhoneNumber } from 'libphonenumber-js';
+
 export const validatePhone = (phone: string, countryCode?: string): ValidationResult => {
     if (!phone || phone.trim() === '') {
         return { isValid: false, message: 'Phone number is required' };
@@ -28,20 +30,16 @@ export const validatePhone = (phone: string, countryCode?: string): ValidationRe
     // Keep only digits
     const digits = phone.replace(/\D/g, '');
 
-    if (digits.length !== 10) {
-        return { isValid: false, message: 'Please enter exactly 10 digits' };
-    }
-
-    if (countryCode === '1' || countryCode === '+1') {
-        if (digits[0] === '0' || digits[0] === '1') {
-            return { isValid: false, message: 'Invalid phone number. Please provide a valid US phone number.' };
+    const code = countryCode ? countryCode.replace(/\D/g, '') : '1';
+    const fullNumber = `+${code}${digits}`;
+    try {
+        if (!isValidPhoneNumber(fullNumber)) {
+            return { isValid: false, message: 'Please enter a valid phone number for the selected country' };
         }
-        if (digits[3] === '0' || digits[3] === '1') {
-            return { isValid: false, message: 'Invalid phone number. Please provide a valid US phone number.' };
-        }
+        return { isValid: true };
+    } catch (e) {
+        return { isValid: false, message: 'Invalid phone number format' };
     }
-
-    return { isValid: true };
 };
 
 // Name validation (first name, last name, etc.)

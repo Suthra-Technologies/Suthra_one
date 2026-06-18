@@ -16,6 +16,7 @@ import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import { materialProvidersAPI, materialCategoriesAPI, uploadAPI } from '../../services/api';
 import AddressAutocomplete from '../../components/AddressAutocomplete';
 import { toast } from 'react-hot-toast';
+import { validatePhone } from '../../utils/validation';
 
 const EMPTY_FORM = {
   name: '',
@@ -146,9 +147,10 @@ const MaterialProvidersPage: React.FC = () => {
     const newErrors: Record<string, string> = {};
     if (!form.name.trim()) newErrors.name = 'Name is required';
     if (!form.phone.trim()) newErrors.phone = 'Phone number is required';
-    else if (form.phone.length !== 10) newErrors.phone = 'Phone number must be exactly 10 digits';
-    else if (/^0{2,}/.test(form.phone)) newErrors.phone = 'Phone number cannot start with multiple zeros';
-    else if (/(\d)\1{7,}/.test(form.phone)) newErrors.phone = 'Phone number looks invalid';
+    else {
+      const phoneValidation = validatePhone(form.phone);
+      if (!phoneValidation.isValid) newErrors.phone = phoneValidation.message || 'Invalid phone number';
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
@@ -399,7 +401,7 @@ const MaterialProvidersPage: React.FC = () => {
                 label="Phone *"
                 value={form.phone}
                 onChange={(e) => {
-                  const cleanVal = e.target.value.replace(/\D/g, '').slice(0, 10);
+                  const cleanVal = e.target.value.replace(/\D/g, '').slice(0, 15);
                   setForm(prev => ({ ...prev, phone: cleanVal }));
                   setErrors(prev => ({ ...prev, phone: '' }));
                 }}

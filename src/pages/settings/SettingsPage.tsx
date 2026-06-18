@@ -453,6 +453,7 @@ const createDefaultSettings = (): SettingsState => ({
         minOrderValueToEarn: 0,
         welcomeBonus: 100,
         firstOrderBonus: 0,
+        pointsPerRating: 0,
         minPointsToRedeem: 100,
         maxRedemptionPercentage: 100,
     },
@@ -813,11 +814,11 @@ const SettingsPage: React.FC = () => {
                     return acc;
                 }, {});
                 const merged = mergeSettingsWithDefaults(defaults, fetched);
-                if (!merged.restaurant.name) merged.restaurant.name = (user?.tenant)?.name || '';
-                if (!merged.restaurant.logo) merged.restaurant.logo = (user?.tenant)?.logo || '';
-                if (!merged.restaurant.email) merged.restaurant.email = (user?.tenant)?.contactEmail || user?.email || '';
+                if (!merged.restaurant.name) merged.restaurant.name = (user?.tenant as any)?.name || '';
+                if (!merged.restaurant.logo) merged.restaurant.logo = (user?.tenant as any)?.logo || '';
+                if (!merged.restaurant.email) merged.restaurant.email = (user?.tenant as any)?.contactEmail || user?.email || '';
                 if (!merged.restaurant.phone) {
-                    const phoneVal = (user?.tenant)?.contactPhone || user?.phone || '';
+                    const phoneVal = (user?.tenant as any)?.contactPhone || user?.phone || '';
                     merged.restaurant.phone = phoneVal.replace(/\D/g, '').slice(-10);
                 }
                 setSettings(merged);
@@ -826,21 +827,21 @@ const SettingsPage: React.FC = () => {
             } else if (response.data && typeof response.data === 'object') {
                 const fetched = response.data;
                 const merged = mergeSettingsWithDefaults(defaults, fetched);
-                if (!merged.restaurant.name) merged.restaurant.name = (user?.tenant)?.name || '';
-                if (!merged.restaurant.logo) merged.restaurant.logo = (user?.tenant)?.logo || '';
-                if (!merged.restaurant.email) merged.restaurant.email = (user?.tenant)?.contactEmail || user?.email || '';
+                if (!merged.restaurant.name) merged.restaurant.name = (user?.tenant as any)?.name || '';
+                if (!merged.restaurant.logo) merged.restaurant.logo = (user?.tenant as any)?.logo || '';
+                if (!merged.restaurant.email) merged.restaurant.email = (user?.tenant as any)?.contactEmail || user?.email || '';
                 if (!merged.restaurant.phone) {
-                    const phoneVal = (user?.tenant)?.contactPhone || user?.phone || '';
+                    const phoneVal = (user?.tenant as any)?.contactPhone || user?.phone || '';
                     merged.restaurant.phone = phoneVal.replace(/\D/g, '').slice(-10);
                 }
                 setSettings(merged);
                 setWebhookUrl(webhookResp.data?.url || '');
                 setStripeStatus(stripeStatusResp.data || {});
             } else {
-                defaults.restaurant.name = (user?.tenant)?.name || '';
-                defaults.restaurant.logo = (user?.tenant)?.logo || '';
-                defaults.restaurant.email = (user?.tenant)?.contactEmail || user?.email || '';
-                const phoneVal = (user?.tenant)?.contactPhone || user?.phone || '';
+                defaults.restaurant.name = (user?.tenant as any)?.name || '';
+                defaults.restaurant.logo = (user?.tenant as any)?.logo || '';
+                defaults.restaurant.email = (user?.tenant as any)?.contactEmail || user?.email || '';
+                const phoneVal = (user?.tenant as any)?.contactPhone || user?.phone || '';
                 defaults.restaurant.phone = phoneVal.replace(/\D/g, '').slice(-10);
                 setSettings(defaults);
                 setWebhookUrl(webhookResp.data?.url || '');
@@ -1368,7 +1369,7 @@ const SettingsPage: React.FC = () => {
                 validation = validateEmail(String(settings.restaurant.email ?? ''));
                 break;
             case 'phone':
-                validation = validatePhone(String(settings.restaurant.phone ?? ''));
+                validation = validatePhone(String(settings.restaurant.phone ?? ''), settings.restaurant.dialCode);
                 break;
             case 'address':
                 validation = validateAddress(String(settings.restaurant.address ?? ''));
@@ -1384,7 +1385,7 @@ const SettingsPage: React.FC = () => {
         const newErrors: Record<string, ValidationResult> = {
             restaurant_name: validateCompanyName(settings.restaurant.name),
             restaurant_email: validateEmail(settings.restaurant.email),
-            restaurant_phone: validatePhone(settings.restaurant.phone),
+            restaurant_phone: validatePhone(settings.restaurant.phone, settings.restaurant.dialCode),
             restaurant_address: validateAddress(settings.restaurant.address),
         };
 
@@ -1716,7 +1717,7 @@ const SettingsPage: React.FC = () => {
                                         label="Phone Number"
                                         value={settings.restaurant.phone}
                                         onChange={(val) => {
-                                            const clean = val.replace(/\D/g, '').slice(0, 10);
+                                            const clean = val.replace(/\D/g, '').slice(0, 15);
                                             handleInputChange('restaurant', 'phone', clean);
                                         }}
                                         dialCode={settings.restaurant.dialCode}

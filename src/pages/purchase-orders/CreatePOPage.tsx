@@ -249,7 +249,7 @@ const CreatePOPage: React.FC = () => {
         if (field === 'name') {
             finalValue = value.replace(/[^a-zA-Z\s]/g, '');
         } else if (field === 'contact') {
-            finalValue = value.replace(/\D/g, '').slice(0, 10);
+            finalValue = value.replace(/\D/g, '').slice(0, 15);
         }
         setFormData({ ...formData, vendor: { ...formData.vendor, [field]: finalValue } });
     };
@@ -573,11 +573,11 @@ const CreatePOPage: React.FC = () => {
     };
 
     const removeItem = (index: number) => {
-        setFormData({ ...formData, items: formData.items.filter((_, i) => i !== index) });
+        setFormData({ ...formData, items: formData.items.filter((_: any, i: number) => i !== index) });
     };
 
     const handleRestockAll = async () => {
-        const verifiedItems = formData.items.filter(item => item.inventoryItem && item.inventoryItem !== 'verified' && item.quantity > 0);
+        const verifiedItems = formData.items.filter((item: any) => item.inventoryItem && item.inventoryItem !== 'verified' && item.quantity > 0);
         if (verifiedItems.length === 0) {
             toast.error('No verified inventory items to restock. Ensure all items are matched to inventory first.');
             return;
@@ -585,7 +585,7 @@ const CreatePOPage: React.FC = () => {
 
         toast.loading(`Restocking ${verifiedItems.length} items...`, { id: 'restock-toast' });
         try {
-            const restockPayload = verifiedItems.map(item => ({
+            const restockPayload = verifiedItems.map((item: any) => ({
                 inventoryId: item.inventoryItem,
                 quantity: item.quantity,
                 costPrice: item.unitPrice || undefined,
@@ -609,7 +609,7 @@ const CreatePOPage: React.FC = () => {
         }
     };
 
-    const calculateSubtotal = () => formData.items.reduce((sum, item) => sum + (item.total || 0), 0);
+    const calculateSubtotal = () => formData.items.reduce((sum: number, item: any) => sum + (item.total || 0), 0);
     const calculateTax = () => (calculateSubtotal() * (formData.taxRate || 0)) / 100;
     const calculateTotal = () => calculateSubtotal() + calculateTax() + (formData.shippingCost || 0);
 
@@ -1056,7 +1056,7 @@ const CreatePOPage: React.FC = () => {
                                     sx={{ mb: 0, width: 'auto' }}
                                 />
                                 <Box sx={{ display: 'flex', gap: 1 }}>
-                                    {isInventory && formData.items.some(i => i.inventoryItem && i.inventoryItem !== 'verified') && (
+                                    {isInventory && formData.items.some((i: any) => i.inventoryItem && i.inventoryItem !== 'verified') && (
                                         <Button
                                             size="small"
                                             startIcon={<RestockIcon sx={{ fontSize: 16 }} />}
@@ -1105,7 +1105,7 @@ const CreatePOPage: React.FC = () => {
                                         </Box>
                                     ) : (
                                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                                            {formData.items.map((item, index) => (
+                                            {formData.items.map((item: any, index: number) => (
                                                 <Box key={index} sx={{
                                                     width: '100%',
                                                     maxWidth: 500,
@@ -1209,7 +1209,7 @@ const CreatePOPage: React.FC = () => {
                                                 </TableRow>
                                             </TableHead>
                                             <TableBody>
-                                                {formData.items.map((item, index) => (
+                                                {formData.items.map((item: any, index: number) => (
                                                     <TableRow key={index}>
                                                         <TableCell>
                                                             {isInventory ? (

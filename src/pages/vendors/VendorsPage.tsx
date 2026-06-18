@@ -61,6 +61,7 @@ import AddressAutocomplete from '../../components/AddressAutocomplete';
 import { useSettings } from '../../context/SettingsContext';
 import { inventoryAPI, vendorsAPI } from '../../services/api';
 import CustomInput from '../../components/common/CustomInput';
+import { validatePhone } from '../../utils/validation';
 
 interface Vendor {
     _id: string;
@@ -265,7 +266,10 @@ const VendorsPage: React.FC = () => {
         if (name === 'name' && !value.trim()) error = 'Vendor name is required';
         if (name === 'contact') {
             if (!value.trim()) error = 'Contact number is required';
-            else if (value.replace(/\D/g, '').length !== 10) error = 'Contact number must be 10 digits';
+            else {
+                const phoneValidation = validatePhone(value, formData.dialCode);
+                if (!phoneValidation.isValid) error = phoneValidation.message || 'Invalid phone number';
+            }
         }
         if (name === 'email') {
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -283,7 +287,10 @@ const VendorsPage: React.FC = () => {
         if (!formData.name.trim()) newErrors.name = 'Vendor name is required';
 
         if (!formData.contact.trim()) newErrors.contact = 'Contact number is required';
-        else if (formData.contact.replace(/\D/g, '').length !== 10) newErrors.contact = 'Contact number must be 10 digits';
+        else {
+            const phoneValidation = validatePhone(formData.contact, formData.dialCode);
+            if (!phoneValidation.isValid) newErrors.contact = phoneValidation.message || 'Invalid phone number';
+        }
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!formData.email.trim()) newErrors.email = 'Email is required';
@@ -432,7 +439,7 @@ const VendorsPage: React.FC = () => {
     const handleEmailReorder = () => {
         if (!selectedVendor || reorderItems.length === 0) return;
 
-        const restaurantName = settings?.restaurant?.restaurantName || settings?.restaurant?.name || 'our restaurant';
+        const restaurantName = settings?.restaurant?.name || 'our restaurant';
         const dateStr = new Date().toLocaleDateString();
 
         const itemBody = reorderItems.map(item => `- ${item.name}: ${item.lastOrderQuantity} ${item.unit}`).join('\n');
@@ -445,7 +452,7 @@ const VendorsPage: React.FC = () => {
     const handleWhatsAppReorder = () => {
         if (!selectedVendor || reorderItems.length === 0) return;
 
-        const restaurantName = settings?.restaurant?.restaurantName || settings?.restaurant?.name || 'our restaurant';
+        const restaurantName = settings?.restaurant?.name || 'our restaurant';
         const dateStr = new Date().toLocaleDateString();
 
         const itemBody = reorderItems.map(item => `* ${item.name}: ${item.lastOrderQuantity} ${item.unit}`).join('%0A');
@@ -972,7 +979,7 @@ const VendorsPage: React.FC = () => {
                                         <PhoneInput
                                             value={formData.contact}
                                             onChange={(val) => {
-                                                const clean = val.replace(/\D/g, '').slice(0, 10);
+                                                const clean = val.replace(/\D/g, '').slice(0, 15);
                                                 setFormData({ ...formData, contact: clean });
                                                 if (errors.contact) validateField('contact', clean);
                                             }}
@@ -1180,7 +1187,7 @@ const VendorsPage: React.FC = () => {
                                                     value={formData.bankDetails.zelleValue}
                                                     onChange={(e) => setFormData({
                                                         ...formData,
-                                                        bankDetails: { ...formData.bankDetails, zelleValue: e.target.value.replace(/\D/g, '').slice(0, 10) }
+                                                        bankDetails: { ...formData.bankDetails, zelleValue: e.target.value.replace(/\D/g, '').slice(0, 15) }
                                                     })}
                                                 />
                                             </Grid>

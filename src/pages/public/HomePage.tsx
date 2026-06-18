@@ -48,6 +48,7 @@ import {
   TextField,
 } from "@mui/material";
 import PhoneInput from "../../components/PhoneInput";
+import { validatePhone } from "../../utils/validation";
 
 // Orders
 import OrdersIconActiveImg from "/src/assets/images/icons/orders-active.png";
@@ -714,8 +715,9 @@ const HomePage: React.FC = () => {
     e.preventDefault();
 
     // Validation
-    if (formData.phoneNumber.length !== 10) {
-      setErrors({ phoneNumber: "Phone number must be exactly 10 digits" });
+    const phoneValidation = validatePhone(formData.phoneNumber, formData.phonePrefix);
+    if (!phoneValidation.isValid) {
+      setErrors({ phoneNumber: phoneValidation.message || "Invalid phone number" });
       return;
     }
 

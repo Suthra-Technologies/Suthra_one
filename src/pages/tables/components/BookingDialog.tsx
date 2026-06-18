@@ -147,7 +147,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
             }
         }
         if (name === 'customerPhone') {
-            const validation = validatePhone(value);
+            const validation = validatePhone(value, customerDialCode);
             if (!validation.isValid) {
                 error = validation.message || '';
             }
@@ -407,12 +407,16 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
                         label="Phone Number"
                         value={customerPhone}
                         onChange={(val) => {
-                            const clean = val.replace(/\D/g, '').slice(0, 10);
+                            const clean = val.replace(/\D/g, '').slice(0, 15);
                             setCustomerPhone(clean);
                             if (bookingTouched.customerPhone) validateBookingField('customerPhone', clean);
                         }}
                         dialCode={customerDialCode}
                         onDialCodeChange={setCustomerDialCode}
+                        onBlur={() => {
+                            setBookingTouched(prev => ({ ...prev, customerPhone: true }));
+                            validateBookingField('customerPhone', customerPhone);
+                        }}
                         error={bookingTouched.customerPhone && Boolean(bookingErrors.customerPhone)}
                         helperText={bookingTouched.customerPhone && bookingErrors.customerPhone ? bookingErrors.customerPhone : '10-digit mobile number'}
                         required
