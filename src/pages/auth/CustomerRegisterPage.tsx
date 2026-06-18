@@ -26,9 +26,6 @@ import { authAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import logo from '../../assets/images/icons/logo.jpeg';
 import { getTenantSlugFromHostname } from '../../utils/tenant.utils';
-import { formatPhoneForInput } from '../../utils/inputSanitizers';
-import { validatePhone } from '../../utils/validation';
-import PhoneInput from '../../components/PhoneInput';
 
 const CustomerRegisterPage: React.FC = () => {
     const { slug: pathSlug } = useParams<{ slug: string }>();
@@ -41,7 +38,6 @@ const CustomerRegisterPage: React.FC = () => {
         lastName: '',
         email: '',
         phone: '',
-        dialCode: '1',
         password: '',
         confirmPassword: ''
     });
@@ -53,8 +49,8 @@ const CustomerRegisterPage: React.FC = () => {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         if (name === 'phone') {
-            const formattedValue = formatPhoneForInput(value, '1');
-            setFormData(prev => ({ ...prev, [name]: formattedValue }));
+            const numericValue = value.replace(/\D/g, '').slice(0, 10);
+            setFormData(prev => ({ ...prev, [name]: numericValue }));
         } else {
             setFormData(prev => ({ ...prev, [name]: value }));
         }
@@ -70,9 +66,8 @@ const CustomerRegisterPage: React.FC = () => {
             setError('Tenant context is missing. Please access this page through your restaurant\'s link.');
             return false;
         }
-        const phoneValidation = validatePhone(formData.phone, formData.dialCode);
-        if (!phoneValidation.isValid) {
-            setError(phoneValidation.message || 'Invalid phone number');
+        if (!/^\d{10}$/.test(formData.phone)) {
+            setError('Phone number must be exactly 10 digits');
             return false;
         }
         if (formData.password !== formData.confirmPassword) {
@@ -96,7 +91,6 @@ const CustomerRegisterPage: React.FC = () => {
         try {
             const response = await authAPI.customerRegister({
                 ...formData,
-                phone: formData.phone.replace(/\D/g, ''),
                 tenantSlug: slug
             });
 
@@ -106,7 +100,7 @@ const CustomerRegisterPage: React.FC = () => {
                 const loginRes = await login({
                     email: formData.email,
                     password: formData.password,
-                    tenantSlug: slug || undefined
+                    tenantSlug: slug
                 });
 
                 if (loginRes.success) {
@@ -205,16 +199,21 @@ const CustomerRegisterPage: React.FC = () => {
                             />
                         </Grid>
                         <Grid item xs={12}>
-                            <PhoneInput
-                                fullWidth
+                            <TextField
                                 required
+                                fullWidth
+                                name="phone"
                                 label="Phone Number"
                                 value={formData.phone}
-                                onChange={(val: string) => setFormData({ ...formData, phone: val })}
-                                dialCode={formData.dialCode}
-                                onDialCodeChange={(code: string) => setFormData({ ...formData, dialCode: code })}
-                                error={!!error && error.includes('phone')}
-                                helperText=""
+                                onChange={handleChange}
+                                inputProps={{ maxLength: 10, inputMode: 'numeric', pattern: '[0-9]*' }}
+                                InputProps={{
+                                    startAdornment: (
+                                        <InputAdornment position="start">
+                                            <Phone color="action" />
+                                        </InputAdornment>
+                                    ),
+                                }}
                             />
                         </Grid>
                         <Grid item xs={12}>

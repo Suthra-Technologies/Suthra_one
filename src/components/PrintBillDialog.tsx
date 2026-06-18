@@ -25,7 +25,6 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import React, { useRef } from 'react';
 import { useSettings } from '../context/SettingsContext';
-import { printBillThermal } from '../utils/printBillThermal';
 import {
     formatDateTime,
     getOrderTypeLabel,
@@ -39,7 +38,7 @@ interface PrintBillDialogProps {
 }
 
 const PrintBillDialog: React.FC<PrintBillDialogProps> = ({ open, order, onClose }) => {
-    const { formatCurrency, settings } = useSettings();
+    const { formatCurrency } = useSettings();
     const printRef = useRef<HTMLDivElement>(null);
     const [billData, setBillData] = React.useState<any>(null);
     const [loading, setLoading] = React.useState(false);
@@ -73,16 +72,6 @@ const PrintBillDialog: React.FC<PrintBillDialogProps> = ({ open, order, onClose 
 
     const handlePrint = async () => {
         if (!billData) return;
-
-        // Native Android Wi-Fi thermal printer (ESC/POS over TCP:9100). Fastest, no dialog.
-        try {
-            const printed = await printBillThermal(billData, settings.printer, formatCurrency);
-            if (printed) return; // Sent to thermal printer, skip all other paths.
-        } catch (err) {
-            console.error('[ThermalPrint] Wi-Fi thermal print failed, falling back:', err);
-            alert('Could not reach the thermal printer. Check that the printer is on and on the same Wi-Fi.');
-            // Fall through to browser print so the bill can still be produced.
-        }
 
         // Try direct printing via local print agent first (QZ Tray style fast path)
         try {

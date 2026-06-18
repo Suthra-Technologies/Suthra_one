@@ -114,24 +114,6 @@ const TraysPage: React.FC<TraysPageProps> = ({ hideHeader = false }) => {
     const handleSubmit = async (e: React.FormEvent) => {
         if (submitting) return;
         e.preventDefault();
-
-        if (!formData.name.trim()) {
-            toast.error('Tray Name is required');
-            return;
-        }
-        if (!formData.width || parseFloat(formData.width) <= 0) {
-            toast.error('Valid width is required (greater than 0)');
-            return;
-        }
-        if (!formData.length || parseFloat(formData.length) <= 0) {
-            toast.error('Valid length is required (greater than 0)');
-            return;
-        }
-        if (!formData.depth || parseFloat(formData.depth) <= 0) {
-            toast.error('Valid depth is required (greater than 0)');
-            return;
-        }
-
         try {
             setSubmitting(true);
             if (editingTray) {
@@ -331,7 +313,6 @@ const TraysPage: React.FC<TraysPageProps> = ({ hideHeader = false }) => {
                                     value={formData.name}
                                     onChange={(val) => setFormData({ ...formData, name: val })}
                                     placeholder="e.g., Half Tray, Full Tray"
-                                    maxLength={50}
                                     sx={{ '& .MuiInputBase-input': { fontSize: '0.875rem' }, '& .MuiInputLabel-root': { fontSize: '0.875rem' }, '& .MuiFormLabel-asterisk': { color: 'red' } }}
                                 />
                             </Grid>

@@ -36,7 +36,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { menuAPI, ordersAPI } from '../../services/api';
 import { useSettings } from '../../context/SettingsContext';
-import { calcCustomerProcessingFee } from '../../utils/processingFee';
 import { useGuestCart } from '../../context/GuestCartContext';
 import { useActiveTenant } from '../../hooks/useActiveTenant';
 
@@ -159,19 +158,12 @@ const CustomerOrderPage: React.FC = () => {
 
     const calculateTotal = () => {
         const subtotal = cart.totalAmount;
+        const processingFeeRate = settings?.restaurant?.processingFee || 0;
         const taxRate = settings?.restaurant?.taxRate || 0;
+        
+        const processingFeeAmount = (subtotal * processingFeeRate) / 100;
         const taxAmount = (subtotal * taxRate) / 100;
-
-        // Online cart preview assumes a card payment (most online orders); the actual fee
-        // is finalised at checkout based on the chosen payment method.
-        const processingFeeAmount = calcCustomerProcessingFee({
-            subtotal,
-            otherCharges: taxAmount,
-            restaurant: settings?.restaurant,
-            feeResponsibility: settings?.system?.feeResponsibility,
-            isStripePayment: true,
-        }).total;
-
+        
         // Include processing fee and tax in the "Total Order" display
         return subtotal + processingFeeAmount + taxAmount;
     };

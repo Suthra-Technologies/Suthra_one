@@ -3,7 +3,6 @@ import {
     Category as CategoryIcon,
     Close as CloseIcon,
     CloudUpload as CloudUploadIcon,
-    CloudDownload as CloudDownloadIcon,
     DeleteForever as DeleteForeverIcon,
     Delete as DeleteIcon,
     Edit as EditIcon,
@@ -73,7 +72,7 @@ import { toast } from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import ActionHistoryList from '../../components/common/ActionHistoryList';
 import { useSettings } from '../../context/SettingsContext';
-import { menuAPI, traysAPI, uploadAPI, recipesAPI, modifierTemplatesAPI } from '../../services/api';
+import { menuAPI, traysAPI, uploadAPI } from '../../services/api';
 import TraysPage from './TraysPage';
 import RecipesPage from '../recipes/RecipesPage';
 import type { Category, Subcategory, IMenuItem } from './types';
@@ -135,9 +134,6 @@ const MenuPage: React.FC = () => {
     const [deletedMenuItems, setDeletedMenuItems] = useState<IMenuItem[]>([]);
     const [deletedCategories, setDeletedCategories] = useState<Category[]>([]);
     const [deletedSubcategories, setDeletedSubcategories] = useState<Subcategory[]>([]);
-    const [deletedTrays, setDeletedTrays] = useState<any[]>([]);
-    const [deletedRecipes, setDeletedRecipes] = useState<any[]>([]);
-    const [deletedAddOns, setDeletedAddOns] = useState<any[]>([]);
     const [deletedLoading, setDeletedLoading] = useState(false);
 
     // Dialogs State
@@ -166,7 +162,7 @@ const MenuPage: React.FC = () => {
             } catch (err: any) {
                 console.error('Failed to reorder categories:', err);
                 toast.error('Failed to save category order');
-                fetchData();
+                fetchCategories();
             }
         }
     };
@@ -229,34 +225,21 @@ const MenuPage: React.FC = () => {
     const fetchDeletedData = async () => {
         try {
             setDeletedLoading(true);
-            const [menuRes, categoriesRes, subcategoriesRes, traysRes, recipesRes, addOnsRes] = await Promise.all([
+            const [menuRes, categoriesRes, subcategoriesRes] = await Promise.all([
                 menuAPI.getAll({ isDeleted: true, limit: 200 }),
                 menuAPI.getAllCategories({ isDeleted: true }),
-                menuAPI.getAllSubcategories(undefined, true),
-                traysAPI.getAll({ isDeleted: true }),
-                recipesAPI.getAll({ isDeleted: true }),
-                modifierTemplatesAPI.getAll({ isDeleted: true })
+                menuAPI.getAllSubcategories(undefined, true)
             ]);
             
             const data = menuRes.data;
             const items = Array.isArray(data) ? data : (data?.items || []);
             setDeletedMenuItems(items);
 
-            console.log('[DEBUG] Deleted Data fetched:', {
-                traysResData: traysRes.data,
-                recipesResData: recipesRes.data,
-                addOnsResData: addOnsRes.data,
-                isTraysArray: Array.isArray(traysRes.data)
-            });
-
-            const catData = categoriesRes.data?.data || categoriesRes.data;
-            const subcatData = subcategoriesRes.data?.data || subcategoriesRes.data;
-            
+            const catData = categoriesRes.data;
             setDeletedCategories(Array.isArray(catData) ? catData : []);
+
+            const subcatData = subcategoriesRes.data;
             setDeletedSubcategories(Array.isArray(subcatData) ? subcatData : []);
-            setDeletedTrays(Array.isArray(traysRes.data) ? traysRes.data : []);
-            setDeletedRecipes(Array.isArray(recipesRes.data?.data) ? recipesRes.data.data : (Array.isArray(recipesRes.data) ? recipesRes.data : []));
-            setDeletedAddOns(Array.isArray(addOnsRes.data) ? addOnsRes.data : []);
         } catch (error) {
             console.error('Error fetching deleted data:', error);
         } finally {
@@ -780,51 +763,6 @@ const MenuPage: React.FC = () => {
         }
     };
 
-    const handleRestoreTray = async (item: any) => {
-        if (isProcessing) return;
-        try {
-            setIsProcessing(true);
-            await traysAPI.restore(item._id);
-            toast.success(`Tray "${item.name}" restored successfully`);
-            fetchDeletedData();
-        } catch (error: any) {
-            console.error('Error restoring tray:', error);
-            toast.error(error.response?.data?.message || 'Failed to restore tray');
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
-    const handleRestoreRecipe = async (item: any) => {
-        if (isProcessing) return;
-        try {
-            setIsProcessing(true);
-            await recipesAPI.restore(item._id);
-            toast.success(`Recipe "${item.name}" restored successfully`);
-            fetchDeletedData();
-        } catch (error: any) {
-            console.error('Error restoring recipe:', error);
-            toast.error(error.response?.data?.message || 'Failed to restore recipe');
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
-    const handleRestoreAddOn = async (item: any) => {
-        if (isProcessing) return;
-        try {
-            setIsProcessing(true);
-            await menuAPI.restoreTemplate(item._id);
-            toast.success(`Add-on group "${item.name}" restored successfully`);
-            fetchDeletedData();
-        } catch (error: any) {
-            console.error('Error restoring add-on group:', error);
-            toast.error(error.response?.data?.message || 'Failed to restore add-on group');
-        } finally {
-            setIsProcessing(false);
-        }
-    };
-
     const processImageField = async (imageValue: string): Promise<string> => {
         if (!imageValue || !imageValue.trim()) {
             return '';
@@ -933,13 +871,12 @@ const MenuPage: React.FC = () => {
                         return key ? row[key] : undefined;
                     };
 
-                    const id = findValue(['id', 'item id', '_id']);
                     const name = findValue(['name', 'item', 'product', 'title']);
                     const price = findValue(['price', 'rate', 'cost', 'amount']);
                     const category = findValue(['category', 'cat']);
                     const subcategory = findValue(['subcategory', 'subcat', 'sub category']);
                     const description = findValue(['description', 'desc', 'details']);
-                    const image = findValue(['image url', 'imageurl', 'image', 'photo', 'img', 'url', 'link']);
+                    const image = findValue(['image', 'photo', 'img', 'url', 'link']);
                     const foodType = findValue(['food type', 'foodtype', 'veg', 'type']);
                     const isAvailable = findValue(['available', 'isavailable', 'stock']);
                     const isCateringAvailable = findValue(['catering', 'iscatering']);
@@ -953,7 +890,6 @@ const MenuPage: React.FC = () => {
                     const processedImage = await processImageField(image || '');
 
                     return {
-                        _id: id ? String(id).trim() : undefined,
                         name: String(name).trim(),
                         price: parseFloat(price) || 0,
                         category: String(category || '').trim(),
@@ -1052,10 +988,7 @@ const MenuPage: React.FC = () => {
                 if (parts.length < 2 && row.includes('\t')) parts = row.split('\t').map(p => p.trim());
                 if (parts.length < 2 && row.includes('|')) parts = row.split('|').map(p => p.trim());
 
-                // Expected: Item ID, Image URL, Name, Price, Category, Subcategory, Description, ImageURL, FoodType, IsAvailable, IsCateringAvailable
-                // This is a bit ambiguous for pasted CSV if columns change, but we assume a fixed format or mostly we rely on Excel upload.
-                // Let's assume the first column might be ID if it's 24 chars, or we just rely on handleFileUpload for Excel.
-                // We'll leave the old CSV parsing alone for now, but handleFileUpload is what they use for Excel.
+                // Expected: Name, Price, Category, Subcategory, Description, ImageURL, FoodType, IsAvailable, IsCateringAvailable
                 const [name, priceStr, category, subcategory, description, image, foodType, isAvailableStr, isCateringAvailableStr] = parts;
 
                 if (!name || !priceStr) {
@@ -1173,29 +1106,6 @@ const MenuPage: React.FC = () => {
 
         return filtered;
     }, [menuItems, searchQuery, selectedCategory, selectedSubcategory, categories, subcategories]);
-
-    const [isExporting, setIsExporting] = useState(false);
-
-    const handleExportExcel = async () => {
-        try {
-            setIsExporting(true);
-            const response = await menuAPI.exportExcel();
-            const url = window.URL.createObjectURL(new Blob([response.data]));
-            const link = document.createElement('a');
-            link.href = url;
-            link.setAttribute('download', 'Menu_Export.xlsx');
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            toast.success('Menu exported successfully!');
-        } catch (error) {
-            console.error('Error exporting menu:', error);
-            toast.error('Failed to export menu.');
-        } finally {
-            setIsExporting(false);
-        }
-    };
-
     const handleOpenBulkDialog = () => {
         setBulkPreviewItems([]);
         setDialogTab(0);
@@ -1309,28 +1219,6 @@ const MenuPage: React.FC = () => {
                                 {filteredMenuItems.length} Items Found
                             </Typography>
                             <Box sx={{ display: 'flex', gap: 1 }}>
-                                <Button
-                                    variant="outlined"
-                                    size={isMobile ? "small" : "medium"}
-                                    startIcon={isExporting ? <CircularProgress size={16} color="inherit" /> : <CloudDownloadIcon sx={{ fontSize: isMobile ? '0.9rem !important' : 'inherit' }} />}
-                                    onClick={handleExportExcel}
-                                    disabled={isExporting}
-                                    sx={{ 
-                                        width: 'auto',
-                                        fontSize: isMobile ? '0.7rem' : '0.85rem',
-                                        px: isMobile ? 1.5 : 2,
-                                        fontWeight: 700,
-                                        whiteSpace: 'nowrap',
-                                        color: theme.palette.success.main,
-                                        borderColor: theme.palette.success.main,
-                                        '&:hover': {
-                                            backgroundColor: alpha(theme.palette.success.main, 0.04),
-                                            borderColor: theme.palette.success.dark,
-                                        }
-                                    }}
-                                >
-                                    Export Menu
-                                </Button>
                                 <Button
                                     variant="outlined"
                                     size={isMobile ? "small" : "medium"}
@@ -1758,7 +1646,7 @@ const MenuPage: React.FC = () => {
                         <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
                             <CircularProgress />
                         </Box>
-                    ) : deletedMenuItems.length === 0 && deletedCategories.length === 0 && deletedSubcategories.length === 0 && deletedTrays.length === 0 && deletedRecipes.length === 0 && deletedAddOns.length === 0 ? (
+                    ) : deletedMenuItems.length === 0 && deletedCategories.length === 0 && deletedSubcategories.length === 0 ? (
                         <Box sx={{
                             display: 'flex',
                             flexDirection: 'column',
@@ -1896,106 +1784,6 @@ const MenuPage: React.FC = () => {
                                     </TableContainer>
                                 </Box>
                             )}
-
-                            {deletedTrays.length > 0 && (
-                                <Box>
-                                    <Typography variant="subtitle1" fontWeight="bold" mb={1}>Deleted Trays</Typography>
-                                    <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 2 }}>
-                                        <Table>
-                                            <TableHead>
-                                                <TableRow sx={{ bgcolor: 'error.50' }}>
-                                                    <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
-                                                    <TableCell sx={{ fontWeight: 'bold' }}>Deleted At</TableCell>
-                                                    <TableCell sx={{ fontWeight: 'bold' }} align="right">Actions</TableCell>
-                                                </TableRow>
-                                            </TableHead>
-                                            <TableBody>
-                                                {deletedTrays.map((item: any) => (
-                                                    <TableRow key={item._id} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
-                                                        <TableCell><Typography fontWeight="bold">{item.name}</Typography></TableCell>
-                                                        <TableCell>{item.deletedAt ? new Date(item.deletedAt).toLocaleDateString() : '—'}</TableCell>
-                                                        <TableCell align="right">
-                                                            <Tooltip title="Restore">
-                                                                <IconButton color="success" onClick={() => handleRestoreTray(item)} disabled={isProcessing}>
-                                                                    <RestoreIcon />
-                                                                </IconButton>
-                                                            </Tooltip>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </TableContainer>
-                                </Box>
-                            )}
-
-                            {deletedRecipes.length > 0 && (
-                                <Box>
-                                    <Typography variant="subtitle1" fontWeight="bold" mb={1}>Deleted Recipes</Typography>
-                                    <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 2 }}>
-                                        <Table>
-                                            <TableHead>
-                                                <TableRow sx={{ bgcolor: 'error.50' }}>
-                                                    <TableCell sx={{ fontWeight: 'bold' }}>Menu Item</TableCell>
-                                                    <TableCell sx={{ fontWeight: 'bold' }}>Serving Size</TableCell>
-                                                    <TableCell sx={{ fontWeight: 'bold' }}>Deleted At</TableCell>
-                                                    <TableCell sx={{ fontWeight: 'bold' }} align="right">Actions</TableCell>
-                                                </TableRow>
-                                            </TableHead>
-                                            <TableBody>
-                                                {deletedRecipes.map((item: any) => (
-                                                    <TableRow key={item._id} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
-                                                        <TableCell><Typography fontWeight="bold">{item.menuItem?.name || 'Unknown'}</Typography></TableCell>
-                                                        <TableCell>{item.servingSize}</TableCell>
-                                                        <TableCell>{item.deletedAt ? new Date(item.deletedAt).toLocaleDateString() : '—'}</TableCell>
-                                                        <TableCell align="right">
-                                                            <Tooltip title="Restore">
-                                                                <IconButton color="success" onClick={() => handleRestoreRecipe(item)} disabled={isProcessing}>
-                                                                    <RestoreIcon />
-                                                                </IconButton>
-                                                            </Tooltip>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </TableContainer>
-                                </Box>
-                            )}
-
-                            {deletedAddOns.length > 0 && (
-                                <Box>
-                                    <Typography variant="subtitle1" fontWeight="bold" mb={1}>Deleted Add-on Groups</Typography>
-                                    <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 2 }}>
-                                        <Table>
-                                            <TableHead>
-                                                <TableRow sx={{ bgcolor: 'error.50' }}>
-                                                    <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
-                                                    <TableCell sx={{ fontWeight: 'bold' }}>Modifiers</TableCell>
-                                                    <TableCell sx={{ fontWeight: 'bold' }}>Deleted At</TableCell>
-                                                    <TableCell sx={{ fontWeight: 'bold' }} align="right">Actions</TableCell>
-                                                </TableRow>
-                                            </TableHead>
-                                            <TableBody>
-                                                {deletedAddOns.map((item: any) => (
-                                                    <TableRow key={item._id} sx={{ '&:hover': { bgcolor: 'action.hover' } }}>
-                                                        <TableCell><Typography fontWeight="bold">{item.name}</Typography></TableCell>
-                                                        <TableCell>{item.modifiers?.length || 0} items</TableCell>
-                                                        <TableCell>{item.deletedAt ? new Date(item.deletedAt).toLocaleDateString() : '—'}</TableCell>
-                                                        <TableCell align="right">
-                                                            <Tooltip title="Restore">
-                                                                <IconButton color="success" onClick={() => handleRestoreAddOn(item)} disabled={isProcessing}>
-                                                                    <RestoreIcon />
-                                                                </IconButton>
-                                                            </Tooltip>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </TableContainer>
-                                </Box>
-                            )}
                         </Box>
                     )}
                 </Box>
@@ -2040,18 +1828,14 @@ const MenuPage: React.FC = () => {
                     {dialogTab === 0 && (
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
                             <TextField
-                                label={(editingCategory ? isSubcategory(editingCategory) : !!categoryForm.parentCategory) ? "Subcategory Name" : "Category Name"}
+                                label="Category Name"
                                 value={categoryForm.name}
-                                onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value.trimStart().replace(/[^a-zA-Z\s]/g, '') })}
-                                onBlur={() => {
-                                    setCategoryForm({ ...categoryForm, name: categoryForm.name.trim() });
-                                    setCategoryTouched((prev) => ({ ...prev, name: true }));
-                                }}
+                                onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
+                                onBlur={() => setCategoryTouched((prev) => ({ ...prev, name: true }))}
                                 error={categoryTouched.name && !categoryForm.name.trim()}
-                                helperText={categoryTouched.name && !categoryForm.name.trim() ? ((editingCategory ? isSubcategory(editingCategory) : !!categoryForm.parentCategory) ? 'Subcategory name is required' : 'Category name is required') : `${categoryForm.name.length}/50 characters`}
+                                helperText={categoryTouched.name && !categoryForm.name.trim() ? 'Category name is required' : ''}
                                 fullWidth
                                 required
-                                inputProps={{ maxLength: 50 }}
                             />
                             <TaxCategorySelector
                                 value={categoryForm.taxCode}

@@ -51,7 +51,6 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from 'src/context/AuthContext';
 import { useSettings } from 'src/context/SettingsContext';
-import { calcCustomerProcessingFee } from 'src/utils/processingFee';
 import { useGuestCart } from 'src/context/GuestCartContext';
 import { useActiveTenant } from 'src/hooks/useActiveTenant';
 import { usePullToRefresh } from 'src/hooks/usePullToRefresh';
@@ -73,16 +72,10 @@ const CustomerLayout: React.FC = () => {
   
   const calculateTotal = () => {
       const subtotal = cart.totalAmount;
+      const processingFeeRate = settings?.restaurant?.processingFee || 0;
       const taxRate = settings?.restaurant?.taxRate || 0;
+      const processingFeeAmount = (subtotal * processingFeeRate) / 100;
       const taxAmount = (subtotal * taxRate) / 100;
-      // Cart preview assumes a card payment; the actual fee is finalised at checkout.
-      const processingFeeAmount = calcCustomerProcessingFee({
-          subtotal,
-          otherCharges: taxAmount,
-          restaurant: settings?.restaurant,
-          feeResponsibility: settings?.system?.feeResponsibility,
-          isStripePayment: true,
-      }).total;
       return subtotal + processingFeeAmount + taxAmount;
   };
 

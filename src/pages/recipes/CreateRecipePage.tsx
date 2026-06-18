@@ -21,7 +21,6 @@ import {
     useMediaQuery,
     alpha,
     MenuItem,
-    CircularProgress,
 } from '@mui/material';
 import {
     Add as AddIcon,
@@ -59,7 +58,6 @@ const CreateRecipePage: React.FC = () => {
     };
 
     const [loading, setLoading] = useState(false);
-    const [initialLoading, setInitialLoading] = useState(true);
     const [menuItems, setMenuItems] = useState<any[]>([]);
     const [inventoryItems, setInventoryItems] = useState<any[]>([]);
     const [trays, setTrays] = useState<any[]>([]);
@@ -96,7 +94,6 @@ const CreateRecipePage: React.FC = () => {
                     }));
                 }
             }
-            setInitialLoading(false);
             setLoading(false);
         };
         init();
@@ -113,36 +110,11 @@ const CreateRecipePage: React.FC = () => {
 
     const fetchMenuItems = async () => {
         try {
-            const [menuRes, recipesRes] = await Promise.all([
-                menuAPI.getAll(),
-                recipesAPI.getAll({ limit: 1000 })
-            ]);
-            
-            const data = menuRes.data;
-            const allItems = Array.isArray(data) ? data : (data?.items || []);
-            const recipes = recipesRes.data?.data || recipesRes.data || [];
-            
-            let currentMenuItemId = null;
-            if (isEditMode && id) {
-                const currentRecipe = recipes.find((r: any) => r._id === id);
-                if (currentRecipe) {
-                    currentMenuItemId = typeof currentRecipe.menuItem === 'object' ? currentRecipe.menuItem?._id : currentRecipe.menuItem;
-                }
-            }
-
-            const itemsWithRecipes = new Set(recipes.map((r: any) => 
-                typeof r.menuItem === 'object' ? r.menuItem?._id : r.menuItem
-            ).filter(Boolean));
-
-            const filteredItems = allItems.filter((item: any) => {
-                if (currentMenuItemId && item._id === currentMenuItemId) return true;
-                if (item.inventoryTrackingMode === 'direct') return false;
-                if (itemsWithRecipes.has(item._id)) return false;
-                return true;
-            });
-
-            setMenuItems(filteredItems);
-            return allItems;
+            const response = await menuAPI.getAll();
+            const data = response.data;
+            const items = Array.isArray(data) ? data : (data?.items || []);
+            setMenuItems(items);
+            return items;
         } catch (error) {
             console.error('Error fetching menu items:', error);
             return [];
@@ -190,7 +162,7 @@ const CreateRecipePage: React.FC = () => {
                 ingredients: ingredients,
                 preparationTime: recipe.preparationTime || 0,
                 instructions: recipe.instructions || '',
-                isActive: recipe.isActive === false || recipe.isActive === 'false' ? false : true,
+                isActive: recipe.isActive,
                 actionHistory: recipe.actionHistory || [],
             };
 
@@ -256,8 +228,6 @@ const CreateRecipePage: React.FC = () => {
                 })),
             };
 
-            console.log('[DEBUG Frontend] Recipe Payload:', payload);
-
             if (isEditMode) {
                 await recipesAPI.update(id!, payload);
                 toast.success('Recipe updated successfully');
@@ -272,14 +242,6 @@ const CreateRecipePage: React.FC = () => {
             setLoading(false);
         }
     };
-
-    if (initialLoading) {
-        return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-                <CircularProgress />
-            </Box>
-        );
-    }
 
     return (
         <Box sx={{ p: { xs: 1.5, sm: 3 }, pt: { xs: 1, sm: 3 } }}>
@@ -335,7 +297,6 @@ const CreateRecipePage: React.FC = () => {
                             onChange={(val) => setFormData({ ...formData, servingSize: parseInt(val) || 1 })}
                             allowDecimals={false}
                             fullWidth
-                            maxLength={4}
                             size={isMobile ? "small" : "medium"}
                         />
                         <CustomInput
@@ -345,7 +306,6 @@ const CreateRecipePage: React.FC = () => {
                             onChange={(val) => setFormData({ ...formData, preparationTime: parseInt(val) || 0 })}
                             allowDecimals={false}
                             fullWidth
-                            maxLength={3}
                             size={isMobile ? "small" : "medium"}
                         />
                     </Stack>
@@ -394,18 +354,11 @@ const CreateRecipePage: React.FC = () => {
                                 <Stack spacing={1.5}>
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <Typography variant="caption" fontWeight="bold" color="text.secondary">Ingredient #{index + 1}</Typography>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            {ingredient.inventoryItem && (
-                                                <Typography variant="caption" fontWeight="bold" color="primary">
-                                                    Cost: {formatCurrency((ingredient.quantity || 0) * ((ingredient.inventoryItem as any).costPrice || 0))}
-                                                </Typography>
-                                            )}
-                                            {formData.ingredients.length > 1 && (
-                                                <IconButton size="small" color="error" onClick={() => removeIngredient(index)} sx={{ p: 0.5 }}>
-                                                    <DeleteIcon fontSize="small" />
-                                                </IconButton>
-                                            )}
-                                        </Box>
+                                        {formData.ingredients.length > 1 && (
+                                            <IconButton size="small" color="error" onClick={() => removeIngredient(index)} sx={{ p: 0.5 }}>
+                                                <DeleteIcon fontSize="small" />
+                                            </IconButton>
+                                        )}
                                     </Box>
                                     
                                     <Autocomplete
@@ -430,7 +383,6 @@ const CreateRecipePage: React.FC = () => {
                                                 handleIngredientChange(index, 'quantity', Math.max(0, isNaN(parsedVal) ? 0 : parsedVal));
                                             }}
                                             inputProps={{ min: 0 }}
-                                            maxLength={4}
                                             size="small"
                                             fullWidth
                                             required
@@ -463,7 +415,6 @@ const CreateRecipePage: React.FC = () => {
                                     <TableCell>Inventory Item <Box component="span" sx={{ color: 'error.main' }}>*</Box></TableCell>
                                     <TableCell width={150}>Quantity <Box component="span" sx={{ color: 'error.main' }}>*</Box></TableCell>
                                     <TableCell width={180}>Unit</TableCell>
-                                    <TableCell width={100}>Est. Cost</TableCell>
                                     <TableCell width={50}></TableCell>
                                 </TableRow>
                             </TableHead>
@@ -491,7 +442,6 @@ const CreateRecipePage: React.FC = () => {
                                                     handleIngredientChange(index, 'quantity', Math.max(0, isNaN(parsedVal) ? 0 : parsedVal));
                                                 }}
                                                 inputProps={{ min: 0 }}
-                                                maxLength={4}
                                                 size="small"
                                                 fullWidth
                                             />
@@ -511,11 +461,6 @@ const CreateRecipePage: React.FC = () => {
                                                     </MenuItem>
                                                 ))}
                                             </TextField>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Typography variant="body2" fontWeight="bold" color="primary">
-                                                {ingredient.inventoryItem ? formatCurrency((ingredient.quantity || 0) * ((ingredient.inventoryItem as any).costPrice || 0)) : formatCurrency(0)}
-                                            </Typography>
                                         </TableCell>
                                         <TableCell>
                                             {formData.ingredients.length > 1 && (

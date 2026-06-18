@@ -1343,7 +1343,7 @@ const PromoCodePage: React.FC = () => {
                                     </Grid>
                                     <Grid item xs={12} sm={6}>
                                         <CustomInput
-                                            type="name"
+                                            type="alphanumeric"
                                             fullWidth
                                             label="Internal Name"
                                             required

@@ -58,8 +58,6 @@ import PhoneInput from 'src/components/PhoneInput';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { bookingsAPI, tablesAPI } from '../../services/api';
-import { formatDisplayPhone } from '../../utils/inputSanitizers';
-import { validatePhone } from '../../utils/validation';
 
 const BookingsAdminPage: React.FC = () => {
     const navigate = useNavigate();
@@ -235,9 +233,8 @@ const BookingsAdminPage: React.FC = () => {
             toast.error('Please fill all required fields');
             return;
         }
-        const phoneValidation = validatePhone(newBooking.phone, newBooking.dialCode);
-        if (!phoneValidation.isValid) {
-            toast.error(phoneValidation.message || 'Invalid phone number');
+        if (newBooking.phone.length !== 10) {
+            toast.error('Phone number must be exactly 10 digits');
             return;
         }
         if (/[^a-zA-Z\s]/.test(newBooking.firstName)) {
@@ -667,7 +664,7 @@ const BookingsAdminPage: React.FC = () => {
                                                         {booking.customer?.name || booking.guestInfo?.firstName || 'Guest'}
                                                     </Typography>
                                                     <Typography variant="caption" color="text.secondary">
-                                                        {formatDisplayPhone(booking.customer?.phone || booking.guestInfo?.phone)}
+                                                        {booking.customer?.phone || booking.guestInfo?.phone}
                                                     </Typography>
                                                 </TableCell>
                                                 <TableCell>
@@ -1125,7 +1122,7 @@ const BookingsAdminPage: React.FC = () => {
                                     <strong>Customer:</strong> {selectedBooking.customer?.name || selectedBooking.guestInfo?.firstName}
                                 </Typography>
                                 <Typography variant="subtitle1" gutterBottom>
-                                    <strong>Contact:</strong> {formatDisplayPhone(selectedBooking.customer?.phone || selectedBooking.guestInfo?.phone)}
+                                    <strong>Contact:</strong> {selectedBooking.customer?.phone || selectedBooking.guestInfo?.phone}
                                 </Typography>
                                 <Typography variant="subtitle1" gutterBottom>
                                     <strong>Email:</strong> {selectedBooking.customer?.email || selectedBooking.guestInfo?.email}

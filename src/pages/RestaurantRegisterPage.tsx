@@ -135,10 +135,10 @@ const RestaurantRegisterPage: React.FC = () => {
     // Special rule for phone input
     if (name === "phone") {
       const numeric = value.replace(/\D/g, ""); // keep only digits
-      const final = numeric.slice(0, 15);
+      const final = numeric.length > 10 ? numeric.slice(-10) : numeric;
       setForm({ ...form, [name]: final });
 
-      // Clear error when user types
+      // Clear error when user types a valid phone number (10 digits)
       if (errors[name]) {
         setErrors(prev => ({ ...prev, [name]: { isValid: true } }));
       }
@@ -214,7 +214,7 @@ const RestaurantRegisterPage: React.FC = () => {
         validation = validateEmail(value);
         break;
       case 'phone':
-        validation = validatePhone(value, form.dialCode);
+        validation = validatePhone(value);
         break;
       case 'password':
         validation = validatePassword(value);
@@ -236,7 +236,7 @@ const RestaurantRegisterPage: React.FC = () => {
       firstName: validateName(form.firstName, 'First name'),
       lastName: validateName(form.lastName, 'Last name'),
       email: validateEmail(form.email),
-      phone: validatePhone(form.phone, form.dialCode),
+      phone: validatePhone(form.phone),
       password: validatePassword(form.password),
       confirmPassword: { isValid: form.password === form.confirmPassword, message: form.password === form.confirmPassword ? '' : 'Passwords do not match' },
     };
@@ -455,7 +455,8 @@ const RestaurantRegisterPage: React.FC = () => {
                   value={form.phone}
                   onChange={(val) => {
                     const clean = val.replace(/\D/g, '');
-                    const final = clean.slice(0, 15);
+                    // If they paste a full number with country code, take the last 10 digits
+                    const final = clean.length > 10 ? clean.slice(-10) : clean;
                     setForm({ ...form, phone: final });
 
                     // Clear error when user types or corrects the number

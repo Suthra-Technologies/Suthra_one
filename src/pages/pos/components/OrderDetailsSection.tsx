@@ -44,7 +44,6 @@ interface OrderDetailsSectionProps {
     setTip: (val: number) => void;
     finalTotal: number;
     rewardDiscount?: number;
-    processingFeeAmount?: number;
     placingOrder: boolean;
     isApplyingCoupon?: boolean;
     handlePlaceOrder: () => void;
@@ -69,7 +68,6 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
     setTip,
     finalTotal,
     rewardDiscount = 0,
-    processingFeeAmount = 0,
     placingOrder,
     isApplyingCoupon = false,
     handlePlaceOrder,
@@ -230,12 +228,6 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                         <Typography variant="body2">Service Charge</Typography>
                         <Typography variant="body2">{formatSmartPrice(serviceChargeAmount)}</Typography>
-                    </Box>
-                )}
-                {processingFeeAmount > 0 && (
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                        <Typography variant="body2">Processing Fee</Typography>
-                        <Typography variant="body2">{formatSmartPrice(processingFeeAmount)}</Typography>
                     </Box>
                 )}
 

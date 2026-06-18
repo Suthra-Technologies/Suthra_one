@@ -8,7 +8,7 @@ import {
     TimelineDot,
     TimelineOppositeContent,
 } from '@mui/lab';
-import { Typography, Paper, Box, Chip, Tooltip } from '@mui/material';
+import { Typography, Paper, Box, Chip } from '@mui/material';
 import {
     PersonAdd as PersonAddIcon,
     Edit as EditIcon,
@@ -84,12 +84,11 @@ const ActionHistoryList: React.FC<ActionHistoryListProps> = ({ history, emptyMes
     const formatDate = (date: Date | string) => {
         const d = new Date(date);
         return d.toLocaleString('en-US', {
-            month: '2-digit',
-            day: '2-digit',
+            month: 'short',
+            day: 'numeric',
             year: 'numeric',
             hour: '2-digit',
             minute: '2-digit',
-            hour12: true
         });
     };
 
@@ -109,11 +108,9 @@ const ActionHistoryList: React.FC<ActionHistoryListProps> = ({ history, emptyMes
                         />
                     </TimelineOppositeContent>
                     <TimelineSeparator>
-                        <Tooltip title={item.action.replace(/_/g, ' ')} placement="top">
-                            <TimelineDot color={getActionColor(item.action)}>
-                                {getActionIcon(item.action)}
-                            </TimelineDot>
-                        </Tooltip>
+                        <TimelineDot color={getActionColor(item.action)}>
+                            {getActionIcon(item.action)}
+                        </TimelineDot>
                         {index < history.length - 1 && <TimelineConnector />}
                     </TimelineSeparator>
                     <TimelineContent>

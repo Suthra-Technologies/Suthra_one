@@ -83,12 +83,10 @@ api.interceptors.response.use(
       // Guests are allowed to browse these pages without being logged in
       const publicPaths = ['customer/order', 'customer/catering', 'customer/book-table', 'customer/gallery', 'customer/about', 'customer/home'];
       const isPublicPath = publicPaths.some(p => window.location.pathname.includes(p));
-      const isLoginScreen = window.location.pathname.includes('/login');
-      const isLoginRequest = error.config?.url?.includes('/auth/login');
 
       if (!isPublicPath) {
-        if (!isLoginScreen && !isLoginRequest) {
-          toast.error('Session expired. Please login again.');
+        toast.error('Session expired. Please login again.');
+        if (!window.location.pathname.includes('/login')) {
           window.location.href = '/login';
         }
       }
@@ -141,6 +139,8 @@ export const usersAPI = {
   delete: (id: string) => api.delete(`/users/${id}`),
   toggleUserStatus: (id: string) => api.patch(`/users/${id}/toggle-status`),
   resetPassword: (id: string, data: any) => api.put(`/users/${id}/reset-password`, data),
+  registerFcmToken: (token: string) => api.post('/users/fcm-token', { token }),
+  unregisterFcmToken: (token: string) => api.delete('/users/fcm-token', { data: { token } }),
 };
 
 // -------------------- Billing API --------------------
@@ -311,7 +311,6 @@ export const menuAPI = {
   delete: (id: string) => api.delete(`/menu/${id}`),
   restore: (id: string) => api.patch(`/menu/${id}/restore`),
   getPublicMenu: (tenantSlug?: string, search?: string, cursor?: string | null, limit?: number) => api.get('/menu/public', { params: { tenantSlug, search, cursor: cursor || undefined, limit } }),
-  exportExcel: () => api.get(`/menu/export/excel?t=${new Date().getTime()}`, { responseType: 'blob' }),
 
   // Category management
   createCategory: (categoryData: any) => api.post('/menu/categories', categoryData),
@@ -330,12 +329,11 @@ export const menuAPI = {
 
 // -------------------- Modifier Templates API --------------------
 export const modifierTemplatesAPI = {
-  getAll: (params?: { isDeleted?: boolean }) => api.get('/menu/templates', { params }),
+  getAll: () => api.get('/menu/templates'),
   getOne: (id: string) => api.get(`/menu/templates/${id}`),
   create: (data: any) => api.post('/menu/templates', data),
   update: (id: string, data: any) => api.put(`/menu/templates/${id}`, data),
   delete: (id: string) => api.delete(`/menu/templates/${id}`),
-  restore: (id: string) => api.patch(`/menu/templates/${id}/restore`),
 };
 
 // -------------------- Tax Categories API (External) --------------------
@@ -351,12 +349,11 @@ export const taxAPI = {
 
 // -------------------- Trays API --------------------
 export const traysAPI = {
-  getAll: (params?: { isDeleted?: boolean }) => api.get('/trays', { params }),
+  getAll: () => api.get('/trays'),
   getOne: (id: string) => api.get(`/trays/${id}`),
   create: (trayData: any) => api.post('/trays', trayData),
   update: (id: string, trayData: any) => api.put(`/trays/${id}`, trayData),
   delete: (id: string) => api.delete(`/trays/${id}`),
-  restore: (id: string) => api.patch(`/trays/${id}/restore`),
 };
 
 // -------------------- Tables API --------------------
@@ -610,8 +607,8 @@ export const superAPI = {
   // Tenant platform processing fee (managed by superadmin only)
   getTenantProcessingFee: (tenantId: string) =>
     api.get(`/superadmin/tenants/${tenantId}/processing-fee`),
-  updateTenantProcessingFee: (tenantId: string, processingFee: number, processingFeeOrderValue: number) =>
-    api.patch(`/superadmin/tenants/${tenantId}/processing-fee`, { processingFee, processingFeeOrderValue }),
+  updateTenantProcessingFee: (tenantId: string, processingFee: number) =>
+    api.patch(`/superadmin/tenants/${tenantId}/processing-fee`, { processingFee }),
 
   // Admin activity logs
   getAdminLogs: (params?: any) => api.get('/superadmin/admin-logs', { params }),
@@ -720,12 +717,11 @@ export const vendorsAPI = {
 // -------------------- Recipes API --------------------
 export const recipesAPI = {
   create: (data: any) => api.post('/recipes', data),
-  getAll: (params?: { page?: number; limit?: number; search?: string; isActive?: boolean; isDeleted?: boolean }) => api.get('/recipes', { params }),
+  getAll: (params?: any) => api.get('/recipes', { params }),
   getOne: (id: string) => api.get(`/recipes/${id}`),
   getByMenuItem: (menuItemId: string) => api.get(`/recipes/menu-item/${menuItemId}`),
   update: (id: string, data: any) => api.put(`/recipes/${id}`, data),
   delete: (id: string) => api.delete(`/recipes/${id}`),
-  restore: (id: string) => api.patch(`/recipes/${id}/restore`),
   recalculateCost: (id: string) => api.post(`/recipes/${id}/calculate-cost`),
 };
 

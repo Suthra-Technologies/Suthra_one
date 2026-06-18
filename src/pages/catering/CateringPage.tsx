@@ -47,8 +47,6 @@ import AddressAutocomplete from '../../components/AddressAutocomplete';
 import PhoneInput from '../../components/PhoneInput';
 import CustomInput from '../../components/common/CustomInput';
 import { isWithinDeliveryRadius, METERS_PER_MILE } from '../../services/googleMapsService';
-import { validatePhone } from '../../utils/validation';
-import { getPhoneMaxLength, formatPhoneForInput } from '../../utils/inputSanitizers';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { formatSpiceLevelLabel } from '../../utils/spiceLevel';
@@ -507,8 +505,7 @@ const CateringPage = () => {
 
         setFormSubmitted(true);
         if (!formData.customerName.trim()) { toast.error('Full name is required'); return; }
-        const phoneValidation = validatePhone(formData.customerPhone, formData.customerDialCode);
-        if (!phoneValidation.isValid) { toast.error(phoneValidation.message || 'Invalid phone number'); return; }
+        if (formData.customerPhone.length !== 10) { toast.error('10-digit phone number is required'); return; }
         if (!formData.customerEmail.trim() || !validateEmail(formData.customerEmail)) { toast.error('Valid email is required'); return; }
         if (!formData.occasion) { toast.error('Occasion is required'); return; }
         if (!formData.occasionDate) { toast.error('Occasion date is required'); return; }
@@ -541,7 +538,6 @@ const CateringPage = () => {
         try {
             const payload = {
                 ...formData,
-                customerPhone: formData.customerPhone.replace(/\D/g, ''),
                 orderType: formData.serviceType === 'takeaway' ? 'online_takeaway' : formData.serviceType,
                 items: cart,
                 subtotal,
@@ -844,8 +840,8 @@ const CateringPage = () => {
                                 >
                                     <CustomInput type="name" label="Full Name" fullWidth required value={formData.customerName} onChange={val => setFormData({ ...formData, customerName: val })} InputLabelProps={{ sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }} />
                                     <TextField label="Phone Number" fullWidth required value={formData.customerPhone} onChange={e => {
-                                        const formatted = formatPhoneForInput(e.target.value, formData.customerDialCode || '1');
-                                        setFormData({ ...formData, customerPhone: formatted });
+                                        const numericValue = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                        setFormData({ ...formData, customerPhone: numericValue });
                                     }} InputLabelProps={{ sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }} />
                                     <TextField label="Email" fullWidth value={formData.customerEmail} onChange={e => setFormData({ ...formData, customerEmail: e.target.value })} />
 
