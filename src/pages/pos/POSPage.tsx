@@ -51,6 +51,7 @@ import theme from 'src/theme/theme';
 import PaymentModal from '../../components/PaymentModal';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
+import { autoPrintOrder } from '../../utils/autoPrintOrder';
 import { couponsAPI, menuAPI, ordersAPI, rewardsAPI, settingsAPI, tablesAPI, taxAPI, traysAPI, usersAPI } from '../../services/api';
 import { isWithinDeliveryRadius, METERS_PER_MILE } from '../../services/googleMapsService';
 import CustomerInfoSection from './components/CustomerInfoSection';
@@ -1501,12 +1502,26 @@ const POSPage: React.FC = () => {
                     : null,
             };
 
+            let savedOrderId: string | undefined;
             if (isEditMode && existingOrderId) {
                 await ordersAPI.update(existingOrderId, payload);
+                savedOrderId = existingOrderId;
                 toast.success("Order updated");
             } else {
-                await ordersAPI.create(payload);
+                const createRes = await ordersAPI.create(payload);
+                // The created order id may come back as data._id / data.data._id / data.order._id.
+                savedOrderId = createRes?.data?._id || createRes?.data?.data?._id || createRes?.data?.order?._id;
                 // toast.success("Order placed");
+            }
+
+            // Auto-print the bill to the Wi-Fi thermal printer (Android only, when enabled).
+            // autoPrintOrder dedupes against the socket newOrder path, so it won't double-print.
+            if (savedOrderId && settings.system?.autoPrint) {
+                autoPrintOrder(savedOrderId, settings.printer, settings.system.autoPrint, formatCurrency)
+                    .catch((err) => {
+                        console.error('[ThermalPrint] Auto-print failed:', err);
+                        toast.error('Auto-print to thermal printer failed. Check the printer Wi-Fi connection.');
+                    });
             }
 
             // Set guard BEFORE clearing URL/state to prevent useEffect from re-loading stale order data

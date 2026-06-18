@@ -210,6 +210,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
       items: [
         { path: '/reports', label: 'Reports', icon: <Assessment />, roles: ['admin', 'manager'] },
         { path: '/service-usage', label: 'Service Usage', icon: <WebIcon />, roles: ['admin', 'manager'] },
+        { path: '/customer-activities', label: 'Customer Activities', icon: <Assessment />, roles: ['admin', 'manager'] },
         { path: '/invoices', label: 'Invoices', icon: <Receipt />, roles: ['admin', 'superadmin'], laptopOnly: true },
       ]
     },

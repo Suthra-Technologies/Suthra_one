@@ -200,6 +200,8 @@ export const ordersAPI = {
     api.post(`/orders/${id}/status`, { status, notes }),
   cancel: (id: string, reason?: string) =>
     api.patch(`/orders/${id}/cancel`, { reason }),
+  // Auto-close all open orders (mark completed) — used by the closing auto-close request
+  closeAllOrders: () => api.post('/orders/close-all'),
 
   // Add items to existing order
   addItems: (id: string, items: any[], kotNumber?: string) =>
@@ -225,6 +227,9 @@ export const ordersAPI = {
 
   // Bill generation
   getBillData: (id: string) => api.get(`/orders/${id}/bill`),
+  // Mark a print stage done (kot | bill | both) so the background station won't reprint it.
+  markPrintStage: (id: string, stage: 'kot' | 'bill' | 'both') =>
+    api.post(`/orders/station/${id}/mark-printed`, { stage }),
   downloadPDF: (id: string) => api.get(`/orders/${id}/pdf`, { responseType: 'blob' }),
 
   // Coupon management
@@ -441,6 +446,29 @@ export const settingsAPI = {
   getTaxRate: (zipCode: string, state?: string) =>
     api.get(`/settings/tax-rate/${zipCode}`, { params: state ? { state } : {} }),
   getPublicHours: (slug: string) => api.get(`/settings/public/${slug}/hours`),
+};
+
+// -------------------- Customer Activity API --------------------
+type ActivityRangeParams = { startDate?: string; endDate?: string };
+
+export const activityAPI = {
+  // Per-tenant admin reads
+  getAnalytics: (params: ActivityRangeParams = {}) =>
+    api.get('/activity/analytics', { params }),
+  getUniqueUsers: (params: ActivityRangeParams & { source?: string; page?: number; limit?: number } = {}) =>
+    api.get('/activity/unique-users', { params }),
+  getScreenVisitors: (params: ActivityRangeParams = {}) =>
+    api.get('/activity/screen-visitors', { params }),
+  // Public website page-view ingestion (no auth)
+  trackStatic: (payload: { tenantSlug: string; staticPath: string; isLoggedIn?: boolean }) =>
+    api.post('/activity/static-track', payload),
+};
+
+export const superActivityAPI = {
+  getOverview: (params: ActivityRangeParams = {}) =>
+    api.get('/activity/superadmin/overview', { params }),
+  getTenant: (tenantSlug: string, params: ActivityRangeParams = {}) =>
+    api.get('/activity/superadmin/tenant', { params: { tenantSlug, ...params } }),
 };
 
 // -------------------- Subscription API --------------------
@@ -698,7 +726,9 @@ export const purchaseOrdersAPI = {
   receiveMaterialOrder: (id: string, data?: any) => api.patch(`/purchase-orders/material-orders/${id}/receive`, data || {}),
   getAnalytics: (params?: any) => api.get('/purchase-orders/analytics', { params }),
   extractInvoice: (formData: FormData) => api.post('/purchase-orders/extract-invoice', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
+    headers: { 'Content-Type': 'multipart/form-data' },
+    // Backend makes two sequential AI calls (60s each); cover that worst case.
+    timeout: 120000,
   }),
 };
 

@@ -9,6 +9,7 @@ import { LocalNotifications } from '@capacitor/local-notifications';
 
 import { getSoundSrc } from '../utils/notificationSounds';
 import { useSettings } from './SettingsContext';
+import { autoPrintOrder } from '../utils/autoPrintOrder';
 
 interface Notification {
     id: number | string;
@@ -22,6 +23,12 @@ interface Notification {
     targetRoles?: string[];
 }
 
+interface AutoCloseRequest {
+    orders: any[];
+    count: number;
+    closeTime: string;
+}
+
 interface NotificationContextType {
     notifications: Notification[];
     clearNotifications: () => void;
@@ -30,6 +37,8 @@ interface NotificationContextType {
     testNotification: () => void;
     deliveryLocations: Record<string, { lat: number, lng: number, timestamp: Date }>;
     trackOrder: (orderId: string, lat: number, lng: number) => void;
+    autoCloseRequest: AutoCloseRequest | null;
+    dismissAutoCloseRequest: () => void;
 }
 
 const NotificationContext = createContext<NotificationContextType>({
@@ -40,17 +49,27 @@ const NotificationContext = createContext<NotificationContextType>({
     testNotification: () => { },
     deliveryLocations: {},
     trackOrder: () => { },
+    autoCloseRequest: null,
+    dismissAutoCloseRequest: () => { },
 });
 
 export const useNotifications = () => useContext(NotificationContext);
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { user } = useAuth();
-    const { settings } = useSettings();
+    const { settings, formatCurrency } = useSettings();
     const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [autoCloseRequest, setAutoCloseRequest] = useState<AutoCloseRequest | null>(null);
 
     const soundTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const audioRef        = useRef<HTMLAudioElement | null>(null);
+
+    // Hold latest printer settings + currency in a ref so socket handlers read fresh
+    // values WITHOUT being recreated (recreating would tear down the socket & miss orders).
+    const printCtxRef = useRef({ printer: settings.printer, autoPrint: settings.system?.autoPrint, formatCurrency });
+    useEffect(() => {
+        printCtxRef.current = { printer: settings.printer, autoPrint: settings.system?.autoPrint, formatCurrency };
+    }, [settings.printer, settings.system?.autoPrint, formatCurrency]);
 
     const playNotificationSound = useCallback(() => {
         // Stop and discard any currently playing audio
@@ -285,6 +304,19 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         };
         setNotifications(prev => [newNotif, ...prev].slice(0, 50));
 
+        // Auto-print KOT + bill on the restaurant device for ANY new order.
+        // autoPrintOrder dedupes by id so POS orders already printed won't double-print.
+        const { printer, autoPrint, formatCurrency: fmt } = printCtxRef.current;
+        if (isStaff && autoPrint) {
+            const newOrderId = data.order?._id || data.orderId || data._id;
+            if (newOrderId) {
+                autoPrintOrder(newOrderId, printer, !!autoPrint, fmt)
+                    .catch(() => {
+                        toast.error('Auto-print failed. Check the printer Wi-Fi connection.');
+                    });
+            }
+        }
+
     }, [user, playNotificationSound, showNotification]);
 
     const handleOrderStatusUpdate = useCallback((data: any) => {
@@ -355,6 +387,72 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setNotifications(prev => [newNotif, ...prev].slice(0, 50));
 
     }, [user, playNotificationSound, showNotification, getOrderNotificationDetails]);
+
+    // Staff-only: orders whose status hasn't changed in over an hour.
+    const handleStaleOrdersAlert = useCallback((data: any) => {
+        if (!user) return;
+        const userRole = user.role?.toLowerCase() || '';
+        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
+        if (!staffRoles.includes(userRole)) return;
+
+        const count = data?.count ?? (data?.orders?.length || 0);
+        if (count === 0) return;
+
+        playNotificationSound();
+        const title = 'Orders Need Attention';
+        const message = `${count} order${count === 1 ? '' : 's'} have not been updated for over an hour. Please review and close them.`;
+        showNotification(title, message);
+
+        toast.custom((t) => (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'warning.main', color: 'white', p: 2, borderRadius: 2, boxShadow: 3, minWidth: 300, cursor: 'pointer' }} onClick={() => toast.dismiss(t.id)}>
+                <RestaurantIcon />
+                <Box sx={{ flexGrow: 1 }}>
+                    <Typography variant="subtitle1" fontWeight="bold">{title}</Typography>
+                    <Typography variant="body2">{message}</Typography>
+                </Box>
+                <IconButton size="small" sx={{ color: 'white' }}><CloseIcon /></IconButton>
+            </Box>
+        ), { duration: 6000, position: 'top-right' });
+
+        const newNotif: Notification = { id: 'stale-' + Date.now(), timestamp: new Date(), read: false, type: 'stale-orders', title, message, priority: 'high', data };
+        setNotifications(prev => [newNotif, ...prev].slice(0, 50));
+    }, [user, playNotificationSound, showNotification]);
+
+    // Admin/manager-only: request to auto-close all open orders before the store closes.
+    const handleAutoCloseRequest = useCallback((data: any) => {
+        if (!user) return;
+        const userRole = user.role?.toLowerCase() || '';
+        if (!['admin', 'manager', 'superadmin', 'kitchen', 'kitchen_staff'].includes(userRole)) return;
+
+        const count = data?.count ?? (data?.orders?.length || 0);
+        const closeTime = data?.closeTime || '';
+
+        playNotificationSound();
+        const title = 'Store Closing Soon';
+        const message = count > 0
+            ? `${count} order${count === 1 ? '' : 's'} still open before close (${closeTime}). Auto-close them all?`
+            : `Store closing at ${closeTime}.`;
+        showNotification(title, message);
+
+        // Surface the confirm dialog (rendered by the Layout).
+        if (count > 0) {
+            setAutoCloseRequest({ orders: data?.orders || [], count, closeTime });
+        }
+
+        toast.custom((t) => (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'error.main', color: 'white', p: 2, borderRadius: 2, boxShadow: 3, minWidth: 300, cursor: 'pointer' }} onClick={() => toast.dismiss(t.id)}>
+                <RestaurantIcon />
+                <Box sx={{ flexGrow: 1 }}>
+                    <Typography variant="subtitle1" fontWeight="bold">{title}</Typography>
+                    <Typography variant="body2">{message}</Typography>
+                </Box>
+                <IconButton size="small" sx={{ color: 'white' }}><CloseIcon /></IconButton>
+            </Box>
+        ), { duration: 8000, position: 'top-right' });
+
+        const newNotif: Notification = { id: 'autoclose-' + Date.now(), timestamp: new Date(), read: false, type: 'auto-close', title, message, priority: 'high', data };
+        setNotifications(prev => [newNotif, ...prev].slice(0, 50));
+    }, [user, playNotificationSound, showNotification]);
 
     const handleNewCateringOrder = useCallback((data: any) => {
         console.log('🔔 [NotificationProvider] RAW newCateringOrder event:', data);
@@ -528,7 +626,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         socketService.on('newOrder', handleNewOrder);
         socketService.on('orderStatusUpdate', handleOrderStatusUpdate);
         socketService.on('locationUpdate', handleLocationUpdate);
-        
+
+        // Order close / stale events
+        socketService.on('staleOrdersAlert', handleStaleOrdersAlert);
+        socketService.on('autoCloseRequest', handleAutoCloseRequest);
+
         // Catering events
         socketService.on('newCateringOrder', handleNewCateringOrder);
         socketService.on('cateringOrderStatusUpdate', handleCateringOrderStatusUpdate);
@@ -539,7 +641,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             socketService.off('newOrder', handleNewOrder);
             socketService.off('orderStatusUpdate', handleOrderStatusUpdate);
             socketService.off('locationUpdate', handleLocationUpdate);
-            
+
+            socketService.off('staleOrdersAlert', handleStaleOrdersAlert);
+            socketService.off('autoCloseRequest', handleAutoCloseRequest);
+
             socketService.off('newCateringOrder', handleNewCateringOrder);
             socketService.off('cateringOrderStatusUpdate', handleCateringOrderStatusUpdate);
             socketService.off('cateringOrderUpdate', handleCateringOrderUpdate);
@@ -548,6 +653,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             socketService.disconnect();
         };
     }, [user?.sub, user?.role, handleNewOrder, handleOrderStatusUpdate, handleNewCateringOrder, handleCateringOrderStatusUpdate, handleCateringOrderUpdate]); // Re-connect only if identity changes
+
+    const dismissAutoCloseRequest = useCallback(() => setAutoCloseRequest(null), []);
 
     const clearNotifications = useCallback(() => setNotifications([]), []);
     const markAsRead = useCallback((id: string | number) => {
@@ -581,7 +688,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             markAllAsRead,
             testNotification,
             deliveryLocations,
-            trackOrder
+            trackOrder,
+            autoCloseRequest,
+            dismissAutoCloseRequest
         }}>
             {children}
         </NotificationContext.Provider>

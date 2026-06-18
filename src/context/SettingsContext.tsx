@@ -140,6 +140,13 @@ export interface PrinterConfig {
     port: number;
     paperWidth: number;
     deviceId?: string;
+    /**
+     * Printer command language. Only relevant for type 'escpos-tcp':
+     *  - 'epos-print': Epson ePOS-Print over HTTP — for Epson TM-m30III/TM series (works when raw 9100 is off)
+     *  - 'escpos': raw ESC/POS over TCP 9100 — most generic thermal printers
+     *  - 'star-line': Star Line Mode over TCP 9100 — Star SP700/SP742/TSP
+     */
+    commandMode?: 'epos-print' | 'escpos' | 'star-line';
 }
 
 export interface TenantPrinterSettings {

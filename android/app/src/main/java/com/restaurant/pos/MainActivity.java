@@ -8,8 +8,11 @@ import com.google.firebase.FirebaseOptions;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        // Register the thermal-print Capacitor plugin BEFORE the bridge initializes
+        // so isPluginAvailable('ThermalPrint') and Wi-Fi printing work in the app.
+        registerPlugin(ThermalPrintPlugin.class);
         super.onCreate(savedInstanceState);
-        
+
         try {
             FirebaseApp.getInstance();
         } catch (IllegalStateException e) {

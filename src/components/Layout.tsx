@@ -50,6 +50,7 @@ import { useSettings } from 'src/context/SettingsContext';
 import { useActiveTenant } from 'src/hooks/useActiveTenant';
 import { settingsAPI, tenantAPI } from 'src/services/api';
 import AddRestaurantDialog from './AddRestaurantDialog';
+import AutoCloseOrdersDialog from './AutoCloseOrdersDialog';
 import NotificationPanel from './NotificationPanel';
 import ShiftManager from './ShiftManager';
 import Sidebar from './Sidebar';
@@ -385,7 +386,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
   const { user, logout, isLoading, availableTenants, switchTenant, activeRole, hasRole } = useAuth(); // Added availableTenants, switchTenant, tenantSlug
   const { slug, isSubdomain, getRelativePath } = useActiveTenant();
   const tenantSlug = slug;
-  const { notifications } = useNotifications();
+  const { notifications, autoCloseRequest, dismissAutoCloseRequest } = useNotifications();
   const { settings, updateSettings } = useSettings();
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -915,6 +916,11 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
         open={addStoreOpen}
         onClose={() => setAddStoreOpen(false)}
         onSuccess={handleAddStoreSuccess}
+      />
+
+      <AutoCloseOrdersDialog
+        request={autoCloseRequest}
+        onClose={dismissAutoCloseRequest}
       />
     </Box >
   );
