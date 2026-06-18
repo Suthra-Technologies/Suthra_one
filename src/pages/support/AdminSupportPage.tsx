@@ -53,8 +53,15 @@ interface Ticket {
   }[];
 }
 
-const fixS3Url = (url: string) => {
+const fixImageUrl = (url: string) => {
   if (!url) return '';
+  if (url.startsWith('/uploads')) {
+    let backendBase = (import.meta.env.VITE_API_URL || 'http://localhost:5006').replace(/\/api$/, '');
+    if (!backendBase.startsWith('http://') && !backendBase.startsWith('https://')) {
+        backendBase = 'http://' + backendBase;
+    }
+    return `${backendBase}${url}`;
+  }
   // Check for virtual-hosted-style URLs (bucket.s3.region.amazonaws.com)
   // This causes SSL errors if the bucket name contains dots
   const match = url.match(/^https:\/\/([a-zA-Z0-9.-]+)\.s3\.([a-zA-Z0-9-]+)\.amazonaws\.com\/(.+)$/);
@@ -344,7 +351,7 @@ const AdminSupportPage: React.FC = () => {
               {attachments.map((att, index) => (
                 <Grid item xs={6} sm={4} key={index}>
                   <Card sx={{ position: 'relative' }}>
-                    <CardMedia component="img" height="100" image={fixS3Url(att.url)} alt={att.name} />
+                    <CardMedia component="img" height="100" image={fixImageUrl(att.url)} alt={att.name} />
                     <IconButton
                       size="small"
                       sx={{
@@ -591,10 +598,10 @@ const AdminSupportPage: React.FC = () => {
                               <CardMedia
                                 component="img"
                                 height="150"
-                                image={fixS3Url(att.url)}
+                                image={fixImageUrl(att.url)}
                                 alt={att.name}
                                 sx={{ cursor: 'pointer' }}
-                                onClick={() => window.open(att.url, '_blank')}
+                                onClick={() => window.open(fixImageUrl(att.url), '_blank')}
                               />
                             </Card>
                           </Grid>

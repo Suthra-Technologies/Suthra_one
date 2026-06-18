@@ -36,8 +36,15 @@ import { Image as ImageIcon, Close as CloseIcon, Edit as EditIcon, Delete as Del
 import { superAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 
-const fixS3Url = (url: string) => {
+const fixImageUrl = (url: string) => {
   if (!url) return '';
+  if (url.startsWith('/uploads')) {
+    let backendBase = (import.meta.env.VITE_API_URL || 'http://localhost:5006').replace(/\/api$/, '');
+    if (!backendBase.startsWith('http://') && !backendBase.startsWith('https://')) {
+        backendBase = 'http://' + backendBase;
+    }
+    return `${backendBase}${url}`;
+  }
   // Check for virtual-hosted-style URLs (bucket.s3.region.amazonaws.com)
   const match = url.match(/^https:\/\/([a-zA-Z0-9.-]+)\.s3\.([a-zA-Z0-9-]+)\.amazonaws\.com\/(.+)$/);
   if (match) {
@@ -242,9 +249,9 @@ const TicketsPage: React.FC = () => {
                             {attachments.map((att: any, index: number) => (
                               <Tooltip key={index} title={att.name || 'Image'}>
                                 <Avatar
-                                  src={fixS3Url(att.url)}
+                                  src={fixImageUrl(att.url)}
                                   sx={{ width: 40, height: 40, cursor: 'pointer' }}
-                                  onClick={() => window.open(att.url, '_blank')}
+                                  onClick={() => window.open(fixImageUrl(att.url), '_blank')}
                                 >
                                   <ImageIcon />
                                 </Avatar>
@@ -413,9 +420,9 @@ const TicketsPage: React.FC = () => {
                               {attachments.map((att: any, index: number) => (
                                 <Tooltip key={index} title={att.name || 'Image'}>
                                   <Avatar
-                                    src={fixS3Url(att.url)}
+                                    src={fixImageUrl(att.url)}
                                     sx={{ width: 30, height: 30, cursor: 'pointer' }}
-                                    onClick={() => window.open(att.url, '_blank')}
+                                    onClick={() => window.open(fixImageUrl(att.url), '_blank')}
                                   >
                                     <ImageIcon fontSize="small" />
                                   </Avatar>
@@ -538,12 +545,12 @@ const TicketsPage: React.FC = () => {
                             <Grid item xs={6} sm={4} md={3} key={attIndex}>
                               <Card
                                 sx={{ cursor: 'pointer' }}
-                                onClick={() => window.open(att.url, '_blank')}
+                                onClick={() => window.open(fixImageUrl(att.url), '_blank')}
                               >
                                 <CardMedia
                                   component="img"
                                   height="120"
-                                  image={fixS3Url(att.url)}
+                                  image={fixImageUrl(att.url)}
                                   alt={att.name || 'Attachment'}
                                 />
                               </Card>
