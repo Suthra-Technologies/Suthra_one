@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Card, IconButton, Divider,
   TextField, Button, Alert, Chip, CircularProgress, Stack, Tooltip,
-  Switch, FormControlLabel,
+  Switch, FormControlLabel, InputAdornment
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
@@ -20,6 +20,8 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import LinkIcon from '@mui/icons-material/Link';
 import SaveIcon from '@mui/icons-material/Save';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import { superAPI } from '../../services/api';
 
 const statusColor = (s?: string) => {
@@ -202,6 +204,8 @@ const TenantDetailsPage: React.FC = () => {
   const [deliverySaving, setDeliverySaving] = useState(false);
   const [deliveryError, setDeliveryError] = useState('');
   const [deliveryInfo, setDeliveryInfo] = useState('');
+  const [showUberSecret, setShowUberSecret] = useState(false);
+  const [showDoorSecret, setShowDoorSecret] = useState(false);
 
   useEffect(() => {
     if (!tenantId) return;
@@ -501,7 +505,7 @@ const TenantDetailsPage: React.FC = () => {
             </Stack>
             <Stack spacing={2}>
               <TextField size="small" fullWidth label="Client ID" value={deliverySettings.ubereats?.clientId || ''} onChange={e => setUber('clientId', e.target.value)} />
-              <TextField size="small" fullWidth type="password" label="Client Secret" value={deliverySettings.ubereats?.clientSecret || ''} onChange={e => setUber('clientSecret', e.target.value)} />
+              <TextField size="small" fullWidth type={showUberSecret ? 'text' : 'password'} label="Client Secret" value={deliverySettings.ubereats?.clientSecret || ''} onChange={e => setUber('clientSecret', e.target.value)} InputProps={{ endAdornment: <InputAdornment position="end"><IconButton onClick={() => setShowUberSecret(!showUberSecret)} size="small">{showUberSecret ? <Visibility fontSize="small" /> : <VisibilityOff fontSize="small" />}</IconButton></InputAdornment> }} />
               <TextField size="small" fullWidth label="Customer ID" value={deliverySettings.ubereats?.customerId || ''} onChange={e => setUber('customerId', e.target.value)} />
               <TextField size="small" fullWidth label="Store ID" value={deliverySettings.ubereats?.storeId || ''} onChange={e => setUber('storeId', e.target.value)} />
               <FormControlLabel
@@ -523,7 +527,7 @@ const TenantDetailsPage: React.FC = () => {
             <Stack spacing={2}>
               <TextField size="small" fullWidth label="Developer ID" value={deliverySettings.doordash?.developerId || ''} onChange={e => setDoor('developerId', e.target.value)} />
               <TextField size="small" fullWidth label="Key ID" value={deliverySettings.doordash?.keyId || ''} onChange={e => setDoor('keyId', e.target.value)} />
-              <TextField size="small" fullWidth type="password" label="Signing Secret" value={deliverySettings.doordash?.signingSecret || ''} onChange={e => setDoor('signingSecret', e.target.value)} />
+              <TextField size="small" fullWidth type={showDoorSecret ? 'text' : 'password'} label="Signing Secret" value={deliverySettings.doordash?.signingSecret || ''} onChange={e => setDoor('signingSecret', e.target.value)} InputProps={{ endAdornment: <InputAdornment position="end"><IconButton onClick={() => setShowDoorSecret(!showDoorSecret)} size="small">{showDoorSecret ? <Visibility fontSize="small" /> : <VisibilityOff fontSize="small" />}</IconButton></InputAdornment> }} />
               <FormControlLabel
                 control={<Switch size="small" checked={!!deliverySettings.doordash?.isSandbox} onChange={e => setDoor('isSandbox', e.target.checked)} />}
                 label="Sandbox Mode"

@@ -10,8 +10,10 @@ import {
   Breadcrumbs,
   Link,
   Divider,
+  InputAdornment,
+  IconButton,
 } from '@mui/material';
-import { Settings as SettingsIcon } from '@mui/icons-material';
+import { Settings as SettingsIcon, Visibility, VisibilityOff } from '@mui/icons-material';
 import api from '../../services/api';
 import { toast } from 'react-hot-toast';
 
@@ -30,6 +32,8 @@ export default function SuperAdminSettingsPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [showSecret, setShowSecret] = useState(false);
+  const [showToken, setShowToken] = useState(false);
 
   useEffect(() => {
     fetchSettings();
@@ -130,20 +134,38 @@ export default function SuperAdminSettingsPage() {
                 fullWidth
                 label="OAuth Client Secret"
                 variant="outlined"
-                type="password"
+                type={showSecret ? "text" : "password"}
                 value={settings.clientSecret}
                 onChange={(e) => setSettings({ ...settings, clientSecret: e.target.value })}
                 sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton onClick={() => setShowSecret(!showSecret)} edge="end">
+                        {showSecret ? <Visibility /> : <VisibilityOff />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
               />
 
               <TextField
                 fullWidth
                 label="OAuth Refresh Token"
                 variant="outlined"
-                type="password"
+                type={showToken ? "text" : "password"}
                 value={settings.refreshToken}
                 onChange={(e) => setSettings({ ...settings, refreshToken: e.target.value })}
                 sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px' } }}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <IconButton onClick={() => setShowToken(!showToken)} edge="end">
+                        {showToken ? <Visibility /> : <VisibilityOff />}
+                      </IconButton>
+                    </InputAdornment>
+                  ),
+                }}
               />
 
               <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>

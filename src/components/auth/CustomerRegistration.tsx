@@ -14,7 +14,8 @@ import {
   StepLabel,
   Chip,
 
-  IconButton
+  IconButton,
+  InputAdornment
 } from '@mui/material';
 import Grid from '@mui/material/Grid2';
 import {
@@ -65,6 +66,7 @@ const CustomerRegistration: React.FC<CustomerRegistrationProps> = ({ onClose, on
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -246,12 +248,11 @@ const CustomerRegistration: React.FC<CustomerRegistrationProps> = ({ onClose, on
             variant="outlined"
             InputProps={{
               endAdornment: (
-                <IconButton
-                  onClick={() => setShowPassword(!showPassword)}
-                  edge="end"
-                >
-                  {showPassword ? <Visibility /> : <VisibilityOff />}
-                </IconButton>
+                <InputAdornment position="end">
+                  <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
+                    {showPassword ? <Visibility /> : <VisibilityOff />}
+                  </IconButton>
+                </InputAdornment>
               )
             }}
           />
@@ -261,11 +262,20 @@ const CustomerRegistration: React.FC<CustomerRegistrationProps> = ({ onClose, on
             fullWidth
             label="Confirm Password"
             name="confirmPassword"
-            type="password"
+            type={showConfirmPassword ? 'text' : 'password'}
             value={formData.confirmPassword}
             onChange={handleChange}
             required
             variant="outlined"
+            InputProps={{
+              endAdornment: (
+                <InputAdornment position="end">
+                  <IconButton onClick={() => setShowConfirmPassword(!showConfirmPassword)} edge="end">
+                    {showConfirmPassword ? <Visibility /> : <VisibilityOff />}
+                  </IconButton>
+                </InputAdornment>
+              )
+            }}
           />
         </Grid>
       </Grid>

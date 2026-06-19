@@ -15,7 +15,9 @@ import {
     Save as SaveIcon,
     Sms as SmsIcon,
     Star as StarIcon,
-    Terminal as TerminalIcon
+    Terminal as TerminalIcon,
+    Visibility,
+    VisibilityOff
 } from '@mui/icons-material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -588,6 +590,11 @@ const SettingsPage: React.FC = () => {
     const [errors, setErrors] = useState<Record<string, ValidationResult>>({});
     const [fetchingTax, setFetchingTax] = useState(false);
     const [webhookUrl, setWebhookUrl] = useState<string>('');
+
+    const [showTwilioAuthToken, setShowTwilioAuthToken] = useState(false);
+    const [showStripeSecretKey, setShowStripeSecretKey] = useState(false);
+    const [showStripeWebhookSecret, setShowStripeWebhookSecret] = useState(false);
+
     const [stripeStatus, setStripeStatus] = useState<{ stripeMode?: string; hasPublishableKey?: boolean; hasSecretKey?: boolean; hasWebhookSecret?: boolean }>({});
     const [usersList, setUsersList] = useState<any[]>([]);
     const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
@@ -2972,13 +2979,22 @@ const SettingsPage: React.FC = () => {
                         <Grid size={{ xs: 12, md: 4 }}>
                             <TextField
                                 fullWidth
-                                type="password"
+                                type={showTwilioAuthToken ? "text" : "password"}
                                 label="Twilio Auth Token"
                                 value={settings.notification.sms.twilio.authToken}
                                 onChange={(e) => handleNotificationChange('authToken', e.target.value.trim())}
                                 disabled={!settings.notification.sms.enabled}
                                 autoComplete="new-password"
                                 helperText={settings.notification.sms.status?.hasAuthToken ? 'A Twilio auth token is already saved.' : ''}
+                                InputProps={{
+                                    endAdornment: (
+                                        <InputAdornment position="end">
+                                            <IconButton onClick={() => setShowTwilioAuthToken(!showTwilioAuthToken)} edge="end" disabled={!settings.notification.sms.enabled}>
+                                                {showTwilioAuthToken ? <Visibility /> : <VisibilityOff />}
+                                            </IconButton>
+                                        </InputAdornment>
+                                    )
+                                }}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
@@ -3627,7 +3643,7 @@ const SettingsPage: React.FC = () => {
                             <TextField
                                 fullWidth
                                 label="Secret Key"
-                                type="password"
+                                type={showStripeSecretKey ? "text" : "password"}
                                 value={settings.payment.stripeSecretKey || ''}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({
                                     ...prev,
@@ -3636,13 +3652,22 @@ const SettingsPage: React.FC = () => {
                                 placeholder="sk_test_..."
                                 autoComplete="new-password"
                                 helperText={stripeStatus.hasSecretKey ? 'Already set. Leave blank to keep current key.' : ''}
+                                InputProps={{
+                                    endAdornment: (
+                                        <InputAdornment position="end">
+                                            <IconButton onClick={() => setShowStripeSecretKey(!showStripeSecretKey)} edge="end">
+                                                {showStripeSecretKey ? <Visibility /> : <VisibilityOff />}
+                                            </IconButton>
+                                        </InputAdornment>
+                                    )
+                                }}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 6 }}>
                             <TextField
                                 fullWidth
                                 label="Webhook Signing Secret"
-                                type="password"
+                                type={showStripeWebhookSecret ? "text" : "password"}
                                 value={settings.payment.stripeWebhookSecret || ''}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({
                                     ...prev,
@@ -3653,6 +3678,15 @@ const SettingsPage: React.FC = () => {
                                 helperText={stripeStatus.hasWebhookSecret
                                     ? 'Already set. Leave blank to keep current key.'
                                     : 'Found in Stripe Dashboard → Developers → Webhooks'}
+                                InputProps={{
+                                    endAdornment: (
+                                        <InputAdornment position="end">
+                                            <IconButton onClick={() => setShowStripeWebhookSecret(!showStripeWebhookSecret)} edge="end">
+                                                {showStripeWebhookSecret ? <Visibility /> : <VisibilityOff />}
+                                            </IconButton>
+                                        </InputAdornment>
+                                    )
+                                }}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 6 }}>
