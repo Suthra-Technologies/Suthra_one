@@ -85,7 +85,9 @@ import {
 
 import { apiBaseUrl, menuAPI, paymentsAPI, printersAPI, settingsAPI, smsAPI, tenantAPI, usersAPI } from '../../services/api';
 import { printBillThermal } from '../../utils/printBillThermal';
+import { printKotThermal } from '../../utils/kotThermal';
 import { isThermalPrintAvailable, startPrintStation, stopPrintStation } from '../../services/thermalPrint';
+import { connectUsbPrinter, disconnectUsbPrinter, isUsbPrintAvailable, isUsbPrinterConnected } from '../../services/usbPrint';
 
 import { NOTIFICATION_SOUNDS, previewSound } from '../../utils/notificationSounds';
 import type { ValidationResult } from '../../utils/validation';
@@ -575,6 +577,60 @@ const mergeSettingsWithDefaults = (defaults: SettingsState, partial: Partial<Set
 };
 
 
+/**
+ * Settings UI block for a wired (USB / WebUSB) printer. Lets the user grant access to the
+ * physically connected printer and run a test print. WebUSB only exists in Chromium desktop
+ * browsers (Chrome / Edge) on a secure context — hence the availability guard.
+ */
+const UsbPrinterSection: React.FC<{
+    role: 'billing' | 'kitchen';
+    connected: boolean;
+    available: boolean;
+    onConnect: () => void;
+    onDisconnect: () => void;
+    onTest: () => void;
+}> = ({ connected, available, onConnect, onDisconnect, onTest }) => {
+    if (!available) {
+        return (
+            <Grid size={{ xs: 12 }}>
+                <Alert severity="warning">
+                    Wired USB printing uses WebUSB, which is only supported in <strong>Chrome</strong> or <strong>Edge</strong> on a desktop.
+                    It is not available in this browser, the mobile app, or on Clover devices.
+                </Alert>
+            </Grid>
+        );
+    }
+    return (
+        <>
+            <Grid size={{ xs: 12 }}>
+                <Alert severity={connected ? 'success' : 'info'}>
+                    {connected
+                        ? 'USB printer connected. Bills/KOTs will print to it directly.'
+                        : 'Plug the printer into this computer via USB, then click "Connect USB Printer" and pick it from the list.'}
+                </Alert>
+            </Grid>
+            <Grid size={{ xs: 12 }} sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+                <Chip
+                    label={connected ? 'Connected' : 'Not connected'}
+                    color={connected ? 'success' : 'default'}
+                    size="small"
+                />
+                <Button variant="outlined" onClick={onConnect} startIcon={<PrintIcon />}>
+                    {connected ? 'Reconnect USB Printer' : 'Connect USB Printer'}
+                </Button>
+                {connected && (
+                    <Button variant="text" color="error" onClick={onDisconnect}>
+                        Disconnect
+                    </Button>
+                )}
+                <Button variant="outlined" onClick={onTest} startIcon={<PrintIcon />}>
+                    Send Test Print
+                </Button>
+            </Grid>
+        </>
+    );
+};
+
 const SettingsPage: React.FC = () => {
     const { user } = useAuth();
     const { updateSettings: updateGlobalSettings, formatCurrency } = useSettings();
@@ -1050,38 +1106,78 @@ const SettingsPage: React.FC = () => {
 
     const handleTestPrint = async (role: 'billing' | 'kitchen') => {
         const config = settings.printer[role];
-        if (!config || !config.ip) {
+        if (!config) {
+            toast.error(`Please configure the ${role} printer first.`);
+            return;
+        }
+
+        const sampleBill = {
+            restaurant: {
+                name: settings.restaurant.name || 'Test Restaurant',
+                address: settings.restaurant.address,
+                phone: settings.restaurant.phone,
+            },
+            orderNumber: 'TEST-0001',
+            orderType: 'dine_in',
+            createdAt: new Date().toISOString(),
+            items: [
+                { name: 'Test Item A', quantity: 2, price: 120, total: 240 },
+                { name: 'Test Item B', quantity: 1, price: 80, total: 80 },
+            ],
+            subtotal: 320,
+            totalAmount: 320,
+            paymentStatus: 'paid',
+            paymentMethod: 'cash',
+        };
+
+        // Wired USB printer (WebUSB, desktop browser). No IP needed.
+        if (config.type === 'usb') {
+            if (!isUsbPrintAvailable()) {
+                toast.error('USB printing needs Chrome or Edge on a desktop. Not supported in this browser.');
+                return;
+            }
+            try {
+                if (!isUsbPrinterConnected()) {
+                    toast.loading('Select your USB printer...', { id: 'test-print' });
+                    await connectUsbPrinter();
+                }
+                toast.loading('Sending test print...', { id: 'test-print' });
+                if (role === 'kitchen') {
+                    await printKotThermal(sampleBill, { ...settings.printer, kitchen: config });
+                } else {
+                    await printBillThermal(sampleBill, { ...settings.printer, billing: config }, formatCurrency);
+                }
+                toast.success('Test print sent to USB printer', { id: 'test-print' });
+            } catch (error: any) {
+                console.error('USB test print failed:', error);
+                toast.error(error?.message || 'Could not print to the USB printer.', { id: 'test-print' });
+            }
+            return;
+        }
+
+        if (!config.ip) {
             toast.error(`Please configure the ${role} printer IP first.`);
             return;
         }
 
         // Wi-Fi thermal printer: print directly from the device (the backend can't reach a LAN printer).
         if (config.type === 'escpos-tcp') {
-            if (!isThermalPrintAvailable()) {
-                toast.error('Wi-Fi test print only works inside the installed Android app.');
+            // ePOS-Print is plain HTTP and works from this browser. Raw ESC/POS / Star Line use a
+            // TCP socket that only the native Android app can open. Default to epos-print to match
+            // the dropdown's default display value (it shows ePOS-Print when commandMode is unset).
+            const isEpos = (config.commandMode || 'epos-print') === 'epos-print';
+            if (!isEpos && !isThermalPrintAvailable()) {
+                toast.error('Raw ESC/POS & Star Line test prints only work inside the installed Android app. For the TM-m30III use Command Mode = ePOS-Print.');
                 return;
             }
-            const sampleBill = {
-                restaurant: {
-                    name: settings.restaurant.name || 'Test Restaurant',
-                    address: settings.restaurant.address,
-                    phone: settings.restaurant.phone,
-                },
-                orderNumber: 'TEST-0001',
-                orderType: 'dine_in',
-                createdAt: new Date().toISOString(),
-                items: [
-                    { name: 'Test Item A', quantity: 2, price: 120, total: 240 },
-                    { name: 'Test Item B', quantity: 1, price: 80, total: 80 },
-                ],
-                subtotal: 320,
-                totalAmount: 320,
-                paymentStatus: 'paid',
-                paymentMethod: 'cash',
-            };
             try {
                 toast.loading('Sending test print...', { id: 'test-print' });
-                await printBillThermal(sampleBill, { ...settings.printer, billing: config }, formatCurrency);
+                if (role === 'kitchen') {
+                    // Kitchen receiver: print an actual KOT (kitchen ticket), not a bill.
+                    await printKotThermal(sampleBill, { ...settings.printer, kitchen: config });
+                } else {
+                    await printBillThermal(sampleBill, { ...settings.printer, billing: config }, formatCurrency);
+                }
                 toast.success('Test print sent to printer', { id: 'test-print' });
             } catch (error: any) {
                 console.error('Wi-Fi test print failed:', error);
@@ -1098,6 +1194,23 @@ const SettingsPage: React.FC = () => {
             console.error(`Test print failed for ${role}:`, error);
             toast.error(error.response?.data?.message || `Failed to connect to ${role} printer`, { id: 'test-print' });
         }
+    };
+
+    // Wired USB printer (WebUSB) connection state — re-renders the "connected" status badge.
+    const [usbConnected, setUsbConnected] = useState(isUsbPrinterConnected());
+    const handleConnectUsb = async () => {
+        try {
+            const name = await connectUsbPrinter();
+            setUsbConnected(true);
+            toast.success(`Connected to ${name}`);
+        } catch (e: any) {
+            toast.error(e?.message || 'Could not connect to the USB printer.');
+        }
+    };
+    const handleDisconnectUsb = async () => {
+        await disconnectUsbPrinter();
+        setUsbConnected(false);
+        toast.success('USB printer disconnected.');
     };
 
     // Background print station (Android only): polls for new orders and prints them automatically.
@@ -3825,8 +3938,20 @@ const SettingsPage: React.FC = () => {
                                             <MenuItem value="none">None (Disabled)</MenuItem>
                                             <MenuItem value="print-agent">Print Agent (Electron)</MenuItem>
                                             <MenuItem value="escpos-tcp">Wi-Fi Thermal Printer (Mobile App)</MenuItem>
+                                            <MenuItem value="usb">Wired USB Printer (Desktop browser)</MenuItem>
                                         </TextField>
                                     </Grid>
+
+                                    {settings.printer.billing?.type === 'usb' && (
+                                        <UsbPrinterSection
+                                            role="billing"
+                                            connected={usbConnected}
+                                            available={isUsbPrintAvailable()}
+                                            onConnect={handleConnectUsb}
+                                            onDisconnect={handleDisconnectUsb}
+                                            onTest={() => handleTestPrint('billing')}
+                                        />
+                                    )}
 
                                     {/* Wi-Fi / LAN thermal printer (Android app): direct TCP to printer IP:9100 */}
                                     {settings.printer.billing?.type === 'escpos-tcp' && (
@@ -3880,7 +4005,11 @@ const SettingsPage: React.FC = () => {
                                             </Grid>
                                             <Grid size={{ xs: 12 }}>
                                                 <Alert severity="info">
-                                                    Wi-Fi printing runs from the installed mobile app (Android). The phone and printer must be on the same Wi-Fi network. Turn on <strong>Auto-print</strong> under General settings to print bills automatically.
+                                                    {settings.printer.billing?.commandMode === 'epos-print' ? (
+                                                        <>ePOS-Print (Epson TM-m30III) prints over the network from <strong>this browser</strong> — works on the laptop and Clover, no app needed. This device and the printer must be on the same network. Turn on <strong>Auto-print</strong> to print bills automatically.</>
+                                                    ) : (
+                                                        <>Raw ESC/POS & Star Line printing runs from the installed mobile app (Android). The phone and printer must be on the same Wi-Fi network. Turn on <strong>Auto-print</strong> under General settings to print bills automatically.</>
+                                                    )}
                                                 </Alert>
                                             </Grid>
                                             <Grid size={{ xs: 12 }}>
@@ -3891,7 +4020,7 @@ const SettingsPage: React.FC = () => {
                                                     startIcon={<PrintIcon />}
                                                     disabled={!settings.printer.billing?.ip}
                                                 >
-                                                    Send Test Print (from this phone)
+                                                    Send Test Print
                                                 </Button>
                                             </Grid>
                                         </>
@@ -3959,8 +4088,20 @@ const SettingsPage: React.FC = () => {
                                             <MenuItem value="none">None (Disabled)</MenuItem>
                                             <MenuItem value="print-agent">Print Agent (Electron)</MenuItem>
                                             <MenuItem value="escpos-tcp">Wi-Fi Thermal Printer (Mobile App)</MenuItem>
+                                            <MenuItem value="usb">Wired USB Printer (Desktop browser)</MenuItem>
                                         </TextField>
                                     </Grid>
+
+                                    {settings.printer.kitchen?.type === 'usb' && (
+                                        <UsbPrinterSection
+                                            role="kitchen"
+                                            connected={usbConnected}
+                                            available={isUsbPrintAvailable()}
+                                            onConnect={handleConnectUsb}
+                                            onDisconnect={handleDisconnectUsb}
+                                            onTest={() => handleTestPrint('kitchen')}
+                                        />
+                                    )}
 
                                     {/* Wi-Fi / LAN kitchen thermal printer (Android app) */}
                                     {settings.printer.kitchen?.type === 'escpos-tcp' && (
@@ -4020,7 +4161,7 @@ const SettingsPage: React.FC = () => {
                                                     startIcon={<PrintIcon />}
                                                     disabled={!settings.printer.kitchen?.ip}
                                                 >
-                                                    Send Test Print (from this phone)
+                                                    Send Test Print
                                                 </Button>
                                             </Grid>
                                         </>

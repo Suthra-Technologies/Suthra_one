@@ -4,6 +4,7 @@ import { buildBillEposXml } from './eposPrintBill';
 import { buildLogoRaster } from './logoRaster';
 import type { EscPosBillData, EscPosBillItem } from './escposBill';
 import { sendToThermalPrinter, sendEposPrint, isThermalPrintAvailable } from '../services/thermalPrint';
+import { sendToUsbPrinter, isUsbPrintAvailable } from '../services/usbPrint';
 import {
     formatDateTime,
     getOrderTypeLabel,
@@ -42,15 +43,22 @@ export async function printBillThermal(
 ): Promise<boolean> {
     const billing = printerSettings?.billing;
 
-    // Only proceed when running natively, printing is enabled, and a TCP printer IP is set.
-    if (
-        !isThermalPrintAvailable() ||
-        !printerSettings?.enabled ||
-        !billing ||
-        billing.type !== 'escpos-tcp' ||
-        !billing.ip
-    ) {
-        return false;
+    if (!printerSettings?.enabled || !billing) return false;
+
+    // Wired USB printer (WebUSB, desktop browser). Doesn't need an IP or the Android plugin.
+    const isUsb = billing.type === 'usb';
+    // ePOS-Print is plain HTTP — works from a desktop/Clover browser, not just the Android app.
+    // commandMode defaults to 'epos-print' to match the settings dropdown's default display.
+    const isEpos = billing.type === 'escpos-tcp' && (billing.commandMode || 'epos-print') === 'epos-print';
+    if (isUsb) {
+        if (!isUsbPrintAvailable()) return false;
+    } else if (isEpos) {
+        if (!billing.ip) return false;
+    } else {
+        // Raw ESC/POS or Star Line over TCP socket: needs the native Android plugin + a printer IP.
+        if (!isThermalPrintAvailable() || billing.type !== 'escpos-tcp' || !billing.ip) {
+            return false;
+        }
     }
 
     const items: EscPosBillItem[] = (billData.items || [])
@@ -152,8 +160,14 @@ export async function printBillThermal(
         }
     }
 
+    // Wired USB printer: send raw ESC/POS bytes straight over WebUSB.
+    if (isUsb) {
+        await sendToUsbPrinter(buildBillEscPos(data));
+        return true;
+    }
+
     // Epson TM-m30III (and other TM printers) use ePOS-Print over HTTP — works when raw 9100 is off.
-    if (billing.commandMode === 'epos-print') {
+    if (isEpos) {
         const xml = buildBillEposXml(data);
         await sendEposPrint(xml, billing.ip, billing.deviceId || 'local_printer');
         return true;

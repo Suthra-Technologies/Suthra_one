@@ -307,14 +307,21 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         // Auto-print KOT + bill on the restaurant device for ANY new order.
         // autoPrintOrder dedupes by id so POS orders already printed won't double-print.
         const { printer, autoPrint, formatCurrency: fmt } = printCtxRef.current;
+        const newOrderId = data.order?._id || data.orderId || data._id;
+        console.log('🖨️ [AutoPrint] newOrder gate:', { isStaff, autoPrint, newOrderId, hasPrinter: !!printer });
         if (isStaff && autoPrint) {
-            const newOrderId = data.order?._id || data.orderId || data._id;
             if (newOrderId) {
                 autoPrintOrder(newOrderId, printer, !!autoPrint, fmt)
-                    .catch(() => {
-                        toast.error('Auto-print failed. Check the printer Wi-Fi connection.');
+                    .then((printed) => console.log('🖨️ [AutoPrint] result:', printed))
+                    .catch((err) => {
+                        console.error('🖨️ [AutoPrint] error:', err);
+                        toast.error(`Auto-print failed: ${err?.message || 'check the printer connection.'}`);
                     });
+            } else {
+                console.warn('🖨️ [AutoPrint] No order id found in newOrder payload — cannot print.', data);
             }
+        } else {
+            console.warn('🖨️ [AutoPrint] Skipped: isStaff=' + isStaff + ', autoPrint=' + autoPrint);
         }
 
     }, [user, playNotificationSound, showNotification]);

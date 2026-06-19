@@ -65,23 +65,59 @@ export async function sendToThermalPrinter(
 }
 
 /**
+ * ePOS-Print is plain HTTP, so it works from ANY environment that can reach the printer:
+ * the native Android plugin OR a desktop/Clover browser via fetch(). True whenever we have
+ * either transport available (the actual reachability check happens when we POST).
+ */
+export function isEposPrintAvailable(): boolean {
+    return isThermalPrintAvailable() || typeof fetch !== 'undefined';
+}
+
+/**
+ * POST ePOS-Print XML to the printer from a browser via fetch(). Used on the laptop/desktop
+ * and on Clover, where the native Android plugin isn't present. The printer replies with an
+ * ePOS-Print response XML containing success="true"/"false".
+ *
+ * Note: the page must be able to reach the printer. If the app is served over https the
+ * browser will block this http:// request as mixed content — serve the POS over http or
+ * put the printer behind https for production.
+ */
+async function eposPrintViaFetch(url: string, xml: string): Promise<void> {
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/xml; charset=utf-8', SOAPAction: '""' },
+        body: xml,
+    });
+    const responseXml = await res.text();
+    if (!res.ok) {
+        throw new Error(`Printer HTTP ${res.status}: ${responseXml}`);
+    }
+    const ok = responseXml.includes('success="true"') || responseXml.includes("success='true'");
+    if (!ok) {
+        throw new Error(`Printer reported failure: ${responseXml}`);
+    }
+}
+
+/**
  * Print to an Epson TM printer via ePOS-Print (HTTP). Use for TM-m30III etc. where raw
  * port 9100 is disabled by default. `ip` is the printer IP; devId defaults to local_printer.
- * Throws if the plugin is unavailable or the printer reports failure.
+ * Uses the native Android plugin when available, otherwise a browser fetch() POST.
+ * Throws if the printer is unreachable or reports failure.
  */
 export async function sendEposPrint(
     xml: string,
     ip: string,
     devId = 'local_printer',
 ): Promise<void> {
-    if (!isThermalPrintAvailable()) {
-        throw new Error('Thermal printing is only available in the Android app.');
-    }
     if (!ip) {
         throw new Error('Printer IP address is not configured.');
     }
     const url = `http://${ip}/cgi-bin/epos/service.cgi?devid=${encodeURIComponent(devId)}&timeout=10000`;
-    await ThermalPrint.eposPrint({ url, xml });
+    if (isThermalPrintAvailable()) {
+        await ThermalPrint.eposPrint({ url, xml });
+    } else {
+        await eposPrintViaFetch(url, xml);
+    }
 }
 
 /**

@@ -9,6 +9,7 @@
  */
 
 import { sendToThermalPrinter, sendEposPrint, isThermalPrintAvailable } from '../services/thermalPrint';
+import { sendToUsbPrinter, isUsbPrintAvailable } from '../services/usbPrint';
 import type { TenantPrinterSettings } from '../context/SettingsContext';
 
 const CHARS_PER_LINE = 48; // 80mm
@@ -139,10 +140,17 @@ export async function printKotThermal(
     printerSettings: TenantPrinterSettings | undefined,
 ): Promise<boolean> {
     const kitchen = printerSettings?.kitchen;
-    if (
+    if (!printerSettings?.enabled || !kitchen) return false;
+
+    const isUsb = kitchen.type === 'usb';
+    // commandMode defaults to 'epos-print' to match the settings dropdown's default display.
+    const isEpos = kitchen.type === 'escpos-tcp' && (kitchen.commandMode || 'epos-print') === 'epos-print';
+    if (isUsb) {
+        if (!isUsbPrintAvailable()) return false;
+    } else if (isEpos) {
+        if (!kitchen.ip) return false;
+    } else if (
         !isThermalPrintAvailable() ||
-        !printerSettings?.enabled ||
-        !kitchen ||
         kitchen.type !== 'escpos-tcp' ||
         !kitchen.ip
     ) {
@@ -167,7 +175,9 @@ export async function printKotThermal(
         })),
     };
 
-    if (kitchen.commandMode === 'epos-print') {
+    if (isUsb) {
+        await sendToUsbPrinter(buildKotEscPos(data));
+    } else if (isEpos) {
         await sendEposPrint(buildKotEposXml(data), kitchen.ip, kitchen.deviceId || 'local_printer');
     } else {
         await sendToThermalPrinter(buildKotEscPos(data), kitchen.ip, kitchen.port || 9100);

@@ -135,7 +135,7 @@ export interface NotificationSettings {
 
 export interface PrinterConfig {
     name: string;
-    type: 'epson-epos' | 'escpos-tcp' | 'print-agent' | 'none';
+    type: 'epson-epos' | 'escpos-tcp' | 'print-agent' | 'usb' | 'none';
     ip: string;
     port: number;
     paperWidth: number;
