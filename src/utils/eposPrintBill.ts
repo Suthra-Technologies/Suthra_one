@@ -55,10 +55,17 @@ class EposBuilder {
         return this.line(text, { bold: opts.bold, doubleW: opts.big, doubleH: opts.big });
     }
 
-    /** Print a QR code centered (ePOS-Print native symbol tag). */
     qrCode(content: string): this {
         this.parts.push('<text align="center"/>');
         this.parts.push(`<symbol type="qrcode_model_2" level="level_m" width="6">${esc(content)}</symbol>`);
+        this.parts.push('<text align="left"/>');
+        return this;
+    }
+
+    /** Print a CODE128 barcode */
+    barcode128(content: string): this {
+        this.parts.push('<text align="center"/>');
+        this.parts.push(`<barcode type="code128" width="2" height="80" hri="below" font="font_b">{B${esc(content)}</barcode>`);
         this.parts.push('<text align="left"/>');
         return this;
     }
@@ -165,7 +172,11 @@ export function buildBillEposXml(data: EscPosBillData): string {
 
     // QR code (feedback / "Scan to Rate Us")
     if (data.qrUrl) {
-        b.qrCode(data.qrUrl);
+        if (data.qrType?.toUpperCase() === 'CODE128') {
+            b.barcode128(data.qrUrl);
+        } else {
+            b.qrCode(data.qrUrl);
+        }
         b.line(data.qrCaption || 'Scan to Rate Us', { align: 'center' });
         b.rule();
     }

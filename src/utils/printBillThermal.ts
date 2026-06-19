@@ -124,16 +124,16 @@ export async function printBillThermal(
             if (isDelivery) {
                 // Delivery: print Uber's handoff QR so the driver can scan to confirm pickup.
                 if (billData.handoffQr) {
-                    return { qrUrl: billData.handoffQr as string, qrCaption: 'Driver: Scan to Confirm Pickup' };
+                    return { qrUrl: billData.handoffQr as string, qrCaption: 'Driver: Scan to Confirm Pickup', qrType: billData.handoffQrType as string };
                 }
                 // No handoff QR yet — skip the QR (don't print a feedback one on a delivery bill).
-                return { qrUrl: undefined, qrCaption: '' };
+                return { qrUrl: undefined, qrCaption: '', qrType: undefined };
             }
             const feedbackUrl =
                 billData.restaurant?.slug && billData._id
                     ? `${getPublicSiteBase()}/${billData.restaurant.slug}/feedback/${billData._id}`
                     : undefined;
-            return { qrUrl: feedbackUrl, qrCaption: 'Scan to Rate Us' };
+            return { qrUrl: feedbackUrl, qrCaption: 'Scan to Rate Us', qrType: 'QR' };
         })(),
         formatMoney,
     };
