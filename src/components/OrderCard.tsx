@@ -48,6 +48,7 @@ import {
 } from '@mui/material';
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-hot-toast';
+import { QRCodeSVG } from 'qrcode.react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { feedbackAPI } from '../services/api';
@@ -524,6 +525,15 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                     >
                                         Track Delivery
                                     </Button>
+                                </Box>
+                            )}
+                            {order.handoffQr && (
+                                <Box sx={{ mt: 1, p: 1, bgcolor: 'background.paper', borderRadius: 1, border: '1px dashed #ccc', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <QRCodeSVG value={order.handoffQr} size={48} />
+                                    <Box>
+                                        <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block' }}>Pickup Code</Typography>
+                                        <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{order.handoffQr}</Typography>
+                                    </Box>
                                 </Box>
                             )}
                         </Stack>

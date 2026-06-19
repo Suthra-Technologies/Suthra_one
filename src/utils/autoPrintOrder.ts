@@ -13,6 +13,7 @@ import { ordersAPI } from '../services/api';
 import { printBillThermal } from './printBillThermal';
 import { printKotThermal } from './kotThermal';
 import { isThermalPrintAvailable } from '../services/thermalPrint';
+import { isUsbPrintAvailable } from '../services/usbPrint';
 import type { TenantPrinterSettings } from '../context/SettingsContext';
 
 // Order ids already printed (or printing) this session. Capped to avoid unbounded growth.
@@ -41,14 +42,27 @@ export async function autoPrintOrder(
     autoPrintEnabled: boolean,
     formatMoney: (n: number) => string,
 ): Promise<boolean> {
-    if (!orderId) return false;
-    if (!autoPrintEnabled) return false;
-    if (!isThermalPrintAvailable()) return false;
-    if (!printerSettings?.enabled) return false;
+    if (!orderId) { console.log('[AutoPrint] No orderId — skip'); return false; }
+    if (!autoPrintEnabled) { console.log('[AutoPrint] Auto-print disabled — skip'); return false; }
+    // Printing is possible via the native Android plugin (Wi-Fi/TCP), WebUSB (wired desktop),
+    // or ePOS-Print over HTTP from any browser (e.g. TM-m30III on the laptop / Clover).
+    // commandMode is treated as 'epos-print' when unset, to match the settings dropdown's default.
+    const isEpos = (cfg?: { type?: string; commandMode?: string }) =>
+        cfg?.type === 'escpos-tcp' && (cfg.commandMode || 'epos-print') === 'epos-print';
+    const eposConfigured = isEpos(printerSettings?.billing) || isEpos(printerSettings?.kitchen);
+    if (!isThermalPrintAvailable() && !isUsbPrintAvailable() && !eposConfigured) {
+        console.log('[AutoPrint] No usable transport (not Android, no USB, no ePOS configured) — skip', {
+            billing: printerSettings?.billing,
+            kitchen: printerSettings?.kitchen,
+        });
+        return false;
+    }
+    if (!printerSettings?.enabled) { console.log('[AutoPrint] Printer settings disabled — skip'); return false; }
     if (printedOrderIds.has(orderId)) {
         console.log('[AutoPrint] Skipped duplicate for order', orderId);
         return false;
     }
+    console.log('[AutoPrint] Proceeding to print order', orderId);
 
     // Reserve the id up front so a near-simultaneous second trigger bails out immediately.
     markPrinted(orderId);

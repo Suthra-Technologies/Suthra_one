@@ -63,6 +63,7 @@ export interface EscPosBillData {
     /** Optional feedback URL — printed as a QR code ("Scan to Rate Us") at the bottom. */
     qrUrl?: string;
     qrCaption?: string;
+    qrType?: string;
     /** Optional pre-rendered logo raster (ESC/POS GS v 0 bytes) printed at the very top. */
     logoEscposBytes?: Uint8Array;
     /** Optional pre-rendered logo for ePOS-Print <image> (1-bit raster base64 + dimensions). */
@@ -129,6 +130,27 @@ class EscPosBuilder {
         this.raw([GS, 0x28, 0x6b, pL, pH, 0x31, 0x50, 0x30, ...bytes]);
         // Function 181: print the stored QR symbol
         this.raw([GS, 0x28, 0x6b, 0x03, 0x00, 0x31, 0x51, 0x30]);
+        return this;
+    }
+
+    barcode128(content: string): this {
+        const data = content ?? '';
+        if (!data) return this;
+        // height
+        this.raw([GS, 0x68, 80]);
+        // width
+        this.raw([GS, 0x77, 3]);
+        // HRI below
+        this.raw([GS, 0x48, 2]);
+        // HRI font B
+        this.raw([GS, 0x66, 1]);
+        
+        const bytes: number[] = [];
+        for (let i = 0; i < data.length; i++) bytes.push(data.charCodeAt(i) & 0xff);
+        const len = bytes.length + 2;
+        this.raw([GS, 0x6b, 0x49, len]);
+        this.raw([123, 66]); // {B
+        this.raw(bytes);
         return this;
     }
 
@@ -226,7 +248,13 @@ export function buildBillEscPos(data: EscPosBillData): Uint8Array {
 
     // ── QR code (feedback / "Scan to Rate Us") ──
     if (data.qrUrl) {
-        b.raw(ALIGN_CENTER).qrCode(data.qrUrl);
+        b.raw(ALIGN_CENTER);
+        if (data.qrType?.toUpperCase() === 'CODE128') {
+            b.barcode128(data.qrUrl);
+            b.line(''); // extra margin
+        } else {
+            b.qrCode(data.qrUrl);
+        }
         b.line(data.qrCaption || 'Scan to Rate Us').raw(ALIGN_LEFT);
         b.rule();
     }
