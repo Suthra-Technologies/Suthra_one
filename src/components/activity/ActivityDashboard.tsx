@@ -70,6 +70,9 @@ const ActivityDashboard: React.FC<Props> = ({ mode }) => {
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [tableLoading, setTableLoading] = useState(false);
 
+    // Most-clicked website items (admin only)
+    const [topItems, setTopItems] = useState<any[]>([]);
+
     const fetchAnalytics = useCallback(async () => {
         setLoading(true);
         try {
@@ -85,6 +88,18 @@ const ActivityDashboard: React.FC<Props> = ({ mode }) => {
     }, [mode, applied]);
 
     useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
+
+    const fetchTopItems = useCallback(async () => {
+        if (mode !== 'admin') return;
+        try {
+            const res = await activityAPI.getTopItems({ ...applied, limit: 15 });
+            setTopItems(res.data.items || []);
+        } catch {
+            setTopItems([]);
+        }
+    }, [mode, applied]);
+
+    useEffect(() => { fetchTopItems(); }, [fetchTopItems]);
 
     const fetchTable = useCallback(async () => {
         if (mode !== 'admin') return;
@@ -115,7 +130,7 @@ const ActivityDashboard: React.FC<Props> = ({ mode }) => {
         ...((data?.countries?.customer as any[]) || []),
         ...((data?.countries?.website as any[]) || []),
     ].filter((r) => /^[A-Z]{2}$/.test(r.country));
-    const hasGeo = mode === 'admin' && geoCountries.length > 0;
+    const hasGeo = geoCountries.length > 0;
 
     useEffect(() => {
         let cancelled = false;
@@ -237,11 +252,10 @@ const ActivityDashboard: React.FC<Props> = ({ mode }) => {
             </Card>
 
             {/* Admin-only: world map + per-tenant table for superadmin */}
-            {mode === 'admin' && (
-                <Card sx={{ mb: 3 }}>
-                    <CardContent>
-                        <Typography variant="subtitle1" fontWeight={700} gutterBottom>Users by Country</Typography>
-                        {hasGeo ? (
+            <Card sx={{ mb: 3 }}>
+                <CardContent>
+                    <Typography variant="subtitle1" fontWeight={700} gutterBottom>Users by Country</Typography>
+                    {hasGeo ? (
                             <>
                                 <Box ref={mapRef} sx={{ height: 380, width: '100%' }} />
                                 <CountryListFallback data={data} />
@@ -255,6 +269,49 @@ const ActivityDashboard: React.FC<Props> = ({ mode }) => {
                                 <Typography variant="caption" color="text.disabled">
                                     Local / private-network visits (e.g. localhost) can’t be geo-located, so they don’t appear on the map.
                                 </Typography>
+                            </Box>
+                        )}
+                </CardContent>
+            </Card>
+
+            {mode === 'admin' && (
+                <Card sx={{ mb: 3 }}>
+                    <CardContent>
+                        <Typography variant="subtitle1" fontWeight={700} gutterBottom>Most Clicked Items</Typography>
+                        <Typography variant="caption" color="text.secondary">
+                            Menu items customers tapped most on the website.
+                        </Typography>
+                        {topItems.length > 0 ? (
+                            <TableContainer sx={{ mt: 1.5 }}>
+                                <Table size="small">
+                                    <TableHead>
+                                        <TableRow>
+                                            <TableCell>#</TableCell>
+                                            <TableCell>Item</TableCell>
+                                            <TableCell>Category</TableCell>
+                                            <TableCell align="right">Clicks</TableCell>
+                                            <TableCell align="right">Unique users</TableCell>
+                                            <TableCell>Last clicked</TableCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {topItems.map((r, i) => (
+                                            <TableRow key={r.itemId || i}>
+                                                <TableCell>{i + 1}</TableCell>
+                                                <TableCell>{r.itemName || r.itemId || '—'}</TableCell>
+                                                <TableCell>{r.category || '—'}</TableCell>
+                                                <TableCell align="right">{(r.clicks ?? 0).toLocaleString()}</TableCell>
+                                                <TableCell align="right">{(r.uniqueClickers ?? 0).toLocaleString()}</TableCell>
+                                                <TableCell>{r.lastClicked ? new Date(r.lastClicked).toLocaleString() : '—'}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                        ) : (
+                            <Box sx={{ py: 5, textAlign: 'center', color: 'text.secondary' }}>
+                                <TouchAppIcon sx={{ fontSize: 48, opacity: 0.3, mb: 1 }} />
+                                <Typography variant="body2">No item clicks recorded for this period yet.</Typography>
                             </Box>
                         )}
                     </CardContent>
@@ -284,6 +341,7 @@ const ActivityDashboard: React.FC<Props> = ({ mode }) => {
                             <Table size="small">
                                 <TableHead>
                                     <TableRow>
+                                        <TableCell>IP Address</TableCell>
                                         <TableCell>Country</TableCell>
                                         <TableCell>City</TableCell>
                                         <TableCell>Type</TableCell>
@@ -295,6 +353,7 @@ const ActivityDashboard: React.FC<Props> = ({ mode }) => {
                                 <TableBody>
                                     {tableRows.map((r, i) => (
                                         <TableRow key={i}>
+                                            <TableCell>{r.ip || '—'}</TableCell>
                                             <TableCell>{r.country || '—'}</TableCell>
                                             <TableCell>{r.city || '—'}</TableCell>
                                             <TableCell>{r.clientType}</TableCell>
@@ -304,7 +363,7 @@ const ActivityDashboard: React.FC<Props> = ({ mode }) => {
                                         </TableRow>
                                     ))}
                                     {tableRows.length === 0 && (
-                                        <TableRow><TableCell colSpan={6} align="center">No data</TableCell></TableRow>
+                                        <TableRow><TableCell colSpan={7} align="center">No data</TableCell></TableRow>
                                     )}
                                 </TableBody>
                             </Table>
