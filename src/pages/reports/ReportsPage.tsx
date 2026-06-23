@@ -6119,7 +6119,7 @@ const ReportsPage: React.FC = () => {
                                                             </Box>
                                                         )}
                                                         <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                            <Typography variant="body2" color="text.secondary">Tax ({selectedCateringOrder.tax?.rate || 0}%):</Typography>
+                                                            <Typography variant="body2" color="text.secondary">Tax ({Number(selectedCateringOrder.tax?.rate || 0).toFixed(2)}%):</Typography>
                                                             <Typography variant="body2">{formatCurrency(selectedCateringOrder.tax?.amount || 0)}</Typography>
                                                         </Box>
                                                         <Divider sx={{ my: 1 }} />

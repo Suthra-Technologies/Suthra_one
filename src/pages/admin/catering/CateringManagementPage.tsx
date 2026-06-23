@@ -869,6 +869,11 @@ const CateringManagementPage = () => {
             };
         });
     };
+    const handleAddItemsToEdit = (finalizedItems: any[]) => {
+        if (!editData) return;
+        const newItems = [...(editData.items || []), ...finalizedItems];
+        recalculateEditTotals(newItems);
+    };
 
     const handleFinalizeItems = () => {
         const finalizedItems: any[] = [];
@@ -2150,7 +2155,7 @@ const CateringManagementPage = () => {
                                                                 -{formatCurrency(selectedOrder.discount.type === 'percentage' ? (selectedOrder.subtotal * selectedOrder.discount.value / 100) : selectedOrder.discount.value)}
                                                             </Typography>
                                                         )}
-                                                        <Typography variant="body2">Tax ({selectedOrder.tax?.rate || 0}%): {formatCurrency(selectedOrder.tax?.amount || 0)}</Typography>
+                                                        <Typography variant="body2">Tax ({Number(selectedOrder.tax?.rate || 0).toFixed(2)}%): {formatCurrency(selectedOrder.tax?.amount || 0)}</Typography>
                                                         {selectedOrder.serviceType === 'delivery_service' && (
                                                             <Typography variant="body2">Service Amount: {formatCurrency(selectedOrder.cateringServers?.amount || 0)}</Typography>
                                                         )}
