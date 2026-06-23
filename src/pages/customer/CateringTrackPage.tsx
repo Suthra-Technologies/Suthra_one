@@ -450,7 +450,7 @@ const CateringTrackPage = () => {
                                         <Typography>{formatCurrency(order.subtotal)}</Typography>
                                     </Box>
                                     <Box display="flex" justifyContent="space-between">
-                                        <Typography color="textSecondary">Tax ({order.tax?.rate}%)</Typography>
+                                        <Typography color="textSecondary">Tax ({Number(order.tax?.rate || 0).toFixed(2)}%)</Typography>
                                         <Typography>{formatCurrency(order.tax?.amount || 0)}</Typography>
                                     </Box>
                                     {order.discount?.value > 0 && (
