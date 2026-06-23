@@ -196,10 +196,10 @@ const LoginPage: React.FC = () => {
           } else if (userRole === 'customer') {
             console.log('LoginPage: Customer detected. isSubdomain:', isSubdomain);
             if (isSubdomain) {
-              console.log('LoginPage: Navigating to /customer/order');
-              setTimeout(() => navigate('/customer/order', { replace: true }), 100);
+              console.log('LoginPage: Navigating to /customer/home');
+              setTimeout(() => navigate('/customer/home', { replace: true }), 100);
             } else {
-              const url = getTenantUrl(targetSlug, '/customer/order', result.token);
+              const url = getTenantUrl(targetSlug, '/customer/home', result.token);
               console.log('LoginPage: Redirecting to subdomain URL:', url);
               window.location.href = url;
             }

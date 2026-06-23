@@ -94,6 +94,8 @@ import { connectUsbPrinter, disconnectUsbPrinter, isUsbPrintAvailable, isUsbPrin
 import { NOTIFICATION_SOUNDS, previewSound } from '../../utils/notificationSounds';
 import type { ValidationResult } from '../../utils/validation';
 import { getHelperText, hasError, validateAddress, validateCompanyName, validateEmail, validatePhone } from '../../utils/validation';
+import { getTenantSlugFromHostname, getTenantUrl } from '../../utils/tenant.utils';
+import RestaurantQRCode from './components/RestaurantQRCode';
 
 const countries = [
     {
@@ -641,6 +643,14 @@ const SettingsPage: React.FC = () => {
     const headingFontSize = { xs: '1.12rem', sm: '1.4rem', md: '2.125rem' };
     const bodyFontSize = { xs: '0.78rem', sm: '0.86rem', md: '0.95rem' };
     const [tabValue, setTabValue] = useState(0);
+
+    // Resolve the tenant slug + customer-facing URL for the QR code.
+    const tenantSlug =
+        (typeof user?.tenant === 'object' ? user?.tenant?.slug : undefined) ||
+        getTenantSlugFromHostname() ||
+        (typeof localStorage !== 'undefined' ? localStorage.getItem('tenantSlug') : '') ||
+        '';
+    const customerUrl = tenantSlug ? getTenantUrl(tenantSlug, '/') : '';
     const [loading, setLoading] = useState(false);
     const [settings, setSettings] = useState<SettingsState>(() => createDefaultSettings());
     const [errors, setErrors] = useState<Record<string, ValidationResult>>({});
@@ -2703,6 +2713,16 @@ const SettingsPage: React.FC = () => {
                             </Grid>
                         </Grid>
                         */}
+
+                        {customerUrl && (
+                            <Grid size={{ xs: 12 }}>
+                                <RestaurantQRCode
+                                    url={customerUrl}
+                                    logoUrl={settings.restaurant.logo || (user?.tenant as any)?.logo || undefined}
+                                    restaurantName={settings.restaurant.name || (user?.tenant as any)?.name}
+                                />
+                            </Grid>
+                        )}
 
                         <Grid size={{ xs: 12 }} sx={{ display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' }, mt: { xs: 2.5, md: 0 } }}>
                             <Button

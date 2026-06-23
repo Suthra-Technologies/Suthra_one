@@ -184,9 +184,12 @@ const AppRoutes: React.FC = () => {
   const role = activeRole || (typeof window !== 'undefined' ? localStorage.getItem('activeRole') : null);
   const isSuperAdmin = role === 'superadmin';
 
+  // Customers must land on the ordering area, not the staff dashboard.
+  const isCustomer = role === 'customer';
+  const homePath = isCustomer ? 'customer/home' : 'dashboard';
   const defaultAuthedPath = isSuperAdmin
     ? '/superadmin'
-    : (hostnameSlug ? '/dashboard' : (storedTenantSlug ? `/${storedTenantSlug}/dashboard` : '/dashboard'));
+    : (hostnameSlug ? `/${homePath}` : (storedTenantSlug ? `/${storedTenantSlug}/${homePath}` : `/${homePath}`));
 
   const hasStoredSession = isAuthenticated || !!storedToken;
   console.log('AppRoutes: Rendering. Token present:', hasStoredSession, 'Role:', role, 'Tenant:', storedTenantSlug, 'AuthedPath:', defaultAuthedPath);

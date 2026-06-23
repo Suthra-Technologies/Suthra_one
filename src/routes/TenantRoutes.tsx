@@ -93,14 +93,18 @@ export const TenantRoutes = () => (
 
     {/* ─── Admin/Staff Routes (With Sidebar Layout) ─── */}
     <Route element={<Layout />}>
-      <Route path="dashboard" element={<DashboardPage />} />
-      <Route path="orders" element={<OrdersPage />} />
-      <Route path="pos" element={<POSPage />} />
-      <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
-      <Route path="purchase-orders/create" element={<CreatePOPage />} />
-      <Route path="purchase-orders/edit/:id" element={<CreatePOPage />} />
-      <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
-      
+      {/* Base staff area — must exclude customers, who otherwise reach the POS
+          dashboard since these routes carried no role guard. */}
+      <Route element={<RequireRole allowedRoles={['admin', 'manager', 'cashier', 'waiter', 'kitchen_staff', 'kitchen', 'delivery']} />}>
+        <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="orders" element={<OrdersPage />} />
+        <Route path="pos" element={<POSPage />} />
+        <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
+        <Route path="purchase-orders/create" element={<CreatePOPage />} />
+        <Route path="purchase-orders/edit/:id" element={<CreatePOPage />} />
+        <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
+      </Route>
+
       <Route element={<RequireRole allowedRoles={['admin', 'manager']} />}>
         <Route path="expenses" element={<ExpensesPage />} />
         <Route path="expenses/:id" element={<ExpenseDetailPage />} />
