@@ -846,7 +846,7 @@ const POSPage: React.FC = () => {
             if (urlName) setCustomerName(urlName);
 
             if (urlPhone) {
-                const digits = urlPhone.replace(/\D/g, '');
+                const digits = String(urlPhone || '').replace(/\D/g, '');
                 if (urlPhone.startsWith('+')) {
                     setCustomerDialCode(digits.slice(0, -10) || settings?.restaurant?.dialCode || '1');
                     setCustomerPhone(digits.slice(-10));
@@ -878,7 +878,7 @@ const POSPage: React.FC = () => {
             setCustomerName(urlName || ord.customer?.name || '');
 
             const rawPhone = urlPhone || ord.customer?.phone || '';
-            const digits = rawPhone.replace(/\D/g, '');
+            const digits = String(rawPhone || '').replace(/\D/g, '');
             if (rawPhone.startsWith('+')) {
                 setCustomerDialCode(digits.slice(0, -10) || settings?.restaurant?.dialCode || '1');
                 setCustomerPhone(digits.slice(-10));

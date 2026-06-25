@@ -134,7 +134,7 @@ const RestaurantRegisterPage: React.FC = () => {
 
     // Special rule for phone input
     if (name === "phone") {
-      const numeric = value.replace(/\D/g, ""); // keep only digits
+      const numeric = String(value || '').replace(/\D/g, ""); // keep only digits
       const final = numeric.length > 10 ? numeric.slice(-10) : numeric;
       setForm({ ...form, [name]: final });
 

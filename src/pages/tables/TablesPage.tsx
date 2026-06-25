@@ -1277,7 +1277,7 @@ const TablesPage: React.FC = () => {
                                                                         <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>
                                                                             {(() => {
                                                                                 const phone = booking.guestInfo?.phone || '';
-                                                                                const cleaned = phone.replace(/\D/g, '');
+                                                                                const cleaned = String(phone || '').replace(/\D/g, '');
                                                                                 if (cleaned.length === 10) {
                                                                                     return `(${cleaned.slice(0,3)}) ${cleaned.slice(3,6)}-${cleaned.slice(6)}`;
                                                                                 } else if (cleaned.length === 11 && cleaned.startsWith('1')) {
@@ -1420,7 +1420,7 @@ const TablesPage: React.FC = () => {
                                                                 <Typography variant="caption" color="text.secondary">
                                                                     {(() => {
                                                                         const phone = booking.guestInfo?.phone || '';
-                                                                        const cleaned = phone.replace(/\D/g, '');
+                                                                        const cleaned = String(phone || '').replace(/\D/g, '');
                                                                         if (cleaned.length === 10) {
                                                                             return `(${cleaned.slice(0,3)}) ${cleaned.slice(3,6)}-${cleaned.slice(6)}`;
                                                                         } else if (cleaned.length === 11 && cleaned.startsWith('1')) {

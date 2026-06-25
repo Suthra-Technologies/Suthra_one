@@ -886,7 +886,7 @@ const SettingsPage: React.FC = () => {
                 if (!merged.restaurant.email) merged.restaurant.email = (user?.tenant)?.contactEmail || user?.email || '';
                 if (!merged.restaurant.phone) {
                     const phoneVal = (user?.tenant)?.contactPhone || user?.phone || '';
-                    merged.restaurant.phone = phoneVal.replace(/\D/g, '').slice(-10);
+                    merged.restaurant.phone = String(phoneVal || '').replace(/\D/g, '').slice(-10);
                 }
                 setSettings(merged);
                 setWebhookUrl(webhookResp.data?.url || '');
@@ -899,7 +899,7 @@ const SettingsPage: React.FC = () => {
                 if (!merged.restaurant.email) merged.restaurant.email = (user?.tenant)?.contactEmail || user?.email || '';
                 if (!merged.restaurant.phone) {
                     const phoneVal = (user?.tenant)?.contactPhone || user?.phone || '';
-                    merged.restaurant.phone = phoneVal.replace(/\D/g, '').slice(-10);
+                    merged.restaurant.phone = String(phoneVal || '').replace(/\D/g, '').slice(-10);
                 }
                 setSettings(merged);
                 setWebhookUrl(webhookResp.data?.url || '');
@@ -909,7 +909,7 @@ const SettingsPage: React.FC = () => {
                 defaults.restaurant.logo = (user?.tenant)?.logo || '';
                 defaults.restaurant.email = (user?.tenant)?.contactEmail || user?.email || '';
                 const phoneVal = (user?.tenant)?.contactPhone || user?.phone || '';
-                defaults.restaurant.phone = phoneVal.replace(/\D/g, '').slice(-10);
+                defaults.restaurant.phone = String(phoneVal || '').replace(/\D/g, '').slice(-10);
                 setSettings(defaults);
                 setWebhookUrl(webhookResp.data?.url || '');
                 setStripeStatus(stripeStatusResp.data || {});

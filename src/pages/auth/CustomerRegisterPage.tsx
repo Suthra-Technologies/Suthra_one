@@ -49,7 +49,7 @@ const CustomerRegisterPage: React.FC = () => {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         if (name === 'phone') {
-            const numericValue = value.replace(/\D/g, '').slice(0, 10);
+            const numericValue = String(value || '').replace(/\D/g, '').slice(0, 10);
             setFormData(prev => ({ ...prev, [name]: numericValue }));
         } else {
             setFormData(prev => ({ ...prev, [name]: value }));

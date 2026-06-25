@@ -116,7 +116,7 @@ const MaterialProvidersPage: React.FC = () => {
 
     const sendViaWhatsApp = (p: MaterialProvider) => {
         if (!p.phone) return;
-        const digits = p.phone.replace(/\D/g, '');
+        const digits = String(p.phone || '').replace(/\D/g, '');
         const url = `https://wa.me/${digits}?text=${encodeURIComponent(buildBody(p))}`;
         window.open(url, '_blank');
         placeOrder(p, 'whatsapp');

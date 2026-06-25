@@ -302,7 +302,7 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                         fullWidth
                         value={customerPhone}
                         onChange={(value) => {
-                            const cleaned = value.replace(/\D/g, '').slice(0, 10);
+                            const cleaned = String(value || '').replace(/\D/g, '').slice(0, 10);
                             setCustomerPhone(cleaned);
                             if (customerPhoneTouched && cleaned) {
                                 setCustomerPhoneError('');
