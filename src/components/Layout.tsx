@@ -683,7 +683,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
             ) : (
               <Tooltip title="Account">
                 <IconButton onClick={handleProfileMenuOpen} color="inherit" sx={{ ml: { xs: 0, sm: 1 } }}>
-                  <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }} src={user?.avatar}>
+                  <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }} src={user?.profileImage || user?.avatar}>
                     {user?.name?.charAt(0)?.toUpperCase() || 'U'}
                   </Avatar>
                 </IconButton>
