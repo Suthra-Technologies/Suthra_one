@@ -327,7 +327,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
         >
             <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } }, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
                 {/* Header Section */}
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2, flexWrap: 'wrap', gap: 1 }}>
                     <Box>
                         <Typography
                             variant="h5"

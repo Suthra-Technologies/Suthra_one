@@ -147,7 +147,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
             }
         }
         if (name === 'customerPhone') {
-            const validation = validatePhone(value);
+            const validation = validatePhone(value, customerDialCode);
             if (!validation.isValid) {
                 error = validation.message || '';
             }
@@ -407,9 +407,11 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
                         label="Phone Number"
                         value={customerPhone}
                         onChange={(val) => {
-                            const clean = val.replace(/\D/g, '').slice(0, 10);
-                            setCustomerPhone(clean);
-                            if (bookingTouched.customerPhone) validateBookingField('customerPhone', clean);
+                            const clean = val.replace(/\D/g, '');
+                            const isUS = customerDialCode === '1' || customerDialCode === '+1';
+                            const final = (isUS && clean.length > 10) ? clean.slice(0, 10) : clean;
+                            setCustomerPhone(final);
+                            if (bookingTouched.customerPhone) validateBookingField('customerPhone', final);
                         }}
                         dialCode={customerDialCode}
                         onDialCodeChange={setCustomerDialCode}

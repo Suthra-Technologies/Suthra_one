@@ -194,8 +194,12 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
     const handleSupplierChange = React.useCallback((field: string, value: string) => {
         let finalValue = value;
         if (field === 'contact') {
-            // Only allow numbers and limit to 10 digits
-            finalValue = value.replace(/\D/g, '').slice(0, 10);
+            // Only allow numbers and limit to 15 digits
+            finalValue = value.replace(/\D/g, '').slice(0, 15);
+            // If US format, maybe limit to 10? But wait, this is just a contact field.
+            if (settings?.restaurant?.dialCode === '1' || settings?.restaurant?.dialCode === '+1') {
+                if (finalValue.length > 10) finalValue = finalValue.slice(0, 10);
+            }
         }
         setFormData((prev) => ({
             ...prev,
@@ -260,7 +264,7 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
                 break;
             case 'supplier_contact':
                 if (formData.supplier?.contact && formData.supplier.contact.trim() !== '') {
-                    validation = validatePhone(formData.supplier.contact);
+                    validation = validatePhone(formData.supplier.contact, settings?.restaurant?.dialCode);
                 } else {
                     validation = { isValid: true }; // Optional field
                 }
@@ -304,7 +308,7 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
             newErrors.supplier_email = validateEmail(formData.supplier.email);
         }
         if (formData.supplier?.contact && formData.supplier.contact.trim() !== '') {
-            newErrors.supplier_contact = validatePhone(formData.supplier.contact);
+            newErrors.supplier_contact = validatePhone(formData.supplier.contact, settings?.restaurant?.dialCode);
         }
 
         setErrors(newErrors);

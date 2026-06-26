@@ -57,6 +57,7 @@ import { isWithinDeliveryRadius, METERS_PER_MILE } from '../../services/googleMa
 import CustomerInfoSection from './components/CustomerInfoSection';
 import MergeTablesDialog from './components/MergeTablesDialog';
 import OrderDetailsSection from './components/OrderDetailsSection';
+import { validatePhone } from '../../utils/validation';
 
 
 type Variant = {
@@ -1286,14 +1287,13 @@ const POSPage: React.FC = () => {
         }
 
         // Validate phone
-        if (!customerPhone) {
+        const phoneValidation = validatePhone(customerPhone, customerDialCode);
+        if (!phoneValidation.isValid) {
             setCustomerPhoneTouched(true);
-            setCustomerPhoneError('Phone number is required');
+            setCustomerPhoneError(phoneValidation.message || 'Invalid phone number');
             hasError = true;
-        } else if (customerPhone.length !== 10) {
-            setCustomerPhoneTouched(true);
-            setCustomerPhoneError('Phone number must be exactly 10 digits');
-            hasError = true;
+        } else {
+            setCustomerPhoneError('');
         }
 
         // Validate email (optional)

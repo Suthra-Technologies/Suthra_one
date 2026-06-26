@@ -129,6 +129,13 @@ const CustomerSupportPage: React.FC = () => {
         const file = e.target.files?.[0];
         if (!file) return;
 
+        const maxSizeInBytes = 10 * 1024 * 1024;
+        if (file.size > maxSizeInBytes) {
+            toast.error('upload image failed image size should not exceed more than 10 MB');
+            if (e.target) e.target.value = '';
+            return;
+        }
+
         try {
             setUploading(true);
             const response = await uploadAPI.uploadImage(file);
