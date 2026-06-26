@@ -49,7 +49,7 @@ const CustomerRegisterPage: React.FC = () => {
     if (name === "phone") {
       const numeric = String(value || '').replace(/\D/g, ""); // keep only digits
       let final = numeric;
-      if (form.countryCode === '+1' || form.countryCode === '1') {
+      if (form.dialCode === '+1' || form.dialCode === '1' || !form.dialCode) {
         const sliced = numeric.slice(0, 10);
         if (sliced.length <= 3) final = sliced ? `(${sliced}` : '';
         else if (sliced.length <= 6) final = `(${sliced.slice(0, 3)}) ${sliced.slice(3)}`;

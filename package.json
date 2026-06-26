@@ -48,6 +48,7 @@
     "vite": "^6.0.0"
   },
   "dependencies": {
+    "@capacitor-community/fcm": "^6.0.1",
     "@capacitor/browser": "^6.0.0",
     "@capacitor/core": "^6.2.1",
     "@capacitor/filesystem": "^6.0.4",
@@ -87,7 +88,6 @@
     "jwt-decode": "^4.0.0",
     "lottie-react": "^2.4.1",
     "notistack": "^3.0.2",
-    "qr-code-styling": "^1.9.2",
     "qrcode.react": "^4.2.0",
     "re-resizable": "^6.10.1",
     "react": "^19.2.0",

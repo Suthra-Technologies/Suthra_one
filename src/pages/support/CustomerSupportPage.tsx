@@ -152,8 +152,7 @@ const CustomerSupportPage: React.FC = () => {
     };
 
     const handleReply = async () => {
-        // Allow sending an image on its own — a message OR at least one attachment is enough.
-        if (!selectedTicket || (!replyMessage && replyAttachments.length === 0)) return;
+        if (!selectedTicket || !replyMessage) return;
 
         try {
             setReplying(true);
@@ -580,7 +579,7 @@ const CustomerSupportPage: React.FC = () => {
                                             <Button
                                                 variant="contained"
                                                 onClick={handleReply}
-                                                disabled={(!replyMessage && replyAttachments.length === 0) || replying || uploading}
+                                                disabled={!replyMessage || replying || uploading}
                                                 startIcon={<SendIcon />}
                                                 sx={{ borderRadius: 3, px: 3, height: 48, flexGrow: { xs: 1, sm: 0 } }}
                                             >

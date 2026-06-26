@@ -265,7 +265,7 @@ const VendorsPage: React.FC = () => {
         if (name === 'name' && !value.trim()) error = 'Vendor name is required';
         if (name === 'contact') {
             if (!value.trim()) error = 'Contact number is required';
-            else if (String(value || '').replace(/\D/g, '').length !== 10) error = 'Contact number must be 10 digits';
+            else if (value.replace(/\D/g, '').length !== 10) error = 'Contact number must be 10 digits';
         }
         if (name === 'email') {
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -283,7 +283,7 @@ const VendorsPage: React.FC = () => {
         if (!formData.name.trim()) newErrors.name = 'Vendor name is required';
 
         if (!formData.contact.trim()) newErrors.contact = 'Contact number is required';
-        else if (String(formData.contact || '').replace(/\D/g, '').length !== 10) newErrors.contact = 'Contact number must be 10 digits';
+        else if (formData.contact.replace(/\D/g, '').length !== 10) newErrors.contact = 'Contact number must be 10 digits';
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!formData.email.trim()) newErrors.email = 'Email is required';

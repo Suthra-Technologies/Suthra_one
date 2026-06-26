@@ -275,10 +275,7 @@ const ProfilePage: React.FC = () => {
 
         try {
             setLoading(true);
-            const response = await authAPI.updateProfile(profileData);
-            if (response.data) {
-                updateUserData(response.data);
-            }
+            await authAPI.updateProfile(profileData);
             toast.success('Profile updated successfully');
         } catch (error: any) {
             console.error('Error updating profile:', error);
@@ -624,21 +621,6 @@ const ProfilePage: React.FC = () => {
                                                     onChange={handleAvatarUpload}
                                                 />
                                             </IconButton>
-                                            {profileData.profileImage && (
-                                                <IconButton
-                                                    sx={{
-                                                        position: 'absolute',
-                                                        bottom: 0,
-                                                        left: 0,
-                                                        bgcolor: 'background.paper',
-                                                        color: 'error.main',
-                                                        '&:hover': { bgcolor: 'background.paper' },
-                                                    }}
-                                                    onClick={() => setProfileData(prev => ({ ...prev, profileImage: '' }))}
-                                                >
-                                                    <DeleteIcon fontSize="small" />
-                                                </IconButton>
-                                            )}
                                         </Box>
                                     </Grid>
 

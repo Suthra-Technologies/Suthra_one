@@ -589,7 +589,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             }
             if (!merged.restaurant.phone && user?.tenant) {
                 const phoneVal = (user.tenant as any).contactPhone || user?.phone || '';
-                merged.restaurant.phone = String(phoneVal || '').replace(/\D/g, '').slice(-10);
+                merged.restaurant.phone = phoneVal.replace(/\D/g, '').slice(-10);
             }
 
             setSettings(merged);

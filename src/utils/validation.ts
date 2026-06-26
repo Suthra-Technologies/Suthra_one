@@ -27,7 +27,7 @@ export const validatePhone = (phone: string | number, dialCode?: string): Valida
     }
 
     // Keep only digits
-    const digits = String(phoneStr || '').replace(/\D/g, '');
+    const digits = phone.replace(/\D/g, '');
 
     // By default, if dialCode is '1' or not provided, enforce strict US validation.
     // If it's explicitly something else, allow 7-15 digits.
