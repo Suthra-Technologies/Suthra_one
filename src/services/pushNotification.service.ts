@@ -2,6 +2,7 @@ import { PushNotifications } from '@capacitor/push-notifications';
 import type { Token, ActionPerformed } from '@capacitor/push-notifications';
 import { Capacitor } from '@capacitor/core';
 import { toast } from 'react-hot-toast';
+import { FCM } from '@capacitor-community/fcm';
 import { usersAPI } from './api';
 import { getTenantSlugFromHostname } from '../utils/tenant.utils';
 
@@ -30,17 +31,21 @@ export const PushNotificationService = {
             return;
         }
 
-        // Register with Apple / Google to receive push via APNS/FCM
-        await PushNotifications.register();
-
-        // On success, we should be able to receive a token
+        // Clear existing listeners to prevent duplication
         await PushNotifications.removeAllListeners();
 
+        // Listen for token registration success
         PushNotifications.addListener('registration', async (token: Token) => {
-            console.log('Push registration success, token: ' + token.value);
+            console.log('Push registration success, APNS/FCM device token: ' + token.value);
             try {
-                localStorage.setItem('fcm_token', token.value);
-                await usersAPI.registerFcmToken(token.value);
+                let tokenValue = token.value;
+                if (Capacitor.getPlatform() === 'ios') {
+                    const res = await FCM.getToken();
+                    tokenValue = res.token;
+                    console.log('FCM token for iOS: ' + tokenValue);
+                }
+                localStorage.setItem('fcm_token', tokenValue);
+                await usersAPI.registerFcmToken(tokenValue);
                 console.log('FCM token successfully registered on server');
             } catch (err) {
                 console.error('Failed to register FCM token on server:', err);
@@ -105,6 +110,9 @@ export const PushNotificationService = {
                 console.error('Error in pushNotificationActionPerformed routing:', err);
             }
         });
+
+        // Register with Apple / Google to receive push via APNS/FCM (placed after listeners are ready)
+        await PushNotifications.register();
     },
 
     async unregister() {

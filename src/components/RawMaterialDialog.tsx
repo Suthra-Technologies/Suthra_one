@@ -170,23 +170,17 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
     }, []);
 
     const handleNumberFieldChange = React.useCallback((field: string, rawValue: string) => {
-        // Strip everything except digits and a single decimal point
-        let cleanValue = rawValue.replace(/[^0-9.]/g, '');
+        let cleanValue = rawValue;
         
-        // Prevent multiple decimal points
-        const parts = cleanValue.split('.');
-        if (parts.length > 2) {
-            cleanValue = parts[0] + '.' + parts.slice(1).join('');
-        }
-
-        // Limit to 5 digits before the decimal
-        if (parts[0].length > 5) return;
-
         // Remove leading zeros unless it's "0" or starts with "0."
         if (cleanValue.length > 1 && cleanValue.startsWith('0') && !cleanValue.startsWith('0.')) {
             cleanValue = cleanValue.replace(/^0+/, '');
             if (cleanValue === '') cleanValue = '0';
         }
+
+        // Limit to 5 digits before the decimal
+        const parts = cleanValue.split('.');
+        if (parts[0].length > 5) return;
 
         handleChange(field, cleanValue);
     }, [handleChange]);
@@ -435,13 +429,13 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
                             <TextField
                                 fullWidth
                                 label="Current Stock"
-                                type="text"
-                                inputMode="decimal"
+                                type="number"
                                 value={formData.currentStock}
                                 onChange={(e) => handleNumberFieldChange('currentStock', e.target.value)}
                                 onBlur={() => handleBlur('currentStock')}
                                 error={hasError(errors.currentStock)}
                                 helperText={getHelperText(errors.currentStock)}
+                                inputProps={{ min: 0, step: "any" }}
                                 InputProps={{
                                     endAdornment: <InputAdornment position="end">{formData.unit}</InputAdornment>,
                                 }}
@@ -452,13 +446,13 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
                             <TextField
                                 fullWidth
                                 label="Minimum Stock"
-                                type="text"
-                                inputMode="decimal"
+                                type="number"
                                 value={formData.minimumStock}
                                 onChange={(e) => handleNumberFieldChange('minimumStock', e.target.value)}
                                 onBlur={() => handleBlur('minimumStock')}
                                 error={hasError(errors.minimumStock)}
                                 helperText={getHelperText(errors.minimumStock)}
+                                inputProps={{ min: 0, step: "any" }}
                                 InputProps={{
                                     endAdornment: <InputAdornment position="end">{formData.unit}</InputAdornment>,
                                 }}
@@ -469,13 +463,13 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
                             <TextField
                                 fullWidth
                                 label="Maximum Stock"
-                                type="text"
-                                inputMode="decimal"
+                                type="number"
                                 value={formData.maximumStock}
                                 onChange={(e) => handleNumberFieldChange('maximumStock', e.target.value)}
                                 onBlur={() => handleBlur('maximumStock')}
                                 error={hasError(errors.maximumStock)}
                                 helperText={getHelperText(errors.maximumStock)}
+                                inputProps={{ min: 0, step: "any" }}
                                 InputProps={{
                                     endAdornment: <InputAdornment position="end">{formData.unit}</InputAdornment>,
                                 }}
@@ -486,13 +480,13 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
                             <TextField
                                 fullWidth
                                 label="Reorder Level"
-                                type="text"
-                                inputMode="decimal"
+                                type="number"
                                 value={formData.reorderLevel}
                                 onChange={(e) => handleNumberFieldChange('reorderLevel', e.target.value)}
                                 onBlur={() => handleBlur('reorderLevel')}
                                 error={hasError(errors.reorderLevel)}
                                 helperText={getHelperText(errors.reorderLevel) || "Alert when stock falls below"}
+                                inputProps={{ min: 0, step: "any" }}
                                 InputProps={{
                                     endAdornment: <InputAdornment position="end">{formData.unit}</InputAdornment>,
                                 }}
@@ -503,13 +497,13 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
                             <TextField
                                 fullWidth
                                 label="Cost Price"
-                                type="text"
-                                inputMode="decimal"
+                                type="number"
                                 value={formData.costPrice}
                                 onChange={(e) => handleNumberFieldChange('costPrice', e.target.value)}
                                 onBlur={() => handleBlur('costPrice')}
                                 error={hasError(errors.costPrice)}
                                 helperText={getHelperText(errors.costPrice)}
+                                inputProps={{ min: 0, step: "any" }}
                                 InputProps={{
                                     startAdornment: <InputAdornment position="start">{settings.restaurant.currencySymbol}</InputAdornment>,
                                 }}

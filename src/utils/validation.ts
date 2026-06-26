@@ -20,14 +20,13 @@ export const validateEmail = (email: string): ValidationResult => {
 };
 
 // Phone number validation (Indian format)
-export const validatePhone = (phone: string | number): ValidationResult => {
-    const phoneStr = String(phone || '');
-    if (!phoneStr || phoneStr.trim() === '') {
+export const validatePhone = (phone: string): ValidationResult => {
+    if (!phone || phone.trim() === '') {
         return { isValid: false, message: 'Phone number is required' };
     }
 
     // Keep only digits
-    const digits = String(phoneStr || '').replace(/\D/g, '');
+    const digits = phone.replace(/\D/g, '');
 
     if (digits.length !== 10) {
         return { isValid: false, message: 'Please enter exactly 10 digits' };

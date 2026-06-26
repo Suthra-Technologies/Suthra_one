@@ -47,7 +47,7 @@ const CustomerRegisterPage: React.FC = () => {
 
     // Special rule for phone input
     if (name === "phone") {
-      const numeric = String(value || '').replace(/\D/g, ""); // keep only digits
+      const numeric = value.replace(/\D/g, ""); // keep only digits
       if (numeric.length > 10) return; // stop typing beyond 10 digits
       setForm({ ...form, [name]: numeric });
 

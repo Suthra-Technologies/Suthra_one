@@ -18,35 +18,35 @@ export const sanitizeName = (value: string): string => {
 export const sanitizeAlphanumeric = (value: string): string => {
   if (!value) return '';
   // Allow alphabets, numbers, and spaces
-  let sanitized = String(value).replace(/[^a-zA-Z0-9\s]/g, '');
+  let sanitized = value.replace(/[^a-zA-Z0-9\s]/g, '');
   sanitized = sanitized.replace(/^\s+/g, '');
   sanitized = sanitized.replace(/\s{2,}/g, ' ');
   return sanitized;
 };
 
-export const sanitizeCode = (value: string | number): string => {
+export const sanitizeCode = (value: string): string => {
   if (!value) return '';
   // Strictly allow ONLY alphabets and numbers (no spaces, no symbols)
-  return String(value).replace(/[^a-zA-Z0-9]/g, '');
+  return value.replace(/[^a-zA-Z0-9]/g, '');
 };
 
-export const sanitizePhone = (value: string | number): string => {
+export const sanitizePhone = (value: string): string => {
   if (!value) return '';
   // Allow only digits, max 10 digits
-  const sanitized = String(value).replace(/\D/g, '').slice(0, 10);
+  const sanitized = value.replace(/\D/g, '').slice(0, 10);
   return sanitized;
 };
 
 export const sanitizeEmail = (value: string): string => {
   if (!value) return '';
   // Auto convert to lowercase, remove all spaces
-  return String(value).toLowerCase().replace(/\s/g, '');
+  return value.toLowerCase().replace(/\s/g, '');
 };
 
-export const sanitizeNumber = (value: string | number, allowDecimals: boolean = true): string => {
-  if (!value && value !== 0) return '';
+export const sanitizeNumber = (value: string, allowDecimals: boolean = true): string => {
+  if (!value) return '';
   // Remove anything that's not a digit or decimal point
-  let sanitized = String(value).replace(allowDecimals ? /[^0-9.]/g : /[^0-9]/g, '');
+  let sanitized = value.replace(allowDecimals ? /[^0-9.]/g : /[^0-9]/g, '');
   
   if (allowDecimals) {
     // Prevent multiple decimal points
