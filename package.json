@@ -64,6 +64,7 @@
     "@mui/icons-material": "^6.1.0",
     "@mui/lab": "^6.0.0-beta.16",
     "@mui/material": "^6.1.0",
+    "@mui/system": "^9.1.2",
     "@mui/x-date-pickers": "^8.19.0",
     "@stripe/react-stripe-js": "^5.4.0",
     "@stripe/stripe-js": "^8.5.3",
