@@ -1040,10 +1040,11 @@ const BookingsAdminPage: React.FC = () => {
                                         label="Guest Name"
                                         fullWidth
                                         required
+                                        inputProps={{ maxLength: 30 }}
                                         InputLabelProps={{ sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }}
                                         value={newBooking.firstName}
                                         onChange={(e) => {
-                                            const val = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                                            const val = e.target.value.replace(/[^a-zA-Z\s]/g, '').slice(0, 30);
                                             setNewBooking({ ...newBooking, firstName: val });
                                         }}
                                     />

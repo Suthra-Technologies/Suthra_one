@@ -12,7 +12,7 @@ import { sendToThermalPrinter, sendEposPrint, isThermalPrintAvailable } from '..
 import { sendToUsbPrinter, isUsbPrintAvailable } from '../services/usbPrint';
 import type { TenantPrinterSettings } from '../context/SettingsContext';
 
-const CHARS_PER_LINE = 48; // 80mm
+const CHARS_PER_LINE_LARGE = 21; // Safe for 76mm double-width
 
 export interface KotItem {
     name: string;
@@ -28,6 +28,8 @@ export interface KotData {
     orderTypeLabel?: string;
     tableLabel?: string;
     customerName?: string;
+    orderDateStr?: string;
+    printedDateStr?: string;
     items: KotItem[];
 }
 
@@ -36,6 +38,18 @@ const padL = (s: string, w: number) => (s.length > w ? s.slice(0, w) : ' '.repea
 
 /** Remove stray angle brackets and collapse extra spaces from a display string. */
 const cleanText = (s?: string) => (s ?? '').replace(/[<>]/g, '').replace(/\s{2,}/g, ' ').trim();
+
+function formatUsDate(dateObj: Date): string {
+    const m = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+    const d = dateObj.getDate().toString().padStart(2, '0');
+    const y = dateObj.getFullYear();
+    let h = dateObj.getHours();
+    const min = dateObj.getMinutes().toString().padStart(2, '0');
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    h = h % 12;
+    if (h === 0) h = 12;
+    return `${m}/${d}/${y} ${h}:${min} ${ampm}`;
+}
 
 // ── ESC/POS control codes ──
 const ESC = 0x1b, GS = 0x1d;
@@ -59,36 +73,79 @@ function textBytes(str: string): number[] {
 function buildKotEscPos(data: KotData): Uint8Array {
     const b: number[] = [];
     const line = (s = '') => { b.push(...textBytes(s), 0x0a); };
-    const rule = () => line('-'.repeat(CHARS_PER_LINE));
+    const rule = () => line('-'.repeat(CHARS_PER_LINE_LARGE));
 
     b.push(...INIT);
-    b.push(...ALIGN_CENTER, ...BOLD_ON, ...DOUBLE_ON);
-    line('** KITCHEN **');
-    b.push(...DOUBLE_OFF, ...BOLD_OFF, ...ALIGN_LEFT);
+    // Large font for readability in kitchen
+    b.push(...ALIGN_LEFT, ...BOLD_ON, ...DOUBLE_ON);
+
+    // Order Type centered
+    if (data.orderTypeLabel) {
+        b.push(...ALIGN_CENTER);
+        line(data.orderTypeLabel.toUpperCase());
+        b.push(...ALIGN_LEFT);
+    } else {
+        b.push(...ALIGN_CENTER);
+        line('** KITCHEN **');
+        b.push(...ALIGN_LEFT);
+    }
+
+    if (data.orderDateStr) line(data.orderDateStr);
+
+    if (data.printedDateStr) {
+        const fullPrinted = 'Printed: ' + data.printedDateStr;
+        if (fullPrinted.length > CHARS_PER_LINE_LARGE) {
+            line(fullPrinted.slice(0, 20));
+            line(fullPrinted.slice(20));
+        } else {
+            line(fullPrinted);
+        }
+    }
+
+    if (data.tokenNumber != null) {
+        line(`Token #${data.tokenNumber}`);
+    }
+
+    if (data.tableLabel) {
+        line(`Table: ${data.tableLabel}`);
+    }
+
+    if (data.customerName) {
+        line('');
+        line(data.customerName);
+    }
+
+    b.push(...BOLD_OFF);
     rule();
-    if (data.tokenNumber != null) { b.push(...BOLD_ON, ...DOUBLE_ON); line(`Token #${data.tokenNumber}`); b.push(...DOUBLE_OFF, ...BOLD_OFF); }
-    if (data.orderNumber) line('Order No: ' + data.orderNumber);
-    if (data.orderTypeLabel) line('Type: ' + data.orderTypeLabel.toUpperCase());
-    if (data.tableLabel) line('Table: ' + data.tableLabel);
-    if (data.customerName) line('Customer: ' + data.customerName);
-    rule();
-    b.push(...BOLD_ON); line(padR('Item', CHARS_PER_LINE - 5) + padL('Qty', 5)); b.push(...BOLD_OFF);
-    rule();
+
     for (const it of data.items.filter(i => i.preparationStatus !== 'cancelled')) {
         const name = cleanText(it.name) || 'Item';
-        const qty = padL(String(it.quantity), 5);
-        b.push(...BOLD_ON);
-        if (name.length <= CHARS_PER_LINE - 5) {
-            line(padR(name, CHARS_PER_LINE - 5) + qty);
+        const qtyStr = it.quantity > 1 ? ` x${it.quantity}` : '';
+        const fullItemStr = name + qtyStr;
+
+        if (fullItemStr.length <= CHARS_PER_LINE_LARGE) {
+            line(fullItemStr);
         } else {
-            line(padR(name.slice(0, CHARS_PER_LINE - 5), CHARS_PER_LINE - 5) + qty);
-            line('  ' + name.slice(CHARS_PER_LINE - 5));
+            line(fullItemStr.slice(0, CHARS_PER_LINE_LARGE));
+            line(' ' + fullItemStr.slice(CHARS_PER_LINE_LARGE, CHARS_PER_LINE_LARGE * 2 - 1));
         }
-        b.push(...BOLD_OFF);
-        if (it.spiceLevel) line('   Spice: ' + cleanText(it.spiceLevel));
-        if (it.notes) line('   Note: ' + cleanText(it.notes));
+
+        if (it.spiceLevel) {
+            const spice = cleanText(it.spiceLevel);
+            line(padL(spice, CHARS_PER_LINE_LARGE));
+        }
+        if (it.notes) {
+            const note = cleanText(it.notes);
+            line(' ' + note);
+        }
+        rule();
     }
-    rule();
+
+    if (data.orderNumber) {
+        b.push(...DOUBLE_OFF, ...BOLD_ON);
+        line(`ID: ${data.orderNumber}`);
+    }
+
     b.push(...FEED(4), ...CUT);
     return Uint8Array.from(b);
 }
@@ -101,30 +158,77 @@ function xmlEsc(s: string): string {
 function buildKotEposXml(data: KotData): string {
     const parts: string[] = [];
     const t = (s: string, attrs = '') => parts.push(`<text${attrs ? ' ' + attrs : ''}>${xmlEsc(s)}&#10;</text>`);
-    parts.push('<text align="center"/>', '<text em="true" dw="true" dh="true"/>');
-    t('** KITCHEN **');
-    parts.push('<text dw="false" dh="false" em="false"/>', '<text align="left"/>');
-    t('-'.repeat(CHARS_PER_LINE));
-    if (data.tokenNumber != null) { parts.push('<text em="true" dw="true" dh="true"/>'); t(`Token #${data.tokenNumber}`); parts.push('<text dw="false" dh="false" em="false"/>'); }
-    if (data.orderNumber) t('Order No: ' + data.orderNumber);
-    if (data.orderTypeLabel) t('Type: ' + data.orderTypeLabel.toUpperCase());
-    if (data.tableLabel) t('Table: ' + data.tableLabel);
-    if (data.customerName) t('Customer: ' + data.customerName);
-    t('-'.repeat(CHARS_PER_LINE));
-    parts.push('<text em="true"/>'); t(padR('Item', CHARS_PER_LINE - 5) + padL('Qty', 5)); parts.push('<text em="false"/>');
-    t('-'.repeat(CHARS_PER_LINE));
+
+    // Large font for readability
+    parts.push('<text em="true" dw="true" dh="true"/>');
+
+    if (data.orderTypeLabel) {
+        parts.push('<text align="center"/>');
+        t(data.orderTypeLabel.toUpperCase());
+        parts.push('<text align="left"/>');
+    } else {
+        parts.push('<text align="center"/>');
+        t('** KITCHEN **');
+        parts.push('<text align="left"/>');
+    }
+
+    if (data.orderDateStr) t(data.orderDateStr);
+
+    if (data.printedDateStr) {
+        const fullPrinted = 'Printed: ' + data.printedDateStr;
+        if (fullPrinted.length > CHARS_PER_LINE_LARGE) {
+            t(fullPrinted.slice(0, 20));
+            t(fullPrinted.slice(20));
+        } else {
+            t(fullPrinted);
+        }
+    }
+
+    if (data.tokenNumber != null) {
+        t(`Token #${data.tokenNumber}`);
+    }
+
+    if (data.tableLabel) {
+        t(`Table: ${data.tableLabel}`);
+    }
+
+    if (data.customerName) {
+        t('');
+        t(data.customerName);
+    }
+
+    parts.push('<text em="false"/>');
+    t('-'.repeat(CHARS_PER_LINE_LARGE));
+
     for (const it of data.items.filter(i => i.preparationStatus !== 'cancelled')) {
         const name = cleanText(it.name) || 'Item';
-        const qty = padL(String(it.quantity), 5);
-        parts.push('<text em="true"/>');
-        if (name.length <= CHARS_PER_LINE - 5) t(padR(name, CHARS_PER_LINE - 5) + qty);
-        else { t(padR(name.slice(0, CHARS_PER_LINE - 5), CHARS_PER_LINE - 5) + qty); t('  ' + name.slice(CHARS_PER_LINE - 5)); }
-        parts.push('<text em="false"/>');
-        if (it.spiceLevel) t('   Spice: ' + cleanText(it.spiceLevel));
-        if (it.notes) t('   Note: ' + cleanText(it.notes));
+        const qtyStr = it.quantity > 1 ? ` x${it.quantity}` : '';
+        const fullItemStr = name + qtyStr;
+
+        if (fullItemStr.length <= CHARS_PER_LINE_LARGE) {
+            t(fullItemStr);
+        } else {
+            t(fullItemStr.slice(0, CHARS_PER_LINE_LARGE));
+            t(' ' + fullItemStr.slice(CHARS_PER_LINE_LARGE, CHARS_PER_LINE_LARGE * 2 - 1));
+        }
+
+        if (it.spiceLevel) {
+            const spice = cleanText(it.spiceLevel);
+            t(padL(spice, CHARS_PER_LINE_LARGE));
+        }
+        if (it.notes) {
+            const note = cleanText(it.notes);
+            t(' ' + note);
+        }
+        t('-'.repeat(CHARS_PER_LINE_LARGE));
     }
-    t('-'.repeat(CHARS_PER_LINE));
-    parts.push('<feed line="3"/>', '<cut type="feed"/>');
+
+    if (data.orderNumber) {
+        parts.push('<text em="true" dw="false" dh="false"/>');
+        t(`ID: ${data.orderNumber}`);
+    }
+
+    parts.push('<feed line="4"/>', '<cut type="feed"/>');
     return '<?xml version="1.0" encoding="utf-8"?>' +
         '<s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"><s:Body>' +
         '<epos-print xmlns="http://www.epson-pos.com/schemas/2011/03/epos-print">' +
@@ -166,6 +270,8 @@ export async function printKotThermal(
             order.table?.tableName || order.table?.name || undefined,
         customerName: order.customer?.name && !/^[0-9a-fA-F]{8,24}$/.test(order.customer.name)
             ? order.customer.name : undefined,
+        orderDateStr: order.createdAt ? formatUsDate(new Date(order.createdAt)) : undefined,
+        printedDateStr: formatUsDate(new Date()),
         items: (order.items || []).map((it: any) => ({
             name: it.name || it.menuItem?.name || 'Item',
             quantity: it.quantity ?? 1,

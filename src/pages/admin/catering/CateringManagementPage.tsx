@@ -2778,6 +2778,7 @@ const CateringManagementPage = () => {
                                                         fullWidth
                                                         size="small"
                                                         required
+                                                        inputProps={{ maxLength: 30 }}
                                                         InputLabelProps={{ sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }}
                                                         value={newOrder.customerName}
                                                         onBlur={() => setNameTouched(true)}
@@ -2785,7 +2786,7 @@ const CateringManagementPage = () => {
                                                         FormHelperTextProps={{ sx: { color: 'error.main' } }}
                                                         onChange={(e) => {
                                                             if (/^[a-zA-Z\s]*$/.test(e.target.value)) {
-                                                                setNewOrder({ ...newOrder, customerName: e.target.value })
+                                                                setNewOrder({ ...newOrder, customerName: e.target.value.slice(0, 30) })
                                                             }
                                                         }}
                                                     />

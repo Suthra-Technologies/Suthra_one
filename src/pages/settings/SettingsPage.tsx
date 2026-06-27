@@ -1239,21 +1239,30 @@ const SettingsPage: React.FC = () => {
                 // apiBaseUrl includes a trailing /api; strip it since the station builds its own paths.
                 const apiBase = apiBaseUrl.replace(/\/api$/, '');
                 const billing = settings.printer.billing;
-                if (!billing?.ip) {
-                    toast.error('Set the Billing printer IP first.');
+                const kitchen = settings.printer.kitchen;
+
+                // Prefer billing printer; fall back to kitchen/KOT printer for KOT-only mode.
+                const printerCfg = (billing?.ip) ? billing : kitchen;
+                if (!printerCfg?.ip) {
+                    toast.error('Set a printer IP in the Billing or Kitchen/KOT printer section first.');
                     return;
                 }
+
+                const kotOnly = !billing?.ip; // no billing IP → print KOT only
                 await startPrintStation({
                     jwt,
                     apiBase,
-                    printerIp: billing.ip,
-                    printerPort: billing.port || 9100,
-                    commandMode: billing.commandMode || 'epos-print',
-                    devId: billing.deviceId || 'local_printer',
+                    printerIp: printerCfg.ip,
+                    printerPort: printerCfg.port || 9100,
+                    commandMode: printerCfg.commandMode || 'epos-print',
+                    devId: printerCfg.deviceId || 'local_printer',
+                    kotOnly,
                 });
                 setPrintStationOn(true);
                 localStorage.setItem('printStationOn', '1');
-                toast.success('Print station started — orders will print in the background.');
+                toast.success(kotOnly
+                    ? 'Print station started — KOT only (no billing printer configured).'
+                    : 'Print station started — KOT + bill will print in the background.');
             } else {
                 await stopPrintStation();
                 setPrintStationOn(false);
@@ -3961,7 +3970,7 @@ const SettingsPage: React.FC = () => {
                                             Run as Print Station (Background)
                                         </Typography>
                                         <Typography variant="body2" color="text.secondary">
-                                            Keeps printing KOT + bill for all orders even when the app is in the background or the screen is off. Keep this device on Wi-Fi and charged. Uses the Billing printer settings.
+                                            Keeps printing KOT (and bill if configured) for all orders even when the app is in the background or screen is off. Uses Billing printer if set, otherwise uses the KOT/Kitchen printer for KOT-only mode.
                                         </Typography>
                                     </Box>
                                     <Switch

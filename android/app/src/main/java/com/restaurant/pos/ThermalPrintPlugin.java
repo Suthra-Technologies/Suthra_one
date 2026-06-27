@@ -170,6 +170,7 @@ public class ThermalPrintPlugin extends Plugin {
             i.putExtra("printerPort", call.getInt("printerPort", 9100));
             i.putExtra("commandMode", call.getString("commandMode", "epos-print"));
             i.putExtra("devId", call.getString("devId", "local_printer"));
+            i.putExtra("kotOnly", call.getBoolean("kotOnly", false));
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 getContext().startForegroundService(i);
             } else {

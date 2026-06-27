@@ -532,23 +532,59 @@ public final class EscPosFormatter {
 
     // ── KOT (ESC/POS) ──────────────────────────────────────────────────────
     public static byte[] buildKot(JSONObject bill) {
+        int W_LARGE = 21;
         Esc e = new Esc();
         e.raw(INIT);
-        e.raw(AC).raw(BOLD_ON).raw(DBL_ON).line("** KITCHEN **").raw(DBL_OFF).raw(BOLD_OFF).raw(AL).rule();
-        if (bill.has("dailyTokenNumber") && !bill.isNull("dailyTokenNumber")) {
-            e.raw(BOLD_ON).raw(DBL_ON).line("Token #" + bill.optInt("dailyTokenNumber")).raw(DBL_OFF).raw(BOLD_OFF);
+        e.raw(AL).raw(BOLD_ON).raw(DBL_ON);
+        
+        String typeLabel = orderTypeLabel(bill.optString("orderType", ""));
+        if (!typeLabel.isEmpty()) {
+            e.raw(AC).line(typeLabel.toUpperCase(Locale.US)).raw(AL);
+        } else {
+            e.raw(AC).line("** KITCHEN **").raw(AL);
         }
-        if (!bill.optString("orderNumber", "").isEmpty())
-            e.line("Order No: " + bill.optString("orderNumber"));
-        e.line("Type: " + orderTypeLabel(bill.optString("orderType")).toUpperCase(Locale.US));
+
+        String orderDateStr = "";
+        try {
+            String created = bill.optString("createdAt", "");
+            if (!created.isEmpty()) {
+                java.text.SimpleDateFormat inFmt = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US);
+                inFmt.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+                java.util.Date d = inFmt.parse(created);
+                java.text.SimpleDateFormat outFmt = new java.text.SimpleDateFormat("MM/dd/yyyy hh:mm a", Locale.US);
+                outFmt.setTimeZone(java.util.TimeZone.getDefault());
+                orderDateStr = outFmt.format(d);
+            }
+        } catch(Exception ignored) {}
+
+        java.text.SimpleDateFormat outFmt = new java.text.SimpleDateFormat("MM/dd/yyyy hh:mm a", Locale.US);
+        outFmt.setTimeZone(java.util.TimeZone.getDefault());
+        String printedDateStr = "Printed: " + outFmt.format(new java.util.Date());
+
+        if (!orderDateStr.isEmpty()) e.line(orderDateStr);
+        if (printedDateStr.length() > W_LARGE) {
+            e.line(printedDateStr.substring(0, 20));
+            e.line(printedDateStr.substring(20));
+        } else {
+            e.line(printedDateStr);
+        }
+
+        if (bill.has("dailyTokenNumber") && !bill.isNull("dailyTokenNumber")) {
+            e.line("Token #" + bill.optInt("dailyTokenNumber"));
+        }
+
         String tbl = tableLabel(bill);
-        if (tbl != null)
-            e.line("Table: " + tbl);
+        if (tbl != null) e.line("Table: " + tbl);
+
         String cust = customerName(bill);
-        if (cust != null)
-            e.line("Customer: " + cust);
-        e.rule();
-        e.raw(BOLD_ON).line(padR("Item", W - 5) + padL("Qty", 5)).raw(BOLD_OFF).rule();
+        if (cust != null) {
+            e.line("");
+            e.line(cust);
+        }
+
+        e.raw(BOLD_OFF);
+        e.line(repeat('-', W_LARGE));
+
         JSONArray items = bill.optJSONArray("items");
         if (items != null) {
             for (int i = 0; i < items.length(); i++) {
@@ -556,26 +592,35 @@ public final class EscPosFormatter {
                 if (it == null || "cancelled".equals(it.optString("preparationStatus", "")))
                     continue;
                 String name = clean(it.optString("name", "Item"));
-                if (name.isEmpty())
-                    name = "Item";
-                String qty = padL(String.valueOf(it.optInt("quantity", 1)), 5);
-                e.raw(BOLD_ON);
-                if (name.length() <= W - 5)
-                    e.line(padR(name, W - 5) + qty);
-                else {
-                    e.line(padR(name.substring(0, W - 5), W - 5) + qty);
-                    e.line("  " + name.substring(W - 5));
+                if (name.isEmpty()) name = "Item";
+                
+                int quantity = it.optInt("quantity", 1);
+                String qtyStr = quantity > 1 ? " x" + quantity : "";
+                String fullItemStr = name + qtyStr;
+                
+                if (fullItemStr.length() <= W_LARGE) {
+                    e.line(fullItemStr);
+                } else {
+                    e.line(fullItemStr.substring(0, W_LARGE));
+                    e.line(" " + fullItemStr.substring(W_LARGE, Math.min(fullItemStr.length(), W_LARGE * 2 - 1)));
                 }
-                e.raw(BOLD_OFF);
+
                 String spice = clean(it.optString("spiceLevel", ""));
-                if (!spice.isEmpty())
-                    e.line("   Spice: " + spice);
+                if (!spice.isEmpty()) e.line(padL(spice, W_LARGE));
+
                 String notes = clean(it.optString("notes", ""));
-                if (!notes.isEmpty())
-                    e.line("   Note: " + notes);
+                if (!notes.isEmpty()) e.line(" " + notes);
+
+                e.line(repeat('-', W_LARGE));
             }
         }
-        e.rule().raw(feed(4)).raw(CUT);
+
+        if (!bill.optString("orderNumber", "").isEmpty()) {
+            e.raw(DBL_OFF).raw(BOLD_ON);
+            e.line("ID: " + bill.optString("orderNumber"));
+        }
+
+        e.raw(feed(4)).raw(CUT);
         return e.bytes();
     }
 
@@ -711,27 +756,58 @@ public final class EscPosFormatter {
     }
 
     public static String buildKotEpos(JSONObject bill) {
+        int W_LARGE = 21;
         StringBuilder p = new StringBuilder();
-        p.append("<text align=\"center\"/><text em=\"true\" dw=\"true\" dh=\"true\"/>").append(t("** KITCHEN **"))
-                .append("<text dw=\"false\" dh=\"false\" em=\"false\"/><text align=\"left\"/>")
-                .append(t(repeat('-', W)));
-        if (bill.has("dailyTokenNumber") && !bill.isNull("dailyTokenNumber")) {
-            p.append("<text em=\"true\" dw=\"true\" dh=\"true\"/>")
-                    .append(t("Token #" + bill.optInt("dailyTokenNumber")))
-                    .append("<text dw=\"false\" dh=\"false\" em=\"false\"/>");
+        p.append("<text em=\"true\" dw=\"true\" dh=\"true\"/>");
+        
+        String typeLabel = orderTypeLabel(bill.optString("orderType", ""));
+        if (!typeLabel.isEmpty()) {
+            p.append("<text align=\"center\"/>").append(t(typeLabel.toUpperCase(Locale.US))).append("<text align=\"left\"/>");
+        } else {
+            p.append("<text align=\"center\"/>").append(t("** KITCHEN **")).append("<text align=\"left\"/>");
         }
-        if (!bill.optString("orderNumber", "").isEmpty())
-            p.append(t("Order No: " + bill.optString("orderNumber")));
-        p.append(t("Type: " + orderTypeLabel(bill.optString("orderType")).toUpperCase(Locale.US)));
+
+        String orderDateStr = "";
+        try {
+            String created = bill.optString("createdAt", "");
+            if (!created.isEmpty()) {
+                java.text.SimpleDateFormat inFmt = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US);
+                inFmt.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+                java.util.Date d = inFmt.parse(created);
+                java.text.SimpleDateFormat outFmt = new java.text.SimpleDateFormat("MM/dd/yyyy hh:mm a", Locale.US);
+                outFmt.setTimeZone(java.util.TimeZone.getDefault());
+                orderDateStr = outFmt.format(d);
+            }
+        } catch(Exception ignored) {}
+
+        java.text.SimpleDateFormat outFmt = new java.text.SimpleDateFormat("MM/dd/yyyy hh:mm a", Locale.US);
+        outFmt.setTimeZone(java.util.TimeZone.getDefault());
+        String printedDateStr = "Printed: " + outFmt.format(new java.util.Date());
+
+        if (!orderDateStr.isEmpty()) p.append(t(orderDateStr));
+        if (printedDateStr.length() > W_LARGE) {
+            p.append(t(printedDateStr.substring(0, 20)));
+            p.append(t(printedDateStr.substring(20)));
+        } else {
+            p.append(t(printedDateStr));
+        }
+
+        if (bill.has("dailyTokenNumber") && !bill.isNull("dailyTokenNumber")) {
+            p.append(t("Token #" + bill.optInt("dailyTokenNumber")));
+        }
+
         String tbl = tableLabel(bill);
-        if (tbl != null)
-            p.append(t("Table: " + tbl));
+        if (tbl != null) p.append(t("Table: " + tbl));
+
         String cust = customerName(bill);
-        if (cust != null)
-            p.append(t("Customer: " + cust));
-        p.append(t(repeat('-', W)));
-        p.append("<text em=\"true\"/>").append(t(padR("Item", W - 5) + padL("Qty", 5))).append("<text em=\"false\"/>")
-                .append(t(repeat('-', W)));
+        if (cust != null) {
+            p.append(t(""));
+            p.append(t(cust));
+        }
+
+        p.append("<text em=\"false\"/>");
+        p.append(t(repeat('-', W_LARGE)));
+
         JSONArray items = bill.optJSONArray("items");
         if (items != null) {
             for (int i = 0; i < items.length(); i++) {
@@ -739,26 +815,35 @@ public final class EscPosFormatter {
                 if (it == null || "cancelled".equals(it.optString("preparationStatus", "")))
                     continue;
                 String name = clean(it.optString("name", "Item"));
-                if (name.isEmpty())
-                    name = "Item";
-                String qty = padL(String.valueOf(it.optInt("quantity", 1)), 5);
-                p.append("<text em=\"true\"/>");
-                if (name.length() <= W - 5)
-                    p.append(t(padR(name, W - 5) + qty));
-                else {
-                    p.append(t(padR(name.substring(0, W - 5), W - 5) + qty));
-                    p.append(t("  " + name.substring(W - 5)));
+                if (name.isEmpty()) name = "Item";
+                
+                int quantity = it.optInt("quantity", 1);
+                String qtyStr = quantity > 1 ? " x" + quantity : "";
+                String fullItemStr = name + qtyStr;
+                
+                if (fullItemStr.length() <= W_LARGE) {
+                    p.append(t(fullItemStr));
+                } else {
+                    p.append(t(fullItemStr.substring(0, W_LARGE)));
+                    p.append(t(" " + fullItemStr.substring(W_LARGE, Math.min(fullItemStr.length(), W_LARGE * 2 - 1))));
                 }
-                p.append("<text em=\"false\"/>");
+
                 String spice = clean(it.optString("spiceLevel", ""));
-                if (!spice.isEmpty())
-                    p.append(t("   Spice: " + spice));
+                if (!spice.isEmpty()) p.append(t(padL(spice, W_LARGE)));
+
                 String notes = clean(it.optString("notes", ""));
-                if (!notes.isEmpty())
-                    p.append(t("   Note: " + notes));
+                if (!notes.isEmpty()) p.append(t(" " + notes));
+
+                p.append(t(repeat('-', W_LARGE)));
             }
         }
-        p.append(t(repeat('-', W))).append("<feed line=\"3\"/><cut type=\"feed\"/>");
+
+        if (!bill.optString("orderNumber", "").isEmpty()) {
+            p.append("<text em=\"true\" dw=\"false\" dh=\"false\"/>");
+            p.append(t("ID: " + bill.optString("orderNumber")));
+        }
+
+        p.append("<feed line=\"4\"/><cut type=\"feed\"/>");
         return eposEnvelope(p.toString());
     }
 }

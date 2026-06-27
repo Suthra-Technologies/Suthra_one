@@ -1283,6 +1283,10 @@ const POSPage: React.FC = () => {
             setCustomerNameTouched(true);
             setCustomerNameError('Customer name must be at least 3 characters');
             hasError = true;
+        } else if (trimmedName.length > 30) {
+            setCustomerNameTouched(true);
+            setCustomerNameError('Customer name must not exceed 30 characters');
+            hasError = true;
         }
 
         // Validate phone

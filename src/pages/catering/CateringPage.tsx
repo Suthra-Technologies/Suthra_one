@@ -838,7 +838,7 @@ const CateringPage = () => {
                                         '& > *': { width: '100%' },
                                     }}
                                 >
-                                    <CustomInput type="name" label="Full Name" fullWidth required value={formData.customerName} onChange={val => setFormData({ ...formData, customerName: val })} InputLabelProps={{ sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }} />
+                                    <CustomInput type="name" label="Full Name" fullWidth required maxLength={30} value={formData.customerName} onChange={val => setFormData({ ...formData, customerName: val })} InputLabelProps={{ sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }} />
                                     <TextField label="Phone Number" fullWidth required value={formData.customerPhone} onChange={e => {
                                         const numericValue = e.target.value.replace(/\D/g, '').slice(0, 10);
                                         setFormData({ ...formData, customerPhone: numericValue });

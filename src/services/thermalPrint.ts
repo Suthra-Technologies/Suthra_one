@@ -24,6 +24,7 @@ export interface ThermalPrintPlugin {
         printerPort?: number;
         commandMode?: string;
         devId?: string;
+        kotOnly?: boolean;
     }): Promise<{ success: boolean }>;
     /** Stop the background print station. */
     stopPrintStation(): Promise<{ success: boolean }>;
@@ -131,6 +132,7 @@ export async function startPrintStation(opts: {
     printerPort?: number;
     commandMode?: string;
     devId?: string;
+    kotOnly?: boolean;
 }): Promise<void> {
     if (!isThermalPrintAvailable()) throw new Error('Print station only available in the Android app.');
     await ThermalPrint.startPrintStation(opts);

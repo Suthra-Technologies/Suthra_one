@@ -71,6 +71,12 @@ export async function autoPrintOrder(
         const { data: billData } = await ordersAPI.getBillData(orderId);
         const isDelivery = billData?.orderType === 'delivery';
 
+        if (billData?.isPreOrder) {
+            console.log('[AutoPrint] Pre-order detected — deferring KOT print until promotion');
+            printedOrderIds.delete(orderId);
+            return false;
+        }
+
         // Delivery: print the KOT now (kitchen starts cooking) but DEFER the bill. The bill prints
         // later via the background station once the Uber pickup barcode (handoffQr) is set — which
         // happens when staff move the order to ready-to-takeaway. Non-delivery: print KOT + bill now.
@@ -89,9 +95,22 @@ export async function autoPrintOrder(
             return false;
         }
 
-        // Non-delivery: print the bill now and mark it done.
-        await printBillThermal(billData, printerSettings, formatMoney);
-        await ordersAPI.markPrintStage(orderId, 'bill').catch(() => {});
+        // Only print the bill if a billing printer is explicitly configured with an IP.
+        // If only a KOT/kitchen printer is set (billing type = 'none' or no IP), skip bill.
+        const billingConfigured =
+            printerSettings?.billing?.type &&
+            printerSettings.billing.type !== 'none' &&
+            (printerSettings.billing.type === 'usb' || !!printerSettings.billing.ip);
+
+        if (billingConfigured) {
+            await printBillThermal(billData, printerSettings, formatMoney);
+            await ordersAPI.markPrintStage(orderId, 'bill').catch(() => {});
+        } else {
+            // No billing printer — mark bill as "done" in the backend so the background
+            // print station doesn't pick it up and print it separately.
+            console.log('[AutoPrint] Billing printer not configured — marking bill done to prevent background reprint');
+            await ordersAPI.markPrintStage(orderId, 'bill').catch(() => {});
+        }
         return true;
     } catch (err) {
         // Printing failed — allow a future retry for this order.

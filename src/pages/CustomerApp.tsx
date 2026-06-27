@@ -672,7 +672,7 @@ const CustomerFoodOrdering: React.FC = () => {
                   <MenuItem value="card">Card (Stripe Test)</MenuItem>
                 </Select>
               </FormControl>
-              <TextField fullWidth size="small" label="Name" sx={{ mb: 1 }} value={customerInfo.name} onChange={(e) => setCustomerInfo({ ...customerInfo, name: e.target.value })} />
+              <TextField fullWidth size="small" label="Name" sx={{ mb: 1 }} inputProps={{ maxLength: 30 }} value={customerInfo.name} onChange={(e) => setCustomerInfo({ ...customerInfo, name: e.target.value.slice(0, 30) })} />
               <Box sx={{ mb: 1 }}>
                 <PhoneInput
                   fullWidth

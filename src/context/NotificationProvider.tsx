@@ -326,6 +326,60 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     }, [user, playNotificationSound, showNotification]);
 
+    const handlePreOrderPromoted = useCallback((data: any) => {
+        console.log('🔔 [NotificationProvider] RAW preOrderPromoted event:', data);
+
+        if (!user) return;
+        const userRole = user.role?.toLowerCase() || '';
+        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
+        const isStaff = staffRoles.includes(userRole);
+
+        if (!isStaff) return;
+
+        playNotificationSound();
+
+        const title = 'Pre-Order Ready For Prep';
+        const orderNum = data.order?.orderNumber || 'Order';
+        const message = `${orderNum} has been promoted and needs preparation.`;
+
+        showNotification(title, message);
+
+        toast.custom((t) => (
+            <Box
+                sx={{ display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'secondary.main', color: 'white', p: 2, borderRadius: 2, boxShadow: 3, minWidth: 300, cursor: 'pointer' }}
+                onClick={() => toast.dismiss(t.id)}
+            >
+                <RestaurantIcon />
+                <Box sx={{ flexGrow: 1 }}>
+                    <Typography variant="subtitle1" fontWeight="bold">{title}</Typography>
+                    <Typography variant="body2">{message}</Typography>
+                </Box>
+                <IconButton size="small" sx={{ color: 'white' }}><CloseIcon /></IconButton>
+            </Box>
+        ), { duration: 6000, position: 'top-right' });
+
+        const newNotif: Notification = {
+            id: 'promo-' + Date.now(),
+            timestamp: new Date(),
+            read: false,
+            type: 'status',
+            title,
+            message,
+            priority: 'high',
+            data: data,
+        };
+        setNotifications(prev => [newNotif, ...prev].slice(0, 50));
+
+        // Auto-print KOT for the promoted pre-order
+        const { printer, autoPrint, formatCurrency: fmt } = printCtxRef.current;
+        const newOrderId = data.order?._id || data.orderId || data._id;
+        if (isStaff && autoPrint && newOrderId) {
+            autoPrintOrder(newOrderId, printer, !!autoPrint, fmt)
+                .then((printed) => console.log('🖨️ [AutoPrint] preOrderPromoted result:', printed))
+                .catch((err) => console.error('🖨️ [AutoPrint] preOrderPromoted error:', err));
+        }
+    }, [user, playNotificationSound, showNotification]);
+
     const handleOrderStatusUpdate = useCallback((data: any) => {
         console.log('🔔 [NotificationProvider] RAW orderStatusUpdate event:', data);
         if (!user) return;
@@ -631,6 +685,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }, 1000);
 
         socketService.on('newOrder', handleNewOrder);
+        socketService.on('pre_order_promoted', handlePreOrderPromoted);
         socketService.on('orderStatusUpdate', handleOrderStatusUpdate);
         socketService.on('locationUpdate', handleLocationUpdate);
 
@@ -646,6 +701,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         return () => {
             console.log('🔌 [NotificationProvider] Cleanup: removing listeners');
             socketService.off('newOrder', handleNewOrder);
+            socketService.off('pre_order_promoted', handlePreOrderPromoted);
             socketService.off('orderStatusUpdate', handleOrderStatusUpdate);
             socketService.off('locationUpdate', handleLocationUpdate);
 

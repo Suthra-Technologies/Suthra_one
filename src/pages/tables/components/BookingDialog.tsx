@@ -144,6 +144,8 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
         if (name === 'customerName') {
             if (!value || value.trim() === '') {
                 error = 'Customer name is required';
+            } else if (value.trim().length > 30) {
+                error = 'Customer name must not exceed 30 characters';
             }
         }
         if (name === 'customerPhone') {
@@ -385,6 +387,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
                     <CustomInput
                         type="name"
                         label="Customer Name"
+                        maxLength={30}
                         value={customerName}
                         onChange={val => {
                             setCustomerName(val);

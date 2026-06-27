@@ -50,6 +50,7 @@ public class PrintStationService extends Service {
     private int printerPort = 9100;
     private String commandMode; // epos-print | escpos | star-line
     private String devId = "local_printer";
+    private boolean kotOnly = false; // when true: skip bill, print KOT only
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -64,6 +65,19 @@ public class PrintStationService extends Service {
             printerPort = intent.getIntExtra("printerPort", 9100);
             commandMode = intent.getStringExtra("commandMode");
             if (intent.getStringExtra("devId") != null) devId = intent.getStringExtra("devId");
+            kotOnly = intent.getBooleanExtra("kotOnly", false);
+            // Persist config so the sticky-restart picks it up without JS re-sending intent.
+            android.content.SharedPreferences prefs =
+                getSharedPreferences("print_station", android.content.Context.MODE_PRIVATE);
+            prefs.edit()
+                .putString("jwt", jwt)
+                .putString("apiBase", apiBase)
+                .putString("printerIp", printerIp)
+                .putInt("printerPort", printerPort)
+                .putString("commandMode", commandMode)
+                .putString("devId", devId)
+                .putBoolean("kotOnly", kotOnly)
+                .apply();
         }
 
         startForeground(NOTIF_ID, buildNotification("Print station running"));
@@ -170,7 +184,8 @@ public class PrintStationService extends Service {
     // ── Printing ────────────────────────────────────────────────────────
     private void printOrder(JSONObject bill, String stage) throws Exception {
         boolean doKot = "kot".equals(stage) || "both".equals(stage);
-        boolean doBill = "bill".equals(stage) || "both".equals(stage);
+        // If kotOnly mode is active, never print the bill regardless of stage.
+        boolean doBill = !kotOnly && ("bill".equals(stage) || "both".equals(stage));
         boolean epos = "epos-print".equals(commandMode);
         if (doKot) {
             if (epos) sendEpos(EscPosFormatter.buildKotEpos(bill));

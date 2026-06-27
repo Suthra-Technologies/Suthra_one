@@ -264,7 +264,7 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                         fullWidth
                         value={customerName}
                         onChange={(e) => {
-                            const value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                            const value = e.target.value.replace(/[^a-zA-Z\s]/g, '').slice(0, 30);
                             setCustomerName(value);
                             if (customerNameTouched && value.trim()) {
                                 setCustomerNameError('');
@@ -277,6 +277,8 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                 setCustomerNameError('Customer name is required');
                             } else if (trimmedName.length < 3) {
                                 setCustomerNameError('Customer name must be at least 3 characters');
+                            } else if (trimmedName.length > 30) {
+                                setCustomerNameError('Customer name must not exceed 30 characters');
                             } else {
                                 setCustomerNameError('');
                             }
@@ -285,6 +287,7 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                         helperText={customerNameTouched && customerNameError}
                         disabled={user?.role === 'customer'}
                         required
+                        inputProps={{ maxLength: 30 }}
                         InputLabelProps={{
                             sx: {
                                 '& .MuiFormLabel-asterisk': {
