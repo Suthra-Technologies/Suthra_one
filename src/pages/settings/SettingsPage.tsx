@@ -93,7 +93,7 @@ import { connectUsbPrinter, disconnectUsbPrinter, isUsbPrintAvailable, isUsbPrin
 
 import { NOTIFICATION_SOUNDS, previewSound } from '../../utils/notificationSounds';
 import type { ValidationResult } from '../../utils/validation';
-import { getHelperText, hasError, validateAddress, validateCompanyName, validateEmail, validatePhone } from '../../utils/validation';
+import { getHelperText, hasError, validateAddress, validateCompanyName, validateEmail, validatePhone, validateRequired } from '../../utils/validation';
 
 const countries = [
     {
@@ -1505,7 +1505,6 @@ const SettingsPage: React.FC = () => {
             restaurant_name: validateCompanyName(settings.restaurant.name),
             restaurant_email: validateEmail(settings.restaurant.email),
             restaurant_phone: validatePhone(settings.restaurant.phone, settings.restaurant.dialCode),
-            restaurant_slug: validateRequired(settings.restaurant.slug, 'URL Identifier'),
             restaurant_address: validateAddress(settings.restaurant.address),
         };
 
@@ -1618,19 +1617,19 @@ const SettingsPage: React.FC = () => {
 
         try {
             setLoading(true);
-            let successMessage = 'Settings saved successfully';
+            let successMessage = 'Setting updated successfully';
 
             if (category === 'restaurant') {
                 const restaurantPayload = buildRestaurantPayload();
                 await settingsAPI.update('restaurant', restaurantPayload);
                 updateGlobalSettings(settings); // Update global context
                 await fetchSettings();
-                successMessage = 'Restaurant settings saved successfully';
+                successMessage = 'Setting updated successfully';
             } else if (category === 'system') {
                 await settingsAPI.update('system', settings.system);
                 updateGlobalSettings(settings); // Update global context
                 await fetchSettings();
-                successMessage = 'System preferences saved successfully';
+                successMessage = 'Setting updated successfully';
             } else if (category === 'notification') {
                 await settingsAPI.update('notification', {
                     sms: {
@@ -1648,21 +1647,21 @@ const SettingsPage: React.FC = () => {
                     sound: settings.notification.sound || 'notification'
                 });
                 await fetchSettings();
-                successMessage = 'Notification settings saved successfully';
+                successMessage = 'Setting updated successfully';
             } else if (category === 'printer') {
                 await settingsAPI.update('printer', settings.printer);
                 updateGlobalSettings(settings);
-                successMessage = 'Printer settings saved successfully';
+                successMessage = 'Setting updated successfully';
             } else if (category === 'rewards') {
                 await settingsAPI.update('rewards', settings.rewards);
                 updateGlobalSettings(settings); // Update global context
                 await fetchSettings();
-                successMessage = 'Rewards settings saved successfully';
+                successMessage = 'Setting updated successfully';
             } else if (category === 'delivery') {
                 await settingsAPI.update('delivery', settings.delivery);
                 updateGlobalSettings(settings);
                 await fetchSettings();
-                successMessage = 'Delivery providers configured successfully';
+                successMessage = 'Setting updated successfully';
             }
 
 
