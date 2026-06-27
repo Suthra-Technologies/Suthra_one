@@ -47,9 +47,17 @@ const CustomerRegisterPage: React.FC = () => {
 
     // Special rule for phone input
     if (name === "phone") {
-      const numeric = value.replace(/\D/g, ""); // keep only digits
-      if (numeric.length > 10) return; // stop typing beyond 10 digits
-      setForm({ ...form, [name]: numeric });
+      const numeric = String(value || '').replace(/\D/g, ""); // keep only digits
+      let final = numeric;
+      if (form.dialCode === '+1' || form.dialCode === '1' || !form.dialCode) {
+        const sliced = numeric.slice(0, 10);
+        if (sliced.length <= 3) final = sliced ? `(${sliced}` : '';
+        else if (sliced.length <= 6) final = `(${sliced.slice(0, 3)}) ${sliced.slice(3)}`;
+        else final = `(${sliced.slice(0, 3)}) ${sliced.slice(3, 6)}-${sliced.slice(6)}`;
+      } else {
+        if (numeric.length > 15) return;
+      }
+      setForm({ ...form, [name]: final });
 
       if (errors[name]) {
         setErrors(prev => ({ ...prev, [name]: { isValid: true } }));
@@ -80,7 +88,7 @@ const CustomerRegisterPage: React.FC = () => {
         validation = validateEmail(value);
         break;
       case 'phone':
-        validation = validatePhone(value);
+        validation = validatePhone(value, form.countryCode);
         break;
       case 'password':
         validation = validatePassword(value);
@@ -97,7 +105,7 @@ const CustomerRegisterPage: React.FC = () => {
       firstName: validateName(form.firstName, 'First name'),
       lastName: validateName(form.lastName, 'Last name'),
       email: validateEmail(form.email),
-      phone: validatePhone(form.phone),
+      phone: validatePhone(form.phone, form.countryCode),
       password: validatePassword(form.password),
     };
 
@@ -199,7 +207,21 @@ const CustomerRegisterPage: React.FC = () => {
                 <InputAdornment position="start">
                   <Select
                     value={form.countryCode}
-                    onChange={(e) => setForm({ ...form, countryCode: e.target.value as string })}
+                    onChange={(e) => {
+                      const newCode = e.target.value as string;
+                      // Re-validate and re-format existing phone number if country code changes
+                      const numeric = form.phone.replace(/\D/g, '');
+                      let final = numeric;
+                      if (newCode === '+1') {
+                        const sliced = numeric.slice(0, 10);
+                        if (sliced.length <= 3) final = sliced ? `(${sliced}` : '';
+                        else if (sliced.length <= 6) final = `(${sliced.slice(0, 3)}) ${sliced.slice(3)}`;
+                        else final = `(${sliced.slice(0, 3)}) ${sliced.slice(3, 6)}-${sliced.slice(6)}`;
+                      } else {
+                        final = numeric.slice(0, 15);
+                      }
+                      setForm({ ...form, countryCode: newCode, phone: final });
+                    }}
                     variant="standard"
                     disableUnderline
                     sx={{ mr: 1, minWidth: 60 }}

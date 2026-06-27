@@ -427,7 +427,7 @@ const UsersPage = () => {
       firstName: validateName(userForm.firstName, 'First name'),
       lastName: validateName(userForm.lastName, 'Last name'),
       email: validateEmail(userForm.email),
-      phone: validatePhone(userForm.phone),
+      phone: validatePhone(userForm.phone, userForm.countryCode),
       salary: isCustomer
         ? { isValid: true }
         : (!userForm.salary || userForm.salary.trim() === ''

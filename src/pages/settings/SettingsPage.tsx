@@ -93,9 +93,7 @@ import { connectUsbPrinter, disconnectUsbPrinter, isUsbPrintAvailable, isUsbPrin
 
 import { NOTIFICATION_SOUNDS, previewSound } from '../../utils/notificationSounds';
 import type { ValidationResult } from '../../utils/validation';
-import { getHelperText, hasError, validateAddress, validateCompanyName, validateEmail, validatePhone } from '../../utils/validation';
-import { getTenantSlugFromHostname, getTenantUrl } from '../../utils/tenant.utils';
-import RestaurantQRCode from './components/RestaurantQRCode';
+import { getHelperText, hasError, validateAddress, validateCompanyName, validateEmail, validatePhone, validateRequired } from '../../utils/validation';
 
 const countries = [
     {
@@ -643,14 +641,6 @@ const SettingsPage: React.FC = () => {
     const headingFontSize = { xs: '1.12rem', sm: '1.4rem', md: '2.125rem' };
     const bodyFontSize = { xs: '0.78rem', sm: '0.86rem', md: '0.95rem' };
     const [tabValue, setTabValue] = useState(0);
-
-    // Resolve the tenant slug + customer-facing URL for the QR code.
-    const tenantSlug =
-        (typeof user?.tenant === 'object' ? user?.tenant?.slug : undefined) ||
-        getTenantSlugFromHostname() ||
-        (typeof localStorage !== 'undefined' ? localStorage.getItem('tenantSlug') : '') ||
-        '';
-    const customerUrl = tenantSlug ? getTenantUrl(tenantSlug, '/') : '';
     const [loading, setLoading] = useState(false);
     const [settings, setSettings] = useState<SettingsState>(() => createDefaultSettings());
     const [errors, setErrors] = useState<Record<string, ValidationResult>>({});
@@ -899,7 +889,10 @@ const SettingsPage: React.FC = () => {
                 if (!merged.restaurant.email) merged.restaurant.email = (user?.tenant)?.contactEmail || user?.email || '';
                 if (!merged.restaurant.phone) {
                     const phoneVal = (user?.tenant)?.contactPhone || user?.phone || '';
-                    merged.restaurant.phone = phoneVal.replace(/\D/g, '').slice(-10);
+                    merged.restaurant.phone = String(phoneVal || '').replace(/\D/g, '');
+                    if ((merged.restaurant.dialCode === '1' || merged.restaurant.dialCode === '+1') && merged.restaurant.phone.length > 10) {
+                        merged.restaurant.phone = merged.restaurant.phone.slice(-10);
+                    }
                 }
                 setSettings(merged);
                 setWebhookUrl(webhookResp.data?.url || '');
@@ -909,7 +902,10 @@ const SettingsPage: React.FC = () => {
                 defaults.restaurant.logo = (user?.tenant)?.logo || '';
                 defaults.restaurant.email = (user?.tenant)?.contactEmail || user?.email || '';
                 const phoneVal = (user?.tenant)?.contactPhone || user?.phone || '';
-                defaults.restaurant.phone = phoneVal.replace(/\D/g, '').slice(-10);
+                defaults.restaurant.phone = String(phoneVal || '').replace(/\D/g, '');
+                if ((defaults.restaurant.dialCode === '1' || defaults.restaurant.dialCode === '+1') && defaults.restaurant.phone.length > 10) {
+                    defaults.restaurant.phone = defaults.restaurant.phone.slice(-10);
+                }
                 setSettings(defaults);
                 setWebhookUrl(webhookResp.data?.url || '');
                 setStripeStatus(stripeStatusResp.data || {});
@@ -1501,7 +1497,7 @@ const SettingsPage: React.FC = () => {
                 validation = validateEmail(String(settings.restaurant.email ?? ''));
                 break;
             case 'phone':
-                validation = validatePhone(String(settings.restaurant.phone ?? ''));
+                validation = validatePhone(String(settings.restaurant.phone ?? ''), settings.restaurant.dialCode);
                 break;
             case 'address':
                 validation = validateAddress(String(settings.restaurant.address ?? ''));
@@ -1517,7 +1513,7 @@ const SettingsPage: React.FC = () => {
         const newErrors: Record<string, ValidationResult> = {
             restaurant_name: validateCompanyName(settings.restaurant.name),
             restaurant_email: validateEmail(settings.restaurant.email),
-            restaurant_phone: validatePhone(settings.restaurant.phone),
+            restaurant_phone: validatePhone(settings.restaurant.phone, settings.restaurant.dialCode),
             restaurant_address: validateAddress(settings.restaurant.address),
         };
 
@@ -1630,19 +1626,19 @@ const SettingsPage: React.FC = () => {
 
         try {
             setLoading(true);
-            let successMessage = 'Settings saved successfully';
+            let successMessage = 'Setting updated successfully';
 
             if (category === 'restaurant') {
                 const restaurantPayload = buildRestaurantPayload();
                 await settingsAPI.update('restaurant', restaurantPayload);
                 updateGlobalSettings(settings); // Update global context
                 await fetchSettings();
-                successMessage = 'Restaurant settings saved successfully';
+                successMessage = 'Setting updated successfully';
             } else if (category === 'system') {
                 await settingsAPI.update('system', settings.system);
                 updateGlobalSettings(settings); // Update global context
                 await fetchSettings();
-                successMessage = 'System preferences saved successfully';
+                successMessage = 'Setting updated successfully';
             } else if (category === 'notification') {
                 await settingsAPI.update('notification', {
                     sms: {
@@ -1660,21 +1656,21 @@ const SettingsPage: React.FC = () => {
                     sound: settings.notification.sound || 'notification'
                 });
                 await fetchSettings();
-                successMessage = 'Notification settings saved successfully';
+                successMessage = 'Setting updated successfully';
             } else if (category === 'printer') {
                 await settingsAPI.update('printer', settings.printer);
                 updateGlobalSettings(settings);
-                successMessage = 'Printer settings saved successfully';
+                successMessage = 'Setting updated successfully';
             } else if (category === 'rewards') {
                 await settingsAPI.update('rewards', settings.rewards);
                 updateGlobalSettings(settings); // Update global context
                 await fetchSettings();
-                successMessage = 'Rewards settings saved successfully';
+                successMessage = 'Setting updated successfully';
             } else if (category === 'delivery') {
                 await settingsAPI.update('delivery', settings.delivery);
                 updateGlobalSettings(settings);
                 await fetchSettings();
-                successMessage = 'Delivery providers configured successfully';
+                successMessage = 'Setting updated successfully';
             }
 
 
@@ -2722,16 +2718,6 @@ const SettingsPage: React.FC = () => {
                             </Grid>
                         </Grid>
                         */}
-
-                        {customerUrl && (
-                            <Grid size={{ xs: 12 }}>
-                                <RestaurantQRCode
-                                    url={customerUrl}
-                                    logoUrl={settings.restaurant.logo || (user?.tenant as any)?.logo || undefined}
-                                    restaurantName={settings.restaurant.name || (user?.tenant as any)?.name}
-                                />
-                            </Grid>
-                        )}
 
                         <Grid size={{ xs: 12 }} sx={{ display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' }, mt: { xs: 2.5, md: 0 } }}>
                             <Button

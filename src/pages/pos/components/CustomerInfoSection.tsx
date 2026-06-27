@@ -26,6 +26,7 @@ import {
 import React, { useEffect } from 'react';
 import AddressAutocomplete from '../../../components/AddressAutocomplete';
 import PhoneInput from '../../../components/PhoneInput';
+import { validatePhone } from '../../../utils/validation';
 
 interface CustomerInfoSectionProps {
     customerName: string;
@@ -305,21 +306,19 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                         fullWidth
                         value={customerPhone}
                         onChange={(value) => {
-                            const cleaned = value.replace(/\D/g, '').slice(0, 10);
-                            setCustomerPhone(cleaned);
-                            if (customerPhoneTouched && cleaned) {
-                                setCustomerPhoneError('');
+                            const cleaned = String(value || '').replace(/\D/g, '');
+                            const isUS = customerDialCode === '1' || customerDialCode === '+1';
+                            const final = (isUS && cleaned.length > 10) ? cleaned.slice(0, 10) : cleaned;
+                            setCustomerPhone(final);
+                            if (customerPhoneTouched && final) {
+                                const validation = validatePhone(final, customerDialCode);
+                                setCustomerPhoneError(validation.isValid ? '' : (validation.message || ''));
                             }
                         }}
                         onBlur={() => {
                             setCustomerPhoneTouched(true);
-                            if (!customerPhone) {
-                                setCustomerPhoneError('Phone number is required');
-                            } else if (customerPhone.length !== 10) {
-                                setCustomerPhoneError('Phone number must be exactly 10 digits');
-                            } else {
-                                setCustomerPhoneError('');
-                            }
+                            const validation = validatePhone(customerPhone, customerDialCode);
+                            setCustomerPhoneError(validation.isValid ? '' : (validation.message || ''));
                         }}
                         error={customerPhoneTouched && !!customerPhoneError}
                         helperText={suggestedPhone ? (

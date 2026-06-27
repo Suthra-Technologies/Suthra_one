@@ -33,11 +33,13 @@ import {
 import { useParams, useNavigate } from 'react-router-dom';
 import { disputesAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
+import { useActiveTenant } from '../../hooks/useActiveTenant';
 
 const DisputeDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const theme = useTheme();
+  const { getRelativePath } = useActiveTenant();
 
   const [loading, setLoading] = useState(true);
   const [dispute, setDispute] = useState<any>(null);
@@ -57,7 +59,7 @@ const DisputeDetails: React.FC = () => {
       setResolution(prev => ({ ...prev, amount: res.data.disputedAmount }));
     } catch (error) {
       toast.error('Failed to load dispute details');
-      navigate('/disputes');
+      navigate(getRelativePath('/disputes'));
     } finally {
       setLoading(false);
     }
@@ -105,7 +107,7 @@ const DisputeDetails: React.FC = () => {
   return (
     <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
       <Stack direction="row" spacing={2} alignItems="center" mb={4}>
-        <Button onClick={() => navigate('/disputes')}>Back to List</Button>
+        <Button onClick={() => navigate(getRelativePath('/disputes'))}>Back to List</Button>
         <Typography variant="h4" fontWeight="800">Dispute #{dispute.orderNumber}</Typography>
       </Stack>
 
@@ -273,7 +275,7 @@ const DisputeDetails: React.FC = () => {
               label="Refund Amount"
               type="number"
               value={Number(resolution.amount).toFixed(2)}
-              onChange={(e) => setResolution({ ...resolution, amount: e.target.value })}
+              onChange={(e) => setResolution({ ...resolution, amount: parseFloat(e.target.value) || 0 })}
               onBlur={() => setResolution({ ...resolution, amount: parseFloat(Number(resolution.amount).toFixed(2)) })}
               disabled={resolution.type === 'full_refund'}
               InputProps={{ startAdornment: <AttachMoney sx={{ fontSize: 20, mr: 0.5, color: 'text.secondary' }} /> }}

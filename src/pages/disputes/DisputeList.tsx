@@ -38,10 +38,12 @@ import {
 import { disputesAPI } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { useActiveTenant } from '../../hooks/useActiveTenant';
 
 const DisputeList: React.FC = () => {
   const theme = useTheme();
   const navigate = useNavigate();
+  const { getRelativePath } = useActiveTenant();
 
   const [loading, setLoading] = useState(true);
   const [disputes, setDisputes] = useState<any[]>([]);
@@ -197,7 +199,7 @@ const DisputeList: React.FC = () => {
                       <TableRow
                         key={dispute._id}
                         hover
-                        onClick={() => navigate(`/disputes/${dispute._id}`)}
+                        onClick={() => navigate(getRelativePath(`/disputes/${dispute._id}`))}
                         sx={{ cursor: 'pointer' }}
                       >
                         <TableCell>
@@ -205,7 +207,7 @@ const DisputeList: React.FC = () => {
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2">{getReasonLabel(dispute.reason)}</Typography>
-                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', maxWidth: 200, noWrap: true, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', maxWidth: 200 }}>
                             {dispute.description}
                           </Typography>
                         </TableCell>
@@ -223,7 +225,7 @@ const DisputeList: React.FC = () => {
                               color="primary"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                navigate(`/disputes/${dispute._id}`);
+                                navigate(getRelativePath(`/disputes/${dispute._id}`));
                               }}
                             >
                               <Visibility />
