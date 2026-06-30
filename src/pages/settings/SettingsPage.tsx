@@ -1653,7 +1653,8 @@ const SettingsPage: React.FC = () => {
                     // @ts-ignore
                     push: settings.notification.push,
                     // @ts-ignore
-                    sound: settings.notification.sound || 'notification'
+                    sound: settings.notification.sound || 'notification',
+                    soundDuration: settings.notification.soundDuration || 6
                 });
                 await fetchSettings();
                 successMessage = 'Setting updated successfully';

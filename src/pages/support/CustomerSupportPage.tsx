@@ -68,16 +68,18 @@ interface Ticket {
     };
 }
 
-const fixImageUrl = (url: string) => {
+const fixImageUrl = (urlOrObj: any) => {
+    let url = typeof urlOrObj === 'string' ? urlOrObj : urlOrObj?.url;
     if (!url) return '';
+    if (url.startsWith('http')) return url;
     if (url.startsWith('/uploads')) {
-        let backendBase = (import.meta.env.VITE_API_URL || 'http://localhost:5006').replace(/\/api$/, '');
+        let backendBase = (import.meta.env.VITE_API_URL || 'http://localhost:5006').replace(/\/api\/?$/, '');
         if (!backendBase.startsWith('http://') && !backendBase.startsWith('https://')) {
             backendBase = 'http://' + backendBase;
         }
         return `${backendBase}${url}`;
     }
-    const match = url.match(/^https:\/\/([a-zA-Z0-9.-]+)\.s3\.([a-zA-Z0-9-]+)\.amazonaws.com\/(.+)$/);
+    const match = url.match(/^https:\/\/([a-zA-Z0-9.-]+)\.s3\.([a-zA-Z0-9-]+)\.amazonaws\.com\/(.+)$/);
     if (match) {
         const [, bucket, region, key] = match;
         return `https://s3.${region}.amazonaws.com/${bucket}/${key}`;
@@ -498,10 +500,10 @@ const CustomerSupportPage: React.FC = () => {
                                                                 <CardMedia
                                                                     component="img"
                                                                     height="100"
-                                                                    image={fixImageUrl(att.url)}
-                                                                    alt={att.name}
+                                                                    image={fixImageUrl(att)}
+                                                                    alt={att.name || "attachment"}
                                                                     sx={{ cursor: 'pointer', width: 100, objectFit: 'cover' }}
-                                                                    onClick={() => window.open(fixImageUrl(att.url), '_blank')}
+                                                                    onClick={() => window.open(fixImageUrl(att), '_blank')}
                                                                 />
                                                             </Card>
                                                         </Grid>
