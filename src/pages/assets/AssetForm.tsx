@@ -488,7 +488,11 @@ const AssetForm: React.FC = () => {
                                 size="small"
                                 label="Frequency"
                                 value={form.lifecycle.renewalFrequency}
-                                onChange={(val) => setForm({ ...form, lifecycle: { ...form.lifecycle, renewalFrequency: parseInt(val) || 0 } })}
+                                onChange={(val) => {
+                                  let parsed = parseInt(val) || 0;
+                                  if (parsed > 366) parsed = 366;
+                                  setForm({ ...form, lifecycle: { ...form.lifecycle, renewalFrequency: parsed } });
+                                }}
                               />
                               <FormControl size="small" fullWidth>
                                 <InputLabel>Unit</InputLabel>
