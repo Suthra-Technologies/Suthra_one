@@ -300,7 +300,7 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                                             Order Notes
                                         </Typography>
                                     </Box>
-                                    <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary' }}>
+                                    <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.secondary', wordBreak: 'break-word' }}>
                                         {order.notes}
                                     </Typography>
                                 </Box>

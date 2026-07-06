@@ -38,6 +38,9 @@ import {
 } from '@mui/material';
 import Grid from '@mui/material/Grid2';
 import React, { useEffect, useState } from 'react';
+import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { enUS } from 'date-fns/locale';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import OrderCard from '../../components/OrderCard';
@@ -77,10 +80,7 @@ const OrdersPage = () => {
   const [typeFilter, setTypeFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   // Use local date for default
-  const [dateFilter, setDateFilter] = useState(() => {
-    const now = new Date();
-    return new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-  });
+  const [dateFilter, setDateFilter] = useState<Date>(new Date());
 
   // Customer tabs - 0: Orders, 1: Bookings
   const [activeTab, setActiveTab] = useState(0);
@@ -112,8 +112,8 @@ const OrdersPage = () => {
       const effectiveTypeFilter = user?.role === 'delivery' ? 'delivery' : typeFilter;
 
       // Calculate start and end for the selected day in LOCAL time
-      const start = new Date(`${dateFilter}T00:00:00`);
-      const end = new Date(`${dateFilter}T23:59:59.999`);
+      const start = new Date(dateFilter.getFullYear(), dateFilter.getMonth(), dateFilter.getDate(), 0, 0, 0, 0);
+      const end = new Date(dateFilter.getFullYear(), dateFilter.getMonth(), dateFilter.getDate(), 23, 59, 59, 999);
 
       const response = await ordersAPI.filter({
         status: statusFilter,
@@ -349,15 +349,20 @@ const OrdersPage = () => {
             />
           </Grid>
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <TextField
-              fullWidth
-              label="Date"
-              type="date"
-              size="small"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
+            <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={enUS}>
+              <DatePicker
+                label="Date"
+                value={dateFilter}
+                format="MM/dd/yyyy"
+                onChange={(newValue) => newValue && setDateFilter(newValue)}
+                slotProps={{ 
+                  textField: { 
+                    fullWidth: true, 
+                    size: 'small' 
+                  } 
+                }}
+              />
+            </LocalizationProvider>
           </Grid>
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <FormControl fullWidth size="small">
@@ -454,7 +459,6 @@ const OrdersPage = () => {
                   </Box>
                 )}
                 <OrderCard
-                  sx={{ flex: 1 }}
                   order={order}
                   onView={() => handleView(order)}
                   onUpdate={() => handleUpdate(order)}

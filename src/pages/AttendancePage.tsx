@@ -216,7 +216,12 @@ const AttendancePage: React.FC = () => {
 
         try {
             setSubmitting(true);
-            await attendanceAPI.createManual(manualForm);
+            const payload = {
+                ...manualForm,
+                clockInTime: manualForm.clockInTime ? new Date(manualForm.clockInTime).toISOString() : '',
+                clockOutTime: manualForm.clockOutTime ? new Date(manualForm.clockOutTime).toISOString() : ''
+            };
+            await attendanceAPI.createManual(payload);
             toast.success('Attendance record added successfully');
             setManualOpen(false);
             setFilters(prev => ({ ...prev, search: '' }));
@@ -276,8 +281,8 @@ const AttendancePage: React.FC = () => {
         try {
             setEditSubmitting(true);
             await attendanceAPI.update(editForm.id, {
-                clockInTime: editForm.clockInTime,
-                clockOutTime: editForm.clockOutTime || null, // Empty string -> null for backend
+                clockInTime: editForm.clockInTime ? new Date(editForm.clockInTime).toISOString() : '',
+                clockOutTime: editForm.clockOutTime ? new Date(editForm.clockOutTime).toISOString() : null, // Empty string -> null for backend
                 note: editForm.note
             });
             toast.success('Attendance record updated successfully');
