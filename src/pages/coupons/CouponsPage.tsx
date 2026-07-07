@@ -489,7 +489,7 @@ const CouponsPage: React.FC = () => {
 
     const getDiscountDisplay = (coupon: any) => {
         if (coupon.discountType === 'percentage') {
-            return `${coupon.discountValue}% OFF${coupon.maxDiscountAmount ? ` (Max $${coupon.maxDiscountAmount})` : ''}`;
+            return `${coupon.discountValue}% OFF${coupon.maxDiscountAmount ? ` (Max $${Number(coupon.maxDiscountAmount || 0).toFixed(2)})` : ''}`;
         }
         return `$${coupon.discountValue} OFF`;
     };

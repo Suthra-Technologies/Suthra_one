@@ -73,11 +73,11 @@ const fixImageUrl = (urlOrObj: any) => {
     if (!url) return '';
     if (url.startsWith('http')) return url;
     if (url.startsWith('/uploads')) {
-        let backendBase = (import.meta.env.VITE_API_URL || 'http://localhost:5006').replace(/\/api\/?$/, '');
-        if (!backendBase.startsWith('http://') && !backendBase.startsWith('https://')) {
-            backendBase = 'http://' + backendBase;
+        const apiUrl = import.meta.env.VITE_API_URL || '';
+        if (apiUrl.startsWith('http')) {
+            return `${apiUrl.replace(/\/api\/?$/, '')}${url}`;
         }
-        return `${backendBase}${url}`;
+        return url;
     }
     const match = url.match(/^https:\/\/([a-zA-Z0-9.-]+)\.s3\.([a-zA-Z0-9-]+)\.amazonaws\.com\/(.+)$/);
     if (match) {

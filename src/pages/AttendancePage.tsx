@@ -55,9 +55,18 @@ import { toast } from 'react-hot-toast';
 import MapComponent from '../components/MapComponent';
 import { useSettings } from '../context/SettingsContext';
 import { attendanceAPI, usersAPI } from '../services/api';
+import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { enUS } from 'date-fns/locale';
 
 const ITEMS_PER_PAGE = 10;
 
+const formatHoursMinutes = (totalHours: number | undefined | null) => {
+    if (!totalHours && totalHours !== 0) return '--';
+    const h = Math.floor(totalHours);
+    const m = Math.round((totalHours - h) * 60);
+    return `${h}h ${m}m`;
+};
 const AttendancePage: React.FC = () => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -83,9 +92,16 @@ const AttendancePage: React.FC = () => {
         activeShifts: 0
     });
 
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    
+    const formatDateLocal = (d: Date) => {
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
     const [filters, setFilters] = useState({
-        startDate: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
-        endDate: new Date().toISOString().split('T')[0],
+        startDate: formatDateLocal(firstDayOfMonth),
+        endDate: formatDateLocal(today),
         search: ''
     });
 
@@ -300,8 +316,9 @@ const AttendancePage: React.FC = () => {
         setDetailsOpen(true);
     };
 
-    const getStatusChip = (status: string) => {
-        if (status === 'active') {
+    const getStatusChip = (row: any) => {
+        const isFutureClockOut = row.clockOutTime && new Date(row.clockOutTime).getTime() > Date.now();
+        if (row.status?.toLowerCase() === 'active' || isFutureClockOut) {
             return (
                 <Chip
                     label="LIVE"
@@ -395,30 +412,68 @@ const AttendancePage: React.FC = () => {
                     </Grid>
                     <Grid item xs={12} md={5}>
                         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                            <TextField
-                                type="date"
-                                label="From"
-                                value={filters.startDate}
-                                onChange={(e) => {
-                                    setFilters({ ...filters, startDate: e.target.value });
-                                    setPage(1);
-                                }}
-                                InputLabelProps={{ shrink: true }}
-                                fullWidth
-                                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
-                            />
-                            <TextField
-                                type="date"
-                                label="To"
-                                value={filters.endDate}
-                                onChange={(e) => {
-                                    setFilters({ ...filters, endDate: e.target.value });
-                                    setPage(1);
-                                }}
-                                InputLabelProps={{ shrink: true }}
-                                fullWidth
-                                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
-                            />
+                            <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={enUS}>
+                                {(() => {
+                                    const maxDateToday = new Date();
+                                    maxDateToday.setHours(23, 59, 59, 999);
+                                    return (
+                                        <>
+                                            <DatePicker
+                                                label="From"
+                                                value={filters.startDate ? new Date(filters.startDate) : null}
+                                                maxDate={maxDateToday}
+                                                onChange={(val: any) => {
+                                                    if (val === null) {
+                                                        setFilters({ ...filters, startDate: '' });
+                                                        setPage(1);
+                                                    } else if (!isNaN(val.getTime())) {
+                                                        const dateString = `${val.getFullYear()}-${String(val.getMonth() + 1).padStart(2, '0')}-${String(val.getDate()).padStart(2, '0')}`;
+                                                        
+                                                        // If the new From date is after the current To date, update the To date to match
+                                                        let newEndDate = filters.endDate;
+                                                        if (filters.endDate && new Date(dateString) > new Date(filters.endDate)) {
+                                                            newEndDate = dateString;
+                                                        }
+                                                        
+                                                        setFilters({ ...filters, startDate: dateString, endDate: newEndDate });
+                                                        setPage(1);
+                                                    }
+                                                }}
+                                                slotProps={{
+                                                    textField: {
+                                                        fullWidth: true,
+                                                        sx: { '& .MuiOutlinedInput-root': { borderRadius: 3 } }
+                                                    },
+                                                    field: { clearable: true }
+                                                }}
+                                            />
+                                            <DatePicker
+                                                label="To"
+                                                value={filters.endDate ? new Date(filters.endDate) : null}
+                                                minDate={filters.startDate ? new Date(filters.startDate) : undefined}
+                                                maxDate={maxDateToday}
+                                                onChange={(val: any) => {
+                                                    if (val === null) {
+                                                        setFilters({ ...filters, endDate: '' });
+                                                        setPage(1);
+                                                    } else if (!isNaN(val.getTime())) {
+                                                        const dateString = `${val.getFullYear()}-${String(val.getMonth() + 1).padStart(2, '0')}-${String(val.getDate()).padStart(2, '0')}`;
+                                                        setFilters({ ...filters, endDate: dateString });
+                                                        setPage(1);
+                                                    }
+                                                }}
+                                                slotProps={{
+                                                    textField: {
+                                                        fullWidth: true,
+                                                        sx: { '& .MuiOutlinedInput-root': { borderRadius: 3 } }
+                                                    },
+                                                    field: { clearable: true }
+                                                }}
+                                            />
+                                        </>
+                                    );
+                                })()}
+                            </LocalizationProvider>
                         </Stack>
                     </Grid>
                     <Grid item xs={12} md={3}>
@@ -615,11 +670,13 @@ const AttendancePage: React.FC = () => {
                                                         </Box>
                                                     </Stack>
                                                 </TableCell>
-                                                <TableCell>{getStatusChip(row.status)}</TableCell>
+                                                <TableCell>{getStatusChip(row)}</TableCell>
                                                 <TableCell>
                                                     <Typography variant="body2" fontWeight="500">IN: {new Date(row.clockInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Typography>
-                                                    {row.clockOutTime ? (
+                                                    {row.clockOutTime && new Date(row.clockOutTime).getTime() <= Date.now() ? (
                                                         <Typography variant="caption" color="text.secondary">OUT: {new Date(row.clockOutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Typography>
+                                                    ) : row.clockOutTime ? (
+                                                        <Typography variant="caption" color="success.main" sx={{ fontWeight: 'bold' }}>ACTIVE (Ends {new Date(row.clockOutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})</Typography>
                                                     ) : (
                                                         <Typography variant="caption" color="success.main" sx={{ fontWeight: 'bold' }}>ACTIVE NOW</Typography>
                                                     )}
@@ -643,7 +700,7 @@ const AttendancePage: React.FC = () => {
                                                     </Stack>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Typography variant="subtitle2" fontWeight="900">{row.totalHours ? `${row.totalHours}h` : '--'}</Typography>
+                                                    <Typography variant="subtitle2" fontWeight="900">{formatHoursMinutes(row.totalHours)}</Typography>
                                                 </TableCell>
                                                 <TableCell>
                                                     <Typography variant="subtitle1" fontWeight="900" color="primary">

@@ -55,12 +55,13 @@ interface Ticket {
 
 const fixImageUrl = (url: string) => {
   if (!url) return '';
+  if (url.startsWith('http')) return url;
   if (url.startsWith('/uploads')) {
-    let backendBase = (import.meta.env.VITE_API_URL || 'http://localhost:5006').replace(/\/api$/, '');
-    if (!backendBase.startsWith('http://') && !backendBase.startsWith('https://')) {
-        backendBase = 'http://' + backendBase;
+    const apiUrl = import.meta.env.VITE_API_URL || '';
+    if (apiUrl.startsWith('http')) {
+        return `${apiUrl.replace(/\/api$/, '')}${url}`;
     }
-    return `${backendBase}${url}`;
+    return url;
   }
   // Check for virtual-hosted-style URLs (bucket.s3.region.amazonaws.com)
   // This causes SSL errors if the bucket name contains dots

@@ -1152,7 +1152,7 @@ const BookingsAdminPage: React.FC = () => {
                                 {selectedBooking.reservationFee && selectedBooking.reservationFee.amount > 0 && (
                                     <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
                                         <Typography variant="subtitle2" color="primary" gutterBottom>Reservation Fee</Typography>
-                                        <Typography variant="body2"><strong>Amount:</strong> ${selectedBooking.reservationFee.amount}</Typography>
+                                        <Typography variant="body2"><strong>Amount:</strong> ${Number(selectedBooking.reservationFee.amount || 0).toFixed(2)}</Typography>
                                         <Typography variant="body2">
                                             <strong>Payment:</strong> {selectedBooking.reservationFee.paid ? (
                                                 <Chip label="PAID" size="small" color="success" sx={{ ml: 1, height: 20 }} />

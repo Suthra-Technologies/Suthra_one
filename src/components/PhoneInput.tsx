@@ -225,6 +225,7 @@ interface PhoneInputProps {
     dialCode?: string;
     onDialCodeChange?: (dialCode: string) => void;
     label?: string;
+    name?: string;
     required?: boolean;
     error?: boolean;
     helperText?: React.ReactNode;
@@ -247,6 +248,7 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
     dialCode,
     onDialCodeChange,
     label = 'Phone Number',
+    name,
     required = false,
     error = false,
     helperText,
@@ -329,6 +331,7 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
             <TextField
                 fullWidth={fullWidth}
                 label={label}
+                name={name}
                 value={displayValue}
                 onChange={(e) => {
                     const raw = e.target.value.replace(/\D/g, '');

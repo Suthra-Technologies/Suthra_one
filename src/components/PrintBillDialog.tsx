@@ -670,7 +670,9 @@ const PrintBillDialog: React.FC<PrintBillDialogProps> = ({ open, order, onClose 
                         <Box className="footer" sx={{ textAlign: 'center', mt: 0.5 }}>
                             <Divider sx={{ mb: 0.5 }} />
                             <Typography variant="body2" color="text.secondary">
-                                Thank you for dining with us!
+                                {(billData.orderType?.toLowerCase()?.includes('takeaway') || billData.orderType?.toLowerCase()?.includes('delivery'))
+                                    ? 'Thank you for ordering from us!'
+                                    : 'Thank you for dining with us!'}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
                                 Please visit again

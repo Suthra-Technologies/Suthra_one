@@ -2070,7 +2070,7 @@ const HomePage: React.FC = () => {
                         mb={1}
                         sx={{ color: isPopular ? "#fff" : "inherit" }}
                       >
-                        ${plan.price}
+                        ${Number(plan.price || 0).toFixed(2)}
                         <Box component="span" sx={{ fontSize: "1.2rem", fontWeight: 500 }}>
                           /{plan.interval === "yearly" ? "yr" : "mo"}
                         </Box>
