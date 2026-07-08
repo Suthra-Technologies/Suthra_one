@@ -59,6 +59,15 @@ import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { bookingsAPI, tablesAPI } from '../../services/api';
 
+const formatUSPhone = (phone: string) => {
+    if (!phone) return phone;
+    const cleaned = phone.replace(/\D/g, '');
+    if (phone.startsWith('+1') && cleaned.length === 11 && cleaned.startsWith('1')) {
+        return `+1 (${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7)}`;
+    }
+    return phone;
+};
+
 const BookingsAdminPage: React.FC = () => {
     const navigate = useNavigate();
     const theme = useTheme();
@@ -664,7 +673,7 @@ const BookingsAdminPage: React.FC = () => {
                                                         {booking.customer?.name || booking.guestInfo?.firstName || 'Guest'}
                                                     </Typography>
                                                     <Typography variant="caption" color="text.secondary">
-                                                        {booking.customer?.phone || booking.guestInfo?.phone}
+                                                        {formatUSPhone(booking.customer?.phone || booking.guestInfo?.phone)}
                                                     </Typography>
                                                 </TableCell>
                                                 <TableCell>
@@ -1123,7 +1132,7 @@ const BookingsAdminPage: React.FC = () => {
                                     <strong>Customer:</strong> {selectedBooking.customer?.name || selectedBooking.guestInfo?.firstName}
                                 </Typography>
                                 <Typography variant="subtitle1" gutterBottom>
-                                    <strong>Contact:</strong> {selectedBooking.customer?.phone || selectedBooking.guestInfo?.phone}
+                                    <strong>Contact:</strong> {formatUSPhone(selectedBooking.customer?.phone || selectedBooking.guestInfo?.phone)}
                                 </Typography>
                                 <Typography variant="subtitle1" gutterBottom>
                                     <strong>Email:</strong> {selectedBooking.customer?.email || selectedBooking.guestInfo?.email}

@@ -886,13 +886,13 @@ const OrderCard: React.FC<OrderCardProps> = ({
             <CardActions sx={{ p: 1, pt: 0, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', bgcolor: alpha(theme.palette.background.default, 0.5), gap: 0.5 }}>
                 <Stack direction="row" spacing={0.5}>
                     <Tooltip title="View Details">
-                        <IconButton size="small" color="primary" onClick={(e) => { e.stopPropagation(); onView(order); }} sx={{ padding: '4px' }}>
+                        <IconButton size="small" color="primary" disabled={order.status === 'pending'} onClick={(e) => { e.stopPropagation(); onView(order); }} sx={{ padding: '4px' }}>
                             <ViewIcon />
                         </IconButton>
                     </Tooltip>
 
                     <Tooltip title="Print Bill">
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); onPrint(order); }} sx={{ padding: '4px' }}>
+                        <IconButton size="small" disabled={order.status === 'pending'} onClick={(e) => { e.stopPropagation(); onPrint(order); }} sx={{ padding: '4px' }}>
                             <ReceiptIcon />
                         </IconButton>
                     </Tooltip>
@@ -902,6 +902,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                             <IconButton
                                 size="small"
                                 color="error"
+                                disabled={order.status === 'pending'}
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     setCancelOrderDialogOpen(true);

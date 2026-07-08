@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { fixImageUrl } from '../../utils/imageUtils';
 import {
   Box,
   Typography,
@@ -36,25 +37,7 @@ import { Image as ImageIcon, Close as CloseIcon, Edit as EditIcon, Delete as Del
 import { superAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 
-const fixImageUrl = (url: string) => {
-  if (!url) return '';
-  if (url.startsWith('http')) return url;
-  if (url.startsWith('/uploads')) {
-    const apiUrl = import.meta.env.VITE_API_URL || '';
-    if (apiUrl.startsWith('http')) {
-        return `${apiUrl.replace(/\/api$/, '')}${url}`;
-    }
-    return url;
-  }
-  // Check for virtual-hosted-style URLs (bucket.s3.region.amazonaws.com)
-  const match = url.match(/^https:\/\/([a-zA-Z0-9.-]+)\.s3\.([a-zA-Z0-9-]+)\.amazonaws\.com\/(.+)$/);
-  if (match) {
-    const [, bucket, region, key] = match;
-    // content-style (path-style): s3.region.amazonaws.com/bucket/key
-    return `https://s3.${region}.amazonaws.com/${bucket}/${key}`;
-  }
-  return url;
-};
+// fixImageUrl removed to use centralized utility
 
 const TicketsPage: React.FC = () => {
   const [tickets, setTickets] = useState<any[]>([]);

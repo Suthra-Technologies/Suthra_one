@@ -297,16 +297,16 @@ const CateringManagementPage = () => {
         "Business Meeting"
     ]).filter(o => o !== 'Others' && o !== 'Other'));
     
-    const [reminderOccasionsList, setReminderOccasionsList] = useState<string[]>(settings?.restaurant?.reminderOccasions || []);
+    const [reminderOccasionsList, setReminderOccasionsList] = useState<string[]>((settings?.restaurant as any)?.reminderOccasions || []);
 
     useEffect(() => {
         if (settings?.restaurant?.occasions) {
             setOccasionsList(settings.restaurant.occasions.filter(o => o !== 'Others' && o !== 'Other'));
         }
-        if (settings?.restaurant?.reminderOccasions) {
-            setReminderOccasionsList(settings.restaurant.reminderOccasions);
+        if ((settings?.restaurant as any)?.reminderOccasions) {
+            setReminderOccasionsList((settings.restaurant as any).reminderOccasions);
         }
-    }, [settings?.restaurant?.occasions, settings?.restaurant?.reminderOccasions]);
+    }, [settings?.restaurant?.occasions, (settings?.restaurant as any)?.reminderOccasions]);
     
     const [occasionInputValue, setOccasionInputValue] = useState('');
     const [isOccasionDialogOpen, setIsOccasionDialogOpen] = useState(false);
@@ -413,7 +413,7 @@ const CateringManagementPage = () => {
                 }
             }));
         } else {
-            setEditData(prev => ({
+            setEditData((prev: any) => ({
                 ...prev,
                 guests: {
                     ...prev.guests,
@@ -539,6 +539,24 @@ const CateringManagementPage = () => {
             totalAmount,
             tax: { ...prev.tax, amount: taxAmount }
         }));
+    };
+
+    const handleUpdateEditItemQty = (index: number, qty: number) => {
+        const newItems = [...editData.items];
+        newItems[index] = { ...newItems[index], quantity: qty, total: qty * (newItems[index].unitPrice || 0) };
+        recalculateEditTotals(newItems);
+    };
+
+    const handleUpdateEditItemPrice = (index: number, price: number) => {
+        const newItems = [...editData.items];
+        newItems[index] = { ...newItems[index], unitPrice: price, total: price * (newItems[index].quantity || 0) };
+        recalculateEditTotals(newItems);
+    };
+
+    const handleRemoveItemFromEdit = (index: number) => {
+        const newItems = [...editData.items];
+        newItems.splice(index, 1);
+        recalculateEditTotals(newItems);
     };
 
     const handleAddPaymentToEdit = () => {
@@ -868,6 +886,11 @@ const CateringManagementPage = () => {
                 [itemId]: { ...(prev[itemId] || {}), isSelected }
             };
         });
+    };
+
+    const handleAddItemsToEdit = (newItems: any[]) => {
+        const updatedItems = [...(editData?.items || []), ...newItems];
+        recalculateEditTotals(updatedItems);
     };
 
     const handleFinalizeItems = () => {
@@ -1494,6 +1517,7 @@ const CateringManagementPage = () => {
                 extCustomer: null,
                 extName: '',
                 extContact: '',
+                extDialCode: '1',
                 extEmail: '',
                 extNotes: '',
                 intUser: null,
@@ -1539,9 +1563,18 @@ const CateringManagementPage = () => {
                 </Typography>
                 <Button
                     variant="contained"
+                    size="small"
                     startIcon={<Add />}
                     fullWidth={false}
-                    sx={{ width: { xs: '100%', sm: 'auto' } }}
+                    sx={{ 
+                        width: { xs: '100%', sm: 'auto' }, 
+                        whiteSpace: 'nowrap',
+                        '&:hover': {
+                            bgcolor: 'primary.main',
+                            filter: 'brightness(1.1)',
+                            boxShadow: 4
+                        }
+                    }}
                     onClick={() => {
                         // Reset all form state before opening
                         setNewOrder({
@@ -1581,6 +1614,7 @@ const CateringManagementPage = () => {
                             extCustomer: null,
                             extName: '',
                             extContact: '',
+                            extDialCode: '1',
                             extEmail: '',
                             extNotes: '',
                             intUser: null,
@@ -2447,8 +2481,9 @@ const CateringManagementPage = () => {
                                                                 type="number"
                                                                 size="small"
                                                                 inputProps={{ min: 0 }}
+                                                                onKeyDown={preventScientificNotation}
                                                                 value={editData.cateringServers?.count || ''}
-                                                                onChange={(e) => setEditData({...editData, cateringServers: { ...editData.cateringServers, count: parseInt(e.target.value) || 0 }})}
+                                                                onChange={(e) => setEditData({...editData, cateringServers: { ...editData.cateringServers, count: Math.max(0, parseInt(e.target.value) || 0) }})}
                                                             />
                                                         </Grid>
                                                         <Grid item xs={12} sm={4}>
@@ -2467,9 +2502,10 @@ const CateringManagementPage = () => {
                                                                 type="number"
                                                                 size="small"
                                                                 inputProps={{ min: 0, step: "0.01" }}
+                                                                onKeyDown={preventScientificNotation}
                                                                 value={editData.cateringServers?.amount || ''}
                                                                 onChange={(e) => {
-                                                                    const newAmount = parseFloat(e.target.value) || 0;
+                                                                    const newAmount = Math.max(0, parseFloat(e.target.value) || 0);
                                                                     recalculateEditTotals(editData.items, newAmount);
                                                                 }}
                                                             />
