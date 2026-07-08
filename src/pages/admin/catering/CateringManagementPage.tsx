@@ -2075,7 +2075,7 @@ const CateringManagementPage = () => {
                                                     <Typography>{formatPhoneNumber(selectedOrder.customerPhone)}</Typography>
                                                     {selectedOrder.occasionDate && (
                                                         <Typography variant="body2" sx={{ mt: 1 }}>
-                                                            <strong>Occasion Date:</strong> {new Date(selectedOrder.occasionDate).toLocaleDateString()}
+                                                            <strong>Occasion Date:</strong> {new Date(selectedOrder.occasionDate).toLocaleDateString(undefined, { timeZone: 'UTC' })}
                                                         </Typography>
                                                     )}
                                                     <Typography>{selectedOrder.customerEmail}</Typography>
