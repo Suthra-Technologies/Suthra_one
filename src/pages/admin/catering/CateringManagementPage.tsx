@@ -90,6 +90,18 @@ import { useAuth } from '../../../context/AuthContext';
 import { downloadFromUrl } from '../../../utils/fileDownload';
 import { apiBaseUrl } from '../../../services/api';
 
+const formatPhoneNumber = (phone?: string) => {
+    if (!phone) return '';
+    const cleaned = phone.replace(/[^\d+]/g, '');
+    if (cleaned.startsWith('+1') && cleaned.length === 12) {
+        const p = cleaned.slice(2);
+        return `+1 (${p.slice(0, 3)}) ${p.slice(3, 6)}-${p.slice(6)}`;
+    } else if (cleaned.length === 10 && !cleaned.startsWith('+')) {
+        return `+1 (${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+    }
+    return phone;
+};
+
 const CateringManagementPage = () => {
     const { formatCurrency, settings, refreshSettings } = useSettings();
     const availablePaymentMethods = useMemo(() => [
@@ -518,6 +530,38 @@ const CateringManagementPage = () => {
         } finally {
             setUpdating(false);
         }
+    };
+
+    const handleTimeChange = (type: 'start' | 'end', value: string) => {
+        let startTime = type === 'start' ? value : editData.cateringServiceStartTime;
+        let endTime = type === 'end' ? value : editData.cateringServiceEndTime;
+        
+        let newHours = editData.cateringServers?.time || '';
+        if (startTime && endTime) {
+            const [startH, startM] = startTime.split(':').map(Number);
+            const [endH, endM] = endTime.split(':').map(Number);
+            
+            let startTotalM = startH * 60 + startM;
+            let endTotalM = endH * 60 + endM;
+            
+            if (endTotalM < startTotalM) {
+                endTotalM += 24 * 60;
+            }
+            
+            const diffMinutes = endTotalM - startTotalM;
+            const hoursDiff = +(diffMinutes / 60).toFixed(2);
+            newHours = hoursDiff > 0 ? hoursDiff.toString() : '';
+        }
+        
+        setEditData((prev: any) => ({
+            ...prev,
+            cateringServiceStartTime: type === 'start' ? value : prev.cateringServiceStartTime,
+            cateringServiceEndTime: type === 'end' ? value : prev.cateringServiceEndTime,
+            cateringServers: {
+                ...prev.cateringServers,
+                time: newHours
+            }
+        }));
     };
 
     const recalculateEditTotals = (newItems: any[], newServersAmount?: number) => {
@@ -1672,7 +1716,7 @@ const CateringManagementPage = () => {
                                             {order.customerName}
                                         </Typography>
                                         <Typography variant="caption" color="textSecondary">
-                                            {order.customerPhone}
+                                            {formatPhoneNumber(order.customerPhone)}
                                         </Typography>
                                     </Box>
                                     {getStatusChip(order.status)}
@@ -1788,7 +1832,7 @@ const CateringManagementPage = () => {
                                     <TableCell>
                                         <Box>
                                             <Typography variant="body2" fontWeight="bold">{order.customerName}</Typography>
-                                            <Typography variant="caption" color="textSecondary">{order.customerPhone}</Typography>
+                                            <Typography variant="caption" color="textSecondary">{formatPhoneNumber(order.customerPhone)}</Typography>
                                         </Box>
                                     </TableCell>
                                     <TableCell>{new Date(order.requiredDate).toLocaleString()}</TableCell>
@@ -2028,7 +2072,7 @@ const CateringManagementPage = () => {
                                                 <Grid item xs={12} sm={6}>
                                                     <Typography variant="subtitle2">Customer Info</Typography>
                                                     <Typography>{selectedOrder.customerName}</Typography>
-                                                    <Typography>{selectedOrder.customerPhone}</Typography>
+                                                    <Typography>{formatPhoneNumber(selectedOrder.customerPhone)}</Typography>
                                                     {selectedOrder.occasionDate && (
                                                         <Typography variant="body2" sx={{ mt: 1 }}>
                                                             <strong>Occasion Date:</strong> {new Date(selectedOrder.occasionDate).toLocaleDateString()}
@@ -2156,16 +2200,23 @@ const CateringManagementPage = () => {
                                                     )}
 
                                                     {selectedOrder.serviceType === 'delivery_service' && (
-                                                        <>
-                                                            <Typography variant="subtitle2" sx={{ color: 'text.secondary', mt: 2 }}>Catering Servers</Typography>
-                                                            {selectedOrder.cateringServers?.count > 0 ? (
-                                                                <Typography variant="body2">
-                                                                    <strong>{selectedOrder.cateringServers.count} Servers</strong> - {selectedOrder.cateringServers.time} ({formatCurrency(selectedOrder.cateringServers.amount || 0)})
-                                                                </Typography>
-                                                            ) : (
-                                                                <Typography variant="body2" sx={{ color: 'text.secondary' }}>No servers added</Typography>
-                                                            )}
-                                                        </>
+                                                        <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+                                                            <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>Service Details</Typography>
+                                                            <Grid container spacing={1}>
+                                                                <Grid item xs={12} sm={6}>
+                                                                    <Typography variant="body2"><strong>Service Style:</strong> {selectedOrder.cateringServiceStyle?.replace(/_/g, ' ') || 'N/A'}</Typography>
+                                                                    <Typography variant="body2"><strong>Start Time:</strong> {selectedOrder.cateringServiceStartTime || 'N/A'}</Typography>
+                                                                    <Typography variant="body2"><strong>End Time:</strong> {selectedOrder.cateringServiceEndTime || 'N/A'}</Typography>
+                                                                </Grid>
+                                                                <Grid item xs={12} sm={6}>
+                                                                    <Typography variant="body2"><strong>Servers:</strong> {selectedOrder.cateringServers?.count || 0}</Typography>
+                                                                    <Typography variant="body2"><strong>Hours:</strong> {selectedOrder.cateringServers?.time || 'N/A'}</Typography>
+                                                                    <Typography variant="body2"><strong>Amount:</strong> {formatCurrency(selectedOrder.cateringServers?.amount || 0)}</Typography>
+                                                                </Grid>
+                                                            </Grid>
+                                                            <Typography variant="subtitle2" sx={{ color: 'text.secondary', mt: 1 }}>Special Delivery Instructions</Typography>
+                                                            <Typography variant="body2">{selectedOrder.venueLogistics || 'None'}</Typography>
+                                                        </Box>
                                                     )}
 
                                                     <Typography variant="subtitle2" sx={{ color: 'text.secondary', mt: 2 }}>Additional Services</Typography>
@@ -2472,9 +2523,26 @@ const CateringManagementPage = () => {
 
                                             {editData.serviceType === 'delivery_service' && (
                                                 <Box sx={{ mt: 3, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
-                                                    <Typography variant="h6" mb={2}>Catering Servers</Typography>
+                                                    <Typography variant="h6" mb={2}>Service Details</Typography>
                                                     <Grid container spacing={2}>
-                                                        <Grid item xs={12} sm={4}>
+                                                        <Grid item xs={12} sm={6}>
+                                                            <FormControl fullWidth size="small">
+                                                                <InputLabel>Service Style</InputLabel>
+                                                                <Select
+                                                                    value={editData.cateringServiceStyle || ''}
+                                                                    label="Service Style"
+                                                                    onChange={(e) => setEditData({...editData, cateringServiceStyle: e.target.value})}
+                                                                >
+                                                                    <MenuItem value=""><em>None</em></MenuItem>
+                                                                    <MenuItem value="buffet_staff">Buffet (Staff Served)</MenuItem>
+                                                                    <MenuItem value="buffet_self">Buffet (Self Serve)</MenuItem>
+                                                                    <MenuItem value="plated">Plated Dinner</MenuItem>
+                                                                    <MenuItem value="family_style">Family Style</MenuItem>
+                                                                    <MenuItem value="passed_apps">Passed Hors d'oeuvres</MenuItem>
+                                                                </Select>
+                                                            </FormControl>
+                                                        </Grid>
+                                                        <Grid item xs={12} sm={6}>
                                                             <TextField
                                                                 fullWidth
                                                                 label="Servers Count"
@@ -2486,19 +2554,44 @@ const CateringManagementPage = () => {
                                                                 onChange={(e) => setEditData({...editData, cateringServers: { ...editData.cateringServers, count: Math.max(0, parseInt(e.target.value) || 0) }})}
                                                             />
                                                         </Grid>
-                                                        <Grid item xs={12} sm={4}>
+                                                        <Grid item xs={12} sm={6}>
                                                             <TextField
                                                                 fullWidth
-                                                                label="Time (e.g. 4 hours)"
+                                                                label="Service Start Time"
+                                                                type="time"
                                                                 size="small"
+                                                                InputLabelProps={{ shrink: true }}
+                                                                value={editData.cateringServiceStartTime || ''}
+                                                                onChange={(e) => handleTimeChange('start', e.target.value)}
+                                                            />
+                                                        </Grid>
+                                                        <Grid item xs={12} sm={6}>
+                                                            <TextField
+                                                                fullWidth
+                                                                label="Service End Time"
+                                                                type="time"
+                                                                size="small"
+                                                                InputLabelProps={{ shrink: true }}
+                                                                value={editData.cateringServiceEndTime || ''}
+                                                                onChange={(e) => handleTimeChange('end', e.target.value)}
+                                                            />
+                                                        </Grid>
+                                                        <Grid item xs={12} sm={6}>
+                                                            <TextField
+                                                                fullWidth
+                                                                label="Hours"
+                                                                type="number"
+                                                                size="small"
+                                                                inputProps={{ min: 0, step: "0.1" }}
+                                                                onKeyDown={preventScientificNotation}
                                                                 value={editData.cateringServers?.time || ''}
                                                                 onChange={(e) => setEditData({...editData, cateringServers: { ...editData.cateringServers, time: e.target.value }})}
                                                             />
                                                         </Grid>
-                                                        <Grid item xs={12} sm={4}>
+                                                        <Grid item xs={12} sm={6}>
                                                             <TextField
                                                                 fullWidth
-                                                                label="Amount ($)"
+                                                                label="Service Fee ($)"
                                                                 type="number"
                                                                 size="small"
                                                                 inputProps={{ min: 0, step: "0.01" }}
@@ -2508,6 +2601,17 @@ const CateringManagementPage = () => {
                                                                     const newAmount = Math.max(0, parseFloat(e.target.value) || 0);
                                                                     recalculateEditTotals(editData.items, newAmount);
                                                                 }}
+                                                            />
+                                                        </Grid>
+                                                        <Grid item xs={12}>
+                                                            <TextField
+                                                                fullWidth
+                                                                label="Special Delivery Instructions"
+                                                                size="small"
+                                                                multiline
+                                                                rows={2}
+                                                                value={editData.venueLogistics || ''}
+                                                                onChange={(e) => setEditData({...editData, venueLogistics: e.target.value})}
                                                             />
                                                         </Grid>
                                                     </Grid>
