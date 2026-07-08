@@ -26,8 +26,10 @@ import {
   ClearAll,
 } from '@mui/icons-material';
 import { formatDistanceToNow } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationProvider';
+import { useActiveTenant } from '../hooks/useActiveTenant';
 
 export interface Notification {
   id: number | string;
@@ -50,6 +52,8 @@ interface NotificationPanelProps {
 const NotificationPanel: React.FC<NotificationPanelProps> = ({ open, onClose, notifications = [] }) => {
   const { user } = useAuth();
   const { markAsRead, markAllAsRead, clearNotifications } = useNotifications();
+  const navigate = useNavigate();
+  const { getRelativePath } = useActiveTenant();
 
   const getNotificationIcon = (type: string) => {
     const iconMap: Record<string, React.ReactElement> = {
@@ -158,10 +162,47 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ open, onClose, no
     clearNotifications();
   };
 
+  const getNotificationTarget = (notification: Notification): string | null => {
+    const data = notification.data || {};
+    const order = data.order || {};
+    const isCustomer = user?.role === 'customer';
+
+    const rawOrderId = order._id || data.orderId || data._id;
+    const isMongoId = typeof rawOrderId === 'string' && /^[a-f\d]{24}$/i.test(rawOrderId);
+
+    switch (notification.type) {
+      case 'order':
+      case 'status':
+      case 'success':
+        if (isCustomer) return '/customer/bookings';
+        return isMongoId ? `/orders?open=${rawOrderId}` : '/orders';
+      case 'kitchen':
+        return '/kitchen';
+      case 'inventory':
+        return '/inventory';
+      case 'booking':
+      case 'table':
+        return isCustomer ? '/customer/bookings' : '/bookings';
+      case 'catering':
+        return isCustomer ? '/customer/catering' : '/catering-admin';
+      default:
+        // Fall back to the orders page whenever the payload references an order
+        if (rawOrderId || data.orderNumber || order.orderNumber) {
+          if (isCustomer) return '/customer/bookings';
+          return isMongoId ? `/orders?open=${rawOrderId}` : '/orders';
+        }
+        return null;
+    }
+  };
+
   const handleNotificationClick = (notification: Notification) => {
-    // We can navigate to details if notification has data
-    if (notification.data?.orderId) {
-      // Logic to navigate or open order details
+    if (!notification.read) {
+      markAsRead(notification.id);
+    }
+    const target = getNotificationTarget(notification);
+    if (target) {
+      navigate(getRelativePath(target));
+      onClose();
     }
   };
 

@@ -5,6 +5,8 @@
  * Output is a Uint8Array of raw ESC/POS commands ready to send over TCP:9100.
  */
 
+import { DRAWER_KICK_ESCPOS } from './cashDrawer';
+
 const CHARS_PER_LINE: number = 48; // 80mm. Use 32 for 58mm printers.
 
 // ── ESC/POS control codes ──────────────────────────────────────────────
@@ -59,6 +61,8 @@ export interface EscPosBillData {
     totalAmount: number;
     paymentMethodLabel: string;
     paid: boolean;
+    /** Fire the cash-drawer kick with this bill (cash payments). */
+    openDrawer?: boolean;
     footerLine?: string;
     /** Optional feedback URL — printed as a QR code ("Scan to Rate Us") at the bottom. */
     qrUrl?: string;
@@ -164,6 +168,9 @@ export function buildBillEscPos(data: EscPosBillData): Uint8Array {
     const m = data.formatMoney;
 
     b.raw(INIT);
+
+    // ── Cash drawer kick (drawer is wired to the printer's DK port) ──
+    if (data.openDrawer) b.raw(DRAWER_KICK_ESCPOS);
 
     // ── Logo (centered, top) ──
     if (data.logoEscposBytes && data.logoEscposBytes.length) {

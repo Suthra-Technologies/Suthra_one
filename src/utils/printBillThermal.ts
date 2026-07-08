@@ -11,6 +11,7 @@ import {
     getPaymentMethodLabel,
 } from './orderWorkflows';
 import type { TenantPrinterSettings } from '../context/SettingsContext';
+import { isCashPayment } from './cashDrawer';
 
 /**
  * Public site base for QR/feedback links. In the native app window.location.origin is
@@ -125,6 +126,8 @@ export async function printBillThermal(
                           : billData.paymentMethod,
                   ),
         paid: billData.paymentStatus === 'paid',
+        // Cash order: kick the drawer (wired to the billing printer) along with the bill.
+        openDrawer: isCashPayment(billData),
         // Delivery orders: QR links to the delivery tracking URL (DoorDash/Uber). All other
         // order types: QR links to the feedback page ("Scan to Rate Us").
         ...(() => {

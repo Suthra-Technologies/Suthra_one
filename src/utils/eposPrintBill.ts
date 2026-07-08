@@ -9,6 +9,7 @@
  */
 
 import type { EscPosBillData, EscPosBillItem } from './escposBill';
+import { DRAWER_KICK_EPOS_XML } from './cashDrawer';
 
 const CHARS_PER_LINE = 48; // TM-m30III, 80mm, font A.
 const EPOS_NS = 'http://www.epson-pos.com/schemas/2011/03/epos-print';
@@ -94,6 +95,9 @@ class EposBuilder {
 export function buildBillEposXml(data: EscPosBillData): string {
     const b = new EposBuilder();
     const m = data.formatMoney;
+
+    // Cash drawer kick (drawer is wired to the printer's DK port) — fire before printing.
+    if (data.openDrawer) (b as any).parts.push(DRAWER_KICK_EPOS_XML);
 
     // Logo (centered, top) — ePOS-Print <image> with 1-bit raster base64.
     if (data.logoEpos) {

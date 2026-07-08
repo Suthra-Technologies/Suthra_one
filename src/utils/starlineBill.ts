@@ -27,6 +27,7 @@ const LF = [0x0a];
 const CUT = [ESC, 0x64, 0x03];
 
 import type { EscPosBillData, EscPosBillItem } from './escposBill';
+import { DRAWER_KICK_STAR } from './cashDrawer';
 
 class StarBuilder {
     private bytes: number[] = [];
@@ -69,6 +70,9 @@ export function buildBillStarLine(data: EscPosBillData): Uint8Array {
     const m = data.formatMoney;
 
     b.raw(INIT);
+
+    // Cash drawer kick (drawer is wired to the printer's DK port; BEL fires it on Star).
+    if (data.openDrawer) b.raw(DRAWER_KICK_STAR);
 
     // Header
     b.raw(ALIGN_CENTER).raw(EMPHASIS_ON).raw(EXPAND_ON).line(data.restaurantName).raw(EXPAND_OFF).raw(EMPHASIS_OFF);

@@ -266,6 +266,24 @@ public final class EscPosFormatter {
     private static final int[] DBL_OFF = { GS, 0x21, 0x00 };
     private static final int[] DBL_H = { GS, 0x21, 0x01 }; // double height only
     private static final int[] CUT = { GS, 0x56, 0x42, 0x00 };
+    // ESC p 0 25 250 — kick the cash drawer wired to the printer's DK port (pin 2).
+    private static final int[] DRAWER_KICK = { ESC, 0x70, 0x00, 0x19, 0xFA };
+    // ePOS-Print drawer pulse element (drawer 1, 100ms).
+    private static final String DRAWER_KICK_EPOS = "<pulse drawer=\"drawer_1\" time=\"pulse_100\"/>";
+
+    /** True when the order was paid (or will be paid) in cash — order-level method or any cash split. */
+    private static boolean isCashPayment(JSONObject bill) {
+        if (bill == null) return false;
+        if ("cash".equals(bill.optString("paymentMethod", ""))) return true;
+        org.json.JSONArray payments = bill.optJSONArray("payments");
+        if (payments != null) {
+            for (int i = 0; i < payments.length(); i++) {
+                JSONObject p = payments.optJSONObject(i);
+                if (p != null && "cash".equals(p.optString("method", ""))) return true;
+            }
+        }
+        return false;
+    }
 
     private static int[] feed(int n) {
         return new int[] { ESC, 0x64, n };
@@ -419,6 +437,8 @@ public final class EscPosFormatter {
         Esc e = new Esc();
         JSONObject r = bill.optJSONObject("restaurant");
         e.raw(INIT);
+        // Cash order: pop the drawer along with the bill.
+        if (isCashPayment(bill)) e.raw(DRAWER_KICK);
         // Logo at top (best-effort).
         if (r != null) {
             Logo logo = buildLogo(r.optString("logo", ""));
@@ -647,6 +667,8 @@ public final class EscPosFormatter {
         currencyPrefix = currencyPrefixFor(bill);
         StringBuilder p = new StringBuilder();
         JSONObject r = bill.optJSONObject("restaurant");
+        // Cash order: pop the drawer along with the bill.
+        if (isCashPayment(bill)) p.append(DRAWER_KICK_EPOS);
         // Logo at top (best-effort) via ePOS <image>.
         if (r != null) {
             Logo logo = buildLogo(r.optString("logo", ""));
