@@ -588,7 +588,7 @@ const RestaurantRegisterPage: React.FC = () => {
                           </Typography>
                           <Box sx={{ display: 'flex', alignItems: 'baseline', mb: 1 }}>
                             <Typography variant="h4" fontWeight="bold" color="text.primary">
-                              ${plan.price || 0}
+                              ${Number(plan.price || 0).toFixed(2)}
                             </Typography>
                             <Typography variant="body2" color="text.secondary" sx={{ ml: 1, textTransform: 'capitalize' }}>
                               / {plan.interval}

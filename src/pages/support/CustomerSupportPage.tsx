@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { fixImageUrl } from '../../utils/imageUtils';
 import {
     Container,
     Paper,
@@ -68,24 +69,7 @@ interface Ticket {
     };
 }
 
-const fixImageUrl = (urlOrObj: any) => {
-    let url = typeof urlOrObj === 'string' ? urlOrObj : urlOrObj?.url;
-    if (!url) return '';
-    if (url.startsWith('http')) return url;
-    if (url.startsWith('/uploads')) {
-        let backendBase = (import.meta.env.VITE_API_URL || 'http://localhost:5006').replace(/\/api\/?$/, '');
-        if (!backendBase.startsWith('http://') && !backendBase.startsWith('https://')) {
-            backendBase = 'http://' + backendBase;
-        }
-        return `${backendBase}${url}`;
-    }
-    const match = url.match(/^https:\/\/([a-zA-Z0-9.-]+)\.s3\.([a-zA-Z0-9-]+)\.amazonaws\.com\/(.+)$/);
-    if (match) {
-        const [, bucket, region, key] = match;
-        return `https://s3.${region}.amazonaws.com/${bucket}/${key}`;
-    }
-    return url;
-};
+// fixImageUrl removed to use centralized utility
 
 const CustomerSupportPage: React.FC = () => {
     const theme = useTheme();

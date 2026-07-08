@@ -122,7 +122,7 @@ const ExpenseDetailPage: React.FC = () => {
                 setHistoryLoading(false);
 
                 // Pre-fetch user emails for all history items (only if performedByName is not available)
-                const userIds = [...new Set(expenseHistory.map((item: any) => item.performedBy).filter(Boolean))];
+                const userIds = [...new Set(expenseHistory.map((item: any) => item.performedBy).filter(Boolean))] as string[];
                 const emailPromises = userIds.map(async (userId) => {
                     if (userId && userId !== 'undefined' && userId !== 'null') {
                         await getUserEmail(userId);
@@ -175,7 +175,7 @@ const ExpenseDetailPage: React.FC = () => {
                 <Grid item xs={12} md={8}>
                     <Paper sx={{ borderRadius: 4, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
                         <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
-                            <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)} px={2}>
+                            <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)} sx={{ px: 2 }}>
                                 <Tab label="Details" />
                                 <Tab label="History" />
                             </Tabs>

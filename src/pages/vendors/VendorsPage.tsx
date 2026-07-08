@@ -432,7 +432,7 @@ const VendorsPage: React.FC = () => {
     const handleEmailReorder = () => {
         if (!selectedVendor || reorderItems.length === 0) return;
 
-        const restaurantName = settings?.restaurant?.restaurantName || settings?.restaurant?.name || 'our restaurant';
+        const restaurantName = (settings?.restaurant as any)?.restaurantName || settings?.restaurant?.name || 'our restaurant';
         const dateStr = new Date().toLocaleDateString();
 
         const itemBody = reorderItems.map(item => `- ${item.name}: ${item.lastOrderQuantity} ${item.unit}`).join('\n');
@@ -445,7 +445,7 @@ const VendorsPage: React.FC = () => {
     const handleWhatsAppReorder = () => {
         if (!selectedVendor || reorderItems.length === 0) return;
 
-        const restaurantName = settings?.restaurant?.restaurantName || settings?.restaurant?.name || 'our restaurant';
+        const restaurantName = (settings?.restaurant as any)?.restaurantName || settings?.restaurant?.name || 'our restaurant';
         const dateStr = new Date().toLocaleDateString();
 
         const itemBody = reorderItems.map(item => `* ${item.name}: ${item.lastOrderQuantity} ${item.unit}`).join('%0A');

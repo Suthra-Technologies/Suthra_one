@@ -1253,7 +1253,7 @@ const ServiceUsagePage: React.FC = () => {
                                             {plan.resourceCount.toLocaleString()} {topUpType === 'email' ? 'Emails' : 'SMS'}
                                         </Typography>
                                         <Typography variant="h5" fontWeight={900} sx={{ my: 1 }}>
-                                            ${plan.price}
+                                            ${Number(plan.price || 0).toFixed(2)}
                                         </Typography>
                                         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
                                             One-time payment
