@@ -8,7 +8,7 @@ export const BRAND_CONFIG = {
   primaryColor: "#9C27B0",
   secondaryColor: "#E91E63",
   accentColor: "#FF9800",
-  apiBaseUrl: "http://localhost:5006",
+  apiBaseUrl: "http://192.168.1.32:5006",
   tenantSlug: "nexzen",
   stripePublicKey: "pk_test_andhraspicefeast",
   fontFamily: "Inter",

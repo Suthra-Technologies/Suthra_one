@@ -956,7 +956,7 @@ const KitchenInterface: React.FC = () => {
                       size="small"
                       onClick={() => handlePrintKOT(order)}
                       startIcon={<PrintIcon />}
-                      sx={{ display: { xs: 'none', sm: 'inline-flex' }, mb: { xs: 0, sm: 0.5 }, flex: { xs: 1, sm: 'initial' }, minWidth: 0, fontSize: { xs: '0.62rem', sm: '0.78rem' }, py: { xs: 0.45, sm: 0.7 }, px: { xs: 0.5, sm: 1 }, minHeight: { xs: 28, sm: 34 }, '& .MuiButton-startIcon': { mr: { xs: 0.3, sm: 0.75 } } }}
+                      sx={{ display: 'inline-flex', mb: { xs: 0, sm: 0.5 }, flex: { xs: 1, sm: 'initial' }, minWidth: 0, fontSize: { xs: '0.62rem', sm: '0.78rem' }, py: { xs: 0.45, sm: 0.7 }, px: { xs: 0.5, sm: 1 }, minHeight: { xs: 28, sm: 34 }, '& .MuiButton-startIcon': { mr: { xs: 0.3, sm: 0.75 } } }}
                     >
                       Print KOT
                     </Button>
