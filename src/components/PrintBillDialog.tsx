@@ -689,6 +689,14 @@ const PrintBillDialog: React.FC<PrintBillDialogProps> = ({ open, order, onClose 
             <DialogActions>
                 <Button onClick={onClose}>Close</Button>
                 <Button
+                    startIcon={<DownloadIcon />}
+                    onClick={handleDownloadPDF}
+                    variant="outlined"
+                    disabled={loading || !billData}
+                >
+                    Download PDF
+                </Button>
+                <Button
                     startIcon={<PrintIcon />}
                     onClick={handlePrint}
                     variant="contained"

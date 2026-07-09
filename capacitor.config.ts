@@ -4,9 +4,7 @@ const config: CapacitorConfig = {
     appId: 'com.nexzen.pos',
     appName: 'NexZen POS',
     webDir: 'dist',
-    server: {
-        androidScheme: 'https'
-    },
+
     plugins: {
         CapacitorHttp: {
             enabled: true,

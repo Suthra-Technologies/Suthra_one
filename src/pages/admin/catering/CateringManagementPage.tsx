@@ -79,8 +79,6 @@ const SPICE_LEVELS = [
     { id: 'more_spicy', label: 'More Spicy' }
 ];
 import { alpha } from '@mui/material/styles';
-import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { useEffect, useState, useMemo } from 'react';
 import { toast } from 'react-hot-toast';
 import AddressAutocomplete from '../../../components/AddressAutocomplete';
@@ -2313,22 +2311,20 @@ const CateringManagementPage = () => {
                                                     </Box>
                                                 </Grid>
                                                 <Grid item xs={12} sm={6}>
-                                                    <LocalizationProvider dateAdapter={AdapterDateFns}>
-                                                        <DatePicker
-                                                            label="Occasion Date"
-                                                            format={settings.restaurant?.country === 'United States' ? 'MM/dd/yyyy' : 'dd/MM/yyyy'}
-                                                            value={editData.occasionDate ? new Date(editData.occasionDate) : null}
-                                                            onChange={(newValue: Date | null) => setEditData({ ...editData, occasionDate: newValue ? newValue.toISOString() : '' })}
-                                                            slotProps={{
-                                                                textField: {
-                                                                    fullWidth: true,
-                                                                    margin: 'normal',
-                                                                    size: 'small',
-                                                                    InputLabelProps: { shrink: true }
-                                                                }
-                                                            }}
-                                                        />
-                                                    </LocalizationProvider>
+                                                    <TextField
+                                                        fullWidth
+                                                        label="Occasion Date"
+                                                        type="date"
+                                                        required
+                                                        value={editData.occasionDate ? new Date(editData.occasionDate).toISOString().split('T')[0] : ''}
+                                                        inputProps={{
+                                                            min: new Date().toISOString().split('T')[0]
+                                                        }}
+                                                        onChange={(e) => setEditData({ ...editData, occasionDate: e.target.value })}
+                                                        margin="normal"
+                                                        size="small"
+                                                        InputLabelProps={{ shrink: true, sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }}
+                                                    />
                                                 </Grid>
                                                 {(editData.occasion?.toLowerCase().includes('birthday') || editData.occasion?.toLowerCase().includes('anniversary') || editData.occasion?.toLowerCase().includes('wedding')) && (
                                                     <Grid item xs={12} sm={6}>
@@ -2489,16 +2485,12 @@ const CateringManagementPage = () => {
                                                                         </Select>
                                                                     </TableCell>
                                                                     <TableCell>
-                                                                        <LocalizationProvider dateAdapter={AdapterDateFns}>
-                                                                            <DatePicker
-                                                                                format={settings.restaurant?.country === 'United States' ? 'MM/dd/yyyy' : 'dd/MM/yyyy'}
-                                                                                value={payment.timestamp ? new Date(payment.timestamp) : null}
-                                                                                onChange={(newValue: Date | null) => handleUpdatePaymentFromEdit(idx, 'timestamp', newValue ? newValue.toISOString() : '')}
-                                                                                slotProps={{
-                                                                                    textField: { size: 'small' }
-                                                                                }}
-                                                                            />
-                                                                        </LocalizationProvider>
+                                                                        <TextField
+                                                                            type="date"
+                                                                            size="small"
+                                                                            value={payment.timestamp ? new Date(payment.timestamp).toISOString().split('T')[0] : ''}
+                                                                            onChange={(e) => handleUpdatePaymentFromEdit(idx, 'timestamp', e.target.value)}
+                                                                        />
                                                                     </TableCell>
                                                                     <TableCell>
                                                                         <TextField
@@ -3028,26 +3020,22 @@ const CateringManagementPage = () => {
                                                     />
                                                 </Grid>
                                                 <Grid item xs={12} sm={6}>
-                                                    <LocalizationProvider dateAdapter={AdapterDateFns}>
-                                                        <DatePicker
-                                                            label="Occasion Date"
-                                                            format={settings.restaurant?.country === 'United States' ? 'MM/dd/yyyy' : 'dd/MM/yyyy'}
-                                                            value={newOrder.occasionDate ? new Date(newOrder.occasionDate) : null}
-                                                            onChange={(newValue: Date | null) => setNewOrder({ ...newOrder, occasionDate: newValue ? newValue.toISOString().split('T')[0] : '' })}
-                                                            minDate={new Date()}
-                                                            slotProps={{
-                                                                textField: {
-                                                                    fullWidth: true,
-                                                                    size: 'small',
-                                                                    required: true,
-                                                                    error: formSubmitted && !newOrder.occasionDate,
-                                                                    helperText: formSubmitted && !newOrder.occasionDate ? "Occasion Date is required" : "",
-                                                                    InputLabelProps: { shrink: true, sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } },
-                                                                    FormHelperTextProps: { sx: { color: 'error.main' } }
-                                                                }
-                                                            }}
-                                                        />
-                                                    </LocalizationProvider>
+                                                    <TextField
+                                                        label="Occasion Date"
+                                                        type="date"
+                                                        fullWidth
+                                                        size="small"
+                                                        required
+                                                        InputLabelProps={{ shrink: true, sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }}
+                                                        value={newOrder.occasionDate}
+                                                        inputProps={{
+                                                            min: new Date().toISOString().split('T')[0]
+                                                        }}
+                                                        error={formSubmitted && !newOrder.occasionDate}
+                                                        helperText={formSubmitted && !newOrder.occasionDate ? "Occasion Date is required" : ""}
+                                                        FormHelperTextProps={{ sx: { color: 'error.main' } }}
+                                                        onChange={(e) => setNewOrder({ ...newOrder, occasionDate: e.target.value })}
+                                                    />
                                                 </Grid>
                                                 <Grid item xs={12} sm={6}>
                                                     <Box sx={{ display: 'flex', alignItems: 'flex-start', width: '100%' }}>
@@ -3630,16 +3618,13 @@ const CateringManagementPage = () => {
         </Select>
     </TableCell>
     <TableCell sx={{ px: { xs: 0.5, sm: 1 } }}>
-        <LocalizationProvider dateAdapter={AdapterDateFns}>
-            <DatePicker
-                format={settings.restaurant?.country === 'United States' ? 'MM/dd/yyyy' : 'dd/MM/yyyy'}
-                value={payment.timestamp ? new Date(payment.timestamp) : null}
-                onChange={(newValue: Date | null) => handleUpdatePaymentFromCreate(idx, 'timestamp', newValue ? newValue.toISOString() : '')}
-                slotProps={{
-                    textField: { size: 'small', sx: { width: { xs: 100, sm: 'auto' } } }
-                }}
-            />
-        </LocalizationProvider>
+        <TextField
+            type="date"
+            size="small"
+            value={payment.timestamp ? new Date(payment.timestamp).toISOString().split('T')[0] : ''}
+            onChange={(e) => handleUpdatePaymentFromCreate(idx, 'timestamp', e.target.value)}
+            sx={{ width: { xs: 100, sm: 'auto' } }}
+        />
     </TableCell>
     <TableCell sx={{ px: { xs: 0.5, sm: 1 } }}>
         <TextField

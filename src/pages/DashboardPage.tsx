@@ -247,7 +247,7 @@ const OrdersChart: React.FC<OrdersChartProps> = ({ data }) => {
             padding: "8px 10px",
             boxShadow: "0 8px 24px rgba(0,0,0,0.25)"
           }}
-          formatter={(value: any) => [`${value} Orders`, ""]}
+          formatter={(value: number) => [`${value} Orders`, ""]}
         />
 
         {/* Smooth Area Line */}
@@ -1129,7 +1129,7 @@ const DashboardPage: React.FC = () => {
               </Typography>
 
               <Box sx={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: normalizedOrders.length <= 2 ? "center" : "flex-start" }}>
-                {normalizedOrders.map((order: any, index: number) => {
+                {normalizedOrders.map((order, index) => {
 
                   const percentage = totalOrdersAll
                     ? ((order.totalOrders / totalOrdersAll) * 100).toFixed(0)
