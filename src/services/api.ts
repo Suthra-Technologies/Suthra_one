@@ -459,6 +459,8 @@ export const activityAPI = {
     api.get('/activity/unique-users', { params }),
   getScreenVisitors: (params: ActivityRangeParams = {}) =>
     api.get('/activity/screen-visitors', { params }),
+  getTopItems: (params: ActivityRangeParams & { limit?: number } = {}) =>
+    api.get('/activity/top-items', { params }),
   // Public website page-view ingestion (no auth)
   trackStatic: (payload: { tenantSlug: string; staticPath: string; isLoggedIn?: boolean }) =>
     api.post('/activity/static-track', payload),

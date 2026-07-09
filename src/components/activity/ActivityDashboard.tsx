@@ -86,6 +86,25 @@ const ActivityDashboard: React.FC<Props> = ({ mode }) => {
 
     useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
 
+    // Most-clicked menu items (admin only)
+    const [topItems, setTopItems] = useState<any[]>([]);
+    const [topItemsLoading, setTopItemsLoading] = useState(false);
+
+    const fetchTopItems = useCallback(async () => {
+        if (mode !== 'admin') return;
+        setTopItemsLoading(true);
+        try {
+            const res = await activityAPI.getTopItems({ ...applied, limit: 20 });
+            setTopItems(res.data.items || []);
+        } catch {
+            setTopItems([]);
+        } finally {
+            setTopItemsLoading(false);
+        }
+    }, [mode, applied]);
+
+    useEffect(() => { fetchTopItems(); }, [fetchTopItems]);
+
     const fetchTable = useCallback(async () => {
         if (mode !== 'admin') return;
         setTableLoading(true);
@@ -256,6 +275,55 @@ const ActivityDashboard: React.FC<Props> = ({ mode }) => {
                                     Local / private-network visits (e.g. localhost) can’t be geo-located, so they don’t appear on the map.
                                 </Typography>
                             </Box>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Admin-only: most-clicked menu items (website + logged-in customers) */}
+            {mode === 'admin' && (
+                <Card sx={{ mb: 3 }}>
+                    <CardContent>
+                        <Typography variant="subtitle1" fontWeight={700} gutterBottom>Most Clicked Menu Items</Typography>
+                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                            Item-card taps on the public menu, split by logged-in customers vs website guests.
+                        </Typography>
+                        {topItemsLoading ? (
+                            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress size={28} /></Box>
+                        ) : (
+                            <TableContainer>
+                                <Table size="small">
+                                    <TableHead>
+                                        <TableRow>
+                                            <TableCell>#</TableCell>
+                                            <TableCell>Item</TableCell>
+                                            <TableCell>Category</TableCell>
+                                            <TableCell align="right">Clicks</TableCell>
+                                            <TableCell align="right">Logged-in</TableCell>
+                                            <TableCell align="right">Guests</TableCell>
+                                            <TableCell align="right">Unique Clickers</TableCell>
+                                            <TableCell>Last Clicked</TableCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {topItems.map((r, i) => (
+                                            <TableRow key={r.itemId || i}>
+                                                <TableCell>{i + 1}</TableCell>
+                                                <TableCell>{r.itemName || '—'}</TableCell>
+                                                <TableCell>{r.category || '—'}</TableCell>
+                                                <TableCell align="right">{(r.clicks ?? 0).toLocaleString()}</TableCell>
+                                                <TableCell align="right">{(r.loggedClicks ?? 0).toLocaleString()}</TableCell>
+                                                <TableCell align="right">{(r.guestClicks ?? 0).toLocaleString()}</TableCell>
+                                                <TableCell align="right">{(r.uniqueClickers ?? 0).toLocaleString()}</TableCell>
+                                                <TableCell>{r.lastClicked ? new Date(r.lastClicked).toLocaleString() : '—'}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                        {topItems.length === 0 && (
+                                            <TableRow><TableCell colSpan={8} align="center">No item clicks in this period</TableCell></TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
                         )}
                     </CardContent>
                 </Card>
