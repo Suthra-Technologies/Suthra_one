@@ -1228,7 +1228,7 @@ const GuestPOSPage: React.FC = () => {
                                         style={{ flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
                                         placeholder="Enter Coupon Code"
                                         value={couponCode}
-                                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                        onChange={(e) => setCouponCode(e.target.value?.toUpperCase())}
                                         disabled={!!appliedCoupon}
                                     />
                                     {appliedCoupon ? (

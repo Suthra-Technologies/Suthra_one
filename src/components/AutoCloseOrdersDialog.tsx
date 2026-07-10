@@ -27,7 +27,7 @@ interface Props {
 }
 
 const formatOrderType = (type?: string) =>
-    (type || 'order').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    (type || 'order').replace(/_/g, ' ').replace(/\b\w/g, (c) => c?.toUpperCase())
 
 /**
  * Shown when the backend requests an auto-close ~30 min before the store's

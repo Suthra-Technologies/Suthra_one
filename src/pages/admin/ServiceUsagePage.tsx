@@ -312,7 +312,7 @@ const ServiceUsagePage: React.FC = () => {
             .then(res => {
                 const { credited, resourceType, newBalance } = res.data;
                 if (credited > 0) {
-                    toast.success(`${credited.toLocaleString()} ${resourceType.toUpperCase()} credits added! New balance: ${newBalance.toLocaleString()}`);
+                    toast.success(`${credited.toLocaleString()} ${resourceType?.toUpperCase()} credits added! New balance: ${newBalance.toLocaleString()}`);
                 } else {
                     toast.success('Credits already applied.');
                 }

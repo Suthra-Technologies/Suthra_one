@@ -1163,7 +1163,7 @@ const CateringPage = () => {
                                     {(trayDialogItem?.spiceLevels?.length > 0 ? trayDialogItem.spiceLevels : SPICE_LEVELS.map(l => l.id)).map((lvl: string) => {
                                         const isSelected = selectedSpice === lvl;
                                         const getSpiceColor = (l: string) => {
-                                            const norm = l.toLowerCase();
+                                            const norm = l?.toLowerCase();
                                             if (norm.includes('mild')) return { main: '#2e7d32' };
                                             if (norm.includes('medium') || norm.includes('moderate')) return { main: '#ed6c02' };
                                             if (norm.includes('hot') || norm.includes('spicy')) return { main: '#d32f2f' };

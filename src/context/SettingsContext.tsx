@@ -446,7 +446,7 @@ export const IMPERIAL_UNITS: UnitConfig[] = [
 // Determine unit system from country
 export const getUnitSystem = (country: string): UnitSystem => {
     const normalizedCountry = country?.trim()?.toLowerCase() || '';
-    return IMPERIAL_COUNTRIES.some(c => normalizedCountry.includes(c.toLowerCase()))
+    return IMPERIAL_COUNTRIES.some(c => normalizedCountry.includes(c?.toLowerCase()))
         ? 'imperial'
         : 'metric';
 };

@@ -648,7 +648,7 @@ const ProfilePage: React.FC = () => {
                                         <TextField
                                             fullWidth label="Email" type="email"
                                             value={profileData.email}
-                                            onChange={(e) => handleProfileChange('email', e.target.value.toLowerCase())}
+                                            onChange={(e) => handleProfileChange('email', e.target.value?.toLowerCase())}
                                             onBlur={() => handleProfileBlur('email')}
                                             error={hasError(profileErrors.email)}
                                             helperText={getHelperText(profileErrors.email)}
@@ -836,7 +836,7 @@ const ProfilePage: React.FC = () => {
                         size="small"
                         placeholder="DELETE"
                         value={deleteConfirmText}
-                        onChange={(e) => setDeleteConfirmText(e.target.value.toUpperCase())}
+                        onChange={(e) => setDeleteConfirmText(e.target.value?.toUpperCase())}
                     />
                 </DialogContent>
                 <DialogActions sx={{ px: 3, pb: 2 }}>

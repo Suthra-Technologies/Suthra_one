@@ -400,7 +400,7 @@ const PrintBillDialog: React.FC<PrintBillDialogProps> = ({ open, order, onClose 
             // Create a temporary link element and trigger download
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', `Bill-${billData?.orderNumber || order._id.slice(-8).toUpperCase()}.pdf`);
+            link.setAttribute('download', `Bill-${billData?.orderNumber || order._id.slice(-8)?.toUpperCase()}.pdf`);
             document.body.appendChild(link);
             link.click();
 
@@ -479,11 +479,11 @@ const PrintBillDialog: React.FC<PrintBillDialogProps> = ({ open, order, onClose 
                         {/* Bill Header */}
                         <Box sx={{ mb: 1 }}>
                             <Typography className="tax-invoice" variant="h1" fontWeight="bold" align="center" gutterBottom={false} sx={{ fontSize: '12px', mb: 0.5 }}>
-                                {getOrderTypeLabel(billData.orderType).toUpperCase()} {billData.dailyTokenNumber ? `- Token No #${billData.dailyTokenNumber}` : ''}
+                                {getOrderTypeLabel(billData.orderType)?.toUpperCase()} {billData.dailyTokenNumber ? `- Token No #${billData.dailyTokenNumber}` : ''}
                             </Typography>
                             <Stack spacing={0.25} sx={{ fontSize: '10px', lineHeight: 1.4 }}>
                                 <Typography className="order-number" variant="body2" sx={{ fontSize: '10px', m: 0 }}>
-                                    <strong>Order No:</strong> {billData.orderNumber || (billData._id ? billData._id.slice(-8).toUpperCase() : '')}
+                                    <strong>Order No:</strong> {billData.orderNumber || (billData._id ? billData._id.slice(-8)?.toUpperCase() : '')}
                                 </Typography>
                                 <Typography className="order-number" variant="body2" sx={{ fontSize: '10px', m: 0 }}>
                                     <strong>Date:</strong> {formatDateTime(billData.date || billData.createdAt)}

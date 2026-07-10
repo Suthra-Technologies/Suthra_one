@@ -123,9 +123,9 @@ const AdminSupportPage: React.FC = () => {
       toast.dismiss();
       const backendMessage = error?.response?.data?.message || error?.message || '';
       if (
-        backendMessage.toLowerCase().includes('file too large') ||
-        backendMessage.toLowerCase().includes('limit_file_size') ||
-        backendMessage.toLowerCase().includes('10mb')
+        backendMessage?.toLowerCase().includes('file too large') ||
+        backendMessage?.toLowerCase().includes('limit_file_size') ||
+        backendMessage?.toLowerCase().includes('10mb')
       ) {
         toast.error('upload image failed image size should not exceed more than 10 MB');
       } else {
@@ -175,7 +175,7 @@ const AdminSupportPage: React.FC = () => {
       loadTickets();
     } catch (e: any) {
       console.error(e);
-      const errText = `${e?.response?.data?.message || ''} ${e?.message || ''}`.toLowerCase();
+      const errText = `${e?.response?.data?.message || ''} ${e?.message || ''}`?.toLowerCase();
       if (editingTicket && (e?.response?.status === 404 || errText.includes('cannot patch'))) {
         toast.error('Update API route not available. Please restart backend and try again.');
       } else {
@@ -209,7 +209,7 @@ const AdminSupportPage: React.FC = () => {
       }
       loadTickets();
     } catch (e: any) {
-      const errText = `${e?.response?.data?.message || ''} ${e?.message || ''}`.toLowerCase();
+      const errText = `${e?.response?.data?.message || ''} ${e?.message || ''}`?.toLowerCase();
       if (e?.response?.status === 404 || errText.includes('cannot delete')) {
         toast.error('Delete API route not available. Please restart backend and try again.');
       } else {

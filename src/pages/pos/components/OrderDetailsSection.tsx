@@ -139,7 +139,7 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
                         fullWidth
                         placeholder="Coupon code"
                         value={couponCode}
-                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                        onChange={(e) => setCouponCode(e.target.value?.toUpperCase())}
                         onKeyDown={(e) => { if (e.key === 'Enter') handleValidateCoupon(false); }}
                         InputProps={{
                             startAdornment: (

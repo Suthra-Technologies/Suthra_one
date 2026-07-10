@@ -1122,7 +1122,7 @@ const CustomerHomePage: React.FC = () => {
                                 key={level}
                                 variant="outlined"
                                 fullWidth
-                                onClick={() => handleConfirmSpice(level.toLowerCase())}
+                                onClick={() => handleConfirmSpice(level?.toLowerCase())}
                                 sx={{
                                     py: 1.5,
                                     borderRadius: 3,
@@ -1137,7 +1137,7 @@ const CustomerHomePage: React.FC = () => {
                                     }
                                 }}
                             >
-                                {level.charAt(0).toUpperCase() + level.slice(1).replace(/_/g, ' ')}
+                                {level.charAt(0)?.toUpperCase() + level.slice(1).replace(/_/g, ' ')}
                             </Button>
                         ))}
                     </Stack>

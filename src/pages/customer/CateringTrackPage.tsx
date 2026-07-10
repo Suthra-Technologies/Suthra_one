@@ -525,7 +525,7 @@ const CateringTrackPage = () => {
                                                 primary={(
                                                     <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
                                                         <Typography fontWeight="600">
-                                                            {formatCurrency(p.amount)} via {String(p.method || '').toUpperCase()}
+                                                            {formatCurrency(p.amount)} via {String(p.method || '')?.toUpperCase()}
                                                         </Typography>
                                                         {p.paymentIntentId && <Chip size="small" color="info" label="Stripe" />}
                                                         {p.refundId && <Chip size="small" color="warning" label={`Refunded ${formatCurrency(p.refundedAmount || 0)}`} />}

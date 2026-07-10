@@ -83,7 +83,7 @@ export function buildBillStarLine(data: EscPosBillData): Uint8Array {
 
     // Order meta
     b.raw(ALIGN_CENTER).raw(EMPHASIS_ON)
-        .line(data.orderTypeLabel.toUpperCase() + (data.tokenNumber ? ` - Token #${data.tokenNumber}` : ''))
+        .line(data.orderTypeLabel?.toUpperCase() + (data.tokenNumber ? ` - Token #${data.tokenNumber}` : ''))
         .raw(EMPHASIS_OFF).raw(ALIGN_LEFT);
     b.line('Order No: ' + data.orderNumber);
     b.line('Date: ' + data.dateText);

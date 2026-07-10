@@ -50,7 +50,7 @@ const actionLabel = (action: string): string => {
         case 'UPDATED': return 'updated';
         case 'STATUS_CHANGED': return 'status changed';
         case 'REPLIED': return 'replied';
-        default: return (action || '').toLowerCase().replace(/_/g, ' ');
+        default: return (action || '')?.toLowerCase().replace(/_/g, ' ');
     }
 };
 

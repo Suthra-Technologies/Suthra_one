@@ -82,7 +82,7 @@ function buildKotEscPos(data: KotData): Uint8Array {
     // Order Type centered
     if (data.orderTypeLabel) {
         b.push(...ALIGN_CENTER);
-        line(data.orderTypeLabel.toUpperCase());
+        line(data.orderTypeLabel?.toUpperCase());
         b.push(...ALIGN_LEFT);
     } else {
         b.push(...ALIGN_CENTER);
@@ -164,7 +164,7 @@ function buildKotEposXml(data: KotData): string {
 
     if (data.orderTypeLabel) {
         parts.push('<text align="center"/>');
-        t(data.orderTypeLabel.toUpperCase());
+        t(data.orderTypeLabel?.toUpperCase());
         parts.push('<text align="left"/>');
     } else {
         parts.push('<text align="center"/>');

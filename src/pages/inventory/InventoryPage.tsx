@@ -142,7 +142,7 @@ const MemoizedMaterialCard = React.memo(({
     material: RawMaterial;
     onUsage: (m: RawMaterial) => void;
     onNotes: (m: RawMaterial) => void;
-    onItemNotes: (m: RawMaterial) => void;
+    onItemNotes?: (m: RawMaterial) => void;
     onEdit: (m: RawMaterial) => void;
     onDelete: (m: RawMaterial) => void;
     getStatus: (m: RawMaterial) => { label: string; color: "error" | "warning" | "success" };
@@ -206,7 +206,7 @@ const MemoizedMaterialRow = React.memo(({
 }: {
     material: RawMaterial;
     onUsage: (m: RawMaterial) => void;
-    onItemNotes: (m: RawMaterial) => void;
+    onItemNotes?: (m: RawMaterial) => void;
     onEdit: (m: RawMaterial) => void;
     onDelete: (m: RawMaterial) => void;
     getStatus: (m: RawMaterial) => { label: string; color: "error" | "warning" | "success" };
@@ -463,8 +463,8 @@ const InventoryPage: React.FC = () => {
                 address: (material.supplier as any).address,
                 status: 'active'
             };
-            setSelectedVendorForNotes(vendor);
-            setVendorNotesOpen(true);
+            // setSelectedVendorForNotes(vendor);
+            // setVendorNotesOpen(true);
         } else {
             toast.error('No vendor assigned to this material');
         }

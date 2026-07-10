@@ -361,8 +361,8 @@ const BookingsAdminPage: React.FC = () => {
             if (timeParts.length >= 2) {
                 let h = parseInt(timeParts[0], 10);
                 const m = parseInt(timeParts[1].replace(/[^0-9]/g, ''), 10);
-                if (timeStr.toLowerCase().includes('pm') && h < 12) h += 12;
-                if (timeStr.toLowerCase().includes('am') && h === 12) h = 0;
+                if (timeStr?.toLowerCase().includes('pm') && h < 12) h += 12;
+                if (timeStr?.toLowerCase().includes('am') && h === 12) h = 0;
                 startHour = h + (isNaN(m) ? 0 : m) / 60;
             }
         } else {
@@ -538,7 +538,7 @@ const BookingsAdminPage: React.FC = () => {
                                                             </Typography>
                                                         </Box>
                                                         <Chip
-                                                            label={booking.status.toUpperCase()}
+                                                            label={booking.status?.toUpperCase()}
                                                             size="small"
                                                             sx={{ 
                                                                 fontWeight: 'bold', 
@@ -690,7 +690,7 @@ const BookingsAdminPage: React.FC = () => {
                                                 <TableCell>{booking.guests}</TableCell>
                                                 <TableCell>
                                                     <Chip
-                                                        label={booking.status.toUpperCase()}
+                                                        label={booking.status?.toUpperCase()}
                                                         color={getStatusColor(booking.status) as any}
                                                         size="small"
                                                     />

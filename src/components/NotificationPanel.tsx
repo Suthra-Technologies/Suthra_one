@@ -143,7 +143,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ open, onClose, no
     const displayOrderType = rawOrderType
       ? String(rawOrderType)
           .replace(/_/g, ' ')
-          .replace(/\b\w/g, (char) => char.toUpperCase())
+          .replace(/\b\w/g, (char) => char?.toUpperCase())
       : '--';
 
     const displayStatus =
@@ -475,7 +475,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ open, onClose, no
                             <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                               {notification.type && (
                                 <Chip
-                                  label={notification.type.toUpperCase()}
+                                  label={notification.type?.toUpperCase() || 'NOTIFICATION'}
                                   size="small"
                                   variant="outlined"
                                   color={getNotificationColor(notification.type)}

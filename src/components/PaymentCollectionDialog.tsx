@@ -326,7 +326,7 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
                                     {order.payments.map((p: any) => (
                                         <ListItem key={p._id}>
                                             <ListItemText
-                                                primary={`${p.method.toUpperCase()} Payment`}
+                                                primary={`${p.method?.toUpperCase() || 'UNKNOWN'} Payment`}
                                                 secondary={new Date(p.recordedAt || p.createdAt).toLocaleString()}
                                             />
                                             <ListItemSecondaryAction>

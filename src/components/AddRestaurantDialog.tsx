@@ -36,7 +36,7 @@ const AddRestaurantDialog: React.FC<AddRestaurantDialogProps> = ({ open, onClose
         const { name, value } = e.target;
         // Auto-generate slug from name if slug hasn't been manually edited
         if (name === 'restaurantName' && !formData.slug) {
-            const generatedSlug = value.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
+            const generatedSlug = value?.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-');
             setFormData(prev => ({ ...prev, [name]: value, slug: generatedSlug }));
         } else {
             setFormData(prev => ({ ...prev, [name]: value }));

@@ -171,7 +171,7 @@ export default function RestaurantQRCode({ url, logoUrl, restaurantName }: Resta
     const safeName = useMemo(
         () =>
             (restaurantName || 'restaurant')
-                .toLowerCase()
+                ?.toLowerCase()
                 .replace(/[^a-z0-9]+/g, '-')
                 .replace(/(^-|-$)/g, '') || 'restaurant',
         [restaurantName],
@@ -294,7 +294,7 @@ export default function RestaurantQRCode({ url, logoUrl, restaurantName }: Resta
         }
         try {
             await qr.download({
-                name: `${safeName}-qr-${style.name.toLowerCase().replace(/\s+/g, '-')}`,
+                name: `${safeName}-qr-${style.name?.toLowerCase().replace(/\s+/g, '-')}`,
                 extension: 'png',
             });
             toast.success('QR code downloaded');

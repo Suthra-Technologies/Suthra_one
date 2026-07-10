@@ -134,8 +134,8 @@ const PublicMenuPage: React.FC = () => {
     return null;
   };
   const filteredItems = menuItems.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = item.name?.toLowerCase().includes(searchTerm?.toLowerCase()) ||
+      item.description?.toLowerCase().includes(searchTerm?.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
     const isAvailable = item.isAvailable && isItemAvailableForDay(item, today);
     return matchesSearch && matchesCategory && isAvailable;

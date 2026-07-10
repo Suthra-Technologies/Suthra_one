@@ -205,7 +205,7 @@ const ExpenseDetailPage: React.FC = () => {
                                 <Box sx={{ position: 'relative', overflow: 'hidden' }}>
                                     <Box sx={{ position: 'absolute', top: 0, right: 0, p: 3 }}>
                                         <Chip 
-                                            label={expense.status.toUpperCase()} 
+                                            label={expense.status?.toUpperCase()} 
                                             color={expense.status === 'paid' ? 'success' : expense.status === 'pending' ? 'warning' : 'error'}
                                             sx={{ fontWeight: 'bold' }}
                                         />

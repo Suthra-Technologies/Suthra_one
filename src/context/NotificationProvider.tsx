@@ -72,6 +72,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }, [settings.printer, settings.system?.autoPrint, formatCurrency]);
 
     const playNotificationSound = useCallback(() => {
+        // Dispatch an event so the Dashboard (and other views) can instantly refresh live data
+        window.dispatchEvent(new CustomEvent('dashboardRefetch'));
+
         // Stop and discard any currently playing audio
         if (audioRef.current) {
             audioRef.current.pause();
@@ -188,13 +191,13 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const displayOrderType = rawOrderType
             ? String(rawOrderType)
                 .replace(/_/g, ' ')
-                .replace(/\b\w/g, (char) => char.toUpperCase())
+                .replace(/\b\w/g, (char) => char?.toUpperCase())
             : '--';
 
         const rawStatus = payload?.status ?? sourceOrder.status ?? 'Update';
         const displayStatus = String(rawStatus)
             .replace(/_/g, ' ')
-            .replace(/\b\w/g, (char) => char.toUpperCase());
+            .replace(/\b\w/g, (char) => char?.toUpperCase());
 
         return { displayOrderId, displayTokenNo, displayOrderType, displayStatus };
     }, []);
@@ -213,7 +216,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         // Staff roles that should be notified of ALL new orders
         const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
 
-        const orderType = (data.order?.orderType || data.orderType || 'unknown').toLowerCase();
+        const orderType = (data.order?.orderType || data.orderType || 'unknown')?.toLowerCase();
         const isDeliveryOrder = orderType === 'delivery';
         const shouldNotifyDelivery = userRole === 'delivery' && isDeliveryOrder;
 
@@ -385,7 +388,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         if (!user) return;
 
         const userRole = user.role?.toLowerCase() || '';
-        const orderType = (data.order?.orderType || data.orderType || '').toLowerCase();
+        const orderType = (data.order?.orderType || data.orderType || '')?.toLowerCase();
         const currentUserId = user.sub || user._id || user.id;
 
         // Simple permissions check
@@ -566,7 +569,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         playNotificationSound();
         const orderNum = data.order?.orderNumber || 'Catering Order';
         const rawStatus = data.status || data.order?.status || 'Update';
-        const displayStatus = String(rawStatus).replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+        const displayStatus = String(rawStatus).replace(/_/g, ' ').replace(/\b\w/g, (char) => char?.toUpperCase());
         const title = `Catering Order Update`;
         const body = `Order No: ${orderNum}\nStatus: ${displayStatus}`;
         showNotification(title, body);

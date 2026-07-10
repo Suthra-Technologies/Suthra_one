@@ -487,7 +487,7 @@ const UsersPage = () => {
       const formData: any = {
         firstName: userForm.firstName.trim(),
         lastName: userForm.lastName.trim(),
-        email: userForm.email.toLowerCase().trim(),
+        email: userForm.email?.toLowerCase().trim(),
         phone: userForm.phone.trim(),
         countryCode: userForm.countryCode,
         roles: userForm.roles,
@@ -766,8 +766,8 @@ const UsersPage = () => {
     const emailMatch = actor.match(/<(.+?)>/);
     const actorEmail = emailMatch ? emailMatch[1] : actor;
 
-    const searchEmail = actorEmail.trim().toLowerCase();
-    const user = users.find(u => u.email?.trim().toLowerCase() === searchEmail);
+    const searchEmail = actorEmail.trim()?.toLowerCase();
+    const user = users.find(u => u.email?.trim()?.toLowerCase() === searchEmail);
 
     if (user) {
       if (user.firstName || user.lastName) {
@@ -1512,7 +1512,7 @@ const UsersPage = () => {
                           type="email"
                           value={userForm.email}
                           onChange={(e) => {
-                            setUserForm({ ...userForm, email: e.target.value.toLowerCase() });
+                            setUserForm({ ...userForm, email: e.target.value?.toLowerCase() });
                             if (userErrors.email) setUserErrors(prev => ({ ...prev, email: { isValid: true } }));
                           }}
                           onBlur={() => {

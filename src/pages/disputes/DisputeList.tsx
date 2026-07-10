@@ -98,7 +98,7 @@ const DisputeList: React.FC = () => {
   };
 
   const getReasonLabel = (reason: string) => {
-    return reason.replace(/_/g, ' ').toUpperCase();
+    return reason.replace(/_/g, ' ')?.toUpperCase();
   };
 
   return (

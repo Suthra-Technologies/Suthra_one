@@ -303,7 +303,7 @@ const isCurrentlyOpen = (hours: BusinessHourDay[], timezone: string): boolean =>
         const minuteStr = timeParts.find(p => p.type === 'minute')?.value || '0';
         const currentMinutes = parseInt(hourStr, 10) * 60 + parseInt(minuteStr, 10);
 
-        const config = hours.find(h => h.day.toLowerCase() === todayName.toLowerCase());
+        const config = hours.find(h => h.day?.toLowerCase() === todayName?.toLowerCase());
         if (!config || !config.isOpen) return false;
 
         const slots = config.slots || (config.openTime && config.closeTime ? [{ openTime: config.openTime, closeTime: config.closeTime }] : []);
@@ -455,6 +455,7 @@ const createDefaultSettings = (): SettingsState => ({
         firstOrderBonus: 0,
         minPointsToRedeem: 100,
         maxRedemptionPercentage: 100,
+        pointsPerRating: 0,
     },
     delivery: {
         builtIn: {
@@ -871,11 +872,12 @@ const SettingsPage: React.FC = () => {
                     return acc;
                 }, {});
                 const merged = mergeSettingsWithDefaults(defaults, fetched);
-                if (!merged.restaurant.name) merged.restaurant.name = (user?.tenant)?.name || '';
-                if (!merged.restaurant.logo) merged.restaurant.logo = (user?.tenant)?.logo || '';
-                if (!merged.restaurant.email) merged.restaurant.email = (user?.tenant)?.contactEmail || user?.email || '';
+                const tenantObj = typeof user?.tenant === 'object' ? user.tenant : null;
+                if (!merged.restaurant.name) merged.restaurant.name = tenantObj?.name || '';
+                if (!merged.restaurant.logo) merged.restaurant.logo = tenantObj?.logo || '';
+                if (!merged.restaurant.email) merged.restaurant.email = tenantObj?.contactEmail || user?.email || '';
                 if (!merged.restaurant.phone) {
-                    const phoneVal = (user?.tenant)?.contactPhone || user?.phone || '';
+                    const phoneVal = tenantObj?.contactPhone || user?.phone || '';
                     merged.restaurant.phone = phoneVal.replace(/\D/g, '').slice(-10);
                 }
                 setSettings(merged);
@@ -884,11 +886,12 @@ const SettingsPage: React.FC = () => {
             } else if (response.data && typeof response.data === 'object') {
                 const fetched = response.data;
                 const merged = mergeSettingsWithDefaults(defaults, fetched);
-                if (!merged.restaurant.name) merged.restaurant.name = (user?.tenant)?.name || '';
-                if (!merged.restaurant.logo) merged.restaurant.logo = (user?.tenant)?.logo || '';
-                if (!merged.restaurant.email) merged.restaurant.email = (user?.tenant)?.contactEmail || user?.email || '';
+                const tenantObj = typeof user?.tenant === 'object' ? user.tenant : null;
+                if (!merged.restaurant.name) merged.restaurant.name = tenantObj?.name || '';
+                if (!merged.restaurant.logo) merged.restaurant.logo = tenantObj?.logo || '';
+                if (!merged.restaurant.email) merged.restaurant.email = tenantObj?.contactEmail || user?.email || '';
                 if (!merged.restaurant.phone) {
-                    const phoneVal = (user?.tenant)?.contactPhone || user?.phone || '';
+                    const phoneVal = tenantObj?.contactPhone || user?.phone || '';
                     merged.restaurant.phone = String(phoneVal || '').replace(/\D/g, '');
                     if ((merged.restaurant.dialCode === '1' || merged.restaurant.dialCode === '+1') && merged.restaurant.phone.length > 10) {
                         merged.restaurant.phone = merged.restaurant.phone.slice(-10);
@@ -898,10 +901,11 @@ const SettingsPage: React.FC = () => {
                 setWebhookUrl(webhookResp.data?.url || '');
                 setStripeStatus(stripeStatusResp.data || {});
             } else {
-                defaults.restaurant.name = (user?.tenant)?.name || '';
-                defaults.restaurant.logo = (user?.tenant)?.logo || '';
-                defaults.restaurant.email = (user?.tenant)?.contactEmail || user?.email || '';
-                const phoneVal = (user?.tenant)?.contactPhone || user?.phone || '';
+                const tenantObj = typeof user?.tenant === 'object' ? user.tenant : null;
+                defaults.restaurant.name = tenantObj?.name || '';
+                defaults.restaurant.logo = tenantObj?.logo || '';
+                defaults.restaurant.email = tenantObj?.contactEmail || user?.email || '';
+                const phoneVal = tenantObj?.contactPhone || user?.phone || '';
                 defaults.restaurant.phone = String(phoneVal || '').replace(/\D/g, '');
                 if ((defaults.restaurant.dialCode === '1' || defaults.restaurant.dialCode === '+1') && defaults.restaurant.phone.length > 10) {
                     defaults.restaurant.phone = defaults.restaurant.phone.slice(-10);
@@ -2937,7 +2941,7 @@ const SettingsPage: React.FC = () => {
                                         const labelInput = document.getElementById('new-unit-label') as HTMLInputElement;
                                         const typeInput = document.getElementById('new-unit-type')?.querySelector('input') as HTMLInputElement;
 
-                                        const value = valueInput?.value?.trim().toLowerCase().replace(/\s+/g, '_');
+                                        const value = valueInput?.value?.trim()?.toLowerCase().replace(/\s+/g, '_');
                                         const label = labelInput?.value?.trim();
                                         const type = (typeInput?.value || 'count') as 'weight' | 'volume' | 'count';
 

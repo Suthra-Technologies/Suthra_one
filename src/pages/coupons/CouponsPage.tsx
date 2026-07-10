@@ -428,7 +428,7 @@ const CouponsPage: React.FC = () => {
         try {
             const payload = {
                 ...formData,
-                code: formData.code.toUpperCase(),
+                code: formData.code?.toUpperCase(),
                 discountValue: parseFloat(formData.discountValue) || 0,
                 maxDiscountAmount: formData.maxDiscountAmount ? parseFloat(formData.maxDiscountAmount) : undefined,
                 minBillAmount: parseFloat(formData.minBillAmount) || 0,
@@ -497,7 +497,7 @@ const CouponsPage: React.FC = () => {
     // Client-side filtered list
     const filteredCoupons = searchQuery.trim()
         ? coupons.filter((c) => {
-            const q = searchQuery.toLowerCase();
+            const q = searchQuery?.toLowerCase();
             return (
                 c.code?.toLowerCase().includes(q) ||
                 c.name?.toLowerCase().includes(q) ||
@@ -830,8 +830,8 @@ const CouponsPage: React.FC = () => {
                                     name="code"
                                     value={formData.code}
                                     onChange={(val) => {
-                                        setFormData(prev => ({ ...prev, code: val.toUpperCase() }));
-                                        validateField('code', val.toUpperCase());
+                                        setFormData(prev => ({ ...prev, code: val?.toUpperCase() }));
+                                        validateField('code', val?.toUpperCase());
                                     }}
                                     onBlur={() => {
                                         setTouched(prev => ({ ...prev, code: true }));

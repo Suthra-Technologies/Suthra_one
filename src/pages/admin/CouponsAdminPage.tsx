@@ -600,13 +600,13 @@ const CouponsAdminPage: React.FC = () => {
 
     const handleExportUnsubscribesCsv = () => {
         const rows = allUnsubscribeDetails.filter((record) => {
-            const q = unsubscribeSearch.trim().toLowerCase();
+            const q = unsubscribeSearch.trim()?.toLowerCase();
             if (!q) return true;
             return (
-                (record.name || '').toLowerCase().includes(q) ||
-                (record.email || '').toLowerCase().includes(q) ||
-                (record.phone || '').toLowerCase().includes(q) ||
-                (record.emailUnsubscribeSource || '').toLowerCase().includes(q)
+                (record.name || '')?.toLowerCase().includes(q) ||
+                (record.email || '')?.toLowerCase().includes(q) ||
+                (record.phone || '')?.toLowerCase().includes(q) ||
+                (record.emailUnsubscribeSource || '')?.toLowerCase().includes(q)
             );
         });
 
@@ -1286,7 +1286,7 @@ const CouponsAdminPage: React.FC = () => {
                                             required
                                             size="small"
                                             value={formData.code}
-                                            onChange={(val) => setFormData({ ...formData, code: val.toUpperCase() })}
+                                            onChange={(val) => setFormData({ ...formData, code: val?.toUpperCase() })}
                                             placeholder="E.g. VIP2026"
                                             InputProps={{ sx: { borderRadius: 2, fontWeight: 700, fontFamily: 'monospace' } }}
                                         />
@@ -1579,7 +1579,7 @@ const CouponsAdminPage: React.FC = () => {
                                             {['dine_in', 'takeaway', 'delivery', 'online_takeaway'].map((type) => (
                                                 <Chip
                                                     key={type}
-                                                    label={type.replace('_', ' ').toUpperCase()}
+                                                    label={type.replace('_', ' ')?.toUpperCase()}
                                                     size="small"
                                                     onClick={() => {
                                                         const current = [...formData.applicableOrderTypes];
@@ -2051,8 +2051,8 @@ const CouponsAdminPage: React.FC = () => {
                     }}>
                         {(() => {
                             const filtered = customersWithPhone.filter((c: any) => {
-                                const q = smsSearch.toLowerCase();
-                                return !q || (c.name || '').toLowerCase().includes(q) || (c.phone || '').includes(q);
+                                const q = smsSearch?.toLowerCase();
+                                return !q || (c.name || '')?.toLowerCase().includes(q) || (c.phone || '').includes(q);
                             });
                             if (filtered.length === 0) {
                                 return (
@@ -2317,13 +2317,13 @@ const CouponsAdminPage: React.FC = () => {
                                 <TableBody>
                                     {allUnsubscribeDetails
                                         .filter((record) => {
-                                            const q = unsubscribeSearch.trim().toLowerCase();
+                                            const q = unsubscribeSearch.trim()?.toLowerCase();
                                             if (!q) return true;
                                             return (
-                                                (record.name || '').toLowerCase().includes(q) ||
-                                                (record.email || '').toLowerCase().includes(q) ||
-                                                (record.phone || '').toLowerCase().includes(q) ||
-                                                (record.emailUnsubscribeSource || '').toLowerCase().includes(q)
+                                                (record.name || '')?.toLowerCase().includes(q) ||
+                                                (record.email || '')?.toLowerCase().includes(q) ||
+                                                (record.phone || '')?.toLowerCase().includes(q) ||
+                                                (record.emailUnsubscribeSource || '')?.toLowerCase().includes(q)
                                             );
                                         })
                                         .map((record) => (

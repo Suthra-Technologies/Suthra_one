@@ -19,7 +19,7 @@ import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 const FlagImg: React.FC<{ iso2: string; size?: number }> = ({ iso2, size = 20 }) => (
     <Box
         component="img"
-        src={`https://flagcdn.com/w40/${iso2.toLowerCase()}.png`}
+        src={`https://flagcdn.com/w40/${iso2?.toLowerCase()}.png`}
         alt={iso2}
         sx={{
             width: size,
@@ -291,7 +291,7 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
         DEFAULT_COUNTRY;
 
     const filtered = useMemo(() => {
-        const q = search.toLowerCase().trim();
+        const q = search?.toLowerCase().trim();
         if (!q) {
             // Show USA first, then India, then rest of countries
             const usaCountry = COUNTRIES.filter(c => c.iso2 === 'US');
@@ -301,9 +301,9 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
         }
         return COUNTRIES.filter(
             (c) =>
-                c.name.toLowerCase().includes(q) ||
+                c.name?.toLowerCase().includes(q) ||
                 c.dialCode.includes(q) ||
-                c.iso2.toLowerCase().includes(q)
+                c.iso2?.toLowerCase().includes(q)
         );
     }, [search]);
 

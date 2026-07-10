@@ -310,7 +310,7 @@ const CustomerFoodOrdering: React.FC = () => {
       (it.categories && it.categories.length > 0
         ? it.categories.some((c: any) => (typeof c === 'object' ? c._id : c) === activeCategoryId)
         : it.category?._id === activeCategoryId);
-    const matchesSearch = !search || it.name?.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = !search || it.name?.toLowerCase().includes(search?.toLowerCase());
     return matchesCat && matchesSearch;
   }), [allItems, activeCategoryId, search]);
   const addToCart = (item: any) => {
@@ -636,7 +636,7 @@ const CustomerFoodOrdering: React.FC = () => {
 
               <Box mb={2}>
                 <Box display="flex" gap={1} mb={1}>
-                  <TextField size="small" placeholder="Coupon Code" value={couponCode} onChange={(e) => setCouponCode(e.target.value.toUpperCase())} fullWidth disabled={!!appliedCoupon} />
+                  <TextField size="small" placeholder="Coupon Code" value={couponCode} onChange={(e) => setCouponCode(e.target.value?.toUpperCase())} fullWidth disabled={!!appliedCoupon} />
                   {!appliedCoupon ? <Button variant="contained" size="small" onClick={handleApplyCoupon}>Apply</Button> : <Button variant="outlined" size="small" color="error" onClick={() => { setAppliedCoupon(null); setDiscount(0); setCouponCode(''); }}>Remove</Button>}
                 </Box>
                 {coupons.length > 0 && !appliedCoupon && (
@@ -687,7 +687,7 @@ const CustomerFoodOrdering: React.FC = () => {
               <TextField fullWidth size="small" label="Email" sx={{ mb: 1 }} value={customerInfo.email} onChange={(e) => setCustomerInfo({ ...customerInfo, email: e.target.value })} />
               {orderType === 'delivery' && (
                 <Box sx={{ mb: 1 }}>
-                  <GooglePlacesAutocomplete label="Delivery Address *" placeholder="Search address" value={customerInfo.address} onChange={(val: string) => setCustomerInfo({ ...customerInfo, address: val })} onPlaceSelect={(place: any) => { setDeliveryLocation(place); if (place?.formattedAddress) { setCustomerInfo({ ...customerInfo, address: place.formattedAddress }); } }} required types={['address']} countryRestriction={import.meta.env.VITE_MAPS_COUNTRIES ? import.meta.env.VITE_MAPS_COUNTRIES.split(',').map((c: string) => c.trim().toLowerCase()).filter(Boolean) : ['in', 'us']} />
+                  <GooglePlacesAutocomplete label="Delivery Address *" placeholder="Search address" value={customerInfo.address} onChange={(val: string) => setCustomerInfo({ ...customerInfo, address: val })} onPlaceSelect={(place: any) => { setDeliveryLocation(place); if (place?.formattedAddress) { setCustomerInfo({ ...customerInfo, address: place.formattedAddress }); } }} required types={['address']} countryRestriction={import.meta.env.VITE_MAPS_COUNTRIES ? import.meta.env.VITE_MAPS_COUNTRIES.split(',').map((c: string) => c.trim()?.toLowerCase()).filter(Boolean) : ['in', 'us']} />
                 </Box>
               )}
               <Button 
@@ -724,7 +724,7 @@ const CustomerFoodOrdering: React.FC = () => {
                           order.status === 'ready_to_takeaway' ? 'Ready for Pickup' :
                             order.status === 'ready_to_pickup' ? 'Ready for Pickup' :
                               order.status === 'on_the_way' ? 'Out for Delivery' :
-                                order.status.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
+                                order.status.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c?.toUpperCase())
                         }
                         color={
                           ['ready', 'ready_to_takeaway', 'ready_to_pickup', 'delivered', 'completed'].includes(order.status) ? 'success' :

@@ -95,7 +95,7 @@ const UberDirectPage: React.FC = () => {
                 external_business_location_id: editLocationDialog.external_business_location_id,
             });
             if (res.data?._addressUpdateSkipped) {
-                toast.warn('Saved — but address was not updated because there are orders in progress. Try again once all deliveries are complete.');
+                toast('Saved — but address was not updated because there are orders in progress. Try again once all deliveries are complete.');
             } else {
                 toast.success('Location updated');
             }

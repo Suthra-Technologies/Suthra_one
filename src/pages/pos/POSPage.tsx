@@ -665,7 +665,7 @@ const POSPage: React.FC = () => {
                 // Only show a notification if the error is NOT about minimum bill amount,
                 // since that resolves itself as items are added.
                 const msg: string = error.response?.data?.message || error.message || '';
-                const isMinAmountError = msg.toLowerCase().includes('minimum') || msg.toLowerCase().includes('min');
+                const isMinAmountError = msg?.toLowerCase().includes('minimum') || msg?.toLowerCase().includes('min');
                 if (!isMinAmountError) {
                     // Coupon is genuinely invalid (expired, not applicable etc.) — clear it
                     setCouponCode('');
@@ -699,7 +699,7 @@ const POSPage: React.FC = () => {
                         // Conflict Check: If both are entered but match different profiles
                         // The backend priorities phone, so if matchType is phone but email is different...
                         if (email && phone) {
-                            if (data.matchType === 'phone' && data.customer.email && data.customer.email.toLowerCase() !== email.toLowerCase()) {
+                            if (data.matchType === 'phone' && data.customer.email && data.customer.email?.toLowerCase() !== email?.toLowerCase()) {
                                 setCustomerConflict(true);
                             } else {
                                 setCustomerConflict(false);
@@ -1032,13 +1032,13 @@ const POSPage: React.FC = () => {
     // Filtering menu items
     const filteredItems = useMemo(() => {
         const now = new Date();
-        const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+        const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' })?.toLowerCase();
 
         if (!Array.isArray(menuItems)) return [];
 
         return menuItems.filter((item) => {
             // --- Search ---
-            const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesSearch = item.name?.toLowerCase().includes(searchQuery?.toLowerCase());
 
             // --- Category ---
             // item.category can be a string ID or a populated { _id, name } object.
@@ -1061,7 +1061,7 @@ const POSPage: React.FC = () => {
             if (item.isWeeklyScheduleEnabled) {
                 // Check if today is one of the available days
                 const isDayAvailable = (item.availableDays || []).some(
-                    (d: string) => d.toLowerCase() === currentDay
+                    (d: string) => d?.toLowerCase() === currentDay
                 );
 
                 // If it's "available_only" and today is NOT the day, hide it
@@ -1343,7 +1343,7 @@ const POSPage: React.FC = () => {
 
     const handleManualPaymentConfirm = async () => {
         setManualPaymentDialogOpen(false);
-        await submitOrder(`MANUAL_${paymentMethod.toUpperCase()}`);
+        await submitOrder(`MANUAL_${paymentMethod?.toUpperCase()}`);
     };
     const fetchTables = async () => {
         try {
@@ -1426,7 +1426,7 @@ const POSPage: React.FC = () => {
 
             // Handle fully paid by rewards
             if (finalTotal === 0 && cart.length > 0) {
-                finalPaymentMethod = 'rewards';
+                finalPaymentMethod = 'rewards' as any;
                 finalPaymentStatus = 'paid';
                 console.log("[POS] Order fully covered by rewards/coupons. Setting status to PAID.");
             } else if (orderType === 'dine_in') {
@@ -2927,7 +2927,7 @@ const POSPage: React.FC = () => {
                                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                                         <Typography sx={{ color: 'primary.main', fontWeight: 900, fontSize: '0.75rem', letterSpacing: '0.5px' }}>
-                                                            {group.name.toUpperCase()}
+                                                            {group.name?.toUpperCase()}
                                                         </Typography>
                                                         {group.required && (
                                                             <Chip label="Required" size="small" sx={{ height: 18, fontSize: '0.6rem', fontWeight: 900, bgcolor: 'error.main', color: 'white' }} />
@@ -2941,7 +2941,7 @@ const POSPage: React.FC = () => {
                                                 </Box>
 
                                                 <Grid container spacing={1}>
-                                                    {group.options.map((option, optIdx) => {
+                                                    {group.options.map((option: any, optIdx: number) => {
                                                         const isSelected = (tempModifiers[group.name] || []).some(o => o.name === option.name);
                                                         
                                                         const toggleOption = () => {
@@ -3085,7 +3085,7 @@ const POSPage: React.FC = () => {
                                             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
                                                 {(selectedItem as any).spiceLevels.map((level: string, i: number) => {
                                                     const isSel = (tempSelectedSpiceLevel || (selectedItem as any).spiceLevels[0]) === level;
-                                                    const normalizedLevel = level.toLowerCase().replace(/_/g, ' ');
+                                                    const normalizedLevel = level?.toLowerCase().replace(/_/g, ' ');
                                                     return (
                                                         <Box
                                                             key={i}
@@ -3245,7 +3245,7 @@ const POSPage: React.FC = () => {
                         <CloseIcon sx={{ fontSize: 16 }} />
                     </IconButton>
                     <Typography variant="h6" gutterBottom>
-                        Payment via {paymentMethod === 'zelle' ? 'Zelle' : paymentMethod === 'venmo' ? 'Venmo' : paymentMethod === 'phonepe' ? 'PhonePe' : paymentMethod === 'gpay' ? 'GPay' : paymentMethod === 'paytm' ? 'Paytm' : paymentMethod.toUpperCase()}
+                        Payment via {paymentMethod === 'zelle' ? 'Zelle' : paymentMethod === 'venmo' ? 'Venmo' : paymentMethod === 'phonepe' ? 'PhonePe' : paymentMethod === 'gpay' ? 'GPay' : paymentMethod === 'paytm' ? 'Paytm' : paymentMethod?.toUpperCase()}
                     </Typography>
                     <Typography variant="body1" sx={{ mb: 3 }}>
                         Please collect <strong>{formatSmartPrice(finalTotal)}</strong> from the customer.

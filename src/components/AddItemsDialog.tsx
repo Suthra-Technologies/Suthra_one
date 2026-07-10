@@ -186,7 +186,7 @@ const AddItemsDialog: React.FC<AddItemsDialogProps> = ({ open, order, onClose, o
     };
     // Filtering menu items
     const filteredItems = menuItems.filter((item) => {
-        const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesSearch = item.name?.toLowerCase().includes(searchQuery?.toLowerCase());
         const matchesCategory =
             selectedCategory === 'all' ||
             (item.category && (item.category._id === selectedCategory || item.category === selectedCategory));

@@ -99,7 +99,7 @@ export async function printBillThermal(
         gstNo: billData.restaurant?.gstNo,
         orderNumber:
             billData.orderNumber ||
-            (billData._id ? billData._id.slice(-8).toUpperCase() : ''),
+            (billData._id ? billData._id.slice(-8)?.toUpperCase() : ''),
         dateText: formatDateTime(billData.date || billData.createdAt, billData.restaurant?.timezone),
         orderTypeLabel: getOrderTypeLabel(billData.orderType),
         tableLabel: billData.orderType === 'dine_in' ? tableLabel : undefined,

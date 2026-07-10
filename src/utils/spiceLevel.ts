@@ -3,7 +3,7 @@ export const formatSpiceLevelLabel = (value?: string | null) => {
     return '';
   }
 
-  const normalized = value.trim().toLowerCase().replace(/[\s-]+/g, '_');
+  const normalized = value.trim()?.toLowerCase().replace(/[\s-]+/g, '_');
 
   switch (normalized) {
     case 'mild':
@@ -20,7 +20,7 @@ export const formatSpiceLevelLabel = (value?: string | null) => {
       return value
         .split(/[_\s-]+/)
         .filter(Boolean)
-        .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+        .map((part) => part.charAt(0)?.toUpperCase() + part.slice(1)?.toLowerCase())
         .join(' ');
   }
 };

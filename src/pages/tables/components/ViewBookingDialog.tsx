@@ -64,7 +64,7 @@ const ViewBookingDialog: React.FC<ViewBookingDialogProps> = ({
                             #{booking.bookingId}
                         </Typography>
                         <Chip
-                            label={booking.status.toUpperCase()}
+                            label={booking.status?.toUpperCase()}
                             color={getBookingStatusColor(booking.status)}
                             size="small"
                         />

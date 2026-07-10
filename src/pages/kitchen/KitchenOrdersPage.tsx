@@ -336,7 +336,7 @@ const KitchenOrdersPage: React.FC = () => {
                                             )}
                                         </Box>
                                         <Chip
-                                            label={order.status?.replace(/_/g, ' ').toUpperCase()}
+                                            label={order.status?.replace(/_/g, ' ')?.toUpperCase()}
                                             color={getStatusColor(order.status) as any}
                                             size="small"
                                             sx={{ fontWeight: 'bold', alignSelf: { xs: 'flex-start', sm: 'flex-start' }, height: { xs: 22, sm: 24 }, fontSize: { xs: '0.62rem', sm: bodyFontSize.sm } }}
@@ -347,7 +347,7 @@ const KitchenOrdersPage: React.FC = () => {
                                         <Box sx={{ display: 'flex', alignItems: 'center' }}>
                                             <RestaurantIcon fontSize="small" sx={{ mr: 0.75, fontSize: { xs: 14, sm: 16 } }} />
                                             <Typography variant="body2" sx={{ fontWeight: 'bold', fontSize: bodyFontSize }}>
-                                                {order.orderType?.replace('_', ' ').toUpperCase()}
+                                                {order.orderType?.replace('_', ' ')?.toUpperCase()}
                                             </Typography>
                                         </Box>
                                         <Box sx={{ display: 'flex', alignItems: 'center' }}>

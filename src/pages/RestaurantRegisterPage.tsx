@@ -368,7 +368,7 @@ const RestaurantRegisterPage: React.FC = () => {
                   helperText={
                     getHelperText(errors.slug) ||
                     (form.slug.trim()
-                      ? `Your store will be at: ${form.slug.trim().toLowerCase()}.nexzenpos.com`
+                      ? `Your store will be at: ${form.slug.trim()?.toLowerCase()}.nexzenpos.com`
                       : "URL identifier — your store address will be yourname.nexzenpos.com")
                   }
                   required

@@ -351,7 +351,7 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                         type="email"
                         value={customerEmail}
                         onChange={(e) => {
-                            const val = e.target.value.toLowerCase();
+                            const val = e.target.value?.toLowerCase();
                             setCustomerEmail(val);
                             if (customerEmailTouched) {
                                 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

@@ -40,7 +40,7 @@ export const sanitizePhone = (value: string): string => {
 export const sanitizeEmail = (value: string): string => {
   if (!value) return '';
   // Auto convert to lowercase, remove all spaces
-  return value.toLowerCase().replace(/\s/g, '');
+  return value?.toLowerCase().replace(/\s/g, '');
 };
 
 export const sanitizeNumber = (value: string, allowDecimals: boolean = true): string => {

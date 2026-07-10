@@ -88,4 +88,7 @@ export interface IMenuItem {
     validFrom?: Date | null;
     validTo?: Date | null;
     priority?: number;
+    linkedInventoryItem?: string | any;
+    inventoryConsumptionQty?: number;
+    inventoryTrackingMode?: 'recipe' | 'direct';
 }
