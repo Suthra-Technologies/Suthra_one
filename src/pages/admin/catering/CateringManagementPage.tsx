@@ -1588,7 +1588,7 @@ const CateringManagementPage = () => {
         if (status === 'completed') color = 'success';
         if (status === 'cancelled') color = 'error';
         if (status === 'pending') color = 'warning';
-        return <Chip label={status.toUpperCase()} color={color} size="small" />;
+        return <Chip label={status?.toUpperCase()} color={color} size="small" />;
     };
 
     return (
@@ -2969,7 +2969,7 @@ const CateringManagementPage = () => {
                                                                 : ""
                                                         }
                                                         FormHelperTextProps={{ sx: { color: 'error.main' } }}
-                                                        onChange={(e) => setNewOrder({ ...newOrder, customerEmail: e.target.value.toLowerCase() })}
+                                                        onChange={(e) => setNewOrder({ ...newOrder, customerEmail: e.target.value?.toLowerCase() })}
                                                     />
                                                 </Grid>
                                             </Grid>

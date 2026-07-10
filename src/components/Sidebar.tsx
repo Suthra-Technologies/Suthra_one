@@ -334,7 +334,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
                   fontSize: '1rem',
                   fontWeight: 'bold',
                 }}>
-                  {(restaurantSettings.name || (user?.tenant as any)?.name || 'P').charAt(0).toUpperCase()}
+                  {(restaurantSettings.name || (user?.tenant as any)?.name || 'P').charAt(0)?.toUpperCase()}
                 </Avatar>
               )}
             </>
@@ -367,7 +367,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
                 height: collapsed ? 32 : 36,
                 transition: 'all 0.3s ease',
               }}>
-                {activeRole?.charAt(0).toUpperCase()}
+                {activeRole?.charAt(0)?.toUpperCase()}
               </Avatar>
               {!collapsed && (
                 <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>

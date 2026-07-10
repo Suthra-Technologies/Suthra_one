@@ -72,7 +72,16 @@ const ExpensesPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
-    const [filters, setFilters] = useState({
+    const [filters, setFilters] = useState<{
+        status: string;
+        type: string;
+        category: string;
+        search: string;
+        minAmount: number | undefined;
+        maxAmount: number | undefined;
+        startDate?: string;
+        endDate?: string;
+    }>({
         status: '',
         type: '',
         category: '',
@@ -87,7 +96,7 @@ const ExpensesPage: React.FC = () => {
     const [customAmountRange, setCustomAmountRange] = useState({ min: 0, max: 5000 });
     const [amountRange, setAmountRange] = useState({ min: 0, max: 5000 });
     const [inputValues, setInputValues] = useState({ min: '', max: '' });
-    const [customDateRange, setCustomDateRange] = useState({ startDate: null, endDate: null });
+    const [customDateRange, setCustomDateRange] = useState<{ startDate: Date | null; endDate: Date | null }>({ startDate: null, endDate: null });
     const [deleteTarget, setDeleteTarget] = useState<any>(null);
 
     const fetchData = async () => {
@@ -622,7 +631,7 @@ const ExpensesPage: React.FC = () => {
                                         <TableCell>
                                             <Chip
                                                 icon={getTypeIcon(exp.type)}
-                                                label={exp.type.replace('_', ' ').toUpperCase()}
+                                                label={exp.type.replace('_', ' ')?.toUpperCase()}
                                                 size="small"
                                                 variant="outlined"
                                                 sx={{ fontWeight: 'bold' }}

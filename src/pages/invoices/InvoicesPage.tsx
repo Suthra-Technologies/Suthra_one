@@ -172,7 +172,7 @@ const InvoicesPage = () => {
                                                 <Typography variant="caption" color="textSecondary" sx={{ fontSize: '0.7rem' }}>{new Date(invoice.issueDate).toLocaleDateString()}</Typography>
                                             </Box>
                                             <Chip
-                                                label={invoice.status.toUpperCase()}
+                                                label={invoice.status?.toUpperCase()}
                                                 color={getStatusColor(invoice.status) as any}
                                                 size="small"
                                                 sx={{ fontWeight: 'bold', height: 20, fontSize: '0.65rem' }}
@@ -250,7 +250,7 @@ const InvoicesPage = () => {
                                         </TableCell>
                                         <TableCell>
                                             <Chip
-                                                label={invoice.status.toUpperCase()}
+                                                label={invoice.status?.toUpperCase()}
                                                 color={getStatusColor(invoice.status) as any}
                                                 size="small"
                                                 sx={{ fontWeight: 'bold' }}

@@ -141,7 +141,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
                             {po.poNumber}
                         </Typography>
                         <Chip
-                            label={po.status.toUpperCase()}
+                            label={po.status?.toUpperCase()}
                             color={
                                 po.status === 'approved' ? 'info' :
                                     po.status === 'received' ? 'success' :
@@ -310,15 +310,15 @@ const PurchaseOrderDetailPage: React.FC = () => {
                         <Stack spacing={1}>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                                 <Typography variant="body2" color="textSecondary" sx={{ fontSize: bodyFontSize }}>Status</Typography>
-                                <Chip label={po.paymentStatus.toUpperCase()} size="small" />
+                                <Chip label={po.paymentStatus?.toUpperCase()} size="small" />
                             </Box>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                                 <Typography variant="body2" color="textSecondary" sx={{ fontSize: bodyFontSize }}>Method</Typography>
-                                <Typography variant="body2" sx={{ fontSize: bodyFontSize }}>{po.paymentMethod.replace('_', ' ').toUpperCase()}</Typography>
+                                <Typography variant="body2" sx={{ fontSize: bodyFontSize }}>{po.paymentMethod.replace('_', ' ')?.toUpperCase()}</Typography>
                             </Box>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                                 <Typography variant="body2" color="textSecondary" sx={{ fontSize: bodyFontSize }}>Source</Typography>
-                                <Typography variant="body2" sx={{ fontSize: bodyFontSize }}>{po.paymentSource?.replace('_', ' ').toUpperCase() || '-'}</Typography>
+                                <Typography variant="body2" sx={{ fontSize: bodyFontSize }}>{po.paymentSource?.replace('_', ' ')?.toUpperCase() || '-'}</Typography>
                             </Box>
                         </Stack>
                     </Paper>

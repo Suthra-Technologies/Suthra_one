@@ -37,7 +37,7 @@ export const getTenantSlugFromHostname = (): string | null => {
 
   // Search for the first part that is not an ignored system subdomain
   for (let i = 0; i < parts.length - 2; i++) {
-    const part = parts[i].toLowerCase();
+    const part = parts[i]?.toLowerCase();
     if (!ignoredSubdomains.includes(part)) {
       return parts[i];
     }
@@ -102,7 +102,7 @@ export const getTenantUrl = (slug: string, path: string = '', token?: string): s
   
   // Find where the slug is in the hostname and remove it to get the base domain
   for (let i = 0; i < parts.length - 2; i++) {
-    const part = parts[i].toLowerCase();
+    const part = parts[i]?.toLowerCase();
     if (!ignoredSubdomains.includes(part)) {
       // This part is the tenant slug - remove it to get the system base host
       baseParts = parts.slice(0, i).concat(parts.slice(i + 1));

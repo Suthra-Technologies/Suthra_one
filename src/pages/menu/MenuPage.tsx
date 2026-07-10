@@ -162,7 +162,7 @@ const MenuPage: React.FC = () => {
             } catch (err: any) {
                 console.error('Failed to reorder categories:', err);
                 toast.error('Failed to save category order');
-                fetchCategories();
+                fetchData();
             }
         }
     };
@@ -273,7 +273,7 @@ const MenuPage: React.FC = () => {
     const getCategoryId = (category?: string | Category | null) =>
         category && typeof category === 'object' ? category._id : (category || '');
 
-    const normalizeKey = (value?: string | null) => String(value || '').trim().toLowerCase();
+    const normalizeKey = (value?: string | null) => String(value || '').trim()?.toLowerCase();
 
     const itemBelongsToCategory = (item: IMenuItem, category: Category) => {
         const categoryKeys = [category._id, category.name].map(normalizeKey).filter(Boolean);
@@ -436,19 +436,19 @@ const MenuPage: React.FC = () => {
                 console.log('[Frontend] fetchData: Received', {
                     menuItems: newMenuItems.length,
                     categories: newCategories.length,
-                    categoriesList: newCategories.map(c => ({ id: c._id, name: c.name })),
+                    categoriesList: newCategories.map((c: any) => ({ id: c._id, name: c.name })),
                     subcategories: newSubcategories.length,
                     trays: newTrays.length
                 });
 
-                console.log('[Frontend] Categories received:', newCategories.map(cat => ({ id: cat._id, name: cat.name })));
+                console.log('[Frontend] Categories received:', newCategories.map((cat: any) => ({ id: cat._id, name: cat.name })));
                 console.log('[Frontend] Looking for missing categories like "appetizers"...');
-                console.log('[Frontend] All category names:', newCategories.map(c => c.name.toLowerCase()));
+                console.log('[Frontend] All category names:', newCategories.map((c: any) => c.name?.toLowerCase()));
 
                 // Check for specific categories
                 const expectedCategories = ['appetizers', 'starters', 'soups', 'salads', 'desserts', 'beverages'];
-                const missingCategories = expectedCategories.filter(cat =>
-                    !newCategories.some(c => c.name.toLowerCase() === cat.toLowerCase())
+                const missingCategories = expectedCategories.filter((cat: any) =>
+                    !newCategories.some((c: any) => c.name?.toLowerCase() === cat?.toLowerCase())
                 );
 
                 if (missingCategories.length > 0) {
@@ -600,18 +600,18 @@ const MenuPage: React.FC = () => {
 
         // Check for duplicates before creating new
         if (!editingCategory) {
-            const normalizedNewName = categoryForm.name.toLowerCase().trim();
+            const normalizedNewName = categoryForm.name?.toLowerCase().trim();
             const isCreatingSubcategory = !!categoryForm.parentCategory;
 
             let existingDuplicate: any = null;
             if (isCreatingSubcategory) {
                 existingDuplicate = subcategories.find(sub => 
-                    sub.name.toLowerCase().trim() === normalizedNewName && 
+                    sub.name?.toLowerCase().trim() === normalizedNewName && 
                     getSubcategoryParentId(sub) === categoryForm.parentCategory
                 );
             } else {
                 existingDuplicate = categories.find(cat => 
-                    cat.name.toLowerCase().trim() === normalizedNewName
+                    cat.name?.toLowerCase().trim() === normalizedNewName
                 );
             }
 
@@ -865,7 +865,7 @@ const MenuPage: React.FC = () => {
                     // Robust Dynamic Header Mapping
                     const findValue = (keywords: string[]) => {
                         const key = Object.keys(row).find(k => {
-                            const normalizedK = k.toLowerCase().trim();
+                            const normalizedK = k?.toLowerCase().trim();
                             return keywords.some(kw => normalizedK === kw || normalizedK.includes(kw));
                         });
                         return key ? row[key] : undefined;
@@ -900,7 +900,7 @@ const MenuPage: React.FC = () => {
                         isAvailable: isAvailable !== false && isAvailable !== 'false', // default true
                         isCateringAvailable: isCateringAvailable !== false && isCateringAvailable !== 'false', // default true
                         isAutoDebit: true,
-                        foodType: foodType && ['veg', 'non-veg'].includes(String(foodType).toLowerCase()) ? String(foodType).toLowerCase() as 'veg' | 'non-veg' : undefined,
+                        foodType: foodType && ['veg', 'non-veg'].includes(String(foodType)?.toLowerCase()) ? String(foodType)?.toLowerCase() as 'veg' | 'non-veg' : undefined,
                         availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
                     };
                 }));
@@ -921,7 +921,7 @@ const MenuPage: React.FC = () => {
 
 
 
-                const imageCount = validItems.filter(item => item.image).length;
+                const imageCount = validItems.filter((item: any) => item && item.image).length;
                 console.log(`[Frontend] Parsed ${validItems.length} items. Images found: ${imageCount}`);
                 
                 setBulkPreviewItems(validItems);
@@ -1004,8 +1004,8 @@ const MenuPage: React.FC = () => {
                 const processedImage = await processImageField(image || '');
 
                 // Convert string values to boolean properly
-                const isAvailable = isAvailableStr ? String(isAvailableStr).toLowerCase() !== 'false' && String(isAvailableStr) !== '0' : true;
-                const isCateringAvailable = isCateringAvailableStr ? String(isCateringAvailableStr).toLowerCase() !== 'false' && String(isCateringAvailableStr) !== '0' : true;
+                const isAvailable = isAvailableStr ? String(isAvailableStr)?.toLowerCase() !== 'false' && String(isAvailableStr) !== '0' : true;
+                const isCateringAvailable = isCateringAvailableStr ? String(isCateringAvailableStr)?.toLowerCase() !== 'false' && String(isCateringAvailableStr) !== '0' : true;
 
                 return {
                     name: String(name).trim(),
@@ -1018,7 +1018,7 @@ const MenuPage: React.FC = () => {
                     isAvailable: isAvailable,
                     isCateringAvailable: isCateringAvailable,
                     isAutoDebit: true,
-                    foodType: foodType && ['veg', 'non-veg'].includes(String(foodType).toLowerCase()) ? String(foodType).toLowerCase() as 'veg' | 'non-veg' : undefined,
+                    foodType: foodType && ['veg', 'non-veg'].includes(String(foodType)?.toLowerCase()) ? String(foodType)?.toLowerCase() as 'veg' | 'non-veg' : undefined,
                     availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
                 };
             }));
@@ -1072,7 +1072,7 @@ const MenuPage: React.FC = () => {
     }, [categories, menuItems]);
 
     const filteredMenuItems = useMemo(() => {
-        const normalizedQuery = searchQuery.trim().toLowerCase();
+        const normalizedQuery = searchQuery.trim()?.toLowerCase();
 
         const filtered = menuItems.filter((item) => {
             const categoryId = getCategoryId(item.category);
@@ -1083,8 +1083,8 @@ const MenuPage: React.FC = () => {
 
             // Simple search like POS page - search in item name primarily
             const matchesSearch = !normalizedQuery ||
-                item.name.toLowerCase().includes(normalizedQuery) ||
-                (item.description && item.description.toLowerCase().includes(normalizedQuery));
+                item.name?.toLowerCase().includes(normalizedQuery) ||
+                (item.description && item.description?.toLowerCase().includes(normalizedQuery));
 
             return matchesSearch && matchesCategory && matchesSubcategory;
         });
@@ -1499,7 +1499,7 @@ const MenuPage: React.FC = () => {
             {/* Categories Tab */}
             {tabValue === 1 && (
                 <Box>
-                    {console.log('[Frontend] Rendering Categories tab. Current categories:', categories.map(cat => ({ id: cat._id, name: cat.name })))}
+                    {/* console.log('[Frontend] Rendering Categories tab. Current categories:', categories.map(cat => ({ id: cat._id, name: cat.name }))) */}
                     {loading ? (
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 3 }}>
                             <Typography variant="h6" color="text.secondary">

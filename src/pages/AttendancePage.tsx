@@ -144,8 +144,8 @@ const AttendancePage: React.FC = () => {
             if (!isPaginated) {
                 data = data.filter((row: any) => {
                     const roleMatches = activeRoleFilter === 'all' || row.user?.roles?.includes(activeRoleFilter);
-                    const name = `${row.user?.firstName || ''} ${row.user?.lastName || ''}`.toLowerCase();
-                    const searchMatches = !filters.search || name.includes(filters.search.toLowerCase());
+                    const name = `${row.user?.firstName || ''} ${row.user?.lastName || ''}`?.toLowerCase();
+                    const searchMatches = !filters.search || name.includes(filters.search?.toLowerCase());
                     return roleMatches && searchMatches;
                 });
             }
@@ -509,7 +509,7 @@ const AttendancePage: React.FC = () => {
                     {roles.map(role => (
                         <Chip
                             key={role}
-                            label={role.replace('_', ' ').toUpperCase()}
+                            label={role.replace('_', ' ')?.toUpperCase()}
                             onClick={() => {
                                 setActiveRoleFilter(role);
                                 setPage(1);
@@ -1067,7 +1067,7 @@ const AttendancePage: React.FC = () => {
                                             <Typography variant="overline" color="text.secondary" fontWeight="900">Connectivity & Identity</Typography>
                                             <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                                                 <Chip icon={<IpIcon fontSize="small" />} label={`IP: ${selectedShift.clockInIp}`} size="small" sx={{ borderRadius: 2 }} />
-                                                <Chip label={`Staff ID: ${selectedShift.user?._id?.slice(-6).toUpperCase()}`} size="small" variant="outlined" sx={{ borderRadius: 2 }} />
+                                                <Chip label={`Staff ID: ${selectedShift.user?._id?.slice(-6)?.toUpperCase()}`} size="small" variant="outlined" sx={{ borderRadius: 2 }} />
                                             </Stack>
                                         </Box>
 

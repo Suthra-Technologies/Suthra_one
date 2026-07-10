@@ -538,7 +538,7 @@ const OrdersPage = () => {
                   </TableCell>
                   <TableCell>
                     <Chip
-                      label={booking.status.toUpperCase()}
+                      label={booking.status?.toUpperCase()}
                       color={getStatusColor(booking.status) as any}
                       size="small"
                     />

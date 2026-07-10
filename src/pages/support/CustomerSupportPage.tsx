@@ -286,7 +286,7 @@ const CustomerSupportPage: React.FC = () => {
                                             </Box>
                                             <Stack direction="row" spacing={1} sx={{ mt: 0.5 }}>
                                                 <Typography variant="caption" color="text.secondary">
-                                                    Ref: {t._id.slice(-6).toUpperCase()}
+                                                    Ref: {t._id.slice(-6)?.toUpperCase()}
                                                 </Typography>
                                                 <Typography variant="caption" color="text.secondary">•</Typography>
                                                 <Typography variant="caption" color="text.secondary">
@@ -369,7 +369,7 @@ const CustomerSupportPage: React.FC = () => {
                                         )}
                                         {selectedTicket.orderId && (
                                             <Typography variant="caption" color="text.secondary">
-                                                <strong>Linked Order:</strong> #{selectedTicket.orderSnapshot?.orderNumber || selectedTicket.orderId.slice(-6).toUpperCase()}
+                                                <strong>Linked Order:</strong> #{selectedTicket.orderSnapshot?.orderNumber || selectedTicket.orderId.slice(-6)?.toUpperCase()}
                                             </Typography>
                                         )}
                                     </Stack>

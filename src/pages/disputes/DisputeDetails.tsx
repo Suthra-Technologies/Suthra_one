@@ -123,7 +123,7 @@ const DisputeDetails: React.FC = () => {
                 <Box>
                   <Typography variant="caption" color="text.secondary" fontWeight="700" sx={{ textTransform: 'uppercase' }}>Reason</Typography>
                   <Typography variant="body1" fontWeight="600" color="error.main">
-                    {dispute.reason.replace(/_/g, ' ').toUpperCase()}
+                    {dispute.reason.replace(/_/g, ' ')?.toUpperCase()}
                   </Typography>
                 </Box>
 
@@ -169,7 +169,7 @@ const DisputeDetails: React.FC = () => {
                     </Avatar>
                     <Box>
                       <Typography variant="body2" fontWeight="600">
-                        {history.status.replace(/_/g, ' ').toUpperCase()}
+                        {history.status.replace(/_/g, ' ')?.toUpperCase()}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
                         {new Date(history.timestamp).toLocaleString()} • {history.notes}

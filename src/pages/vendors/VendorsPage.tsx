@@ -1263,7 +1263,7 @@ const VendorsPage: React.FC = () => {
                                                         value={formData.bankDetails.ifscCode}
                                                         onChange={(e) => setFormData({
                                                             ...formData,
-                                                            bankDetails: { ...formData.bankDetails, ifscCode: e.target.value.toUpperCase() }
+                                                            bankDetails: { ...formData.bankDetails, ifscCode: e.target.value?.toUpperCase() }
                                                         })}
                                                     />
                                                 </Grid>

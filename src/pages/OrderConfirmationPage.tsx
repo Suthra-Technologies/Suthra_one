@@ -67,7 +67,7 @@ const OrderConfirmationPage: React.FC = () => {
   const location = useLocation();
   const { user } = useAuth();
   const [orderData] = useState<OrderData>({
-    orderNumber: 'ORD-' + Math.random().toString(36).substr(2, 9).toUpperCase(),
+    orderNumber: 'ORD-' + Math.random().toString(36).substr(2, 9)?.toUpperCase(),
     status: 'confirmed',
     orderType: 'delivery',
     estimatedTime: '35-45',

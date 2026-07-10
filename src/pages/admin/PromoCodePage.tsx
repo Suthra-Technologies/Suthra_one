@@ -407,7 +407,7 @@ const PromoCodePage: React.FC = () => {
                 ...formData,
                 discountValue: Number(formData.discountValue) || 0,
                 minBillAmount: Number(formData.minBillAmount) || 0,
-                code: formData.code.toUpperCase()
+                code: formData.code?.toUpperCase()
             };
 
             if (editingPromo) {
@@ -615,8 +615,8 @@ const PromoCodePage: React.FC = () => {
     const safePromos = Array.isArray(promos) ? promos : [];
 
     const filteredPromos = safePromos.filter(p =>
-        (p.code?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-        (p.name?.toLowerCase() || '').includes(searchTerm.toLowerCase())
+        (p.code?.toLowerCase() || '').includes(searchTerm?.toLowerCase()) ||
+        (p.name?.toLowerCase() || '').includes(searchTerm?.toLowerCase())
     );
 
     const stats = useMemo(() => {
@@ -1335,7 +1335,7 @@ const PromoCodePage: React.FC = () => {
                                             required
                                             size="small"
                                             value={formData.code}
-                                            onChange={(val) => setFormData({ ...formData, code: val.toUpperCase() })}
+                                            onChange={(val) => setFormData({ ...formData, code: val?.toUpperCase() })}
                                             placeholder="E.g. SUMMER2026"
                                             helperText={isMobile ? "" : "This is what customers will enter"}
                                             InputProps={{ sx: { borderRadius: 2, fontWeight: 700, fontFamily: 'monospace' } }}

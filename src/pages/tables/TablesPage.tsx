@@ -587,12 +587,12 @@ const TablesPage: React.FC = () => {
 
         // Search filter
         if (bookingSearchQuery) {
-            const query = bookingSearchQuery.toLowerCase();
-            const customerName = `${booking.guestInfo?.firstName || ''} ${booking.guestInfo?.lastName || ''}`.toLowerCase();
-            const phone = (booking.guestInfo?.phone || '').toLowerCase();
-            const email = (booking.guestInfo?.email || '').toLowerCase();
-            const bookingId = (booking.bookingId || '').toLowerCase();
-            const tableName = (booking.table?.tableName || booking.table?.tableNumber || '').toString().toLowerCase();
+            const query = bookingSearchQuery?.toLowerCase();
+            const customerName = `${booking.guestInfo?.firstName || ''} ${booking.guestInfo?.lastName || ''}`?.toLowerCase();
+            const phone = (booking.guestInfo?.phone || '')?.toLowerCase();
+            const email = (booking.guestInfo?.email || '')?.toLowerCase();
+            const bookingId = (booking.bookingId || '')?.toLowerCase();
+            const tableName = (booking.table?.tableName || booking.table?.tableNumber || '').toString()?.toLowerCase();
 
             if (!customerName.includes(query) &&
                 !phone.includes(query) &&
@@ -923,7 +923,7 @@ const TablesPage: React.FC = () => {
                                                 />
                                                 <Chip
                                                     icon={table.isActive === false ? <RestoreIcon /> : getStatusIcon(table.status)}
-                                                    label={table.isActive === false ? 'DELETED' : table.status.toUpperCase()}
+                                                    label={table.isActive === false ? 'DELETED' : table.status?.toUpperCase()}
                                                     color={(table.isActive === false ? 'warning' : getStatusColor(table.status)) as any}
                                                     size="small"
                                                     sx={{ 
@@ -1228,7 +1228,7 @@ const TablesPage: React.FC = () => {
                                                                 </Typography>
                                                             </Box>
                                                             <Chip
-                                                                label={booking.status.toUpperCase()}
+                                                                label={booking.status?.toUpperCase()}
                                                                 size="small"
                                                                 sx={{ 
                                                                     fontWeight: 'bold', 
@@ -1438,7 +1438,7 @@ const TablesPage: React.FC = () => {
                                                         </TableCell>
                                                         <TableCell>
                                                             <Chip
-                                                                label={booking.status.toUpperCase()}
+                                                                label={booking.status?.toUpperCase()}
                                                                 color={getBookingStatusColor(booking.status) as any}
                                                                 size="small"
                                                             />
@@ -1924,7 +1924,7 @@ const TablesPage: React.FC = () => {
                     <Button
                         onClick={() => {
                             if (newLocationName.trim()) {
-                                const formatted = newLocationName.trim().replace(/\s+/g, '_').toLowerCase();
+                                const formatted = newLocationName.trim().replace(/\s+/g, '_')?.toLowerCase();
                                 if (!customLocations.includes(formatted)) {
                                     setCustomLocations(prev => [...prev, formatted]);
                                 }

@@ -117,7 +117,7 @@ export function buildBillEposXml(data: EscPosBillData): string {
 
     // Order meta
     b.line(
-        data.orderTypeLabel.toUpperCase() + (data.tokenNumber ? ` - Token #${data.tokenNumber}` : ''),
+        data.orderTypeLabel?.toUpperCase() + (data.tokenNumber ? ` - Token #${data.tokenNumber}` : ''),
         { align: 'center', bold: true },
     );
     b.line('Order No: ' + data.orderNumber);

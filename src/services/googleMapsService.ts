@@ -183,7 +183,7 @@ export const getPlaceDetails = async (placeId: string): Promise<any> => {
 export const areAddressesIdentical = (addr1: any, addr2: any): boolean => {
   if (!addr1 || !addr2) return false;
   
-  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '').trim();
+  const normalize = (s: string) => s?.toLowerCase().replace(/[^a-z0-9]/g, '').trim();
 
   // If both are strings
   if (typeof addr1 === 'string' && typeof addr2 === 'string') {
