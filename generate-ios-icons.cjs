@@ -11,7 +11,7 @@ const sharp = require('sharp');
 const path = require('path');
 const fs = require('fs');
 
-const SOURCE_LOGO = path.join(__dirname, 'public', 'logo.png');
+const SOURCE_LOGO = path.join(__dirname, 'assets', 'icon-mark.png');
 const IOS_ASSETS_DIR = path.join(__dirname, 'ios', 'App', 'App', 'Assets.xcassets', 'AppIcon.appiconset');
 
 // Background color (white to match logo background)

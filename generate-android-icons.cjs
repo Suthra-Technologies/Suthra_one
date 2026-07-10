@@ -19,7 +19,7 @@ const sharp = require('sharp');
 const path = require('path');
 const fs = require('fs');
 
-const SOURCE_LOGO = path.join(__dirname, 'assets', 'icon.png');
+const SOURCE_LOGO = path.join(__dirname, 'assets', 'icon-mark.png');
 const RES_DIR = path.join(__dirname, 'android', 'app', 'src', 'main', 'res');
 
 // Background color (white to match logo background)
