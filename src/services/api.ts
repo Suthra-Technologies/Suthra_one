@@ -230,6 +230,8 @@ export const ordersAPI = {
   // Mark a print stage done (kot | bill | both) so the background station won't reprint it.
   markPrintStage: (id: string, stage: 'kot' | 'bill' | 'both') =>
     api.post(`/orders/station/${id}/mark-printed`, { stage }),
+  // Atomically claim an order for printing — only one device gets { claimed: true }.
+  claimPrint: (id: string) => api.post(`/orders/station/${id}/claim-print`),
   downloadPDF: (id: string) => api.get(`/orders/${id}/pdf`, { responseType: 'blob' }),
 
   // Coupon management

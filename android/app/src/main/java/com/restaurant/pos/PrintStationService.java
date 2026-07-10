@@ -112,6 +112,13 @@ public class PrintStationService extends Service {
                                 }
                             }
                             try {
+                                // Atomically claim the order — the in-app auto-print (or another
+                                // device) may be printing it right now. Losing the claim means
+                                // someone else has it; skip to avoid duplicate tickets.
+                                if (!claimPrint(orderId)) {
+                                    Log.i(TAG, "Order " + orderId + " claimed by another device — skipping");
+                                    continue;
+                                }
                                 printOrder(bill, stage);
                                 markPrinted(orderId, stage);
                                 Log.i(TAG, "Printed order " + orderId + " stage=" + stage);
@@ -149,6 +156,40 @@ public class PrintStationService extends Service {
             return new JSONArray(body);
         } finally {
             conn.disconnect();
+        }
+    }
+
+    /**
+     * Atomically claims the order for printing. Returns true if this device won the
+     * claim. On HTTP/network failure returns true (print anyway) — a missed dedupe
+     * beats a missed ticket, and the queue query already filters claimed orders.
+     */
+    private boolean claimPrint(String orderId) {
+        try {
+            URL url = new URL(apiBase + "/api/orders/station/" + orderId + "/claim-print");
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            try {
+                conn.setConnectTimeout(5000);
+                conn.setReadTimeout(6000);
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Authorization", "Bearer " + jwt);
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setDoOutput(true);
+                conn.getOutputStream().write("{}".getBytes(StandardCharsets.UTF_8));
+                int code = conn.getResponseCode();
+                String body = readBody(conn, code);
+                if (code != 200 && code != 201) {
+                    Log.w(TAG, "claim-print HTTP " + code + ": " + body);
+                    return true;
+                }
+                JSONObject res = new JSONObject(body);
+                return res.optBoolean("claimed", true);
+            } finally {
+                conn.disconnect();
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "claim-print failed (" + e.getMessage() + ") — printing anyway");
+            return true;
         }
     }
 

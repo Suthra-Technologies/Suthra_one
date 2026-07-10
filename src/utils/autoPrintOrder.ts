@@ -67,6 +67,20 @@ export async function autoPrintOrder(
     // Reserve the id up front so a near-simultaneous second trigger bails out immediately.
     markPrinted(orderId);
 
+    // Cross-device dedupe: atomically claim the order in the backend. If another device
+    // (background print station, second POS terminal, browser session) already claimed it,
+    // skip — that device is printing it. If the claim call itself fails (offline backend),
+    // print anyway: a missed dedupe beats a missed ticket.
+    try {
+        const { data: claim } = await ordersAPI.claimPrint(orderId);
+        if (claim && claim.claimed === false) {
+            console.log('[AutoPrint] Another device claimed order', orderId, '— skipping');
+            return false;
+        }
+    } catch (claimErr) {
+        console.warn('[AutoPrint] claimPrint failed — printing without cross-device dedupe', claimErr);
+    }
+
     try {
         const { data: billData } = await ordersAPI.getBillData(orderId);
         const isDelivery = billData?.orderType === 'delivery';
