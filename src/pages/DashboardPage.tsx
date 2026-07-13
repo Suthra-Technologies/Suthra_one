@@ -129,12 +129,12 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color = 
         {icon}
       </Box>
 
-      <CardContent sx={{ position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } } }}>
+      <CardContent sx={{ position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', p: { xs: 0.75, sm: 2 }, '&:last-child': { pb: { xs: 0.75, sm: 2 } } }}>
         <Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: { xs: 1, sm: 2 } }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: { xs: 0.25, sm: 2 } }}>
             <Box
               sx={{
-                p: { xs: 1, sm: 1.5 },
+                p: { xs: 0.25, sm: 1.5 },
                 borderRadius: '16px',
                 bgcolor: alpha(themeColor, 0.1),
                 color: themeColor,
@@ -143,7 +143,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color = 
                 justifyContent: 'center'
               }}
             >
-              {React.isValidElement(icon) ? React.cloneElement(icon as React.ReactElement<any>, { fontSize: 'medium' }) : icon}
+              {React.isValidElement(icon) ? React.cloneElement(icon as React.ReactElement<any>, { fontSize: isXs ? 'small' : 'medium' }) : icon}
             </Box>
             {trend !== undefined && (
               <Chip
@@ -151,12 +151,12 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color = 
                 size="small"
                 color={trend >= 0 ? 'success' : 'error'}
                 variant="filled"
-                sx={{ fontWeight: 700, borderRadius: '8px', height: 24 }}
+                sx={{ fontWeight: 700, borderRadius: '8px', height: { xs: 16, sm: 24 }, fontSize: { xs: '0.55rem', sm: '0.8125rem' } }}
               />
             )}
           </Box>
 
-          <Typography variant="body2" fontWeight="600" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: { xs: 0.5, sm: 1.2 }, mb: { xs: 0.5, sm: 1 }, fontSize: { xs: '0.65rem', sm: '0.875rem' }, lineHeight: 1.2 }}>
+          <Typography variant="body2" fontWeight="600" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: { xs: 0.1, sm: 1.2 }, mb: { xs: 0.1, sm: 1 }, fontSize: { xs: '0.5rem', sm: '0.875rem' }, lineHeight: 1.2 }}>
             {title}
           </Typography>
 
@@ -167,8 +167,8 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color = 
               background: `linear-gradient(45deg, ${themeColor}, ${alpha(themeColor, 0.7)})`,
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
-              fontSize: { xs: '1.5rem', sm: '2rem', lg: '2.5rem' },
-              mb: 1
+              fontSize: { xs: '1rem', sm: '2rem', lg: '2.5rem' },
+              mb: { xs: 0.25, sm: 1 }
             }}
           >
             {value}
@@ -176,7 +176,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color = 
         </Box>
 
         {subtitle && (
-          <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: { xs: '0.65rem', sm: '0.875rem' }, mt: { xs: 0.5, sm: 0 } }}>
+          <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, fontSize: { xs: '0.5rem', sm: '0.875rem' }, mt: { xs: 0.25, sm: 0 } }}>
             {subtitle}
           </Typography>
         )}
@@ -197,10 +197,10 @@ const OrdersChart: React.FC<OrdersChartProps> = ({ data }) => {
   const isSm = useMediaQuery(theme.breakpoints.between("sm", "md"));
 
   return (
-    <ResponsiveContainer width="100%" height={isXs ? 240 : isSm ? 280 : 320}>
+    <ResponsiveContainer width="100%" height={isXs ? 180 : isSm ? 280 : 320}>
       <AreaChart
         data={data}
-        margin={{ top: 20, right: isXs ? 0 : 40, left: isXs ? -20 : 10, bottom: 10 }}
+        margin={{ top: isXs ? 0 : 20, right: isXs ? 0 : 40, left: isXs ? -20 : 10, bottom: 10 }}
       >
         {/* Gradient Fill */}
         <defs>
@@ -665,27 +665,38 @@ const DashboardPage: React.FC = () => {
             width: '100%'
           }}>
 
-            <ToggleButtonGroup
-              value={timeRange}
-              exclusive
-              onChange={(_, v) => {
-                if (v) {
-                  setTimeRange(v);
-                  if (v === 'custom') {
-                    const today = new Date().toISOString().split('T')[0];
-                    setStartDate(today);
-                    setEndDate(today);
+            <Box sx={{ display: 'flex', alignItems: 'center', width: { xs: '100%', sm: 'auto' }, gap: 1 }}>
+              <ToggleButtonGroup
+                value={timeRange}
+                exclusive
+                onChange={(_, v) => {
+                  if (v) {
+                    setTimeRange(v);
+                    if (v === 'custom') {
+                      const today = new Date().toISOString().split('T')[0];
+                      setStartDate(today);
+                      setEndDate(today);
+                    }
                   }
-                }
-              }}
-              size="small"
-              fullWidth={isMobile}
-            >
-              <ToggleButton value="today">Today</ToggleButton>
-              <ToggleButton value="week">Week</ToggleButton>
-              <ToggleButton value="month">Month</ToggleButton>
-              <ToggleButton value="custom">Custom</ToggleButton>
-            </ToggleButtonGroup>
+                }}
+                size="small"
+                fullWidth={isMobile}
+                sx={{ flex: 1 }}
+              >
+                <ToggleButton value="today">Today</ToggleButton>
+                <ToggleButton value="week">Week</ToggleButton>
+                <ToggleButton value="month">Month</ToggleButton>
+                <ToggleButton value="custom">Custom</ToggleButton>
+              </ToggleButtonGroup>
+
+              <IconButton
+                onClick={fetchDashboardData}
+                color="primary"
+                disabled={loading}
+              >
+                <Refresh />
+              </IconButton>
+            </Box>
 
             {timeRange === 'custom' && (
               <Box sx={{
@@ -700,6 +711,7 @@ const DashboardPage: React.FC = () => {
                   size="small"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
+                  inputProps={{ max: endDate || undefined }}
                   sx={{ flex: { xs: 1, sm: 'none' }, width: { sm: 140 } }}
                 />
                 <Typography variant="body2">-</Typography>
@@ -708,18 +720,11 @@ const DashboardPage: React.FC = () => {
                   size="small"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
+                  inputProps={{ min: startDate || undefined }}
                   sx={{ flex: { xs: 1, sm: 'none' }, width: { sm: 140 } }}
                 />
               </Box>
             )}
-            <IconButton
-              onClick={fetchDashboardData}
-              color="primary"
-              disabled={loading}
-              sx={{ ml: { xs: 0, sm: 1 } }}
-            >
-              <Refresh />
-            </IconButton>
           </Box>
         </Stack>
       </Box>
@@ -814,7 +819,7 @@ const DashboardPage: React.FC = () => {
       </Grid>
 
       {/* Orders Charts Area */}
-      <Grid container spacing={3}>
+      <Grid container spacing={{ xs: 1.5, sm: 3 }}>
         <Grid item xs={12}>
           <Box sx={{
             p: { xs: 1.5, sm: 3 },
@@ -830,7 +835,7 @@ const DashboardPage: React.FC = () => {
               boxShadow: `0 12px 30px 0 ${alpha(theme.palette.primary.main, 0.1)}`,
             }
           }}>
-            <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, fontSize: headingFontSize, color: { xs: '#000', sm: 'text.primary' }, textAlign: { xs: 'center', sm: 'left' } }}>
+            <Typography variant="h6" sx={{ mb: { xs: 0, sm: 1.5 }, fontWeight: 600, fontSize: headingFontSize, color: { xs: '#000', sm: 'text.primary' }, textAlign: { xs: 'center', sm: 'left' } }}>
               Orders Activity (Hourly)
             </Typography>
             <OrdersChart data={dashboardData?.hourlyDistribution || []} />
@@ -844,7 +849,7 @@ const DashboardPage: React.FC = () => {
       {!hasBookings ? (
 
         /* ================= SINGLE CARD ================= */
-        <Grid container spacing={3} sx={{ mt: 1 }}>
+        <Grid container spacing={{ xs: 1.5, sm: 3 }} sx={{ mt: 1 }}>
           <Grid item xs={12}>
             <Box
               sx={{
@@ -876,7 +881,7 @@ const DashboardPage: React.FC = () => {
         /* ================= NORMAL TWO CARDS ================= */
         <Grid
           container
-          spacing={3}
+          spacing={{ xs: 1.5, sm: 3 }}
           sx={{ mt: 1 }}
           alignItems="stretch"
         >
@@ -895,7 +900,7 @@ const DashboardPage: React.FC = () => {
           >
             <Box
               sx={{
-                p: { xs: 2.5, md: 4 },
+                p: { xs: 1.5, md: 4 },
                 borderRadius: 5,
                 bgcolor: theme.palette.mode === 'dark' ? 'rgba(255, 255, 255, 0.05)' : "#f3f4f6",
                 boxShadow: theme.palette.mode === 'dark' ? "none" : "0 10px 40px rgba(0,0,0,0.05)",
@@ -905,7 +910,7 @@ const DashboardPage: React.FC = () => {
                 height: "100%"
               }}
             >
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 2.5, color: "#f97316" }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: { xs: 0, md: 2.5 }, color: "#f97316" }}>
                 Item-wise Sales
               </Typography>
               <Box
@@ -913,15 +918,15 @@ const DashboardPage: React.FC = () => {
                   flex: 1,
                   display: "flex",
                   flexDirection: "column",
-                  gap: 1,
+                  gap: { xs: 0, md: 1 },
                   height: "100%"
                 }}
               >
 
                 {/* ================= PIE ================= */}
-                <Box sx={{ width: "100%", height: { xs: 240, sm: 260, md: 300, lg: 340, xl: 380 }, minHeight: 240, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={240}>
-                    <PieChart margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
+                <Box sx={{ width: "100%", height: { xs: 220, sm: 260, md: 300, lg: 340, xl: 380 }, minHeight: { xs: 220, sm: 240 }, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
+                    <PieChart margin={{ top: isXs ? 0 : 10, right: 10, bottom: isXs ? 0 : 10, left: 10 }}>
 
                       {/* Arrow marker */}
                       <defs>
@@ -1126,7 +1131,7 @@ const DashboardPage: React.FC = () => {
               }}
             >
 
-              <Typography variant="h6" sx={{ fontWeight: 700, mb: 3, color: "#f97316" }}>
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: { xs: 1.5, md: 3 }, color: "#f97316" }}>
                 Order from
               </Typography>
 
@@ -1168,7 +1173,7 @@ const DashboardPage: React.FC = () => {
 
       {/* Asset Lifecycle Management Section - MOVED TO BOTTOM */}
       <Box sx={{ mt: 6, mb: 4 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} spacing={{ xs: 1.5, sm: 0 }} mb={3}>
           <Typography variant="h5" fontWeight="700">
             Asset Lifecycle Management
           </Typography>

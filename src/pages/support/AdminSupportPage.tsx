@@ -60,6 +60,7 @@ const AdminSupportPage: React.FC = () => {
   const { user } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const topRef = React.useRef<HTMLDivElement>(null);
   const [subject, setSubject] = useState('');
   const [category, setCategory] = useState('technical');
   const [priority, setPriority] = useState('medium');
@@ -193,7 +194,7 @@ const AdminSupportPage: React.FC = () => {
     setPriority(ticket.priority || 'medium');
     setMessage(ticket.messages?.[0]?.message || '');
     setAttachments(ticket.messages?.[0]?.attachments || []);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const handleDeleteTicket = async (ticket: Ticket) => {
@@ -257,6 +258,7 @@ const AdminSupportPage: React.FC = () => {
 
   return (
     <Container maxWidth="md" sx={{ py: { xs: 2, md: 4 }, px: { xs: 1, sm: 2 } }}>
+      <div ref={topRef} />
       <Box sx={{ mb: { xs: 2, sm: 3 } }}>
         <Typography 
           variant="h4" 
@@ -527,7 +529,14 @@ const AdminSupportPage: React.FC = () => {
       </Paper>
 
       {/* View Ticket Details Dialog */}
-      <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth>
+      <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth PaperProps={{
+        sx: {
+          borderRadius: { xs: 3, md: 4 },
+          m: { xs: 2, md: 4 },
+          width: { xs: 'calc(100% - 32px)', md: '100%' },
+          maxHeight: 'calc(100% - 64px)'
+        }
+      }}>
         <DialogTitle>
           Ticket Details
           <IconButton

@@ -2762,15 +2762,15 @@ const POSPage: React.FC = () => {
                 )}
             </Box>
 
-            <Modal open={variantModalOpen} onClose={() => setVariantModalOpen(false)}>
+            <Modal open={variantModalOpen} onClose={() => setVariantModalOpen(false)} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Box sx={{
                     p: 0,
                     bgcolor: 'background.paper',
-                    width: { xs: '95%', sm: 550 },
+                    width: { xs: '80%', sm: 550 },
+                    maxWidth: '100%',
                     mx: 'auto',
-                    mt: { xs: 2, sm: 8 },
-                    borderRadius: '32px',
-                    maxHeight: '95vh',
+                    borderRadius: { xs: '20px', sm: '32px' },
+                    maxHeight: { xs: '85vh', sm: '95vh' },
                     overflowY: 'auto',
                     boxShadow: theme => theme.palette.mode === 'dark' ? 'none' : '0 20px 60px rgba(0,0,0,0.1)',
                     position: 'relative',
@@ -2780,10 +2780,10 @@ const POSPage: React.FC = () => {
                     {selectedItem && (
                         <>
                             {/* Header Section */}
-                            <Box sx={{ p: 4, pb: 2, display: 'flex', alignItems: 'flex-start', position: 'relative' }}>
+                            <Box sx={{ p: { xs: 2, sm: 4 }, pb: { xs: 1, sm: 2 }, display: 'flex', alignItems: 'flex-start', position: 'relative' }}>
                                 <Box sx={{
-                                    width: 48,
-                                    height: 48,
+                                    width: { xs: 36, sm: 48 },
+                                    height: { xs: 36, sm: 48 },
                                     borderRadius: '50%',
                                     bgcolor: alpha(theme.palette.primary.main, 0.1),
                                     display: 'flex',
@@ -2793,9 +2793,9 @@ const POSPage: React.FC = () => {
                                     flexShrink: 0
                                 }}>
                                     {(selectedItem.variants?.length || 0) > 0 || (selectedItem.modifierGroups?.length || 0) > 0 || ((selectedItem as any).linkedGroups?.length || 0) > 0 ? (
-                                        <TuneIcon sx={{ fontSize: '20px', color: 'primary.main' }} />
+                                        <TuneIcon sx={{ fontSize: { xs: '16px', sm: '20px' }, color: 'primary.main' }} />
                                     ) : (
-                                        <span style={{ fontSize: '20px' }}>🌶️</span>
+                                        <span style={{ fontSize: '18px' }}>🌶️</span>
                                     )}
                                 </Box>
                                 <Box sx={{ flexGrow: 1 }}>
@@ -2805,14 +2805,14 @@ const POSPage: React.FC = () => {
                                         fontSize: '0.7rem',
                                         letterSpacing: '1px',
                                         textTransform: 'uppercase',
-                                        mb: 0.5
+                                        mb: { xs: 0.5, sm: 0.5 }
                                     }}>
                                     {(selectedItem.variants?.length || 0) > 0 || (selectedItem.modifierGroups?.length || 0) > 0 || ((selectedItem as any).linkedGroups?.length || 0) > 0 ? 'Customize Your Item' : 'Choose Spice Level'}
                                     </Typography>
-                                    <Typography variant="h4" sx={{ fontWeight: 900, fontSize: '1.75rem', color: 'text.primary', lineHeight: 1.2, mb: 1 }}>
+                                    <Typography variant="h4" sx={{ fontWeight: 900, fontSize: { xs: '1.25rem', sm: '1.75rem' }, color: 'text.primary', lineHeight: 1.2, mb: 0.5 }}>
                                         {selectedItem.name}
                                     </Typography>
-                                    <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>
+                                    <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
                                         Select your preferences before adding this item to the cart.
                                     </Typography>
                                 </Box>
@@ -2821,31 +2821,31 @@ const POSPage: React.FC = () => {
                                     size="small"
                                     sx={{
                                         position: 'absolute',
-                                        right: 24,
-                                        top: 24,
+                                        right: { xs: 12, sm: 16 },
+                                        top: { xs: 12, sm: 16 },
                                         bgcolor: 'error.main',
                                         color: 'white',
-                                        width: 28,
-                                        height: 28,
+                                        width: 24,
+                                        height: 24,
                                         '&:hover': { bgcolor: 'error.dark' },
                                         zIndex: 1,
                                         boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                                     }}
                                 >
-                                    <CloseIcon sx={{ fontSize: 14 }} />
+                                    <CloseIcon sx={{ fontSize: 12 }} />
                                 </IconButton>
                             </Box>
 
-                            <Box sx={{ px: 4, pb: 4 }}>
+                            <Box sx={{ px: { xs: 2, sm: 4 }, pb: { xs: 1.5, sm: 4 } }}>
                                 {/* Item Info Card */}
                                 <Box sx={{
                                     bgcolor: alpha(theme.palette.primary.main, 0.05),
-                                    borderRadius: '24px',
-                                    p: 2,
+                                    borderRadius: '16px',
+                                    p: { xs: 1.5, sm: 2 },
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'space-between',
-                                    mb: 4
+                                    mb: { xs: 1.5, sm: 4 }
                                 }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                                         <Box
@@ -3011,13 +3011,14 @@ const POSPage: React.FC = () => {
                                 {/* Heat Preference Section */}
                                 {(selectedItem as any).isSpiceLevelAvailable && (selectedItem as any).spiceLevels?.length > 0 && (
                                     <Paper variant="outlined" sx={{
-                                        borderRadius: '24px',
-                                        p: 3,
+                                        borderRadius: { xs: '16px', sm: '24px' },
+                                        p: { xs: 2, sm: 3 },
+                                        pb: { xs: 1, sm: 3 },
                                         borderColor: 'divider',
                                         bgcolor: 'background.paper',
-                                        mb: 4
+                                        mb: { xs: 2, sm: 4 }
                                     }}>
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: 0.5, sm: 1 } }}>
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                                 <span style={{ fontSize: '16px' }}>🌶️</span>
                                                 <Typography sx={{ color: 'primary.main', fontWeight: 900, fontSize: '0.75rem', letterSpacing: '0.5px' }}>
@@ -3037,11 +3038,11 @@ const POSPage: React.FC = () => {
                                                 }}
                                             />
                                         </Box>
-                                        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 4 }}>
+                                        <Typography variant="body2" sx={{ color: 'text.secondary', mb: { xs: 1, sm: 4 }, fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
                                             Slide to the spice level you want, and we'll send that choice to the kitchen.
                                         </Typography>
 
-                                        <Box sx={{ px: 2, mb: 2 }}>
+                                        <Box sx={{ px: { xs: 1, sm: 2 }, mb: { xs: 0, sm: 2 } }}>
                                             <Slider
                                                 value={Math.max(0, (selectedItem as any).spiceLevels.indexOf(tempSelectedSpiceLevel || (selectedItem as any).spiceLevels[0]))}
                                                 min={0}
@@ -3082,7 +3083,7 @@ const POSPage: React.FC = () => {
                                                     }
                                                 }}
                                             />
-                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: { xs: 1, sm: 3 } }}>
                                                 {(selectedItem as any).spiceLevels.map((level: string, i: number) => {
                                                     const isSel = (tempSelectedSpiceLevel || (selectedItem as any).spiceLevels[0]) === level;
                                                     const normalizedLevel = level?.toLowerCase().replace(/_/g, ' ');
@@ -3130,9 +3131,9 @@ const POSPage: React.FC = () => {
                                 )}
 
                                 {/* Footer Selection Display & Actions */}
-                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 2, sm: 0 } }}>
                                     {(selectedItem as any).isSpiceLevelAvailable && (selectedItem as any).spiceLevels?.length > 0 && (
-                                        <Box>
+                                        <Box sx={{ width: { xs: '100%', sm: 'auto' }, display: { xs: 'none', sm: 'block' } }}>
                                             <Typography sx={{ color: 'text.disabled', fontSize: '0.75rem', fontWeight: 900, letterSpacing: '0.5px' }}>
                                                 SELECTED
                                             </Typography>
@@ -3141,17 +3142,19 @@ const POSPage: React.FC = () => {
                                             </Typography>
                                         </Box>
                                     )}
-                                    <Box sx={{ display: 'flex', gap: 2 }}>
+                                    <Box sx={{ display: 'flex', gap: { xs: 1.5, sm: 2 }, width: { xs: '100%', sm: 'auto' } }}>
                                         <Button
                                             variant="outlined"
                                             onClick={() => setVariantModalOpen(false)}
                                             sx={{
                                                 borderRadius: '50px',
-                                                px: 4,
-                                                py: 1.5,
+                                                px: { xs: 2, sm: 4 },
+                                                py: { xs: 1, sm: 1.5 },
+                                                flex: { xs: 1, sm: 'none' },
                                                 borderColor: 'primary.light',
                                                 color: 'primary.main',
                                                 fontWeight: 900,
+                                                fontSize: { xs: '0.85rem', sm: '0.9rem' },
                                                 textTransform: 'none',
                                                 '&:hover': { borderColor: 'primary.main', bgcolor: alpha(theme.palette.primary.main, 0.04) }
                                             }}
@@ -3160,15 +3163,17 @@ const POSPage: React.FC = () => {
                                         </Button>
                                         <Button
                                             variant="contained"
-                                            size="large"
+                                            size="medium"
                                             onClick={handleAddToCartFromModal}
                                             sx={{
                                                 borderRadius: '50px',
-                                                px: 4,
-                                                py: 1.5,
+                                                px: { xs: 2, sm: 4 },
+                                                py: { xs: 1, sm: 1.5 },
+                                                flex: { xs: 2, sm: 'none' },
                                                 bgcolor: 'primary.main',
                                                 color: 'white',
                                                 fontWeight: 900,
+                                                fontSize: { xs: '0.85rem', sm: '0.9rem' },
                                                 textTransform: 'none',
                                                 boxShadow: '0 8px 24px rgba(79, 70, 229, 0.25)',
                                                 '&:hover': { bgcolor: 'primary.dark' }

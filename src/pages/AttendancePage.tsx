@@ -368,28 +368,28 @@ const AttendancePage: React.FC = () => {
                     { label: 'Cumulative Hours', value: `${backendStats.totalHours.toFixed(1)}h`, desc: 'Period productivity', icon: <TimeIcon />, color: theme.palette.warning.main },
                     { label: 'Payroll Weight', value: formatCurrency(backendStats.totalEarnings), desc: 'Est. period expenditure', icon: <PayrollIcon />, color: theme.palette.error.main }
                 ].map((stat, i) => (
-                    <Grid item xs={12} sm={6} md={3} key={i}>
-                        <Paper sx={{ p: { xs: 1, md: 3 }, borderRadius: 0, bgcolor: alpha(stat.color, 0.04), border: '1px solid', borderColor: alpha(stat.color, 0.1), transition: '0.3s', '&:hover': { transform: 'translateY(-4px)', boxShadow: `0 10px 30px ${alpha(stat.color, 0.1)}` } }}>
-                            <Stack direction="row" spacing={{ xs: 1.2, md: 2.5 }} alignItems="center">
-                                <Box sx={{ p: { xs: 1.2, md: 2 }, borderRadius: 4, bgcolor: stat.color, color: 'white', display: 'flex', boxShadow: `0 5px 15px ${alpha(stat.color, 0.4)}` }}>
+                    <Grid item xs={6} sm={6} md={3} key={i}>
+                        <Paper sx={{ p: { xs: 0.75, md: 3 }, borderRadius: 0, bgcolor: alpha(stat.color, 0.04), border: '1px solid', borderColor: alpha(stat.color, 0.1), transition: '0.3s', '&:hover': { transform: 'translateY(-4px)', boxShadow: `0 10px 30px ${alpha(stat.color, 0.1)}` }, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 0.5, md: 2.5 }} alignItems={{ xs: 'flex-start', sm: 'center' }}>
+                                <Box sx={{ p: { xs: 0.5, md: 2 }, borderRadius: 3, bgcolor: stat.color, color: 'white', display: 'flex', boxShadow: `0 5px 15px ${alpha(stat.color, 0.4)}`, '& svg': { fontSize: { xs: '1.1rem', md: '1.5rem' } } }}>
                                     {stat.icon}
                                 </Box>
                                 <Box sx={{ minWidth: 0, flexGrow: 1 }}>
                                     <Typography
                                         fontWeight="900"
                                         sx={{
-                                            fontSize: { xs: '0.96rem', md: '1.3rem', lg: '1.25rem' },
+                                            fontSize: { xs: '0.85rem', md: '1.3rem', lg: '1.25rem' },
                                             lineHeight: 1.1,
-                                            mb: { xs: 0.2, md: 0.5 },
+                                            mb: { xs: 0.1, md: 0.5 },
                                             wordBreak: 'break-word'
                                         }}
                                     >
                                         {stat.value}
                                     </Typography>
-                                    <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', fontSize: bodyFontSize }}>{stat.label}</Typography>
+                                    <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ textTransform: 'uppercase', letterSpacing: '0.2px', display: 'block', fontSize: { xs: '0.6rem', md: bodyFontSize }, lineHeight: 1.1 }}>{stat.label}</Typography>
                                 </Box>
                             </Stack>
-                            <Typography variant="caption" color="text.secondary" sx={{ mt: { xs: 0.55, md: 2 }, display: 'block', fontStyle: 'italic', fontSize: bodyFontSize }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ mt: { xs: 0.4, md: 2 }, display: 'block', fontStyle: 'italic', fontSize: { xs: '0.55rem', md: bodyFontSize }, lineHeight: 1.1 }}>
                                 {stat.desc}
                             </Typography>
                         </Paper>

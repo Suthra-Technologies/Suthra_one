@@ -285,7 +285,7 @@ const CustomerFoodOrdering: React.FC = () => {
   };
   useEffect(() => {
     loadMyOrders();
-    const id = setInterval(loadMyOrders, 10000);
+    const id = setInterval(loadMyOrders, 30000);
     return () => clearInterval(id);
   }, [isAuthenticated]);
 

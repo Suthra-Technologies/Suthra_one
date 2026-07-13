@@ -105,7 +105,7 @@ const ExpensesPage: React.FC = () => {
             // Get all expenses for min/max calculation
             const allExpensesRes = await expensesAPI.getAll({ page: 1, limit: 1000 });
             const allExpenses = allExpensesRes.data.data || [];
-            const amounts = allExpenses.map(expense => expense.amount);
+            const amounts = allExpenses.map((expense: any) => expense.amount);
             const minAmount = amounts.length > 0 ? Math.min(...amounts) : 0;
             const maxAmount = amounts.length > 0 ? Math.max(...amounts) : 0;
             
@@ -268,8 +268,8 @@ const ExpensesPage: React.FC = () => {
 
     const getTimeFilterDates = (filter: 'daily' | 'weekly' | 'monthly') => {
         const now = new Date();
-        let startDate: Date;
-        let endDate: Date;
+        let startDate: Date = new Date(now.getFullYear(), now.getMonth(), 1);
+        let endDate: Date = new Date(now.getFullYear(), now.getMonth() + 1, 1);
 
         if (filter === 'daily') {
             startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -279,9 +279,6 @@ const ExpensesPage: React.FC = () => {
             startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek);
             startDate.setHours(0, 0, 0, 0);
             endDate = new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000);
-        } else if (filter === 'monthly') {
-            startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-            endDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
         }
 
         return { startDate, endDate };
@@ -313,8 +310,8 @@ const ExpensesPage: React.FC = () => {
                 const dates = getTimeFilterDates(filter);
                 setFilters(prev => ({ 
                     ...prev, 
-                    startDate: dates.startDate, 
-                    endDate: dates.endDate, 
+                    startDate: dates.startDate.toISOString(), 
+                    endDate: dates.endDate.toISOString(), 
                     minAmount: undefined, 
                     maxAmount: undefined 
                 }));
@@ -494,13 +491,11 @@ const ExpensesPage: React.FC = () => {
                             <Typography variant="body2" fontWeight={600} color="primary.main">
                                 {timeFilter === 'daily' && '📅 Daily Expenses'}
                                 {timeFilter === 'weekly' && '📅 Weekly Expenses'}
-                                {timeFilter === 'monthly' && '📅 Monthly Expenses'}
                                 {timeFilter === 'custom' && '💰 Custom Amount Range'}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
                                 {timeFilter === 'daily' && `Showing expenses from today (${new Date().toLocaleDateString()})`}
                                 {timeFilter === 'weekly' && `Showing expenses from this week`}
-                                {timeFilter === 'monthly' && `Showing expenses from ${new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`}
                                 {timeFilter === 'custom' && `Showing expenses between $${filters.minAmount || amountRange.min} and $${filters.maxAmount || amountRange.max}`}
                             </Typography>
                         </Box>
@@ -768,21 +763,19 @@ const ExpensesPage: React.FC = () => {
                                         startDate: newValue 
                                     }));
                                 }}
-                                renderInput={(params) => (
-                                    <TextField
-                                        {...params}
-                                        size="small"
-                                        sx={{ flex: 1 }}
-                                        InputProps={{
-                                            ...params.InputProps,
+                                slotProps={{
+                                    textField: {
+                                        size: 'small',
+                                        sx: { flex: 1 },
+                                        InputProps: {
                                             startAdornment: (
                                                 <InputAdornment position="start">
                                                     <CalendarIcon />
                                                 </InputAdornment>
-                                            ),
-                                        }}
-                                    />
-                                )}
+                                            )
+                                        }
+                                    }
+                                }}
                             />
                             <DatePicker
                                 label="To Date"
@@ -793,21 +786,19 @@ const ExpensesPage: React.FC = () => {
                                         endDate: newValue 
                                     }));
                                 }}
-                                renderInput={(params) => (
-                                    <TextField
-                                        {...params}
-                                        size="small"
-                                        sx={{ flex: 1 }}
-                                        InputProps={{
-                                            ...params.InputProps,
+                                slotProps={{
+                                    textField: {
+                                        size: 'small',
+                                        sx: { flex: 1 },
+                                        InputProps: {
                                             startAdornment: (
                                                 <InputAdornment position="start">
                                                     <CalendarIcon />
                                                 </InputAdornment>
-                                            ),
-                                        }}
-                                    />
-                                )}
+                                            )
+                                        }
+                                    }
+                                }}
                             />
                         </Stack>
                     </Box>
