@@ -1143,8 +1143,9 @@ const MenuPage: React.FC = () => {
             <Tabs 
                 value={tabValue} 
                 onChange={(_, newValue) => setTabValue(newValue)} 
-                variant={isMobile ? "fullWidth" : "scrollable"} 
-                scrollButtons={false}
+                variant="scrollable"
+                scrollButtons="auto"
+                allowScrollButtonsMobile
                 sx={{ 
                     mb: { xs: 1, sm: 3 },
                     borderBottom: 1, 

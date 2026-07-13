@@ -138,7 +138,7 @@ const AssetView: React.FC = () => {
       const userIds = [...new Set(assetHistory.map((item: any) => item.performedBy).filter(Boolean))];
       const emailPromises = userIds.map(async (userId) => {
         if (userId && userId !== 'undefined' && userId !== 'null') {
-          await getUserEmail(userId);
+          await getUserEmail(userId as string);
         }
       });
       
@@ -348,7 +348,7 @@ const getStatusDisplay = (asset: any) => {
         <Grid item xs={12} md={8}>
           <Paper sx={{ borderRadius: 3, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
             <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'background.paper' }}>
-              <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)} px={2}>
+              <Tabs value={tabValue} onChange={(_, v) => setTabValue(v)} sx={{ px: 2 }}>
                 <Tab label="Details" />
                 <Tab label="History" />
                 <Tab label="Attachments" />

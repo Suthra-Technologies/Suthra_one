@@ -278,7 +278,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
                     const destStr = `${customerPos.lat},${customerPos.lng}`;
 
                     mapsAPI.getDirections(originStr, destStr)
-                        .then((res) => {
+                        .then((res: any) => {
                             console.log('🗺️ Backend Route Response:', res.data); // Log full response
 
                             if (res.data && res.data.routes && res.data.routes.length > 0) {
@@ -322,7 +322,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
                             console.warn('Backend returned no valid route or polyline.');
                             drawFallbackRoute();
                         })
-                        .catch((err) => {
+                        .catch((err: any) => {
                             console.error('Backend route fallback failed:', err);
                             drawFallbackRoute();
                         });
@@ -338,7 +338,7 @@ const MapComponent: React.FC<MapComponentProps> = ({
             googleMap.current.setZoom(15);
         } else {
             // Geocode restaurant address from settings as a premium fallback
-            const restAddress = settings?.restaurant?.address || settings?.restaurant?.street || settings?.restaurant?.city;
+            const restAddress = settings?.restaurant?.address || (settings?.restaurant as any)?.street || settings?.restaurant?.city;
             if (restAddress && isLoaded) {
                 const geocoder = new google.maps.Geocoder();
                 geocoder.geocode({ address: restAddress }, (results, status) => {

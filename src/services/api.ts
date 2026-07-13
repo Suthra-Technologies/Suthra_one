@@ -846,6 +846,8 @@ export const auditLogsAPI = {
 export const mapsAPI = {
   getNearby: (location: string, radius: number, type: string) =>
     api.get('/maps/nearby', { params: { location, radius, type } }),
+  getDirections: (origin: string, destination: string) =>
+    api.get('/maps/directions', { params: { origin, destination } }),
 };
 
 // -------------------- Homepage API --------------------

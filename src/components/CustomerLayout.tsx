@@ -876,7 +876,7 @@ const CustomerLayout: React.FC = () => {
               ) : (
                   <Stack spacing={2} sx={{ mt: 1 }}>
                       {cart.items.map((item) => (
-                          <Box key={item.cartId} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Box key={(item as any).cartId || item.id} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <Box sx={{ flex: 1, minWidth: 0, mr: 1 }}>
                                   <Typography variant="subtitle2" fontWeight="700" noWrap>{item.name}</Typography>
                                   <Typography variant="caption" color="text.secondary">
@@ -885,11 +885,11 @@ const CustomerLayout: React.FC = () => {
                               </Box>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, bgcolor: alpha(theme.palette.primary.main, 0.1), borderRadius: 2, px: 1, py: 0.5 }}>
                                   <IconButton size="small" onClick={() => removeFromCart(item.id)} sx={{ p: 0.5 }}>
-                                      <RemoveIcon fontSize="small" color="primary.main" />
+                                      <RemoveIcon fontSize="small" color="primary" />
                                   </IconButton>
                                   <Typography fontWeight="bold" color="primary.main">{item.quantity}</Typography>
                                   <IconButton size="small" onClick={() => addToCart(item)} sx={{ p: 0.5 }}>
-                                      <AddIcon fontSize="small" color="primary.main" />
+                                      <AddIcon fontSize="small" color="primary" />
                                   </IconButton>
                               </Box>
                           </Box>

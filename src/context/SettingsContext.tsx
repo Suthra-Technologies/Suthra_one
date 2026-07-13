@@ -333,6 +333,14 @@ const defaultSettings: SettingsState = {
         pointsPerRating: 0,
     },
     delivery: {
+        builtIn: {
+            enabled: false,
+            minDeliveryRange: 0,
+            maxDeliveryRange: 10,
+            baseFee: 0,
+            baseMiles: 0,
+            perMileRate: 0,
+        },
         doordash: {
             enabled: false,
             developerId: '',
@@ -564,6 +572,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                     ...(fetched.rewards || {}),
                 },
                 delivery: {
+                    builtIn: {
+                        ...defaultSettings.delivery!.builtIn,
+                        ...(fetched.delivery?.builtIn || {}),
+                    },
                     doordash: {
                         ...defaultSettings.delivery!.doordash,
                         ...(fetched.delivery?.doordash || {}),
