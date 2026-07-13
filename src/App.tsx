@@ -1,4 +1,5 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
+import { SafeArea } from 'capacitor-plugin-safe-area';
 import { Box, Button, CircularProgress, CssBaseline, Paper, ThemeProvider, Typography, useMediaQuery } from '@mui/material';
 import React, { useEffect, useMemo } from 'react';
 import { Navigate, Route, BrowserRouter as Router, Routes, useLocation } from 'react-router-dom';
@@ -264,6 +265,36 @@ const App: React.FC = () => {
   // Detect the tenant slug from the hostname (e.g. mythri.localhost → "mythri")
   // BrandProvider uses this to fetch runtime branding from /tenants/:slug/branding
   const tenantSlug = getTenantSlugFromHostname() || undefined;
+
+  useEffect(() => {
+    (async function() {
+      try {
+        if (!Capacitor.isNativePlatform()) return;
+        if (Capacitor.getPlatform() === 'android') {
+          await SafeArea.setImmersiveNavigationBar();
+        }
+        const safeAreaData = await SafeArea.getSafeAreaInsets();
+        const {insets} = safeAreaData;
+        for (const [key, value] of Object.entries(insets)) {
+            document.documentElement.style.setProperty(
+                `--safe-area-inset-${key}`,
+                `${value}px`,
+            );
+        }
+        await SafeArea.addListener('safeAreaChanged', data => {
+          const { insets } = data;
+          for (const [key, value] of Object.entries(insets)) {
+            document.documentElement.style.setProperty(
+              `--safe-area-inset-${key}`,
+              `${value}px`,
+            );
+          }
+        });
+      } catch (e) {
+        console.error("SafeArea Error", e);
+      }
+    })();
+  }, []);
 
   return (
     <Router>

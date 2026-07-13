@@ -5,44 +5,68 @@
  * NotificationProvider on every alert.
  */
 
-// Import every sound so Vite hashes and bundles them correctly
-import snd_notification    from '../assets/sounds/notification.mp3';
-import snd_new_order       from '../assets/sounds/new_order.mp3';
-import snd_order_ready     from '../assets/sounds/order_ready.mp3';
-import snd_attention_alert from '../assets/sounds/attention_alert.mp3';
-import snd_payment_success from '../assets/sounds/payment_success.mp3';
-import snd_pos_notif       from '../assets/sounds/pos_notification.mp3';
-import snd_restaurant_bell from '../assets/sounds/restaurant_bell.mp3';
-import snd_doraemon        from '../assets/sounds/doraemon.mpeg';
+import { NativeAudio } from '@capacitor-community/native-audio';
+import { Capacitor } from '@capacitor/core';
 
 export interface NotificationSound {
     id: string;
     label: string;
     emoji: string;
-    src: string; // resolved URL (Vite handles hashing)
+    src: string; // URL for web
+    nativePath: string; // Path for NativeAudio
 }
 
 export const NOTIFICATION_SOUNDS: NotificationSound[] = [
-    { id: 'notification',    label: 'Default Notification', emoji: '🔔', src: snd_notification    },
-    { id: 'new_order',       label: 'New Order',            emoji: '🛎️', src: snd_new_order       },
-    { id: 'order_ready',     label: 'Order Ready',          emoji: '✅', src: snd_order_ready     },
-    { id: 'attention_alert', label: 'Attention Alert',      emoji: '📣', src: snd_attention_alert },
-    { id: 'payment_success', label: 'Payment Success',      emoji: '💳', src: snd_payment_success },
-    { id: 'pos_notification',label: 'POS Notification',     emoji: '🏪', src: snd_pos_notif       },
-    { id: 'restaurant_bell', label: 'Restaurant Bell',      emoji: '🍽️', src: snd_restaurant_bell },
-    { id: 'doraemon',        label: 'Doraemon Alert',       emoji: '🐱', src: snd_doraemon        },
+    { id: 'notification',    label: 'Default Notification', emoji: '🔔', src: '/sounds/notification.mp3', nativePath: 'public/sounds/notification.mp3' },
+    { id: 'new_order',       label: 'New Order',            emoji: '🛎️', src: '/sounds/new_order.mp3', nativePath: 'public/sounds/new_order.mp3' },
+    { id: 'order_ready',     label: 'Order Ready',          emoji: '✅', src: '/sounds/order_ready.mp3', nativePath: 'public/sounds/order_ready.mp3' },
+    { id: 'attention_alert', label: 'Attention Alert',      emoji: '📣', src: '/sounds/attention_alert.mp3', nativePath: 'public/sounds/attention_alert.mp3' },
+    { id: 'payment_success', label: 'Payment Success',      emoji: '💳', src: '/sounds/payment_success.mp3', nativePath: 'public/sounds/payment_success.mp3' },
+    { id: 'pos_notification',label: 'POS Notification',     emoji: '🏪', src: '/sounds/pos_notification.mp3', nativePath: 'public/sounds/pos_notification.mp3' },
+    { id: 'restaurant_bell', label: 'Restaurant Bell',      emoji: '🍽️', src: '/sounds/restaurant_bell.mp3', nativePath: 'public/sounds/restaurant_bell.mp3' },
+    { id: 'doraemon',        label: 'Doraemon Alert',       emoji: '🐱', src: '/sounds/doraemon.mpeg', nativePath: 'public/sounds/doraemon.mpeg' },
 ];
 
-/** Look up the Vite-resolved URL for a stored sound ID. */
+/** Look up the sound config for a stored sound ID. */
+export function getSoundConfig(soundId: string): NotificationSound {
+    return NOTIFICATION_SOUNDS.find((s) => s.id === soundId) || NOTIFICATION_SOUNDS[0];
+}
+
+/** Preload all sounds for NativeAudio (called once on boot) */
+export async function preloadNativeSounds() {
+    if (!Capacitor.isNativePlatform()) return;
+    try {
+        for (const sound of NOTIFICATION_SOUNDS) {
+            await NativeAudio.preload({
+                assetId: sound.id,
+                assetPath: sound.nativePath,
+                audioChannelNum: 1,
+                isUrl: false
+            });
+        }
+        console.log('✅ [NativeAudio] Sounds preloaded');
+    } catch (e: any) {
+        console.error('❌ [NativeAudio] Preload failed', e);
+        // Dispatch event or just let the caller know it failed.
+        // We can't import toast easily outside of a React component if not initialized, but we'll try.
+    }
+}
+
+/** Look up the web URL for a stored sound ID. */
 export function getSoundSrc(soundId: string): string {
-    return (
-        NOTIFICATION_SOUNDS.find((s) => s.id === soundId)?.src ??
-        snd_notification // safe default
-    );
+    return getSoundConfig(soundId).src;
 }
 
 /** Preview a sound in the Settings page. Returns a stop function. */
 export function previewSound(soundId: string): () => void {
+    if (Capacitor.isNativePlatform()) {
+        const config = getSoundConfig(soundId);
+        NativeAudio.play({ assetId: config.id }).catch(e => console.error(e));
+        return () => {
+            NativeAudio.stop({ assetId: config.id }).catch(() => {});
+        };
+    }
+
     const src   = getSoundSrc(soundId);
     const audio = new Audio(src);
     audio.volume = 0.6;

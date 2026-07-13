@@ -1072,10 +1072,10 @@ const UsersPage = () => {
                 }}>
                   <CardContent sx={{ 
                     flexGrow: 1, 
-                    p: { xs: 1.5, sm: 2.5 }, 
-                    '&:last-child': { pb: { xs: 1.5, sm: 2.5 } } 
+                    p: { xs: 0.75, sm: 2.5 }, 
+                    '&:last-child': { pb: { xs: 0.75, sm: 2.5 } } 
                   }}>
-                    <Box display="flex" alignItems="center" mb={1.5}>
+                    <Box display="flex" alignItems="flex-start" mb={{ xs: 0.5, sm: 1.5 }}>
                       <Badge
                         overlap="circular"
                         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
@@ -1095,12 +1095,12 @@ const UsersPage = () => {
                           sx={{
                             bgcolor: alpha(roleInfo.color, 0.1),
                             color: roleInfo.color,
-                            width: { xs: 42, sm: 56 },
-                            height: { xs: 42, sm: 56 },
+                            width: { xs: 32, sm: 56 },
+                            height: { xs: 32, sm: 56 },
                             border: `2px solid ${alpha(roleInfo.color, 0.2)}`
                           }}
                         >
-                          <RoleIcon sx={{ fontSize: { xs: '1.25rem', sm: '1.75rem' } }} />
+                          <RoleIcon sx={{ fontSize: { xs: '1rem', sm: '1.75rem' } }} />
                         </Avatar>
                       </Badge>
                       <Box flex={1} ml={1.5}>
@@ -1109,7 +1109,7 @@ const UsersPage = () => {
                           sx={{ 
                             fontWeight: 800, 
                             fontFamily: "'Outfit', sans-serif",
-                            fontSize: { xs: '0.9rem', sm: '1rem' },
+                            fontSize: { xs: '0.8rem', sm: '1rem' },
                             lineHeight: 1.2,
                             color: 'text.primary',
                             display: 'inline-flex',
@@ -1124,75 +1124,67 @@ const UsersPage = () => {
                               label="Deleted"
                               color="error"
                               size="small"
-                              sx={{
-                                height: 18,
-                                fontSize: '0.65rem',
-                                fontWeight: 900,
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.05em',
-                                borderRadius: 1,
-                                px: 0.5
-                              }}
+                              sx={{ height: 16, fontSize: '0.6rem', fontWeight: 900, px: 0.5, ml: 1 }}
                             />
                           )}
+                          {/* Role Chips moved here for mobile */}
+                          {getRolesForUser(user).slice(0, 1).map(r => {
+                            const rInfo = getRoleInfo(r);
+                            return (
+                              <Chip
+                                key={r}
+                                label={rInfo.label}
+                                sx={{
+                                  backgroundColor: alpha(rInfo.color, 0.08),
+                                  color: rInfo.color,
+                                  fontWeight: 800,
+                                  fontFamily: "'Outfit', sans-serif",
+                                  fontSize: { xs: '0.6rem', sm: '0.65rem' },
+                                  height: { xs: 18, sm: 22 },
+                                  ml: { xs: 1, sm: 1 },
+                                  border: `1px solid ${alpha(rInfo.color, 0.15)}`
+                                }}
+                                size="small"
+                              />
+                            );
+                          })}
                         </Typography>
-                        <Typography 
-                          variant="caption" 
-                          sx={{ 
-                            fontWeight: 600, 
-                            color: 'text.secondary',
-                            display: 'block',
-                            fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                            mb: 0.25
-                          }}
-                        >
-                          {user.email}
-                        </Typography>
-                        <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main', fontSize: { xs: '0.7rem', sm: '0.75rem' }, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                          <span style={{ opacity: 0.6 }}>{user.countryCode ? `+${user.countryCode}` : ''}</span> {user.phone}
-                        </Typography>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: { xs: 0.5, sm: 1 }, alignItems: 'center', mt: 0.25 }}>
+                          <Typography 
+                            variant="caption" 
+                            sx={{ 
+                              fontWeight: 600, 
+                              color: 'text.secondary',
+                              fontSize: { xs: '0.65rem', sm: '0.75rem' },
+                              lineHeight: 1
+                            }}
+                          >
+                            {user.email}
+                          </Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main', fontSize: { xs: '0.65rem', sm: '0.75rem' }, display: 'flex', alignItems: 'center', lineHeight: 1 }}>
+                            <span style={{ opacity: 0.6 }}>{user.countryCode ? `+${user.countryCode}` : ''}</span> {user.phone}
+                          </Typography>
+                        </Box>
                       </Box>
                     </Box>
 
-                    <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1.5 }}>
-                      {getRolesForUser(user).map(r => {
-                        const rInfo = getRoleInfo(r);
-                        return (
-                          <Chip
-                            key={r}
-                            label={rInfo.label}
-                            sx={{
-                              backgroundColor: alpha(rInfo.color, 0.08),
-                              color: rInfo.color,
-                              fontWeight: 800,
-                              fontFamily: "'Outfit', sans-serif",
-                              fontSize: '0.65rem',
-                              height: 22,
-                              border: `1px solid ${alpha(rInfo.color, 0.15)}`
-                            }}
-                            size="small"
-                          />
-                        );
-                      })}
-                    </Stack>
-
-                    <Stack spacing={1}>
+                    <Stack spacing={0}>
                       {user.department && (
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.disabled', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Dept</Typography>
-                          <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.primary' }}>{user.department}</Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.disabled', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: { xs: '0.6rem', sm: '0.75rem' } }}>Dept</Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.primary', fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>{user.department}</Typography>
                         </Box>
                       )}
                       {!isCustomerUser(user) && user.hireDate && (
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.disabled', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Hired</Typography>
-                          <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.primary' }}>{getSafeDateString(user.hireDate)}</Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.disabled', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: { xs: '0.6rem', sm: '0.75rem' } }}>Hired</Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 800, color: 'text.primary', fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>{getSafeDateString(user.hireDate)}</Typography>
                         </Box>
                       )}
                       {user.salary && !isCustomerUser(user) && (
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.disabled', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Salary</Typography>
-                          <Typography variant="caption" sx={{ fontWeight: 800, color: 'success.main' }}>
+                          <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.disabled', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: { xs: '0.6rem', sm: '0.75rem' } }}>Salary</Typography>
+                          <Typography variant="caption" sx={{ fontWeight: 800, color: 'success.main', fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>
                             {settings?.restaurant?.currencySymbol || '$'}{parseFloat(user.salary.toString()).toLocaleString()}
                           </Typography>
                         </Box>
@@ -1201,12 +1193,12 @@ const UsersPage = () => {
 
                     {user.isDeleted ? (
                       <Box sx={{ 
-                        mt: 2, 
-                        pt: 1.5, 
+                        mt: { xs: 0.5, sm: 2 }, 
+                        pt: { xs: 0.5, sm: 1.5 }, 
                         borderTop: `1px dashed ${alpha(theme.palette.divider, 0.5)}`,
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: 1
+                        gap: 0
                       }}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <Typography variant="caption" sx={{ fontWeight: 600, color: 'error.main', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Deleted On</Typography>
@@ -1224,16 +1216,16 @@ const UsersPage = () => {
                     ) : (
                       user.actionHistory && user.actionHistory.length > 0 && (
                         <Box sx={{ 
-                          mt: 2, 
-                          pt: 1.5, 
+                          mt: { xs: 0.5, sm: 2 }, 
+                          pt: { xs: 0.5, sm: 1.5 }, 
                           borderTop: `1px dashed ${alpha(theme.palette.divider, 0.5)}`,
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between'
                         }}>
                           <Box>
-                            <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mb: 0.25 }}>Created by</Typography>
-                            <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary' }}>
+                            <Typography variant="caption" sx={{ color: 'text.disabled', display: 'block', mb: 0.25, fontSize: { xs: '0.6rem', sm: '0.75rem' } }}>Created by</Typography>
+                            <Typography variant="caption" sx={{ fontWeight: 700, color: 'text.secondary', fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>
                               {(() => {
                                 const createdAction = user.actionHistory.find((action: any) => action.action === 'CREATED');
                                 return createdAction ? (createdAction.performedByName || getUserName(createdAction.performedBy)) : 'System';
@@ -1270,8 +1262,8 @@ const UsersPage = () => {
                   
                   <CardActions sx={{ 
                     bgcolor: alpha(theme.palette.background.default, 0.5), 
-                    px: 2, 
-                    py: 1, 
+                    px: { xs: 0.5, sm: 2 }, 
+                    py: { xs: 0.25, sm: 1 }, 
                     justifyContent: 'space-between' 
                   }}>
                     {tabValue === 5 || user.isDeleted ? (
@@ -1286,8 +1278,8 @@ const UsersPage = () => {
                           fontWeight: 800, 
                           borderRadius: 2.5,
                           fontFamily: "'Outfit', sans-serif",
-                          px: 2,
-                          py: 0.5,
+                          px: { xs: 1, sm: 2 },
+                          py: { xs: 0.25, sm: 0.5 },
                           borderColor: alpha(theme.palette.success.main, 0.4),
                           color: 'success.main',
                           bgcolor: alpha(theme.palette.success.main, 0.02),
@@ -1386,21 +1378,23 @@ const UsersPage = () => {
       <Dialog 
         open={userDialog} 
         onClose={closeUserDialog} 
-        maxWidth="lg" 
+        maxWidth="md" 
         fullWidth
-        fullScreen={isMobile}
         PaperProps={{
-          sx: {
-            borderRadius: { xs: 0, sm: 4 },
-            bgcolor: 'background.paper',
-            backgroundImage: 'none'
+          sx: { 
+            borderRadius: { xs: 2, md: 4 }, 
+            backgroundImage: 'none',
+            m: { xs: 2, md: 4 },
+            mt: { xs: '54px', md: 4 },
+            mb: { xs: '70px', md: 4 },
+            width: { xs: 'calc(100% - 32px)', md: '100%' },
+            maxHeight: 'calc(100% - 124px)'
           }
         }}
       >
         <DialogTitle component="div" sx={{ 
           m: 0, 
-          p: { xs: 2, sm: 3 }, 
-          pt: { xs: isMobile ? '54px' : 2, sm: 3 },
+          p: { xs: 1.5, sm: 3 },
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center',
@@ -1431,7 +1425,7 @@ const UsersPage = () => {
           </IconButton>
         </DialogTitle>
         <DialogContent sx={{ 
-          p: { xs: 2, sm: 4 }, 
+          p: { xs: 1, sm: 4 }, 
           bgcolor: isMobile ? alpha(theme.palette.background.default, 0.8) : 'background.paper',
           '& .MuiFormLabel-asterisk': { color: 'red !important' }
         }}>
@@ -1447,11 +1441,11 @@ const UsersPage = () => {
           )}
 
           {dialogTab === 0 && (
-            <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mt: 1 }}>
+            <Grid container spacing={{ xs: 1, sm: 3 }} sx={{ mt: { xs: 0.5, sm: 1 } }}>
               {/* Basic Information Section */}
               <Grid size={{ xs: 12 }}>
                 <Card variant="outlined" sx={{ borderRadius: 3, border: `1px solid ${alpha(theme.palette.divider, 0.1)}`, bgcolor: 'background.paper' }}>
-                  <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+                  <CardContent sx={{ p: { xs: 1, sm: 3 }, '&:last-child': { pb: { xs: 1, sm: 3 } } }}>
                     <Typography 
                       variant="overline" 
                       sx={{ 
@@ -1460,16 +1454,18 @@ const UsersPage = () => {
                         fontFamily: "'Outfit', sans-serif",
                         letterSpacing: '0.1em',
                         display: 'block',
-                        mb: 2
+                        lineHeight: 1.2,
+                        mb: { xs: 1, sm: 2 }
                       }}
                     >
                       Basic Information
                     </Typography>
                     
-                    <Grid container spacing={2}>
+                    <Grid container spacing={{ xs: 1, sm: 2 }}>
                       <Grid size={{ xs: 12, sm: 6 }}>
                         <TextField
                           fullWidth
+                          size={isMobile ? "small" : "medium"}
                           label="First Name"
                           value={userForm.firstName}
                           onChange={(e) => {
@@ -1489,6 +1485,7 @@ const UsersPage = () => {
                       <Grid size={{ xs: 12, sm: 6 }}>
                         <TextField
                           fullWidth
+                          size={isMobile ? "small" : "medium"}
                           label="Last Name"
                           value={userForm.lastName}
                           onChange={(e) => {
@@ -1508,6 +1505,7 @@ const UsersPage = () => {
                       <Grid size={{ xs: 12, sm: 6 }}>
                         <TextField
                           fullWidth
+                          size={isMobile ? "small" : "medium"}
                           label="Email Address"
                           type="email"
                           value={userForm.email}
@@ -1527,6 +1525,7 @@ const UsersPage = () => {
                       <Grid size={{ xs: 12, sm: 6 }}>
                         <PhoneInput
                           fullWidth
+                          size={isMobile ? "small" : "medium"}
                           label="Phone Number"
                           value={userForm.phone}
                           onChange={(val) => {
@@ -1542,7 +1541,7 @@ const UsersPage = () => {
                         />
                       </Grid>
                       <Grid size={{ xs: 12, sm: 6 }}>
-                        <FormControl fullWidth>
+                        <FormControl fullWidth size={isMobile ? "small" : "medium"}>
                           <InputLabel>System Roles</InputLabel>
                           <Select
                             multiple
@@ -1588,6 +1587,7 @@ const UsersPage = () => {
                         <Grid size={{ xs: 12, sm: 6 }}>
                           <TextField
                             fullWidth
+                            size={isMobile ? "small" : "medium"}
                             label="Password"
                             type={showPassword ? 'text' : 'password'}
                             placeholder="Click icon to auto-generate"
@@ -1623,8 +1623,8 @@ const UsersPage = () => {
               </Grid>
               {!userForm.roles.includes('customer') && (
                 <Grid size={{ xs: 12 }}>
-                  <Card variant="outlined" sx={{ borderRadius: 3, border: `1px solid ${alpha(theme.palette.divider, 0.1)}`, bgcolor: 'background.paper', mt: 1 }}>
-                    <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+                  <Card variant="outlined" sx={{ borderRadius: 3, border: `1px solid ${alpha(theme.palette.divider, 0.1)}`, bgcolor: 'background.paper', mt: { xs: 0.5, sm: 1 } }}>
+                    <CardContent sx={{ p: { xs: 1, sm: 3 }, '&:last-child': { pb: { xs: 1, sm: 3 } } }}>
                       <Typography 
                         variant="overline" 
                         sx={{ 
@@ -1633,14 +1633,15 @@ const UsersPage = () => {
                           fontFamily: "'Outfit', sans-serif",
                           letterSpacing: '0.1em',
                           display: 'block',
-                          mb: 2
+                          lineHeight: 1.2,
+                          mb: { xs: 1, sm: 2 }
                         }}
                       >
                         Employment Details
                       </Typography>
-                      <Grid container spacing={2}>
+                      <Grid container spacing={{ xs: 1, sm: 2 }}>
                         <Grid size={{ xs: 12, sm: 6 }}>
-                          <FormControl fullWidth>
+                          <FormControl fullWidth size={isMobile ? "small" : "medium"}>
                             <InputLabel id="department-label">Department</InputLabel>
                             <Select
                               labelId="department-label"
@@ -1660,6 +1661,7 @@ const UsersPage = () => {
                         <Grid size={{ xs: 12, sm: 6 }}>
                           <TextField
                             fullWidth
+                            size={isMobile ? "small" : "medium"}
                             label={`Monthly Salary (${settings?.restaurant?.currencySymbol || '$'})`}
                             type="number"
                             value={userForm.salary}
@@ -1689,6 +1691,7 @@ const UsersPage = () => {
                         <Grid size={{ xs: 12 }}>
                           <TextField
                             fullWidth
+                            size={isMobile ? "small" : "medium"}
                             label="Date of Hire"
                             type="date"
                             value={userForm.hireDate}
@@ -1721,8 +1724,8 @@ const UsersPage = () => {
               )}
               {/* Address Information Section */}
               <Grid size={{ xs: 12 }}>
-                <Card variant="outlined" sx={{ borderRadius: 3, border: `1px solid ${alpha(theme.palette.divider, 0.1)}`, bgcolor: 'background.paper', mt: 1 }}>
-                  <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+                <Card variant="outlined" sx={{ borderRadius: 3, border: `1px solid ${alpha(theme.palette.divider, 0.1)}`, bgcolor: 'background.paper', mt: { xs: 0.5, sm: 1 } }}>
+                  <CardContent sx={{ p: { xs: 1, sm: 3 }, '&:last-child': { pb: { xs: 1, sm: 3 } } }}>
                     <Typography 
                       variant="overline" 
                       sx={{ 
@@ -1731,16 +1734,18 @@ const UsersPage = () => {
                         fontFamily: "'Outfit', sans-serif",
                         letterSpacing: '0.1em',
                         display: 'block',
-                        mb: 2
+                        lineHeight: 1.2,
+                        mb: { xs: 1, sm: 2 }
                       }}
                     >
                       Residential Address {userForm.roles.includes('customer') && <span style={{ color: 'red' }}>*</span>}
                     </Typography>
                     
-                    <Grid container spacing={2}>
+                    <Grid container spacing={{ xs: 1, sm: 2 }}>
                       <Grid size={{ xs: 12 }}>
                         <AddressAutocomplete
                           label="Full Street Address"
+                          size={isMobile ? "small" : "medium"}
                           value={userForm.address.street}
                           onChange={(val) => {
                             setUserForm(prev => ({
@@ -1781,6 +1786,7 @@ const UsersPage = () => {
                       <Grid size={{ xs: 12, sm: 4 }}>
                         <TextField
                           fullWidth
+                          size={isMobile ? "small" : "medium"}
                           label="City"
                           value={userForm.address.city}
                           onChange={(e) => {
@@ -1805,6 +1811,7 @@ const UsersPage = () => {
                       <Grid size={{ xs: 12, sm: 4 }}>
                         <TextField
                           fullWidth
+                          size={isMobile ? "small" : "medium"}
                           label="State / Province"
                           value={userForm.address.state}
                           onChange={(e) => {
@@ -1829,6 +1836,7 @@ const UsersPage = () => {
                       <Grid size={{ xs: 12, sm: 4 }}>
                         <TextField
                           fullWidth
+                          size={isMobile ? "small" : "medium"}
                           label="Zip Code"
                           value={userForm.address.zipCode}
                           onChange={(e) => {
@@ -2012,9 +2020,9 @@ const UsersPage = () => {
           )}
         </DialogContent>
         <DialogActions sx={{ 
-          p: { xs: 2.5, sm: 3 }, 
-          pb: { xs: isMobile ? '32px' : 2.5, sm: 3 },
-          gap: 1.5,
+          p: { xs: 1, sm: 3 }, 
+          pb: { xs: 1, sm: 3 },
+          gap: { xs: 1, sm: 1.5 },
           borderTop: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
           bgcolor: 'background.paper'
         }}>
@@ -2023,7 +2031,7 @@ const UsersPage = () => {
             sx={{ 
               flex: 1,
               borderRadius: 2.5,
-              py: 1.25,
+              py: { xs: 0.75, sm: 1.25 },
               textTransform: 'none',
               fontWeight: 700,
               fontFamily: "'Outfit', sans-serif",
@@ -2040,7 +2048,7 @@ const UsersPage = () => {
             sx={{ 
               flex: 1,
               borderRadius: 2.5,
-              py: 1.25,
+              py: { xs: 0.75, sm: 1.25 },
               textTransform: 'none',
               fontWeight: 800,
               fontFamily: "'Outfit', sans-serif",

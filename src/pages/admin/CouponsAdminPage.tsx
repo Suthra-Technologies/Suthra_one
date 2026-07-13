@@ -1217,8 +1217,15 @@ const CouponsAdminPage: React.FC = () => {
                 onClose={handleCloseDialog}
                 maxWidth="md"
                 fullWidth
-                fullScreen={isMobile}
-                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 4, bgcolor: 'background.default' } }}
+                PaperProps={{
+                    sx: {
+                        borderRadius: { xs: 3, md: 4 },
+                        bgcolor: 'background.default',
+                        m: { xs: 2, md: 4 },
+                        width: { xs: 'calc(100% - 32px)', md: '100%' },
+                        maxHeight: 'calc(100% - 64px)'
+                    }
+                }}
             >
                 <DialogTitle sx={{
                     display: 'flex',
@@ -1227,8 +1234,7 @@ const CouponsAdminPage: React.FC = () => {
                     borderBottom: '1px solid',
                     borderColor: alpha(theme.palette.divider, 0.1),
                     bgcolor: 'background.paper',
-                    p: isMobile ? 1.5 : 2,
-                    pt: isMobile ? 2 : 2
+                    p: { xs: 1.5, md: 2 }
                 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                         <Box sx={{
@@ -1628,14 +1634,20 @@ const CouponsAdminPage: React.FC = () => {
                 </DialogActions>
             </Dialog>
 
-            {/* Bulk Email Dialog */}
             <Dialog
                 open={openEmailDialog}
                 onClose={handleCloseEmailDialog}
                 maxWidth="md"
                 fullWidth
-                fullScreen={isMobile}
-                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 4, bgcolor: 'background.default' } }}
+                PaperProps={{
+                    sx: {
+                        borderRadius: { xs: 3, md: 4 },
+                        bgcolor: 'background.default',
+                        m: { xs: 2, md: 4 },
+                        width: { xs: 'calc(100% - 32px)', md: '100%' },
+                        maxHeight: 'calc(100% - 64px)'
+                    }
+                }}
             >
                 <DialogTitle sx={{
                     display: 'flex',
@@ -1644,8 +1656,7 @@ const CouponsAdminPage: React.FC = () => {
                     borderBottom: '1px solid',
                     borderColor: alpha(theme.palette.divider, 0.1),
                     bgcolor: 'background.paper',
-                    p: isMobile ? 2 : 2.5,
-                    pt: isMobile ? '60px' : 2.5
+                    p: { xs: 1.5, md: 2.5 }
                 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                         <Box sx={{
@@ -1825,8 +1836,15 @@ const CouponsAdminPage: React.FC = () => {
                 onClose={handleCloseSmsDialog}
                 maxWidth="sm"
                 fullWidth
-                fullScreen={isMobile}
-                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 4, bgcolor: 'background.default' } }}
+                PaperProps={{
+                    sx: {
+                        borderRadius: { xs: 3, md: 4 },
+                        bgcolor: 'background.default',
+                        m: { xs: 2, md: 4 },
+                        width: { xs: 'calc(100% - 32px)', md: '100%' },
+                        maxHeight: 'calc(100% - 64px)'
+                    }
+                }}
             >
                 <DialogTitle sx={{
                     display: 'flex',
@@ -1835,8 +1853,7 @@ const CouponsAdminPage: React.FC = () => {
                     borderBottom: '1px solid',
                     borderColor: alpha(theme.palette.divider, 0.1),
                     bgcolor: 'background.paper',
-                    p: isMobile ? 2 : 2.5,
-                    pt: isMobile ? '80px' : 2.5
+                    p: { xs: 1.5, md: 2.5 }
                 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                         <Box sx={{
@@ -2264,10 +2281,22 @@ const CouponsAdminPage: React.FC = () => {
                 onClose={() => setOpenUnsubscribesDialog(false)}
                 maxWidth="lg"
                 fullWidth
-                fullScreen={isMobile}
-                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 3 } }}
+                PaperProps={{
+                    sx: {
+                        borderRadius: { xs: 3, md: 4 },
+                        bgcolor: 'background.default',
+                        m: { xs: 2, md: 4 },
+                        width: { xs: 'calc(100% - 32px)', md: '100%' },
+                        maxHeight: 'calc(100% - 64px)'
+                    }
+                }}
             >
-                <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <DialogTitle sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    p: { xs: 1.5, md: 2.5 }
+                }}>
                     <Typography variant="h6" fontWeight={700}>Coupon Email Unsubscribes</Typography>
                     <IconButton onClick={() => setOpenUnsubscribesDialog(false)}>
                         <CloseIcon />

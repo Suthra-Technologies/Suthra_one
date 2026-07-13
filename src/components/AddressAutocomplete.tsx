@@ -26,6 +26,7 @@ interface AddressAutocompleteProps {
     required?: boolean;
     onBlur?: () => void;
     sx?: any;
+    size?: "small" | "medium";
 }
 
 const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
@@ -38,7 +39,8 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
     helperText,
     required,
     onBlur,
-    sx
+    sx,
+    size
 }) => {
     const [loading, setLoading] = useState(false);
     const [scriptLoaded, setScriptLoaded] = useState(false);
@@ -220,6 +222,7 @@ const AddressAutocomplete: React.FC<AddressAutocompleteProps> = ({
         <>
             <TextField
                 fullWidth
+                size={size}
                 inputRef={inputRef}
                 label={label}
                 value={value}

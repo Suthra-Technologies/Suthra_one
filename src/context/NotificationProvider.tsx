@@ -7,7 +7,8 @@ import { Close as CloseIcon, Restaurant as RestaurantIcon } from '@mui/icons-mat
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 
-import { getSoundSrc } from '../utils/notificationSounds';
+import { getSoundSrc, getSoundConfig, preloadNativeSounds } from '../utils/notificationSounds';
+import { NativeAudio } from '@capacitor-community/native-audio';
 import { useSettings } from './SettingsContext';
 import { autoPrintOrder } from '../utils/autoPrintOrder';
 
@@ -87,18 +88,42 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         // Read admin-selected sound from global settings, fallback to localStorage/default
         const selectedId  = settings?.notification?.sound || localStorage.getItem('notificationSoundId') || 'notification';
         const selectedSrc = getSoundSrc(selectedId);
+        const durationMs = (settings?.notification?.soundDuration || 6) * 1000;
 
+        // --- NATIVE AUDIO PLAYER (Robust for Android/iOS) ---
+        if (Capacitor.isNativePlatform()) {
+            const config = getSoundConfig(selectedId);
+            
+            // Vivo's OS is blocking the native .loop() command silently. 
+            // We will manually loop it using .play() on a timer.
+            NativeAudio.play({ assetId: config.id }).catch(() => {});
+            
+            const manualLoopInterval = setInterval(() => {
+                NativeAudio.play({ assetId: config.id }).catch(() => {});
+            }, 3000); // Trigger play every 3 seconds
+
+            // Auto-stop after the configured duration
+            soundTimeoutRef.current = setTimeout(() => {
+                clearInterval(manualLoopInterval);
+                NativeAudio.stop({ assetId: config.id }).catch(() => {});
+            }, durationMs);
+
+            return;
+        }
+
+        // --- WEB BROWSER AUDIO PLAYER ---
         const audio       = new Audio(selectedSrc);
         audio.volume      = 0.6;
-        audio.loop        = true;            // loop so it fills the full 6 s
+        audio.loop        = true;            // loop so it fills the full duration
         audioRef.current  = audio;
 
-        audio.play().catch(err => {
-            console.error('🔔 [NotificationProvider] Error playing sound:', err);
+        audio.play()
+            .then(() => console.log('🔔 [NotificationProvider] Audio playing successfully'))
+            .catch(err => {
+            console.warn('🔔 [NotificationProvider] Audio auto-play blocked in dev mode. Tap screen to allow. Error:', err.message);
         });
 
-        // Auto-stop after the configured duration (fallback to 6s)
-        const durationMs = (settings?.notification?.soundDuration || 6) * 1000;
+        // Auto-stop after the configured duration
         soundTimeoutRef.current = setTimeout(() => {
             audio.pause();
             audio.currentTime = 0;
@@ -120,7 +145,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                             id: new Date().getTime(),
                             schedule: { at: new Date(Date.now() + 100) }, // Schedule slightly in future
                             sound: 'notification.mp3',
-                            channelId: 'orders', // Critical for Android 8+
+                            channelId: 'orders_v2', // Critical for Android 8+
                             smallIcon: 'ic_stat_icon_config_sample', // Ensure this or a default exists
                             actionTypeId: '',
                             extra: null
@@ -641,6 +666,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     // Effect to manage socket connection
     useEffect(() => {
+        // Preload robust native sounds
+        preloadNativeSounds();
+
         // Request permissions and create channel
         const setupNotifications = async () => {
             if (Capacitor.isNativePlatform()) {
@@ -652,7 +680,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
                 // Create Channel (Required for Android O+)
                 await LocalNotifications.createChannel({
-                    id: 'orders',
+                    id: 'orders_v2',
                     name: 'Order Notifications',
                     description: 'Notifications for new orders and updates',
                     importance: 5, // High importance for heads-up notification

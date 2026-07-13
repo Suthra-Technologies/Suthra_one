@@ -337,8 +337,13 @@ const CustomerSupportPage: React.FC = () => {
                 )}
             </Paper>
 
-            <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth sx={{
-                '& .MuiDialog-paper': { borderRadius: 4 }
+            <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth PaperProps={{
+                sx: {
+                    borderRadius: { xs: 3, md: 4 },
+                    m: { xs: 2, md: 4 },
+                    width: { xs: 'calc(100% - 32px)', md: '100%' },
+                    maxHeight: 'calc(100% - 64px)'
+                }
             }}>
                 {selectedTicket && (
                     <>
