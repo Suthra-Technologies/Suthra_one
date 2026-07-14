@@ -13,6 +13,12 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(ThermalPrintPlugin.class);
         super.onCreate(savedInstanceState);
 
+        // Explicitly allow audio to auto-play without user interaction on Android WebView
+        if (bridge != null && bridge.getWebView() != null) {
+            android.webkit.WebSettings settings = bridge.getWebView().getSettings();
+            settings.setMediaPlaybackRequiresUserGesture(false);
+        }
+
         try {
             FirebaseApp.getInstance();
         } catch (IllegalStateException e) {
