@@ -636,9 +636,9 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                                     />
                                                 ) : null}
 
-                                                {item.modifiers && item.modifiers.length > 0 && (
+                                                {item.modifiers && (item?.modifiers || []).length > 0 && (
                                                     <Typography variant="caption" display="block" color="text.secondary" sx={{ ml: 2 }}>
-                                                        + {item.modifiers.map((m: any) => m.name).join(', ')}
+                                                        + {(item?.modifiers || []).map((m: any) => m.name).join(', ')}
                                                     </Typography>
                                                 )}
                                             </Box>
@@ -842,6 +842,19 @@ const OrderCard: React.FC<OrderCardProps> = ({
                         </Typography>
                     </Box>
                     <Stack direction="row" spacing={0.5} alignItems="center">
+                        {order.isDisputed && (
+                            <Chip
+                                label="DISPUTED"
+                                size="small"
+                                sx={{
+                                    height: 20,
+                                    fontSize: '0.7rem',
+                                    bgcolor: alpha(theme.palette.error.main, 0.1),
+                                    color: theme.palette.error.main,
+                                    fontWeight: 'bold',
+                                }}
+                            />
+                        )}
                         <Chip
                             label={order.paymentStatus === 'pending' ? 'PENDING' : getPaymentMethodLabel(order.payments && order.payments.length > 0 ? order.payments.map((p: any) => p.method) : order.paymentMethod)}
                             size="small"

@@ -187,9 +187,9 @@ const MemoizedCartItem = React.memo(({
                     secondary={
                         <Box component="span">
                             {item.variant && <Typography variant="caption" display="block">Variant: {item.variant.name}</Typography>}
-                            {item.modifiers && item.modifiers.length > 0 && (
+                            {item.modifiers && (item?.modifiers || []).length > 0 && (
                                 <Typography variant="caption" display="block" color="text.secondary">
-                                    Mods: {item.modifiers.map((m: any) => m.name).join(', ')}
+                                    Mods: {(item?.modifiers || []).map((m: any) => m.name).join(', ')}
                                 </Typography>
                             )}
                             {item.spiceLevel && <Typography variant="caption" display="block">Spice: {item.spiceLevel}</Typography>}

@@ -4582,7 +4582,7 @@ const ReportsPage: React.FC = () => {
                     <TablePagination
                         rowsPerPageOptions={[5, 10, 25, 50]}
                         component="div"
-                        count={inventoryStock.items.length}
+                        count={(inventoryStock?.items || []).length}
                         rowsPerPage={inventoryRowsPerPage}
                         page={inventoryPage}
                         onPageChange={(_, newPage) => setInventoryPage(newPage)}
@@ -5256,7 +5256,7 @@ const ReportsPage: React.FC = () => {
                                                     <Box sx={{ pl: 1 }}>
                                                         {fb.itemRatings.map((item: any, idx: number) => (
                                                             <Typography variant="caption" display="block" key={`${item.menuItem}-${idx}`} color="text.secondary">
-                                                                {item.name}{item.modifiers && item.modifiers.length > 0 ? ` (${item.modifiers.map((m: any) => m.name).join(', ')})` : ''}: {item.tasteRating} (Taste), {item.quantityRating} (Qty)
+                                                                {item.name}{item.modifiers && (item?.modifiers || []).length > 0 ? ` (${(item?.modifiers || []).map((m: any) => m.name).join(', ')})` : ''}: {item.tasteRating} (Taste), {item.quantityRating} (Qty)
                                                             </Typography>
                                                         ))}
                                                     </Box>
@@ -5319,7 +5319,7 @@ const ReportsPage: React.FC = () => {
                                                     <Box sx={{ maxHeight: 100, overflowY: 'auto' }}>
                                                         {fb.itemRatings && fb.itemRatings.map((item: any, idx: number) => (
                                                             <Typography variant="caption" display="block" key={`${item.menuItem}-${idx}`}>
-                                                                {item.name}{item.modifiers && item.modifiers.length > 0 ? ` (${item.modifiers.map((m: any) => m.name).join(', ')})` : ''}: {item.tasteRating} (Taste), {item.quantityRating} (Qty)
+                                                                {item.name}{item.modifiers && (item?.modifiers || []).length > 0 ? ` (${(item?.modifiers || []).map((m: any) => m.name).join(', ')})` : ''}: {item.tasteRating} (Taste), {item.quantityRating} (Qty)
                                                             </Typography>
                                                         ))}
                                                     </Box>
@@ -6067,7 +6067,7 @@ const ReportsPage: React.FC = () => {
                                                     {selectedCateringOrder.items?.map((item: any, i: number) => (
                                                         <ListItem
                                                             key={i}
-                                                            divider={i < selectedCateringOrder.items.length - 1}
+                                                            divider={i < (selectedCateringOrder?.items || []).length - 1}
                                                             sx={{ py: 1.5, px: 2 }}
                                                         >
                                                             <ListItemText

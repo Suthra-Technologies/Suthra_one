@@ -225,7 +225,7 @@ const BookingsAdminPage: React.FC = () => {
                 duration: newBooking.duration
             });
             setAvailableTables(response.data);
-            if (response.data.length > 0) {
+            if ((response?.data || []).length > 0) {
                 setBookingStep(2);
             } else {
                 toast.error('No tables available for selected criteria');

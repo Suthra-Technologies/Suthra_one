@@ -91,7 +91,7 @@ function cartReducer(state: CartState, action: any): CartState {
       );
       let updatedItems;
       if (existingItemIndex >= 0) {
-        updatedItems = state.items.map((cartItem, index) => {
+        updatedItems = (state?.items || []).map((cartItem, index) => {
           if (index === existingItemIndex) {
             const nextQty = cartItem.quantity + quantity;
             const customizations = cartItem.customizations ?? [];
@@ -125,7 +125,7 @@ function cartReducer(state: CartState, action: any): CartState {
       return { ...state, items: updatedItems, totalItems, totalAmount };
     }
     case CART_ACTIONS.REMOVE_ITEM: {
-      const updatedItems = state.items.filter((_, index) => index !== action.payload.index);
+      const updatedItems = (state?.items || []).filter((_, index) => index !== action.payload.index);
       const totalItems = updatedItems.reduce((sum, item) => sum + item.quantity, 0);
       const totalAmount = updatedItems.reduce((sum, item) => sum + item.itemTotal, 0);
       return { ...state, items: updatedItems, totalItems, totalAmount };
@@ -135,7 +135,7 @@ function cartReducer(state: CartState, action: any): CartState {
       if (quantity <= 0) {
         return cartReducer(state, { type: CART_ACTIONS.REMOVE_ITEM, payload: { index } });
       }
-      const updatedItems = state.items.map((item, i) => {
+      const updatedItems = (state?.items || []).map((item, i) => {
         if (i === index) {
           const customizations = item.customizations ?? [];
           const basePrice = item.price + customizations.reduce((sum, c) => sum + (c.price || 0), 0);
@@ -149,7 +149,7 @@ function cartReducer(state: CartState, action: any): CartState {
     }
     case CART_ACTIONS.UPDATE_NOTE: {
       const { index, notes } = action.payload;
-      const updatedItems = state.items.map((item, i) =>
+      const updatedItems = (state?.items || []).map((item, i) =>
         i === index ? { ...item, notes } : item
       );
       return { ...state, items: updatedItems };
@@ -238,8 +238,8 @@ export const GuestCartProvider = ({ children }: { children: ReactNode }) => {
   const getCartSummary = () => ({
     totalItems: state.totalItems,
     totalAmount: state.totalAmount,
-    itemCount: state.items.length,
-    isEmpty: state.items.length === 0,
+    itemCount: (state?.items || []).length,
+    isEmpty: (state?.items || []).length === 0,
   });
 
   const value: GuestCartContextType = {

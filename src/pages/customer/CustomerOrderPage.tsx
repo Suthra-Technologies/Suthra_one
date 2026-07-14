@@ -235,7 +235,7 @@ const CustomerOrderPage: React.FC = () => {
             sx={{
                 bgcolor: '#f8f9fa',
                 /* Height follows menu content; layout flex was stretching empty space above the footer */
-                pb: { xs: cart.items.length ? 14 : 5, sm: cart.items.length ? 12 : 8 },
+                pb: { xs: (cart?.items || []).length ? 14 : 5, sm: (cart?.items || []).length ? 12 : 8 },
             }}
         >
             <SpiceLevelDialog />

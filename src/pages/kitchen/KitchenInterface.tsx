@@ -424,7 +424,7 @@ const KitchenInterface: React.FC = () => {
 
   const handleRefundItem = (orderId: string, itemIndex: number, item: OrderItem, order: Order) => {
     const itemSubtotal = (item.price ?? 0) * item.quantity;
-    const orderSubtotal = order.subtotal ?? order.items.reduce((sum, i) => sum + (i.price ?? 0) * i.quantity, 0);
+    const orderSubtotal = order.subtotal ?? (order?.items || []).reduce((sum, i) => sum + (i.price ?? 0) * i.quantity, 0);
     const orderTax = order.tax?.amount ?? 0;
     const itemTax = orderSubtotal > 0 ? (itemSubtotal / orderSubtotal) * orderTax : 0;
     setRefundItemRef({ orderId, itemIndex, itemName: item.name, orderType: order.orderType, itemSubtotal, itemTax });
@@ -467,7 +467,7 @@ const KitchenInterface: React.FC = () => {
 
       setOrders(prev => prev.map(order => {
         if (order._id === orderId) {
-          const updatedItems = order.items.map(item =>
+          const updatedItems = (order?.items || []).map(item =>
             item.preparationStatus !== 'cancelled'
               ? { ...item, preparationStatus: 'ready' as any }
               : item
@@ -829,7 +829,7 @@ const KitchenInterface: React.FC = () => {
                               alignItems: 'flex-start',
                               py: { xs: 0.25, sm: 0.5 },
                               px: { xs: 0.5, sm: 1 },
-                              borderBottom: idx < order.items.length - 1 ? '1px dashed' : 'none',
+                              borderBottom: idx < (order?.items || []).length - 1 ? '1px dashed' : 'none',
                               borderColor: 'divider',
                               bgcolor: isCancelled ? alpha(theme.palette.error.main, 0.03) : 'transparent',
                               borderRadius: isCancelled ? 1 : 0,

@@ -865,7 +865,7 @@ const SettingsPage: React.FC = () => {
             const defaults = createDefaultSettings();
 
             if (Array.isArray(response.data)) {
-                const fetched = response.data.reduce((acc, curr) => {
+                const fetched = (response?.data || []).reduce((acc, curr) => {
                     if (curr?.category && curr?.settings) {
                         acc[curr.category] = curr.settings;
                     }

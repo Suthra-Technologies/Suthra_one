@@ -318,6 +318,7 @@ export const menuAPI = {
   delete: (id: string) => api.delete(`/menu/${id}`),
   restore: (id: string) => api.patch(`/menu/${id}/restore`),
   getPublicMenu: (tenantSlug?: string, search?: string, cursor?: string | null, limit?: number) => api.get('/menu/public', { params: { tenantSlug, search, cursor: cursor || undefined, limit } }),
+  exportExcel: () => api.get(`/menu/export/excel?t=${new Date().getTime()}`, { responseType: 'blob' }),
 
   // Category management
   createCategory: (categoryData: any) => api.post('/menu/categories', categoryData),
@@ -336,11 +337,12 @@ export const menuAPI = {
 
 // -------------------- Modifier Templates API --------------------
 export const modifierTemplatesAPI = {
-  getAll: () => api.get('/menu/templates'),
+  getAll: (params?: { isDeleted?: boolean }) => api.get('/menu/templates', { params }),
   getOne: (id: string) => api.get(`/menu/templates/${id}`),
   create: (data: any) => api.post('/menu/templates', data),
   update: (id: string, data: any) => api.put(`/menu/templates/${id}`, data),
   delete: (id: string) => api.delete(`/menu/templates/${id}`),
+  restore: (id: string) => api.patch(`/menu/templates/${id}/restore`),
 };
 
 // -------------------- Tax Categories API (External) --------------------
@@ -356,11 +358,12 @@ export const taxAPI = {
 
 // -------------------- Trays API --------------------
 export const traysAPI = {
-  getAll: () => api.get('/trays'),
+  getAll: (params?: { isDeleted?: boolean }) => api.get('/trays', { params }),
   getOne: (id: string) => api.get(`/trays/${id}`),
   create: (trayData: any) => api.post('/trays', trayData),
   update: (id: string, trayData: any) => api.put(`/trays/${id}`, trayData),
   delete: (id: string) => api.delete(`/trays/${id}`),
+  restore: (id: string) => api.patch(`/trays/${id}/restore`),
 };
 
 // -------------------- Tables API --------------------
@@ -756,6 +759,7 @@ export const recipesAPI = {
   getByMenuItem: (menuItemId: string) => api.get(`/recipes/menu-item/${menuItemId}`),
   update: (id: string, data: any) => api.put(`/recipes/${id}`, data),
   delete: (id: string) => api.delete(`/recipes/${id}`),
+  restore: (id: string) => api.patch(`/recipes/${id}/restore`),
   recalculateCost: (id: string) => api.post(`/recipes/${id}/calculate-cost`),
 };
 

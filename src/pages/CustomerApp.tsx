@@ -259,7 +259,7 @@ const CustomerFoodOrdering: React.FC = () => {
 
         // Load Coupons
         if (couponRes.data) {
-          setCoupons(couponRes.data.filter((c: any) => c.active && new Date(c.expiryDate) > new Date()));
+          setCoupons((couponRes?.data || []).filter((c: any) => c.active && new Date(c.expiryDate) > new Date()));
         }
 
       } catch (err) {
@@ -307,7 +307,7 @@ const CustomerFoodOrdering: React.FC = () => {
   const allItems = useMemo(() => menuByCategory.flatMap(group => group.items || []), [menuByCategory]);
   const filteredItems = useMemo(() => allItems.filter(it => {
     const matchesCat = activeCategoryId === 'all' ||
-      (it.categories && it.categories.length > 0
+      (it.categories && (it?.categories || []).length > 0
         ? it.categories.some((c: any) => (typeof c === 'object' ? c._id : c) === activeCategoryId)
         : it.category?._id === activeCategoryId);
     const matchesSearch = !search || it.name?.toLowerCase().includes(search?.toLowerCase());

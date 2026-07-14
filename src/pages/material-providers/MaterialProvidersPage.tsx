@@ -352,9 +352,9 @@ const MaterialProvidersPage: React.FC = () => {
                                     </Tooltip>
                                 </Box>
 
-                                {provider.categories && provider.categories.length > 0 && (
+                                {provider.categories && (provider?.categories || []).length > 0 && (
                                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5 }}>
-                                        {provider.categories.map(cat => (
+                                        {(provider?.categories || []).map(cat => (
                                             <Chip key={cat} label={cat} size="small" variant="outlined" sx={{ fontSize: '0.7rem', height: 20 }} />
                                         ))}
                                     </Box>

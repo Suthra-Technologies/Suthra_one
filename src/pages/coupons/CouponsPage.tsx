@@ -294,7 +294,7 @@ const CouponsPage: React.FC = () => {
                 setTotalCoupons(response.data.total);
             } else {
                 setCoupons(response.data);
-                setTotalCoupons(response.data.length);
+                setTotalCoupons((response?.data || []).length);
             }
         } catch (error) {
             console.error('Error fetching coupons:', error);

@@ -469,7 +469,7 @@ const PublicMenuPage: React.FC = () => {
             </Box>
           </DialogTitle>
           <DialogContent>
-            {cart.items.map((item: any, index: number) => (
+            {(cart?.items || []).map((item: any, index: number) => (
               <Box key={index} sx={{ mb: 2, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Box>

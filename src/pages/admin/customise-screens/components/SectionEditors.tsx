@@ -320,7 +320,7 @@ export const ServicesSectionEditor: React.FC<SectionEditorProps> = ({ section, o
       <TextField label="Section Title" fullWidth value={data.title} inputProps={{ maxLength: 100 }} helperText={`${(data.title || '').length}/100`} onChange={(e) => onUpdate({ ...data, title: e.target.value })} />
       <TextField label="Subtitle" fullWidth value={data.subtitle} inputProps={{ maxLength: 100 }} helperText={`${(data.subtitle || '').length}/100`} onChange={(e) => onUpdate({ ...data, subtitle: e.target.value })} />
       <Stack spacing={2}>
-        {data.items.map((item, idx) => (
+        {(data?.items || []).map((item, idx) => (
           <Paper key={idx} variant="outlined" sx={{ p: 2 }}>
             <Stack direction="row" spacing={2} alignItems="start">
               <Box sx={{ width: { xs: 'auto', sm: 'auto' }, mb: { xs: 1, sm: 0 } }}>

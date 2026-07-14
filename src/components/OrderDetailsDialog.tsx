@@ -549,9 +549,9 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                                                             </Tooltip>
                                                         )}
                                                     </Box>
-                                                    {item.modifiers && item.modifiers.length > 0 && (
+                                                    {item.modifiers && (item?.modifiers || []).length > 0 && (
                                                         <Typography variant="caption" display="block" color="text.secondary">
-                                                            + {item.modifiers.map((m: any) => m.name).join(', ')}
+                                                            + {(item?.modifiers || []).map((m: any) => m.name).join(', ')}
                                                         </Typography>
                                                     )}
                                                     {item.spiceLevel ? (

@@ -459,7 +459,7 @@ const VendorsPage: React.FC = () => {
         setFormData(prev => ({
             ...prev,
             categories: prev.categories.includes(category)
-                ? prev.categories.filter(c => c !== category)
+                ? (prev?.categories || []).filter(c => c !== category)
                 : [...prev.categories, category],
         }));
     };
@@ -655,7 +655,7 @@ const VendorsPage: React.FC = () => {
                                                     sx={{ fontSize: '0.65rem', height: 20, fontWeight: 700 }}
                                                 />
                                             ))}
-                                            {vendor.categories?.length > 2 && <Chip label={`+${vendor.categories.length - 2}`} size="small" sx={{ height: 20, fontSize: '0.65rem' }} />}
+                                            {vendor.categories?.length > 2 && <Chip label={`+${(vendor?.categories || []).length - 2}`} size="small" sx={{ height: 20, fontSize: '0.65rem' }} />}
                                         </Box>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                             <Typography
@@ -765,7 +765,7 @@ const VendorsPage: React.FC = () => {
                                                 />
                                             ))}
                                             {vendor.categories?.length > 2 && (
-                                                <Chip label={`+${vendor.categories.length - 2}`} size="small" />
+                                                <Chip label={`+${(vendor?.categories || []).length - 2}`} size="small" />
                                             )}
                                         </Box>
                                     </TableCell>

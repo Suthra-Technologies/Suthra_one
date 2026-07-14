@@ -126,7 +126,7 @@ const CreatePOPage: React.FC = () => {
                 category: po.category || 'raw_materials',
                 referenceNumber: po.referenceNumber || '',
                 dueDate: po.dueDate ? new Date(po.dueDate).toISOString().split('T')[0] : '',
-                items: (po.items && po.items.length > 0) ? po.items : [{ description: '', quantity: 1, unit: 'kg', unitPrice: 0, total: 0, inventoryItem: '', weightValue: '', weightUnit: 'lb' }],
+                items: (po.items && (po?.items || []).length > 0) ? po.items : [{ description: '', quantity: 1, unit: 'kg', unitPrice: 0, total: 0, inventoryItem: '', weightValue: '', weightUnit: 'lb' }],
                 taxRate: po.taxRate || 0,
                 shippingCost: po.shippingCost || 0,
                 notes: po.notes || '',
@@ -573,11 +573,11 @@ const CreatePOPage: React.FC = () => {
     };
 
     const removeItem = (index: number) => {
-        setFormData({ ...formData, items: formData.items.filter((_: any, i: number) => i !== index) });
+        setFormData({ ...formData, items: (formData?.items || []).filter((_: any, i: number) => i !== index) });
     };
 
     const handleRestockAll = async () => {
-        const verifiedItems = formData.items.filter((item: any) => item.inventoryItem && item.inventoryItem !== 'verified' && item.quantity > 0);
+        const verifiedItems = (formData?.items || []).filter((item: any) => item.inventoryItem && item.inventoryItem !== 'verified' && item.quantity > 0);
         if (verifiedItems.length === 0) {
             toast.error('No verified inventory items to restock. Ensure all items are matched to inventory first.');
             return;
@@ -609,7 +609,7 @@ const CreatePOPage: React.FC = () => {
         }
     };
 
-    const calculateSubtotal = () => formData.items.reduce((sum: number, item: any) => sum + (item.total || 0), 0);
+    const calculateSubtotal = () => (formData?.items || []).reduce((sum: number, item: any) => sum + (item.total || 0), 0);
     const calculateTax = () => (calculateSubtotal() * (formData.taxRate || 0)) / 100;
     const calculateTotal = () => calculateSubtotal() + calculateTax() + (formData.shippingCost || 0);
 
@@ -1099,13 +1099,13 @@ const CreatePOPage: React.FC = () => {
                             }}>
                                 {/* MOBILE CARD VIEW */}
                                 {isMobile ? (
-                                    formData.items.length === 0 ? (
+                                    (formData?.items || []).length === 0 ? (
                                         <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
                                             <Typography variant="caption">No items available</Typography>
                                         </Box>
                                     ) : (
                                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                                            {formData.items.map((item: any, index: number) => (
+                                            {(formData?.items || []).map((item: any, index: number) => (
                                                 <Box key={index} sx={{
                                                     width: '100%',
                                                     maxWidth: 500,
@@ -1185,7 +1185,7 @@ const CreatePOPage: React.FC = () => {
                                                         <IconButton
                                                             size="small" color="error"
                                                             onClick={() => removeItem(index)}
-                                                            disabled={formData.items.length === 1}
+                                                            disabled={(formData?.items || []).length === 1}
                                                             sx={{ p: 0.5 }}
                                                         >
                                                             <DeleteIcon fontSize="small" />
@@ -1209,7 +1209,7 @@ const CreatePOPage: React.FC = () => {
                                                 </TableRow>
                                             </TableHead>
                                             <TableBody>
-                                                {formData.items.map((item: any, index: number) => (
+                                                {(formData?.items || []).map((item: any, index: number) => (
                                                     <TableRow key={index}>
                                                         <TableCell>
                                                             {isInventory ? (
@@ -1260,7 +1260,7 @@ const CreatePOPage: React.FC = () => {
                                                         <TableCell align="right">${(isSalary ? item.unitPrice : item.total || 0).toFixed(2)}</TableCell>
                                                         {!isSalary && (
                                                             <TableCell>
-                                                                <IconButton onClick={() => removeItem(index)} disabled={formData.items.length === 1} size="small" color="error"><DeleteIcon /></IconButton>
+                                                                <IconButton onClick={() => removeItem(index)} disabled={(formData?.items || []).length === 1} size="small" color="error"><DeleteIcon /></IconButton>
                                                             </TableCell>
                                                         )}
                                                     </TableRow>

@@ -485,7 +485,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             let fetched: Partial<SettingsState> = {};
 
             if (Array.isArray(response.data)) {
-                fetched = response.data.reduce((acc: Partial<SettingsState>, curr: any) => {
+                fetched = (response?.data || []).reduce((acc: Partial<SettingsState>, curr: any) => {
                     if (curr?.category && curr?.settings) {
                         acc[curr.category as keyof SettingsState] = curr.settings;
                     }
