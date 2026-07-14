@@ -2070,7 +2070,7 @@ const HomePage: React.FC = () => {
                         mb={1}
                         sx={{ color: isPopular ? "#fff" : "inherit" }}
                       >
-                        ${plan.price}
+                        ${Number(plan.price || 0).toFixed(2)}
                         <Box component="span" sx={{ fontSize: "1.2rem", fontWeight: 500 }}>
                           /{plan.interval === "yearly" ? "yr" : "mo"}
                         </Box>
@@ -2672,7 +2672,7 @@ const HomePage: React.FC = () => {
                 Developed by{" "}
                 <Box
                   component="a"
-                  href="https://suthratech.com/"
+                  href="https://nexzentek.com/"
                   target="_blank"
                   rel="noopener noreferrer"
                   sx={{
@@ -2682,7 +2682,7 @@ const HomePage: React.FC = () => {
                     "&:hover": { textDecoration: "underline", color: "#a5b4fc !important" },
                   }}
                 >
-                  Suthra Technologies
+                  NexZenTek
                 </Box>
               </Typography>
             </Box>

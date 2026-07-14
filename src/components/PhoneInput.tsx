@@ -19,7 +19,7 @@ import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 const FlagImg: React.FC<{ iso2: string; size?: number }> = ({ iso2, size = 20 }) => (
     <Box
         component="img"
-        src={`https://flagcdn.com/w40/${iso2.toLowerCase()}.png`}
+        src={`https://flagcdn.com/w40/${iso2?.toLowerCase()}.png`}
         alt={iso2}
         sx={{
             width: size,
@@ -225,6 +225,7 @@ interface PhoneInputProps {
     dialCode?: string;
     onDialCodeChange?: (dialCode: string) => void;
     label?: string;
+    name?: string;
     required?: boolean;
     error?: boolean;
     helperText?: React.ReactNode;
@@ -247,6 +248,7 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
     dialCode,
     onDialCodeChange,
     label = 'Phone Number',
+    name,
     required = false,
     error = false,
     helperText,
@@ -261,6 +263,24 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
     const { defaultDialCode } = useSettings();
     const effectiveDialCode = dialCode || defaultDialCode || '1';
 
+    // Format phone numbers dynamically
+    const formatPhone = (val: string, dCode: string) => {
+        const digits = String(val || '').replace(/\D/g, '');
+        if (dCode === '1') {
+            const localDigits = digits.slice(0, 10);
+            if (localDigits.length <= 3) {
+                return localDigits ? `(${localDigits}` : '';
+            }
+            if (localDigits.length <= 6) {
+                return `(${localDigits.slice(0, 3)}) ${localDigits.slice(3)}`;
+            }
+            return `(${localDigits.slice(0, 3)}) ${localDigits.slice(3, 6)}-${localDigits.slice(6)}`;
+        }
+        return digits.slice(0, 15);
+    };
+
+    const displayValue = effectiveDialCode === '1' ? formatPhone(value, effectiveDialCode) : value.replace(/\D/g, '').slice(0, 15);
+
     const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
     const [search, setSearch] = useState('');
     const searchRef = useRef<HTMLInputElement>(null);
@@ -271,7 +291,7 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
         DEFAULT_COUNTRY;
 
     const filtered = useMemo(() => {
-        const q = search.toLowerCase().trim();
+        const q = search?.toLowerCase().trim();
         if (!q) {
             // Show USA first, then India, then rest of countries
             const usaCountry = COUNTRIES.filter(c => c.iso2 === 'US');
@@ -281,9 +301,9 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
         }
         return COUNTRIES.filter(
             (c) =>
-                c.name.toLowerCase().includes(q) ||
+                c.name?.toLowerCase().includes(q) ||
                 c.dialCode.includes(q) ||
-                c.iso2.toLowerCase().includes(q)
+                c.iso2?.toLowerCase().includes(q)
         );
     }, [search]);
 
@@ -311,8 +331,12 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
             <TextField
                 fullWidth={fullWidth}
                 label={label}
-                value={value}
-                onChange={(e) => onChange(e.target.value)}
+                name={name}
+                value={displayValue}
+                onChange={(e) => {
+                    const raw = e.target.value.replace(/\D/g, '');
+                    onChange(raw);
+                }}
                 required={required}
                 error={error}
                 helperText={helperText}
@@ -322,7 +346,7 @@ const PhoneInput: React.FC<PhoneInputProps> = ({
                 onBlur={onBlur}
                 inputProps={{
                     inputMode: 'tel',
-                    maxLength: 10,
+                    maxLength: effectiveDialCode === '1' ? 14 : 15, // 14 allows (XXX) XXX-XXXX format
                     ...inputProps,
                 }}
                 InputLabelProps={{

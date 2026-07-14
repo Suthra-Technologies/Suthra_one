@@ -26,6 +26,7 @@ import {
 import React, { useEffect } from 'react';
 import AddressAutocomplete from '../../../components/AddressAutocomplete';
 import PhoneInput from '../../../components/PhoneInput';
+import { validatePhone } from '../../../utils/validation';
 
 interface CustomerInfoSectionProps {
     customerName: string;
@@ -40,6 +41,8 @@ interface CustomerInfoSectionProps {
     setOrderType: (val: any) => void;
     paymentMethod: string;
     setPaymentMethod: (val: any) => void;
+    cardType?: 'credit' | 'debit';
+    setCardType?: (val: 'credit' | 'debit') => void;
     guestCount: number;
     setGuestCount: (val: number) => void;
     tableNumber: string;
@@ -103,6 +106,8 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
     setOrderType,
     paymentMethod,
     setPaymentMethod,
+    cardType = 'credit',
+    setCardType,
     guestCount,
     setGuestCount,
     tableNumber,
@@ -260,7 +265,7 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                         fullWidth
                         value={customerName}
                         onChange={(e) => {
-                            const value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                            const value = e.target.value.replace(/[^a-zA-Z\s]/g, '').slice(0, 30);
                             setCustomerName(value);
                             if (customerNameTouched && value.trim()) {
                                 setCustomerNameError('');
@@ -273,6 +278,8 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                 setCustomerNameError('Customer name is required');
                             } else if (trimmedName.length < 3) {
                                 setCustomerNameError('Customer name must be at least 3 characters');
+                            } else if (trimmedName.length > 30) {
+                                setCustomerNameError('Customer name must not exceed 30 characters');
                             } else {
                                 setCustomerNameError('');
                             }
@@ -281,6 +288,7 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                         helperText={customerNameTouched && customerNameError}
                         disabled={user?.role === 'customer'}
                         required
+                        inputProps={{ maxLength: 30 }}
                         InputLabelProps={{
                             sx: {
                                 '& .MuiFormLabel-asterisk': {
@@ -298,21 +306,19 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                         fullWidth
                         value={customerPhone}
                         onChange={(value) => {
-                            const cleaned = value.replace(/\D/g, '').slice(0, 10);
-                            setCustomerPhone(cleaned);
-                            if (customerPhoneTouched && cleaned) {
-                                setCustomerPhoneError('');
+                            const cleaned = String(value || '').replace(/\D/g, '');
+                            const isUS = customerDialCode === '1' || customerDialCode === '+1';
+                            const final = (isUS && cleaned.length > 10) ? cleaned.slice(0, 10) : cleaned;
+                            setCustomerPhone(final);
+                            if (customerPhoneTouched && final) {
+                                const validation = validatePhone(final, customerDialCode);
+                                setCustomerPhoneError(validation.isValid ? '' : (validation.message || ''));
                             }
                         }}
                         onBlur={() => {
                             setCustomerPhoneTouched(true);
-                            if (!customerPhone) {
-                                setCustomerPhoneError('Phone number is required');
-                            } else if (customerPhone.length !== 10) {
-                                setCustomerPhoneError('Phone number must be exactly 10 digits');
-                            } else {
-                                setCustomerPhoneError('');
-                            }
+                            const validation = validatePhone(customerPhone, customerDialCode);
+                            setCustomerPhoneError(validation.isValid ? '' : (validation.message || ''));
                         }}
                         error={customerPhoneTouched && !!customerPhoneError}
                         helperText={suggestedPhone ? (
@@ -345,10 +351,11 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                         type="email"
                         value={customerEmail}
                         onChange={(e) => {
-                            setCustomerEmail(e.target.value);
+                            const val = e.target.value?.toLowerCase();
+                            setCustomerEmail(val);
                             if (customerEmailTouched) {
                                 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                                if (e.target.value && !emailRegex.test(e.target.value)) {
+                                if (val && !emailRegex.test(val)) {
                                     setCustomerEmailError('Please enter a valid email address');
                                 } else {
                                     setCustomerEmailError('');
@@ -530,8 +537,27 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                 {!isIndia && (settings.system?.posPaymentMethods?.venmo ?? true) && (
                                     <FormControlLabel value="venmo" control={<Radio size="small" />} label="Venmo" />
                                 )}
+                                {(settings.system?.posPaymentMethods?.cheque ?? true) && (
+                                    <FormControlLabel value="cheque" control={<Radio size="small" />} label="Cheque" />
+                                )}
                             </RadioGroup>
                         </FormControl>
+                    )}
+
+                    {/* Card type — Credit / Debit (shown when Card is selected) */}
+                    {paymentMethod === 'card' && setCardType &&
+                        ((settings.system?.posPaymentMethods?.creditCard ?? true) || (settings.system?.posPaymentMethods?.debitCard ?? true)) && (
+                        <Box sx={{ mt: 1, pl: 1 }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>Card Type</Typography>
+                            <RadioGroup row value={cardType} onChange={(e) => setCardType(e.target.value as 'credit' | 'debit')}>
+                                {(settings.system?.posPaymentMethods?.creditCard ?? true) && (
+                                    <FormControlLabel value="credit" control={<Radio size="small" />} label="Credit Card" />
+                                )}
+                                {(settings.system?.posPaymentMethods?.debitCard ?? true) && (
+                                    <FormControlLabel value="debit" control={<Radio size="small" />} label="Debit Card" />
+                                )}
+                            </RadioGroup>
+                        </Box>
                     )}
 
                     {/* Dine-in Payment Method - Only Card and Cash */}

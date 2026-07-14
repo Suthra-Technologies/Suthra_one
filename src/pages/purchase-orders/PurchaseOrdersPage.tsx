@@ -272,7 +272,7 @@ const PurchaseOrdersPage: React.FC = () => {
                         >
                             <MenuItem value="" sx={{ fontSize: '0.875rem' }}>All {f.label}</MenuItem>
                             {f.options.map((opt) => (
-                                <MenuItem key={opt} value={opt} sx={{ fontSize: '0.875rem' }}>{opt.replace('_', ' ').toUpperCase()}</MenuItem>
+                                <MenuItem key={opt} value={opt} sx={{ fontSize: '0.875rem' }}>{opt.replace('_', ' ')?.toUpperCase()}</MenuItem>
                             ))}
                         </TextField>
                     ))}
@@ -324,7 +324,7 @@ const PurchaseOrdersPage: React.FC = () => {
                                             </Stack>
                                             <Typography variant="body2" fontWeight="600" sx={{ mb: 0.1, fontSize: '0.74rem' }}>{po.vendor?.name || 'Manual Entry'}</Typography>
                                             <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.62rem' }}>
-                                                {po.category?.replace('_', ' ').toUpperCase() || 'OTHER'} • {po.createdAt ? new Date(po.createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' }) : 'N/A'}
+                                                {po.category?.replace('_', ' ')?.toUpperCase() || 'OTHER'} • {po.createdAt ? new Date(po.createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' }) : 'N/A'}
                                             </Typography>
                                         </Box>
                                     </Box>
@@ -335,7 +335,7 @@ const PurchaseOrdersPage: React.FC = () => {
                                         <Box>
                                             <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.1, fontSize: '0.62rem' }}>Payment</Typography>
                                             <Chip
-                                                label={po.paymentStatus.toUpperCase()}
+                                                label={po.paymentStatus?.toUpperCase()}
                                                 size="small"
                                                 variant="outlined"
                                                 color={po.paymentStatus === 'paid' ? 'success' : po.paymentStatus === 'partial' ? 'warning' : 'error'}
@@ -408,7 +408,7 @@ const PurchaseOrdersPage: React.FC = () => {
                                         <TableCell>
                                             <Chip
                                                 icon={catStyle.icon}
-                                                label={po.category.replace('_', ' ').toUpperCase()}
+                                                label={po.category.replace('_', ' ')?.toUpperCase()}
                                                 size="small"
                                                 sx={{ bgcolor: alpha(catStyle.color, 0.1), color: catStyle.color, fontWeight: 'bold' }}
                                             />
@@ -423,7 +423,7 @@ const PurchaseOrdersPage: React.FC = () => {
                                         </TableCell>
                                         <TableCell>
                                             <Chip
-                                                label={po.paymentStatus.toUpperCase()}
+                                                label={po.paymentStatus?.toUpperCase()}
                                                 size="small"
                                                 color={po.paymentStatus === 'paid' ? 'success' : po.paymentStatus === 'partial' ? 'warning' : 'error'}
                                                 variant="outlined"

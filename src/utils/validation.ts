@@ -19,17 +19,34 @@ export const validateEmail = (email: string): ValidationResult => {
     return { isValid: true };
 };
 
-// Phone number validation (Indian format)
-export const validatePhone = (phone: string): ValidationResult => {
-    if (!phone || phone.trim() === '') {
+// Phone number validation
+export const validatePhone = (phone: string | number, dialCode?: string): ValidationResult => {
+    const phoneStr = String(phone || '');
+    if (!phoneStr || phoneStr.trim() === '') {
         return { isValid: false, message: 'Phone number is required' };
     }
 
     // Keep only digits
-    const digits = phone.replace(/\D/g, '');
+    const digits = String(phone).replace(/\D/g, '');
 
-    if (digits.length !== 10) {
-        return { isValid: false, message: 'Please enter exactly 10 digits' };
+    // By default, if dialCode is '1' or not provided, enforce strict US validation.
+    // If it's explicitly something else, allow 7-15 digits.
+    if (!dialCode || dialCode === '1' || dialCode === '+1') {
+        if (digits.length !== 10) {
+            return { isValid: false, message: 'Please enter a valid phone number' };
+        }
+        if (digits[0] === '0' || digits[0] === '1') {
+            return { isValid: false, message: 'Please enter a valid phone number' };
+        }
+        if (digits[3] === '0' || digits[3] === '1') {
+            return { isValid: false, message: 'Please enter a valid phone number' };
+        }
+        return { isValid: true };
+    }
+
+    // Generic international validation
+    if (digits.length < 7 || digits.length > 15) {
+        return { isValid: false, message: 'Please enter a valid phone number (7-15 digits)' };
     }
 
     return { isValid: true };
@@ -64,18 +81,29 @@ export const validatePassword = (password: string): ValidationResult => {
         return { isValid: false, message: 'Password is required' };
     }
 
-    if (password.length < 6) {
-        return { isValid: false, message: 'Password must be at least 6 characters long' };
+    if (password.length < 8) {
+        return { isValid: false, message: 'Password must be at least 8 characters long' };
     }
 
     if (password.length > 128) {
         return { isValid: false, message: 'Password must not exceed 128 characters' };
     }
 
-    // Optional: Check for at least one number and one letter
-    // if (!/\d/.test(password) || !/[a-zA-Z]/.test(password)) {
-    //   return { isValid: false, message: 'Password must contain both letters and numbers' };
-    // }
+    if (!/[A-Z]/.test(password)) {
+        return { isValid: false, message: 'Password must contain at least one uppercase letter' };
+    }
+
+    if (!/[a-z]/.test(password)) {
+        return { isValid: false, message: 'Password must contain at least one lowercase letter' };
+    }
+
+    if (!/\d/.test(password)) {
+        return { isValid: false, message: 'Password must contain at least one number' };
+    }
+
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+        return { isValid: false, message: 'Password must contain at least one special character' };
+    }
 
     return { isValid: true };
 };

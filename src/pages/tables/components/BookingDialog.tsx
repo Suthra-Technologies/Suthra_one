@@ -23,6 +23,7 @@ import { toast } from 'react-hot-toast';
 import { bookingsAPI } from '../../../services/api';
 import { validatePhone, validateEmail } from '../../../utils/validation';
 import PhoneInput from '../../../components/PhoneInput';
+import CustomInput from '../../../components/common/CustomInput';
 
 interface BookingDialogProps {
     open: boolean;
@@ -143,10 +144,12 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
         if (name === 'customerName') {
             if (!value || value.trim() === '') {
                 error = 'Customer name is required';
+            } else if (value.trim().length > 30) {
+                error = 'Customer name must not exceed 30 characters';
             }
         }
         if (name === 'customerPhone') {
-            const validation = validatePhone(value);
+            const validation = validatePhone(value, customerDialCode);
             if (!validation.isValid) {
                 error = validation.message || '';
             }
@@ -316,7 +319,25 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
                             type="number"
                             value={guestCount}
                             onChange={e => {
-                                const val = Number(e.target.value);
+                                let valStr = e.target.value;
+                                if (valStr === '') {
+                                    setGuestCount(0);
+                                    if (bookingTouched.guests) validateBookingField('guests', 0);
+                                    return;
+                                }
+                                if (valStr.length > 2) {
+                                    valStr = valStr.slice(0, 2);
+                                    e.target.value = valStr;
+                                }
+                                if (/^0[0-9]+/.test(valStr)) {
+                                    valStr = valStr.replace(/^0+/, '');
+                                    e.target.value = valStr;
+                                }
+                                let val = parseInt(valStr, 10);
+                                if (val > 20) {
+                                    val = 20;
+                                    e.target.value = '20';
+                                }
                                 setGuestCount(val);
                                 if (bookingTouched.guests) validateBookingField('guests', val);
                             }}
@@ -363,12 +384,14 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
                         />
                     </Stack>
 
-                    <TextField
+                    <CustomInput
+                        type="name"
                         label="Customer Name"
+                        maxLength={30}
                         value={customerName}
-                        onChange={e => {
-                            setCustomerName(e.target.value);
-                            if (bookingTouched.customerName) validateBookingField('customerName', e.target.value);
+                        onChange={val => {
+                            setCustomerName(val);
+                            if (bookingTouched.customerName) validateBookingField('customerName', val);
                         }}
                         onBlur={() => {
                             setBookingTouched(prev => ({ ...prev, customerName: true }));
@@ -387,9 +410,11 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
                         label="Phone Number"
                         value={customerPhone}
                         onChange={(val) => {
-                            const clean = val.replace(/\D/g, '').slice(0, 10);
-                            setCustomerPhone(clean);
-                            if (bookingTouched.customerPhone) validateBookingField('customerPhone', clean);
+                            const clean = val.replace(/\D/g, '');
+                            const isUS = customerDialCode === '1' || customerDialCode === '+1';
+                            const final = (isUS && clean.length > 10) ? clean.slice(0, 10) : clean;
+                            setCustomerPhone(final);
+                            if (bookingTouched.customerPhone) validateBookingField('customerPhone', final);
                         }}
                         dialCode={customerDialCode}
                         onDialCodeChange={setCustomerDialCode}

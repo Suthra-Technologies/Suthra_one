@@ -488,7 +488,7 @@ const CheckoutPage: React.FC = () => {
           setQuoteError(errMsg);
 
           // Detect distance error
-          const lowerMsg = errMsg.toLowerCase();
+          const lowerMsg = errMsg?.toLowerCase();
           if (lowerMsg.includes('distance') || lowerMsg.includes('range') || lowerMsg.includes('too long') || lowerMsg.includes('far')) {
             setShowDistanceDialog(true);
           }

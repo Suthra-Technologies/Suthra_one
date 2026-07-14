@@ -115,6 +115,8 @@ interface OrderCardProps {
     canManage?: boolean;
     onRefresh?: () => void;
     onFeedback?: (orderId: string) => void;
+    onAccept?: () => void;
+    onReject?: () => void;
 }
 
 const OrderCard: React.FC<OrderCardProps> = ({
@@ -126,6 +128,8 @@ const OrderCard: React.FC<OrderCardProps> = ({
     canManage = true,
     onRefresh,
     onFeedback,
+    onAccept,
+    onReject
 }) => {
     const { formatCurrency } = useSettings();
     const [addItemsDialogOpen, setAddItemsDialogOpen] = useState(false);
@@ -306,11 +310,13 @@ const OrderCard: React.FC<OrderCardProps> = ({
 
     return (
         <Card
+            onClick={() => onView(order)}
             sx={{
                 width: '100%',
                 height: '100%', // Fill grid item height
                 display: 'flex', // Flex layout
                 flexDirection: 'column', // Column direction
+                cursor: 'pointer',
                 transition: 'transform 0.2s, box-shadow 0.2s',
                 '&:hover': {
                     transform: 'translateY(-4px)',
@@ -325,7 +331,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
         >
             <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } }, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
                 {/* Header Section */}
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2, flexWrap: 'wrap', gap: 1 }}>
                     <Box>
                         <Typography
                             variant="h5"
@@ -533,10 +539,20 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                         size="small"
                                         href={order.trackingUrl}
                                         target="_blank"
+                                        onClick={(e) => e.stopPropagation()}
                                         sx={{ padding: 0, minWidth: 'auto', fontSize: '0.8rem', textTransform: 'none' }}
                                     >
                                         Track Delivery
                                     </Button>
+                                </Box>
+                            )}
+                            {order.handoffQr && (
+                                <Box sx={{ mt: 1, p: 1, bgcolor: 'background.paper', borderRadius: 1, border: '1px dashed #ccc', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <QRCodeSVG value={order.handoffQr} size={48} />
+                                    <Box>
+                                        <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block' }}>Pickup Code</Typography>
+                                        <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{order.handoffQr}</Typography>
+                                    </Box>
                                 </Box>
                             )}
                         </Stack>
@@ -840,30 +856,58 @@ const OrderCard: React.FC<OrderCardProps> = ({
                             Payment:
                         </Typography>
                     </Box>
-                    <Chip
-                        label={order.paymentStatus === 'pending' ? 'PENDING' : getPaymentMethodLabel(order.payments && order.payments.length > 0 ? order.payments.map((p: any) => p.method) : order.paymentMethod)}
-                        size="small"
-                        sx={{
-                            height: 20,
-                            fontSize: '0.7rem',
-                            bgcolor: alpha(order.paymentStatus === 'pending' ? theme.palette.warning.main : getPaymentBadgeColor(order.payments && order.payments.length > 0 ? order.payments[0].method : order.paymentMethod), 0.1),
-                            color: order.paymentStatus === 'pending' ? theme.palette.warning.main : getPaymentBadgeColor(order.payments && order.payments.length > 0 ? order.payments[0].method : order.paymentMethod),
-                            fontWeight: 'bold',
-                        }}
-                    />
+                    <Stack direction="row" spacing={0.5} alignItems="center">
+                        <Chip
+                            label={order.paymentStatus === 'pending' ? 'PENDING' : getPaymentMethodLabel(order.payments && order.payments.length > 0 ? order.payments.map((p: any) => p.method) : order.paymentMethod)}
+                            size="small"
+                            sx={{
+                                height: 20,
+                                fontSize: '0.7rem',
+                                bgcolor: alpha(order.paymentStatus === 'pending' ? theme.palette.warning.main : getPaymentBadgeColor(order.payments && order.payments.length > 0 ? order.payments[0].method : order.paymentMethod), 0.1),
+                                color: order.paymentStatus === 'pending' ? theme.palette.warning.main : getPaymentBadgeColor(order.payments && order.payments.length > 0 ? order.payments[0].method : order.paymentMethod),
+                                fontWeight: 'bold',
+                            }}
+                        />
+                        {order.paymentMethod === 'card' && order.cardType && (
+                            <Chip
+                                label={order.cardType === 'debit' ? 'DEBIT' : 'CREDIT'}
+                                size="small"
+                                sx={{
+                                    height: 20,
+                                    fontSize: '0.7rem',
+                                    bgcolor: alpha(theme.palette.info.main, 0.12),
+                                    color: theme.palette.info.main,
+                                    fontWeight: 'bold',
+                                }}
+                            />
+                        )}
+                        {order.paymentStatus === 'paid' && (
+                            <Chip
+                                label="PAID"
+                                size="small"
+                                sx={{
+                                    height: 20,
+                                    fontSize: '0.7rem',
+                                    bgcolor: alpha(theme.palette.success.main, 0.12),
+                                    color: theme.palette.success.main,
+                                    fontWeight: 'bold',
+                                }}
+                            />
+                        )}
+                    </Stack>
                 </Box>
             </CardContent>
 
             <CardActions sx={{ p: 1, pt: 0, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', bgcolor: alpha(theme.palette.background.default, 0.5), gap: 0.5 }}>
                 <Stack direction="row" spacing={0.5}>
                     <Tooltip title="View Details">
-                        <IconButton size="small" color="primary" onClick={() => onView(order)} sx={{ padding: '4px' }}>
+                        <IconButton size="small" color="primary" disabled={order.status === 'pending'} onClick={(e) => { e.stopPropagation(); onView(order); }} sx={{ padding: '4px' }}>
                             <ViewIcon />
                         </IconButton>
                     </Tooltip>
 
                     <Tooltip title="Print Bill">
-                        <IconButton size="small" onClick={() => onPrint(order)} sx={{ padding: '4px' }}>
+                        <IconButton size="small" disabled={order.status === 'pending'} onClick={(e) => { e.stopPropagation(); onPrint(order); }} sx={{ padding: '4px' }}>
                             <ReceiptIcon />
                         </IconButton>
                     </Tooltip>
@@ -873,6 +917,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                             <IconButton
                                 size="small"
                                 color="error"
+                                disabled={order.status === 'pending'}
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     setCancelOrderDialogOpen(true);
@@ -1039,6 +1084,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                     labelId={`rider-label-${order._id}`}
                                     label="Select Rider"
                                     value={selectedRider}
+                                    onClick={(e) => e.stopPropagation()}
                                     onChange={(e) => setSelectedRider(e.target.value as string)}
                                     onOpen={async () => {
                                         if (!ridersLoaded) {
@@ -1107,80 +1153,119 @@ const OrderCard: React.FC<OrderCardProps> = ({
                 )}
 
                 <Stack direction="row" spacing={0.5} alignItems="center">
-                    {canManage && nextStatus && (isDeliveryBoy ? ['ready_to_pickup', 'on_the_way', 'ready_to_pick'].includes(order.status) : true) && (
-                        // Hide "Next: Completed" for Dine In as it's typically handled via payment collection
-                        (order.orderType === 'dine_in' && nextStatus === 'completed' && !isGlobalDineIn(order)) ? null : (
-                            // Disable "On the Way" and "Delivered" for third-party delivery (DoorDash/Uber Eats)
-                            (() => {
-                                const isThirdPartyDelivery = !!(order.doordashDeliveryId || order.uberEatsDeliveryId);
-                                const isBlockedStatus = nextStatus === 'on_the_way' || nextStatus === 'delivered';
-                                if (isThirdPartyDelivery && isBlockedStatus) {
-                                    return (
-                                        <Tooltip title="Status is managed by the delivery partner">
-                                            <span>
-                                                <Button
-                                                    variant="contained"
-                                                    color="info"
-                                                    size="small"
-                                                    disabled
-                                                    sx={{
-                                                        fontSize: '0.65rem',
-                                                        padding: '4px 8px',
-                                                        textTransform: 'none',
-                                                        fontWeight: 'bold',
-                                                        minWidth: 'auto',
-                                                        height: '28px'
-                                                    }}
-                                                >
-                                                    {`Next: ${getStatusLabel(nextStatus)}`}
-                                                </Button>
-                                            </span>
-                                        </Tooltip>
-                                    );
-                                }
-                                return (
-                                    <Button
-                                        variant="contained"
-                                        color="info"
-                                        size="small"
-                                        onClick={handleNextStatus}
-                                        disabled={isProcessing}
-                                        sx={{
-                                            fontSize: '0.65rem',
-                                            padding: '4px 8px',
-                                            textTransform: 'none',
-                                            fontWeight: 'bold',
-                                            minWidth: 'auto',
-                                            height: '28px'
-                                        }}
-                                    >
-                                        {isProcessing ? 'Processing...' : `Next: ${getStatusLabel(nextStatus)}`}
-                                    </Button>
-                                );
-                            })()
-                        )
-                    )}
-                    {canAddMoreItems && (
-                        <Button
-                            onClick={() => setAddItemsDialogOpen(true)}
-                            variant="outlined"
-                            color="primary"
-                            size="small"
-                            sx={{ fontSize: '0.65rem', padding: '4px 8px', height: '28px' }}
-                        >
-                            Add Items
-                        </Button>
-                    )}
-                    {canCollectPayment && (
-                        <Button
-                            onClick={() => setPaymentDialogOpen(true)}
-                            variant="contained"
-                            color="success"
-                            size="small"
-                            sx={{ fontSize: '0.65rem', padding: '4px 8px' }}
-                        >
-                            Collect Payment
-                        </Button>
+                    {onAccept && onReject ? (
+                        <>
+                            <Button
+                                variant="contained"
+                                color="success"
+                                size="small"
+                                onClick={(e) => { e.stopPropagation(); onAccept(); }}
+                                sx={{
+                                    fontSize: '0.65rem',
+                                    padding: '4px 8px',
+                                    textTransform: 'none',
+                                    fontWeight: 'bold',
+                                    minWidth: 'auto',
+                                    height: '28px'
+                                }}
+                            >
+                                ✓ Accept
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                color="error"
+                                size="small"
+                                onClick={(e) => { e.stopPropagation(); onReject(); }}
+                                sx={{
+                                    fontSize: '0.65rem',
+                                    padding: '4px 8px',
+                                    textTransform: 'none',
+                                    fontWeight: 'bold',
+                                    minWidth: 'auto',
+                                    height: '28px'
+                                }}
+                            >
+                                ✕ Reject
+                            </Button>
+                        </>
+                    ) : (
+                        <>
+                            {canManage && nextStatus && (isDeliveryBoy ? ['ready_to_pickup', 'on_the_way', 'ready_to_pick'].includes(order.status) : true) && (
+                                // Hide "Next: Completed" for Dine In as it's typically handled via payment collection
+                                (order.orderType === 'dine_in' && nextStatus === 'completed' && !isGlobalDineIn(order)) ? null : (
+                                    // Disable "On the Way" and "Delivered" for third-party delivery (DoorDash/Uber Eats)
+                                    (() => {
+                                        const isThirdPartyDelivery = !!(order.doordashDeliveryId || order.uberEatsDeliveryId);
+                                        const isBlockedStatus = nextStatus === 'on_the_way' || nextStatus === 'delivered';
+                                        if (isThirdPartyDelivery && isBlockedStatus) {
+                                            return (
+                                                <Tooltip title="Status is managed by the delivery partner">
+                                                    <span>
+                                                        <Button
+                                                            variant="contained"
+                                                            color="info"
+                                                            size="small"
+                                                            disabled
+                                                            sx={{
+                                                                fontSize: '0.65rem',
+                                                                padding: '4px 8px',
+                                                                textTransform: 'none',
+                                                                fontWeight: 'bold',
+                                                                minWidth: 'auto',
+                                                                height: '28px'
+                                                            }}
+                                                        >
+                                                            {`Next: ${getStatusLabel(nextStatus)}`}
+                                                        </Button>
+                                                    </span>
+                                                </Tooltip>
+                                            );
+                                        }
+                                        return (
+                                            <Button
+                                                variant="contained"
+                                                color="info"
+                                                size="small"
+                                                onClick={handleNextStatus}
+                                                disabled={isProcessing}
+                                                sx={{
+                                                    fontSize: '0.65rem',
+                                                    padding: '4px 8px',
+                                                    textTransform: 'none',
+                                                    fontWeight: 'bold',
+                                                    minWidth: 'auto',
+                                                    height: '28px'
+                                                }}
+                                            >
+                                                {isProcessing ? 'Processing...' : `Next: ${getStatusLabel(nextStatus)}`}
+                                            </Button>
+                                        );
+                                    })()
+                                )
+                            )}
+                            {canAddMoreItems && (
+                                <Button
+                                    onClick={(e) => { e.stopPropagation(); setAddItemsDialogOpen(true); }}
+                                    variant="outlined"
+                                    color="primary"
+                                    size="small"
+                                    sx={{ fontSize: '0.65rem', padding: '4px 8px', height: '28px' }}
+                                >
+                                    Add Items
+                                </Button>
+                            )}
+                            {canCollectPayment && (
+                                <Button
+                                    onClick={(e) => { e.stopPropagation(); setPaymentDialogOpen(true); }}
+                                    variant="contained"
+                                    color="success"
+                                    size="small"
+                                    sx={{ fontSize: '0.65rem', padding: '4px 8px' }}
+                                >
+                                    Collect Payment
+                                </Button>
+                            )}
+                        </>
                     )}
                 </Stack>
 
@@ -1331,6 +1416,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
             <Dialog
                 open={cancelOrderDialogOpen}
                 onClose={() => !isProcessing && setCancelOrderDialogOpen(false)}
+                onClick={(e) => e.stopPropagation()}
                 PaperProps={{
                     sx: {
                         borderRadius: 3,

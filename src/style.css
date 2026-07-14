@@ -4,12 +4,12 @@
    * OR overridden at runtime by BrandContext for the multi-tenant SaaS.
    * Components should use these variables for all brand-sensitive colors.
    * ──────────────────────────────────────────────────────────────── */
-  --brand-primary: #9C27B0;
+  --brand-primary:   #9C27B0;
   --brand-secondary: #E91E63;
-  --brand-accent: #FF9800;
+  --brand-accent:    #FF9800;
   --brand-splash-bg: #1a0027;
-  --brand-name: "Nexzen POS";
-  --brand-font: "Inter";
+  --brand-name:      "NexZen POS";
+  --brand-font:      "Inter";
 
   font-family: var(--brand-font, "Inter"), system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -35,12 +35,17 @@ a:hover {
   color: #535bf2;
 }
 
+html {
+  overscroll-behavior-y: none;
+}
+
 body {
   margin: 0;
   display: flex;
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  overscroll-behavior-y: none;
 }
 
 

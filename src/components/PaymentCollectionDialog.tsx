@@ -3,7 +3,8 @@ import {
     AccountBalanceWallet as CashIcon,
     Close as CloseIcon,
     Delete as DeleteIcon,
-    Smartphone as SmartphoneIcon
+    Smartphone as SmartphoneIcon,
+    ReceiptLong as ChequeIcon
 } from '@mui/icons-material';
 import {
     Alert,
@@ -35,6 +36,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '../context/SettingsContext';
 import { ordersAPI, rewardsAPI } from '../services/api';
+import { openCashDrawer } from '../utils/cashDrawer';
 import PaymentModal from './PaymentModal';
 
 interface PaymentCollectionDialogProps {
@@ -52,7 +54,7 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
 }) => {
     const { formatCurrency, settings } = useSettings();
     const [order, setOrder] = useState<any>(initialOrder);
-    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'zelle' | 'venmo' | 'phonepe' | 'gpay' | 'paytm'>('cash');
+    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'zelle' | 'venmo' | 'cheque' | 'phonepe' | 'gpay' | 'paytm'>('cash');
 
     const isIndia = settings?.restaurant?.country?.toLowerCase() === 'india';
 
@@ -74,6 +76,10 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
                 { val: 'venmo', icon: <SmartphoneIcon color="success" />, title: 'Venmo', subtitle: 'Manual Venmo Transfer' }
             );
         }
+
+        methods.push(
+            { val: 'cheque', icon: <ChequeIcon color="warning" />, title: 'Cheque', subtitle: 'Record a cheque payment' }
+        );
 
         methods.push(
             { val: 'card', icon: <CardIcon color="info" />, title: 'Card', subtitle: 'Process card via Stripe' }
@@ -190,6 +196,12 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
                 tipAmount: pendingTipAmount > 0 ? pendingTipAmount : 0
             });
             toast.success(`Payment of ${formatCurrency(amt)} added`);
+            // Cash collected — pop the drawer (wired to the billing printer). Best-effort.
+            if (paymentMethod === 'cash') {
+                openCashDrawer(settings.printer).catch((err) =>
+                    console.error('[CashDrawer] Failed to open drawer:', err),
+                );
+            }
             // If fully paid, auto-forward/complete
             if (res.data.paymentStatus === 'paid' || isFullyPaid) {
                 try {
@@ -314,7 +326,7 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
                                     {order.payments.map((p: any) => (
                                         <ListItem key={p._id}>
                                             <ListItemText
-                                                primary={`${p.method.toUpperCase()} Payment`}
+                                                primary={`${p.method?.toUpperCase() || 'UNKNOWN'} Payment`}
                                                 secondary={new Date(p.recordedAt || p.createdAt).toLocaleString()}
                                             />
                                             <ListItemSecondaryAction>

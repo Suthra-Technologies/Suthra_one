@@ -330,7 +330,7 @@ const MyBookingsPage: React.FC = () => {
     };
 
     const getOrderDisplayId = (order: Order) => {
-        const rawId = order.orderNumber || order._id.slice(-6).toUpperCase();
+        const rawId = order.orderNumber || order._id.slice(-6)?.toUpperCase();
         if (!isMobile) return `#${rawId}`;
         if (rawId.length <= 16) return `#${rawId}`;
         return `#${rawId.slice(0, 10)}…${rawId.slice(-4)}`;
@@ -354,7 +354,7 @@ const MyBookingsPage: React.FC = () => {
                             Table {booking.tableNumber}
                         </Typography>
                         <Typography variant="caption" sx={{ fontWeight: 800, display: 'block', mt: 0.5, letterSpacing: 0.5, color: 'primary.main', fontSize: { xs: '0.62rem', sm: '0.68rem' } }}>
-                            ID: {booking.id.toUpperCase()}
+                            ID: {booking.id?.toUpperCase()}
                         </Typography>
                         <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, display: 'block', mt: 0.75, fontSize: { xs: '0.62rem', sm: '0.68rem' } }}>
                             {booking.location}
@@ -362,7 +362,7 @@ const MyBookingsPage: React.FC = () => {
                     </Box>
                     <Chip
                         icon={getStatusIcon(booking.status)}
-                        label={booking.status.toUpperCase()}
+                        label={booking.status?.toUpperCase()}
                         color={getStatusColor(booking.status)}
                         size="small"
                         sx={{
@@ -619,7 +619,7 @@ const MyBookingsPage: React.FC = () => {
                                                         </Typography>
                                                     </Box>
                                                     <Chip
-                                                        label={o.status.replace(/_/g, ' ').toUpperCase()}
+                                                        label={o.status.replace(/_/g, ' ')?.toUpperCase()}
                                                         color={
                                                             ['completed', 'delivered'].includes(o.status) ? 'success' :
                                                                 ['cancelled'].includes(o.status) ? 'error' :
@@ -781,7 +781,7 @@ const MyBookingsPage: React.FC = () => {
                                             >
                                                 <Box>
                                                     <Typography variant="body2" fontWeight={700} color="primary.main" sx={{ fontFamily: 'monospace', fontSize: '0.68rem' }}>
-                                                        #{b.id.slice(-8).toUpperCase()}
+                                                        #{b.id.slice(-8)?.toUpperCase()}
                                                     </Typography>
                                                     <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.62rem' }}>
                                                         {b.createdAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
@@ -805,7 +805,7 @@ const MyBookingsPage: React.FC = () => {
                                                     <Typography variant="body2" fontWeight={600} sx={{ fontSize: '0.75rem' }}>{b.guests} {b.guests === 1 ? 'person' : 'people'}</Typography>
                                                 </Box>
                                                 <Chip
-                                                    label={b.status.toUpperCase()}
+                                                    label={b.status?.toUpperCase()}
                                                     size="small"
                                                     color={getStatusColor(b.status)}
                                                     icon={getStatusIcon(b.status)}
@@ -831,14 +831,14 @@ const MyBookingsPage: React.FC = () => {
                                                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1, mb: 0.75 }}>
                                                             <Box>
                                                                 <Typography variant="body2" fontWeight={800} color="primary.main" sx={{ fontFamily: 'monospace', fontSize: '0.66rem' }}>
-                                                                    #{b.id.slice(-8).toUpperCase()}
+                                                                    #{b.id.slice(-8)?.toUpperCase()}
                                                                 </Typography>
                                                                 <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.58rem' }}>
                                                                     {b.createdAt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                                                 </Typography>
                                                             </Box>
                                                             <Chip
-                                                                label={b.status.toUpperCase()}
+                                                                label={b.status?.toUpperCase()}
                                                                 size="small"
                                                                 color={getStatusColor(b.status)}
                                                                 icon={getStatusIcon(b.status)}

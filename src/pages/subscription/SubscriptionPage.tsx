@@ -18,6 +18,8 @@ import {
     ListItem,
     ListItemIcon,
     ListItemText,
+    ToggleButton,
+    ToggleButtonGroup,
     Typography,
 } from '@mui/material';
 import Grid from '@mui/material/Grid2';
@@ -44,12 +46,29 @@ interface Plan {
     maxEmails?: number;
 }
 
+interface TopupPlan {
+    _id: string;
+    name: string;
+    price: number;
+    description?: string;
+    resourceType: 'email' | 'sms' | 'orders';
+    resourceCount: number;
+}
+
+const RESOURCE_LABELS: Record<string, string> = {
+    email: 'Emails',
+    sms: 'SMS',
+    orders: 'Orders',
+};
+
 const SubscriptionPage: React.FC = () => {
     const { user } = useAuth();
     const { formatCurrency, settings } = useSettings();
     const isIndia = settings?.restaurant?.country?.toLowerCase() === 'india';
     const theme = useTheme();
     const [plans, setPlans] = useState<Plan[]>([]);
+    const [topupPlans, setTopupPlans] = useState<TopupPlan[]>([]);
+    const [planType, setPlanType] = useState<'subscription' | 'topup'>('subscription');
     const [loading, setLoading] = useState(true);
     const [subscribing, setSubscribing] = useState<string | null>(null);
     const [currentTenant, setCurrentTenant] = useState<any>(null);
@@ -61,8 +80,9 @@ const SubscriptionPage: React.FC = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [plansRes, tenantRes] = await Promise.all([
+                const [plansRes, topupsRes, tenantRes] = await Promise.all([
                     subscriptionAPI.getPlans(),
+                    subscriptionAPI.getTopups(),
                     tenantAPI.getCurrent()
                 ]);
 
@@ -75,6 +95,7 @@ const SubscriptionPage: React.FC = () => {
                 );
 
                 setPlans(sortedPlans);
+                setTopupPlans(topupsRes.data || []);
                 setCurrentTenant(tenantRes.data);
             } catch (error) {
                 console.error('Error fetching data:', error);
@@ -158,6 +179,35 @@ const SubscriptionPage: React.FC = () => {
         setConfirmDialog({ open: false, plan: null });
     };
 
+    const handlePurchaseTopup = async (plan: TopupPlan) => {
+        setSubscribing(plan._id);
+        try {
+            const baseUrl = window.location.origin;
+            const currentSlug = getTenantSlugFromHostname();
+            const isSubdomain = isSubdomainAccess();
+            const pathSlug = currentSlug || window.location.pathname.split('/')[1];
+
+            const successUrl = isSubdomain
+                ? `${baseUrl}/subscription/success?session_id={CHECKOUT_SESSION_ID}`
+                : `${baseUrl}/${pathSlug}/subscription/success?session_id={CHECKOUT_SESSION_ID}`;
+            const cancelUrl = isSubdomain
+                ? `${baseUrl}/subscription`
+                : `${baseUrl}/${pathSlug}/subscription`;
+
+            const response = await subscriptionAPI.createTopupCheckout(plan._id, successUrl, cancelUrl);
+            if (response.data.url) {
+                window.location.href = response.data.url;
+            } else {
+                toast.error('Failed to create checkout session');
+                setSubscribing(null);
+            }
+        } catch (error: any) {
+            console.error('Error creating top-up checkout session:', error);
+            toast.error(error.response?.data?.message || 'Failed to start checkout. Please try again.');
+            setSubscribing(null);
+        }
+    };
+
     // formatPrice function replaced by formatCurrency from context
 
     if (loading) {
@@ -183,16 +233,36 @@ const SubscriptionPage: React.FC = () => {
                     Subscription Plans
                 </Typography>
                 <Typography variant="body1" color="text.secondary" sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}>
-                    Choose the perfect plan for your restaurant
+                    {planType === 'subscription'
+                        ? 'Choose the perfect plan for your restaurant'
+                        : 'Add extra credits on top of your current plan'}
                 </Typography>
             </Box>
 
-            {currentTenant?.subscriptionStatus === 'trial' && (
+            <Box sx={{ display: 'flex', justifyContent: 'center', mb: { xs: 3, sm: 4 } }}>
+                <ToggleButtonGroup
+                    value={planType}
+                    exclusive
+                    color="primary"
+                    onChange={(_e, value) => { if (value) setPlanType(value); }}
+                    aria-label="plan type"
+                >
+                    <ToggleButton value="subscription" sx={{ px: 3, textTransform: 'none', fontWeight: 600 }}>
+                        Subscription Plans
+                    </ToggleButton>
+                    <ToggleButton value="topup" sx={{ px: 3, textTransform: 'none', fontWeight: 600 }}>
+                        Top-up Plans
+                    </ToggleButton>
+                </ToggleButtonGroup>
+            </Box>
+
+            {planType === 'subscription' && currentTenant?.subscriptionStatus === 'trial' && (
                 <Alert severity="info" sx={{ mb: 4, maxWidth: 600, mx: 'auto' }}>
                     You are currently on a free trial. Upgrade now to continue using all features without interruption.
                 </Alert>
             )}
 
+            {planType === 'subscription' ? (
             <Grid container spacing={3} justifyContent="center">
                 {plans.map((plan) => {
                     const isCurrentPlan = currentTenant?.currentPlan &&
@@ -275,14 +345,14 @@ const SubscriptionPage: React.FC = () => {
                                 <CardHeader
                                     title={plan.name}
                                     subheader={plan.description}
-                                    titleTypographyProps={{ 
-                                        align: 'center', 
-                                        variant: 'h5', 
-                                        fontWeight: 'bold', 
+                                    titleTypographyProps={{
+                                        align: 'center',
+                                        variant: 'h6',
+                                        fontWeight: 'bold',
                                         color: 'text.primary',
-                                        sx: { fontSize: { xs: '1.2rem', sm: '1.5rem' } }
+                                        sx: { fontSize: { xs: '1.05rem', sm: '1.2rem' } }
                                     }}
-                                    subheaderTypographyProps={{ align: 'center', color: 'text.secondary', sx: { fontSize: { xs: '0.8rem', sm: '0.875rem' } } }}
+                                    subheaderTypographyProps={{ align: 'center', color: 'text.secondary', sx: { fontSize: '0.75rem' } }}
                                     sx={{
                                         bgcolor: isCurrentPlan
                                             ? alpha('#4F46E5', theme.palette.mode === 'dark' ? 0.2 : 0.1)
@@ -290,72 +360,73 @@ const SubscriptionPage: React.FC = () => {
                                                 ? alpha(theme.palette.primary.main, 0.1)
                                                 : 'grey.100',
                                         pb: 0,
-                                        pt: isCurrentPlan || isYearly ? 4.5 : 2,
+                                        pt: isCurrentPlan || isYearly ? 3.5 : 1.5,
                                     }}
                                 />
-                                <CardContent sx={{ flexGrow: 1, textAlign: 'center' }}>
-                                   <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'baseline', mb: 2, flexWrap: 'wrap', gap: 0.5 }}>
-                                        <Typography component="h2" variant="h3" color={isCurrentPlan ? 'primary.main' : 'text.primary'}
-                                            sx={{ fontSize: { xs: '1.8rem', sm: '3rem' } }}>
+                                <CardContent sx={{ flexGrow: 1, textAlign: 'center', py: 1.5 }}>
+                                   <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'baseline', mb: 1, flexWrap: 'wrap', gap: 0.5 }}>
+                                        <Typography component="h2" variant="h4" color={isCurrentPlan ? 'primary.main' : 'text.primary'}
+                                            sx={{ fontSize: { xs: '1.5rem', sm: '2.1rem' } }}>
                                             {formatCurrency(plan.price)}
                                         </Typography>
-                                        <Typography variant="h6" color="text.secondary" sx={{ fontSize: { xs: '1rem', sm: '1.25rem' } }}>
+                                        <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
                                             /{plan.interval}
                                         </Typography>
                                     </Box>
-                                    <Divider sx={{ my: 2 }} />
-                                    <List dense>
-                                        <ListItem>
-                                            <ListItemIcon sx={{ minWidth: 36 }}>
+                                    <Divider sx={{ my: 1 }} />
+                                    <List dense disablePadding>
+                                        <ListItem disableGutters sx={{ py: 0.25 }}>
+                                            <ListItemIcon sx={{ minWidth: 28 }}>
                                                 <Check color="success" fontSize="small" />
                                             </ListItemIcon>
-                                            <ListItemText primary={typeof plan.maxUsers === 'number' && plan.maxUsers > 0 ? `Max Users: ${plan.maxUsers}` : 'Unlimited Users'} />
+                                            <ListItemText primaryTypographyProps={{ variant: 'body2' }} primary={typeof plan.maxUsers === 'number' && plan.maxUsers > 0 ? `Max Users: ${plan.maxUsers}` : 'Unlimited Users'} />
                                         </ListItem>
-                                        <ListItem>
-                                            <ListItemIcon sx={{ minWidth: 36 }}>
+                                        <ListItem disableGutters sx={{ py: 0.25 }}>
+                                            <ListItemIcon sx={{ minWidth: 28 }}>
                                                 <Check color="success" fontSize="small" />
                                             </ListItemIcon>
-                                            <ListItemText primary={typeof plan.maxTables === 'number' && plan.maxTables > 0 ? `Max Tables: ${plan.maxTables}` : 'Unlimited Tables'} />
+                                            <ListItemText primaryTypographyProps={{ variant: 'body2' }} primary={typeof plan.maxTables === 'number' && plan.maxTables > 0 ? `Max Tables: ${plan.maxTables}` : 'Unlimited Tables'} />
                                         </ListItem>
-                                        <ListItem>
-                                            <ListItemIcon sx={{ minWidth: 36 }}>
+                                        <ListItem disableGutters sx={{ py: 0.25 }}>
+                                            <ListItemIcon sx={{ minWidth: 28 }}>
                                                 <Check color="success" fontSize="small" />
                                             </ListItemIcon>
-                                            <ListItemText primary={typeof plan.maxOrders === 'number' && plan.maxOrders > 0 ? `Max Orders/mo: ${plan.maxOrders}` : 'Unlimited Orders'} />
+                                            <ListItemText primaryTypographyProps={{ variant: 'body2' }} primary={typeof plan.maxOrders === 'number' && plan.maxOrders > 0 ? `Max Orders/mo: ${plan.maxOrders}` : 'Unlimited Orders'} />
                                         </ListItem>
-                                        <ListItem>
-                                            <ListItemIcon sx={{ minWidth: 36 }}>
+                                        <ListItem disableGutters sx={{ py: 0.25 }}>
+                                            <ListItemIcon sx={{ minWidth: 28 }}>
                                                 <Check color="success" fontSize="small" />
                                             </ListItemIcon>
-                                            <ListItemText primary={typeof plan.maxSms === 'number' && plan.maxSms > 0 ? `Max SMS/mo: ${plan.maxSms}` : 'Unlimited SMS'} />
+                                            <ListItemText primaryTypographyProps={{ variant: 'body2' }} primary={typeof plan.maxSms === 'number' && plan.maxSms > 0 ? `Max SMS/mo: ${plan.maxSms}` : 'Unlimited SMS'} />
                                         </ListItem>
-                                        <ListItem>
-                                            <ListItemIcon sx={{ minWidth: 36 }}>
+                                        <ListItem disableGutters sx={{ py: 0.25 }}>
+                                            <ListItemIcon sx={{ minWidth: 28 }}>
                                                 <Check color="success" fontSize="small" />
                                             </ListItemIcon>
                                             <ListItemText
+                                                primaryTypographyProps={{ variant: 'body2' }}
                                                 primary={typeof (plan.maxEmail ?? plan.maxEmails) === 'number' && (plan.maxEmail ?? plan.maxEmails)! > 0
                                                     ? `Max Emails/mo: ${plan.maxEmail ?? plan.maxEmails}`
                                                     : 'Unlimited Emails'}
                                             />
                                         </ListItem>
                                         {(plan.features || []).map((feature, index) => (
-                                            <ListItem key={index}>
-                                                <ListItemIcon sx={{ minWidth: 36 }}>
+                                            <ListItem key={index} disableGutters sx={{ py: 0.25 }}>
+                                                <ListItemIcon sx={{ minWidth: 28 }}>
                                                     <Check color="success" fontSize="small" />
                                                 </ListItemIcon>
-                                                <ListItemText primary={feature} />
+                                                <ListItemText primaryTypographyProps={{ variant: 'body2' }} primary={feature} />
                                             </ListItem>
                                         ))}
                                     </List>
                                 </CardContent>
-                                <Box sx={{ p: 2, textAlign: 'center' }}>
+                                <Box sx={{ p: 1.5, textAlign: 'center' }}>
                                     {isCurrentPlan && isActive ? (
                                         <Button
                                             fullWidth
                                             variant="contained"
                                             color="primary"
-                                            size="large"
+                                            size="medium"
                                             disabled
                                             sx={{ opacity: 1, '&.Mui-disabled': { bgcolor: '#4F46E5', color: '#fff', opacity: 0.8 } }}
                                         >
@@ -366,7 +437,7 @@ const SubscriptionPage: React.FC = () => {
                                             fullWidth
                                             variant={isYearly ? 'contained' : 'outlined'}
                                             color="primary"
-                                            size="large"
+                                            size="medium"
                                             onClick={() => handleSubscribeClick(plan)}
                                             disabled={!!subscribing}
                                         >
@@ -389,6 +460,93 @@ const SubscriptionPage: React.FC = () => {
                     );
                 })}
             </Grid>
+            ) : topupPlans.length === 0 ? (
+                <Box sx={{ py: 6, textAlign: 'center' }}>
+                    <Typography color="text.secondary">No top-up plans are available right now.</Typography>
+                </Box>
+            ) : (
+                <Grid container spacing={3} justifyContent="center">
+                    {topupPlans.map((plan) => {
+                        const resourceLabel = RESOURCE_LABELS[plan.resourceType] ?? plan.resourceType;
+                        return (
+                            <Grid size={{ xs: 12, sm: 6, md: 3 }} key={plan._id}>
+                                <Card
+                                    sx={{
+                                        height: '100%',
+                                        maxWidth: 280,
+                                        mx: 'auto',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        position: 'relative',
+                                        border: `1px solid ${theme.palette.divider}`,
+                                        bgcolor: theme.palette.background.paper,
+                                        transition: 'all 0.2s',
+                                        '&:hover': {
+                                            transform: 'scale(1.02)',
+                                            boxShadow: theme.palette.mode === 'dark' ? '0 8px 24px rgba(0,0,0,0.4)' : 6,
+                                        },
+                                    }}
+                                >
+                                    <CardHeader
+                                        title={plan.name}
+                                        subheader={plan.description}
+                                        titleTypographyProps={{ align: 'center', variant: 'h6', fontWeight: 'bold', color: 'text.primary', sx: { fontSize: { xs: '1rem', sm: '1.1rem' } } }}
+                                        subheaderTypographyProps={{ align: 'center', color: 'text.secondary', sx: { fontSize: '0.75rem' } }}
+                                        sx={{
+                                            bgcolor: theme.palette.mode === 'dark' ? alpha(theme.palette.primary.main, 0.1) : 'grey.100',
+                                            pb: 0,
+                                            pt: 1.5,
+                                        }}
+                                    />
+                                    <CardContent sx={{ flexGrow: 1, textAlign: 'center', py: 1.5 }}>
+                                        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'baseline', mb: 1, flexWrap: 'wrap', gap: 0.5 }}>
+                                            <Typography component="h2" variant="h4" color="text.primary" sx={{ fontSize: { xs: '1.4rem', sm: '1.9rem' } }}>
+                                                {formatCurrency(plan.price)}
+                                            </Typography>
+                                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
+                                                /one-time
+                                            </Typography>
+                                        </Box>
+                                        <Divider sx={{ my: 1 }} />
+                                        <List dense disablePadding>
+                                            <ListItem disableGutters sx={{ py: 0.25 }}>
+                                                <ListItemIcon sx={{ minWidth: 28 }}>
+                                                    <Check color="success" fontSize="small" />
+                                                </ListItemIcon>
+                                                <ListItemText primaryTypographyProps={{ variant: 'body2' }} primary={`${plan.resourceCount.toLocaleString()} ${resourceLabel}`} />
+                                            </ListItem>
+                                            <ListItem disableGutters sx={{ py: 0.25 }}>
+                                                <ListItemIcon sx={{ minWidth: 28 }}>
+                                                    <Check color="success" fontSize="small" />
+                                                </ListItemIcon>
+                                                <ListItemText primaryTypographyProps={{ variant: 'body2' }} primary="Credits never expire" />
+                                            </ListItem>
+                                            <ListItem disableGutters sx={{ py: 0.25 }}>
+                                                <ListItemIcon sx={{ minWidth: 28 }}>
+                                                    <Check color="success" fontSize="small" />
+                                                </ListItemIcon>
+                                                <ListItemText primaryTypographyProps={{ variant: 'body2' }} primary="Used after your monthly allowance is exhausted" />
+                                            </ListItem>
+                                        </List>
+                                    </CardContent>
+                                    <Box sx={{ p: 1.5, textAlign: 'center' }}>
+                                        <Button
+                                            fullWidth
+                                            variant="outlined"
+                                            color="primary"
+                                            size="small"
+                                            onClick={() => handlePurchaseTopup(plan)}
+                                            disabled={!!subscribing}
+                                        >
+                                            {subscribing === plan._id ? <CircularProgress size={20} /> : 'Buy Top-up'}
+                                        </Button>
+                                    </Box>
+                                </Card>
+                            </Grid>
+                        );
+                    })}
+                </Grid>
+            )}
 
             {/* Confirmation Dialog */}
             <Dialog

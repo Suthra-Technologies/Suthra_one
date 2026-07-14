@@ -34,6 +34,16 @@ const SUCCESS_STATUSES = new Set(['succeeded']);
 const FAILURE_STATUSES = new Set(['canceled', 'requires_payment_method', 'failed']);
 const PROCESSING_STATUSES = new Set(['processing', 'requires_action', 'requires_confirmation', 'requires_capture']);
 
+// The required date counts until the END of that day (not midnight), so chat
+// stays open through the whole event day rather than closing at 00:00.
+const isRequiredDatePassed = (requiredDate?: string | Date | null): boolean => {
+    if (!requiredDate) return false;
+    const end = new Date(requiredDate);
+    if (isNaN(end.getTime())) return false;
+    end.setHours(23, 59, 59, 999);
+    return end < new Date();
+};
+
 interface CateringCardPaymentFormProps {
     amount: number;
     slug: string;
@@ -515,7 +525,7 @@ const CateringTrackPage = () => {
                                                 primary={(
                                                     <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
                                                         <Typography fontWeight="600">
-                                                            {formatCurrency(p.amount)} via {String(p.method || '').toUpperCase()}
+                                                            {formatCurrency(p.amount)} via {String(p.method || '')?.toUpperCase()}
                                                         </Typography>
                                                         {p.paymentIntentId && <Chip size="small" color="info" label="Stripe" />}
                                                         {p.refundId && <Chip size="small" color="warning" label={`Refunded ${formatCurrency(p.refundedAmount || 0)}`} />}
@@ -613,18 +623,17 @@ const CateringTrackPage = () => {
                                         fullWidth
                                         size="small"
                                         placeholder={
-                                            (order.status === 'completed' || order.status === 'cancelled' || (order.requiredDate && new Date(order.requiredDate) < new Date()))
+                                            (order.status === 'completed' || order.status === 'cancelled' || isRequiredDatePassed(order.requiredDate))
                                             ? 'Chat is closed for this order'
                                             : 'Type your message...'
                                         }
                                         value={newMessage}
                                         onChange={(e) => setNewMessage(e.target.value)}
                                         onKeyPress={(e) => {
-                                            const isDatePassed = order?.requiredDate && new Date(order.requiredDate) < new Date();
-                                            const isChatDisabled = order.status === 'completed' || order.status === 'cancelled' || isDatePassed;
+                                            const isChatDisabled = order.status === 'completed' || order.status === 'cancelled' || isRequiredDatePassed(order.requiredDate);
                                             if (e.key === 'Enter' && !isChatDisabled) handleSendMessage();
                                         }}
-                                        disabled={sendingMessage || order.status === 'completed' || order.status === 'cancelled' || (order.requiredDate && new Date(order.requiredDate) < new Date())}
+                                        disabled={sendingMessage || order.status === 'completed' || order.status === 'cancelled' || isRequiredDatePassed(order.requiredDate)}
                                         sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
                                     />
                                     <Button
@@ -635,7 +644,7 @@ const CateringTrackPage = () => {
                                             sendingMessage ||
                                             order.status === 'completed' ||
                                             order.status === 'cancelled' ||
-                                            (order.requiredDate && new Date(order.requiredDate) < new Date())
+                                            isRequiredDatePassed(order.requiredDate)
                                         }
                                         sx={{ borderRadius: 3, px: 3 }}
                                     >

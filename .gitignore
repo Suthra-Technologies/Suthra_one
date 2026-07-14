@@ -28,4 +28,4 @@ package-lock.json
 e2e
 playwright-report
 /playwright-video
-
+brandConfig.ts

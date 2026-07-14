@@ -156,7 +156,7 @@ const AssetDashboard: React.FC = () => {
   }, [tabValue]);
 
   const getAssetIcon = (type: string) => {
-    switch (type.toLowerCase()) {
+    switch (type?.toLowerCase()) {
       case 'vehicle': return <DirectionsCar />;
       case 'document': return <Description />;
       case 'license': return <Badge />;

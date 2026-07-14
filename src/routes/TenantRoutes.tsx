@@ -13,6 +13,7 @@ import CateringCommissionsPage from '../pages/admin/catering/CateringCommissions
 import CateringManagementPage from '../pages/admin/catering/CateringManagementPage';
 import CustomiseScreensPage from '../pages/admin/customise-screens/CustomiseScreensPage';
 import ServiceUsagePage from '../pages/admin/ServiceUsagePage';
+import CustomerActivitiesPage from '../pages/admin/CustomerActivitiesPage';
 import AttendancePage from '../pages/AttendancePage';
 import CateringPage from '../pages/catering/CateringPage';
 import CateringTrackPage from '../pages/customer/CateringTrackPage';
@@ -131,6 +132,7 @@ export const TenantRoutes = () => (
         </Route>
         <Route path="customise-screens" element={<CustomiseScreensPage />} />
         <Route path="service-usage" element={<ServiceUsagePage />} />
+        <Route path="customer-activities" element={<CustomerActivitiesPage />} />
         <Route path="audit-logs" element={<AuditLogsPage />} />
         <Route path="assets" element={<AssetList />} />
         <Route path="assets/:id" element={<AssetView />} />

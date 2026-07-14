@@ -55,6 +55,7 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
 import { couponsAPI } from '../../services/api';
+import CustomInput from '../../components/common/CustomInput';
 
 interface Coupon {
     _id: string;
@@ -291,6 +292,25 @@ const CouponsAdminPage: React.FC = () => {
         setSelectedCoupon(null);
     };
 
+    const handleNumberFieldChange = (field: string, rawValue: string, options?: { maxLimit?: number, allowDecimals?: boolean }) => {
+        let cleanValue = rawValue.replace(/-/g, '');
+        if (options && options.allowDecimals === false) {
+            cleanValue = cleanValue.replace(/\./g, '');
+        }
+        if (cleanValue.length > 1 && cleanValue.startsWith('0') && !cleanValue.startsWith('0.')) {
+            cleanValue = cleanValue.replace(/^0+/, '');
+            if (cleanValue === '') cleanValue = '0';
+        }
+        const parts = cleanValue.split('.');
+        if (parts[0].length > 3) return;
+        
+        if (options?.maxLimit !== undefined && Number(cleanValue) > options.maxLimit) {
+            return;
+        }
+
+        setFormData(prev => ({ ...prev, [field]: cleanValue }));
+    };
+
     const handleSaveCoupon = async () => {
         if (submitting) return;
         if (
@@ -329,11 +349,19 @@ const CouponsAdminPage: React.FC = () => {
 
         try {
             setSubmitting(true);
+            const payload = {
+                ...formData,
+                discountValue: Number(formData.discountValue) || 0,
+                minBillAmount: Number(formData.minBillAmount) || 0,
+                maxTotalUses: Number(formData.maxTotalUses) || 0,
+                maxUsesPerCustomer: Number(formData.maxUsesPerCustomer) || 1,
+            };
+
             if (selectedCoupon) {
-                await couponsAPI.update(selectedCoupon._id, formData);
+                await couponsAPI.update(selectedCoupon._id, payload);
                 toast.success('Coupon updated successfully');
             } else {
-                await couponsAPI.create(formData);
+                await couponsAPI.create(payload);
                 toast.success('Coupon created successfully');
             }
             fetchCoupons();
@@ -572,13 +600,13 @@ const CouponsAdminPage: React.FC = () => {
 
     const handleExportUnsubscribesCsv = () => {
         const rows = allUnsubscribeDetails.filter((record) => {
-            const q = unsubscribeSearch.trim().toLowerCase();
+            const q = unsubscribeSearch.trim()?.toLowerCase();
             if (!q) return true;
             return (
-                (record.name || '').toLowerCase().includes(q) ||
-                (record.email || '').toLowerCase().includes(q) ||
-                (record.phone || '').toLowerCase().includes(q) ||
-                (record.emailUnsubscribeSource || '').toLowerCase().includes(q)
+                (record.name || '')?.toLowerCase().includes(q) ||
+                (record.email || '')?.toLowerCase().includes(q) ||
+                (record.phone || '')?.toLowerCase().includes(q) ||
+                (record.emailUnsubscribeSource || '')?.toLowerCase().includes(q)
             );
         });
 
@@ -1189,8 +1217,15 @@ const CouponsAdminPage: React.FC = () => {
                 onClose={handleCloseDialog}
                 maxWidth="md"
                 fullWidth
-                fullScreen={isMobile}
-                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 4, bgcolor: 'background.default' } }}
+                PaperProps={{
+                    sx: {
+                        borderRadius: { xs: 3, md: 4 },
+                        bgcolor: 'background.default',
+                        m: { xs: 2, md: 4 },
+                        width: { xs: 'calc(100% - 32px)', md: '100%' },
+                        maxHeight: 'calc(100% - 64px)'
+                    }
+                }}
             >
                 <DialogTitle sx={{
                     display: 'flex',
@@ -1199,8 +1234,7 @@ const CouponsAdminPage: React.FC = () => {
                     borderBottom: '1px solid',
                     borderColor: alpha(theme.palette.divider, 0.1),
                     bgcolor: 'background.paper',
-                    p: isMobile ? 1.5 : 2,
-                    pt: isMobile ? 2 : 2
+                    p: { xs: 1.5, md: 2 }
                 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                         <Box sx={{
@@ -1251,25 +1285,27 @@ const CouponsAdminPage: React.FC = () => {
                                 </Typography>
                                 <Grid container spacing={1.5}>
                                     <Grid item xs={12} sm={6}>
-                                        <TextField
+                                        <CustomInput
+                                            type="code"
                                             fullWidth
                                             label="Coupon Code"
                                             required
                                             size="small"
                                             value={formData.code}
-                                            onChange={(e) => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
+                                            onChange={(val) => setFormData({ ...formData, code: val?.toUpperCase() })}
                                             placeholder="E.g. VIP2026"
                                             InputProps={{ sx: { borderRadius: 2, fontWeight: 700, fontFamily: 'monospace' } }}
                                         />
                                     </Grid>
                                     <Grid item xs={12} sm={6}>
-                                        <TextField
+                                        <CustomInput
+                                            type="name"
                                             fullWidth
                                             label="Coupon Name"
                                             required
                                             size="small"
                                             value={formData.name}
-                                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                            onChange={(val) => setFormData({ ...formData, name: val })}
                                             placeholder="E.g. VIP Customer Reward"
                                             InputProps={{ sx: { borderRadius: 2 } }}
                                         />
@@ -1380,18 +1416,19 @@ const CouponsAdminPage: React.FC = () => {
                                                                 </FormControl>
                                                             </Grid>
                                                             <Grid item xs={3}>
-                                                                <TextField
+                                                                <CustomInput
+                                                                    type="number"
+                                                                    allowDecimals={false}
                                                                     fullWidth
                                                                     size="small"
-                                                                    type="number"
                                                                     label="Qty"
                                                                     value={config.quantity}
-                                                                    onChange={(e) => {
+                                                                    onChange={(val) => {
                                                                         const newConfig = [...(formData.comboConfig || [])];
-                                                                        newConfig[index].quantity = Math.max(1, parseInt(e.target.value) || 1);
+                                                                        newConfig[index].quantity = Math.max(1, parseInt(val) || 1);
                                                                         setFormData({ ...formData, comboConfig: newConfig });
                                                                     }}
-                                                                    onFocus={(e) => e.target.select()}
+                                                                    onFocus={(e) => (e.target as HTMLInputElement).select()}
                                                                     InputProps={{ sx: { borderRadius: 1.5, fontWeight: 700 } }}
                                                                 />
                                                             </Grid>
@@ -1435,14 +1472,14 @@ const CouponsAdminPage: React.FC = () => {
                                         </Grid>
                                     )}
                                     <Grid item xs={6}>
-                                        <TextField
+                                        <CustomInput
+                                            type="number"
                                             fullWidth
                                             size="small"
-                                            type="number"
                                             label={formData.discountType === 'percentage' ? "Discount Percentage" : "Discount Amount"}
                                             value={formData.discountValue}
-                                            onChange={(e) => setFormData({ ...formData, discountValue: Number(e.target.value) })}
-                                            onFocus={(e) => e.target.select()}
+                                            onChange={(val) => handleNumberFieldChange('discountValue', val)}
+                                            onFocus={(e) => (e.target as HTMLInputElement).select()}
                                             InputProps={{
                                                 sx: { borderRadius: 2, fontWeight: 700 },
                                                 endAdornment: (
@@ -1458,14 +1495,14 @@ const CouponsAdminPage: React.FC = () => {
                                         />
                                     </Grid>
                                     <Grid item xs={6}>
-                                        <TextField
+                                        <CustomInput
+                                            type="number"
                                             fullWidth
                                             size="small"
-                                            type="number"
                                             label="Min Bill"
                                             value={formData.minBillAmount}
-                                            onChange={(e) => setFormData({ ...formData, minBillAmount: Number(e.target.value) })}
-                                            onFocus={(e) => e.target.select()}
+                                            onChange={(val) => handleNumberFieldChange('minBillAmount', val)}
+                                            onFocus={(e) => (e.target as HTMLInputElement).select()}
                                             InputProps={{ sx: { borderRadius: 2 } }}
                                         />
                                     </Grid>
@@ -1517,26 +1554,28 @@ const CouponsAdminPage: React.FC = () => {
                                         />
                                     </Grid>
                                     <Grid item xs={6}>
-                                        <TextField
+                                        <CustomInput
+                                            type="number"
+                                            allowDecimals={false}
                                             fullWidth
                                             label="Max Uses"
-                                            type="number"
                                             size="small"
                                             value={formData.maxTotalUses}
-                                            onChange={(e) => setFormData({ ...formData, maxTotalUses: Number(e.target.value) })}
-                                            onFocus={(e) => e.target.select()}
+                                            onChange={(val) => handleNumberFieldChange('maxTotalUses', val, { allowDecimals: false })}
+                                            onFocus={(e) => (e.target as HTMLInputElement).select()}
                                             InputProps={{ sx: { borderRadius: 2 } }}
                                         />
                                     </Grid>
                                     <Grid item xs={6}>
-                                        <TextField
+                                        <CustomInput
+                                            type="number"
+                                            allowDecimals={false}
                                             fullWidth
                                             label="Per User"
-                                            type="number"
                                             size="small"
                                             value={formData.maxUsesPerCustomer}
-                                            onChange={(e) => setFormData({ ...formData, maxUsesPerCustomer: Number(e.target.value) })}
-                                            onFocus={(e) => e.target.select()}
+                                            onChange={(val) => handleNumberFieldChange('maxUsesPerCustomer', val, { maxLimit: 100, allowDecimals: false })}
+                                            onFocus={(e) => (e.target as HTMLInputElement).select()}
                                             InputProps={{ sx: { borderRadius: 2 } }}
                                         />
                                     </Grid>
@@ -1546,7 +1585,7 @@ const CouponsAdminPage: React.FC = () => {
                                             {['dine_in', 'takeaway', 'delivery', 'online_takeaway'].map((type) => (
                                                 <Chip
                                                     key={type}
-                                                    label={type.replace('_', ' ').toUpperCase()}
+                                                    label={type.replace('_', ' ')?.toUpperCase()}
                                                     size="small"
                                                     onClick={() => {
                                                         const current = [...formData.applicableOrderTypes];
@@ -1595,14 +1634,20 @@ const CouponsAdminPage: React.FC = () => {
                 </DialogActions>
             </Dialog>
 
-            {/* Bulk Email Dialog */}
             <Dialog
                 open={openEmailDialog}
                 onClose={handleCloseEmailDialog}
                 maxWidth="md"
                 fullWidth
-                fullScreen={isMobile}
-                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 4, bgcolor: 'background.default' } }}
+                PaperProps={{
+                    sx: {
+                        borderRadius: { xs: 3, md: 4 },
+                        bgcolor: 'background.default',
+                        m: { xs: 2, md: 4 },
+                        width: { xs: 'calc(100% - 32px)', md: '100%' },
+                        maxHeight: 'calc(100% - 64px)'
+                    }
+                }}
             >
                 <DialogTitle sx={{
                     display: 'flex',
@@ -1611,8 +1656,7 @@ const CouponsAdminPage: React.FC = () => {
                     borderBottom: '1px solid',
                     borderColor: alpha(theme.palette.divider, 0.1),
                     bgcolor: 'background.paper',
-                    p: isMobile ? 2 : 2.5,
-                    pt: isMobile ? '60px' : 2.5
+                    p: { xs: 1.5, md: 2.5 }
                 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                         <Box sx={{
@@ -1792,8 +1836,15 @@ const CouponsAdminPage: React.FC = () => {
                 onClose={handleCloseSmsDialog}
                 maxWidth="sm"
                 fullWidth
-                fullScreen={isMobile}
-                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 4, bgcolor: 'background.default' } }}
+                PaperProps={{
+                    sx: {
+                        borderRadius: { xs: 3, md: 4 },
+                        bgcolor: 'background.default',
+                        m: { xs: 2, md: 4 },
+                        width: { xs: 'calc(100% - 32px)', md: '100%' },
+                        maxHeight: 'calc(100% - 64px)'
+                    }
+                }}
             >
                 <DialogTitle sx={{
                     display: 'flex',
@@ -1802,8 +1853,7 @@ const CouponsAdminPage: React.FC = () => {
                     borderBottom: '1px solid',
                     borderColor: alpha(theme.palette.divider, 0.1),
                     bgcolor: 'background.paper',
-                    p: isMobile ? 2 : 2.5,
-                    pt: isMobile ? '80px' : 2.5
+                    p: { xs: 1.5, md: 2.5 }
                 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                         <Box sx={{
@@ -2018,8 +2068,8 @@ const CouponsAdminPage: React.FC = () => {
                     }}>
                         {(() => {
                             const filtered = customersWithPhone.filter((c: any) => {
-                                const q = smsSearch.toLowerCase();
-                                return !q || (c.name || '').toLowerCase().includes(q) || (c.phone || '').includes(q);
+                                const q = smsSearch?.toLowerCase();
+                                return !q || (c.name || '')?.toLowerCase().includes(q) || (c.phone || '').includes(q);
                             });
                             if (filtered.length === 0) {
                                 return (
@@ -2231,10 +2281,22 @@ const CouponsAdminPage: React.FC = () => {
                 onClose={() => setOpenUnsubscribesDialog(false)}
                 maxWidth="lg"
                 fullWidth
-                fullScreen={isMobile}
-                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 3 } }}
+                PaperProps={{
+                    sx: {
+                        borderRadius: { xs: 3, md: 4 },
+                        bgcolor: 'background.default',
+                        m: { xs: 2, md: 4 },
+                        width: { xs: 'calc(100% - 32px)', md: '100%' },
+                        maxHeight: 'calc(100% - 64px)'
+                    }
+                }}
             >
-                <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <DialogTitle sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    p: { xs: 1.5, md: 2.5 }
+                }}>
                     <Typography variant="h6" fontWeight={700}>Coupon Email Unsubscribes</Typography>
                     <IconButton onClick={() => setOpenUnsubscribesDialog(false)}>
                         <CloseIcon />
@@ -2284,13 +2346,13 @@ const CouponsAdminPage: React.FC = () => {
                                 <TableBody>
                                     {allUnsubscribeDetails
                                         .filter((record) => {
-                                            const q = unsubscribeSearch.trim().toLowerCase();
+                                            const q = unsubscribeSearch.trim()?.toLowerCase();
                                             if (!q) return true;
                                             return (
-                                                (record.name || '').toLowerCase().includes(q) ||
-                                                (record.email || '').toLowerCase().includes(q) ||
-                                                (record.phone || '').toLowerCase().includes(q) ||
-                                                (record.emailUnsubscribeSource || '').toLowerCase().includes(q)
+                                                (record.name || '')?.toLowerCase().includes(q) ||
+                                                (record.email || '')?.toLowerCase().includes(q) ||
+                                                (record.phone || '')?.toLowerCase().includes(q) ||
+                                                (record.emailUnsubscribeSource || '')?.toLowerCase().includes(q)
                                             );
                                         })
                                         .map((record) => (

@@ -139,7 +139,7 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
                         fullWidth
                         placeholder="Coupon code"
                         value={couponCode}
-                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                        onChange={(e) => setCouponCode(e.target.value?.toUpperCase())}
                         onKeyDown={(e) => { if (e.key === 'Enter') handleValidateCoupon(false); }}
                         InputProps={{
                             startAdornment: (
@@ -179,7 +179,7 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
                 {availableCoupons.length > 0 && couponDiscount === 0 && (
                     <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                         {availableCoupons.slice(0, 5).map((c: any) => (
-                            <Tooltip key={c._id} title={`${c.discountType === 'percentage' ? c.discountValue + '% off' : '$' + c.discountValue + ' off'}${c.minBillAmount ? ` (min $${c.minBillAmount})` : ''}`}>
+                            <Tooltip key={c._id} title={`${c.discountType === 'percentage' ? c.discountValue + '% off' : '$' + Number(c.discountValue || 0).toFixed(2) + ' off'}${c.minBillAmount ? ` (min $${Number(c.minBillAmount || 0).toFixed(2)})` : ''}`}>
                                 <Chip
                                     label={c.code}
                                     size="small"

@@ -15,7 +15,9 @@ import {
     Save as SaveIcon,
     Sms as SmsIcon,
     Star as StarIcon,
-    Terminal as TerminalIcon
+    Terminal as TerminalIcon,
+    Visibility,
+    VisibilityOff
 } from '@mui/icons-material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -83,11 +85,15 @@ import {
     type UnitConfig
 } from '../../context/SettingsContext';
 
-import { menuAPI, paymentsAPI, printersAPI, settingsAPI, smsAPI, tenantAPI, usersAPI } from '../../services/api';
+import { apiBaseUrl, menuAPI, paymentsAPI, printersAPI, settingsAPI, smsAPI, tenantAPI, usersAPI } from '../../services/api';
+import { printBillThermal } from '../../utils/printBillThermal';
+import { printKotThermal } from '../../utils/kotThermal';
+import { isThermalPrintAvailable, startPrintStation, stopPrintStation } from '../../services/thermalPrint';
+import { connectUsbPrinter, disconnectUsbPrinter, isUsbPrintAvailable, isUsbPrinterConnected } from '../../services/usbPrint';
 
 import { NOTIFICATION_SOUNDS, previewSound } from '../../utils/notificationSounds';
 import type { ValidationResult } from '../../utils/validation';
-import { getHelperText, hasError, validateAddress, validateCompanyName, validateEmail, validatePhone } from '../../utils/validation';
+import { getHelperText, hasError, validateAddress, validateCompanyName, validateEmail, validatePhone, validateRequired } from '../../utils/validation';
 
 const countries = [
     {
@@ -297,7 +303,7 @@ const isCurrentlyOpen = (hours: BusinessHourDay[], timezone: string): boolean =>
         const minuteStr = timeParts.find(p => p.type === 'minute')?.value || '0';
         const currentMinutes = parseInt(hourStr, 10) * 60 + parseInt(minuteStr, 10);
 
-        const config = hours.find(h => h.day.toLowerCase() === todayName.toLowerCase());
+        const config = hours.find(h => h.day?.toLowerCase() === todayName?.toLowerCase());
         if (!config || !config.isOpen) return false;
 
         const slots = config.slots || (config.openTime && config.closeTime ? [{ openTime: config.openTime, closeTime: config.closeTime }] : []);
@@ -394,6 +400,9 @@ const createDefaultSettings = (): SettingsState => ({
             card: true,
             zelle: true,
             venmo: true,
+            cheque: true,
+            creditCard: true,
+            debitCard: true,
         }
     },
     payment: {
@@ -450,6 +459,7 @@ const createDefaultSettings = (): SettingsState => ({
         firstOrderBonus: 0,
         minPointsToRedeem: 100,
         maxRedemptionPercentage: 100,
+        pointsPerRating: 0,
     },
     delivery: {
         builtIn: {
@@ -494,6 +504,9 @@ const mergeSettingsWithDefaults = (defaults: SettingsState, partial: Partial<Set
             card: fetchedSystem.posPaymentMethods?.card ?? (defaults.system.posPaymentMethods?.card ?? true),
             zelle: fetchedSystem.posPaymentMethods?.zelle ?? (defaults.system.posPaymentMethods?.zelle ?? true),
             venmo: fetchedSystem.posPaymentMethods?.venmo ?? (defaults.system.posPaymentMethods?.venmo ?? true),
+            cheque: fetchedSystem.posPaymentMethods?.cheque ?? (defaults.system.posPaymentMethods?.cheque ?? true),
+            creditCard: fetchedSystem.posPaymentMethods?.creditCard ?? (defaults.system.posPaymentMethods?.creditCard ?? true),
+            debitCard: fetchedSystem.posPaymentMethods?.debitCard ?? (defaults.system.posPaymentMethods?.debitCard ?? true),
         }
     };
 
@@ -573,9 +586,63 @@ const mergeSettingsWithDefaults = (defaults: SettingsState, partial: Partial<Set
 };
 
 
+/**
+ * Settings UI block for a wired (USB / WebUSB) printer. Lets the user grant access to the
+ * physically connected printer and run a test print. WebUSB only exists in Chromium desktop
+ * browsers (Chrome / Edge) on a secure context — hence the availability guard.
+ */
+const UsbPrinterSection: React.FC<{
+    role: 'billing' | 'kitchen';
+    connected: boolean;
+    available: boolean;
+    onConnect: () => void;
+    onDisconnect: () => void;
+    onTest: () => void;
+}> = ({ connected, available, onConnect, onDisconnect, onTest }) => {
+    if (!available) {
+        return (
+            <Grid size={{ xs: 12 }}>
+                <Alert severity="warning">
+                    Wired USB printing uses WebUSB, which is only supported in <strong>Chrome</strong> or <strong>Edge</strong> on a desktop.
+                    It is not available in this browser, the mobile app, or on Clover devices.
+                </Alert>
+            </Grid>
+        );
+    }
+    return (
+        <>
+            <Grid size={{ xs: 12 }}>
+                <Alert severity={connected ? 'success' : 'info'}>
+                    {connected
+                        ? 'USB printer connected. Bills/KOTs will print to it directly.'
+                        : 'Plug the printer into this computer via USB, then click "Connect USB Printer" and pick it from the list.'}
+                </Alert>
+            </Grid>
+            <Grid size={{ xs: 12 }} sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+                <Chip
+                    label={connected ? 'Connected' : 'Not connected'}
+                    color={connected ? 'success' : 'default'}
+                    size="small"
+                />
+                <Button variant="outlined" onClick={onConnect} startIcon={<PrintIcon />}>
+                    {connected ? 'Reconnect USB Printer' : 'Connect USB Printer'}
+                </Button>
+                {connected && (
+                    <Button variant="text" color="error" onClick={onDisconnect}>
+                        Disconnect
+                    </Button>
+                )}
+                <Button variant="outlined" onClick={onTest} startIcon={<PrintIcon />}>
+                    Send Test Print
+                </Button>
+            </Grid>
+        </>
+    );
+};
+
 const SettingsPage: React.FC = () => {
     const { user } = useAuth();
-    const { updateSettings: updateGlobalSettings } = useSettings();
+    const { updateSettings: updateGlobalSettings, formatCurrency } = useSettings();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const headingFontSize = { xs: '1.12rem', sm: '1.4rem', md: '2.125rem' };
@@ -586,6 +653,11 @@ const SettingsPage: React.FC = () => {
     const [errors, setErrors] = useState<Record<string, ValidationResult>>({});
     const [fetchingTax, setFetchingTax] = useState(false);
     const [webhookUrl, setWebhookUrl] = useState<string>('');
+
+    const [showTwilioAuthToken, setShowTwilioAuthToken] = useState(false);
+    const [showStripeSecretKey, setShowStripeSecretKey] = useState(false);
+    const [showStripeWebhookSecret, setShowStripeWebhookSecret] = useState(false);
+
     const [stripeStatus, setStripeStatus] = useState<{ stripeMode?: string; hasPublishableKey?: boolean; hasSecretKey?: boolean; hasWebhookSecret?: boolean }>({});
     const [phonePeStatus, setPhonePeStatus] = useState<{ phonePeEnv?: string; phonePeClientId?: string; phonePeClientVersion?: string; hasClientId?: boolean; hasClientSecret?: boolean }>({});
     const [usersList, setUsersList] = useState<any[]>([]);
@@ -808,11 +880,12 @@ const SettingsPage: React.FC = () => {
                     return acc;
                 }, {});
                 const merged = mergeSettingsWithDefaults(defaults, fetched);
-                if (!merged.restaurant.name) merged.restaurant.name = (user?.tenant)?.name || '';
-                if (!merged.restaurant.logo) merged.restaurant.logo = (user?.tenant)?.logo || '';
-                if (!merged.restaurant.email) merged.restaurant.email = (user?.tenant)?.contactEmail || user?.email || '';
+                const tenantObj = typeof user?.tenant === 'object' ? user.tenant : null;
+                if (!merged.restaurant.name) merged.restaurant.name = tenantObj?.name || '';
+                if (!merged.restaurant.logo) merged.restaurant.logo = tenantObj?.logo || '';
+                if (!merged.restaurant.email) merged.restaurant.email = tenantObj?.contactEmail || user?.email || '';
                 if (!merged.restaurant.phone) {
-                    const phoneVal = (user?.tenant)?.contactPhone || user?.phone || '';
+                    const phoneVal = tenantObj?.contactPhone || user?.phone || '';
                     merged.restaurant.phone = phoneVal.replace(/\D/g, '').slice(-10);
                 }
                 setSettings(merged);
@@ -822,23 +895,31 @@ const SettingsPage: React.FC = () => {
             } else if (response.data && typeof response.data === 'object') {
                 const fetched = response.data;
                 const merged = mergeSettingsWithDefaults(defaults, fetched);
-                if (!merged.restaurant.name) merged.restaurant.name = (user?.tenant)?.name || '';
-                if (!merged.restaurant.logo) merged.restaurant.logo = (user?.tenant)?.logo || '';
-                if (!merged.restaurant.email) merged.restaurant.email = (user?.tenant)?.contactEmail || user?.email || '';
+                const tenantObj = typeof user?.tenant === 'object' ? user.tenant : null;
+                if (!merged.restaurant.name) merged.restaurant.name = tenantObj?.name || '';
+                if (!merged.restaurant.logo) merged.restaurant.logo = tenantObj?.logo || '';
+                if (!merged.restaurant.email) merged.restaurant.email = tenantObj?.contactEmail || user?.email || '';
                 if (!merged.restaurant.phone) {
-                    const phoneVal = (user?.tenant)?.contactPhone || user?.phone || '';
-                    merged.restaurant.phone = phoneVal.replace(/\D/g, '').slice(-10);
+                    const phoneVal = tenantObj?.contactPhone || user?.phone || '';
+                    merged.restaurant.phone = String(phoneVal || '').replace(/\D/g, '');
+                    if ((merged.restaurant.dialCode === '1' || merged.restaurant.dialCode === '+1') && merged.restaurant.phone.length > 10) {
+                        merged.restaurant.phone = merged.restaurant.phone.slice(-10);
+                    }
                 }
                 setSettings(merged);
                 setWebhookUrl(webhookResp.data?.url || '');
                 setStripeStatus(stripeStatusResp.data || {});
                 setPhonePeStatus(phonePeStatusResp.data || {});
             } else {
-                defaults.restaurant.name = (user?.tenant)?.name || '';
-                defaults.restaurant.logo = (user?.tenant)?.logo || '';
-                defaults.restaurant.email = (user?.tenant)?.contactEmail || user?.email || '';
-                const phoneVal = (user?.tenant)?.contactPhone || user?.phone || '';
-                defaults.restaurant.phone = phoneVal.replace(/\D/g, '').slice(-10);
+                const tenantObj = typeof user?.tenant === 'object' ? user.tenant : null;
+                defaults.restaurant.name = tenantObj?.name || '';
+                defaults.restaurant.logo = tenantObj?.logo || '';
+                defaults.restaurant.email = tenantObj?.contactEmail || user?.email || '';
+                const phoneVal = tenantObj?.contactPhone || user?.phone || '';
+                defaults.restaurant.phone = String(phoneVal || '').replace(/\D/g, '');
+                if ((defaults.restaurant.dialCode === '1' || defaults.restaurant.dialCode === '+1') && defaults.restaurant.phone.length > 10) {
+                    defaults.restaurant.phone = defaults.restaurant.phone.slice(-10);
+                }
                 setSettings(defaults);
                 setWebhookUrl(webhookResp.data?.url || '');
                 setStripeStatus(stripeStatusResp.data || {});
@@ -870,36 +951,36 @@ const SettingsPage: React.FC = () => {
         }
     }, [tabValue, smsPage, smsRowsPerPage]);
 
-    // Auto-fetch tax rate when zipCode changes
-    useEffect(() => {
-        const zipCode = settings.restaurant.zipCode;
-        const state = settings.restaurant.state;
-        if (zipCode && zipCode.length >= 5) {
-            const timer = setTimeout(async () => {
-                try {
-                    setFetchingTax(true);
-                    const res = await settingsAPI.getTaxRate(zipCode, state);
-                    if (res.data && typeof res.data.rate === 'number') {
-                        if (res.data.breakdown) {
-                            handleTaxBreakdownChange('enabled', true);
-                            handleTaxBreakdownChange('country', res.data.breakdown.country.rate);
-                            handleTaxBreakdownChange('state', res.data.breakdown.state.rate);
-                            handleTaxBreakdownChange('city', res.data.breakdown.city.rate);
-                            handleTaxBreakdownChange('county', res.data.breakdown.county.rate);
-                        } else {
-                            handleInputChange('restaurant', 'taxRate', res.data.rate);
-                        }
-                        console.log(`Auto-updated tax rate to ${res.data.rate}% for ZIP ${zipCode}, State: ${state || 'N/A'}`);
-                    }
-                } catch (error) {
-                    console.warn('Auto tax rate fetch failed:', error);
-                } finally {
-                    setFetchingTax(false);
-                }
-            }, 500);
-            return () => clearTimeout(timer);
-        }
-    }, [settings.restaurant.zipCode, settings.restaurant.state]);
+    // MANUAL TAX REMOVED — auto-detecting/storing a manual tax rate is no longer used; TaxJar is the source of truth.
+    // useEffect(() => {
+    //     const zipCode = settings.restaurant.zipCode;
+    //     const state = settings.restaurant.state;
+    //     if (zipCode && zipCode.length >= 5) {
+    //         const timer = setTimeout(async () => {
+    //             try {
+    //                 setFetchingTax(true);
+    //                 const res = await settingsAPI.getTaxRate(zipCode, state);
+    //                 if (res.data && typeof res.data.rate === 'number') {
+    //                     if (res.data.breakdown) {
+    //                         handleTaxBreakdownChange('enabled', true);
+    //                         handleTaxBreakdownChange('country', res.data.breakdown.country.rate);
+    //                         handleTaxBreakdownChange('state', res.data.breakdown.state.rate);
+    //                         handleTaxBreakdownChange('city', res.data.breakdown.city.rate);
+    //                         handleTaxBreakdownChange('county', res.data.breakdown.county.rate);
+    //                     } else {
+    //                         handleInputChange('restaurant', 'taxRate', res.data.rate);
+    //                     }
+    //                     console.log(`Auto-updated tax rate to ${res.data.rate}% for ZIP ${zipCode}, State: ${state || 'N/A'}`);
+    //                 }
+    //             } catch (error) {
+    //                 console.warn('Auto tax rate fetch failed:', error);
+    //             } finally {
+    //                 setFetchingTax(false);
+    //             }
+    //         }, 500);
+    //         return () => clearTimeout(timer);
+    //     }
+    // }, [settings.restaurant.zipCode, settings.restaurant.state]);
 
     const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
         setTabValue(newValue);
@@ -1053,8 +1134,83 @@ const SettingsPage: React.FC = () => {
 
     const handleTestPrint = async (role: 'billing' | 'kitchen') => {
         const config = settings.printer[role];
-        if (!config || !config.ip) {
+        if (!config) {
+            toast.error(`Please configure the ${role} printer first.`);
+            return;
+        }
+
+        const sampleBill = {
+            restaurant: {
+                name: settings.restaurant.name || 'Test Restaurant',
+                address: settings.restaurant.address,
+                phone: settings.restaurant.phone,
+            },
+            orderNumber: 'TEST-0001',
+            orderType: 'dine_in',
+            createdAt: new Date().toISOString(),
+            items: [
+                { name: 'Test Item A', quantity: 2, price: 120, total: 240 },
+                { name: 'Test Item B', quantity: 1, price: 80, total: 80 },
+            ],
+            subtotal: 320,
+            totalAmount: 320,
+            paymentStatus: 'paid',
+            paymentMethod: 'cash',
+        };
+
+        // Wired USB printer (WebUSB, desktop browser). No IP needed.
+        if (config.type === 'usb') {
+            if (!isUsbPrintAvailable()) {
+                toast.error('USB printing needs Chrome or Edge on a desktop. Not supported in this browser.');
+                return;
+            }
+            try {
+                if (!isUsbPrinterConnected()) {
+                    toast.loading('Select your USB printer...', { id: 'test-print' });
+                    await connectUsbPrinter();
+                }
+                toast.loading('Sending test print...', { id: 'test-print' });
+                if (role === 'kitchen') {
+                    await printKotThermal(sampleBill, { ...settings.printer, kitchen: config });
+                } else {
+                    await printBillThermal(sampleBill, { ...settings.printer, billing: config }, formatCurrency);
+                }
+                toast.success('Test print sent to USB printer', { id: 'test-print' });
+            } catch (error: any) {
+                console.error('USB test print failed:', error);
+                toast.error(error?.message || 'Could not print to the USB printer.', { id: 'test-print' });
+            }
+            return;
+        }
+
+        if (!config.ip) {
             toast.error(`Please configure the ${role} printer IP first.`);
+            return;
+        }
+
+        // Wi-Fi thermal printer: print directly from the device (the backend can't reach a LAN printer).
+        if (config.type === 'escpos-tcp') {
+            // ePOS-Print is plain HTTP and works from this browser. Raw ESC/POS / Star Line use a
+            // TCP socket that only the native Android app can open. Default to epos-print to match
+            // the dropdown's default display value (it shows ePOS-Print when commandMode is unset).
+            const isEpos = (config.commandMode || 'epos-print') === 'epos-print';
+            if (!isEpos && !isThermalPrintAvailable()) {
+                toast.error('Raw ESC/POS & Star Line test prints only work inside the installed Android app. For the TM-m30III use Command Mode = ePOS-Print.');
+                return;
+            }
+            try {
+                toast.loading('Sending test print...', { id: 'test-print' });
+                if (role === 'kitchen') {
+                    // Kitchen receiver: print an actual KOT (kitchen ticket), not a bill.
+                    await printKotThermal(sampleBill, { ...settings.printer, kitchen: config });
+                } else {
+                    await printBillThermal(sampleBill, { ...settings.printer, billing: config }, formatCurrency);
+                }
+                toast.success('Test print sent to printer', { id: 'test-print' });
+            } catch (error: any) {
+                console.error('Wi-Fi test print failed:', error);
+                toast.error(error?.message || 'Could not reach the printer. Check Wi-Fi and IP.', { id: 'test-print' });
+            }
             return;
         }
 
@@ -1065,6 +1221,67 @@ const SettingsPage: React.FC = () => {
         } catch (error: any) {
             console.error(`Test print failed for ${role}:`, error);
             toast.error(error.response?.data?.message || `Failed to connect to ${role} printer`, { id: 'test-print' });
+        }
+    };
+
+    // Wired USB printer (WebUSB) connection state — re-renders the "connected" status badge.
+    const [usbConnected, setUsbConnected] = useState(isUsbPrinterConnected());
+    const handleConnectUsb = async () => {
+        try {
+            const name = await connectUsbPrinter();
+            setUsbConnected(true);
+            toast.success(`Connected to ${name}`);
+        } catch (e: any) {
+            toast.error(e?.message || 'Could not connect to the USB printer.');
+        }
+    };
+    const handleDisconnectUsb = async () => {
+        await disconnectUsbPrinter();
+        setUsbConnected(false);
+        toast.success('USB printer disconnected.');
+    };
+
+    // Background print station (Android only): polls for new orders and prints them automatically.
+    const [printStationOn, setPrintStationOn] = useState(() => localStorage.getItem('printStationOn') === '1');
+    const handleTogglePrintStation = async (on: boolean) => {
+        try {
+            if (on) {
+                const jwt = localStorage.getItem('jwt') || '';
+                // apiBaseUrl includes a trailing /api; strip it since the station builds its own paths.
+                const apiBase = apiBaseUrl.replace(/\/api$/, '');
+                const billing = settings.printer.billing;
+                const kitchen = settings.printer.kitchen;
+
+                // Prefer billing printer; fall back to kitchen/KOT printer for KOT-only mode.
+                const printerCfg = (billing?.ip) ? billing : kitchen;
+                if (!printerCfg?.ip) {
+                    toast.error('Set a printer IP in the Billing or Kitchen/KOT printer section first.');
+                    return;
+                }
+
+                const kotOnly = !billing?.ip; // no billing IP → print KOT only
+                await startPrintStation({
+                    jwt,
+                    apiBase,
+                    printerIp: printerCfg.ip,
+                    printerPort: printerCfg.port || 9100,
+                    commandMode: printerCfg.commandMode || 'epos-print',
+                    devId: printerCfg.deviceId || 'local_printer',
+                    kotOnly,
+                });
+                setPrintStationOn(true);
+                localStorage.setItem('printStationOn', '1');
+                toast.success(kotOnly
+                    ? 'Print station started — KOT only (no billing printer configured).'
+                    : 'Print station started — KOT + bill will print in the background.');
+            } else {
+                await stopPrintStation();
+                setPrintStationOn(false);
+                localStorage.setItem('printStationOn', '0');
+                toast.success('Print station stopped.');
+            }
+        } catch (e: any) {
+            toast.error(e?.message || 'Failed to toggle print station.');
         }
     };
 
@@ -1254,34 +1471,35 @@ const SettingsPage: React.FC = () => {
         handleInputChange('restaurant', 'businessHours', updated);
     };
 
-    const fetchTaxRate = async () => {
-        if (!settings.restaurant.zipCode) {
-            toast.error('Please enter a Zip Code first');
-            return;
-        }
-        try {
-            setFetchingTax(true);
-            const res = await settingsAPI.getTaxRate(settings.restaurant.zipCode, settings.restaurant.state);
-            if (res.data && typeof res.data.rate === 'number') {
-                if (res.data.breakdown) {
-                    handleTaxBreakdownChange('enabled', true);
-                    handleTaxBreakdownChange('country', res.data.breakdown.country.rate);
-                    handleTaxBreakdownChange('state', res.data.breakdown.state.rate);
-                    handleTaxBreakdownChange('city', res.data.breakdown.city.rate);
-                    handleTaxBreakdownChange('county', res.data.breakdown.county.rate);
-                } else {
-                    handleInputChange('restaurant', 'taxRate', res.data.rate);
-                }
-                toast.success(`Tax rate updated to ${res.data.rate}% based on ${settings.restaurant.zipCode}`);
-            } else {
-                toast.error('Could not fetch tax rate');
-            }
-        } catch (error) {
-            toast.error('Failed to fetch tax rate');
-        } finally {
-            setFetchingTax(false);
-        }
-    };
+    // MANUAL TAX REMOVED — "Auto Detect" manual rate lookup is no longer used; TaxJar handles tax calculation.
+    // const fetchTaxRate = async () => {
+    //     if (!settings.restaurant.zipCode) {
+    //         toast.error('Please enter a Zip Code first');
+    //         return;
+    //     }
+    //     try {
+    //         setFetchingTax(true);
+    //         const res = await settingsAPI.getTaxRate(settings.restaurant.zipCode, settings.restaurant.state);
+    //         if (res.data && typeof res.data.rate === 'number') {
+    //             if (res.data.breakdown) {
+    //                 handleTaxBreakdownChange('enabled', true);
+    //                 handleTaxBreakdownChange('country', res.data.breakdown.country.rate);
+    //                 handleTaxBreakdownChange('state', res.data.breakdown.state.rate);
+    //                 handleTaxBreakdownChange('city', res.data.breakdown.city.rate);
+    //                 handleTaxBreakdownChange('county', res.data.breakdown.county.rate);
+    //             } else {
+    //                 handleInputChange('restaurant', 'taxRate', res.data.rate);
+    //             }
+    //             toast.success(`Tax rate updated to ${res.data.rate}% based on ${settings.restaurant.zipCode}`);
+    //         } else {
+    //             toast.error('Could not fetch tax rate');
+    //         }
+    //     } catch (error) {
+    //         toast.error('Failed to fetch tax rate');
+    //     } finally {
+    //         setFetchingTax(false);
+    //     }
+    // };
 
     const handleBlur = (field: keyof RestaurantSettings) => {
         let validation: ValidationResult = { isValid: true };
@@ -1294,7 +1512,7 @@ const SettingsPage: React.FC = () => {
                 validation = validateEmail(String(settings.restaurant.email ?? ''));
                 break;
             case 'phone':
-                validation = validatePhone(String(settings.restaurant.phone ?? ''));
+                validation = validatePhone(String(settings.restaurant.phone ?? ''), settings.restaurant.dialCode);
                 break;
             case 'address':
                 validation = validateAddress(String(settings.restaurant.address ?? ''));
@@ -1310,7 +1528,7 @@ const SettingsPage: React.FC = () => {
         const newErrors: Record<string, ValidationResult> = {
             restaurant_name: validateCompanyName(settings.restaurant.name),
             restaurant_email: validateEmail(settings.restaurant.email),
-            restaurant_phone: validatePhone(settings.restaurant.phone),
+            restaurant_phone: validatePhone(settings.restaurant.phone, settings.restaurant.dialCode),
             restaurant_address: validateAddress(settings.restaurant.address),
         };
 
@@ -1423,19 +1641,19 @@ const SettingsPage: React.FC = () => {
 
         try {
             setLoading(true);
-            let successMessage = 'Settings saved successfully';
+            let successMessage = 'Setting updated successfully';
 
             if (category === 'restaurant') {
                 const restaurantPayload = buildRestaurantPayload();
                 await settingsAPI.update('restaurant', restaurantPayload);
                 updateGlobalSettings(settings); // Update global context
                 await fetchSettings();
-                successMessage = 'Restaurant settings saved successfully';
+                successMessage = 'Setting updated successfully';
             } else if (category === 'system') {
                 await settingsAPI.update('system', settings.system);
                 updateGlobalSettings(settings); // Update global context
                 await fetchSettings();
-                successMessage = 'System preferences saved successfully';
+                successMessage = 'Setting updated successfully';
             } else if (category === 'notification') {
                 await settingsAPI.update('notification', {
                     sms: {
@@ -1450,24 +1668,25 @@ const SettingsPage: React.FC = () => {
                     // @ts-ignore
                     push: settings.notification.push,
                     // @ts-ignore
-                    sound: settings.notification.sound || 'notification'
+                    sound: settings.notification.sound || 'notification',
+                    soundDuration: settings.notification.soundDuration || 6
                 });
                 await fetchSettings();
-                successMessage = 'Notification settings saved successfully';
+                successMessage = 'Setting updated successfully';
             } else if (category === 'printer') {
                 await settingsAPI.update('printer', settings.printer);
                 updateGlobalSettings(settings);
-                successMessage = 'Printer settings saved successfully';
+                successMessage = 'Setting updated successfully';
             } else if (category === 'rewards') {
                 await settingsAPI.update('rewards', settings.rewards);
                 updateGlobalSettings(settings); // Update global context
                 await fetchSettings();
-                successMessage = 'Rewards settings saved successfully';
+                successMessage = 'Setting updated successfully';
             } else if (category === 'delivery') {
                 await settingsAPI.update('delivery', settings.delivery);
                 updateGlobalSettings(settings);
                 await fetchSettings();
-                successMessage = 'Delivery providers configured successfully';
+                successMessage = 'Setting updated successfully';
             }
 
 
@@ -1940,6 +2159,7 @@ const SettingsPage: React.FC = () => {
                                 onChange={(e) => handleInputChange('restaurant', 'zipCode', e.target.value)}
                             />
                         </Grid>
+                        {/* MANUAL TAX REMOVED — tax is now calculated exclusively via the TaxJar engine.
                         <Grid size={{ xs: 12, md: 6 }}>
                             <TextField
                                 fullWidth
@@ -1964,17 +2184,20 @@ const SettingsPage: React.FC = () => {
                                 }}
                             />
                         </Grid>
+                        */}
                         <Grid size={{ xs: 12, md: 6 }}>
                             <TextField
                                 fullWidth
                                 type="number"
                                 label="Processing Fee (%)"
                                 value={settings.restaurant.processingFee ?? 3}
-                                onChange={(e) => handleInputChange('restaurant', 'processingFee', parseFloat(e.target.value))}
-                                helperText="Default processing fee"
+                                InputProps={{ readOnly: true }}
+                                disabled
+                                helperText="Set by the platform administrator. Contact support to change it."
                             />
                         </Grid>
 
+                        {/* MANUAL TAX REMOVED — Tax Breakdown Configuration is replaced by the TaxJar engine.
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 2 }} />
                             <Typography variant="h6" gutterBottom>
@@ -2044,6 +2267,7 @@ const SettingsPage: React.FC = () => {
                                 </Grid>
                             </Grid>
                         )}
+                        */}
 
                         {/* <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 2 }} />
@@ -2126,6 +2350,7 @@ const SettingsPage: React.FC = () => {
                                 </Grid>
                             </>
                         )} */}
+                        {/* DELIVERY SETTINGS REMOVED
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 2 }} />
                             <Typography variant="h6" gutterBottom>
@@ -2148,6 +2373,7 @@ const SettingsPage: React.FC = () => {
                                 </Grid>
                             </Grid>
                         </Grid>
+                        */}
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 2 }} />
                             <Typography variant="h6" gutterBottom sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -2277,82 +2503,26 @@ const SettingsPage: React.FC = () => {
                                                             {slots.map((slot, sIdx) => (
                                                                 <Box key={sIdx} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
                                                                     <TextField
-                                                                        select
+                                                                        type="time"
                                                                         label="Opens"
                                                                         size="small"
                                                                         value={slot.openTime}
                                                                         onChange={(e) => handleSlotChange(idx, sIdx, 'openTime', e.target.value)}
                                                                         sx={{ width: { xs: '100%', sm: 160 }, flex: { xs: 1, sm: 'none' } }}
-                                                                    >
-                                                                        {(() => {
-                                                                            let lastGroup = '';
-                                                                            return TIME_OPTIONS.filter(opt => {
-                                                                                if (slot.closeTime && opt.minutes >= timeToMinutes(slot.closeTime)) return false;
-
-                                                                                // Constraint: Subsequent slots must start at or after previous slot's end
-                                                                                if (sIdx > 0) {
-                                                                                    const prevSlot = slots[sIdx - 1];
-                                                                                    return opt.minutes >= timeToMinutes(prevSlot.closeTime);
-                                                                                }
-                                                                                return true;
-                                                                            }).map(opt => {
-                                                                                const showHeader = opt.group !== lastGroup;
-                                                                                lastGroup = opt.group;
-                                                                                return [
-                                                                                    showHeader && (
-                                                                                        <MenuItem key={`${opt.group}-header`} disabled sx={{ opacity: 1, fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', color: 'primary.main', bgcolor: alpha(theme.palette.primary.main, 0.05), minHeight: 'auto', py: 0.5 }}>
-                                                                                            {opt.group}
-                                                                                        </MenuItem>
-                                                                                    ),
-                                                                                    <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
-                                                                                ];
-                                                                            });
-                                                                        })()}
-                                                                    </TextField>
+                                                                        InputLabelProps={{ shrink: true }}
+                                                                        inputProps={{ step: 60 }}
+                                                                    />
                                                                     <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>to</Typography>
                                                                     <TextField
-                                                                        select
+                                                                        type="time"
                                                                         label="Closes"
                                                                         size="small"
                                                                         value={slot.closeTime}
                                                                         onChange={(e) => handleSlotChange(idx, sIdx, 'closeTime', e.target.value)}
                                                                         sx={{ width: { xs: '100%', sm: 160 }, flex: { xs: 1, sm: 'none' } }}
-                                                                    >
-                                                                        {(() => {
-                                                                            let lastGroup = '';
-                                                                            const currentOpenMins = timeToMinutes(slot.openTime);
-                                                                            const nextSlot = slots[sIdx + 1];
-
-                                                                            return CLOSING_TIME_OPTIONS.filter(opt => {
-                                                                                if (nextSlot) {
-                                                                                    const limitMins = timeToMinutes(nextSlot.openTime);
-                                                                                    return opt.minutes > currentOpenMins && opt.minutes <= limitMins;
-                                                                                }
-                                                                                // For the last slot, allow any time except the exact opening time
-                                                                                return opt.value !== slot.openTime;
-                                                                            }).map(opt => {
-                                                                                const showHeader = opt.group !== lastGroup;
-                                                                                lastGroup = opt.group;
-                                                                                const isNextDay = opt.minutes <= currentOpenMins;
-
-                                                                                return [
-                                                                                    showHeader && (
-                                                                                        <MenuItem key={`${opt.group}-header`} disabled sx={{ opacity: 1, fontWeight: 700, fontSize: '0.7rem', textTransform: 'uppercase', color: 'primary.main', bgcolor: alpha(theme.palette.primary.main, 0.05), minHeight: 'auto', py: 0.5 }}>
-                                                                                            {opt.group}
-                                                                                        </MenuItem>
-                                                                                    ),
-                                                                                    <MenuItem key={opt.value} value={opt.value}>
-                                                                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', gap: 1 }}>
-                                                                                            <Typography variant="body2">{opt.label}</Typography>
-                                                                                            {isNextDay && (
-                                                                                                <Chip label="Next Day" size="small" color="info" variant="outlined" sx={{ height: 20, fontSize: '0.6rem', borderRadius: 1 }} />
-                                                                                            )}
-                                                                                        </Box>
-                                                                                    </MenuItem>
-                                                                                ];
-                                                                            });
-                                                                        })()}
-                                                                    </TextField>
+                                                                        InputLabelProps={{ shrink: true }}
+                                                                        inputProps={{ step: 60 }}
+                                                                    />
 
                                                                     {slots.length > 1 && (
                                                                         <IconButton
@@ -2407,6 +2577,7 @@ const SettingsPage: React.FC = () => {
                             </Box>
                         </Grid>
 
+                        {/* MAILING SETTINGS REMOVED
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 2 }} />
                             <Typography variant="h6" gutterBottom>
@@ -2562,6 +2733,7 @@ const SettingsPage: React.FC = () => {
                                 )}
                             </Grid>
                         </Grid>
+                        */}
 
                         <Grid size={{ xs: 12 }} sx={{ display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' }, mt: { xs: 2.5, md: 0 } }}>
                             <Button
@@ -2652,6 +2824,7 @@ const SettingsPage: React.FC = () => {
                                 Save Preferences
                             </Button>
                         </Grid>
+                        {/* EXTERNAL INTEGRATIONS REMOVED — Google Maps API key is managed via env (VITE_GOOGLE_MAPS_API_KEY) / stored value, not editable here.
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 2 }} />
                             <Typography variant="h6" gutterBottom sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
@@ -2668,6 +2841,7 @@ const SettingsPage: React.FC = () => {
                                 autoComplete="new-password"
                             />
                         </Grid>
+                        */}
                     </Grid>
                 </TabPanel>
 
@@ -2778,7 +2952,7 @@ const SettingsPage: React.FC = () => {
                                         const labelInput = document.getElementById('new-unit-label') as HTMLInputElement;
                                         const typeInput = document.getElementById('new-unit-type')?.querySelector('input') as HTMLInputElement;
 
-                                        const value = valueInput?.value?.trim().toLowerCase().replace(/\s+/g, '_');
+                                        const value = valueInput?.value?.trim()?.toLowerCase().replace(/\s+/g, '_');
                                         const label = labelInput?.value?.trim();
                                         const type = (typeInput?.value || 'count') as 'weight' | 'volume' | 'count';
 
@@ -2877,6 +3051,7 @@ const SettingsPage: React.FC = () => {
 
                 <TabPanel value={tabValue} index={3}>
                     <Grid container spacing={3}>
+                        {/* TWILIO SMS SETTINGS REMOVED — SMS is now handled via the credits top-up feature.
                         <Grid size={{ xs: 12 }}>
                             <Paper
                                 variant="outlined"
@@ -2948,13 +3123,22 @@ const SettingsPage: React.FC = () => {
                         <Grid size={{ xs: 12, md: 4 }}>
                             <TextField
                                 fullWidth
-                                type="password"
+                                type={showTwilioAuthToken ? "text" : "password"}
                                 label="Twilio Auth Token"
                                 value={settings.notification.sms.twilio.authToken}
                                 onChange={(e) => handleNotificationChange('authToken', e.target.value.trim())}
                                 disabled={!settings.notification.sms.enabled}
                                 autoComplete="new-password"
                                 helperText={settings.notification.sms.status?.hasAuthToken ? 'A Twilio auth token is already saved.' : ''}
+                                InputProps={{
+                                    endAdornment: (
+                                        <InputAdornment position="end">
+                                            <IconButton onClick={() => setShowTwilioAuthToken(!showTwilioAuthToken)} edge="end" disabled={!settings.notification.sms.enabled}>
+                                                {showTwilioAuthToken ? <Visibility /> : <VisibilityOff />}
+                                            </IconButton>
+                                        </InputAdornment>
+                                    )
+                                }}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
@@ -2976,6 +3160,7 @@ const SettingsPage: React.FC = () => {
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 1 }} />
                         </Grid>
+                        */}
 
                         {/* ── Notification Sound Picker ── */}
                         <Grid size={{ xs: 12 }}>
@@ -3427,9 +3612,9 @@ const SettingsPage: React.FC = () => {
                                     // here so Settings matches what is shown on the POS.
                                     const isIndia = settings.restaurant.country?.toLowerCase() === 'india';
                                     const methodLabels: Record<string, string> = isIndia
-                                        ? { cash: 'Cash', card: 'Card', zelle: 'PhonePe / GPay', venmo: 'Paytm' }
-                                        : { cash: 'Cash', card: 'Card', zelle: 'Zelle', venmo: 'Venmo' };
-                                    return ['cash', 'card', 'zelle', 'venmo'].map((method) => (
+                                        ? { cash: 'Cash', card: 'Card', zelle: 'PhonePe / GPay', venmo: 'Paytm', cheque: 'Cheque' }
+                                        : { cash: 'Cash', card: 'Card', zelle: 'Zelle', venmo: 'Venmo', cheque: 'Cheque' };
+                                    return ['cash', 'card', 'zelle', 'venmo', 'cheque'].map((method) => (
                                         <Grid size={{ xs: 6, sm: 3 }} key={method}>
                                             <FormControlLabel
                                                 control={
@@ -3438,7 +3623,7 @@ const SettingsPage: React.FC = () => {
                                                         onChange={(e) => {
                                                             const isChecked = e.target.checked;
                                                             setSettings(prev => {
-                                                                const currentMethods = prev.system.posPaymentMethods || { cash: true, card: true, zelle: true, venmo: true };
+                                                                const currentMethods = prev.system.posPaymentMethods || { cash: true, card: true, zelle: true, venmo: true, cheque: true };
                                                                 return {
                                                                     ...prev,
                                                                     system: {
@@ -3459,6 +3644,45 @@ const SettingsPage: React.FC = () => {
                                     ));
                                 })()}
                             </Grid>
+
+                            {/* Card sub-types — shown only when Card is enabled */}
+                            {(settings.system.posPaymentMethods?.card ?? true) && (
+                                <Box sx={{ mt: 1, pl: { xs: 1, sm: 4 }, pt: 2, borderTop: '1px dashed', borderColor: 'divider' }}>
+                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontWeight: 600 }}>
+                                        Accepted Card Types
+                                    </Typography>
+                                    <Grid container spacing={2}>
+                                        {[{ key: 'creditCard', label: 'Credit Card' }, { key: 'debitCard', label: 'Debit Card' }].map((ct) => (
+                                            <Grid size={{ xs: 6, sm: 3 }} key={ct.key}>
+                                                <FormControlLabel
+                                                    control={
+                                                        <Checkbox
+                                                            checked={settings.system.posPaymentMethods?.[ct.key as keyof typeof settings.system.posPaymentMethods] ?? true}
+                                                            onChange={(e) => {
+                                                                const isChecked = e.target.checked;
+                                                                setSettings(prev => {
+                                                                    const currentMethods = prev.system.posPaymentMethods || { cash: true, card: true, zelle: true, venmo: true, cheque: true, creditCard: true, debitCard: true };
+                                                                    return {
+                                                                        ...prev,
+                                                                        system: {
+                                                                            ...prev.system,
+                                                                            posPaymentMethods: {
+                                                                                ...currentMethods,
+                                                                                [ct.key]: isChecked
+                                                                            }
+                                                                        }
+                                                                    };
+                                                                });
+                                                            }}
+                                                        />
+                                                    }
+                                                    label={<Typography>{ct.label}</Typography>}
+                                                />
+                                            </Grid>
+                                        ))}
+                                    </Grid>
+                                </Box>
+                            )}
                         </Paper>
 
                         <Box sx={{ mt: 4, display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' } }}>
@@ -3573,7 +3797,7 @@ const SettingsPage: React.FC = () => {
                             <TextField
                                 fullWidth
                                 label="Secret Key"
-                                type="password"
+                                type={showStripeSecretKey ? "text" : "password"}
                                 value={settings.payment.stripeSecretKey || ''}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({
                                     ...prev,
@@ -3582,13 +3806,22 @@ const SettingsPage: React.FC = () => {
                                 placeholder="sk_test_..."
                                 autoComplete="new-password"
                                 helperText={stripeStatus.hasSecretKey ? 'Already set. Leave blank to keep current key.' : ''}
+                                InputProps={{
+                                    endAdornment: (
+                                        <InputAdornment position="end">
+                                            <IconButton onClick={() => setShowStripeSecretKey(!showStripeSecretKey)} edge="end">
+                                                {showStripeSecretKey ? <Visibility /> : <VisibilityOff />}
+                                            </IconButton>
+                                        </InputAdornment>
+                                    )
+                                }}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 6 }}>
                             <TextField
                                 fullWidth
                                 label="Webhook Signing Secret"
-                                type="password"
+                                type={showStripeWebhookSecret ? "text" : "password"}
                                 value={settings.payment.stripeWebhookSecret || ''}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({
                                     ...prev,
@@ -3599,6 +3832,15 @@ const SettingsPage: React.FC = () => {
                                 helperText={stripeStatus.hasWebhookSecret
                                     ? 'Already set. Leave blank to keep current key.'
                                     : 'Found in Stripe Dashboard → Developers → Webhooks'}
+                                InputProps={{
+                                    endAdornment: (
+                                        <InputAdornment position="end">
+                                            <IconButton onClick={() => setShowStripeWebhookSecret(!showStripeWebhookSecret)} edge="end">
+                                                {showStripeWebhookSecret ? <Visibility /> : <VisibilityOff />}
+                                            </IconButton>
+                                        </InputAdornment>
+                                    )
+                                }}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 6 }}>
@@ -3891,6 +4133,26 @@ const SettingsPage: React.FC = () => {
                             </Paper>
                         </Grid>
 
+                        {/* Background Print Station (mobile app only) */}
+                        {isThermalPrintAvailable() && (
+                            <Grid size={{ xs: 12 }}>
+                                <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <Box>
+                                        <Typography variant="subtitle1" fontWeight={700}>
+                                            Run as Print Station (Background)
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary">
+                                            Keeps printing KOT (and bill if configured) for all orders even when the app is in the background or screen is off. Uses Billing printer if set, otherwise uses the KOT/Kitchen printer for KOT-only mode.
+                                        </Typography>
+                                    </Box>
+                                    <Switch
+                                        checked={printStationOn}
+                                        onChange={(e) => handleTogglePrintStation(e.target.checked)}
+                                    />
+                                </Paper>
+                            </Grid>
+                        )}
+
                         {/* Billing Printer Section */}
                         <Grid size={{ xs: 12, md: 6 }}>
                             <Box sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
@@ -3910,10 +4172,96 @@ const SettingsPage: React.FC = () => {
                                         >
                                             <MenuItem value="none">None (Disabled)</MenuItem>
                                             <MenuItem value="print-agent">Print Agent (Electron)</MenuItem>
+                                            <MenuItem value="escpos-tcp">Wi-Fi Thermal Printer (Mobile App)</MenuItem>
+                                            <MenuItem value="usb">Wired USB Printer (Desktop browser)</MenuItem>
                                         </TextField>
                                     </Grid>
 
-                                    {settings.printer.billing?.type !== 'none' && (
+                                    {settings.printer.billing?.type === 'usb' && (
+                                        <UsbPrinterSection
+                                            role="billing"
+                                            connected={usbConnected}
+                                            available={isUsbPrintAvailable()}
+                                            onConnect={handleConnectUsb}
+                                            onDisconnect={handleDisconnectUsb}
+                                            onTest={() => handleTestPrint('billing')}
+                                        />
+                                    )}
+
+                                    {/* Wi-Fi / LAN thermal printer (Android app): direct TCP to printer IP:9100 */}
+                                    {settings.printer.billing?.type === 'escpos-tcp' && (
+                                        <>
+                                            <Grid size={{ xs: 12, md: 8 }}>
+                                                <TextField
+                                                    fullWidth
+                                                    label="Printer IP Address"
+                                                    placeholder="192.168.1.50"
+                                                    value={settings.printer.billing?.ip || ''}
+                                                    onChange={(e) => handlePrinterChange('billing', 'ip', e.target.value.trim())}
+                                                    helperText="The Wi-Fi/LAN IP of the printer. Power off, hold FEED, power on to print the SP700's network config."
+                                                />
+                                            </Grid>
+                                            <Grid size={{ xs: 12, md: 4 }}>
+                                                <TextField
+                                                    fullWidth
+                                                    type="number"
+                                                    label="Port"
+                                                    value={settings.printer.billing?.port ?? 9100}
+                                                    onChange={(e) => handlePrinterChange('billing', 'port', parseInt(e.target.value, 10) || 9100)}
+                                                    helperText="Usually 9100"
+                                                />
+                                            </Grid>
+                                            <Grid size={{ xs: 12, md: 6 }}>
+                                                <TextField
+                                                    select
+                                                    fullWidth
+                                                    label="Command Mode"
+                                                    value={settings.printer.billing?.commandMode || 'epos-print'}
+                                                    onChange={(e) => handlePrinterChange('billing', 'commandMode', e.target.value)}
+                                                    helperText="Epson TM-m30III = ePOS-Print. Star SP700/SP742 = Star Line. Generic = ESC/POS."
+                                                >
+                                                    <MenuItem value="epos-print">ePOS-Print (Epson TM-m30III / TM series)</MenuItem>
+                                                    <MenuItem value="escpos">ESC/POS raw (generic, port 9100)</MenuItem>
+                                                    <MenuItem value="star-line">Star Line (Star printers)</MenuItem>
+                                                </TextField>
+                                            </Grid>
+                                            <Grid size={{ xs: 12, md: 6 }}>
+                                                <TextField
+                                                    select
+                                                    fullWidth
+                                                    label="Paper Width"
+                                                    value={settings.printer.billing?.paperWidth ?? 76}
+                                                    onChange={(e) => handlePrinterChange('billing', 'paperWidth', parseInt(e.target.value, 10))}
+                                                >
+                                                    <MenuItem value={58}>58mm (2 inch)</MenuItem>
+                                                    <MenuItem value={76}>76mm / 3 inch (SP700)</MenuItem>
+                                                    <MenuItem value={80}>80mm</MenuItem>
+                                                </TextField>
+                                            </Grid>
+                                            <Grid size={{ xs: 12 }}>
+                                                <Alert severity="info">
+                                                    {settings.printer.billing?.commandMode === 'epos-print' ? (
+                                                        <>ePOS-Print (Epson TM-m30III) prints over the network from <strong>this browser</strong> — works on the laptop and Clover, no app needed. This device and the printer must be on the same network. Turn on <strong>Auto-print</strong> to print bills automatically.</>
+                                                    ) : (
+                                                        <>Raw ESC/POS & Star Line printing runs from the installed mobile app (Android). The phone and printer must be on the same Wi-Fi network. Turn on <strong>Auto-print</strong> under General settings to print bills automatically.</>
+                                                    )}
+                                                </Alert>
+                                            </Grid>
+                                            <Grid size={{ xs: 12 }}>
+                                                <Button
+                                                    variant="outlined"
+                                                    fullWidth
+                                                    onClick={() => handleTestPrint('billing')}
+                                                    startIcon={<PrintIcon />}
+                                                    disabled={!settings.printer.billing?.ip}
+                                                >
+                                                    Send Test Print
+                                                </Button>
+                                            </Grid>
+                                        </>
+                                    )}
+
+                                    {settings.printer.billing?.type === 'print-agent' && (
                                         <>
                                             <Grid size={{ xs: 12, md: 6 }}>
                                                 <TextField
@@ -3974,10 +4322,87 @@ const SettingsPage: React.FC = () => {
                                         >
                                             <MenuItem value="none">None (Disabled)</MenuItem>
                                             <MenuItem value="print-agent">Print Agent (Electron)</MenuItem>
+                                            <MenuItem value="escpos-tcp">Wi-Fi Thermal Printer (Mobile App)</MenuItem>
+                                            <MenuItem value="usb">Wired USB Printer (Desktop browser)</MenuItem>
                                         </TextField>
                                     </Grid>
 
-                                    {settings.printer.kitchen?.type !== 'none' && (
+                                    {settings.printer.kitchen?.type === 'usb' && (
+                                        <UsbPrinterSection
+                                            role="kitchen"
+                                            connected={usbConnected}
+                                            available={isUsbPrintAvailable()}
+                                            onConnect={handleConnectUsb}
+                                            onDisconnect={handleDisconnectUsb}
+                                            onTest={() => handleTestPrint('kitchen')}
+                                        />
+                                    )}
+
+                                    {/* Wi-Fi / LAN kitchen thermal printer (Android app) */}
+                                    {settings.printer.kitchen?.type === 'escpos-tcp' && (
+                                        <>
+                                            <Grid size={{ xs: 12, md: 8 }}>
+                                                <TextField
+                                                    fullWidth
+                                                    label="Kitchen Printer IP"
+                                                    placeholder="192.168.1.51"
+                                                    value={settings.printer.kitchen?.ip || ''}
+                                                    onChange={(e) => handlePrinterChange('kitchen', 'ip', e.target.value.trim())}
+                                                    helperText="The Wi-Fi/LAN IP of the kitchen printer."
+                                                />
+                                            </Grid>
+                                            <Grid size={{ xs: 12, md: 4 }}>
+                                                <TextField
+                                                    fullWidth
+                                                    type="number"
+                                                    label="Port"
+                                                    value={settings.printer.kitchen?.port ?? 9100}
+                                                    onChange={(e) => handlePrinterChange('kitchen', 'port', parseInt(e.target.value, 10) || 9100)}
+                                                    helperText="Usually 9100"
+                                                />
+                                            </Grid>
+                                            <Grid size={{ xs: 12, md: 6 }}>
+                                                <TextField
+                                                    select
+                                                    fullWidth
+                                                    label="Command Mode"
+                                                    value={settings.printer.kitchen?.commandMode || 'epos-print'}
+                                                    onChange={(e) => handlePrinterChange('kitchen', 'commandMode', e.target.value)}
+                                                    helperText="Epson TM-m30III = ePOS-Print. Star = Star Line. Generic = ESC/POS."
+                                                >
+                                                    <MenuItem value="epos-print">ePOS-Print (Epson TM-m30III / TM series)</MenuItem>
+                                                    <MenuItem value="escpos">ESC/POS raw (generic, port 9100)</MenuItem>
+                                                    <MenuItem value="star-line">Star Line (Star printers)</MenuItem>
+                                                </TextField>
+                                            </Grid>
+                                            <Grid size={{ xs: 12, md: 6 }}>
+                                                <TextField
+                                                    select
+                                                    fullWidth
+                                                    label="Paper Width"
+                                                    value={settings.printer.kitchen?.paperWidth ?? 76}
+                                                    onChange={(e) => handlePrinterChange('kitchen', 'paperWidth', parseInt(e.target.value, 10))}
+                                                >
+                                                    <MenuItem value={58}>58mm (2 inch)</MenuItem>
+                                                    <MenuItem value={76}>76mm / 3 inch (SP700)</MenuItem>
+                                                    <MenuItem value={80}>80mm</MenuItem>
+                                                </TextField>
+                                            </Grid>
+                                            <Grid size={{ xs: 12 }}>
+                                                <Button
+                                                    variant="outlined"
+                                                    fullWidth
+                                                    onClick={() => handleTestPrint('kitchen')}
+                                                    startIcon={<PrintIcon />}
+                                                    disabled={!settings.printer.kitchen?.ip}
+                                                >
+                                                    Send Test Print
+                                                </Button>
+                                            </Grid>
+                                        </>
+                                    )}
+
+                                    {settings.printer.kitchen?.type === 'print-agent' && (
                                         <>
                                             <Grid size={{ xs: 12, md: 6 }}>
                                                 <TextField
@@ -4560,7 +4985,12 @@ const SettingsPage: React.FC = () => {
                                                         handleDeliveryChange('builtIn', 'baseMiles', parseFloat(val) || 0);
                                                     }}
                                                     slotProps={{ htmlInput: { min: 0, step: 0.5 } }}
-                                                    helperText="Miles included in the base fee before per-mile charges apply"
+                                                    error={(settings.delivery.builtIn.baseMiles ?? 2) > (settings.delivery.builtIn.maxDeliveryRange ?? 15)}
+                                                    helperText={
+                                                        (settings.delivery.builtIn.baseMiles ?? 2) > (settings.delivery.builtIn.maxDeliveryRange ?? 15)
+                                                            ? "Base miles covered cannot exceed the maximum delivery range"
+                                                            : "Miles included in the base fee before per-mile charges apply"
+                                                    }
                                                     InputProps={{
                                                         endAdornment: <InputAdornment position="end">Miles</InputAdornment>,
                                                     }}
@@ -4593,8 +5023,14 @@ const SettingsPage: React.FC = () => {
                                             variant="contained"
                                             size={isMobile ? "medium" : "large"}
                                             startIcon={<SaveIcon />}
-                                            onClick={() => handleSave('delivery')}
-                                            disabled={loading}
+                                            onClick={() => {
+                                                if ((settings.delivery?.builtIn?.baseMiles ?? 2) > (settings.delivery?.builtIn?.maxDeliveryRange ?? 15)) {
+                                                    toast.error('Base miles covered cannot exceed the maximum delivery range');
+                                                    return;
+                                                }
+                                                handleSave('delivery');
+                                            }}
+                                            disabled={loading || (settings.delivery?.builtIn?.baseMiles ?? 2) > (settings.delivery?.builtIn?.maxDeliveryRange ?? 15)}
                                             sx={{
                                                 borderRadius: 2.5,
                                                 px: 4,

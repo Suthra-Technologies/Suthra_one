@@ -17,6 +17,7 @@ interface RestaurantRegisterForm {
   phone: string;
   dialCode: string;
   password: string;
+  confirmPassword?: string;
   planId?: string;
 }
 
@@ -70,6 +71,7 @@ const RestaurantRegisterPage: React.FC = () => {
       phone: '',
       dialCode: '1',
       password: '',
+      confirmPassword: '',
       planId: undefined,
     };
   });
@@ -77,6 +79,7 @@ const RestaurantRegisterPage: React.FC = () => {
   const [loadingPlans, setLoadingPlans] = useState<boolean>(true);
   const [loading, setLoading] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
   const [uploadingLogo, setUploadingLogo] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [successData, setSuccessData] = useState<{ restaurantName: string } | null>(null);
@@ -131,8 +134,9 @@ const RestaurantRegisterPage: React.FC = () => {
 
     // Special rule for phone input
     if (name === "phone") {
-      const numeric = value.replace(/\D/g, ""); // keep only digits
-      const final = numeric.length > 10 ? numeric.slice(-10) : numeric;
+      const numeric = String(value || '').replace(/\D/g, ""); // keep only digits
+      const isUS = form.dialCode === '1' || form.dialCode === '+1';
+      const final = (isUS && numeric.length > 10) ? numeric.slice(-10) : numeric;
       setForm({ ...form, [name]: final });
 
       // Clear error when user types a valid phone number (10 digits)
@@ -144,7 +148,14 @@ const RestaurantRegisterPage: React.FC = () => {
 
     setForm({ ...form, [name]: value });
 
-    if (errors[name]) {
+    if (name === 'password') {
+      setErrors(prev => ({ ...prev, [name]: validatePassword(value) }));
+      if (form.confirmPassword) {
+        setErrors(prev => ({ ...prev, confirmPassword: { isValid: value === form.confirmPassword, message: value === form.confirmPassword ? '' : 'Passwords do not match' } }));
+      }
+    } else if (name === 'confirmPassword') {
+      setErrors(prev => ({ ...prev, [name]: { isValid: value === form.password, message: value === form.password ? '' : 'Passwords do not match' } }));
+    } else if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: { isValid: true } }));
     }
   };
@@ -204,10 +215,13 @@ const RestaurantRegisterPage: React.FC = () => {
         validation = validateEmail(value);
         break;
       case 'phone':
-        validation = validatePhone(value);
+        validation = validatePhone(value, form.dialCode);
         break;
       case 'password':
         validation = validatePassword(value);
+        break;
+      case 'confirmPassword':
+        validation = { isValid: value === form.password, message: value === form.password ? '' : 'Passwords do not match' };
         break;
       default:
         validation = { isValid: true };
@@ -223,8 +237,9 @@ const RestaurantRegisterPage: React.FC = () => {
       firstName: validateName(form.firstName, 'First name'),
       lastName: validateName(form.lastName, 'Last name'),
       email: validateEmail(form.email),
-      phone: validatePhone(form.phone),
+      phone: validatePhone(form.phone, form.dialCode),
       password: validatePassword(form.password),
+      confirmPassword: { isValid: form.password === form.confirmPassword, message: form.password === form.confirmPassword ? '' : 'Passwords do not match' },
     };
 
     // Additional slug validation
@@ -243,7 +258,8 @@ const RestaurantRegisterPage: React.FC = () => {
     form.lastName.trim() &&
     form.email.trim() &&
     form.phone.trim() &&
-    form.password.trim()
+    form.password.trim() &&
+    form.password === form.confirmPassword
   );
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -349,9 +365,17 @@ const RestaurantRegisterPage: React.FC = () => {
                   onChange={onChange}
                   onBlur={() => handleBlur('slug')}
                   error={hasError(errors.slug)}
-                  helperText={getHelperText(errors.slug) || "URL identifier"}
+                  helperText={
+                    getHelperText(errors.slug) ||
+                    (form.slug.trim()
+                      ? `Your store will be at: ${form.slug.trim()?.toLowerCase()}.nexzenpos.com`
+                      : "URL identifier — your store address will be yourname.nexzenpos.com")
+                  }
                   required
                   placeholder="e.g. my-bistro"
+                  InputProps={{
+                    endAdornment: <InputAdornment position="end">.nexzenpos.com</InputAdornment>,
+                  }}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -432,8 +456,8 @@ const RestaurantRegisterPage: React.FC = () => {
                   value={form.phone}
                   onChange={(val) => {
                     const clean = val.replace(/\D/g, '');
-                    // If they paste a full number with country code, take the last 10 digits
-                    const final = clean.length > 10 ? clean.slice(-10) : clean;
+                    const isUS = form.dialCode === '1' || form.dialCode === '+1';
+                    const final = (isUS && clean.length > 10) ? clean.slice(-10) : clean;
                     setForm({ ...form, phone: final });
 
                     // Clear error when user types or corrects the number
@@ -468,6 +492,32 @@ const RestaurantRegisterPage: React.FC = () => {
                           edge="end"
                         >
                           {showPassword ? <Visibility /> : <VisibilityOff />}
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Confirm Password"
+                  name="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={form.confirmPassword}
+                  onChange={onChange}
+                  onBlur={() => handleBlur('confirmPassword')}
+                  error={hasError(errors.confirmPassword)}
+                  helperText={getHelperText(errors.confirmPassword)}
+                  required
+                  InputProps={{
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                          edge="end"
+                        >
+                          {showConfirmPassword ? <Visibility /> : <VisibilityOff />}
                         </IconButton>
                       </InputAdornment>
                     ),
@@ -538,7 +588,7 @@ const RestaurantRegisterPage: React.FC = () => {
                           </Typography>
                           <Box sx={{ display: 'flex', alignItems: 'baseline', mb: 1 }}>
                             <Typography variant="h4" fontWeight="bold" color="text.primary">
-                              ${plan.price || 0}
+                              ${Number(plan.price || 0).toFixed(2)}
                             </Typography>
                             <Typography variant="body2" color="text.secondary" sx={{ ml: 1, textTransform: 'capitalize' }}>
                               / {plan.interval}

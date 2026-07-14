@@ -32,6 +32,7 @@ import {
 } from '@mui/icons-material';
 import { traysAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
+import CustomInput from '../../components/common/CustomInput';
 
 interface Tray {
     _id: string;
@@ -303,62 +304,75 @@ const TraysPage: React.FC<TraysPageProps> = ({ hideHeader = false }) => {
                     <DialogContent>
                         <Grid container spacing={2} sx={{ mt: 1 }}>
                             <Grid item xs={12}>
-                                <TextField
+                                <CustomInput
+                                    type="name"
                                     fullWidth
                                     size="small"
                                     label="Tray Name"
                                     required
                                     value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                    onChange={(val) => setFormData({ ...formData, name: val })}
                                     placeholder="e.g., Half Tray, Full Tray"
                                     sx={{ '& .MuiInputBase-input': { fontSize: '0.875rem' }, '& .MuiInputLabel-root': { fontSize: '0.875rem' }, '& .MuiFormLabel-asterisk': { color: 'red' } }}
                                 />
                             </Grid>
                             <Grid item xs={12}>
-                                <TextField
+                                <CustomInput
+                                    type="textarea"
                                     fullWidth
                                     size="small"
                                     label="Description"
                                     multiline
                                     rows={2}
                                     value={formData.description}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                    onChange={(val) => setFormData({ ...formData, description: val })}
+                                    maxLength={250}
+                                    showCounter={true}
                                     sx={{ '& .MuiInputBase-input': { fontSize: '0.875rem' }, '& .MuiInputLabel-root': { fontSize: '0.875rem' } }}
                                 />
                             </Grid>
                             <Grid item xs={4}>
-                                <TextField
+                                <CustomInput
+                                    type="number"
                                     fullWidth
                                     size="small"
                                     label="Width"
                                     required
                                     value={formData.width}
-                                    onChange={(e) => setFormData({ ...formData, width: e.target.value })}
+                                    onChange={(val) => setFormData({ ...formData, width: val })}
                                     placeholder="12 inch"
+                                    maxLength={2}
+                                    allowDecimals={false}
                                     sx={{ '& .MuiInputBase-input': { fontSize: '0.875rem' }, '& .MuiInputLabel-root': { fontSize: '0.875rem' }, '& .MuiFormLabel-asterisk': { color: 'red' } }}
                                 />
                             </Grid>
                             <Grid item xs={4}>
-                                <TextField
+                                <CustomInput
+                                    type="number"
                                     fullWidth
                                     size="small"
                                     label="Length"
                                     required
                                     value={formData.length}
-                                    onChange={(e) => setFormData({ ...formData, length: e.target.value })}
+                                    onChange={(val) => setFormData({ ...formData, length: val })}
                                     placeholder="16 inch"
+                                    maxLength={2}
+                                    allowDecimals={false}
                                     sx={{ '& .MuiInputBase-input': { fontSize: '0.875rem' }, '& .MuiInputLabel-root': { fontSize: '0.875rem' }, '& .MuiFormLabel-asterisk': { color: 'red' } }}
                                 />
                             </Grid>
                             <Grid item xs={4}>
-                                <TextField
+                                <CustomInput
+                                    type="number"
                                     fullWidth
                                     size="small"
                                     label="Depth"
                                     required
                                     value={formData.depth}
-                                    onChange={(e) => setFormData({ ...formData, depth: e.target.value })}
+                                    onChange={(val) => setFormData({ ...formData, depth: val })}
                                     placeholder="2 inch"
+                                    maxLength={2}
+                                    allowDecimals={false}
                                     sx={{ '& .MuiInputBase-input': { fontSize: '0.875rem' }, '& .MuiInputLabel-root': { fontSize: '0.875rem' }, '& .MuiFormLabel-asterisk': { color: 'red' } }}
                                 />
                             </Grid>

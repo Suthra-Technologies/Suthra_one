@@ -31,7 +31,7 @@ const priorityColor = (priority: string) => {
     }
 };
 
-const statusLabel = (s: string) => s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+const statusLabel = (s: string) => s.replace(/_/g, ' ').replace(/\b\w/g, c => c?.toUpperCase());
 
 const TicketsLogPage: React.FC = () => {
     const theme = useTheme();
@@ -65,8 +65,8 @@ const TicketsLogPage: React.FC = () => {
 
     const filtered = tickets.filter(t => {
         const matchSearch = !search ||
-            t.subject?.toLowerCase().includes(search.toLowerCase()) ||
-            t.tenant?.name?.toLowerCase().includes(search.toLowerCase());
+            t.subject?.toLowerCase().includes(search?.toLowerCase()) ||
+            t.tenant?.name?.toLowerCase().includes(search?.toLowerCase());
         const matchStatus = statusFilter === 'all' || t.status === statusFilter;
         return matchSearch && matchStatus;
     });

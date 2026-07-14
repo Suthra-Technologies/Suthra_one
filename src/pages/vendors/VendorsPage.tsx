@@ -57,8 +57,10 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import PhoneInput from 'src/components/PhoneInput';
+import AddressAutocomplete from '../../components/AddressAutocomplete';
 import { useSettings } from '../../context/SettingsContext';
 import { inventoryAPI, vendorsAPI } from '../../services/api';
+import CustomInput from '../../components/common/CustomInput';
 
 interface Vendor {
     _id: string;
@@ -81,6 +83,9 @@ interface Vendor {
         ifscCode?: string;
         routingNumber?: string;
         accountType?: string;
+        usMethod?: string;
+        zelleType?: string;
+        zelleValue?: string;
     };
     createdAt: string;
 }
@@ -138,6 +143,9 @@ const VendorsPage: React.FC = () => {
             ifscCode: '',
             routingNumber: '',
             accountType: 'Checking',
+            usMethod: 'bank_transfer',
+            zelleType: 'number',
+            zelleValue: '',
         },
     });
     const [errors, setErrors] = useState<any>({});
@@ -210,6 +218,9 @@ const VendorsPage: React.FC = () => {
                     ifscCode: vendor.bankDetails?.ifscCode || '',
                     routingNumber: vendor.bankDetails?.routingNumber || '',
                     accountType: vendor.bankDetails?.accountType || 'Checking',
+                    usMethod: vendor.bankDetails?.usMethod || 'bank_transfer',
+                    zelleType: vendor.bankDetails?.zelleType || 'number',
+                    zelleValue: vendor.bankDetails?.zelleValue || '',
                 },
             });
         } else {
@@ -233,6 +244,9 @@ const VendorsPage: React.FC = () => {
                     ifscCode: '',
                     routingNumber: '',
                     accountType: 'Checking',
+                    usMethod: 'bank_transfer',
+                    zelleType: 'number',
+                    zelleValue: '',
                 },
             });
         }
@@ -418,7 +432,7 @@ const VendorsPage: React.FC = () => {
     const handleEmailReorder = () => {
         if (!selectedVendor || reorderItems.length === 0) return;
 
-        const restaurantName = settings?.restaurant?.restaurantName || settings?.restaurant?.name || 'our restaurant';
+        const restaurantName = (settings?.restaurant as any)?.restaurantName || settings?.restaurant?.name || 'our restaurant';
         const dateStr = new Date().toLocaleDateString();
 
         const itemBody = reorderItems.map(item => `- ${item.name}: ${item.lastOrderQuantity} ${item.unit}`).join('\n');
@@ -431,7 +445,7 @@ const VendorsPage: React.FC = () => {
     const handleWhatsAppReorder = () => {
         if (!selectedVendor || reorderItems.length === 0) return;
 
-        const restaurantName = settings?.restaurant?.restaurantName || settings?.restaurant?.name || 'our restaurant';
+        const restaurantName = (settings?.restaurant as any)?.restaurantName || settings?.restaurant?.name || 'our restaurant';
         const dateStr = new Date().toLocaleDateString();
 
         const itemBody = reorderItems.map(item => `* ${item.name}: ${item.lastOrderQuantity} ${item.unit}`).join('%0A');
@@ -928,15 +942,16 @@ const VendorsPage: React.FC = () => {
                                 </Typography>
                                 <Grid container spacing={isMobile ? 1.5 : 2.5}>
                                     <Grid item xs={12} md={6}>
-                                        <TextField
+                                        <CustomInput
+                                            type="name"
                                             fullWidth
                                             label="Vendor Name"
                                             value={formData.name}
-                                            onChange={(e) => {
-                                                setFormData({ ...formData, name: e.target.value });
-                                                if (errors.name) validateField('name', e.target.value);
+                                            onChange={(val) => {
+                                                setFormData({ ...formData, name: val });
+                                                if (errors.name) validateField('name', val);
                                             }}
-                                            onBlur={(e) => validateField('name', e.target.value)}
+                                            onBlur={() => validateField('name', formData.name)}
                                             error={!!errors.name}
                                             helperText={errors.name}
                                             required
@@ -991,23 +1006,23 @@ const VendorsPage: React.FC = () => {
                                         />
                                     </Grid>
                                     <Grid item xs={12}>
-                                        <TextField
-                                            fullWidth
+                                        <AddressAutocomplete
                                             label="Address"
                                             value={formData.address}
-                                            onChange={(e) => {
-                                                setFormData({ ...formData, address: e.target.value });
-                                                if (errors.address) validateField('address', e.target.value);
+                                            apiKey={settings.system?.googleMapsApiKey || import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
+                                            onChange={(value) => {
+                                                setFormData({ ...formData, address: value });
+                                                if (errors.address) validateField('address', value);
                                             }}
-                                            onBlur={(e) => validateField('address', e.target.value)}
+                                            onSelect={(addr) => {
+                                                const fullAddress = addr.fullAddress || formData.address;
+                                                setFormData({ ...formData, address: fullAddress });
+                                                validateField('address', fullAddress);
+                                            }}
+                                            onBlur={() => validateField('address', formData.address)}
                                             error={!!errors.address}
                                             helperText={errors.address}
                                             required
-                                            size={isMobile ? "small" : "medium"}
-                                            multiline rows={isMobile ? 2 : 1}
-                                            InputProps={{
-                                                startAdornment: <InputAdornment position="start" sx={{ mt: isMobile ? -3 : 0 }}><AddressIcon fontSize="small" /></InputAdornment>,
-                                            }}
                                         />
                                     </Grid>
                                 </Grid>
@@ -1104,86 +1119,156 @@ const VendorsPage: React.FC = () => {
                                     </FormControl>
                                 </Box>
                                 <Grid container spacing={2}>
-                                    <Grid item xs={12} md={6}>
-                                        <TextField
-                                            fullWidth
-                                            label="Account Holder"
-                                            size="small"
-                                            value={formData.bankDetails.accountName}
-                                            onChange={(e) => setFormData({
-                                                ...formData,
-                                                bankDetails: { ...formData.bankDetails, accountName: e.target.value }
-                                            })}
-                                        />
-                                    </Grid>
-                                    <Grid item xs={12} md={6}>
-                                        <TextField
-                                            fullWidth
-                                            label="Account Number"
-                                            size="small"
-                                            value={formData.bankDetails.accountNumber}
-                                            onChange={(e) => setFormData({
-                                                ...formData,
-                                                bankDetails: { ...formData.bankDetails, accountNumber: e.target.value }
-                                            })}
-                                        />
-                                    </Grid>
-                                    <Grid item xs={12} md={6}>
-                                        <TextField
-                                            fullWidth
-                                            label="Bank Name"
-                                            size="small"
-                                            value={formData.bankDetails.bankName}
-                                            onChange={(e) => setFormData({
-                                                ...formData,
-                                                bankDetails: { ...formData.bankDetails, bankName: e.target.value }
-                                            })}
-                                        />
-                                    </Grid>
-                                    {formData.bankDetails.country === 'usa' ? (
+                                    {/* USA: choose settlement method — Bank Transfer or Zelle */}
+                                    {formData.bankDetails.country === 'usa' && (
+                                        <Grid item xs={12}>
+                                            <FormControl component="fieldset" size="small">
+                                                <RadioGroup
+                                                    row
+                                                    value={formData.bankDetails.usMethod || 'bank_transfer'}
+                                                    onChange={(e) => setFormData({
+                                                        ...formData,
+                                                        bankDetails: { ...formData.bankDetails, usMethod: e.target.value }
+                                                    })}
+                                                >
+                                                    <FormControlLabel value="bank_transfer" control={<Radio size="small" />} label={<Typography variant="body2" fontWeight={600}>Bank Transfer</Typography>} />
+                                                    <FormControlLabel value="zelle" control={<Radio size="small" />} label={<Typography variant="body2" fontWeight={600}>Zelle</Typography>} />
+                                                </RadioGroup>
+                                            </FormControl>
+                                        </Grid>
+                                    )}
+
+                                    {(formData.bankDetails.country === 'usa' && formData.bankDetails.usMethod === 'zelle') ? (
                                         <>
+                                            {/* Zelle settlement */}
                                             <Grid item xs={12} md={6}>
                                                 <TextField
                                                     fullWidth
-                                                    label="Routing Number (ABA)"
+                                                    label="Account Holder"
                                                     size="small"
-                                                    value={formData.bankDetails.routingNumber}
+                                                    value={formData.bankDetails.accountName}
                                                     onChange={(e) => setFormData({
                                                         ...formData,
-                                                        bankDetails: { ...formData.bankDetails, routingNumber: e.target.value }
+                                                        bankDetails: { ...formData.bankDetails, accountName: e.target.value }
                                                     })}
                                                 />
                                             </Grid>
                                             <Grid item xs={12} md={6}>
                                                 <FormControl fullWidth size="small">
-                                                    <InputLabel>Account Type</InputLabel>
+                                                    <InputLabel>Zelle Registered With</InputLabel>
                                                     <Select
-                                                        value={formData.bankDetails.accountType || 'Checking'}
-                                                        label="Account Type"
+                                                        value={formData.bankDetails.zelleType || 'number'}
+                                                        label="Zelle Registered With"
                                                         onChange={(e) => setFormData({
                                                             ...formData,
-                                                            bankDetails: { ...formData.bankDetails, accountType: e.target.value }
+                                                            bankDetails: { ...formData.bankDetails, zelleType: e.target.value, zelleValue: '' }
                                                         })}
                                                     >
-                                                        <MenuItem value="Checking">Checking</MenuItem>
-                                                        <MenuItem value="Savings">Savings</MenuItem>
+                                                        <MenuItem value="number">Phone Number</MenuItem>
+                                                        <MenuItem value="email">Email</MenuItem>
                                                     </Select>
                                                 </FormControl>
                                             </Grid>
+                                            <Grid item xs={12}>
+                                                <TextField
+                                                    fullWidth
+                                                    size="small"
+                                                    label={formData.bankDetails.zelleType === 'email' ? 'Zelle Email' : 'Zelle Phone Number'}
+                                                    type={formData.bankDetails.zelleType === 'email' ? 'email' : 'tel'}
+                                                    placeholder={formData.bankDetails.zelleType === 'email' ? 'name@example.com' : '+1 555 123 4567'}
+                                                    value={formData.bankDetails.zelleValue}
+                                                    onChange={(e) => setFormData({
+                                                        ...formData,
+                                                        bankDetails: { ...formData.bankDetails, zelleValue: e.target.value.replace(/\D/g, '').slice(0, 10) }
+                                                    })}
+                                                />
+                                            </Grid>
                                         </>
                                     ) : (
-                                        <Grid item xs={12} md={6}>
-                                            <TextField
-                                                fullWidth
-                                                label="IFSC Code"
-                                                size="small"
-                                                value={formData.bankDetails.ifscCode}
-                                                onChange={(e) => setFormData({
-                                                    ...formData,
-                                                    bankDetails: { ...formData.bankDetails, ifscCode: e.target.value.toUpperCase() }
-                                                })}
-                                            />
-                                        </Grid>
+                                        <>
+                                            {/* Bank transfer settlement (USA bank transfer or India) */}
+                                            <Grid item xs={12} md={6}>
+                                                <TextField
+                                                    fullWidth
+                                                    label="Account Holder"
+                                                    size="small"
+                                                    value={formData.bankDetails.accountName}
+                                                    onChange={(e) => setFormData({
+                                                        ...formData,
+                                                        bankDetails: { ...formData.bankDetails, accountName: e.target.value }
+                                                    })}
+                                                />
+                                            </Grid>
+                                            <Grid item xs={12} md={6}>
+                                                <TextField
+                                                    fullWidth
+                                                    label="Account Number"
+                                                    size="small"
+                                                    value={formData.bankDetails.accountNumber}
+                                                    onChange={(e) => setFormData({
+                                                        ...formData,
+                                                        bankDetails: { ...formData.bankDetails, accountNumber: e.target.value }
+                                                    })}
+                                                />
+                                            </Grid>
+                                            <Grid item xs={12} md={6}>
+                                                <TextField
+                                                    fullWidth
+                                                    label="Bank Name"
+                                                    size="small"
+                                                    value={formData.bankDetails.bankName}
+                                                    onChange={(e) => setFormData({
+                                                        ...formData,
+                                                        bankDetails: { ...formData.bankDetails, bankName: e.target.value }
+                                                    })}
+                                                />
+                                            </Grid>
+                                            {formData.bankDetails.country === 'usa' ? (
+                                                <>
+                                                    <Grid item xs={12} md={6}>
+                                                        <TextField
+                                                            fullWidth
+                                                            label="Routing Number (ABA)"
+                                                            size="small"
+                                                            value={formData.bankDetails.routingNumber}
+                                                            onChange={(e) => setFormData({
+                                                                ...formData,
+                                                                bankDetails: { ...formData.bankDetails, routingNumber: e.target.value }
+                                                            })}
+                                                        />
+                                                    </Grid>
+                                                    <Grid item xs={12} md={6}>
+                                                        <FormControl fullWidth size="small">
+                                                            <InputLabel>Account Type</InputLabel>
+                                                            <Select
+                                                                value={formData.bankDetails.accountType || 'Checking'}
+                                                                label="Account Type"
+                                                                onChange={(e) => setFormData({
+                                                                    ...formData,
+                                                                    bankDetails: { ...formData.bankDetails, accountType: e.target.value }
+                                                                })}
+                                                            >
+                                                                <MenuItem value="Checking">Checking</MenuItem>
+                                                                <MenuItem value="Savings">Savings</MenuItem>
+                                                            </Select>
+                                                        </FormControl>
+                                                    </Grid>
+                                                </>
+                                            ) : (
+                                                <Grid item xs={12} md={6}>
+                                                    <TextField
+                                                        fullWidth
+                                                        label="IFSC Code"
+                                                        size="small"
+                                                        value={formData.bankDetails.ifscCode}
+                                                        onChange={(e) => setFormData({
+                                                            ...formData,
+                                                            bankDetails: { ...formData.bankDetails, ifscCode: e.target.value?.toUpperCase() }
+                                                        })}
+                                                    />
+                                                </Grid>
+                                            )}
+                                        </>
                                     )}
                                 </Grid>
                             </Paper>

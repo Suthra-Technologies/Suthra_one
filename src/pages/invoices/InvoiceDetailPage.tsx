@@ -126,7 +126,7 @@ const InvoiceDetailPage = () => {
                             #{invoice.invoiceNumber}
                         </Typography>
                         <Chip
-                            label={invoice.status.toUpperCase()}
+                            label={invoice.status?.toUpperCase()}
                             color={invoice.status === 'paid' ? 'success' : 'warning'}
                             sx={{ mt: 1, fontWeight: 'bold', display: 'flex', mx: { xs: 'auto', sm: 0 }, width: 'fit-content' }}
                         />

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { fixImageUrl } from '../../utils/imageUtils';
 import {
     Container,
     Paper,
@@ -68,15 +69,7 @@ interface Ticket {
     };
 }
 
-const fixS3Url = (url: string) => {
-    if (!url) return '';
-    const match = url.match(/^https:\/\/([a-zA-Z0-9.-]+)\.s3\.([a-zA-Z0-9-]+)\.amazonaws.com\/(.+)$/);
-    if (match) {
-        const [, bucket, region, key] = match;
-        return `https://s3.${region}.amazonaws.com/${bucket}/${key}`;
-    }
-    return url;
-};
+// fixImageUrl removed to use centralized utility
 
 const CustomerSupportPage: React.FC = () => {
     const theme = useTheme();
@@ -121,6 +114,13 @@ const CustomerSupportPage: React.FC = () => {
     const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
+
+        const maxSizeInBytes = 10 * 1024 * 1024;
+        if (file.size > maxSizeInBytes) {
+            toast.error('upload image failed image size should not exceed more than 10 MB');
+            if (e.target) e.target.value = '';
+            return;
+        }
 
         try {
             setUploading(true);
@@ -286,7 +286,7 @@ const CustomerSupportPage: React.FC = () => {
                                             </Box>
                                             <Stack direction="row" spacing={1} sx={{ mt: 0.5 }}>
                                                 <Typography variant="caption" color="text.secondary">
-                                                    Ref: {t._id.slice(-6).toUpperCase()}
+                                                    Ref: {t._id.slice(-6)?.toUpperCase()}
                                                 </Typography>
                                                 <Typography variant="caption" color="text.secondary">•</Typography>
                                                 <Typography variant="caption" color="text.secondary">
@@ -337,8 +337,13 @@ const CustomerSupportPage: React.FC = () => {
                 )}
             </Paper>
 
-            <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth sx={{
-                '& .MuiDialog-paper': { borderRadius: 4 }
+            <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth PaperProps={{
+                sx: {
+                    borderRadius: { xs: 3, md: 4 },
+                    m: { xs: 2, md: 4 },
+                    width: { xs: 'calc(100% - 32px)', md: '100%' },
+                    maxHeight: 'calc(100% - 64px)'
+                }
             }}>
                 {selectedTicket && (
                     <>
@@ -369,7 +374,7 @@ const CustomerSupportPage: React.FC = () => {
                                         )}
                                         {selectedTicket.orderId && (
                                             <Typography variant="caption" color="text.secondary">
-                                                <strong>Linked Order:</strong> #{selectedTicket.orderSnapshot?.orderNumber || selectedTicket.orderId.slice(-6).toUpperCase()}
+                                                <strong>Linked Order:</strong> #{selectedTicket.orderSnapshot?.orderNumber || selectedTicket.orderId.slice(-6)?.toUpperCase()}
                                             </Typography>
                                         )}
                                     </Stack>
@@ -484,10 +489,10 @@ const CustomerSupportPage: React.FC = () => {
                                                                 <CardMedia
                                                                     component="img"
                                                                     height="100"
-                                                                    image={fixS3Url(att.url)}
-                                                                    alt={att.name}
+                                                                    image={fixImageUrl(att)}
+                                                                    alt={att.name || "attachment"}
                                                                     sx={{ cursor: 'pointer', width: 100, objectFit: 'cover' }}
-                                                                    onClick={() => window.open(att.url, '_blank')}
+                                                                    onClick={() => window.open(fixImageUrl(att), '_blank')}
                                                                 />
                                                             </Card>
                                                         </Grid>

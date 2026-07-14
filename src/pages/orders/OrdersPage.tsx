@@ -38,6 +38,9 @@ import {
 } from '@mui/material';
 import Grid from '@mui/material/Grid2';
 import React, { useEffect, useState } from 'react';
+import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { enUS } from 'date-fns/locale';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import OrderCard from '../../components/OrderCard';
@@ -77,10 +80,7 @@ const OrdersPage = () => {
   const [typeFilter, setTypeFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   // Use local date for default
-  const [dateFilter, setDateFilter] = useState(() => {
-    const now = new Date();
-    return new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-  });
+  const [dateFilter, setDateFilter] = useState<Date>(new Date());
 
   // Customer tabs - 0: Orders, 1: Bookings
   const [activeTab, setActiveTab] = useState(0);
@@ -112,8 +112,8 @@ const OrdersPage = () => {
       const effectiveTypeFilter = user?.role === 'delivery' ? 'delivery' : typeFilter;
 
       // Calculate start and end for the selected day in LOCAL time
-      const start = new Date(`${dateFilter}T00:00:00`);
-      const end = new Date(`${dateFilter}T23:59:59.999`);
+      const start = new Date(dateFilter.getFullYear(), dateFilter.getMonth(), dateFilter.getDate(), 0, 0, 0, 0);
+      const end = new Date(dateFilter.getFullYear(), dateFilter.getMonth(), dateFilter.getDate(), 23, 59, 59, 999);
 
       const response = await ordersAPI.filter({
         status: statusFilter,
@@ -156,6 +156,37 @@ const OrdersPage = () => {
       fetchBookings();
     }
   }, [page, statusFilter, typeFilter, dateFilter, posActiveTab]);
+
+  // Handle deep linking for order selection
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const openOrderId = searchParams.get('open');
+    if (openOrderId) {
+      (async () => {
+        try {
+          const response = await ordersAPI.getOne(openOrderId);
+          if (response.data) {
+            setSelectedOrder(response.data);
+            if (isCustomer) {
+              setTrackingDialogOpen(true);
+            } else {
+              setDetailsDialogOpen(true);
+            }
+            
+            // Clean up the URL query parameter so it doesn't reopen on subsequent renders/navigation
+            const cleanSearch = window.location.search
+              .replace(/open=[^&]+&?/, '')
+              .replace(/&$/, '');
+            const newSearch = cleanSearch === '?' || cleanSearch === '' ? '' : cleanSearch;
+            const newUrl = window.location.pathname + newSearch;
+            window.history.replaceState({}, '', newUrl);
+          }
+        } catch (error) {
+          console.error('Error fetching order for deep link:', error);
+        }
+      })();
+    }
+  }, [window.location.search, isCustomer]);
 
   // Real-time synchronization
   useEffect(() => {
@@ -238,30 +269,29 @@ const OrdersPage = () => {
     console.log("Adding items to:", order);
   };
 
-  const handleAcceptPreOrder = async (orderId: string) => {
+  const handleAcceptOrder = async (orderId: string) => {
     if (isProcessing) return;
     try {
       setIsProcessing(true);
       await ordersAPI.updateStatus(orderId, 'confirmed');
-      toast.success('Pre-order accepted');
-      // fetchOrders();
+      toast.success('Order accepted');
       handleOrderRefresh(orderId);
     } catch {
-      toast.error('Failed to accept pre-order');
+      toast.error('Failed to accept order');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handleRejectPreOrder = async (orderId: string) => {
+  const handleRejectOrder = async (orderId: string) => {
     if (isProcessing) return;
     try {
       setIsProcessing(true);
       await ordersAPI.updateStatus(orderId, 'cancelled');
-      toast.success('Pre-order rejected');
+      toast.success('Order rejected');
       handleOrderRefresh(orderId);
     } catch {
-      toast.error('Failed to reject pre-order');
+      toast.error('Failed to reject order');
     } finally {
       setIsProcessing(false);
     }
@@ -318,15 +348,20 @@ const OrdersPage = () => {
             />
           </Grid>
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-            <TextField
-              fullWidth
-              label="Date"
-              type="date"
-              size="small"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              InputLabelProps={{ shrink: true }}
-            />
+            <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={enUS}>
+              <DatePicker
+                label="Date"
+                value={dateFilter}
+                format="MM/dd/yyyy"
+                onChange={(newValue) => newValue && setDateFilter(newValue)}
+                slotProps={{ 
+                  textField: { 
+                    fullWidth: true, 
+                    size: 'small' 
+                  } 
+                }}
+              />
+            </LocalizationProvider>
           </Grid>
           <Grid size={{ xs: 12, sm: 6, md: 3 }}>
             <FormControl fullWidth size="small">
@@ -397,33 +432,7 @@ const OrdersPage = () => {
           {orders.map((order) => (
             <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4 }} key={order._id} sx={{ display: 'flex' }}>
               <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
-                {/* Pre-order accept/reject row for POS Pre Orders tab */}
-                {!isCustomer && posActiveTab === 1 && order.status === 'pending' && (
-                  <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
-                    <Button
-                      variant="contained"
-                      color="success"
-                      size="small"
-                      fullWidth
-                      onClick={() => handleAcceptPreOrder(order._id)}
-                      sx={{ fontWeight: 'bold', borderRadius: 2 }}
-                    >
-                      ✓ Accept
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      color="error"
-                      size="small"
-                      fullWidth
-                      onClick={() => handleRejectPreOrder(order._id)}
-                      sx={{ fontWeight: 'bold', borderRadius: 2 }}
-                    >
-                      ✕ Reject
-                    </Button>
-                  </Box>
-                )}
                 <OrderCard
-                  sx={{ flex: 1 }}
                   order={order}
                   onView={() => handleView(order)}
                   onUpdate={() => handleUpdate(order)}
@@ -431,6 +440,8 @@ const OrdersPage = () => {
                   onAddItem={() => handleAddItem(order)}
                   canManage={canManageOrders}
                   onRefresh={() => handleOrderRefresh(order._id)}
+                  onAccept={!isCustomer && order.status === 'pending' ? () => handleAcceptOrder(order._id) : undefined}
+                  onReject={!isCustomer && order.status === 'pending' ? () => handleRejectOrder(order._id) : undefined}
                   onFeedback={(id: string) => {
                     const targetSlug = order?.restaurant?.slug || tenantSlug || '';
                     navigate(`/${targetSlug}/feedback/${id}`);
@@ -527,7 +538,7 @@ const OrdersPage = () => {
                   </TableCell>
                   <TableCell>
                     <Chip
-                      label={booking.status.toUpperCase()}
+                      label={booking.status?.toUpperCase()}
                       color={getStatusColor(booking.status) as any}
                       size="small"
                     />

@@ -66,6 +66,7 @@ import { menuAPI, ordersAPI, tablesAPI } from '../../services/api';
 
 const POSInterface: React.FC = () => {
   // The full logic from FE POSInterface.js should be placed here, converted to TypeScript if needed.
+  return null;
 };
 
 export default POSInterface;

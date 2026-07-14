@@ -792,7 +792,7 @@ const DemoRequestsPage: React.FC = () => {
                           Changed by: <strong>{history.changedBy || 'Unknown'}</strong>
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          <strike>{history.oldSlot ? formatDate(history.oldSlot) : 'N/A'}</strike>
+                          <s>{history.oldSlot ? formatDate(history.oldSlot) : 'N/A'}</s>
                           {' \u2192 '}
                           <strong style={{ color: '#1976d2' }}>{history.newSlot ? formatDate(history.newSlot) : 'N/A'}</strong>
                         </Typography>

@@ -24,6 +24,8 @@ import {
     ToggleButtonGroup,
     CircularProgress,
     Alert,
+    TextField,
+    MenuItem as MuiMenuItem,
 } from '@mui/material';
 import { loadStripe } from '@stripe/stripe-js';
 import { PaymentElement, Elements, useStripe, useElements } from '@stripe/react-stripe-js';
@@ -75,6 +77,7 @@ const GuestPOSPage: React.FC = () => {
     const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
     const [categories, setCategories] = useState<string[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string>('All');
+    const [foodTypeFilter, setFoodTypeFilter] = useState<'all' | 'veg' | 'non-veg'>('all');
     const [nextCursor, setNextCursor] = useState<string | null>(null);
     const [isFetchingMore, setIsFetchingMore] = useState(false);
     const [totalMenuCount, setTotalMenuCount] = useState(0);
@@ -682,12 +685,13 @@ const GuestPOSPage: React.FC = () => {
         </Dialog>
     );
 
-    const filteredItems = selectedCategory === 'All'
-        ? menuItems
-        : menuItems.filter(item => {
-            const cName = typeof item.category === 'string' ? item.category : item.category?.name;
-            return cName === selectedCategory;
-        });
+    const filteredItems = menuItems.filter(item => {
+        const cName = typeof item.category === 'string' ? item.category : item.category?.name;
+        const matchesCategory = selectedCategory === 'All' || cName === selectedCategory;
+        const itemType = (item as any).foodType || 'all';
+        const matchesType = foodTypeFilter === 'all' || itemType === foodTypeFilter;
+        return matchesCategory && matchesType;
+    });
 
     return (
         <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
@@ -744,55 +748,93 @@ const GuestPOSPage: React.FC = () => {
 
             {/* Content */}
             <Box sx={{ p: { xs: 1.5, sm: 3 } }}>
-                {/* Categories */}
-                <Box 
-                    sx={{ 
-                        mb: 2.5, 
-                        overflowX: 'auto', 
-                        display: 'flex', 
-                        gap: 1,
-                        pb: 0.75,
-                        scrollBehavior: 'smooth',
-                        scrollbarWidth: 'none',
-                        '&::-webkit-scrollbar': { display: 'none' },
-                    }}
-                >
-                    {categories.map(cat => {
-                        const isActive = selectedCategory === cat;
-                        return (
-                            <Chip
-                                key={cat}
-                                label={cat}
-                                onClick={() => setSelectedCategory(cat)}
-                                sx={{
-                                    fontWeight: 700,
-                                    fontSize: { xs: '0.75rem', sm: '0.85rem' },
-                                    px: { xs: 0.5, sm: 1.5 },
-                                    height: { xs: '28px', sm: '36px' },
-                                    borderRadius: '50px',
-                                    border: isActive ? 'none' : '1px solid rgba(0,0,0,0.06)',
-                                    background: isActive 
-                                        ? 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)' 
-                                        : '#ffffff',
-                                    color: isActive ? '#ffffff' : '#64748b',
-                                    boxShadow: isActive 
-                                        ? '0 4px 10px rgba(79, 70, 229, 0.25)' 
-                                        : '0 2px 4px rgba(0,0,0,0.01)',
-                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                                    cursor: 'pointer',
-                                    '&:hover': {
-                                        background: isActive 
-                                            ? 'linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%)' 
-                                            : '#f8fafc',
-                                        transform: 'translateY(-1px)',
-                                    },
-                                    '&:active': {
-                                        transform: 'scale(0.95)'
+                {/* Filters */}
+                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 3, alignItems: 'center' }}>
+                    {/* Category Dropdown */}
+                    <Box sx={{ flex: 1, minWidth: 200, width: '100%' }}>
+                        <TextField
+                            select
+                            fullWidth
+                            size="small"
+                            value={selectedCategory}
+                            onChange={(e) => setSelectedCategory(e.target.value)}
+                            SelectProps={{
+                                MenuProps: {
+                                    PaperProps: {
+                                        sx: { maxHeight: 300 }
                                     }
-                                }}
-                            />
-                        );
-                    })}
+                                }
+                            }}
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    borderRadius: '12px',
+                                    bgcolor: '#fff',
+                                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                                    '& fieldset': { borderColor: 'rgba(0,0,0,0.08)' },
+                                    '&:hover fieldset': { borderColor: '#4f46e5' },
+                                    '&.Mui-focused fieldset': { borderColor: '#4f46e5' }
+                                }
+                            }}
+                        >
+                            {categories.map(cat => (
+                                <MuiMenuItem key={cat} value={cat}>{cat}</MuiMenuItem>
+                            ))}
+                        </TextField>
+                    </Box>
+
+                    {/* Veg / Non-Veg Filter Chips */}
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                        {(['all', 'veg', 'non-veg'] as const).map((type) => {
+                            const isActive = foodTypeFilter === type;
+                            const vegColor = '#00a852';
+                            const nonVegColor = '#e43b3b';
+                            const activeBg = type === 'veg' ? vegColor : type === 'non-veg' ? nonVegColor : undefined;
+
+                            return (
+                                <Chip
+                                    key={type}
+                                    label={
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                            {type === 'veg' && (
+                                                <Box sx={{ 
+                                                    width: 12, height: 12, 
+                                                    border: `2px solid ${isActive ? 'white' : vegColor}`,
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    borderRadius: '2px', bgcolor: 'transparent'
+                                                }}>
+                                                    <Box sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: isActive ? 'white' : vegColor }} />
+                                                </Box>
+                                            )}
+                                            {type === 'non-veg' && (
+                                                <Box sx={{ 
+                                                    width: 12, height: 12, 
+                                                    border: `2px solid ${isActive ? 'white' : nonVegColor}`,
+                                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                    borderRadius: '2px', bgcolor: 'transparent'
+                                                }}>
+                                                    <Box sx={{ width: 0, height: 0, borderLeft: '3px solid transparent', borderRight: '3px solid transparent', borderBottom: `5px solid ${isActive ? 'white' : nonVegColor}` }} />
+                                                </Box>
+                                            )}
+                                            {type === 'all' ? 'All' : type === 'veg' ? 'Veg' : 'Non‑Veg'}
+                                        </Box>
+                                    }
+                                    onClick={() => setFoodTypeFilter(type)}
+                                    sx={{
+                                        fontWeight: 600,
+                                        borderRadius: '8px',
+                                        bgcolor: isActive ? (activeBg || '#4f46e5') : '#fff',
+                                        color: isActive ? '#fff' : 'text.primary',
+                                        border: '1px solid',
+                                        borderColor: isActive ? 'transparent' : 'rgba(0,0,0,0.12)',
+                                        boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                                        '&:hover': {
+                                            bgcolor: isActive ? (activeBg || '#4f46e5') : 'rgba(0,0,0,0.04)',
+                                        }
+                                    }}
+                                />
+                            );
+                        })}
+                    </Box>
                 </Box>
 
                 {loading ? (
@@ -1191,7 +1233,7 @@ const GuestPOSPage: React.FC = () => {
                                         style={{ flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
                                         placeholder="Enter Coupon Code"
                                         value={couponCode}
-                                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                        onChange={(e) => setCouponCode(e.target.value?.toUpperCase())}
                                         disabled={!!appliedCoupon}
                                     />
                                     {appliedCoupon ? (

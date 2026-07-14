@@ -55,3 +55,30 @@ export const isValidFileSize = (file: File, maxSizeInMB: number = 5): boolean =>
   const maxSizeInBytes = maxSizeInMB * 1024 * 1024;
   return file.size <= maxSizeInBytes;
 };
+
+export const fixImageUrl = (urlOrObj: any): string => {
+    let url = typeof urlOrObj === 'string' ? urlOrObj : urlOrObj?.url;
+    if (!url) return '';
+    if (url.startsWith('http') || url.startsWith('data:image')) return url;
+    
+    // Normalize path to start with slash
+    const path = url.startsWith('/') ? url : `/${url}`;
+    
+    if (path.startsWith('/uploads')) {
+        const apiUrl = import.meta.env.VITE_API_URL || '';
+        if (apiUrl.startsWith('http')) {
+            // Ensure no double slashes between apiUrl and path
+            return `${apiUrl.replace(/\/api\/?$/, '').replace(/\/$/, '')}${path}`;
+        }
+        return path;
+    }
+    
+    // Check for virtual-hosted-style URLs (bucket.s3.region.amazonaws.com)
+    const match = url.match(/^https:\/\/([a-zA-Z0-9.-]+)\.s3\.([a-zA-Z0-9-]+)\.amazonaws\.com\/(.+)$/);
+    if (match) {
+        const [, bucket, region, key] = match;
+        return `https://s3.${region}.amazonaws.com/${bucket}/${key}`;
+    }
+    
+    return url;
+};

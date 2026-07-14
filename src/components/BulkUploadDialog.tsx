@@ -288,11 +288,11 @@ const BulkUploadDialog: React.FC<BulkUploadDialogProps> = ({
                 }
 
                 // Validate units against the configured unit system
-                const validUnitValues = units.map(u => u.value.toLowerCase());
+                const validUnitValues = units.map(u => u.value?.toLowerCase());
                 const invalidUnitRows: { row: number; name: string; unit: string }[] = [];
 
                 jsonData.forEach((row: any, index: number) => {
-                    const rowUnit = String(row.unit || '').toLowerCase().trim();
+                    const rowUnit = String(row.unit || '')?.toLowerCase().trim();
                     if (rowUnit && !validUnitValues.includes(rowUnit)) {
                         invalidUnitRows.push({
                             row: index + 2, // Excel row (1-indexed + header)

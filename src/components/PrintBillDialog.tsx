@@ -25,6 +25,7 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import React, { useRef } from 'react';
 import { useSettings } from '../context/SettingsContext';
+import { printBillThermal } from '../utils/printBillThermal';
 import {
     formatDateTime,
     getOrderTypeLabel,
@@ -38,7 +39,7 @@ interface PrintBillDialogProps {
 }
 
 const PrintBillDialog: React.FC<PrintBillDialogProps> = ({ open, order, onClose }) => {
-    const { formatCurrency } = useSettings();
+    const { settings, formatCurrency } = useSettings();
     const printRef = useRef<HTMLDivElement>(null);
     const [billData, setBillData] = React.useState<any>(null);
     const [loading, setLoading] = React.useState(false);
@@ -72,6 +73,16 @@ const PrintBillDialog: React.FC<PrintBillDialogProps> = ({ open, order, onClose 
 
     const handlePrint = async () => {
         if (!billData) return;
+
+        // Native Android Wi-Fi thermal printer (ESC/POS over TCP:9100). Fastest, no dialog.
+        try {
+            const printed = await printBillThermal(billData, settings.printer, formatCurrency);
+            if (printed) return; // Sent to thermal printer, skip all other paths.
+        } catch (err) {
+            console.error('[ThermalPrint] Wi-Fi thermal print failed, falling back:', err);
+            alert('Could not reach the thermal printer. Check that the printer is on and on the same Wi-Fi.');
+            // Fall through to browser print so the bill can still be produced.
+        }
 
         // Try direct printing via local print agent first (QZ Tray style fast path)
         try {
@@ -389,7 +400,7 @@ const PrintBillDialog: React.FC<PrintBillDialogProps> = ({ open, order, onClose 
             // Create a temporary link element and trigger download
             const link = document.createElement('a');
             link.href = url;
-            link.setAttribute('download', `Bill-${billData?.orderNumber || order._id.slice(-8).toUpperCase()}.pdf`);
+            link.setAttribute('download', `Bill-${billData?.orderNumber || order._id.slice(-8)?.toUpperCase()}.pdf`);
             document.body.appendChild(link);
             link.click();
 
@@ -468,11 +479,11 @@ const PrintBillDialog: React.FC<PrintBillDialogProps> = ({ open, order, onClose 
                         {/* Bill Header */}
                         <Box sx={{ mb: 1 }}>
                             <Typography className="tax-invoice" variant="h1" fontWeight="bold" align="center" gutterBottom={false} sx={{ fontSize: '12px', mb: 0.5 }}>
-                                {getOrderTypeLabel(billData.orderType).toUpperCase()} {billData.dailyTokenNumber ? `- Token No #${billData.dailyTokenNumber}` : ''}
+                                {getOrderTypeLabel(billData.orderType)?.toUpperCase()} {billData.dailyTokenNumber ? `- Token No #${billData.dailyTokenNumber}` : ''}
                             </Typography>
                             <Stack spacing={0.25} sx={{ fontSize: '10px', lineHeight: 1.4 }}>
                                 <Typography className="order-number" variant="body2" sx={{ fontSize: '10px', m: 0 }}>
-                                    <strong>Order No:</strong> {billData.orderNumber || (billData._id ? billData._id.slice(-8).toUpperCase() : '')}
+                                    <strong>Order No:</strong> {billData.orderNumber || (billData._id ? billData._id.slice(-8)?.toUpperCase() : '')}
                                 </Typography>
                                 <Typography className="order-number" variant="body2" sx={{ fontSize: '10px', m: 0 }}>
                                     <strong>Date:</strong> {formatDateTime(billData.date || billData.createdAt)}
@@ -619,9 +630,17 @@ const PrintBillDialog: React.FC<PrintBillDialogProps> = ({ open, order, onClose 
                                             <Typography variant="body2">Payment Method:</Typography>
                                         </TableCell>
                                         <TableCell align="right" sx={{ borderBottom: 'none', pb: 0.5 }}>
-                                            <Typography variant="body2" fontWeight="bold">
-                                                {billData.paymentStatus === 'pending' ? 'PENDING' : getPaymentMethodLabel(billData.payments && billData.payments.length > 0 ? billData.payments.map((p: any) => p.method) : billData.paymentMethod)}
-                                            </Typography>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.75 }}>
+                                                <Typography variant="body2" fontWeight="bold">
+                                                    {billData.paymentStatus === 'pending' ? 'PENDING' : getPaymentMethodLabel(billData.payments && billData.payments.length > 0 ? billData.payments.map((p: any) => p.method) : billData.paymentMethod)}
+                                                    {billData.paymentMethod === 'card' && billData.cardType ? ` (${billData.cardType === 'debit' ? 'Debit' : 'Credit'})` : ''}
+                                                </Typography>
+                                                {billData.paymentStatus === 'paid' && (
+                                                    <Typography variant="body2" fontWeight="bold" sx={{ color: 'success.main' }}>
+                                                        · PAID
+                                                    </Typography>
+                                                )}
+                                            </Box>
                                         </TableCell>
                                     </TableRow>
                                 </TableBody>
@@ -651,7 +670,9 @@ const PrintBillDialog: React.FC<PrintBillDialogProps> = ({ open, order, onClose 
                         <Box className="footer" sx={{ textAlign: 'center', mt: 0.5 }}>
                             <Divider sx={{ mb: 0.5 }} />
                             <Typography variant="body2" color="text.secondary">
-                                Thank you for dining with us!
+                                {(billData.orderType?.toLowerCase()?.includes('takeaway') || billData.orderType?.toLowerCase()?.includes('delivery'))
+                                    ? 'Thank you for ordering from us!'
+                                    : 'Thank you for dining with us!'}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
                                 Please visit again

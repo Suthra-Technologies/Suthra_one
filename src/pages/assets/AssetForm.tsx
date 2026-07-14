@@ -41,6 +41,7 @@ import { assetsAPI, uploadAPI } from '../../services/api';
 import { useNavigate, useParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { useActiveTenant } from '../../hooks/useActiveTenant';
+import CustomInput from '../../components/common/CustomInput';
 
 const ASSET_TYPES = ['Vehicle', 'Document', 'License', 'Gadget', 'Equipment', /* 'Property', */ 'Other'];
 
@@ -275,12 +276,13 @@ const AssetForm: React.FC = () => {
                 <Typography variant="h6" fontWeight="700" mb={3}>General Information</Typography>
                 <Grid container spacing={2}>
                   <Grid item xs={12} md={6}>
-                    <TextField
+                    <CustomInput
+                      type="name"
                       fullWidth
                       label="Asset Name"
                       required
                       value={form.name}
-                      onChange={(e) => setForm({ ...form, name: e.target.value })}
+                      onChange={(val) => setForm({ ...form, name: val })}
                     />
                   </Grid>
                   <Grid item xs={12} md={6}>
@@ -304,13 +306,14 @@ const AssetForm: React.FC = () => {
                     />
                   </Grid> */}
                   <Grid item xs={12}>
-                    <TextField
+                    <CustomInput
+                      type="textarea"
                       fullWidth
                       multiline
                       rows={2}
                       label="Description"
                       value={form.description}
-                      onChange={(e) => setForm({ ...form, description: e.target.value })}
+                      onChange={(val) => setForm({ ...form, description: val })}
                     />
                   </Grid>
                 </Grid>
@@ -383,12 +386,13 @@ const AssetForm: React.FC = () => {
 
                           <Typography variant="caption" fontWeight="bold" color="info.main">Service Frequency</Typography>
                           <Stack direction="row" spacing={2}>
-                            <TextField
+                            <CustomInput
                               type="number"
+                              allowDecimals={false}
                               size="small"
                               label="Frequency"
                               value={form.lifecycle.serviceFrequency}
-                              onChange={(e) => setForm({ ...form, lifecycle: { ...form.lifecycle, serviceFrequency: parseInt(e.target.value) || 0 } })}
+                              onChange={(val) => setForm({ ...form, lifecycle: { ...form.lifecycle, serviceFrequency: parseInt(val) || 0 } })}
                             />
                             <FormControl size="small" fullWidth>
                               <InputLabel>Unit</InputLabel>
@@ -421,11 +425,13 @@ const AssetForm: React.FC = () => {
                               />
                             ))}
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                              <TextField
+                              <CustomInput
+                                type="number"
+                                allowDecimals={false}
                                 size="small"
                                 sx={{ width: 60 }}
                                 value={newServiceReminderDay}
-                                onChange={(e) => setNewServiceReminderDay(e.target.value)}
+                                onChange={(val) => setNewServiceReminderDay(val)}
                                 placeholder="+"
                               />
                               <IconButton 
@@ -476,12 +482,17 @@ const AssetForm: React.FC = () => {
 
                             <Typography variant="caption" fontWeight="bold" color="primary">Renewal Frequency</Typography>
                             <Stack direction="row" spacing={2}>
-                              <TextField
+                              <CustomInput
                                 type="number"
+                                allowDecimals={false}
                                 size="small"
                                 label="Frequency"
                                 value={form.lifecycle.renewalFrequency}
-                                onChange={(e) => setForm({ ...form, lifecycle: { ...form.lifecycle, renewalFrequency: parseInt(e.target.value) || 0 } })}
+                                onChange={(val) => {
+                                  let parsed = parseInt(val) || 0;
+                                  if (parsed > 366) parsed = 366;
+                                  setForm({ ...form, lifecycle: { ...form.lifecycle, renewalFrequency: parsed } });
+                                }}
                               />
                               <FormControl size="small" fullWidth>
                                 <InputLabel>Unit</InputLabel>
@@ -514,11 +525,13 @@ const AssetForm: React.FC = () => {
                                 />
                               ))}
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <TextField
+                                <CustomInput
+                                  type="number"
+                                  allowDecimals={false}
                                   size="small"
                                   sx={{ width: 60 }}
                                   value={newReminderDay}
-                                  onChange={(e) => setNewReminderDay(e.target.value)}
+                                  onChange={(val) => setNewReminderDay(val)}
                                   placeholder="+"
                                 />
                                 <IconButton 
@@ -564,18 +577,20 @@ const AssetForm: React.FC = () => {
                   <Stack spacing={2}>
                     {form.metadata.map((meta, index) => (
                       <Stack key={index} direction="row" spacing={1}>
-                        <TextField
+                        <CustomInput
+                          type="alphanumeric"
                           size="small"
                           placeholder="Field name"
                           value={meta.key}
-                          onChange={(e) => handleMetadataChange(index, 'key', e.target.value)}
+                          onChange={(val) => handleMetadataChange(index, 'key', val)}
                         />
-                        <TextField
+                        <CustomInput
+                          type="text"
                           size="small"
                           placeholder="Value"
                           fullWidth
                           value={meta.value}
-                          onChange={(e) => handleMetadataChange(index, 'value', e.target.value)}
+                          onChange={(val) => handleMetadataChange(index, 'value', val)}
                         />
                         <IconButton color="error" onClick={() => removeMetadata(index)}><Delete /></IconButton>
                       </Stack>

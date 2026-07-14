@@ -80,7 +80,22 @@ import MenuItemDialog from './components/MenuItemDialog';
 import AddOnGroupsPage from './AddOnGroupsPage';
 import TaxCategorySelector from './components/TaxCategorySelector';
 import { useActiveTenant } from '../../hooks/useActiveTenant';
-
+import {
+    DndContext,
+    closestCenter,
+    KeyboardSensor,
+    PointerSensor,
+    useSensor,
+    useSensors,
+} from '@dnd-kit/core';
+import type { DragEndEvent } from '@dnd-kit/core';
+import {
+    arrayMove,
+    SortableContext,
+    sortableKeyboardCoordinates,
+    rectSortingStrategy,
+} from '@dnd-kit/sortable';
+import { SortableCategoryItem } from './SortableCategoryItem';
 
 const MenuPage: React.FC = () => {
     const theme = useTheme();
@@ -122,8 +137,40 @@ const MenuPage: React.FC = () => {
     const [deletedLoading, setDeletedLoading] = useState(false);
 
     // Dialogs State
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    );
+
+    const handleDragEnd = async (event: DragEndEvent) => {
+        const { active, over } = event;
+        if (over && active.id !== over.id) {
+            const oldIndex = categories.findIndex(c => c._id === active.id);
+            const newIndex = categories.findIndex(c => c._id === over.id);
+
+            const newCategories = arrayMove(categories, oldIndex, newIndex);
+            setCategories(newCategories);
+
+            const payload = newCategories.map((c, index) => ({
+                id: c._id,
+                sortOrder: index,
+            }));
+
+            try {
+                await menuAPI.reorderCategories(payload);
+                toast.success('Category order saved');
+            } catch (err: any) {
+                console.error('Failed to reorder categories:', err);
+                toast.error('Failed to save category order');
+                fetchData();
+            }
+        }
+    };
+
     const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
     const [menuItemDialogOpen, setMenuItemDialogOpen] = useState(false);
+    // Confirmation shown before adding a menu item (lists existing categories / offer to add more)
+    const [categoryConfirmOpen, setCategoryConfirmOpen] = useState(false);
 
     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
     const [editingMenuItem, setEditingMenuItem] = useState<IMenuItem | null>(null);
@@ -226,7 +273,7 @@ const MenuPage: React.FC = () => {
     const getCategoryId = (category?: string | Category | null) =>
         category && typeof category === 'object' ? category._id : (category || '');
 
-    const normalizeKey = (value?: string | null) => String(value || '').trim().toLowerCase();
+    const normalizeKey = (value?: string | null) => String(value || '').trim()?.toLowerCase();
 
     const itemBelongsToCategory = (item: IMenuItem, category: Category) => {
         const categoryKeys = [category._id, category.name].map(normalizeKey).filter(Boolean);
@@ -389,19 +436,19 @@ const MenuPage: React.FC = () => {
                 console.log('[Frontend] fetchData: Received', {
                     menuItems: newMenuItems.length,
                     categories: newCategories.length,
-                    categoriesList: newCategories.map(c => ({ id: c._id, name: c.name })),
+                    categoriesList: newCategories.map((c: any) => ({ id: c._id, name: c.name })),
                     subcategories: newSubcategories.length,
                     trays: newTrays.length
                 });
 
-                console.log('[Frontend] Categories received:', newCategories.map(cat => ({ id: cat._id, name: cat.name })));
+                console.log('[Frontend] Categories received:', newCategories.map((cat: any) => ({ id: cat._id, name: cat.name })));
                 console.log('[Frontend] Looking for missing categories like "appetizers"...');
-                console.log('[Frontend] All category names:', newCategories.map(c => c.name.toLowerCase()));
+                console.log('[Frontend] All category names:', newCategories.map((c: any) => c.name?.toLowerCase()));
 
                 // Check for specific categories
                 const expectedCategories = ['appetizers', 'starters', 'soups', 'salads', 'desserts', 'beverages'];
-                const missingCategories = expectedCategories.filter(cat =>
-                    !newCategories.some(c => c.name.toLowerCase() === cat.toLowerCase())
+                const missingCategories = expectedCategories.filter((cat: any) =>
+                    !newCategories.some((c: any) => c.name?.toLowerCase() === cat?.toLowerCase())
                 );
 
                 if (missingCategories.length > 0) {
@@ -553,18 +600,18 @@ const MenuPage: React.FC = () => {
 
         // Check for duplicates before creating new
         if (!editingCategory) {
-            const normalizedNewName = categoryForm.name.toLowerCase().trim();
+            const normalizedNewName = categoryForm.name?.toLowerCase().trim();
             const isCreatingSubcategory = !!categoryForm.parentCategory;
 
             let existingDuplicate: any = null;
             if (isCreatingSubcategory) {
                 existingDuplicate = subcategories.find(sub => 
-                    sub.name.toLowerCase().trim() === normalizedNewName && 
+                    sub.name?.toLowerCase().trim() === normalizedNewName && 
                     getSubcategoryParentId(sub) === categoryForm.parentCategory
                 );
             } else {
                 existingDuplicate = categories.find(cat => 
-                    cat.name.toLowerCase().trim() === normalizedNewName
+                    cat.name?.toLowerCase().trim() === normalizedNewName
                 );
             }
 
@@ -653,7 +700,28 @@ const MenuPage: React.FC = () => {
 
     // Menu Item Management
     const handleOpenMenuItemDialog = (item?: IMenuItem) => {
-        setEditingMenuItem(item || null);
+        // Editing an existing item — no category gate needed.
+        if (item) {
+            setEditingMenuItem(item);
+            setMenuItemDialogOpen(true);
+            return;
+        }
+
+        // Adding a new item: a menu item must belong to a category.
+        if (categories.length === 0) {
+            toast.error('Please add a category before adding menu items.');
+            handleOpenCategoryDialog();
+            return;
+        }
+
+        // Categories exist — confirm with the user (and offer to add more) before continuing.
+        setCategoryConfirmOpen(true);
+    };
+
+    // Proceed from the confirmation dialog to actually add the menu item.
+    const proceedToAddMenuItem = () => {
+        setCategoryConfirmOpen(false);
+        setEditingMenuItem(null);
         setMenuItemDialogOpen(true);
     };
 
@@ -797,7 +865,7 @@ const MenuPage: React.FC = () => {
                     // Robust Dynamic Header Mapping
                     const findValue = (keywords: string[]) => {
                         const key = Object.keys(row).find(k => {
-                            const normalizedK = k.toLowerCase().trim();
+                            const normalizedK = k?.toLowerCase().trim();
                             return keywords.some(kw => normalizedK === kw || normalizedK.includes(kw));
                         });
                         return key ? row[key] : undefined;
@@ -832,7 +900,7 @@ const MenuPage: React.FC = () => {
                         isAvailable: isAvailable !== false && isAvailable !== 'false', // default true
                         isCateringAvailable: isCateringAvailable !== false && isCateringAvailable !== 'false', // default true
                         isAutoDebit: true,
-                        foodType: foodType && ['veg', 'non-veg'].includes(String(foodType).toLowerCase()) ? String(foodType).toLowerCase() as 'veg' | 'non-veg' : undefined,
+                        foodType: foodType && ['veg', 'non-veg'].includes(String(foodType)?.toLowerCase()) ? String(foodType)?.toLowerCase() as 'veg' | 'non-veg' : undefined,
                         availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
                     };
                 }));
@@ -853,7 +921,7 @@ const MenuPage: React.FC = () => {
 
 
 
-                const imageCount = validItems.filter(item => item.image).length;
+                const imageCount = validItems.filter((item: any) => item && item.image).length;
                 console.log(`[Frontend] Parsed ${validItems.length} items. Images found: ${imageCount}`);
                 
                 setBulkPreviewItems(validItems);
@@ -936,8 +1004,8 @@ const MenuPage: React.FC = () => {
                 const processedImage = await processImageField(image || '');
 
                 // Convert string values to boolean properly
-                const isAvailable = isAvailableStr ? String(isAvailableStr).toLowerCase() !== 'false' && String(isAvailableStr) !== '0' : true;
-                const isCateringAvailable = isCateringAvailableStr ? String(isCateringAvailableStr).toLowerCase() !== 'false' && String(isCateringAvailableStr) !== '0' : true;
+                const isAvailable = isAvailableStr ? String(isAvailableStr)?.toLowerCase() !== 'false' && String(isAvailableStr) !== '0' : true;
+                const isCateringAvailable = isCateringAvailableStr ? String(isCateringAvailableStr)?.toLowerCase() !== 'false' && String(isCateringAvailableStr) !== '0' : true;
 
                 return {
                     name: String(name).trim(),
@@ -950,7 +1018,7 @@ const MenuPage: React.FC = () => {
                     isAvailable: isAvailable,
                     isCateringAvailable: isCateringAvailable,
                     isAutoDebit: true,
-                    foodType: foodType && ['veg', 'non-veg'].includes(String(foodType).toLowerCase()) ? String(foodType).toLowerCase() as 'veg' | 'non-veg' : undefined,
+                    foodType: foodType && ['veg', 'non-veg'].includes(String(foodType)?.toLowerCase()) ? String(foodType)?.toLowerCase() as 'veg' | 'non-veg' : undefined,
                     availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
                 };
             }));
@@ -1004,7 +1072,7 @@ const MenuPage: React.FC = () => {
     }, [categories, menuItems]);
 
     const filteredMenuItems = useMemo(() => {
-        const normalizedQuery = searchQuery.trim().toLowerCase();
+        const normalizedQuery = searchQuery.trim()?.toLowerCase();
 
         const filtered = menuItems.filter((item) => {
             const categoryId = getCategoryId(item.category);
@@ -1015,8 +1083,8 @@ const MenuPage: React.FC = () => {
 
             // Simple search like POS page - search in item name primarily
             const matchesSearch = !normalizedQuery ||
-                item.name.toLowerCase().includes(normalizedQuery) ||
-                (item.description && item.description.toLowerCase().includes(normalizedQuery));
+                item.name?.toLowerCase().includes(normalizedQuery) ||
+                (item.description && item.description?.toLowerCase().includes(normalizedQuery));
 
             return matchesSearch && matchesCategory && matchesSubcategory;
         });
@@ -1075,8 +1143,9 @@ const MenuPage: React.FC = () => {
             <Tabs 
                 value={tabValue} 
                 onChange={(_, newValue) => setTabValue(newValue)} 
-                variant={isMobile ? "fullWidth" : "scrollable"} 
-                scrollButtons={false}
+                variant="scrollable"
+                scrollButtons="auto"
+                allowScrollButtonsMobile
                 sx={{ 
                     mb: { xs: 1, sm: 3 },
                     borderBottom: 1, 
@@ -1431,7 +1500,7 @@ const MenuPage: React.FC = () => {
             {/* Categories Tab */}
             {tabValue === 1 && (
                 <Box>
-                    {console.log('[Frontend] Rendering Categories tab. Current categories:', categories.map(cat => ({ id: cat._id, name: cat.name })))}
+                    {/* console.log('[Frontend] Rendering Categories tab. Current categories:', categories.map(cat => ({ id: cat._id, name: cat.name }))) */}
                     {loading ? (
                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 3 }}>
                             <Typography variant="h6" color="text.secondary">
@@ -1517,79 +1586,32 @@ const MenuPage: React.FC = () => {
                                     </Button>
                                 </Box>
                             ) : (
-                                <Grid container spacing={3}>
-                                    {categories.map(category => (
-                                        <Grid item xs={12} sm={6} md={4} key={category._id}>
-                                            <Card
-                                                sx={{
-                                                    height: '100%',
-                                                    display: 'flex',
-                                                    flexDirection: 'column',
-                                                    transition: 'transform 0.2s, box-shadow 0.2s',
-                                                    '&:hover': {
-                                                        transform: 'translateY(-4px)',
-                                                        boxShadow: theme.shadows[8],
-                                                    },
-                                                }}
-                                            >
-                                                <CardContent sx={{ flexGrow: 1 }}>
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                                                        <CategoryIcon sx={{ fontSize: 40, color: 'primary.main', mr: 2 }} />
-                                                        <Box sx={{ flexGrow: 1 }}>
-                                                            <Typography variant="h6">{category.name}</Typography>
-                                                            <Typography variant="caption" color="text.secondary">
-                                                                    {category.itemCount ?? menuItems.filter(item => itemBelongsToCategory(item, category)).length} items
-                                                            </Typography>
-                                                        </Box>
-                                                    </Box>
-                                                    {category.description && (
-                                                        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                                            {category.description}
-                                                        </Typography>
-                                                    )}
-
-                                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                                                        {subcategories
-                                                            .filter((subcategory) => getSubcategoryParentId(subcategory) === category._id)
-                                                            .map((subcategory) => (
-                                                                <Chip
-                                                                    key={subcategory._id}
-                                                                    label={`${subcategory.name} (${menuItems.filter((item) => getSubcategoryId(item.subcategory) === subcategory._id).length})`}
-                                                                    variant="outlined"
-                                                                    onClick={() => handleOpenCategoryDialog(subcategory)}
-                                                                    onDelete={() => handleDeleteCategory(subcategory)}
-                                                                    deleteIcon={<DeleteIcon />}
-                                                                    sx={{ borderRadius: '10px' }}
-                                                                />
-                                                            ))}
-                                                        {subcategories.filter((subcategory) => getSubcategoryParentId(subcategory) === category._id).length === 0 && (
-                                                            <Typography variant="caption" color="text.secondary">
-                                                                No subcategories yet
-                                                            </Typography>
-                                                        )}
-                                                    </Box>
-                                                </CardContent>
-                                                <CardActions sx={{ justifyContent: 'flex-end' }}>
-                                                    <Tooltip title="Add Subcategory">
-                                                        <IconButton size="small" color="secondary" onClick={() => handleOpenCategoryDialog(undefined, category._id)}>
-                                                            <AddIcon />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                    <Tooltip title="Edit">
-                                                        <IconButton size="small" color="primary" onClick={() => handleOpenCategoryDialog(category)}>
-                                                            <EditIcon />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                    <Tooltip title="Delete">
-                                                        <IconButton size="small" color="error" onClick={() => handleDeleteCategory(category)}>
-                                                            <DeleteIcon />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                </CardActions>
-                                            </Card>
+                                <DndContext
+                                    sensors={sensors}
+                                    collisionDetection={closestCenter}
+                                    onDragEnd={handleDragEnd}
+                                >
+                                    <SortableContext
+                                        items={categories.map(c => c._id)}
+                                        strategy={rectSortingStrategy}
+                                    >
+                                        <Grid container spacing={3}>
+                                            {categories.map(category => (
+                                                <SortableCategoryItem
+                                                    key={category._id}
+                                                    category={category}
+                                                    menuItems={menuItems}
+                                                    subcategories={subcategories}
+                                                    itemBelongsToCategory={itemBelongsToCategory}
+                                                    getSubcategoryParentId={getSubcategoryParentId}
+                                                    getSubcategoryId={getSubcategoryId}
+                                                    handleOpenCategoryDialog={handleOpenCategoryDialog}
+                                                    handleDeleteCategory={handleDeleteCategory}
+                                                />
+                                            ))}
                                         </Grid>
-                                    ))}
-                                </Grid>
+                                    </SortableContext>
+                                </DndContext>
                             )}
                         </>
                     )}
@@ -2224,6 +2246,45 @@ const MenuPage: React.FC = () => {
                         sx={{ borderRadius: 2, px: 3, fontWeight: 'bold' }}
                     >
                         {confirmAction.confirmLabel || 'Confirm'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Confirm categories before adding a menu item */}
+            <Dialog
+                open={categoryConfirmOpen}
+                onClose={() => setCategoryConfirmOpen(false)}
+                PaperProps={{ sx: { borderRadius: 3, maxWidth: 460 } }}
+                fullWidth
+            >
+                <DialogTitle sx={{ pb: 1 }}>Add Menu Item</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        Your menu item will be added under one of these {categories.length} categor{categories.length === 1 ? 'y' : 'ies'}.
+                        Want to add another category first, or continue?
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                        {categories.map((cat) => (
+                            <Chip
+                                key={cat._id}
+                                label={cat.name}
+                                size="small"
+                                variant="outlined"
+                                color="primary"
+                            />
+                        ))}
+                    </Box>
+                </DialogContent>
+                <DialogActions sx={{ p: 2.5, pt: 1.5, gap: 1 }}>
+                    <Button onClick={() => setCategoryConfirmOpen(false)}>Cancel</Button>
+                    <Button
+                        variant="outlined"
+                        onClick={() => { setCategoryConfirmOpen(false); handleOpenCategoryDialog(); }}
+                    >
+                        Add Category
+                    </Button>
+                    <Button variant="contained" onClick={proceedToAddMenuItem}>
+                        Continue to Add Item
                     </Button>
                 </DialogActions>
             </Dialog>

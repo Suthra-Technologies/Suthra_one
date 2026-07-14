@@ -52,11 +52,13 @@ import PaymentModal from '../../components/PaymentModal';
 import PhonePeQrModal from '../../components/PhonePeQrModal';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
+import { autoPrintOrder } from '../../utils/autoPrintOrder';
 import { couponsAPI, menuAPI, ordersAPI, rewardsAPI, settingsAPI, tablesAPI, taxAPI, traysAPI, usersAPI } from '../../services/api';
 import { isWithinDeliveryRadius, METERS_PER_MILE } from '../../services/googleMapsService';
 import CustomerInfoSection from './components/CustomerInfoSection';
 import MergeTablesDialog from './components/MergeTablesDialog';
 import OrderDetailsSection from './components/OrderDetailsSection';
+import { validatePhone } from '../../utils/validation';
 
 
 type Variant = {
@@ -289,7 +291,8 @@ const POSPage: React.FC = () => {
     const [deliveryAddress, setDeliveryAddress] = useState<any>({});
     const [discountPercent, setDiscountPercent] = useState(0);
     const [tip, setTip] = useState(0);
-    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'online' | 'card' | 'zelle' | 'venmo' | 'phonepe' | 'gpay' | 'paytm'>('cash');
+    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'online' | 'card' | 'zelle' | 'venmo' | 'cheque' | 'phonepe' | 'gpay' | 'paytm'>('cash');
+    const [cardType, setCardType] = useState<'credit' | 'debit'>('credit');
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
     const [manualPaymentDialogOpen, setManualPaymentDialogOpen] = useState(false);
     const [phonePeQrOpen, setPhonePeQrOpen] = useState(false);
@@ -665,7 +668,7 @@ const POSPage: React.FC = () => {
                 // Only show a notification if the error is NOT about minimum bill amount,
                 // since that resolves itself as items are added.
                 const msg: string = error.response?.data?.message || error.message || '';
-                const isMinAmountError = msg.toLowerCase().includes('minimum') || msg.toLowerCase().includes('min');
+                const isMinAmountError = msg?.toLowerCase().includes('minimum') || msg?.toLowerCase().includes('min');
                 if (!isMinAmountError) {
                     // Coupon is genuinely invalid (expired, not applicable etc.) — clear it
                     setCouponCode('');
@@ -699,7 +702,7 @@ const POSPage: React.FC = () => {
                         // Conflict Check: If both are entered but match different profiles
                         // The backend priorities phone, so if matchType is phone but email is different...
                         if (email && phone) {
-                            if (data.matchType === 'phone' && data.customer.email && data.customer.email.toLowerCase() !== email.toLowerCase()) {
+                            if (data.matchType === 'phone' && data.customer.email && data.customer.email?.toLowerCase() !== email?.toLowerCase()) {
                                 setCustomerConflict(true);
                             } else {
                                 setCustomerConflict(false);
@@ -992,6 +995,15 @@ const POSPage: React.FC = () => {
         }
     }, [settings.system?.posPaymentMethods, paymentMethod, orderType]);
 
+    // Keep the selected card type valid based on which card types are enabled.
+    useEffect(() => {
+        if (paymentMethod !== 'card') return;
+        const credit = settings.system?.posPaymentMethods?.creditCard ?? true;
+        const debit = settings.system?.posPaymentMethods?.debitCard ?? true;
+        if (cardType === 'credit' && !credit && debit) setCardType('debit');
+        else if (cardType === 'debit' && !debit && credit) setCardType('credit');
+    }, [paymentMethod, cardType, settings.system?.posPaymentMethods]);
+
     // Initialise data
     useEffect(() => {
         initialLoad();
@@ -1023,13 +1035,13 @@ const POSPage: React.FC = () => {
     // Filtering menu items
     const filteredItems = useMemo(() => {
         const now = new Date();
-        const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
+        const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' })?.toLowerCase();
 
         if (!Array.isArray(menuItems)) return [];
 
         return menuItems.filter((item) => {
             // --- Search ---
-            const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesSearch = item.name?.toLowerCase().includes(searchQuery?.toLowerCase());
 
             // --- Category ---
             // item.category can be a string ID or a populated { _id, name } object.
@@ -1052,7 +1064,7 @@ const POSPage: React.FC = () => {
             if (item.isWeeklyScheduleEnabled) {
                 // Check if today is one of the available days
                 const isDayAvailable = (item.availableDays || []).some(
-                    (d: string) => d.toLowerCase() === currentDay
+                    (d: string) => d?.toLowerCase() === currentDay
                 );
 
                 // If it's "available_only" and today is NOT the day, hide it
@@ -1275,17 +1287,20 @@ const POSPage: React.FC = () => {
             setCustomerNameTouched(true);
             setCustomerNameError('Customer name must be at least 3 characters');
             hasError = true;
+        } else if (trimmedName.length > 30) {
+            setCustomerNameTouched(true);
+            setCustomerNameError('Customer name must not exceed 30 characters');
+            hasError = true;
         }
 
         // Validate phone
-        if (!customerPhone) {
+        const phoneValidation = validatePhone(customerPhone, customerDialCode);
+        if (!phoneValidation.isValid) {
             setCustomerPhoneTouched(true);
-            setCustomerPhoneError('Phone number is required');
+            setCustomerPhoneError(phoneValidation.message || 'Invalid phone number');
             hasError = true;
-        } else if (customerPhone.length !== 10) {
-            setCustomerPhoneTouched(true);
-            setCustomerPhoneError('Phone number must be exactly 10 digits');
-            hasError = true;
+        } else {
+            setCustomerPhoneError('');
         }
 
         // Validate email (optional)
@@ -1322,7 +1337,7 @@ const POSPage: React.FC = () => {
                 return;
             }
 
-            if (['zelle', 'venmo', 'phonepe', 'gpay', 'paytm'].includes(paymentMethod)) {
+            if (['zelle', 'venmo', 'cheque', 'phonepe', 'gpay', 'paytm'].includes(paymentMethod)) {
                 setManualPaymentDialogOpen(true);
                 return;
             }
@@ -1338,7 +1353,7 @@ const POSPage: React.FC = () => {
 
     const handleManualPaymentConfirm = async () => {
         setManualPaymentDialogOpen(false);
-        await submitOrder(`MANUAL_${paymentMethod.toUpperCase()}`);
+        await submitOrder(`MANUAL_${paymentMethod?.toUpperCase()}`);
     };
 
     const handlePhonePeQrSuccess = async (merchantTransactionId: string) => {
@@ -1429,7 +1444,7 @@ const POSPage: React.FC = () => {
 
             // Handle fully paid by rewards
             if (finalTotal === 0 && cart.length > 0) {
-                finalPaymentMethod = 'rewards';
+                finalPaymentMethod = 'rewards' as any;
                 finalPaymentStatus = 'paid';
                 console.log("[POS] Order fully covered by rewards/coupons. Setting status to PAID.");
             } else if (orderType === 'dine_in') {
@@ -1475,6 +1490,7 @@ const POSPage: React.FC = () => {
                 paymentStatus: finalPaymentStatus,
                 paymentIntentId: finalPaymentIntentId,
                 ...(finalPaymentMethod === 'card' && {
+                    cardType,
                     cardOptions: {
                         printReceipt: cardPrintReceipt,
                         signInForApiCall: cardSignInForApiCall,
@@ -1508,12 +1524,26 @@ const POSPage: React.FC = () => {
                     : null,
             };
 
+            let savedOrderId: string | undefined;
             if (isEditMode && existingOrderId) {
                 await ordersAPI.update(existingOrderId, payload);
+                savedOrderId = existingOrderId;
                 toast.success("Order updated");
             } else {
-                await ordersAPI.create(payload);
+                const createRes = await ordersAPI.create(payload);
+                // The created order id may come back as data._id / data.data._id / data.order._id.
+                savedOrderId = createRes?.data?._id || createRes?.data?.data?._id || createRes?.data?.order?._id;
                 // toast.success("Order placed");
+            }
+
+            // Auto-print the bill to the Wi-Fi thermal printer (Android only, when enabled).
+            // autoPrintOrder dedupes against the socket newOrder path, so it won't double-print.
+            if (savedOrderId && settings.system?.autoPrint) {
+                autoPrintOrder(savedOrderId, settings.printer, settings.system.autoPrint, formatCurrency)
+                    .catch((err) => {
+                        console.error('[ThermalPrint] Auto-print failed:', err);
+                        toast.error('Auto-print to thermal printer failed. Check the printer Wi-Fi connection.');
+                    });
             }
 
             // Set guard BEFORE clearing URL/state to prevent useEffect from re-loading stale order data
@@ -1853,6 +1883,8 @@ const POSPage: React.FC = () => {
                     setOrderType={setOrderType}
                     paymentMethod={paymentMethod}
                     setPaymentMethod={setPaymentMethod}
+                    cardType={cardType}
+                    setCardType={setCardType}
                     guestCount={guestCount}
                     setGuestCount={setGuestCount}
                     tableNumber={tableNumber}
@@ -2748,15 +2780,15 @@ const POSPage: React.FC = () => {
                 )}
             </Box>
 
-            <Modal open={variantModalOpen} onClose={() => setVariantModalOpen(false)}>
+            <Modal open={variantModalOpen} onClose={() => setVariantModalOpen(false)} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Box sx={{
                     p: 0,
                     bgcolor: 'background.paper',
-                    width: { xs: '95%', sm: 550 },
+                    width: { xs: '80%', sm: 550 },
+                    maxWidth: '100%',
                     mx: 'auto',
-                    mt: { xs: 2, sm: 8 },
-                    borderRadius: '32px',
-                    maxHeight: '95vh',
+                    borderRadius: { xs: '20px', sm: '32px' },
+                    maxHeight: { xs: '85vh', sm: '95vh' },
                     overflowY: 'auto',
                     boxShadow: theme => theme.palette.mode === 'dark' ? 'none' : '0 20px 60px rgba(0,0,0,0.1)',
                     position: 'relative',
@@ -2766,10 +2798,10 @@ const POSPage: React.FC = () => {
                     {selectedItem && (
                         <>
                             {/* Header Section */}
-                            <Box sx={{ p: 4, pb: 2, display: 'flex', alignItems: 'flex-start', position: 'relative' }}>
+                            <Box sx={{ p: { xs: 2, sm: 4 }, pb: { xs: 1, sm: 2 }, display: 'flex', alignItems: 'flex-start', position: 'relative' }}>
                                 <Box sx={{
-                                    width: 48,
-                                    height: 48,
+                                    width: { xs: 36, sm: 48 },
+                                    height: { xs: 36, sm: 48 },
                                     borderRadius: '50%',
                                     bgcolor: alpha(theme.palette.primary.main, 0.1),
                                     display: 'flex',
@@ -2779,9 +2811,9 @@ const POSPage: React.FC = () => {
                                     flexShrink: 0
                                 }}>
                                     {(selectedItem.variants?.length || 0) > 0 || (selectedItem.modifierGroups?.length || 0) > 0 || ((selectedItem as any).linkedGroups?.length || 0) > 0 ? (
-                                        <TuneIcon sx={{ fontSize: '20px', color: 'primary.main' }} />
+                                        <TuneIcon sx={{ fontSize: { xs: '16px', sm: '20px' }, color: 'primary.main' }} />
                                     ) : (
-                                        <span style={{ fontSize: '20px' }}>🌶️</span>
+                                        <span style={{ fontSize: '18px' }}>🌶️</span>
                                     )}
                                 </Box>
                                 <Box sx={{ flexGrow: 1 }}>
@@ -2791,14 +2823,14 @@ const POSPage: React.FC = () => {
                                         fontSize: '0.7rem',
                                         letterSpacing: '1px',
                                         textTransform: 'uppercase',
-                                        mb: 0.5
+                                        mb: { xs: 0.5, sm: 0.5 }
                                     }}>
                                     {(selectedItem.variants?.length || 0) > 0 || (selectedItem.modifierGroups?.length || 0) > 0 || ((selectedItem as any).linkedGroups?.length || 0) > 0 ? 'Customize Your Item' : 'Choose Spice Level'}
                                     </Typography>
-                                    <Typography variant="h4" sx={{ fontWeight: 900, fontSize: '1.75rem', color: 'text.primary', lineHeight: 1.2, mb: 1 }}>
+                                    <Typography variant="h4" sx={{ fontWeight: 900, fontSize: { xs: '1.25rem', sm: '1.75rem' }, color: 'text.primary', lineHeight: 1.2, mb: 0.5 }}>
                                         {selectedItem.name}
                                     </Typography>
-                                    <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>
+                                    <Typography variant="body2" sx={{ color: 'text.secondary', fontSize: { xs: '0.8rem', sm: '0.9rem' } }}>
                                         Select your preferences before adding this item to the cart.
                                     </Typography>
                                 </Box>
@@ -2807,31 +2839,31 @@ const POSPage: React.FC = () => {
                                     size="small"
                                     sx={{
                                         position: 'absolute',
-                                        right: 24,
-                                        top: 24,
+                                        right: { xs: 12, sm: 16 },
+                                        top: { xs: 12, sm: 16 },
                                         bgcolor: 'error.main',
                                         color: 'white',
-                                        width: 28,
-                                        height: 28,
+                                        width: 24,
+                                        height: 24,
                                         '&:hover': { bgcolor: 'error.dark' },
                                         zIndex: 1,
                                         boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                                     }}
                                 >
-                                    <CloseIcon sx={{ fontSize: 14 }} />
+                                    <CloseIcon sx={{ fontSize: 12 }} />
                                 </IconButton>
                             </Box>
 
-                            <Box sx={{ px: 4, pb: 4 }}>
+                            <Box sx={{ px: { xs: 2, sm: 4 }, pb: { xs: 1.5, sm: 4 } }}>
                                 {/* Item Info Card */}
                                 <Box sx={{
                                     bgcolor: alpha(theme.palette.primary.main, 0.05),
-                                    borderRadius: '24px',
-                                    p: 2,
+                                    borderRadius: '16px',
+                                    p: { xs: 1.5, sm: 2 },
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'space-between',
-                                    mb: 4
+                                    mb: { xs: 1.5, sm: 4 }
                                 }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                                         <Box
@@ -2913,7 +2945,7 @@ const POSPage: React.FC = () => {
                                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                                         <Typography sx={{ color: 'primary.main', fontWeight: 900, fontSize: '0.75rem', letterSpacing: '0.5px' }}>
-                                                            {group.name.toUpperCase()}
+                                                            {group.name?.toUpperCase()}
                                                         </Typography>
                                                         {group.required && (
                                                             <Chip label="Required" size="small" sx={{ height: 18, fontSize: '0.6rem', fontWeight: 900, bgcolor: 'error.main', color: 'white' }} />
@@ -2921,12 +2953,13 @@ const POSPage: React.FC = () => {
                                                     </Box>
                                                     <Typography variant="caption" sx={{ color: 'text.secondary' }}>
                                                         {group.selectionType === 'single' ? 'Choose 1' : 
-                                                            group.minSelection ? `Choose at least ${group.minSelection}` : 'Optional'}
+                                                            group.minSelection ? `Choose at least ${group.minSelection}` : 
+                                                            group.required ? '' : 'Optional'}
                                                     </Typography>
                                                 </Box>
 
                                                 <Grid container spacing={1}>
-                                                    {group.options.map((option, optIdx) => {
+                                                    {group.options.map((option: any, optIdx: number) => {
                                                         const isSelected = (tempModifiers[group.name] || []).some(o => o.name === option.name);
                                                         
                                                         const toggleOption = () => {
@@ -2996,13 +3029,14 @@ const POSPage: React.FC = () => {
                                 {/* Heat Preference Section */}
                                 {(selectedItem as any).isSpiceLevelAvailable && (selectedItem as any).spiceLevels?.length > 0 && (
                                     <Paper variant="outlined" sx={{
-                                        borderRadius: '24px',
-                                        p: 3,
+                                        borderRadius: { xs: '16px', sm: '24px' },
+                                        p: { xs: 2, sm: 3 },
+                                        pb: { xs: 1, sm: 3 },
                                         borderColor: 'divider',
                                         bgcolor: 'background.paper',
-                                        mb: 4
+                                        mb: { xs: 2, sm: 4 }
                                     }}>
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: { xs: 0.5, sm: 1 } }}>
                                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                                 <span style={{ fontSize: '16px' }}>🌶️</span>
                                                 <Typography sx={{ color: 'primary.main', fontWeight: 900, fontSize: '0.75rem', letterSpacing: '0.5px' }}>
@@ -3022,11 +3056,11 @@ const POSPage: React.FC = () => {
                                                 }}
                                             />
                                         </Box>
-                                        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 4 }}>
+                                        <Typography variant="body2" sx={{ color: 'text.secondary', mb: { xs: 1, sm: 4 }, fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
                                             Slide to the spice level you want, and we'll send that choice to the kitchen.
                                         </Typography>
 
-                                        <Box sx={{ px: 2, mb: 2 }}>
+                                        <Box sx={{ px: { xs: 1, sm: 2 }, mb: { xs: 0, sm: 2 } }}>
                                             <Slider
                                                 value={Math.max(0, (selectedItem as any).spiceLevels.indexOf(tempSelectedSpiceLevel || (selectedItem as any).spiceLevels[0]))}
                                                 min={0}
@@ -3067,10 +3101,10 @@ const POSPage: React.FC = () => {
                                                     }
                                                 }}
                                             />
-                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: { xs: 1, sm: 3 } }}>
                                                 {(selectedItem as any).spiceLevels.map((level: string, i: number) => {
                                                     const isSel = (tempSelectedSpiceLevel || (selectedItem as any).spiceLevels[0]) === level;
-                                                    const normalizedLevel = level.toLowerCase().replace(/_/g, ' ');
+                                                    const normalizedLevel = level?.toLowerCase().replace(/_/g, ' ');
                                                     return (
                                                         <Box
                                                             key={i}
@@ -3115,9 +3149,9 @@ const POSPage: React.FC = () => {
                                 )}
 
                                 {/* Footer Selection Display & Actions */}
-                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 2, sm: 0 } }}>
                                     {(selectedItem as any).isSpiceLevelAvailable && (selectedItem as any).spiceLevels?.length > 0 && (
-                                        <Box>
+                                        <Box sx={{ width: { xs: '100%', sm: 'auto' }, display: { xs: 'none', sm: 'block' } }}>
                                             <Typography sx={{ color: 'text.disabled', fontSize: '0.75rem', fontWeight: 900, letterSpacing: '0.5px' }}>
                                                 SELECTED
                                             </Typography>
@@ -3126,17 +3160,19 @@ const POSPage: React.FC = () => {
                                             </Typography>
                                         </Box>
                                     )}
-                                    <Box sx={{ display: 'flex', gap: 2 }}>
+                                    <Box sx={{ display: 'flex', gap: { xs: 1.5, sm: 2 }, width: { xs: '100%', sm: 'auto' } }}>
                                         <Button
                                             variant="outlined"
                                             onClick={() => setVariantModalOpen(false)}
                                             sx={{
                                                 borderRadius: '50px',
-                                                px: 4,
-                                                py: 1.5,
+                                                px: { xs: 2, sm: 4 },
+                                                py: { xs: 1, sm: 1.5 },
+                                                flex: { xs: 1, sm: 'none' },
                                                 borderColor: 'primary.light',
                                                 color: 'primary.main',
                                                 fontWeight: 900,
+                                                fontSize: { xs: '0.85rem', sm: '0.9rem' },
                                                 textTransform: 'none',
                                                 '&:hover': { borderColor: 'primary.main', bgcolor: alpha(theme.palette.primary.main, 0.04) }
                                             }}
@@ -3145,15 +3181,17 @@ const POSPage: React.FC = () => {
                                         </Button>
                                         <Button
                                             variant="contained"
-                                            size="large"
+                                            size="medium"
                                             onClick={handleAddToCartFromModal}
                                             sx={{
                                                 borderRadius: '50px',
-                                                px: 4,
-                                                py: 1.5,
+                                                px: { xs: 2, sm: 4 },
+                                                py: { xs: 1, sm: 1.5 },
+                                                flex: { xs: 2, sm: 'none' },
                                                 bgcolor: 'primary.main',
                                                 color: 'white',
                                                 fontWeight: 900,
+                                                fontSize: { xs: '0.85rem', sm: '0.9rem' },
                                                 textTransform: 'none',
                                                 boxShadow: '0 8px 24px rgba(79, 70, 229, 0.25)',
                                                 '&:hover': { bgcolor: 'primary.dark' }
@@ -3245,7 +3283,7 @@ const POSPage: React.FC = () => {
                         <CloseIcon sx={{ fontSize: 16 }} />
                     </IconButton>
                     <Typography variant="h6" gutterBottom>
-                        Payment via {paymentMethod === 'zelle' ? 'Zelle' : paymentMethod === 'venmo' ? 'Venmo' : paymentMethod === 'phonepe' ? 'PhonePe' : paymentMethod === 'gpay' ? 'GPay' : paymentMethod === 'paytm' ? 'Paytm' : paymentMethod.toUpperCase()}
+                        Payment via {paymentMethod === 'zelle' ? 'Zelle' : paymentMethod === 'venmo' ? 'Venmo' : paymentMethod === 'phonepe' ? 'PhonePe' : paymentMethod === 'gpay' ? 'GPay' : paymentMethod === 'paytm' ? 'Paytm' : paymentMethod?.toUpperCase()}
                     </Typography>
                     <Typography variant="body1" sx={{ mb: 3 }}>
                         Please collect <strong>{formatSmartPrice(finalTotal)}</strong> from the customer.

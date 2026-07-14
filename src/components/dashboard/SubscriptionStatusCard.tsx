@@ -35,7 +35,7 @@ const SubscriptionStatusCard: React.FC<SubscriptionStatusCardProps> = ({ tenant,
     const { subscriptionStatus, trialEndsAt, subscriptionEndsAt, currentPlan } = tenant;
 
     // Determine status color and icon
-    let statusColor = 'primary';
+    let statusColor: 'primary' | 'info' | 'error' | 'success' = 'primary';
     let StatusIcon = Star;
     let statusLabel = 'Active';
 
@@ -85,11 +85,11 @@ const SubscriptionStatusCard: React.FC<SubscriptionStatusCardProps> = ({ tenant,
         <Card
             sx={{
                 height: '100%',
-                background: `linear-gradient(135deg, ${alpha(theme.palette[statusColor as any].main, 0.1)} 0%, ${alpha(
-                    theme.palette[statusColor as any].main,
+                background: `linear-gradient(135deg, ${alpha(theme.palette[statusColor].main, 0.1)} 0%, ${alpha(
+                    theme.palette[statusColor].main,
                     0.05
                 )} 100%)`,
-                border: `1px solid ${alpha(theme.palette[statusColor as any].main, 0.2)}`,
+                border: `1px solid ${alpha(theme.palette[statusColor].main, 0.2)}`,
                 position: 'relative',
                 overflow: 'visible'
             }}
@@ -116,7 +116,7 @@ const SubscriptionStatusCard: React.FC<SubscriptionStatusCardProps> = ({ tenant,
                         sx={{
                             p: 1.5,
                             borderRadius: '50%',
-                            bgcolor: alpha(theme.palette[statusColor as any].main, 0.1),
+                            bgcolor: alpha(theme.palette[statusColor].main, 0.1),
                             color: `${statusColor}.main`,
                             display: 'flex'
                         }}
@@ -129,7 +129,7 @@ const SubscriptionStatusCard: React.FC<SubscriptionStatusCardProps> = ({ tenant,
                     <Typography variant="body2" color="text.secondary">
                         {daysRemaining > 0 ? (
                             <>
-                                {subscriptionStatus === 'trial' ? 'Trial ends' : 'Renews'} on <b>{formattedDate}</b>
+                                {subscriptionStatus === 'trial' ? 'Trial ends' : 'Expires'} on <b>{formattedDate}</b>
                             </>
                         ) : (
                             <span style={{ color: theme.palette.error.main, fontWeight: 'bold' }}>

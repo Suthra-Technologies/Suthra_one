@@ -33,11 +33,23 @@ const DisputeInitiationDialog: React.FC<DisputeInitiationDialogProps> = ({
   const [formData, setFormData] = useState({
     reason: 'price_error',
     description: '',
-    disputedAmount: Number(order?.totalAmount || 0),
+    disputedAmount: String((order?.totalAmount || 0).toFixed(2)),
   });
 
   const handleSubmit = async () => {
     if (loading) return;
+    
+    const amount = parseFloat(formData.disputedAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error('Please enter a valid amount greater than 0');
+      return;
+    }
+    
+    if (amount > (order?.totalAmount || 0)) {
+      toast.error(`Disputed amount cannot exceed order total ($${(order?.totalAmount || 0).toFixed(2)})`);
+      return;
+    }
+
     if (!formData.description) {
       toast.error('Please provide a description');
       return;
@@ -98,10 +110,23 @@ const DisputeInitiationDialog: React.FC<DisputeInitiationDialogProps> = ({
             fullWidth
             label="Disputed Amount"
             type="number"
-            value={Number(formData.disputedAmount).toFixed(2)}
+            value={formData.disputedAmount}
             onChange={(e) => setFormData({ ...formData, disputedAmount: e.target.value })}
-            onBlur={() => setFormData({ ...formData, disputedAmount: parseFloat(Number(formData.disputedAmount).toFixed(2)) })}
-            inputProps={{ step: 0.01 }}
+            onBlur={() => {
+                const parsed = parseFloat(formData.disputedAmount);
+                if (!isNaN(parsed)) {
+                    setFormData({ ...formData, disputedAmount: parsed.toFixed(2) });
+                }
+            }}
+            inputProps={{ step: 0.01, min: 0, max: order?.totalAmount }}
+            error={parseFloat(formData.disputedAmount) > (order?.totalAmount || 0) || parseFloat(formData.disputedAmount) <= 0}
+            helperText={
+                parseFloat(formData.disputedAmount) > (order?.totalAmount || 0) 
+                    ? `Cannot exceed order total ($${(order?.totalAmount || 0).toFixed(2)})` 
+                    : parseFloat(formData.disputedAmount) <= 0 
+                        ? 'Amount must be greater than 0' 
+                        : ''
+            }
           />
 
           <TextField

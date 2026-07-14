@@ -229,7 +229,7 @@ const PlansPage: React.FC = () => {
                             {plan.name}
                         </Typography>
                         <Typography variant="h4" color="primary" gutterBottom>
-                            ${plan.price}
+                            ${Number(plan.price || 0).toFixed(2)}
                             <Typography component="span" variant="body2" color="text.secondary">
                                 /{plan.type === 'topup' ? 'one-time' : plan.interval}
                             </Typography>

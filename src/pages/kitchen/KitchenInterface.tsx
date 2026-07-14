@@ -1,4 +1,5 @@
 // src/pages/kitchen/KitchenInterface.tsx
+import { Capacitor } from '@capacitor/core';
 import {
   Cancel as CancelIcon,
   CheckCircle as CheckCircleIcon,
@@ -54,8 +55,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
+import { useSettings } from '../../context/SettingsContext';
 import { ordersAPI } from '../../services/api';
 import { formatSpiceLevelLabel } from '../../utils/spiceLevel';
+import { printKotThermal } from '../../utils/kotThermal';
 
 interface OrderItem {
   name: string;
@@ -95,6 +98,7 @@ const KitchenInterface: React.FC = () => {
   const theme = useTheme();
   const { socket } = useSocket();
   const { hasRole } = useAuth();
+  const { settings } = useSettings();
   const canRefund = hasRole(['admin', 'manager', 'cashier']);
   const [activeTab, setActiveTab] = useState<number>(0); // 0: Live Orders, 1: Pre-Orders
   const [filterStatus, setFilterStatus] = useState<string>('all'); // 'all', 'urgent', 'pending', 'preparing', 'ready'
@@ -114,6 +118,16 @@ const KitchenInterface: React.FC = () => {
   const [refundMethod, setRefundMethod] = useState<'original' | 'cash'>('original');
 
   const handlePrintKOT = async (order: Order) => {
+    // Native Android Wi-Fi kitchen printer (ESC/POS or ePOS over the LAN). Fastest, no dialog.
+    try {
+      const printed = await printKotThermal(order, settings.printer);
+      if (printed) return; // Sent to kitchen printer, skip all other paths.
+    } catch (err) {
+      console.error('[KOT ThermalPrint] Wi-Fi kitchen print failed:', err);
+      toast.error('Check your printer connection');
+      return;
+    }
+
     // Try direct printing via local print agent first (QZ Tray style fast path)
     try {
       const controller = new AbortController();
@@ -147,8 +161,23 @@ const KitchenInterface: React.FC = () => {
           return; // Successfully printed locally, skip browser print dialog
         }
       }
+      
+      // If we expected it to print but it didn't (and hardware printer is enabled)
+      if (settings.printer?.enabled) {
+          toast.error('Check your printer connection');
+          return;
+      }
     } catch (err) {
-      console.warn('[DirectPrint] Local agent direct KOT print failed, falling back to browser print:', err);
+      console.warn('[DirectPrint] Local agent direct KOT print failed:', err);
+      if (settings.printer?.enabled) {
+          toast.error('Check your printer connection');
+          return;
+      }
+    }
+
+    if (Capacitor.isNativePlatform()) {
+      toast.error('Check your printer connection');
+      return;
     }
 
     const printWindow = window.open('', '_blank', 'width=350,height=600');
@@ -190,7 +219,7 @@ const KitchenInterface: React.FC = () => {
             Order No: <strong style="background-color: #e3f2fd; color: #1565c0; padding: 2px 6px; border-radius: 4px; font-size: 1.1em;">#${order.orderNumber?.split('-').pop() || 'N/A'}</strong>
           </div>
           <div class="info-item">Customer: ${order.customer?.name || 'Guest'}</div>
-          <div class="info-item">Type: ${order.orderType?.replace(/_/g, ' ').toUpperCase()}</div>
+          <div class="info-item">Type: ${order.orderType?.replace(/_/g, ' ')?.toUpperCase()}</div>
           
           <div class="header-row">
             <div style="flex: 1;">Item</div>
@@ -735,7 +764,7 @@ const KitchenInterface: React.FC = () => {
                     <Stack direction="row" spacing={1} sx={{ mb: { xs: 1, sm: 2 }, flexWrap: 'wrap', gap: 1 }} alignItems="center">
                       <Chip
                         icon={getOrderTypeIcon(order.orderType)}
-                        label={order.orderType?.replace(/_/g, ' ').toUpperCase() || 'DINE IN'}
+                        label={order.orderType?.replace(/_/g, ' ')?.toUpperCase() || 'DINE IN'}
                         size="small"
                         variant="outlined"
                         sx={{ fontSize: '0.65rem', height: 22 }}
@@ -944,7 +973,7 @@ const KitchenInterface: React.FC = () => {
                       size="small"
                       onClick={() => handlePrintKOT(order)}
                       startIcon={<PrintIcon />}
-                      sx={{ display: { xs: 'none', sm: 'inline-flex' }, mb: { xs: 0, sm: 0.5 }, flex: { xs: 1, sm: 'initial' }, minWidth: 0, fontSize: { xs: '0.62rem', sm: '0.78rem' }, py: { xs: 0.45, sm: 0.7 }, px: { xs: 0.5, sm: 1 }, minHeight: { xs: 28, sm: 34 }, '& .MuiButton-startIcon': { mr: { xs: 0.3, sm: 0.75 } } }}
+                      sx={{ display: 'inline-flex', mb: { xs: 0, sm: 0.5 }, flex: { xs: 1, sm: 'initial' }, minWidth: 0, fontSize: { xs: '0.62rem', sm: '0.78rem' }, py: { xs: 0.45, sm: 0.7 }, px: { xs: 0.5, sm: 1 }, minHeight: { xs: 28, sm: 34 }, '& .MuiButton-startIcon': { mr: { xs: 0.3, sm: 0.75 } } }}
                     >
                       Print KOT
                     </Button>
@@ -968,7 +997,7 @@ const KitchenInterface: React.FC = () => {
                         fullWidth
                         variant="contained"
                         color={isAllReady ? "success" : (getStatusColor(order.status) as any)}
-                        onClick={() => handleOrderStatusUpdate(order._id, order.status, order.orderType, !!(order.doordashDeliveryId || order.uberEatsDeliveryId))}
+                        onClick={() => handleOrderStatusUpdate(order._id, order.status, order.orderType, !!((order as any).doordashDeliveryId || (order as any).uberEatsDeliveryId))}
                         startIcon={isAllReady ? <CheckCircleIcon /> : <PlayArrowIcon />}
                         disabled={isProcessing || (!isAllReady && order.status === 'preparing')}
                         sx={{ flex: { xs: 1, sm: 'initial' }, minWidth: 0, fontSize: { xs: '0.62rem', sm: '0.78rem' }, py: { xs: 0.45, sm: 0.7 }, px: { xs: 0.5, sm: 1 }, minHeight: { xs: 28, sm: 34 }, '& .MuiButton-startIcon': { mr: { xs: 0.3, sm: 0.75 } } }}

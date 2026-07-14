@@ -99,6 +99,9 @@ export interface SystemSettings {
         card?: boolean;
         zelle?: boolean;
         venmo?: boolean;
+        cheque?: boolean;
+        creditCard?: boolean;
+        debitCard?: boolean;
     };
 }
 
@@ -136,11 +139,18 @@ export interface NotificationSettings {
 
 export interface PrinterConfig {
     name: string;
-    type: 'epson-epos' | 'escpos-tcp' | 'print-agent' | 'none';
+    type: 'epson-epos' | 'escpos-tcp' | 'print-agent' | 'usb' | 'none';
     ip: string;
     port: number;
     paperWidth: number;
     deviceId?: string;
+    /**
+     * Printer command language. Only relevant for type 'escpos-tcp':
+     *  - 'epos-print': Epson ePOS-Print over HTTP — for Epson TM-m30III/TM series (works when raw 9100 is off)
+     *  - 'escpos': raw ESC/POS over TCP 9100 — most generic thermal printers
+     *  - 'star-line': Star Line Mode over TCP 9100 — Star SP700/SP742/TSP
+     */
+    commandMode?: 'epos-print' | 'escpos' | 'star-line';
 }
 
 export interface TenantPrinterSettings {
@@ -174,6 +184,7 @@ export interface DeliverySettings {
         storeId: string;
         isSandbox: boolean;
         pickupBarcodeType?: string;
+        dropoffPinEnabled?: boolean;
     };
 }
 
@@ -285,6 +296,9 @@ const defaultSettings: SettingsState = {
             card: true,
             zelle: true,
             venmo: true,
+            cheque: true,
+            creditCard: true,
+            debitCard: true,
         }
     },
     payment: {
@@ -325,6 +339,14 @@ const defaultSettings: SettingsState = {
         pointsPerRating: 0,
     },
     delivery: {
+        builtIn: {
+            enabled: false,
+            minDeliveryRange: 0,
+            maxDeliveryRange: 10,
+            baseFee: 0,
+            baseMiles: 0,
+            perMileRate: 0,
+        },
         doordash: {
             enabled: false,
             developerId: '',
@@ -438,7 +460,7 @@ export const IMPERIAL_UNITS: UnitConfig[] = [
 // Determine unit system from country
 export const getUnitSystem = (country: string): UnitSystem => {
     const normalizedCountry = country?.trim()?.toLowerCase() || '';
-    return IMPERIAL_COUNTRIES.some(c => normalizedCountry.includes(c.toLowerCase()))
+    return IMPERIAL_COUNTRIES.some(c => normalizedCountry.includes(c?.toLowerCase()))
         ? 'imperial'
         : 'metric';
 };
@@ -517,6 +539,9 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                         card: fetched.system?.posPaymentMethods?.card ?? defaultSettings.system.posPaymentMethods?.card ?? true,
                         zelle: fetched.system?.posPaymentMethods?.zelle ?? defaultSettings.system.posPaymentMethods?.zelle ?? true,
                         venmo: fetched.system?.posPaymentMethods?.venmo ?? defaultSettings.system.posPaymentMethods?.venmo ?? true,
+                        cheque: fetched.system?.posPaymentMethods?.cheque ?? defaultSettings.system.posPaymentMethods?.cheque ?? true,
+                        creditCard: fetched.system?.posPaymentMethods?.creditCard ?? defaultSettings.system.posPaymentMethods?.creditCard ?? true,
+                        debitCard: fetched.system?.posPaymentMethods?.debitCard ?? defaultSettings.system.posPaymentMethods?.debitCard ?? true,
                     }
                 },
                 payment: {
@@ -553,6 +578,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                     ...(fetched.rewards || {}),
                 },
                 delivery: {
+                    builtIn: {
+                        ...defaultSettings.delivery!.builtIn,
+                        ...(fetched.delivery?.builtIn || {}),
+                    },
                     doordash: {
                         ...defaultSettings.delivery!.doordash,
                         ...(fetched.delivery?.doordash || {}),

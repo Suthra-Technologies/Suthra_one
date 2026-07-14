@@ -20,7 +20,7 @@ const statusColor = (status: string) => {
     }
 };
 
-const statusLabel = (status: string) => status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+const statusLabel = (status: string) => status.replace(/_/g, ' ').replace(/\b\w/g, c => c?.toUpperCase());
 
 const DemoRequestsLogPage: React.FC = () => {
     const theme = useTheme();
@@ -47,8 +47,8 @@ const DemoRequestsLogPage: React.FC = () => {
 
     const filtered = requests.filter(r => {
         const matchSearch = !search ||
-            r.businessName?.toLowerCase().includes(search.toLowerCase()) ||
-            r.email?.toLowerCase().includes(search.toLowerCase());
+            r.businessName?.toLowerCase().includes(search?.toLowerCase()) ||
+            r.email?.toLowerCase().includes(search?.toLowerCase());
         const matchStatus = statusFilter === 'all' || r.status === statusFilter;
         return matchSearch && matchStatus;
     });

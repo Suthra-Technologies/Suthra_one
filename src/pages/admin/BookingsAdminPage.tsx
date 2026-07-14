@@ -59,6 +59,15 @@ import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { bookingsAPI, tablesAPI } from '../../services/api';
 
+const formatUSPhone = (phone: string) => {
+    if (!phone) return phone;
+    const cleaned = phone.replace(/\D/g, '');
+    if (phone.startsWith('+1') && cleaned.length === 11 && cleaned.startsWith('1')) {
+        return `+1 (${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7)}`;
+    }
+    return phone;
+};
+
 const BookingsAdminPage: React.FC = () => {
     const navigate = useNavigate();
     const theme = useTheme();
@@ -352,8 +361,8 @@ const BookingsAdminPage: React.FC = () => {
             if (timeParts.length >= 2) {
                 let h = parseInt(timeParts[0], 10);
                 const m = parseInt(timeParts[1].replace(/[^0-9]/g, ''), 10);
-                if (timeStr.toLowerCase().includes('pm') && h < 12) h += 12;
-                if (timeStr.toLowerCase().includes('am') && h === 12) h = 0;
+                if (timeStr?.toLowerCase().includes('pm') && h < 12) h += 12;
+                if (timeStr?.toLowerCase().includes('am') && h === 12) h = 0;
                 startHour = h + (isNaN(m) ? 0 : m) / 60;
             }
         } else {
@@ -529,7 +538,7 @@ const BookingsAdminPage: React.FC = () => {
                                                             </Typography>
                                                         </Box>
                                                         <Chip
-                                                            label={booking.status.toUpperCase()}
+                                                            label={booking.status?.toUpperCase()}
                                                             size="small"
                                                             sx={{ 
                                                                 fontWeight: 'bold', 
@@ -664,7 +673,7 @@ const BookingsAdminPage: React.FC = () => {
                                                         {booking.customer?.name || booking.guestInfo?.firstName || 'Guest'}
                                                     </Typography>
                                                     <Typography variant="caption" color="text.secondary">
-                                                        {booking.customer?.phone || booking.guestInfo?.phone}
+                                                        {formatUSPhone(booking.customer?.phone || booking.guestInfo?.phone)}
                                                     </Typography>
                                                 </TableCell>
                                                 <TableCell>
@@ -681,7 +690,7 @@ const BookingsAdminPage: React.FC = () => {
                                                 <TableCell>{booking.guests}</TableCell>
                                                 <TableCell>
                                                     <Chip
-                                                        label={booking.status.toUpperCase()}
+                                                        label={booking.status?.toUpperCase()}
                                                         color={getStatusColor(booking.status) as any}
                                                         size="small"
                                                     />
@@ -1040,10 +1049,11 @@ const BookingsAdminPage: React.FC = () => {
                                         label="Guest Name"
                                         fullWidth
                                         required
+                                        inputProps={{ maxLength: 30 }}
                                         InputLabelProps={{ sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }}
                                         value={newBooking.firstName}
                                         onChange={(e) => {
-                                            const val = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                                            const val = e.target.value.replace(/[^a-zA-Z\s]/g, '').slice(0, 30);
                                             setNewBooking({ ...newBooking, firstName: val });
                                         }}
                                     />
@@ -1122,7 +1132,7 @@ const BookingsAdminPage: React.FC = () => {
                                     <strong>Customer:</strong> {selectedBooking.customer?.name || selectedBooking.guestInfo?.firstName}
                                 </Typography>
                                 <Typography variant="subtitle1" gutterBottom>
-                                    <strong>Contact:</strong> {selectedBooking.customer?.phone || selectedBooking.guestInfo?.phone}
+                                    <strong>Contact:</strong> {formatUSPhone(selectedBooking.customer?.phone || selectedBooking.guestInfo?.phone)}
                                 </Typography>
                                 <Typography variant="subtitle1" gutterBottom>
                                     <strong>Email:</strong> {selectedBooking.customer?.email || selectedBooking.guestInfo?.email}
@@ -1151,7 +1161,7 @@ const BookingsAdminPage: React.FC = () => {
                                 {selectedBooking.reservationFee && selectedBooking.reservationFee.amount > 0 && (
                                     <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
                                         <Typography variant="subtitle2" color="primary" gutterBottom>Reservation Fee</Typography>
-                                        <Typography variant="body2"><strong>Amount:</strong> ${selectedBooking.reservationFee.amount}</Typography>
+                                        <Typography variant="body2"><strong>Amount:</strong> ${Number(selectedBooking.reservationFee.amount || 0).toFixed(2)}</Typography>
                                         <Typography variant="body2">
                                             <strong>Payment:</strong> {selectedBooking.reservationFee.paid ? (
                                                 <Chip label="PAID" size="small" color="success" sx={{ ml: 1, height: 20 }} />
