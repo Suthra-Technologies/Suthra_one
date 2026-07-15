@@ -5,14 +5,29 @@ export interface ValidationResult {
     message?: string;
 }
 
+// Local part: no leading/trailing/consecutive dots. Domain: labels separated by
+// dots, ending in an alphabetic TLD of 2-24 chars (longest real TLD is 24).
+const EMAIL_REGEX = /^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,24}$/;
+
 // Email validation
 export const validateEmail = (email: string): ValidationResult => {
-    if (!email || email.trim() === '') {
+    const trimmed = (email || '').trim();
+
+    if (trimmed === '') {
         return { isValid: false, message: 'Email is required' };
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
+    // RFC 5321 limits: 254 total, 64 for the local part.
+    if (trimmed.length > 254) {
+        return { isValid: false, message: 'Email address must not exceed 254 characters' };
+    }
+
+    const [localPart] = trimmed.split('@');
+    if (localPart && localPart.length > 64) {
+        return { isValid: false, message: 'Email address is too long before the @' };
+    }
+
+    if (!EMAIL_REGEX.test(trimmed)) {
         return { isValid: false, message: 'Please enter a valid email address' };
     }
 
