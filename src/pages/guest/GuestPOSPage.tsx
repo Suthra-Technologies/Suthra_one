@@ -387,7 +387,7 @@ const GuestPOSPage: React.FC = () => {
         }
 
         const gst = taxDetails
-            ? (taxDetails.taxAmount || taxDetails.amount_to_collect || taxDetails.total_tax || 0)
+            ? (taxDetails.tax?.amount_to_collect || taxDetails.taxAmount || taxDetails.amount_to_collect || taxDetails.total_tax || 0)
             : cart.reduce((sum, item) => {
                 const itemTaxRate = (item.taxRate !== undefined && item.taxRate !== null) ? item.taxRate : taxRate;
                 return sum + (item.price * item.quantity * (itemTaxRate / 100));
