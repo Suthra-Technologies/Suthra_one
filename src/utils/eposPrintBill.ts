@@ -9,15 +9,17 @@
  */
 
 import type { EscPosBillData, EscPosBillItem } from './escposBill';
+import { sanitizePrintText } from './escposBill';
 import { DRAWER_KICK_EPOS_XML } from './cashDrawer';
 
 const CHARS_PER_LINE = 48; // TM-m30III, 80mm, font A.
 const EPOS_NS = 'http://www.epson-pos.com/schemas/2011/03/epos-print';
 
-/** Escape text for XML. */
+/** Escape text for XML. Also strips non-ASCII (emoji) the printer font can't render. */
 function esc(s: string): string {
     return (s ?? '')
         .replace(/₹/g, 'Rs.')
+        .replace(/[^\x20-\x7E]/g, '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
@@ -94,7 +96,9 @@ class EposBuilder {
 
 export function buildBillEposXml(data: EscPosBillData): string {
     const b = new EposBuilder();
-    const m = data.formatMoney;
+    // Sanitize money strings BEFORE column padding so "₹30.00" → "Rs.30.00" doesn't grow
+    // the line by 2 chars after alignment (which wrapped amounts onto the next line).
+    const m = (n: number) => sanitizePrintText(data.formatMoney(n));
 
     // Cash drawer kick (drawer is wired to the printer's DK port) — fire before printing.
     if (data.openDrawer) (b as any).parts.push(DRAWER_KICK_EPOS_XML);
@@ -127,12 +131,13 @@ export function buildBillEposXml(data: EscPosBillData): string {
     b.rule();
 
     // Items header
-    const W_NAME = 24, W_QTY = 4, W_PRICE = 9, W_AMT = CHARS_PER_LINE - 24 - 4 - 9;
+    // Price sized so "Rs.130.00" (9 chars) still leaves a gap after the qty column.
+    const W_NAME = 23, W_QTY = 4, W_PRICE = 10, W_AMT = CHARS_PER_LINE - W_NAME - W_QTY - W_PRICE;
     b.line(padR('Item', W_NAME) + padL('Qty', W_QTY) + padL('Price', W_PRICE) + padL('Amount', W_AMT), { bold: true });
     b.rule();
 
     for (const it of data.items as EscPosBillItem[]) {
-        const name = it.name || '';
+        const name = sanitizePrintText(it.name || '');
         const qty = padL(String(it.quantity), W_QTY);
         const price = padL(m(it.price), W_PRICE);
         const amt = padL(m(it.total), W_AMT);
@@ -146,9 +151,11 @@ export function buildBillEposXml(data: EscPosBillData): string {
                 rest = rest.slice(W_NAME);
             }
         }
+        // Spice level on its own line under the item name.
+        if (it.spiceLevel) b.line('  Spice: ' + sanitizePrintText(it.spiceLevel));
         // Add-ons / modifiers printed indented under the item.
         for (const add of it.addOns || []) {
-            if (add) b.line('  + ' + String(add).slice(0, W_NAME - 4));
+            if (add) b.line('  + ' + sanitizePrintText(String(add)).slice(0, W_NAME - 4));
         }
     }
     b.rule();

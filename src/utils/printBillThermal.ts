@@ -12,6 +12,7 @@ import {
 } from './orderWorkflows';
 import type { TenantPrinterSettings } from '../context/SettingsContext';
 import { isCashPayment } from './cashDrawer';
+import { formatSpiceLevelLabel } from './spiceLevel';
 
 /**
  * Public site base for QR/feedback links. In the native app window.location.origin is
@@ -64,19 +65,34 @@ export async function printBillThermal(
 
     const items: EscPosBillItem[] = (billData.items || [])
         .filter((it: any) => it.preparationStatus !== 'cancelled')
-        .map((it: any) => ({
-            name: (it.name || it.menuItem?.name || 'Item').replace(/[<>]/g, '').replace(/\s{2,}/g, ' ').trim(),
-            quantity: it.quantity ?? 1,
-            price: it.price ?? 0,
-            total: it.total ?? (it.price ?? 0) * (it.quantity ?? 1),
-            // Collect add-on / modifier names (supports a few shapes the API may return).
-            addOns: [
-                ...(Array.isArray(it.addOns) ? it.addOns : []),
-                ...(Array.isArray(it.modifiers) ? it.modifiers : []),
-            ]
-                .map((a: any) => (typeof a === 'string' ? a : a?.name || a?.label || ''))
-                .filter(Boolean),
-        }));
+        .map((it: any) => {
+            const spiceRaw = it.spiceLevel ? String(it.spiceLevel) : '';
+            // POS embeds the spice in the display name (e.g. "Idly 🌶️ very_hot"). Strip the
+            // emoji (unprintable on thermal) and the trailing spice token — the spice level
+            // prints on its own line under the item instead.
+            let name = (it.name || it.menuItem?.name || 'Item')
+                .replace(/[<>]/g, '')
+                .replace(/[^\x20-\x7E]/g, ' ');
+            if (spiceRaw) {
+                const escaped = spiceRaw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                name = name.replace(new RegExp('\\s*' + escaped + '\\s*$', 'i'), '');
+            }
+            name = name.replace(/\s{2,}/g, ' ').trim() || 'Item';
+            return {
+                name,
+                quantity: it.quantity ?? 1,
+                price: it.price ?? 0,
+                total: it.total ?? (it.price ?? 0) * (it.quantity ?? 1),
+                spiceLevel: spiceRaw ? formatSpiceLevelLabel(spiceRaw) : undefined,
+                // Collect add-on / modifier names (supports a few shapes the API may return).
+                addOns: [
+                    ...(Array.isArray(it.addOns) ? it.addOns : []),
+                    ...(Array.isArray(it.modifiers) ? it.modifiers : []),
+                ]
+                    .map((a: any) => (typeof a === 'string' ? a : a?.name || a?.label || ''))
+                    .filter(Boolean),
+            };
+        });
 
     const tableLabel =
         billData.tableNumber ||
