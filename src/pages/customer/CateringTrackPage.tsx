@@ -432,7 +432,7 @@ const CateringTrackPage = () => {
                                 <Receipt sx={{ mr: 1, color: 'primary.main' }} /> Order Items
                             </Typography>
                             <List disablePadding>
-                                {order.items.map((item: any, i: number) => (
+                                {(order?.items || []).map((item: any, i: number) => (
                                     <ListItem key={i} sx={{ px: 0, py: 1.5 }}>
                                         <ListItemText
                                             primary={<Typography variant="subtitle1" fontWeight="600">{item.name}</Typography>}

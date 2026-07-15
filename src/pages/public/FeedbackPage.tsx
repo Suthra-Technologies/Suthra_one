@@ -92,7 +92,7 @@ const FeedbackPage: React.FC = () => {
                 serviceRating,
                 ambianceRating,
                 suggestions,
-                itemRatings: order.items.map((item: any, index: number) => {
+                itemRatings: (order?.items || []).map((item: any, index: number) => {
                     const key = `${item.menuItem}-${index}`;
                     return {
                         menuItem: item.menuItem,
@@ -158,7 +158,7 @@ const FeedbackPage: React.FC = () => {
 
                 <Typography variant="h6" gutterBottom>Food Items</Typography>
                 <List disablePadding>
-                    {order.items.map((item: any, index: number) => {
+                    {(order?.items || []).map((item: any, index: number) => {
                         const key = `${item.menuItem}-${index}`;
                         return (
                             <ListItem key={key} sx={{ flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, py: 2, borderBottom: '1px solid #f0f0f0' }}>
@@ -169,9 +169,9 @@ const FeedbackPage: React.FC = () => {
                                             <Typography variant="body2" color="text.secondary">
                                                 Qty: {item.quantity}
                                             </Typography>
-                                            {item.modifiers && item.modifiers.length > 0 && (
+                                            {item.modifiers && (item?.modifiers || []).length > 0 && (
                                                 <Typography variant="caption" display="block" color="text.secondary" sx={{ mt: 0.5 }}>
-                                                    + {item.modifiers.map((m: any) => m.name).join(', ')}
+                                                    + {(item?.modifiers || []).map((m: any) => m.name).join(', ')}
                                                 </Typography>
                                             )}
                                         </>

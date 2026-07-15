@@ -440,8 +440,8 @@ const OrdersPage = () => {
                   onAddItem={() => handleAddItem(order)}
                   canManage={canManageOrders}
                   onRefresh={() => handleOrderRefresh(order._id)}
-                  onAccept={!isCustomer && order.status === 'pending' ? () => handleAcceptOrder(order._id) : undefined}
-                  onReject={!isCustomer && order.status === 'pending' ? () => handleRejectOrder(order._id) : undefined}
+                  onAccept={!isCustomer && order.status === 'pending' && !order.isDisputed ? () => handleAcceptOrder(order._id) : undefined}
+                  onReject={!isCustomer && order.status === 'pending' && !order.isDisputed ? () => handleRejectOrder(order._id) : undefined}
                   onFeedback={(id: string) => {
                     const targetSlug = order?.restaurant?.slug || tenantSlug || '';
                     navigate(`/${targetSlug}/feedback/${id}`);

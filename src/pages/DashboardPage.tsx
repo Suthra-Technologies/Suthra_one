@@ -1316,14 +1316,14 @@ const DashboardPage: React.FC = () => {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {assetTabData.data.length === 0 ? (
+                        {(assetTabData?.data || []).length === 0 ? (
                           <TableRow>
                             <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
                               <Typography variant="body2" color="text.secondary">No assets found in this category</Typography>
                             </TableCell>
                           </TableRow>
                         ) : (
-                          assetTabData.data.map((asset: any) => (
+                          (assetTabData?.data || []).map((asset: any) => (
                             <TableRow key={asset._id} hover>
                               <TableCell>
                                 <Typography variant="subtitle2" fontWeight="700">{asset.name}</Typography>
@@ -1408,12 +1408,12 @@ const DashboardPage: React.FC = () => {
                   </TableContainer>
                 ) : (
                   <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {assetTabData.data.length === 0 ? (
+                    {(assetTabData?.data || []).length === 0 ? (
                       <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 2 }}>
                         No assets found in this category
                       </Typography>
                     ) : (
-                      assetTabData.data.map((asset: any) => (
+                      (assetTabData?.data || []).map((asset: any) => (
                         <Card key={asset._id} variant="outlined" sx={{ borderRadius: 2, bgcolor: alpha(theme.palette.background.default, 0.5) }}>
                           <CardContent sx={{ p: 2, pb: "16px !important" }}>
                             <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={1}>

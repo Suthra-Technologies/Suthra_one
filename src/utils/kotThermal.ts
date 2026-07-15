@@ -118,7 +118,7 @@ function buildKotEscPos(data: KotData): Uint8Array {
     b.push(...BOLD_OFF);
     rule();
 
-    for (const it of data.items.filter(i => i.preparationStatus !== 'cancelled')) {
+    for (const it of (data?.items || []).filter(i => i.preparationStatus !== 'cancelled')) {
         const name = cleanText(it.name) || 'Item';
         const qtyStr = it.quantity > 1 ? ` x${it.quantity}` : '';
         const fullItemStr = name + qtyStr;
@@ -200,7 +200,7 @@ function buildKotEposXml(data: KotData): string {
     parts.push('<text em="false"/>');
     t('-'.repeat(CHARS_PER_LINE_LARGE));
 
-    for (const it of data.items.filter(i => i.preparationStatus !== 'cancelled')) {
+    for (const it of (data?.items || []).filter(i => i.preparationStatus !== 'cancelled')) {
         const name = cleanText(it.name) || 'Item';
         const qtyStr = it.quantity > 1 ? ` x${it.quantity}` : '';
         const fullItemStr = name + qtyStr;

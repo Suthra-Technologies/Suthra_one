@@ -164,7 +164,7 @@ const TableBookingPage = () => {
                 ? await bookingsAPI.checkAvailability({ date: dateStr, time: selectedTimeSlot, guests: guestCount, duration })
                 : await bookingsAPI.publicCheckAvailability(tenantSlug, { date: dateStr, time: selectedTimeSlot, guests: guestCount, duration });
             setAvailableTables(response.data);
-            if (response.data.length === 0) {
+            if ((response?.data || []).length === 0) {
                 toast('No tables available for selected criteria', { icon: '⚠️' });
             }
         } catch (error) {
