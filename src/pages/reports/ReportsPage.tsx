@@ -5794,9 +5794,6 @@ const ReportsPage: React.FC = () => {
             <Paper sx={{
                 p: { xs: 1.5, sm: 2 },
                 mb: { xs: 1.5, sm: 2 },
-                position: 'sticky',
-                top: isMobile ? 0 : 64,
-                zIndex: 100,
                 boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
                 borderRadius: { xs: 0, sm: 2 },
                 border: '1px solid',
@@ -5858,9 +5855,6 @@ const ReportsPage: React.FC = () => {
             {/* Tabs — sticky below filter bar */}
             <Paper sx={{
                 mb: { xs: 2, sm: 3 },
-                position: 'sticky',
-                top: isMobile ? 48 : 136,
-                zIndex: 99,
                 boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
                 borderRadius: { xs: 0, sm: 2 },
                 overflow: 'hidden',

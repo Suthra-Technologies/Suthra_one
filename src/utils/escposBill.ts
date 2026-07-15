@@ -30,9 +30,23 @@ export interface EscPosBillItem {
     quantity: number;
     price: number;
     total: number;
+    /** Optional spice level printed on its own line under the item name. */
+    spiceLevel?: string;
     /** Optional add-ons / modifiers printed under the item line. */
     addOns?: string[];
 }
+
+/**
+ * Normalize a string for thermal printing BEFORE any column padding: replace ₹ (missing from
+ * printer fonts) with "Rs." and strip non-ASCII (emoji etc., which print as garbage bytes).
+ * Doing this after padding shifts every column and wraps lines — always sanitize first.
+ */
+export const sanitizePrintText = (s: string): string =>
+    (s ?? '')
+        .replace(/₹/g, 'Rs.')
+        .replace(/[^\x20-\x7E]/g, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
 
 export interface EscPosBillData {
     restaurantName: string;
@@ -86,7 +100,9 @@ class EscPosBuilder {
 
     /** Append text. Replaces ₹ with "Rs." since most thermal printers lack the rupee glyph. */
     text(str: string): this {
-        const safe = (str ?? '').replace(/₹/g, 'Rs.');
+        // Safety net: also drop any non-ASCII that slipped past sanitizePrintText, so no
+        // garbage bytes (or control codes from surrogate pairs) reach the printer.
+        const safe = (str ?? '').replace(/₹/g, 'Rs.').replace(/[^\x20-\x7E]/g, '');
         for (let i = 0; i < safe.length; i++) {
             this.bytes.push(safe.charCodeAt(i) & 0xff);
         }
@@ -165,7 +181,9 @@ class EscPosBuilder {
 
 export function buildBillEscPos(data: EscPosBillData): Uint8Array {
     const b = new EscPosBuilder();
-    const m = data.formatMoney;
+    // Sanitize money strings BEFORE column padding so "₹30.00" → "Rs.30.00" doesn't grow
+    // the line by 2 chars after alignment (which wrapped amounts onto the next line).
+    const m = (n: number) => sanitizePrintText(data.formatMoney(n));
 
     b.raw(INIT);
 
@@ -195,10 +213,11 @@ export function buildBillEscPos(data: EscPosBillData): Uint8Array {
     b.rule();
 
     // ── Items header: Item | Qty | Price | Amount ──
-    // Column widths sum to CHARS_PER_LINE (48): name 24, qty 4, price 9, amount 11.
-    const W_NAME = CHARS_PER_LINE === 32 ? 14 : 24;
+    // Column widths sum to CHARS_PER_LINE (48): name 23, qty 4, price 10, amount 11.
+    // Price sized so "Rs.130.00" (9 chars) still leaves a gap after the qty column.
+    const W_NAME = CHARS_PER_LINE === 32 ? 14 : 23;
     const W_QTY = 4;
-    const W_PRICE = CHARS_PER_LINE === 32 ? 6 : 9;
+    const W_PRICE = CHARS_PER_LINE === 32 ? 6 : 10;
     const W_AMT = CHARS_PER_LINE - W_NAME - W_QTY - W_PRICE;
 
     const padR = (s: string, w: number) => (s.length > w ? s.slice(0, w) : s + ' '.repeat(w - s.length));
@@ -209,7 +228,7 @@ export function buildBillEscPos(data: EscPosBillData): Uint8Array {
         .raw(BOLD_OFF).rule();
 
     for (const it of data.items) {
-        const name = it.name || '';
+        const name = sanitizePrintText(it.name || '');
         const qty = padL(String(it.quantity), W_QTY);
         const price = padL(m(it.price), W_PRICE);
         const amt = padL(m(it.total), W_AMT);
@@ -224,9 +243,11 @@ export function buildBillEscPos(data: EscPosBillData): Uint8Array {
                 rest = rest.slice(W_NAME);
             }
         }
+        // Spice level on its own line under the item name.
+        if (it.spiceLevel) b.line('  Spice: ' + sanitizePrintText(it.spiceLevel));
         // Add-ons / modifiers printed indented under the item.
         for (const add of it.addOns || []) {
-            if (add) b.line('  + ' + String(add).slice(0, W_NAME - 4));
+            if (add) b.line('  + ' + sanitizePrintText(String(add)).slice(0, W_NAME - 4));
         }
     }
     b.rule();

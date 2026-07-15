@@ -27,6 +27,7 @@ const LF = [0x0a];
 const CUT = [ESC, 0x64, 0x03];
 
 import type { EscPosBillData, EscPosBillItem } from './escposBill';
+import { sanitizePrintText } from './escposBill';
 import { DRAWER_KICK_STAR } from './cashDrawer';
 
 class StarBuilder {
@@ -38,7 +39,8 @@ class StarBuilder {
     }
 
     text(str: string): this {
-        const safe = (str ?? '').replace(/₹/g, 'Rs.');
+        // Safety net: strip non-ASCII that slipped past sanitizePrintText (emoji print as junk).
+        const safe = (str ?? '').replace(/₹/g, 'Rs.').replace(/[^\x20-\x7E]/g, '');
         for (let i = 0; i < safe.length; i++) this.bytes.push(safe.charCodeAt(i) & 0xff);
         return this;
     }
@@ -67,7 +69,9 @@ class StarBuilder {
 
 export function buildBillStarLine(data: EscPosBillData): Uint8Array {
     const b = new StarBuilder();
-    const m = data.formatMoney;
+    // Sanitize money strings BEFORE column padding so "₹30.00" → "Rs.30.00" doesn't grow
+    // the line by 2 chars after alignment (which wrapped amounts onto the next line).
+    const m = (n: number) => sanitizePrintText(data.formatMoney(n));
 
     b.raw(INIT);
 
@@ -91,11 +95,12 @@ export function buildBillStarLine(data: EscPosBillData): Uint8Array {
     if (data.customerName) b.line('Customer: ' + data.customerName);
     b.rule();
 
-    // Items header: Item | Qty | Price | Amount (widths sum to 42)
-    const W_NAME = 20;
+    // Items header: Item | Qty | Price | Amount (widths sum to 42).
+    // Price/amount sized for "Rs." prefixed values (e.g. "Rs.130.00" = 9 chars).
+    const W_NAME = 17;
     const W_QTY = 4;
-    const W_PRICE = 8;
-    const W_AMT = CHARS_PER_LINE - W_NAME - W_QTY - W_PRICE; // 10
+    const W_PRICE = 10;
+    const W_AMT = CHARS_PER_LINE - W_NAME - W_QTY - W_PRICE; // 11
 
     const padR = (s: string, w: number) => (s.length > w ? s.slice(0, w) : s + ' '.repeat(w - s.length));
     const padL = (s: string, w: number) => (s.length > w ? s.slice(0, w) : ' '.repeat(w - s.length) + s);
@@ -105,7 +110,7 @@ export function buildBillStarLine(data: EscPosBillData): Uint8Array {
         .raw(EMPHASIS_OFF).rule();
 
     for (const it of data.items as EscPosBillItem[]) {
-        const name = it.name || '';
+        const name = sanitizePrintText(it.name || '');
         const qty = padL(String(it.quantity), W_QTY);
         const price = padL(m(it.price), W_PRICE);
         const amt = padL(m(it.total), W_AMT);
@@ -119,9 +124,11 @@ export function buildBillStarLine(data: EscPosBillData): Uint8Array {
                 rest = rest.slice(W_NAME);
             }
         }
+        // Spice level on its own line under the item name.
+        if (it.spiceLevel) b.line('  Spice: ' + sanitizePrintText(it.spiceLevel));
         // Add-ons / modifiers printed indented under the item.
         for (const add of it.addOns || []) {
-            if (add) b.line('  + ' + String(add).slice(0, W_NAME - 4));
+            if (add) b.line('  + ' + sanitizePrintText(String(add)).slice(0, W_NAME - 4));
         }
     }
     b.rule();
