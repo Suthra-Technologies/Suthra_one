@@ -729,6 +729,34 @@ const DashboardPage: React.FC = () => {
         </Stack>
       </Box>
 
+      {/* Order Type Breakdown Bar */}
+      <Box className="hide-scrollbar" sx={{ mb: 2, display: 'flex', gap: 2, flexWrap: 'nowrap', alignItems: 'center', overflowX: 'auto', pb: 0.5 }}>
+        {[
+          { label: 'Online Takeaway', key: 'online takeaway', color: 'primary' },
+          { label: 'Online Delivery', key: 'online delivery', color: 'primary' },
+          { label: 'Global Takeaway', key: 'global takeaway', color: 'secondary' },
+          { label: 'Global Dine In', key: 'global dine in', color: 'secondary' },
+          { label: 'Dine In', key: 'dine in', color: 'info' },
+          { label: 'Takeaway', key: 'takeaway', color: 'info' },
+          { label: 'Pre Order', key: 'pre order', color: 'warning' }
+        ].map((type) => {
+           const count = normalizedOrders.find((o: any) => o.orderType?.toLowerCase() === type.key)?.totalOrders || 0;
+           return (
+             <Chip 
+               key={type.key} 
+               label={`${type.label}: ${count}`} 
+               size="small" 
+               sx={{ 
+                 bgcolor: alpha((theme.palette as any)[type.color].main, 0.1), 
+                 color: (theme.palette as any)[type.color].dark, 
+                 fontWeight: 600, 
+                 borderRadius: '8px' 
+               }} 
+             />
+           );
+        })}
+      </Box>
+
       {/* Main Stats Grid */}
       <Grid container spacing={{ xs: 1.2, sm: 3 }} sx={{ mb: { xs: 2.2, sm: 4 } }}>
         <Grid item xs={6} sm={6} md={4} lg={3} xl={3}>
@@ -756,7 +784,7 @@ const DashboardPage: React.FC = () => {
             value={dashboardData?.summary?.totalOrders || 0}
             icon={<ReceiptLongIcon />}
             color="secondary"
-            subtitle="Completed orders"
+          
           />
 
         </Grid>

@@ -63,6 +63,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const [autoCloseRequest, setAutoCloseRequest] = useState<AutoCloseRequest | null>(null);
 
     const soundTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const manualLoopRef   = useRef<ReturnType<typeof setInterval> | null>(null);
     const audioRef        = useRef<HTMLAudioElement | null>(null);
 
     // Hold latest printer settings + currency in a ref so socket handlers read fresh
@@ -84,6 +85,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         if (soundTimeoutRef.current) {
             clearTimeout(soundTimeoutRef.current);
         }
+        if (manualLoopRef.current) {
+            clearInterval(manualLoopRef.current);
+            manualLoopRef.current = null;
+        }
 
         // Read admin-selected sound from global settings, fallback to localStorage/default
         const selectedId  = settings?.notification?.sound || localStorage.getItem('notificationSoundId') || 'notification';
@@ -94,17 +99,23 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         if (Capacitor.isNativePlatform()) {
             const config = getSoundConfig(selectedId);
             
-            // Vivo's OS is blocking the native .loop() command silently. 
-            // We will manually loop it using .play() on a timer.
-            NativeAudio.play({ assetId: config.id }).catch(() => {});
-            
-            const manualLoopInterval = setInterval(() => {
+            // Start looping the sound
+            NativeAudio.loop({ assetId: config.id }).catch((err) => {
+                console.warn('NativeAudio loop failed, falling back to play:', err);
                 NativeAudio.play({ assetId: config.id }).catch(() => {});
-            }, 3000); // Trigger play every 3 seconds
+                
+                // Fallback interval just in case loop is not supported
+                manualLoopRef.current = setInterval(() => {
+                    NativeAudio.play({ assetId: config.id }).catch(() => {});
+                }, 3000);
+            });
 
             // Auto-stop after the configured duration
             soundTimeoutRef.current = setTimeout(() => {
-                clearInterval(manualLoopInterval);
+                if (manualLoopRef.current) {
+                    clearInterval(manualLoopRef.current);
+                    manualLoopRef.current = null;
+                }
                 NativeAudio.stop({ assetId: config.id }).catch(() => {});
             }, durationMs);
 

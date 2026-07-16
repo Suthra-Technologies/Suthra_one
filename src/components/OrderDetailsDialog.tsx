@@ -37,9 +37,11 @@ import {
 } from '@mui/material';
 import React, { useState } from 'react';
 import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
 import { useSettings } from '../context/SettingsContext';
 import { ordersAPI, ubereatsAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import { useActiveTenant } from '../hooks/useActiveTenant';
 import {
     canAddItems,
     formatDateTime,
@@ -51,7 +53,6 @@ import {
     isGlobalDineIn,
 } from '../utils/orderWorkflows';
 import { formatSpiceLevelLabel } from '../utils/spiceLevel';
-import AddItemsDialog from './AddItemsDialog';
 import PaymentCollectionDialog from './PaymentCollectionDialog';
 import DisputeInitiationDialog from './DisputeInitiationDialog';
 import MapComponent from './MapComponent';
@@ -102,9 +103,10 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
     const { formatCurrency } = useSettings();
     const { user } = useAuth();
     const { deliveryLocations } = useNotifications();
+    const navigate = useNavigate();
+    const { getRelativePath } = useActiveTenant();
     const theme = useTheme();
     const [routeInfo, setRouteInfo] = useState<{ distance: string; duration: string } | null>(null);
-    const [addItemsDialogOpen, setAddItemsDialogOpen] = useState(false);
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
     const [simulating, setSimulating] = useState(false);
     const [refundDialogOpen, setRefundDialogOpen] = useState(false);
@@ -151,11 +153,11 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
         }
     };
 
-    const handleAddItemsSuccess = () => {
-        setAddItemsDialogOpen(false);
-        if (onUpdate) {
-            onUpdate();
-        }
+    // Adding items reuses the POS in edit mode: it loads this order's customer,
+    // table and cart, and saves back to the same order.
+    const handleAddItems = () => {
+        onClose();
+        navigate(getRelativePath(`/pos?orderId=${order._id}`));
     };
 
     const handlePaymentSuccess = () => {
@@ -812,7 +814,7 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                     {canAddMoreItems && (
                         <Button
                             startIcon={<AddIcon />}
-                            onClick={() => setAddItemsDialogOpen(true)}
+                            onClick={handleAddItems}
                             variant="outlined"
                             color="primary"
                         >
@@ -851,14 +853,6 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                     setDisputeDialogOpen(false);
                     if (onUpdate) onUpdate();
                 }}
-            />
-
-            {/* Add Items Dialog */}
-            <AddItemsDialog
-                open={addItemsDialogOpen}
-                order={order}
-                onClose={() => setAddItemsDialogOpen(false)}
-                onSuccess={handleAddItemsSuccess}
             />
 
             {/* Payment Collection Dialog */}

@@ -68,7 +68,6 @@ import {
     isOrderActive,
 } from '../utils/orderWorkflows';
 import { formatSpiceLevelLabel } from '../utils/spiceLevel';
-import AddItemsDialog from './AddItemsDialog';
 import DeliveryTracker from './DeliveryTracker';
 import PaymentCollectionDialog from './PaymentCollectionDialog';
 
@@ -132,7 +131,6 @@ const OrderCard: React.FC<OrderCardProps> = ({
     onReject
 }) => {
     const { formatCurrency } = useSettings();
-    const [addItemsDialogOpen, setAddItemsDialogOpen] = useState(false);
     const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
     const [deleteConfirmationOpen, setDeleteConfirmationOpen] = useState(false);
     const [cancelOrderDialogOpen, setCancelOrderDialogOpen] = useState(false);
@@ -159,9 +157,10 @@ const OrderCard: React.FC<OrderCardProps> = ({
     const canAddMoreItems = canAddItems(order.status, order.orderType, order);
     // Global Dine In orders have already paid - don't show collect payment
     const canCollectPayment = order.orderType === 'dine_in' && order.status === 'served' && !isGlobalDineIn(order);
-    const handleAddItemsSuccess = () => {
-        setAddItemsDialogOpen(false);
-        if (onRefresh) onRefresh();
+    // Adding items reuses the POS in edit mode: it loads this order's customer,
+    // table and cart, and saves back to the same order.
+    const handleAddItems = () => {
+        navigate(getRelativePath(`/pos?orderId=${order._id}`));
     };
 
     const handleNextStatus = async (e: React.MouseEvent) => {
@@ -1243,7 +1242,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                             )}
                             {canAddMoreItems && (
                                 <Button
-                                    onClick={(e) => { e.stopPropagation(); setAddItemsDialogOpen(true); }}
+                                    onClick={(e) => { e.stopPropagation(); handleAddItems(); }}
                                     variant="outlined"
                                     color="primary"
                                     size="small"
@@ -1267,21 +1266,19 @@ const OrderCard: React.FC<OrderCardProps> = ({
                     )}
                 </Stack>
 
-                {/* Add Items Dialog */}
-                <AddItemsDialog
-                    open={addItemsDialogOpen}
-                    order={order}
-                    onClose={() => setAddItemsDialogOpen(false)}
-                    onSuccess={handleAddItemsSuccess}
-                />
-                {/* Payment Collection Dialog */}
-                <PaymentCollectionDialog
-                    open={paymentDialogOpen}
-                    order={order}
-                    onClose={() => setPaymentDialogOpen(false)}
-                    onSuccess={handlePaymentSuccess}
-                />
             </CardActions>
+
+            {/* The Card's onClick opens order details. React bubbles synthetic events
+                through the component tree even though MUI portals dialogs to
+                document.body, so every click inside these would re-open details
+                behind them. Stop propagation once, here, for all of them. */}
+            <Box onClick={(e) => e.stopPropagation()}>
+            <PaymentCollectionDialog
+                open={paymentDialogOpen}
+                order={order}
+                onClose={() => setPaymentDialogOpen(false)}
+                onSuccess={handlePaymentSuccess}
+            />
 
             <Dialog
                 open={deleteConfirmationOpen}
@@ -1554,6 +1551,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                     </Button>
                 </DialogActions>
             </Dialog>
+            </Box>
         </Card>
 
     );

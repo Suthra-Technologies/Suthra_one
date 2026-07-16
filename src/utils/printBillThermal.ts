@@ -9,6 +9,7 @@ import {
     formatDateTime,
     getOrderTypeLabel,
     getPaymentMethodLabel,
+    groupBillItems,
 } from './orderWorkflows';
 import type { TenantPrinterSettings } from '../context/SettingsContext';
 import { isCashPayment } from './cashDrawer';
@@ -63,8 +64,9 @@ export async function printBillThermal(
         }
     }
 
-    const items: EscPosBillItem[] = (billData.items || [])
-        .filter((it: any) => it.preparationStatus !== 'cancelled')
+    // Group before mapping: the map rewrites names and drops the fields the
+    // grouping key relies on. groupBillItems also drops cancelled lines.
+    const items: EscPosBillItem[] = groupBillItems(billData.items)
         .map((it: any) => {
             const spiceRaw = it.spiceLevel ? String(it.spiceLevel) : '';
             const name = stripSpiceFromName(it.name || it.menuItem?.name, spiceRaw) || 'Item';

@@ -30,6 +30,7 @@ import {
     formatDateTime,
     getOrderTypeLabel,
     getPaymentMethodLabel,
+    groupBillItems,
 } from '../utils/orderWorkflows';
 
 interface PrintBillDialogProps {
@@ -99,7 +100,7 @@ const PrintBillDialog: React.FC<PrintBillDialogProps> = ({ open, order, onClose 
                     jobId: `bill_${billData._id || Date.now()}_${Date.now()}`,
                     order: {
                         ...billData,
-                        items: (billData.items || []).map((item: any) => ({
+                        items: groupBillItems(billData.items).map((item: any) => ({
                             ...item,
                             spiceLevel: item.spiceLevel || '',
                         })),
@@ -523,7 +524,7 @@ const PrintBillDialog: React.FC<PrintBillDialogProps> = ({ open, order, onClose 
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
-                                    {billData.items?.filter((item: any) => item.preparationStatus !== 'cancelled').map((item: any, index: number) => (
+                                    {groupBillItems(billData.items).map((item: any, index: number) => (
                                         <TableRow key={index}>
                                             <TableCell className="col-item" sx={{ borderBottom: 'none', py: 0.5, px: 1, width: '45%' }}>
                                                 <Box>
