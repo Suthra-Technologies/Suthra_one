@@ -44,7 +44,7 @@ export const apiBaseUrl = (() => {
 
 const api: AxiosInstance = axios.create({
   baseURL: apiBaseUrl,
-  timeout: 30000, // Increased from 10000 to 30000 (30 seconds)
+  timeout: 60000, // Login can take >30s: the backend scans every tenant DB on the remote Mongo host when no tenantSlug is given
   headers: {
     'Content-Type': 'application/json',
   },
@@ -578,6 +578,11 @@ export const paymentsAPI = {
   syncTransactions: () => api.post('/payments/transactions/sync'),
   verifyTransactionsInDb: (paymentIntentIds: string[]) =>
     api.post('/payments/transactions/verify-db', { paymentIntentIds }),
+  // Tenant self-service Stripe Connect onboarding (dashboard "pending actions")
+  getConnectStatus: () => api.get('/payments/connect/status'),
+  startConnectOnboarding: (returnUrl: string, refreshUrl?: string) =>
+    api.post('/payments/connect/onboard', { returnUrl, refreshUrl }),
+  getConnectDashboardLink: () => api.get('/payments/connect/dashboard-link'),
 };
 
 // -------------------- PhonePe API (India tenants) --------------------
@@ -667,8 +672,8 @@ export const superAPI = {
   // Tenant platform processing fee (managed by superadmin only)
   getTenantProcessingFee: (tenantId: string) =>
     api.get(`/superadmin/tenants/${tenantId}/processing-fee`),
-  updateTenantProcessingFee: (tenantId: string, processingFee: number) =>
-    api.patch(`/superadmin/tenants/${tenantId}/processing-fee`, { processingFee }),
+  updateTenantProcessingFee: (tenantId: string, processingFee: number, processingFeeOrderValue?: number) =>
+    api.patch(`/superadmin/tenants/${tenantId}/processing-fee`, { processingFee, processingFeeOrderValue }),
 
   // Admin activity logs
   getAdminLogs: (params?: any) => api.get('/superadmin/admin-logs', { params }),

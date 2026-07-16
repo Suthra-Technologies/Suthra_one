@@ -68,6 +68,7 @@ import {
     isOrderActive,
 } from '../utils/orderWorkflows';
 import { formatSpiceLevelLabel } from '../utils/spiceLevel';
+import { formatPhoneDisplay } from '../utils/validation';
 import AddItemsDialog from './AddItemsDialog';
 import DeliveryTracker from './DeliveryTracker';
 import PaymentCollectionDialog from './PaymentCollectionDialog';
@@ -167,6 +168,10 @@ const OrderCard: React.FC<OrderCardProps> = ({
     const handleNextStatus = async (e: React.MouseEvent) => {
         e.stopPropagation();
         if (isProcessing) return;
+        if (isFullyDisputed) {
+            toast.error('Order is fully under dispute — resolve the dispute to continue');
+            return;
+        }
 
         const availableNextStatuses = getAvailableStatuses(order.status, order.orderType);
         const nextStatus = availableNextStatuses.find((s: string) => s !== 'cancelled');
@@ -188,6 +193,16 @@ const OrderCard: React.FC<OrderCardProps> = ({
 
     const nextAvailableStatuses = getAvailableStatuses(order.status, order.orderType);
     const nextStatus = nextAvailableStatuses.find((s: string) => s !== 'cancelled');
+
+    // Whole order under dispute: either a whole-order dispute (isDisputed with no
+    // item-level marks) or every active item fully disputed. Blocks progression.
+    const isFullyDisputed = (() => {
+        if (!order.isDisputed) return false;
+        const activeItems = (order.items || []).filter((i: any) => i.preparationStatus !== 'cancelled');
+        const hasItemMarks = activeItems.some((i: any) => Number(i.disputedQuantity || 0) > 0);
+        return !hasItemMarks
+            || (activeItems.length > 0 && activeItems.every((i: any) => Number(i.disputedQuantity || 0) >= Number(i.quantity || 0)));
+    })();
     const handlePaymentSuccess = () => {
         setPaymentDialogOpen(false);
         if (onRefresh) onRefresh();
@@ -419,7 +434,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                         fontSize: '0.8rem',
                                         '@media print': { display: 'none' }
                                     }}>
-                                        Ph: {order.customer.phone}
+                                        Ph: {formatPhoneDisplay(order.customer.phone)}
                                     </Typography>
                                 )}
                             </Box>
@@ -612,6 +627,22 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                                     <Typography variant="body2" sx={{ fontWeight: 500 }}>
                                                         {item.quantity}x {item.name || item.menuItem?.name || 'Unknown Item'}
                                                     </Typography>
+                                                    {Number(item.disputedQuantity || 0) > 0 && (
+                                                        <Tooltip title={`${item.disputedQuantity} of ${item.quantity} under an active dispute`} arrow>
+                                                            <Chip
+                                                                label={Number(item.disputedQuantity) >= Number(item.quantity) ? 'DISPUTED' : `${item.disputedQuantity} DISPUTED`}
+                                                                size="small"
+                                                                sx={{
+                                                                    height: 18,
+                                                                    fontSize: '0.62rem',
+                                                                    fontWeight: 700,
+                                                                    bgcolor: alpha(theme.palette.error.main, 0.1),
+                                                                    color: theme.palette.error.main,
+                                                                    border: `1px solid ${alpha(theme.palette.error.main, 0.3)}`,
+                                                                }}
+                                                            />
+                                                        </Tooltip>
+                                                    )}
                                                     {item.preparationStatus === 'ready' && (
                                                         <Tooltip title="Ready to Serve" arrow>
                                                             <CheckIcon
@@ -1208,6 +1239,31 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                 (order.orderType === 'dine_in' && nextStatus === 'completed' && !isGlobalDineIn(order)) ? null : (
                                     // Disable "On the Way" and "Delivered" for third-party delivery (DoorDash/Uber Eats)
                                     (() => {
+                                        // A fully-disputed order can't progress until the dispute is resolved
+                                        if (isFullyDisputed) {
+                                            return (
+                                                <Tooltip title="Order is fully under dispute — resolve the dispute to continue">
+                                                    <span>
+                                                        <Button
+                                                            variant="contained"
+                                                            color="error"
+                                                            size="small"
+                                                            disabled
+                                                            sx={{
+                                                                fontSize: '0.65rem',
+                                                                padding: '4px 8px',
+                                                                textTransform: 'none',
+                                                                fontWeight: 'bold',
+                                                                minWidth: 'auto',
+                                                                height: '28px'
+                                                            }}
+                                                        >
+                                                            On Hold: Disputed
+                                                        </Button>
+                                                    </span>
+                                                </Tooltip>
+                                            );
+                                        }
                                         const isThirdPartyDelivery = !!(order.doordashDeliveryId || order.uberEatsDeliveryId);
                                         const isBlockedStatus = nextStatus === 'on_the_way' || nextStatus === 'delivered';
                                         if (isThirdPartyDelivery && isBlockedStatus) {

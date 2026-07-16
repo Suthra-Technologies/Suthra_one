@@ -272,13 +272,19 @@ export async function printKotThermal(
             ? order.customer.name : undefined,
         orderDateStr: order.createdAt ? formatUsDate(new Date(order.createdAt)) : undefined,
         printedDateStr: formatUsDate(new Date()),
-        items: (order.items || []).map((it: any) => ({
-            name: it.name || it.menuItem?.name || 'Item',
-            quantity: it.quantity ?? 1,
-            notes: it.notes,
-            spiceLevel: it.spiceLevel,
-            preparationStatus: it.preparationStatus,
-        })),
+        // Disputed quantities are not to be prepared — print only the cookable qty
+        items: (order.items || [])
+            .map((it: any) => {
+                const cookQty = Math.max(0, (it.quantity ?? 1) - (it.disputedQuantity || 0));
+                return {
+                    name: it.name || it.menuItem?.name || 'Item',
+                    quantity: it.preparationStatus === 'cancelled' ? (it.quantity ?? 1) : cookQty,
+                    notes: it.notes,
+                    spiceLevel: it.spiceLevel,
+                    preparationStatus: it.preparationStatus,
+                };
+            })
+            .filter((it: any) => it.preparationStatus === 'cancelled' || it.quantity > 0),
     };
 
     if (isUsb) {

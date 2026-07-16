@@ -58,6 +58,7 @@ import PhonePeQrModal from '../components/PhonePeQrModal';
 import { loadStripe } from '@stripe/stripe-js';
 import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js';
 import { ordersAPI } from '../services/api';
+import { calcPlatformFee } from '../utils/processingFee';
 import { isWithinDeliveryRadius, METERS_PER_MILE } from '../services/googleMapsService';
 
 
@@ -254,7 +255,13 @@ const CheckoutPage: React.FC = () => {
   const theme = useTheme();
 
   const taxRate = settings?.restaurant?.taxRate ?? 0;
-  const processingFeeRate = settings?.restaurant?.processingFee ?? 0;
+  // Platform processing fee: slab-based ($ per $N of order value, rounded up)
+  // when processingFeeOrderValue is set; legacy percent otherwise.
+  const processingFeeAmount = calcPlatformFee(
+    cart.totalAmount,
+    settings?.restaurant?.processingFee ?? 0,
+    settings?.restaurant?.processingFeeOrderValue ?? 0,
+  );
 
   const [activeStep, setActiveStep] = useState<number>(0);
   const [authMethod, setAuthMethod] = useState<'register' | 'login' | 'guest'>('register');
@@ -301,7 +308,7 @@ const CheckoutPage: React.FC = () => {
   const paymentAmount =
     cart.totalAmount +
     (orderType === 'delivery' ? deliveryFee + (Number(deliveryInfo.tip) || 0) : 0) +
-    ((cart.totalAmount * processingFeeRate) / 100) +
+    processingFeeAmount +
     cart.totalAmount * (taxRate / 100);
 
   // Tip selection state
@@ -610,7 +617,7 @@ const CheckoutPage: React.FC = () => {
       setPlacingOrder(true);
       setError('');
       const isPaidMethod = paymentMethod === 'card' || paymentMethod === 'qr';
-      const calculatedProcessingFee = (cart.totalAmount * processingFeeRate) / 100;
+      const calculatedProcessingFee = processingFeeAmount;
 
       const orderData = {
         items: (cart?.items || []).map(item => ({
@@ -1497,7 +1504,7 @@ const CheckoutPage: React.FC = () => {
             Amount Due: ${(
               cart.totalAmount +
               (orderType === 'delivery' && activeStep >= 2 ? deliveryFee + (Number(deliveryInfo.tip) || 0) : 0) +
-              ((cart.totalAmount * processingFeeRate) / 100) +
+              processingFeeAmount +
               cart.totalAmount * (taxRate / 100)
             ).toFixed(2)}
           </Typography>
@@ -1517,7 +1524,7 @@ const CheckoutPage: React.FC = () => {
             amount={
               cart.totalAmount +
               (orderType === 'delivery' ? deliveryFee + (Number(deliveryInfo.tip) || 0) : 0) +
-              ((cart.totalAmount * processingFeeRate) / 100) +
+              processingFeeAmount +
               cart.totalAmount * (taxRate / 100)
             }
             subtotal={cart.totalAmount}
@@ -1724,10 +1731,10 @@ const CheckoutPage: React.FC = () => {
                   <Typography>Tax </Typography>
                   <Typography>${(cart.totalAmount * (taxRate / 100)).toFixed(2)}</Typography>
                 </Box>
-                {processingFeeRate > 0 && (
+                {processingFeeAmount > 0 && (
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                     <Typography>Processing Fee</Typography>
-                    <Typography>${((cart.totalAmount * processingFeeRate) / 100).toFixed(2)}</Typography>
+                    <Typography>${processingFeeAmount.toFixed(2)}</Typography>
                   </Box>
                 )}
                 <Divider sx={{ mb: 2 }} />
@@ -1743,7 +1750,7 @@ const CheckoutPage: React.FC = () => {
                     ${(
                       cart.totalAmount +
                       (orderType === 'delivery' && activeStep >= 2 ? deliveryFee + (Number(deliveryInfo.tip) || 0) : 0) +
-                      ((cart.totalAmount * processingFeeRate) / 100) +
+                      processingFeeAmount +
                       cart.totalAmount * (taxRate / 100)
                     ).toFixed(2)}
                   </Typography>

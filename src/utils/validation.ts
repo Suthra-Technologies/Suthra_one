@@ -5,18 +5,64 @@ export interface ValidationResult {
     message?: string;
 }
 
-// Email validation
-export const validateEmail = (email: string): ValidationResult => {
-    if (!email || email.trim() === '') {
-        return { isValid: false, message: 'Email is required' };
+// Email validation. Pass required=false for optional fields (empty passes).
+export const validateEmail = (email: string, required: boolean = true): ValidationResult => {
+    const trimmed = (email || '').trim();
+    if (trimmed === '') {
+        return required
+            ? { isValid: false, message: 'Email is required' }
+            : { isValid: true };
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
+    // RFC 5321 practical limits: 254 total, 64 before the @, 63 per domain label
+    if (trimmed.length > 254) {
+        return { isValid: false, message: 'Email is too long (max 254 characters)' };
+    }
+
+    const atIndex = trimmed.lastIndexOf('@');
+    const localPart = atIndex > -1 ? trimmed.slice(0, atIndex) : trimmed;
+    if (localPart.length > 64) {
+        return { isValid: false, message: 'Email is too long before the @ (max 64 characters)' };
+    }
+    if (localPart.startsWith('.') || localPart.endsWith('.') || localPart.includes('..')) {
+        return { isValid: false, message: 'Please enter a valid email address' };
+    }
+
+    // Domain: labels of 1-63 alphanumeric/hyphen chars (no leading/trailing hyphen),
+    // ending in an alphabetic TLD of 2-24 chars
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,24}$/;
+    if (!emailRegex.test(trimmed)) {
         return { isValid: false, message: 'Please enter a valid email address' };
     }
 
     return { isValid: true };
+};
+
+// Format a stored phone number consistently for display, regardless of how it
+// was captured (POS stores "+14654654564", online orders store "(203) 456-7890").
+export const formatPhoneDisplay = (phone?: string | number | null): string => {
+    const raw = String(phone ?? '').trim();
+    if (!raw) return '';
+
+    const hasPlus = raw.startsWith('+');
+    const digits = raw.replace(/\D/g, '');
+    if (!digits) return raw;
+
+    // US/Canada: local 10 digits, or 11 digits with leading 1
+    if (digits.length === 10 && !hasPlus) {
+        return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+    }
+    if (digits.length === 11 && digits.startsWith('1')) {
+        return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+    }
+
+    // India: 12 digits with leading 91 → +91 XXXXX XXXXX
+    if (digits.length === 12 && digits.startsWith('91')) {
+        return `+91 ${digits.slice(2, 7)} ${digits.slice(7)}`;
+    }
+
+    // Other international numbers: keep the dial code visible
+    return hasPlus ? `+${digits}` : raw;
 };
 
 // Phone number validation

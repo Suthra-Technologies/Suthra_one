@@ -60,6 +60,8 @@ export interface RestaurantSettings {
     currencySymbol: string;
     taxRate: number;
     processingFee?: number;
+    // Slab size ($ of order value per fee unit); 0/unset = processingFee is a percent
+    processingFeeOrderValue?: number;
     logo: string;
     stamp?: string;
     country: string;

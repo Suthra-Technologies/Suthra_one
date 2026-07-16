@@ -50,6 +50,7 @@ import { isWithinDeliveryRadius, METERS_PER_MILE } from '../../services/googleMa
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { formatSpiceLevelLabel } from '../../utils/spiceLevel';
+import { validateEmail as validateEmailStrict } from '../../utils/validation';
 
 interface CartItem {
     menuItem: string;
@@ -486,7 +487,7 @@ const CateringPage = () => {
     }, 0);
     const totalAmount = subtotal + taxAmount;
 
-    const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    const validateEmail = (email: string) => validateEmailStrict(email);
     const isDelivery = formData.serviceType === 'delivery' || formData.serviceType === 'delivery_service';
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -506,7 +507,7 @@ const CateringPage = () => {
         setFormSubmitted(true);
         if (!formData.customerName.trim()) { toast.error('Full name is required'); return; }
         if (formData.customerPhone.length !== 10) { toast.error('10-digit phone number is required'); return; }
-        if (!formData.customerEmail.trim() || !validateEmail(formData.customerEmail)) { toast.error('Valid email is required'); return; }
+        if (!validateEmail(formData.customerEmail).isValid) { toast.error('Valid email is required'); return; }
         if (!formData.occasion) { toast.error('Occasion is required'); return; }
         if (!formData.occasionDate) { toast.error('Occasion date is required'); return; }
         if (!formData.requiredDate || new Date(formData.requiredDate) < new Date()) { toast.error('Valid date and time is required'); return; }

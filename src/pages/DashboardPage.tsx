@@ -67,6 +67,7 @@ import {
   reportsAPI
 } from '../services/api';
 import { useActiveTenant } from '../hooks/useActiveTenant';
+import PendingActionsCard from '../components/PendingActionsCard';
 
 // ---------------------------------------------------------------------------
 // StatCard – reusable card used throughout the dashboard
@@ -637,6 +638,9 @@ const DashboardPage: React.FC = () => {
         py: { xs: 1.6, md: 3 }
       }}
     >
+      {/* Pending actions (e.g. Stripe payout onboarding) — admins only */}
+      <PendingActionsCard />
+
       {/* Header */}
       <Box
         sx={{

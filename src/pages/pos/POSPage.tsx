@@ -58,7 +58,7 @@ import { isWithinDeliveryRadius, METERS_PER_MILE } from '../../services/googleMa
 import CustomerInfoSection from './components/CustomerInfoSection';
 import MergeTablesDialog from './components/MergeTablesDialog';
 import OrderDetailsSection from './components/OrderDetailsSection';
-import { validatePhone } from '../../utils/validation';
+import { validateEmail, validatePhone } from '../../utils/validation';
 
 
 type Variant = {
@@ -1304,10 +1304,10 @@ const POSPage: React.FC = () => {
         }
 
         // Validate email (optional)
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (customerEmail && !emailRegex.test(customerEmail)) {
+        const emailValidation = validateEmail(customerEmail, false);
+        if (!emailValidation.isValid) {
             setCustomerEmailTouched(true);
-            setCustomerEmailError('Please enter a valid email address');
+            setCustomerEmailError(emailValidation.message || 'Please enter a valid email address');
             hasError = true;
         } else {
             setCustomerEmailError('');
@@ -1817,7 +1817,7 @@ const POSPage: React.FC = () => {
             displayName += ` [${trayData?.name || 'Tray'}]`;
         }
         if (tempSelectedVariant) displayName += ` (${tempSelectedVariant.name})`;
-        if (tempSelectedSpiceLevel) displayName += ` 🌶️ ${tempSelectedSpiceLevel}`;
+        if (tempSelectedSpiceLevel) displayName += ` (${tempSelectedSpiceLevel})`;
 
         const trayData = tempSelectedTray ? trays.find(t => t._id === tempSelectedTray.tray) : null;
 
@@ -3084,11 +3084,6 @@ const POSPage: React.FC = () => {
                                                         '&:hover, &.Mui-active': {
                                                             boxShadow: (theme) => `0 0 0 8px ${alpha(theme.palette.primary.main, 0.16)}`,
                                                         },
-                                                        '&::after': {
-                                                            content: '"🌶️"',
-                                                            fontSize: '14px',
-                                                            position: 'absolute'
-                                                        }
                                                     },
                                                     '& .MuiSlider-mark': {
                                                         bgcolor: 'text.disabled',

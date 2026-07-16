@@ -21,6 +21,8 @@ import {
 } from '@mui/icons-material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import {
     Alert,
     Avatar,
@@ -659,6 +661,9 @@ const SettingsPage: React.FC = () => {
     const [showStripeWebhookSecret, setShowStripeWebhookSecret] = useState(false);
 
     const [stripeStatus, setStripeStatus] = useState<{ stripeMode?: string; hasPublishableKey?: boolean; hasSecretKey?: boolean; hasWebhookSecret?: boolean }>({});
+    // Stripe Connect payouts account (platform-managed Express account)
+    const [connectStatus, setConnectStatus] = useState<{ needsOnboarding?: boolean; accountId?: string | null; chargesEnabled?: boolean; payoutsEnabled?: boolean; detailsSubmitted?: boolean; status?: string } | null>(null);
+    const [connectDashboardLoading, setConnectDashboardLoading] = useState(false);
     const [phonePeStatus, setPhonePeStatus] = useState<{ phonePeEnv?: string; phonePeClientId?: string; phonePeClientVersion?: string; hasClientId?: boolean; hasClientSecret?: boolean }>({});
     const [usersList, setUsersList] = useState<any[]>([]);
     const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
@@ -935,7 +940,26 @@ const SettingsPage: React.FC = () => {
     useEffect(() => {
         fetchSettings();
         fetchUsers(0, 10);
+        paymentsAPI.getConnectStatus()
+            .then((res) => setConnectStatus(res.data || null))
+            .catch(() => setConnectStatus(null));
     }, []);
+
+    const handleOpenStripeDashboard = async () => {
+        setConnectDashboardLoading(true);
+        try {
+            const res = await paymentsAPI.getConnectDashboardLink();
+            if (res.data?.url) {
+                window.open(res.data.url, '_blank', 'noopener');
+            } else {
+                toast.error('Could not get the Stripe dashboard link');
+            }
+        } catch (err: any) {
+            toast.error(err?.response?.data?.message || 'Failed to open Stripe dashboard');
+        } finally {
+            setConnectDashboardLoading(false);
+        }
+    };
 
     useEffect(() => {
         fetchUsers(userAlertsPage, userAlertsRowsPerPage);
@@ -3709,6 +3733,10 @@ const SettingsPage: React.FC = () => {
 
                     <Divider sx={{ my: 4 }} />
 
+                    {/* Tenant Stripe keys banner — hidden once Connect onboarding is
+                        complete: payments then run on the platform account and the
+                        Payouts Account panel below is the source of truth. */}
+                    {!(connectStatus?.chargesEnabled && connectStatus?.payoutsEnabled) && (
                     <Paper
                         variant="outlined"
                         sx={{
@@ -3737,6 +3765,82 @@ const SettingsPage: React.FC = () => {
                         </Stack>
                         {(stripeStatus?.hasPublishableKey && stripeStatus?.hasSecretKey) ? <CheckCircleIcon sx={{ color: '#16a34a' }} /> : null}
                     </Paper>
+                    )}
+
+                    {/* Payouts account (Stripe Connect) — shown once the tenant has a Connect account */}
+                    {connectStatus?.accountId && (
+                        <Paper
+                            variant="outlined"
+                            sx={{
+                                p: 2.5,
+                                mb: 3,
+                                borderRadius: 3,
+                                bgcolor: (connectStatus.chargesEnabled && connectStatus.payoutsEnabled) ? alpha('#635bff', 0.06) : alpha('#f59e0b', 0.08),
+                                borderColor: (connectStatus.chargesEnabled && connectStatus.payoutsEnabled) ? alpha('#635bff', 0.3) : alpha('#f59e0b', 0.3),
+                            }}
+                        >
+                            <Stack
+                                direction={{ xs: 'column', sm: 'row' }}
+                                spacing={2}
+                                alignItems={{ xs: 'flex-start', sm: 'center' }}
+                                justifyContent="space-between"
+                            >
+                                <Stack direction="row" spacing={2} alignItems="center">
+                                    <Avatar sx={{ bgcolor: '#635bff', color: '#fff' }}>
+                                        <AccountBalanceIcon />
+                                    </Avatar>
+                                    <Box>
+                                        <Typography variant="subtitle1" fontWeight={700}>
+                                            Payouts Account
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
+                                            {connectStatus.accountId}
+                                        </Typography>
+                                        <Stack direction="row" spacing={1} sx={{ mt: 0.75 }} flexWrap="wrap" useFlexGap>
+                                            <Chip
+                                                size="small"
+                                                color={connectStatus.chargesEnabled ? 'success' : 'warning'}
+                                                label={connectStatus.chargesEnabled ? 'Charges enabled' : 'Charges pending'}
+                                            />
+                                            <Chip
+                                                size="small"
+                                                color={connectStatus.payoutsEnabled ? 'success' : 'warning'}
+                                                label={connectStatus.payoutsEnabled ? 'Payouts enabled' : 'Payouts pending'}
+                                            />
+                                        </Stack>
+                                    </Box>
+                                </Stack>
+                                {(connectStatus.chargesEnabled && connectStatus.payoutsEnabled) ? (
+                                    <Button
+                                        variant="contained"
+                                        startIcon={connectDashboardLoading ? <CircularProgress size={18} color="inherit" /> : <OpenInNewIcon />}
+                                        onClick={() => void handleOpenStripeDashboard()}
+                                        disabled={connectDashboardLoading}
+                                        sx={{
+                                            bgcolor: '#635bff',
+                                            '&:hover': { bgcolor: '#5148e0' },
+                                            fontWeight: 700,
+                                            borderRadius: 2.5,
+                                            whiteSpace: 'nowrap',
+                                            width: { xs: '100%', sm: 'auto' },
+                                        }}
+                                    >
+                                        Open Stripe Dashboard
+                                    </Button>
+                                ) : (
+                                    <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 260 }}>
+                                        Stripe is verifying your details. The dashboard becomes available once payouts are enabled.
+                                    </Typography>
+                                )}
+                            </Stack>
+                        </Paper>
+                    )}
+
+                    {/* Key entry — only while Connect onboarding is incomplete. Once the
+                        tenant's Express account is fully enabled, all card payments run
+                        through the platform account and no tenant keys are needed. */}
+                    {!(connectStatus?.chargesEnabled && connectStatus?.payoutsEnabled) && (
+                    <>
                     <Typography variant="h6" sx={{ mb: 1, fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
                         Stripe Payments
                     </Typography>
@@ -3924,6 +4028,8 @@ const SettingsPage: React.FC = () => {
                             </Button>
                         </Grid>
                     </Grid>
+                    </>
+                    )}
 
                     {/* ── PhonePe (India) ─────────────────────────────────────── */}
                     {settings.restaurant.country?.toLowerCase() === 'india' && (
