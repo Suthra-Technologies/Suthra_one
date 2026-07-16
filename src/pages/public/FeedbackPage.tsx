@@ -22,6 +22,7 @@ import { toast } from 'react-hot-toast';
 import { feedbackAPI } from '../../services/api';
 
 import { getTenantSlugFromHostname } from '../../utils/tenant.utils';
+import { groupBillItems } from '../../utils/orderWorkflows';
 
 const FeedbackPage: React.FC = () => {
     const { slug: pathSlug, orderId } = useParams<{ slug: string; orderId: string }>();
@@ -36,6 +37,14 @@ const FeedbackPage: React.FC = () => {
     const [ambianceRating, setAmbianceRating] = useState<number | null>(0);
     const [suggestions, setSuggestions] = useState('');
     const [itemRatings, setItemRatings] = useState<Record<string, { taste: number; quantity: number }>>({});
+
+    // A dish the kitchen split across rows is still one dish to the guest: rate it
+    // once. This grouped list is the only thing the page renders, keys and submits
+    // from, so a rating can never land on a row the guest never saw.
+    const feedbackItems = React.useMemo(
+        () => groupBillItems(order?.items || []),
+        [order],
+    );
 
     useEffect(() => {
         if (slug && orderId) {
@@ -54,9 +63,9 @@ const FeedbackPage: React.FC = () => {
 
             setOrder(res.data);
 
-            // Initialize item ratings
+            // Seed from the same grouped list the page renders, so the keys line up.
             const initialRatings: any = {};
-            res.data.items.forEach((item: any, index: number) => {
+            groupBillItems(res.data.items || []).forEach((item: any, index: number) => {
                 const key = `${item.menuItem}-${index}`;
                 initialRatings[key] = { taste: 0, quantity: 0 };
             });
@@ -92,7 +101,7 @@ const FeedbackPage: React.FC = () => {
                 serviceRating,
                 ambianceRating,
                 suggestions,
-                itemRatings: (order?.items || []).map((item: any, index: number) => {
+                itemRatings: feedbackItems.map((item: any, index: number) => {
                     const key = `${item.menuItem}-${index}`;
                     return {
                         menuItem: item.menuItem,
@@ -158,7 +167,7 @@ const FeedbackPage: React.FC = () => {
 
                 <Typography variant="h6" gutterBottom>Food Items</Typography>
                 <List disablePadding>
-                    {(order?.items || []).map((item: any, index: number) => {
+                    {feedbackItems.map((item: any, index: number) => {
                         const key = `${item.menuItem}-${index}`;
                         return (
                             <ListItem key={key} sx={{ flexDirection: { xs: 'column', sm: 'row' }, alignItems: { xs: 'flex-start', sm: 'center' }, py: 2, borderBottom: '1px solid #f0f0f0' }}>
