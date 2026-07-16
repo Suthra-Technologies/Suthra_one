@@ -182,6 +182,9 @@ export function isGlobalDineIn(order: any): boolean {
 /**
  * Check if items can be added to an order
  * Note: Global Dine In orders have already paid, so no items can be added
+ * Note: 'served' is excluded — the food is on the table and the bill is next, so
+ * those guests place a new order. Must stay in step with the allowed statuses in
+ * the backend's addItemsToOrder.
  */
 export function canAddItems(status: string, orderType: string, order?: any): boolean {
     // Global Dine In orders have already paid - don't allow adding items
@@ -190,7 +193,7 @@ export function canAddItems(status: string, orderType: string, order?: any): boo
     }
     // Allow adding items for dine-in orders in active statuses
     if (orderType === 'dine_in') {
-        return ['pending', 'confirmed', 'preparing', 'ready', 'approved', 'served'].includes(status);
+        return ['pending', 'confirmed', 'preparing', 'ready', 'approved'].includes(status);
     }
     return false;
 }
