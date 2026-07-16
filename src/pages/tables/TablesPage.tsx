@@ -1909,6 +1909,7 @@ const TablesPage: React.FC = () => {
                             label="Location Name"
                             fullWidth
                             value={newLocationName}
+                            inputProps={{ maxLength: 40 }}
                             onChange={(e) => {
                                 const val = e.target.value;
                                 if (/^[a-zA-Z_\s]*$/.test(val)) {

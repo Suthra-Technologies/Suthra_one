@@ -12,7 +12,7 @@ import {
 } from './orderWorkflows';
 import type { TenantPrinterSettings } from '../context/SettingsContext';
 import { isCashPayment } from './cashDrawer';
-import { formatSpiceLevelLabel } from './spiceLevel';
+import { formatSpiceLevelLabel, stripSpiceFromName } from './spiceLevel';
 
 /**
  * Public site base for QR/feedback links. In the native app window.location.origin is
@@ -67,17 +67,7 @@ export async function printBillThermal(
         .filter((it: any) => it.preparationStatus !== 'cancelled')
         .map((it: any) => {
             const spiceRaw = it.spiceLevel ? String(it.spiceLevel) : '';
-            // POS embeds the spice in the display name (e.g. "Idly 🌶️ very_hot"). Strip the
-            // emoji (unprintable on thermal) and the trailing spice token — the spice level
-            // prints on its own line under the item instead.
-            let name = (it.name || it.menuItem?.name || 'Item')
-                .replace(/[<>]/g, '')
-                .replace(/[^\x20-\x7E]/g, ' ');
-            if (spiceRaw) {
-                const escaped = spiceRaw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                name = name.replace(new RegExp('\\s*' + escaped + '\\s*$', 'i'), '');
-            }
-            name = name.replace(/\s{2,}/g, ' ').trim() || 'Item';
+            const name = stripSpiceFromName(it.name || it.menuItem?.name, spiceRaw) || 'Item';
             return {
                 name,
                 quantity: it.quantity ?? 1,

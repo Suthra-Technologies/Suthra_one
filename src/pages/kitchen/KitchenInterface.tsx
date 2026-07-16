@@ -57,7 +57,7 @@ import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { ordersAPI } from '../../services/api';
-import { formatSpiceLevelLabel } from '../../utils/spiceLevel';
+import { formatSpiceLevelLabel, stripSpiceFromName } from '../../utils/spiceLevel';
 import { printKotThermal } from '../../utils/kotThermal';
 
 interface OrderItem {
@@ -145,6 +145,7 @@ const KitchenInterface: React.FC = () => {
             ...order,
             items: (order.items || []).map((item: any) => ({
               ...item,
+              name: stripSpiceFromName(item.name, item.spiceLevel) || item.name,
               spiceLevel: item.spiceLevel || '',
             })),
           },
@@ -190,7 +191,7 @@ const KitchenInterface: React.FC = () => {
       .filter(item => item.preparationStatus !== 'cancelled')
       .map(item => `
         <div style="display: flex; font-size: 14px; margin-bottom: 4px; color: #444;">
-          <div style="flex: 1; padding-right: 10px;">${item.name}</div>
+          <div style="flex: 1; padding-right: 10px;">${stripSpiceFromName(item.name, item.spiceLevel) || item.name}</div>
           <div style="width: 40px; text-align: center;">${item.quantity}</div>
         </div>
         ${item.notes ? `<div style="font-size: 12px; color: #666; margin-left: 10px; font-style: italic; margin-bottom: 4px;">📝 ${item.notes}</div>` : ''}
