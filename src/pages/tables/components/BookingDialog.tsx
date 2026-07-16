@@ -91,42 +91,33 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
     useEffect(() => {
         if (!open) return;
 
-        const fetchUnavailableSlots = async () => {
-            const slots: string[] = [];
-            for (let h = 11; h < 22; h++) {
-                slots.push(`${h.toString().padStart(2, '0')}:00`);
-                slots.push(`${h.toString().padStart(2, '0')}:30`);
-            }
+        const fetchAvailableSlots = async () => {
+            if (!bookingDate) return;
+            try {
+                const res = await bookingsAPI.getAvailableSlots(bookingDate, guestCount || 2);
+                let fetchedSlots: string[] = res.data || [];
 
-            const today = new Date();
-            const selectedDate = new Date(bookingDate);
-            const isToday = selectedDate.toDateString() === today.toDateString();
+                const today = new Date();
+                const selectedDate = new Date(bookingDate);
+                const isToday = selectedDate.toDateString() === today.toDateString();
 
-            let filteredSlots = slots;
-            if (isToday) {
-                const currentHours = today.getHours();
-                const currentMinutes = today.getMinutes();
-                filteredSlots = slots.filter(slot => {
-                    const [h, m] = slot.split(':').map(Number);
-                    if (h < currentHours) return false;
-                    if (h === currentHours && m < currentMinutes) return false;
-                    return true;
-                });
-            }
-
-            if (bookingDate) {
-                try {
-                    const res = await bookingsAPI.getUnavailableSlots(bookingDate, guestCount || 2);
-                    const unavailable = res.data || [];
-                    filteredSlots = filteredSlots.filter(s => !unavailable.includes(s));
-                } catch (e) {
-                    console.error("Failed to fetch unavailable slots", e);
+                if (isToday) {
+                    const currentHours = today.getHours();
+                    const currentMinutes = today.getMinutes();
+                    fetchedSlots = fetchedSlots.filter(slot => {
+                        const [h, m] = slot.split(':').map(Number);
+                        if (h < currentHours) return false;
+                        if (h === currentHours && m < currentMinutes) return false;
+                        return true;
+                    });
                 }
-            }
 
-            setAvailableTimeSlots(filteredSlots);
+                setAvailableTimeSlots(fetchedSlots);
+            } catch (e) {
+                console.error("Failed to fetch available slots", e);
+            }
         };
-        fetchUnavailableSlots();
+        fetchAvailableSlots();
     }, [bookingDate, guestCount, open]);
 
     const validateBookingField = (name: string, value: any): string => {

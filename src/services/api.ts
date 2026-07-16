@@ -553,6 +553,7 @@ export const bookingsAPI = {
   cancel: (id: string) => api.patch(`/bookings/${id}/cancel`),
   updateStatus: (id: string, status: string, note?: string) => api.patch(`/bookings/${id}/status`, { status, note }),
   getUnavailableSlots: (date: string, guests: number) => api.get('/bookings/unavailable-slots', { params: { date, guests } }),
+  getAvailableSlots: (date: string, guests: number) => api.get('/bookings/available-slots', { params: { date, guests } }),
   checkIn: (id: string) => api.post(`/bookings/${id}/check-in`),
 
   // Public (no auth) — for guest users
