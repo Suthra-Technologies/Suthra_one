@@ -406,9 +406,6 @@ const createDefaultSettings = (): SettingsState => ({
             cheque: true,
             creditCard: true,
             debitCard: true,
-            cheque: true,
-            creditCard: true,
-            debitCard: true,
         }
     },
     payment: {

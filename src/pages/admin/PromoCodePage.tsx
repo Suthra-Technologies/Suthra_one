@@ -64,7 +64,6 @@ import { toast } from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
 import { promosAPI, customersAPI, reportsAPI, menuAPI } from '../../services/api';
 import CustomInput from '../../components/common/CustomInput';
-import CustomInput from '../../components/common/CustomInput';
 
 interface Customer {
     name: string;

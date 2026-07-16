@@ -2959,7 +2959,7 @@ const POSPage: React.FC = () => {
                                                     </Box>
 
                                                     <Grid container spacing={1}>
-                                                        {group.options.map((option, optIdx) => {
+                                                        {group.options.map((option: any, optIdx: number) => {
                                                             const isSelected = (tempModifiers[group.name] || []).some(o => o.name === option.name);
 
                                                             const toggleOption = () => {
