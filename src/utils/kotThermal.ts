@@ -11,6 +11,7 @@
 import { sendToThermalPrinter, sendEposPrint, isThermalPrintAvailable } from '../services/thermalPrint';
 import { sendToUsbPrinter, isUsbPrintAvailable } from '../services/usbPrint';
 import type { TenantPrinterSettings } from '../context/SettingsContext';
+import { stripSpiceFromName } from './spiceLevel';
 
 const CHARS_PER_LINE_LARGE = 21; // Safe for 76mm double-width
 
@@ -273,10 +274,10 @@ export async function printKotThermal(
         orderDateStr: order.createdAt ? formatUsDate(new Date(order.createdAt)) : undefined,
         printedDateStr: formatUsDate(new Date()),
         items: (order.items || []).map((it: any) => ({
-            name: it.name || it.menuItem?.name || 'Item',
+            name: stripSpiceFromName(it.name || it.menuItem?.name, it.spiceLevel) || 'Item',
             quantity: it.quantity ?? 1,
             notes: it.notes,
-            spiceLevel: it.spiceLevel,
+            spiceLevel: it.spiceLevel ? String(it.spiceLevel) : undefined,
             preparationStatus: it.preparationStatus,
         })),
     };
