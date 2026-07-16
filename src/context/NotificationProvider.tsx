@@ -95,32 +95,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const selectedSrc = getSoundSrc(selectedId);
         const durationMs = (settings?.notification?.soundDuration || 6) * 1000;
 
-        // --- NATIVE AUDIO PLAYER (Robust for Android/iOS) ---
-        if (Capacitor.isNativePlatform()) {
-            const config = getSoundConfig(selectedId);
-            
-            // Start looping the sound
-            NativeAudio.loop({ assetId: config.id }).catch((err) => {
-                console.warn('NativeAudio loop failed, falling back to play:', err);
-                NativeAudio.play({ assetId: config.id }).catch(() => {});
-                
-                // Fallback interval just in case loop is not supported
-                manualLoopRef.current = setInterval(() => {
-                    NativeAudio.play({ assetId: config.id }).catch(() => {});
-                }, 3000);
-            });
-
-            // Auto-stop after the configured duration
-            soundTimeoutRef.current = setTimeout(() => {
-                if (manualLoopRef.current) {
-                    clearInterval(manualLoopRef.current);
-                    manualLoopRef.current = null;
-                }
-                NativeAudio.stop({ assetId: config.id }).catch(() => {});
-            }, durationMs);
-
-            return;
-        }
+        // --- NATIVE AUDIO PLAYER ---
+        // NativeAudio is completely disabled here because it fails silently on some Androids
+        // and its loop fallback ignores custom durations.
+        // We rely 100% on the Web Browser Audio Player below, which we unlocked via touch event.
 
         // --- WEB BROWSER AUDIO PLAYER ---
         const audio       = new Audio(selectedSrc);
@@ -153,17 +131,16 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                         {
                             title: title,
                             body: body,
-                            id: new Date().getTime(),
-                            schedule: { at: new Date(Date.now() + 100) }, // Schedule slightly in future
+                            id: Math.floor(Math.random() * 2147483647), // Must be 32-bit int
+                            schedule: { at: new Date(Date.now() + 100) },
                             sound: 'notification.mp3',
-                            channelId: 'orders_v2', // Critical for Android 8+
-                            smallIcon: 'ic_stat_icon_config_sample', // Ensure this or a default exists
+                            channelId: 'orders_v3', // This will play the OS sound!
+                            smallIcon: 'ic_stat_icon_config_sample',
                             actionTypeId: '',
                             extra: null
                         }
                     ]
                 });
-                console.log('🔔 [NotificationProvider] Native notification scheduled');
             } catch (e) {
                 console.error('🔔 [NotificationProvider] Failed to schedule native notification:', e);
             }
@@ -691,20 +668,46 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
                 // Create Channel (Required for Android O+)
                 await LocalNotifications.createChannel({
-                    id: 'orders_v2',
-                    name: 'Order Notifications',
+                    id: 'orders_v3',
+                    name: 'Order Notifications V3',
                     description: 'Notifications for new orders and updates',
                     importance: 5, // High importance for heads-up notification
                     visibility: 1, // Public on lock screen
-                    sound: 'notification.mp3', // Make sure this matches file in res/raw if custom
+                    sound: 'notification.mp3',
                     vibration: true,
                 });
-                console.log('🔔 [NotificationProvider] Notification channel created');
+                
+                // BACKWARD COMPATIBILITY: 
+                // The production backend is still sending push notifications to the old 'orders' channel.
+                // We MUST recreate the 'orders' channel here or Android will silently drop the push notifications from production!
+                await LocalNotifications.createChannel({
+                    id: 'orders',
+                    name: 'Order Notifications (Legacy)',
+                    description: 'Legacy channel for production backend',
+                    importance: 5,
+                    visibility: 1,
+                    sound: 'notification.mp3', // Force the custom sound even if production backend says 'default'
+                    vibration: true,
+                });
+                console.log('🔔 [NotificationProvider] Notification channels created');
             } else if ('Notification' in window && Notification.permission === 'default') {
                 Notification.requestPermission();
             }
         };
         setupNotifications();
+
+        // 🎵 AUDIO UNLOCK TRICK FOR ANDROID WEBVIEW 🎵
+        // Android blocks autoplaying audio unless the user has interacted.
+        // We unlock the audio engine on the first tap anywhere on the screen!
+        const unlockAudio = () => {
+            const silent = new Audio();
+            silent.play().catch(() => {});
+            document.removeEventListener('touchstart', unlockAudio);
+            document.removeEventListener('click', unlockAudio);
+            console.log('✅ [NotificationProvider] Web Audio Context unlocked!');
+        };
+        document.addEventListener('touchstart', unlockAudio);
+        document.addEventListener('click', unlockAudio);
 
         const token = localStorage.getItem('jwt');
         if (!token || !user) {
