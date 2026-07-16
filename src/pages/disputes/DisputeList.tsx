@@ -24,6 +24,7 @@ import {
   Avatar,
   Tooltip,
   TablePagination,
+  useMediaQuery,
 } from '@mui/material';
 import {
   Search,
@@ -38,10 +39,13 @@ import {
 import { disputesAPI } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
+import { useActiveTenant } from '../../hooks/useActiveTenant';
 
 const DisputeList: React.FC = () => {
   const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
+  const { getRelativePath } = useActiveTenant();
 
   const [loading, setLoading] = useState(true);
   const [disputes, setDisputes] = useState<any[]>([]);
@@ -96,7 +100,7 @@ const DisputeList: React.FC = () => {
   };
 
   const getReasonLabel = (reason: string) => {
-    return reason.replace(/_/g, ' ').toUpperCase();
+    return reason.replace(/_/g, ' ')?.toUpperCase();
   };
 
   return (
@@ -164,92 +168,131 @@ const DisputeList: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Table */}
-      <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-        {loading ? (
-          <Box sx={{ p: 10, textAlign: 'center' }}>
-            <CircularProgress />
-          </Box>
-        ) : (
-          <>
-            <Table>
-              <TableHead sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 700 }}>Order #</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Reason</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Amount</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Initiated</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }} align="right">Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {disputes.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} align="center" sx={{ py: 10 }}>
-                      <Typography color="text.secondary">No disputes found</Typography>
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  disputes
-                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                    .map((dispute) => (
-                      <TableRow
-                        key={dispute._id}
-                        hover
-                        onClick={() => navigate(`/disputes/${dispute._id}`)}
-                        sx={{ cursor: 'pointer' }}
-                      >
-                        <TableCell>
-                          <Typography variant="subtitle2" fontWeight="700">#{dispute.orderNumber}</Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">{getReasonLabel(dispute.reason)}</Typography>
-                          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', maxWidth: 200, noWrap: true, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {dispute.description}
+      {/* List / Table */}
+      {loading ? (
+        <Paper sx={{ p: 10, textAlign: 'center', borderRadius: 3, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+          <CircularProgress />
+        </Paper>
+      ) : (
+        <>
+          {isMobile ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {disputes.length === 0 ? (
+                <Paper sx={{ p: 4, textAlign: 'center', borderRadius: 3 }}>
+                  <Typography color="text.secondary">No disputes found</Typography>
+                </Paper>
+              ) : (
+                disputes
+                  .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                  .map((dispute) => (
+                    <Card
+                      key={dispute._id}
+                      onClick={() => navigate(getRelativePath(`/disputes/${dispute._id}`))}
+                      sx={{ borderRadius: 3, boxShadow: '0 4px 12px rgba(0,0,0,0.05)', cursor: 'pointer', '&:hover': { bgcolor: alpha(theme.palette.primary.main, 0.02) } }}
+                    >
+                      <CardContent>
+                        <Stack direction="row" justifyContent="space-between" mb={1}>
+                          <Typography variant="subtitle1" fontWeight="800">#{dispute.orderNumber}</Typography>
+                          <Typography variant="subtitle1" fontWeight="800" color="error.main">
+                            ${dispute.disputedAmount.toFixed(2)}
                           </Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2" fontWeight="600">${dispute.disputedAmount.toFixed(2)}</Typography>
-                        </TableCell>
-                        <TableCell>
-                          <Typography variant="body2">{new Date(dispute.createdAt).toLocaleDateString()}</Typography>
-                        </TableCell>
-                        <TableCell>{getStatusChip(dispute.status)}</TableCell>
-                        <TableCell align="right">
-                          <Tooltip title="View Details">
-                            <IconButton
-                              size="small"
-                              color="primary"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/disputes/${dispute._id}`);
-                              }}
-                            >
-                              <Visibility />
-                            </IconButton>
-                          </Tooltip>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                )}
-              </TableBody>
-            </Table>
-            <TablePagination
-              rowsPerPageOptions={[5, 10, 25, 50]}
-              component="div"
-              count={disputes.length}
-              rowsPerPage={rowsPerPage}
-              page={page}
-              onPageChange={(_, newPage) => setPage(newPage)}
-              onRowsPerPageChange={(e) => {
-                setRowsPerPage(parseInt(e.target.value, 10));
-                setPage(0);
-              }}
-            />
-          </>
-        )}
-      </TableContainer>
+                        </Stack>
+                        <Typography variant="body2" color="text.secondary" mb={1.5}>
+                          {getReasonLabel(dispute.reason)}
+                        </Typography>
+                        <Stack direction="row" justifyContent="space-between" alignItems="center">
+                          <Typography variant="caption" color="text.disabled">
+                            {new Date(dispute.createdAt).toLocaleDateString()}
+                          </Typography>
+                          {getStatusChip(dispute.status)}
+                        </Stack>
+                      </CardContent>
+                    </Card>
+                  ))
+              )}
+            </Box>
+          ) : (
+            <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+              <Table>
+                <TableHead sx={{ bgcolor: alpha(theme.palette.primary.main, 0.05) }}>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 700 }}>Order #</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Reason</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Amount</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Initiated</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }} align="right">Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {disputes.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} align="center" sx={{ py: 10 }}>
+                        <Typography color="text.secondary">No disputes found</Typography>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    disputes
+                      .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                      .map((dispute) => (
+                        <TableRow
+                          key={dispute._id}
+                          hover
+                          onClick={() => navigate(getRelativePath(`/disputes/${dispute._id}`))}
+                          sx={{ cursor: 'pointer' }}
+                        >
+                          <TableCell>
+                            <Typography variant="subtitle2" fontWeight="700">#{dispute.orderNumber}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2">{getReasonLabel(dispute.reason)}</Typography>
+                            <Typography variant="caption" color="text.secondary" noWrap sx={{ display: 'block', maxWidth: 200 }}>
+                              {dispute.description}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2" fontWeight="600">${dispute.disputedAmount.toFixed(2)}</Typography>
+                          </TableCell>
+                          <TableCell>
+                            <Typography variant="body2">{new Date(dispute.createdAt).toLocaleDateString()}</Typography>
+                          </TableCell>
+                          <TableCell>{getStatusChip(dispute.status)}</TableCell>
+                          <TableCell align="right">
+                            <Tooltip title="View Details">
+                              <IconButton
+                                size="small"
+                                color="primary"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(getRelativePath(`/disputes/${dispute._id}`));
+                                }}
+                              >
+                                <Visibility />
+                              </IconButton>
+                            </Tooltip>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+
+          <TablePagination
+            rowsPerPageOptions={[5, 10, 25, 50]}
+            component="div"
+            count={disputes.length}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={(_, newPage) => setPage(newPage)}
+            onRowsPerPageChange={(e) => {
+              setRowsPerPage(parseInt(e.target.value, 10));
+              setPage(0);
+            }}
+          />
+        </>
+      )}
     </Box>
   );
 };

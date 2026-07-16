@@ -100,7 +100,7 @@ const CustomerRegisterPage: React.FC = () => {
                 const loginRes = await login({
                     email: formData.email,
                     password: formData.password,
-                    tenantSlug: slug
+                    tenantSlug: slug || undefined
                 });
 
                 if (loginRes.success) {

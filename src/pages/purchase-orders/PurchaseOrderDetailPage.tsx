@@ -141,7 +141,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
                             {po.poNumber}
                         </Typography>
                         <Chip
-                            label={po.status.toUpperCase()}
+                            label={po.status?.toUpperCase()}
                             color={
                                 po.status === 'approved' ? 'info' :
                                     po.status === 'received' ? 'success' :
@@ -215,7 +215,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
                     {/* Items - Mobile Cards */}
                     <Paper sx={{ display: { xs: 'block', md: 'none' }, p: 1.2, mb: 1.5 }}>
                         <Stack spacing={1}>
-                            {po.items.map((item: any, index: number) => (
+                            {(po?.items || []).map((item: any, index: number) => (
                                 <Paper key={index} variant="outlined" sx={{ p: 1.1, borderRadius: 2 }}>
                                     <Typography variant="body2" sx={{ fontSize: bodyFontSize, fontWeight: 700 }}>
                                         {item.description}
@@ -263,7 +263,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
                                 </TableRow>
                             </TableHead>
                             <TableBody>
-                                {po.items.map((item: any, index: number) => (
+                                {(po?.items || []).map((item: any, index: number) => (
                                     <TableRow key={index}>
                                         <TableCell>
                                             <Typography variant="body2">{item.description}</Typography>
@@ -310,15 +310,15 @@ const PurchaseOrderDetailPage: React.FC = () => {
                         <Stack spacing={1}>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                                 <Typography variant="body2" color="textSecondary" sx={{ fontSize: bodyFontSize }}>Status</Typography>
-                                <Chip label={po.paymentStatus.toUpperCase()} size="small" />
+                                <Chip label={po.paymentStatus?.toUpperCase()} size="small" />
                             </Box>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                                 <Typography variant="body2" color="textSecondary" sx={{ fontSize: bodyFontSize }}>Method</Typography>
-                                <Typography variant="body2" sx={{ fontSize: bodyFontSize }}>{po.paymentMethod.replace('_', ' ').toUpperCase()}</Typography>
+                                <Typography variant="body2" sx={{ fontSize: bodyFontSize }}>{po.paymentMethod.replace('_', ' ')?.toUpperCase()}</Typography>
                             </Box>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                                 <Typography variant="body2" color="textSecondary" sx={{ fontSize: bodyFontSize }}>Source</Typography>
-                                <Typography variant="body2" sx={{ fontSize: bodyFontSize }}>{po.paymentSource?.replace('_', ' ').toUpperCase() || '-'}</Typography>
+                                <Typography variant="body2" sx={{ fontSize: bodyFontSize }}>{po.paymentSource?.replace('_', ' ')?.toUpperCase() || '-'}</Typography>
                             </Box>
                         </Stack>
                     </Paper>

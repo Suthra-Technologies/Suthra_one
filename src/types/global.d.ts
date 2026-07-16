@@ -39,3 +39,12 @@ declare module "*.mpeg" {
     const src: string;
     export default src;
 }
+
+// jsvectormap ships no types — declare a minimal surface for the world map usage.
+declare module "jsvectormap" {
+    export default class jsVectorMap {
+        constructor(options: any);
+        destroy(): void;
+    }
+}
+declare module "jsvectormap/dist/maps/world.js";

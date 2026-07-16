@@ -50,6 +50,7 @@ import { isWithinDeliveryRadius, METERS_PER_MILE } from '../../services/googleMa
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { formatSpiceLevelLabel } from '../../utils/spiceLevel';
+import { validateEmail as validateEmailStrict } from '../../utils/validation';
 
 interface CartItem {
     menuItem: string;
@@ -486,7 +487,7 @@ const CateringPage = () => {
     }, 0);
     const totalAmount = subtotal + taxAmount;
 
-    const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    const validateEmail = (email: string) => validateEmailStrict(email);
     const isDelivery = formData.serviceType === 'delivery' || formData.serviceType === 'delivery_service';
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -506,7 +507,7 @@ const CateringPage = () => {
         setFormSubmitted(true);
         if (!formData.customerName.trim()) { toast.error('Full name is required'); return; }
         if (formData.customerPhone.length !== 10) { toast.error('10-digit phone number is required'); return; }
-        if (!formData.customerEmail.trim() || !validateEmail(formData.customerEmail)) { toast.error('Valid email is required'); return; }
+        if (!validateEmail(formData.customerEmail).isValid) { toast.error('Valid email is required'); return; }
         if (!formData.occasion) { toast.error('Occasion is required'); return; }
         if (!formData.occasionDate) { toast.error('Occasion date is required'); return; }
         if (!formData.requiredDate || new Date(formData.requiredDate) < new Date()) { toast.error('Valid date and time is required'); return; }
@@ -838,7 +839,7 @@ const CateringPage = () => {
                                         '& > *': { width: '100%' },
                                     }}
                                 >
-                                    <CustomInput type="name" label="Full Name" fullWidth required value={formData.customerName} onChange={val => setFormData({ ...formData, customerName: val })} InputLabelProps={{ sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }} />
+                                    <CustomInput type="name" label="Full Name" fullWidth required maxLength={30} value={formData.customerName} onChange={val => setFormData({ ...formData, customerName: val })} InputLabelProps={{ sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } } }} />
                                     <TextField label="Phone Number" fullWidth required value={formData.customerPhone} onChange={e => {
                                         const numericValue = e.target.value.replace(/\D/g, '').slice(0, 10);
                                         setFormData({ ...formData, customerPhone: numericValue });
@@ -1163,7 +1164,7 @@ const CateringPage = () => {
                                     {(trayDialogItem?.spiceLevels?.length > 0 ? trayDialogItem.spiceLevels : SPICE_LEVELS.map(l => l.id)).map((lvl: string) => {
                                         const isSelected = selectedSpice === lvl;
                                         const getSpiceColor = (l: string) => {
-                                            const norm = l.toLowerCase();
+                                            const norm = l?.toLowerCase();
                                             if (norm.includes('mild')) return { main: '#2e7d32' };
                                             if (norm.includes('medium') || norm.includes('moderate')) return { main: '#ed6c02' };
                                             if (norm.includes('hot') || norm.includes('spicy')) return { main: '#d32f2f' };

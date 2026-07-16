@@ -85,7 +85,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
     trays
 }) => {
     const theme = useTheme();
-    const [templates, setTemplates] = useState<ModifierGroupTemplate[]>([]);
+    const [templates, setTemplates] = useState<any[]>([]);
     const [inventoryItems, setInventoryItems] = useState<any[]>([]);
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const navigate = useNavigate();
@@ -249,6 +249,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                     linkedGroups: [],
                     linkedInventoryItem: '',
                     inventoryConsumptionQty: 1,
+                    inventoryTrackingMode: 'recipe' as 'recipe' | 'direct',
                 });
             }
             setMenuItemTouched({
@@ -650,7 +651,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                             return (
                                                 <Box
                                                     key={opt.value}
-                                                    onClick={() => setMenuItemForm({ ...menuItemForm, inventoryTrackingMode: opt.value })}
+                                                    onClick={() => setMenuItemForm({ ...menuItemForm, inventoryTrackingMode: opt.value as 'recipe' | 'direct' })}
                                                     sx={{
                                                         flex: 1,
                                                         cursor: 'pointer',
@@ -918,7 +919,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                                             {(selected as string[]).map((value) => (
                                                                 <Chip
                                                                     key={value}
-                                                                    label={value.charAt(0).toUpperCase() + value.slice(1)}
+                                                                    label={value.charAt(0)?.toUpperCase() + value.slice(1)}
                                                                     size="small"
                                                                     sx={{ borderRadius: 1 }}
                                                                 />
@@ -928,7 +929,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                                 >
                                                     {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
                                                         <MenuItem key={day} value={day}>
-                                                            {day.charAt(0).toUpperCase() + day.slice(1)}
+                                                            {day.charAt(0)?.toUpperCase() + day.slice(1)}
                                                         </MenuItem>
                                                     ))}
                                                 </Select>
@@ -1098,7 +1099,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                             onClick={() => {
                                                 const newGroups = [...menuItemForm.modifierGroups, {
                                                     name: '',
-                                                    selectionType: 'single',
+                                                    selectionType: 'single' as 'single' | 'multiple',
                                                     required: false,
                                                     options: []
                                                 }];

@@ -43,7 +43,7 @@ const StoresLogPage: React.FC = () => {
     useEffect(() => { fetchStores(); }, [tenantId]);
 
     const filtered = stores.filter(s =>
-        !search || s.name?.toLowerCase().includes(search.toLowerCase()) || s.slug?.toLowerCase().includes(search.toLowerCase())
+        !search || s.name?.toLowerCase().includes(search?.toLowerCase()) || s.slug?.toLowerCase().includes(search?.toLowerCase())
     );
     const paginated = filtered.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 

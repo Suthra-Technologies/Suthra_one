@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Card, IconButton, Divider,
   TextField, Button, Alert, Chip, CircularProgress, Stack, Tooltip,
-  Switch, FormControlLabel,
+  Switch, FormControlLabel, InputAdornment
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
@@ -20,6 +20,8 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import LinkIcon from '@mui/icons-material/Link';
 import SaveIcon from '@mui/icons-material/Save';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import { superAPI } from '../../services/api';
 
 const statusColor = (s?: string) => {
@@ -202,6 +204,8 @@ const TenantDetailsPage: React.FC = () => {
   const [deliverySaving, setDeliverySaving] = useState(false);
   const [deliveryError, setDeliveryError] = useState('');
   const [deliveryInfo, setDeliveryInfo] = useState('');
+  const [showUberSecret, setShowUberSecret] = useState(false);
+  const [showDoorSecret, setShowDoorSecret] = useState(false);
 
   useEffect(() => {
     if (!tenantId) return;
@@ -218,8 +222,11 @@ const TenantDetailsPage: React.FC = () => {
       .finally(() => setDeliveryLoading(false));
   }, [tenantId]);
 
-  // Platform processing fee (superadmin-managed) state
+  // Platform processing fee (superadmin-managed) state.
+  // Slab model: `processingFee` ($) charged per `processingFeeOrderValue` ($)
+  // of order subtotal, rounded up — e.g. $1 per $50 → $150 order pays $3.
   const [processingFee, setProcessingFee] = useState<string>('');
+  const [feeOrderValue, setFeeOrderValue] = useState<string>('');
   const [feeLoading, setFeeLoading] = useState(false);
   const [feeSaving, setFeeSaving] = useState(false);
   const [feeError, setFeeError] = useState('');
@@ -229,7 +236,11 @@ const TenantDetailsPage: React.FC = () => {
     if (!tenantId) return;
     setFeeLoading(true);
     superAPI.getTenantProcessingFee(tenantId)
-      .then(res => setProcessingFee(String(res.data?.processingFee ?? '')))
+      .then(res => {
+        setProcessingFee(String(res.data?.processingFee ?? ''));
+        const slab = Number(res.data?.processingFeeOrderValue ?? 0);
+        setFeeOrderValue(slab > 0 ? String(slab) : '');
+      })
       .catch(() => {})
       .finally(() => setFeeLoading(false));
   }, [tenantId]);
@@ -238,7 +249,13 @@ const TenantDetailsPage: React.FC = () => {
     if (!tenantId) return;
     const fee = parseFloat(processingFee);
     if (isNaN(fee) || fee < 0) {
-      setFeeError('Enter a valid non-negative number');
+      setFeeError('Enter a valid non-negative fee');
+      setFeeInfo('');
+      return;
+    }
+    const slab = feeOrderValue.trim() === '' ? 0 : parseFloat(feeOrderValue);
+    if (isNaN(slab) || slab < 0) {
+      setFeeError('Enter a valid non-negative order value per slab');
       setFeeInfo('');
       return;
     }
@@ -246,7 +263,7 @@ const TenantDetailsPage: React.FC = () => {
     setFeeError('');
     setFeeInfo('');
     try {
-      await superAPI.updateTenantProcessingFee(tenantId, fee);
+      await superAPI.updateTenantProcessingFee(tenantId, fee, slab);
       setFeeInfo('Processing fee updated.');
     } catch (err: any) {
       setFeeError(err?.response?.data?.message || 'Failed to update processing fee');
@@ -324,18 +341,31 @@ const TenantDetailsPage: React.FC = () => {
           {feeLoading && <CircularProgress size={18} />}
         </Box>
         <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
-          Processing fee charged on this store's orders. Only superadmins can change it.
-          The store admin can see this value in their settings but cannot edit it.
+          Processing fee charged on this store's orders, per slab of order value —
+          e.g. fee $1 per $50: orders up to $50 pay $1, up to $100 pay $2, up to $150 pay $3.
+          Leave "Per Order Value" empty to charge the fee as a percent instead.
+          Only superadmins can change it.
         </Typography>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems={{ sm: 'flex-start' }}>
           <TextField
-            label="Processing Fee (%)"
+            label="Processing Fee ($ per slab)"
             type="number"
             size="small"
             value={processingFee}
             onChange={(e) => { setProcessingFee(e.target.value); setFeeError(''); setFeeInfo(''); }}
             disabled={feeLoading}
             inputProps={{ min: 0, step: 0.01 }}
+            sx={{ minWidth: 220 }}
+          />
+          <TextField
+            label="Per Order Value ($)"
+            type="number"
+            size="small"
+            value={feeOrderValue}
+            onChange={(e) => { setFeeOrderValue(e.target.value); setFeeError(''); setFeeInfo(''); }}
+            disabled={feeLoading}
+            inputProps={{ min: 0, step: 1 }}
+            helperText="e.g. 50 — fee is charged per $50 of order value"
             sx={{ minWidth: 220 }}
           />
           <Button
@@ -501,7 +531,7 @@ const TenantDetailsPage: React.FC = () => {
             </Stack>
             <Stack spacing={2}>
               <TextField size="small" fullWidth label="Client ID" value={deliverySettings.ubereats?.clientId || ''} onChange={e => setUber('clientId', e.target.value)} />
-              <TextField size="small" fullWidth type="password" label="Client Secret" value={deliverySettings.ubereats?.clientSecret || ''} onChange={e => setUber('clientSecret', e.target.value)} />
+              <TextField size="small" fullWidth type={showUberSecret ? 'text' : 'password'} label="Client Secret" value={deliverySettings.ubereats?.clientSecret || ''} onChange={e => setUber('clientSecret', e.target.value)} InputProps={{ endAdornment: <InputAdornment position="end"><IconButton onClick={() => setShowUberSecret(!showUberSecret)} size="small">{showUberSecret ? <Visibility fontSize="small" /> : <VisibilityOff fontSize="small" />}</IconButton></InputAdornment> }} />
               <TextField size="small" fullWidth label="Customer ID" value={deliverySettings.ubereats?.customerId || ''} onChange={e => setUber('customerId', e.target.value)} />
               <TextField size="small" fullWidth label="Store ID" value={deliverySettings.ubereats?.storeId || ''} onChange={e => setUber('storeId', e.target.value)} />
               <TextField size="small" fullWidth type="password" label="Webhook Signing Secret" value={deliverySettings.ubereats?.webhookSecret || ''} onChange={e => setUber('webhookSecret', e.target.value)} />
@@ -524,7 +554,7 @@ const TenantDetailsPage: React.FC = () => {
             <Stack spacing={2}>
               <TextField size="small" fullWidth label="Developer ID" value={deliverySettings.doordash?.developerId || ''} onChange={e => setDoor('developerId', e.target.value)} />
               <TextField size="small" fullWidth label="Key ID" value={deliverySettings.doordash?.keyId || ''} onChange={e => setDoor('keyId', e.target.value)} />
-              <TextField size="small" fullWidth type="password" label="Signing Secret" value={deliverySettings.doordash?.signingSecret || ''} onChange={e => setDoor('signingSecret', e.target.value)} />
+              <TextField size="small" fullWidth type={showDoorSecret ? 'text' : 'password'} label="Signing Secret" value={deliverySettings.doordash?.signingSecret || ''} onChange={e => setDoor('signingSecret', e.target.value)} InputProps={{ endAdornment: <InputAdornment position="end"><IconButton onClick={() => setShowDoorSecret(!showDoorSecret)} size="small">{showDoorSecret ? <Visibility fontSize="small" /> : <VisibilityOff fontSize="small" />}</IconButton></InputAdornment> }} />
               <FormControlLabel
                 control={<Switch size="small" checked={!!deliverySettings.doordash?.isSandbox} onChange={e => setDoor('isSandbox', e.target.checked)} />}
                 label="Sandbox Mode"

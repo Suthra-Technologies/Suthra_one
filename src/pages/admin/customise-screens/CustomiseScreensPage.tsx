@@ -251,7 +251,7 @@ function TabPanel(props: TabPanelProps) {
 
 // Icon Mapping for Services
 const getServiceIcon = (iconName: string) => {
-  const iconProps = { fontSize: 'small', sx: { fontSize: 18 } };
+  const iconProps = { fontSize: 'small' as const, sx: { fontSize: 18 } };
   switch (iconName) {
     case 'CalendarRange': return <CalendarMonth {...iconProps} />;
     case 'PartyPopper': return <Celebration {...iconProps} />;
@@ -579,7 +579,7 @@ const CustomiseScreensPage: React.FC = () => {
         <TabPanel value={tabValue} index={0}>
           <Box sx={{ py: { xs: 2, md: 3 }, px: { xs: 0, md: 3 } }}>
             <Stack spacing={{ xs: 2.5, md: 4 }}>
-              {sections.filter(s => s.type !== 'cards').map((section, idx) => (
+              {sections.filter(s => (s.type as string) !== 'cards').map((section, idx) => (
                 <Card key={section.id} elevation={0} sx={{ 
                   borderRadius: { xs: 3.5, md: 4 }, 
                   overflow: 'visible',

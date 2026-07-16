@@ -257,9 +257,9 @@ const MaterialProvidersPage: React.FC = () => {
 
     const filtered = providers.filter(p =>
         !search ||
-        p.name.toLowerCase().includes(search.toLowerCase()) ||
-        p.contactPerson?.toLowerCase().includes(search.toLowerCase()) ||
-        p.categories?.some(c => c.toLowerCase().includes(search.toLowerCase()))
+        p.name?.toLowerCase().includes(search?.toLowerCase()) ||
+        p.contactPerson?.toLowerCase().includes(search?.toLowerCase()) ||
+        p.categories?.some(c => c?.toLowerCase().includes(search?.toLowerCase()))
     );
 
     return (
@@ -325,7 +325,7 @@ const MaterialProvidersPage: React.FC = () => {
                                             '& img': { objectFit: 'contain' },
                                         }}
                                     >
-                                        {provider.name.charAt(0).toUpperCase()}
+                                        {provider.name.charAt(0)?.toUpperCase()}
                                     </Avatar>
                                     <Box sx={{ flexGrow: 1, minWidth: 0 }}>
                                         <Typography fontWeight="bold" noWrap>{provider.name}</Typography>
@@ -352,9 +352,9 @@ const MaterialProvidersPage: React.FC = () => {
                                     </Tooltip>
                                 </Box>
 
-                                {provider.categories && provider.categories.length > 0 && (
+                                {provider.categories && (provider?.categories || []).length > 0 && (
                                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mb: 1.5 }}>
-                                        {provider.categories.map(cat => (
+                                        {(provider?.categories || []).map(cat => (
                                             <Chip key={cat} label={cat} size="small" variant="outlined" sx={{ fontSize: '0.7rem', height: 20 }} />
                                         ))}
                                     </Box>

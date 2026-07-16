@@ -126,7 +126,7 @@ const InvoiceDetailPage = () => {
                             #{invoice.invoiceNumber}
                         </Typography>
                         <Chip
-                            label={invoice.status.toUpperCase()}
+                            label={invoice.status?.toUpperCase()}
                             color={invoice.status === 'paid' ? 'success' : 'warning'}
                             sx={{ mt: 1, fontWeight: 'bold', display: 'flex', mx: { xs: 'auto', sm: 0 }, width: 'fit-content' }}
                         />
@@ -208,7 +208,7 @@ const InvoiceDetailPage = () => {
 
                 {/* Mobile Items */}
                 <Paper sx={{ display: { xs: 'block', sm: 'none' }, mt: 2, p: 1.1 }}>
-                    {invoice.items.map((item: any, index: number) => (
+                    {(invoice?.items || []).map((item: any, index: number) => (
                         <Paper key={index} variant="outlined" sx={{ p: 1.1, borderRadius: 2, mb: 1 }}>
                             <Typography sx={{ fontSize: bodyFontSize, fontWeight: 700 }}>{item.description}</Typography>
                             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
@@ -233,7 +233,7 @@ const InvoiceDetailPage = () => {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {invoice.items.map((item: any, index: number) => (
+                            {(invoice?.items || []).map((item: any, index: number) => (
                                 <TableRow key={index}>
                                     <TableCell>{item.description}</TableCell>
                                     <TableCell align="right">{item.quantity}</TableCell>

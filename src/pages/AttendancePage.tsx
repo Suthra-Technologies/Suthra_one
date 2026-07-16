@@ -55,9 +55,18 @@ import { toast } from 'react-hot-toast';
 import MapComponent from '../components/MapComponent';
 import { useSettings } from '../context/SettingsContext';
 import { attendanceAPI, usersAPI } from '../services/api';
+import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { enUS } from 'date-fns/locale';
 
 const ITEMS_PER_PAGE = 10;
 
+const formatHoursMinutes = (totalHours: number | undefined | null) => {
+    if (!totalHours && totalHours !== 0) return '--';
+    const h = Math.floor(totalHours);
+    const m = Math.round((totalHours - h) * 60);
+    return `${h}h ${m}m`;
+};
 const AttendancePage: React.FC = () => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -83,9 +92,16 @@ const AttendancePage: React.FC = () => {
         activeShifts: 0
     });
 
+    const today = new Date();
+    const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    
+    const formatDateLocal = (d: Date) => {
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
     const [filters, setFilters] = useState({
-        startDate: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
-        endDate: new Date().toISOString().split('T')[0],
+        startDate: formatDateLocal(firstDayOfMonth),
+        endDate: formatDateLocal(today),
         search: ''
     });
 
@@ -128,8 +144,8 @@ const AttendancePage: React.FC = () => {
             if (!isPaginated) {
                 data = data.filter((row: any) => {
                     const roleMatches = activeRoleFilter === 'all' || row.user?.roles?.includes(activeRoleFilter);
-                    const name = `${row.user?.firstName || ''} ${row.user?.lastName || ''}`.toLowerCase();
-                    const searchMatches = !filters.search || name.includes(filters.search.toLowerCase());
+                    const name = `${row.user?.firstName || ''} ${row.user?.lastName || ''}`?.toLowerCase();
+                    const searchMatches = !filters.search || name.includes(filters.search?.toLowerCase());
                     return roleMatches && searchMatches;
                 });
             }
@@ -216,7 +232,12 @@ const AttendancePage: React.FC = () => {
 
         try {
             setSubmitting(true);
-            await attendanceAPI.createManual(manualForm);
+            const payload = {
+                ...manualForm,
+                clockInTime: manualForm.clockInTime ? new Date(manualForm.clockInTime).toISOString() : '',
+                clockOutTime: manualForm.clockOutTime ? new Date(manualForm.clockOutTime).toISOString() : ''
+            };
+            await attendanceAPI.createManual(payload);
             toast.success('Attendance record added successfully');
             setManualOpen(false);
             setFilters(prev => ({ ...prev, search: '' }));
@@ -276,8 +297,8 @@ const AttendancePage: React.FC = () => {
         try {
             setEditSubmitting(true);
             await attendanceAPI.update(editForm.id, {
-                clockInTime: editForm.clockInTime,
-                clockOutTime: editForm.clockOutTime || null, // Empty string -> null for backend
+                clockInTime: editForm.clockInTime ? new Date(editForm.clockInTime).toISOString() : '',
+                clockOutTime: editForm.clockOutTime ? new Date(editForm.clockOutTime).toISOString() : null, // Empty string -> null for backend
                 note: editForm.note
             });
             toast.success('Attendance record updated successfully');
@@ -295,8 +316,9 @@ const AttendancePage: React.FC = () => {
         setDetailsOpen(true);
     };
 
-    const getStatusChip = (status: string) => {
-        if (status === 'active') {
+    const getStatusChip = (row: any) => {
+        const isFutureClockOut = row.clockOutTime && new Date(row.clockOutTime).getTime() > Date.now();
+        if (row.status?.toLowerCase() === 'active' || isFutureClockOut) {
             return (
                 <Chip
                     label="LIVE"
@@ -346,28 +368,28 @@ const AttendancePage: React.FC = () => {
                     { label: 'Cumulative Hours', value: `${backendStats.totalHours.toFixed(1)}h`, desc: 'Period productivity', icon: <TimeIcon />, color: theme.palette.warning.main },
                     { label: 'Payroll Weight', value: formatCurrency(backendStats.totalEarnings), desc: 'Est. period expenditure', icon: <PayrollIcon />, color: theme.palette.error.main }
                 ].map((stat, i) => (
-                    <Grid item xs={12} sm={6} md={3} key={i}>
-                        <Paper sx={{ p: { xs: 1, md: 3 }, borderRadius: 0, bgcolor: alpha(stat.color, 0.04), border: '1px solid', borderColor: alpha(stat.color, 0.1), transition: '0.3s', '&:hover': { transform: 'translateY(-4px)', boxShadow: `0 10px 30px ${alpha(stat.color, 0.1)}` } }}>
-                            <Stack direction="row" spacing={{ xs: 1.2, md: 2.5 }} alignItems="center">
-                                <Box sx={{ p: { xs: 1.2, md: 2 }, borderRadius: 4, bgcolor: stat.color, color: 'white', display: 'flex', boxShadow: `0 5px 15px ${alpha(stat.color, 0.4)}` }}>
+                    <Grid item xs={6} sm={6} md={3} key={i}>
+                        <Paper sx={{ p: { xs: 0.75, md: 3 }, borderRadius: 0, bgcolor: alpha(stat.color, 0.04), border: '1px solid', borderColor: alpha(stat.color, 0.1), transition: '0.3s', '&:hover': { transform: 'translateY(-4px)', boxShadow: `0 10px 30px ${alpha(stat.color, 0.1)}` }, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={{ xs: 0.5, md: 2.5 }} alignItems={{ xs: 'flex-start', sm: 'center' }}>
+                                <Box sx={{ p: { xs: 0.5, md: 2 }, borderRadius: 3, bgcolor: stat.color, color: 'white', display: 'flex', boxShadow: `0 5px 15px ${alpha(stat.color, 0.4)}`, '& svg': { fontSize: { xs: '1.1rem', md: '1.5rem' } } }}>
                                     {stat.icon}
                                 </Box>
                                 <Box sx={{ minWidth: 0, flexGrow: 1 }}>
                                     <Typography
                                         fontWeight="900"
                                         sx={{
-                                            fontSize: { xs: '0.96rem', md: '1.3rem', lg: '1.25rem' },
+                                            fontSize: { xs: '0.85rem', md: '1.3rem', lg: '1.25rem' },
                                             lineHeight: 1.1,
-                                            mb: { xs: 0.2, md: 0.5 },
+                                            mb: { xs: 0.1, md: 0.5 },
                                             wordBreak: 'break-word'
                                         }}
                                     >
                                         {stat.value}
                                     </Typography>
-                                    <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', fontSize: bodyFontSize }}>{stat.label}</Typography>
+                                    <Typography variant="caption" color="text.secondary" fontWeight="bold" sx={{ textTransform: 'uppercase', letterSpacing: '0.2px', display: 'block', fontSize: { xs: '0.6rem', md: bodyFontSize }, lineHeight: 1.1 }}>{stat.label}</Typography>
                                 </Box>
                             </Stack>
-                            <Typography variant="caption" color="text.secondary" sx={{ mt: { xs: 0.55, md: 2 }, display: 'block', fontStyle: 'italic', fontSize: bodyFontSize }}>
+                            <Typography variant="caption" color="text.secondary" sx={{ mt: { xs: 0.4, md: 2 }, display: 'block', fontStyle: 'italic', fontSize: { xs: '0.55rem', md: bodyFontSize }, lineHeight: 1.1 }}>
                                 {stat.desc}
                             </Typography>
                         </Paper>
@@ -390,30 +412,68 @@ const AttendancePage: React.FC = () => {
                     </Grid>
                     <Grid item xs={12} md={5}>
                         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-                            <TextField
-                                type="date"
-                                label="From"
-                                value={filters.startDate}
-                                onChange={(e) => {
-                                    setFilters({ ...filters, startDate: e.target.value });
-                                    setPage(1);
-                                }}
-                                InputLabelProps={{ shrink: true }}
-                                fullWidth
-                                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
-                            />
-                            <TextField
-                                type="date"
-                                label="To"
-                                value={filters.endDate}
-                                onChange={(e) => {
-                                    setFilters({ ...filters, endDate: e.target.value });
-                                    setPage(1);
-                                }}
-                                InputLabelProps={{ shrink: true }}
-                                fullWidth
-                                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
-                            />
+                            <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={enUS}>
+                                {(() => {
+                                    const maxDateToday = new Date();
+                                    maxDateToday.setHours(23, 59, 59, 999);
+                                    return (
+                                        <>
+                                            <DatePicker
+                                                label="From"
+                                                value={filters.startDate ? new Date(filters.startDate) : null}
+                                                maxDate={maxDateToday}
+                                                onChange={(val: any) => {
+                                                    if (val === null) {
+                                                        setFilters({ ...filters, startDate: '' });
+                                                        setPage(1);
+                                                    } else if (!isNaN(val.getTime())) {
+                                                        const dateString = `${val.getFullYear()}-${String(val.getMonth() + 1).padStart(2, '0')}-${String(val.getDate()).padStart(2, '0')}`;
+                                                        
+                                                        // If the new From date is after the current To date, update the To date to match
+                                                        let newEndDate = filters.endDate;
+                                                        if (filters.endDate && new Date(dateString) > new Date(filters.endDate)) {
+                                                            newEndDate = dateString;
+                                                        }
+                                                        
+                                                        setFilters({ ...filters, startDate: dateString, endDate: newEndDate });
+                                                        setPage(1);
+                                                    }
+                                                }}
+                                                slotProps={{
+                                                    textField: {
+                                                        fullWidth: true,
+                                                        sx: { '& .MuiOutlinedInput-root': { borderRadius: 3 } }
+                                                    },
+                                                    field: { clearable: true }
+                                                }}
+                                            />
+                                            <DatePicker
+                                                label="To"
+                                                value={filters.endDate ? new Date(filters.endDate) : null}
+                                                minDate={filters.startDate ? new Date(filters.startDate) : undefined}
+                                                maxDate={maxDateToday}
+                                                onChange={(val: any) => {
+                                                    if (val === null) {
+                                                        setFilters({ ...filters, endDate: '' });
+                                                        setPage(1);
+                                                    } else if (!isNaN(val.getTime())) {
+                                                        const dateString = `${val.getFullYear()}-${String(val.getMonth() + 1).padStart(2, '0')}-${String(val.getDate()).padStart(2, '0')}`;
+                                                        setFilters({ ...filters, endDate: dateString });
+                                                        setPage(1);
+                                                    }
+                                                }}
+                                                slotProps={{
+                                                    textField: {
+                                                        fullWidth: true,
+                                                        sx: { '& .MuiOutlinedInput-root': { borderRadius: 3 } }
+                                                    },
+                                                    field: { clearable: true }
+                                                }}
+                                            />
+                                        </>
+                                    );
+                                })()}
+                            </LocalizationProvider>
                         </Stack>
                     </Grid>
                     <Grid item xs={12} md={3}>
@@ -449,7 +509,7 @@ const AttendancePage: React.FC = () => {
                     {roles.map(role => (
                         <Chip
                             key={role}
-                            label={role.replace('_', ' ').toUpperCase()}
+                            label={role.replace('_', ' ')?.toUpperCase()}
                             onClick={() => {
                                 setActiveRoleFilter(role);
                                 setPage(1);
@@ -610,11 +670,13 @@ const AttendancePage: React.FC = () => {
                                                         </Box>
                                                     </Stack>
                                                 </TableCell>
-                                                <TableCell>{getStatusChip(row.status)}</TableCell>
+                                                <TableCell>{getStatusChip(row)}</TableCell>
                                                 <TableCell>
                                                     <Typography variant="body2" fontWeight="500">IN: {new Date(row.clockInTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Typography>
-                                                    {row.clockOutTime ? (
+                                                    {row.clockOutTime && new Date(row.clockOutTime).getTime() <= Date.now() ? (
                                                         <Typography variant="caption" color="text.secondary">OUT: {new Date(row.clockOutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Typography>
+                                                    ) : row.clockOutTime ? (
+                                                        <Typography variant="caption" color="success.main" sx={{ fontWeight: 'bold' }}>ACTIVE (Ends {new Date(row.clockOutTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})</Typography>
                                                     ) : (
                                                         <Typography variant="caption" color="success.main" sx={{ fontWeight: 'bold' }}>ACTIVE NOW</Typography>
                                                     )}
@@ -638,7 +700,7 @@ const AttendancePage: React.FC = () => {
                                                     </Stack>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Typography variant="subtitle2" fontWeight="900">{row.totalHours ? `${row.totalHours}h` : '--'}</Typography>
+                                                    <Typography variant="subtitle2" fontWeight="900">{formatHoursMinutes(row.totalHours)}</Typography>
                                                 </TableCell>
                                                 <TableCell>
                                                     <Typography variant="subtitle1" fontWeight="900" color="primary">
@@ -1005,7 +1067,7 @@ const AttendancePage: React.FC = () => {
                                             <Typography variant="overline" color="text.secondary" fontWeight="900">Connectivity & Identity</Typography>
                                             <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
                                                 <Chip icon={<IpIcon fontSize="small" />} label={`IP: ${selectedShift.clockInIp}`} size="small" sx={{ borderRadius: 2 }} />
-                                                <Chip label={`Staff ID: ${selectedShift.user?._id?.slice(-6).toUpperCase()}`} size="small" variant="outlined" sx={{ borderRadius: 2 }} />
+                                                <Chip label={`Staff ID: ${selectedShift.user?._id?.slice(-6)?.toUpperCase()}`} size="small" variant="outlined" sx={{ borderRadius: 2 }} />
                                             </Stack>
                                         </Box>
 

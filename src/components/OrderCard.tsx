@@ -68,6 +68,7 @@ import {
     isOrderActive,
 } from '../utils/orderWorkflows';
 import { formatSpiceLevelLabel } from '../utils/spiceLevel';
+import { formatPhoneDisplay } from '../utils/validation';
 import AddItemsDialog from './AddItemsDialog';
 import DeliveryTracker from './DeliveryTracker';
 import PaymentCollectionDialog from './PaymentCollectionDialog';
@@ -115,6 +116,8 @@ interface OrderCardProps {
     canManage?: boolean;
     onRefresh?: () => void;
     onFeedback?: (orderId: string) => void;
+    onAccept?: () => void;
+    onReject?: () => void;
 }
 
 const OrderCard: React.FC<OrderCardProps> = ({
@@ -126,6 +129,8 @@ const OrderCard: React.FC<OrderCardProps> = ({
     canManage = true,
     onRefresh,
     onFeedback,
+    onAccept,
+    onReject
 }) => {
     const { formatCurrency } = useSettings();
     const [addItemsDialogOpen, setAddItemsDialogOpen] = useState(false);
@@ -163,6 +168,10 @@ const OrderCard: React.FC<OrderCardProps> = ({
     const handleNextStatus = async (e: React.MouseEvent) => {
         e.stopPropagation();
         if (isProcessing) return;
+        if (isFullyDisputed) {
+            toast.error('Order is fully under dispute — resolve the dispute to continue');
+            return;
+        }
 
         const availableNextStatuses = getAvailableStatuses(order.status, order.orderType);
         const nextStatus = availableNextStatuses.find((s: string) => s !== 'cancelled');
@@ -184,6 +193,16 @@ const OrderCard: React.FC<OrderCardProps> = ({
 
     const nextAvailableStatuses = getAvailableStatuses(order.status, order.orderType);
     const nextStatus = nextAvailableStatuses.find((s: string) => s !== 'cancelled');
+
+    // Whole order under dispute: either a whole-order dispute (isDisputed with no
+    // item-level marks) or every active item fully disputed. Blocks progression.
+    const isFullyDisputed = (() => {
+        if (!order.isDisputed) return false;
+        const activeItems = (order.items || []).filter((i: any) => i.preparationStatus !== 'cancelled');
+        const hasItemMarks = activeItems.some((i: any) => Number(i.disputedQuantity || 0) > 0);
+        return !hasItemMarks
+            || (activeItems.length > 0 && activeItems.every((i: any) => Number(i.disputedQuantity || 0) >= Number(i.quantity || 0)));
+    })();
     const handlePaymentSuccess = () => {
         setPaymentDialogOpen(false);
         if (onRefresh) onRefresh();
@@ -327,7 +346,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
         >
             <CardContent sx={{ p: { xs: 1.5, sm: 2 }, '&:last-child': { pb: { xs: 1.5, sm: 2 } }, flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
                 {/* Header Section */}
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2, flexWrap: 'wrap', gap: 1 }}>
                     <Box>
                         <Typography
                             variant="h5"
@@ -415,7 +434,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                         fontSize: '0.8rem',
                                         '@media print': { display: 'none' }
                                     }}>
-                                        Ph: {order.customer.phone}
+                                        Ph: {formatPhoneDisplay(order.customer.phone)}
                                     </Typography>
                                 )}
                             </Box>
@@ -542,6 +561,15 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                     </Button>
                                 </Box>
                             )}
+                            {order.handoffQr && (
+                                <Box sx={{ mt: 1, p: 1, bgcolor: 'background.paper', borderRadius: 1, border: '1px dashed #ccc', display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <QRCodeSVG value={order.handoffQr} size={48} />
+                                    <Box>
+                                        <Typography variant="caption" sx={{ fontWeight: 'bold', display: 'block' }}>Pickup Code</Typography>
+                                        <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 'bold' }}>{order.handoffQr}</Typography>
+                                    </Box>
+                                </Box>
+                            )}
                         </Stack>
                     </Box>
                 )}
@@ -599,6 +627,22 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                                     <Typography variant="body2" sx={{ fontWeight: 500 }}>
                                                         {item.quantity}x {item.name || item.menuItem?.name || 'Unknown Item'}
                                                     </Typography>
+                                                    {Number(item.disputedQuantity || 0) > 0 && (
+                                                        <Tooltip title={`${item.disputedQuantity} of ${item.quantity} under an active dispute`} arrow>
+                                                            <Chip
+                                                                label={Number(item.disputedQuantity) >= Number(item.quantity) ? 'DISPUTED' : `${item.disputedQuantity} DISPUTED`}
+                                                                size="small"
+                                                                sx={{
+                                                                    height: 18,
+                                                                    fontSize: '0.62rem',
+                                                                    fontWeight: 700,
+                                                                    bgcolor: alpha(theme.palette.error.main, 0.1),
+                                                                    color: theme.palette.error.main,
+                                                                    border: `1px solid ${alpha(theme.palette.error.main, 0.3)}`,
+                                                                }}
+                                                            />
+                                                        </Tooltip>
+                                                    )}
                                                     {item.preparationStatus === 'ready' && (
                                                         <Tooltip title="Ready to Serve" arrow>
                                                             <CheckIcon
@@ -638,9 +682,9 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                                     />
                                                 ) : null}
 
-                                                {item.modifiers && item.modifiers.length > 0 && (
+                                                {item.modifiers && (item?.modifiers || []).length > 0 && (
                                                     <Typography variant="caption" display="block" color="text.secondary" sx={{ ml: 2 }}>
-                                                        + {item.modifiers.map((m: any) => m.name).join(', ')}
+                                                        + {(item?.modifiers || []).map((m: any) => m.name).join(', ')}
                                                     </Typography>
                                                 )}
                                             </Box>
@@ -844,6 +888,19 @@ const OrderCard: React.FC<OrderCardProps> = ({
                         </Typography>
                     </Box>
                     <Stack direction="row" spacing={0.5} alignItems="center">
+                        {order.isDisputed && (
+                            <Chip
+                                label="DISPUTED"
+                                size="small"
+                                sx={{
+                                    height: 20,
+                                    fontSize: '0.7rem',
+                                    bgcolor: alpha(theme.palette.error.main, 0.1),
+                                    color: theme.palette.error.main,
+                                    fontWeight: 'bold',
+                                }}
+                            />
+                        )}
                         <Chip
                             label={order.paymentStatus === 'pending' ? 'PENDING' : getPaymentMethodLabel(order.payments && order.payments.length > 0 ? order.payments.map((p: any) => p.method) : order.paymentMethod)}
                             size="small"
@@ -888,13 +945,13 @@ const OrderCard: React.FC<OrderCardProps> = ({
             <CardActions sx={{ p: 1, pt: 0, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', bgcolor: alpha(theme.palette.background.default, 0.5), gap: 0.5 }}>
                 <Stack direction="row" spacing={0.5}>
                     <Tooltip title="View Details">
-                        <IconButton size="small" color="primary" onClick={(e) => { e.stopPropagation(); onView(order); }} sx={{ padding: '4px' }}>
+                        <IconButton size="small" color="primary" disabled={order.status === 'pending'} onClick={(e) => { e.stopPropagation(); onView(order); }} sx={{ padding: '4px' }}>
                             <ViewIcon />
                         </IconButton>
                     </Tooltip>
 
                     <Tooltip title="Print Bill">
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); onPrint(order); }} sx={{ padding: '4px' }}>
+                        <IconButton size="small" disabled={order.status === 'pending'} onClick={(e) => { e.stopPropagation(); onPrint(order); }} sx={{ padding: '4px' }}>
                             <ReceiptIcon />
                         </IconButton>
                     </Tooltip>
@@ -904,6 +961,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                             <IconButton
                                 size="small"
                                 color="error"
+                                disabled={order.status === 'pending'}
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     setCancelOrderDialogOpen(true);
@@ -1139,80 +1197,144 @@ const OrderCard: React.FC<OrderCardProps> = ({
                 )}
 
                 <Stack direction="row" spacing={0.5} alignItems="center">
-                    {canManage && nextStatus && (isDeliveryBoy ? ['ready_to_pickup', 'on_the_way', 'ready_to_pick'].includes(order.status) : true) && (
-                        // Hide "Next: Completed" for Dine In as it's typically handled via payment collection
-                        (order.orderType === 'dine_in' && nextStatus === 'completed' && !isGlobalDineIn(order)) ? null : (
-                            // Disable "On the Way" and "Delivered" for third-party delivery (DoorDash/Uber Eats)
-                            (() => {
-                                const isThirdPartyDelivery = !!(order.doordashDeliveryId || order.uberEatsDeliveryId);
-                                const isBlockedStatus = nextStatus === 'on_the_way' || nextStatus === 'delivered';
-                                if (isThirdPartyDelivery && isBlockedStatus) {
-                                    return (
-                                        <Tooltip title="Status is managed by the delivery partner">
-                                            <span>
-                                                <Button
-                                                    variant="contained"
-                                                    color="info"
-                                                    size="small"
-                                                    disabled
-                                                    sx={{
-                                                        fontSize: '0.65rem',
-                                                        padding: '4px 8px',
-                                                        textTransform: 'none',
-                                                        fontWeight: 'bold',
-                                                        minWidth: 'auto',
-                                                        height: '28px'
-                                                    }}
-                                                >
-                                                    {`Next: ${getStatusLabel(nextStatus)}`}
-                                                </Button>
-                                            </span>
-                                        </Tooltip>
-                                    );
-                                }
-                                return (
-                                    <Button
-                                        variant="contained"
-                                        color="info"
-                                        size="small"
-                                        onClick={handleNextStatus}
-                                        disabled={isProcessing}
-                                        sx={{
-                                            fontSize: '0.65rem',
-                                            padding: '4px 8px',
-                                            textTransform: 'none',
-                                            fontWeight: 'bold',
-                                            minWidth: 'auto',
-                                            height: '28px'
-                                        }}
-                                    >
-                                        {isProcessing ? 'Processing...' : `Next: ${getStatusLabel(nextStatus)}`}
-                                    </Button>
-                                );
-                            })()
-                        )
-                    )}
-                    {canAddMoreItems && (
-                        <Button
-                            onClick={(e) => { e.stopPropagation(); setAddItemsDialogOpen(true); }}
-                            variant="outlined"
-                            color="primary"
-                            size="small"
-                            sx={{ fontSize: '0.65rem', padding: '4px 8px', height: '28px' }}
-                        >
-                            Add Items
-                        </Button>
-                    )}
-                    {canCollectPayment && (
-                        <Button
-                            onClick={(e) => { e.stopPropagation(); setPaymentDialogOpen(true); }}
-                            variant="contained"
-                            color="success"
-                            size="small"
-                            sx={{ fontSize: '0.65rem', padding: '4px 8px' }}
-                        >
-                            Collect Payment
-                        </Button>
+                    {onAccept && onReject ? (
+                        <>
+                            <Button
+                                variant="contained"
+                                color="success"
+                                size="small"
+                                onClick={(e) => { e.stopPropagation(); onAccept(); }}
+                                sx={{
+                                    fontSize: '0.65rem',
+                                    padding: '4px 8px',
+                                    textTransform: 'none',
+                                    fontWeight: 'bold',
+                                    minWidth: 'auto',
+                                    height: '28px'
+                                }}
+                            >
+                                ✓ Accept
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                color="error"
+                                size="small"
+                                onClick={(e) => { e.stopPropagation(); onReject(); }}
+                                sx={{
+                                    fontSize: '0.65rem',
+                                    padding: '4px 8px',
+                                    textTransform: 'none',
+                                    fontWeight: 'bold',
+                                    minWidth: 'auto',
+                                    height: '28px'
+                                }}
+                            >
+                                ✕ Reject
+                            </Button>
+                        </>
+                    ) : (
+                        <>
+                            {canManage && nextStatus && (isDeliveryBoy ? ['ready_to_pickup', 'on_the_way', 'ready_to_pick'].includes(order.status) : true) && (
+                                // Hide "Next: Completed" for Dine In as it's typically handled via payment collection
+                                (order.orderType === 'dine_in' && nextStatus === 'completed' && !isGlobalDineIn(order)) ? null : (
+                                    // Disable "On the Way" and "Delivered" for third-party delivery (DoorDash/Uber Eats)
+                                    (() => {
+                                        // A fully-disputed order can't progress until the dispute is resolved
+                                        if (isFullyDisputed) {
+                                            return (
+                                                <Tooltip title="Order is fully under dispute — resolve the dispute to continue">
+                                                    <span>
+                                                        <Button
+                                                            variant="contained"
+                                                            color="error"
+                                                            size="small"
+                                                            disabled
+                                                            sx={{
+                                                                fontSize: '0.65rem',
+                                                                padding: '4px 8px',
+                                                                textTransform: 'none',
+                                                                fontWeight: 'bold',
+                                                                minWidth: 'auto',
+                                                                height: '28px'
+                                                            }}
+                                                        >
+                                                            On Hold: Disputed
+                                                        </Button>
+                                                    </span>
+                                                </Tooltip>
+                                            );
+                                        }
+                                        const isThirdPartyDelivery = !!(order.doordashDeliveryId || order.uberEatsDeliveryId);
+                                        const isBlockedStatus = nextStatus === 'on_the_way' || nextStatus === 'delivered';
+                                        if (isThirdPartyDelivery && isBlockedStatus) {
+                                            return (
+                                                <Tooltip title="Status is managed by the delivery partner">
+                                                    <span>
+                                                        <Button
+                                                            variant="contained"
+                                                            color="info"
+                                                            size="small"
+                                                            disabled
+                                                            sx={{
+                                                                fontSize: '0.65rem',
+                                                                padding: '4px 8px',
+                                                                textTransform: 'none',
+                                                                fontWeight: 'bold',
+                                                                minWidth: 'auto',
+                                                                height: '28px'
+                                                            }}
+                                                        >
+                                                            {`Next: ${getStatusLabel(nextStatus)}`}
+                                                        </Button>
+                                                    </span>
+                                                </Tooltip>
+                                            );
+                                        }
+                                        return (
+                                            <Button
+                                                variant="contained"
+                                                color="info"
+                                                size="small"
+                                                onClick={handleNextStatus}
+                                                disabled={isProcessing}
+                                                sx={{
+                                                    fontSize: '0.65rem',
+                                                    padding: '4px 8px',
+                                                    textTransform: 'none',
+                                                    fontWeight: 'bold',
+                                                    minWidth: 'auto',
+                                                    height: '28px'
+                                                }}
+                                            >
+                                                {isProcessing ? 'Processing...' : `Next: ${getStatusLabel(nextStatus)}`}
+                                            </Button>
+                                        );
+                                    })()
+                                )
+                            )}
+                            {canAddMoreItems && (
+                                <Button
+                                    onClick={(e) => { e.stopPropagation(); setAddItemsDialogOpen(true); }}
+                                    variant="outlined"
+                                    color="primary"
+                                    size="small"
+                                    sx={{ fontSize: '0.65rem', padding: '4px 8px', height: '28px' }}
+                                >
+                                    Add Items
+                                </Button>
+                            )}
+                            {canCollectPayment && (
+                                <Button
+                                    onClick={(e) => { e.stopPropagation(); setPaymentDialogOpen(true); }}
+                                    variant="contained"
+                                    color="success"
+                                    size="small"
+                                    sx={{ fontSize: '0.65rem', padding: '4px 8px' }}
+                                >
+                                    Collect Payment
+                                </Button>
+                            )}
+                        </>
                     )}
                 </Stack>
 
@@ -1363,6 +1485,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
             <Dialog
                 open={cancelOrderDialogOpen}
                 onClose={() => !isProcessing && setCancelOrderDialogOpen(false)}
+                onClick={(e) => e.stopPropagation()}
                 PaperProps={{
                     sx: {
                         borderRadius: 3,

@@ -50,6 +50,7 @@ import { useSettings } from 'src/context/SettingsContext';
 import { useActiveTenant } from 'src/hooks/useActiveTenant';
 import { settingsAPI, tenantAPI } from 'src/services/api';
 import AddRestaurantDialog from './AddRestaurantDialog';
+import AutoCloseOrdersDialog from './AutoCloseOrdersDialog';
 import NotificationPanel from './NotificationPanel';
 import ShiftManager from './ShiftManager';
 import Sidebar from './Sidebar';
@@ -385,7 +386,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
   const { user, logout, isLoading, availableTenants, switchTenant, activeRole, hasRole } = useAuth(); // Added availableTenants, switchTenant, tenantSlug
   const { slug, isSubdomain, getRelativePath } = useActiveTenant();
   const tenantSlug = slug;
-  const { notifications } = useNotifications();
+  const { notifications, autoCloseRequest, dismissAutoCloseRequest } = useNotifications();
   const { settings, updateSettings } = useSettings();
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -542,7 +543,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
           color: 'text.primary',
           boxShadow: '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24)',
           transition: 'width 0.3s ease, margin-left 0.3s ease',
-          pt: { xs: 'env(safe-area-inset-top)', md: 0 },
+          pt: { xs: 'var(--safe-area-inset-top, env(safe-area-inset-top, 0px))', md: 0 },
         }}
       >
         <Toolbar sx={{ minHeight: { xs: 56, sm: 64 }, px: { xs: 1, sm: 2 } }}>
@@ -698,7 +699,11 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
         PaperProps={{
           elevation: 0,
           sx: {
-            overflow: 'visible',
+            // Never taller than the window: scroll inside the menu instead of
+            // pushing Settings/Logout off-screen. (The old decorative arrow
+            // needed overflow:visible, which prevented scrolling — removed.)
+            maxHeight: 'calc(100vh - 90px)',
+            overflowY: 'auto',
             filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
             mt: 1.5,
             minWidth: 200,
@@ -707,18 +712,6 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
               height: 32,
               ml: -0.5,
               mr: 1,
-            },
-            '&:before': {
-              content: '""',
-              display: 'block',
-              position: 'absolute',
-              top: 0,
-              right: 14,
-              width: 10,
-              height: 10,
-              bgcolor: 'background.paper',
-              transform: 'translateY(-50%) rotate(45deg)',
-              zIndex: 0,
             },
           },
         }}
@@ -737,6 +730,9 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
                 Switch Restaurant
               </Typography>
             </Divider>
+            {/* Scroll long restaurant lists inside the menu so Settings/Logout
+                below never get pushed off-screen. */}
+            <Box sx={{ maxHeight: 'min(200px, 30vh)', overflowY: 'auto' }}>
             {availableTenants.map((tenant) => (
               <MenuItem
                 key={tenant.slug}
@@ -749,6 +745,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
                 </Typography>
               </MenuItem>
             ))}
+            </Box>
             {activeRole === 'admin' && (
               <MenuItem onClick={handleAddStore} sx={{ color: 'primary.main' }}>
                 <Add fontSize="small" sx={{ mr: 1 }} />
@@ -803,7 +800,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
           }}
         >
           {/* Spacer to push sidebar content below the AppBar + safe area */}
-          <Box sx={{ minHeight: { xs: 'calc(56px + env(safe-area-inset-top))', sm: 'calc(64px + env(safe-area-inset-top))' }, flexShrink: 0 }} />
+          <Box sx={{ minHeight: { xs: 'calc(56px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)))', sm: 'calc(64px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)))' }, flexShrink: 0 }} />
           <Sidebar onItemClick={() => setMobileOpen(false)} />
         </Drawer>
         <Drawer
@@ -829,13 +826,20 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
         component="main"
         sx={{
           flexGrow: 1,
-          p: { xs: 0.5, sm: 2, md: 3 },
+          pt: { xs: 0.5, sm: 2, md: 3 },
+          px: { xs: 0.5, sm: 2, md: 3 },
+          pb: { xs: 2, sm: 3, md: 3 },
           width: { md: `calc(100% - ${currentDrawerWidth}px)` },
-          mt: { xs: 'calc(56px + env(safe-area-inset-top))', sm: 'calc(64px + env(safe-area-inset-top))', md: '64px' },
-          minHeight: { xs: 'calc(100vh - 56px - env(safe-area-inset-top))', sm: 'calc(100vh - 64px - env(safe-area-inset-top))', md: 'calc(100vh - 64px)' },
+          mt: { xs: 'calc(56px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)))', sm: 'calc(64px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)))', md: '64px' },
+          height: { 
+            xs: 'calc(100vh - 56px - var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) - var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))', 
+            sm: 'calc(100vh - 64px - var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) - var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))', 
+            md: 'calc(100vh - 64px)' 
+          },
           backgroundColor: 'background.default',
           position: 'relative',
-          overflow: 'hidden',
+          overflowY: 'auto',
+          overflowX: 'hidden',
           transition: 'width 0.3s ease',
         }}
       >
@@ -915,6 +919,11 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
         open={addStoreOpen}
         onClose={() => setAddStoreOpen(false)}
         onSuccess={handleAddStoreSuccess}
+      />
+
+      <AutoCloseOrdersDialog
+        request={autoCloseRequest}
+        onClose={dismissAutoCloseRequest}
       />
     </Box >
   );

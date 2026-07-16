@@ -7,8 +7,10 @@ import { Close as CloseIcon, Restaurant as RestaurantIcon } from '@mui/icons-mat
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 
-import { getSoundSrc } from '../utils/notificationSounds';
+import { getSoundSrc, getSoundConfig, preloadNativeSounds } from '../utils/notificationSounds';
+import { NativeAudio } from '@capacitor-community/native-audio';
 import { useSettings } from './SettingsContext';
+import { autoPrintOrder } from '../utils/autoPrintOrder';
 
 interface Notification {
     id: number | string;
@@ -22,6 +24,12 @@ interface Notification {
     targetRoles?: string[];
 }
 
+interface AutoCloseRequest {
+    orders: any[];
+    count: number;
+    closeTime: string;
+}
+
 interface NotificationContextType {
     notifications: Notification[];
     clearNotifications: () => void;
@@ -30,6 +38,8 @@ interface NotificationContextType {
     testNotification: () => void;
     deliveryLocations: Record<string, { lat: number, lng: number, timestamp: Date }>;
     trackOrder: (orderId: string, lat: number, lng: number) => void;
+    autoCloseRequest: AutoCloseRequest | null;
+    dismissAutoCloseRequest: () => void;
 }
 
 const NotificationContext = createContext<NotificationContextType>({
@@ -40,19 +50,32 @@ const NotificationContext = createContext<NotificationContextType>({
     testNotification: () => { },
     deliveryLocations: {},
     trackOrder: () => { },
+    autoCloseRequest: null,
+    dismissAutoCloseRequest: () => { },
 });
 
 export const useNotifications = () => useContext(NotificationContext);
 
 export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { user } = useAuth();
-    const { settings } = useSettings();
+    const { settings, formatCurrency } = useSettings();
     const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [autoCloseRequest, setAutoCloseRequest] = useState<AutoCloseRequest | null>(null);
 
     const soundTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const audioRef        = useRef<HTMLAudioElement | null>(null);
 
+    // Hold latest printer settings + currency in a ref so socket handlers read fresh
+    // values WITHOUT being recreated (recreating would tear down the socket & miss orders).
+    const printCtxRef = useRef({ printer: settings.printer, autoPrint: settings.system?.autoPrint, formatCurrency });
+    useEffect(() => {
+        printCtxRef.current = { printer: settings.printer, autoPrint: settings.system?.autoPrint, formatCurrency };
+    }, [settings.printer, settings.system?.autoPrint, formatCurrency]);
+
     const playNotificationSound = useCallback(() => {
+        // Dispatch an event so the Dashboard (and other views) can instantly refresh live data
+        window.dispatchEvent(new CustomEvent('dashboardRefetch'));
+
         // Stop and discard any currently playing audio
         if (audioRef.current) {
             audioRef.current.pause();
@@ -65,18 +88,42 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         // Read admin-selected sound from global settings, fallback to localStorage/default
         const selectedId  = settings?.notification?.sound || localStorage.getItem('notificationSoundId') || 'notification';
         const selectedSrc = getSoundSrc(selectedId);
+        const durationMs = (settings?.notification?.soundDuration || 6) * 1000;
 
+        // --- NATIVE AUDIO PLAYER (Robust for Android/iOS) ---
+        if (Capacitor.isNativePlatform()) {
+            const config = getSoundConfig(selectedId);
+            
+            // Vivo's OS is blocking the native .loop() command silently. 
+            // We will manually loop it using .play() on a timer.
+            NativeAudio.play({ assetId: config.id }).catch(() => {});
+            
+            const manualLoopInterval = setInterval(() => {
+                NativeAudio.play({ assetId: config.id }).catch(() => {});
+            }, 3000); // Trigger play every 3 seconds
+
+            // Auto-stop after the configured duration
+            soundTimeoutRef.current = setTimeout(() => {
+                clearInterval(manualLoopInterval);
+                NativeAudio.stop({ assetId: config.id }).catch(() => {});
+            }, durationMs);
+
+            return;
+        }
+
+        // --- WEB BROWSER AUDIO PLAYER ---
         const audio       = new Audio(selectedSrc);
         audio.volume      = 0.6;
-        audio.loop        = true;            // loop so it fills the full 6 s
+        audio.loop        = true;            // loop so it fills the full duration
         audioRef.current  = audio;
 
-        audio.play().catch(err => {
-            console.error('🔔 [NotificationProvider] Error playing sound:', err);
+        audio.play()
+            .then(() => console.log('🔔 [NotificationProvider] Audio playing successfully'))
+            .catch(err => {
+            console.warn('🔔 [NotificationProvider] Audio auto-play blocked in dev mode. Tap screen to allow. Error:', err.message);
         });
 
-        // Auto-stop after the configured duration (fallback to 6s)
-        const durationMs = (settings?.notification?.soundDuration || 6) * 1000;
+        // Auto-stop after the configured duration
         soundTimeoutRef.current = setTimeout(() => {
             audio.pause();
             audio.currentTime = 0;
@@ -98,7 +145,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                             id: new Date().getTime(),
                             schedule: { at: new Date(Date.now() + 100) }, // Schedule slightly in future
                             sound: 'notification.mp3',
-                            channelId: 'orders', // Critical for Android 8+
+                            channelId: 'orders_v2', // Critical for Android 8+
                             smallIcon: 'ic_stat_icon_config_sample', // Ensure this or a default exists
                             actionTypeId: '',
                             extra: null
@@ -169,13 +216,13 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const displayOrderType = rawOrderType
             ? String(rawOrderType)
                 .replace(/_/g, ' ')
-                .replace(/\b\w/g, (char) => char.toUpperCase())
+                .replace(/\b\w/g, (char) => char?.toUpperCase())
             : '--';
 
         const rawStatus = payload?.status ?? sourceOrder.status ?? 'Update';
         const displayStatus = String(rawStatus)
             .replace(/_/g, ' ')
-            .replace(/\b\w/g, (char) => char.toUpperCase());
+            .replace(/\b\w/g, (char) => char?.toUpperCase());
 
         return { displayOrderId, displayTokenNo, displayOrderType, displayStatus };
     }, []);
@@ -194,7 +241,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         // Staff roles that should be notified of ALL new orders
         const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
 
-        const orderType = (data.order?.orderType || data.orderType || 'unknown').toLowerCase();
+        const orderType = (data.order?.orderType || data.orderType || 'unknown')?.toLowerCase();
         const isDeliveryOrder = orderType === 'delivery';
         const shouldNotifyDelivery = userRole === 'delivery' && isDeliveryOrder;
 
@@ -285,6 +332,80 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         };
         setNotifications(prev => [newNotif, ...prev].slice(0, 50));
 
+        // Auto-print KOT + bill on the restaurant device for ANY new order.
+        // autoPrintOrder dedupes by id so POS orders already printed won't double-print.
+        const { printer, autoPrint, formatCurrency: fmt } = printCtxRef.current;
+        const newOrderId = data.order?._id || data.orderId || data._id;
+        console.log('🖨️ [AutoPrint] newOrder gate:', { isStaff, autoPrint, newOrderId, hasPrinter: !!printer });
+        if (isStaff && autoPrint) {
+            if (newOrderId) {
+                autoPrintOrder(newOrderId, printer, !!autoPrint, fmt)
+                    .then((printed) => console.log('🖨️ [AutoPrint] result:', printed))
+                    .catch((err) => {
+                        console.error('🖨️ [AutoPrint] error:', err);
+                        toast.error(`Auto-print failed: ${err?.message || 'check the printer connection.'}`);
+                    });
+            } else {
+                console.warn('🖨️ [AutoPrint] No order id found in newOrder payload — cannot print.', data);
+            }
+        } else {
+            console.warn('🖨️ [AutoPrint] Skipped: isStaff=' + isStaff + ', autoPrint=' + autoPrint);
+        }
+
+    }, [user, playNotificationSound, showNotification]);
+
+    const handlePreOrderPromoted = useCallback((data: any) => {
+        console.log('🔔 [NotificationProvider] RAW preOrderPromoted event:', data);
+
+        if (!user) return;
+        const userRole = user.role?.toLowerCase() || '';
+        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
+        const isStaff = staffRoles.includes(userRole);
+
+        if (!isStaff) return;
+
+        playNotificationSound();
+
+        const title = 'Pre-Order Ready For Prep';
+        const orderNum = data.order?.orderNumber || 'Order';
+        const message = `${orderNum} has been promoted and needs preparation.`;
+
+        showNotification(title, message);
+
+        toast.custom((t) => (
+            <Box
+                sx={{ display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'secondary.main', color: 'white', p: 2, borderRadius: 2, boxShadow: 3, minWidth: 300, cursor: 'pointer' }}
+                onClick={() => toast.dismiss(t.id)}
+            >
+                <RestaurantIcon />
+                <Box sx={{ flexGrow: 1 }}>
+                    <Typography variant="subtitle1" fontWeight="bold">{title}</Typography>
+                    <Typography variant="body2">{message}</Typography>
+                </Box>
+                <IconButton size="small" sx={{ color: 'white' }}><CloseIcon /></IconButton>
+            </Box>
+        ), { duration: 6000, position: 'top-right' });
+
+        const newNotif: Notification = {
+            id: 'promo-' + Date.now(),
+            timestamp: new Date(),
+            read: false,
+            type: 'status',
+            title,
+            message,
+            priority: 'high',
+            data: data,
+        };
+        setNotifications(prev => [newNotif, ...prev].slice(0, 50));
+
+        // Auto-print KOT for the promoted pre-order
+        const { printer, autoPrint, formatCurrency: fmt } = printCtxRef.current;
+        const newOrderId = data.order?._id || data.orderId || data._id;
+        if (isStaff && autoPrint && newOrderId) {
+            autoPrintOrder(newOrderId, printer, !!autoPrint, fmt)
+                .then((printed) => console.log('🖨️ [AutoPrint] preOrderPromoted result:', printed))
+                .catch((err) => console.error('🖨️ [AutoPrint] preOrderPromoted error:', err));
+        }
     }, [user, playNotificationSound, showNotification]);
 
     const handleOrderStatusUpdate = useCallback((data: any) => {
@@ -292,7 +413,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         if (!user) return;
 
         const userRole = user.role?.toLowerCase() || '';
-        const orderType = (data.order?.orderType || data.orderType || '').toLowerCase();
+        const orderType = (data.order?.orderType || data.orderType || '')?.toLowerCase();
         const currentUserId = user.sub || user._id || user.id;
 
         // Simple permissions check
@@ -356,6 +477,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     }, [user, playNotificationSound, showNotification, getOrderNotificationDetails]);
 
+    // Staff-only: per-order reminder for an order whose status hasn't changed.
     const handleStaleOrder = useCallback((data: any) => {
         console.log('🔔 [NotificationProvider] RAW staleOrder event:', data);
         if (!user) return;
@@ -421,6 +543,72 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         setNotifications(prev => [newNotif, ...prev].slice(0, 50));
     }, [user, playNotificationSound, showNotification, getOrderNotificationDetails]);
 
+    // Staff-only: aggregate alert for orders whose status hasn't changed in over an hour.
+    const handleStaleOrdersAlert = useCallback((data: any) => {
+        if (!user) return;
+        const userRole = user.role?.toLowerCase() || '';
+        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
+        if (!staffRoles.includes(userRole)) return;
+
+        const count = data?.count ?? (data?.orders?.length || 0);
+        if (count === 0) return;
+
+        playNotificationSound();
+        const title = 'Orders Need Attention';
+        const message = `${count} order${count === 1 ? '' : 's'} have not been updated for over an hour. Please review and close them.`;
+        showNotification(title, message);
+
+        toast.custom((t) => (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'warning.main', color: 'white', p: 2, borderRadius: 2, boxShadow: 3, minWidth: 300, cursor: 'pointer' }} onClick={() => toast.dismiss(t.id)}>
+                <RestaurantIcon />
+                <Box sx={{ flexGrow: 1 }}>
+                    <Typography variant="subtitle1" fontWeight="bold">{title}</Typography>
+                    <Typography variant="body2">{message}</Typography>
+                </Box>
+                <IconButton size="small" sx={{ color: 'white' }}><CloseIcon /></IconButton>
+            </Box>
+        ), { duration: 6000, position: 'top-right' });
+
+        const newNotif: Notification = { id: 'stale-' + Date.now(), timestamp: new Date(), read: false, type: 'stale-orders', title, message, priority: 'high', data };
+        setNotifications(prev => [newNotif, ...prev].slice(0, 50));
+    }, [user, playNotificationSound, showNotification]);
+
+    // Admin/manager-only: request to auto-close all open orders before the store closes.
+    const handleAutoCloseRequest = useCallback((data: any) => {
+        if (!user) return;
+        const userRole = user.role?.toLowerCase() || '';
+        if (!['admin', 'manager', 'superadmin', 'kitchen', 'kitchen_staff'].includes(userRole)) return;
+
+        const count = data?.count ?? (data?.orders?.length || 0);
+        const closeTime = data?.closeTime || '';
+
+        playNotificationSound();
+        const title = 'Store Closing Soon';
+        const message = count > 0
+            ? `${count} order${count === 1 ? '' : 's'} still open before close (${closeTime}). Auto-close them all?`
+            : `Store closing at ${closeTime}.`;
+        showNotification(title, message);
+
+        // Surface the confirm dialog (rendered by the Layout).
+        if (count > 0) {
+            setAutoCloseRequest({ orders: data?.orders || [], count, closeTime });
+        }
+
+        toast.custom((t) => (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, bgcolor: 'error.main', color: 'white', p: 2, borderRadius: 2, boxShadow: 3, minWidth: 300, cursor: 'pointer' }} onClick={() => toast.dismiss(t.id)}>
+                <RestaurantIcon />
+                <Box sx={{ flexGrow: 1 }}>
+                    <Typography variant="subtitle1" fontWeight="bold">{title}</Typography>
+                    <Typography variant="body2">{message}</Typography>
+                </Box>
+                <IconButton size="small" sx={{ color: 'white' }}><CloseIcon /></IconButton>
+            </Box>
+        ), { duration: 8000, position: 'top-right' });
+
+        const newNotif: Notification = { id: 'autoclose-' + Date.now(), timestamp: new Date(), read: false, type: 'auto-close', title, message, priority: 'high', data };
+        setNotifications(prev => [newNotif, ...prev].slice(0, 50));
+    }, [user, playNotificationSound, showNotification]);
+
     const handleNewCateringOrder = useCallback((data: any) => {
         console.log('🔔 [NotificationProvider] RAW newCateringOrder event:', data);
         if (!user) return;
@@ -472,7 +660,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         playNotificationSound();
         const orderNum = data.order?.orderNumber || 'Catering Order';
         const rawStatus = data.status || data.order?.status || 'Update';
-        const displayStatus = String(rawStatus).replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+        const displayStatus = String(rawStatus).replace(/_/g, ' ').replace(/\b\w/g, (char) => char?.toUpperCase());
         const title = `Catering Order Update`;
         const body = `Order No: ${orderNum}\nStatus: ${displayStatus}`;
         showNotification(title, body);
@@ -544,6 +732,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     // Effect to manage socket connection
     useEffect(() => {
+        // Preload robust native sounds
+        preloadNativeSounds();
+
         // Request permissions and create channel
         const setupNotifications = async () => {
             if (Capacitor.isNativePlatform()) {
@@ -555,7 +746,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
                 // Create Channel (Required for Android O+)
                 await LocalNotifications.createChannel({
-                    id: 'orders',
+                    id: 'orders_v2',
                     name: 'Order Notifications',
                     description: 'Notifications for new orders and updates',
                     importance: 5, // High importance for heads-up notification
@@ -591,10 +782,15 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }, 1000);
 
         socketService.on('newOrder', handleNewOrder);
+        socketService.on('pre_order_promoted', handlePreOrderPromoted);
         socketService.on('orderStatusUpdate', handleOrderStatusUpdate);
         socketService.on('staleOrder', handleStaleOrder);
         socketService.on('locationUpdate', handleLocationUpdate);
-        
+
+        // Order close / stale events
+        socketService.on('staleOrdersAlert', handleStaleOrdersAlert);
+        socketService.on('autoCloseRequest', handleAutoCloseRequest);
+
         // Catering events
         socketService.on('newCateringOrder', handleNewCateringOrder);
         socketService.on('cateringOrderStatusUpdate', handleCateringOrderStatusUpdate);
@@ -603,10 +799,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         return () => {
             console.log('🔌 [NotificationProvider] Cleanup: removing listeners');
             socketService.off('newOrder', handleNewOrder);
+            socketService.off('pre_order_promoted', handlePreOrderPromoted);
             socketService.off('orderStatusUpdate', handleOrderStatusUpdate);
             socketService.off('staleOrder', handleStaleOrder);
             socketService.off('locationUpdate', handleLocationUpdate);
-            
+
+            socketService.off('staleOrdersAlert', handleStaleOrdersAlert);
+            socketService.off('autoCloseRequest', handleAutoCloseRequest);
+
             socketService.off('newCateringOrder', handleNewCateringOrder);
             socketService.off('cateringOrderStatusUpdate', handleCateringOrderStatusUpdate);
             socketService.off('cateringOrderUpdate', handleCateringOrderUpdate);
@@ -615,6 +815,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             socketService.disconnect();
         };
     }, [user?.sub, user?.role, handleNewOrder, handleOrderStatusUpdate, handleStaleOrder, handleNewCateringOrder, handleCateringOrderStatusUpdate, handleCateringOrderUpdate]); // Re-connect only if identity changes
+
+    const dismissAutoCloseRequest = useCallback(() => setAutoCloseRequest(null), []);
 
     const clearNotifications = useCallback(() => setNotifications([]), []);
     const markAsRead = useCallback((id: string | number) => {
@@ -648,7 +850,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             markAllAsRead,
             testNotification,
             deliveryLocations,
-            trackOrder
+            trackOrder,
+            autoCloseRequest,
+            dismissAutoCloseRequest
         }}>
             {children}
         </NotificationContext.Provider>

@@ -286,7 +286,7 @@ const CreateExpensePage: React.FC = () => {
                                                             size="small" 
                                                             onClick={async (e) => {
                                                                 e.stopPropagation();
-                                                                const updatedCategories = suggestions.categories.filter(c => c !== option);
+                                                                const updatedCategories = (suggestions?.categories || []).filter(c => c !== option);
                                                                 setSuggestions(prev => ({
                                                                     ...prev,
                                                                     categories: updatedCategories

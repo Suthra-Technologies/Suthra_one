@@ -1057,7 +1057,7 @@ const CustomerHomePage: React.FC = () => {
                 }
                 if (menuResponse.data && menuResponse.data.items) {
                     // Filter featured or grab first few items
-                    const allItems = menuResponse.data.items.filter((item: any) => item.isAvailable);
+                    const allItems = (menuResponse.data?.items || []).filter((item: any) => item.isAvailable);
                     const featured = allItems.filter((i: any) => i.isFeatured).slice(0, 6);
                     setMenuItems(featured.length > 0 ? featured : allItems.slice(0, 6));
                 }
@@ -1122,7 +1122,7 @@ const CustomerHomePage: React.FC = () => {
                                 key={level}
                                 variant="outlined"
                                 fullWidth
-                                onClick={() => handleConfirmSpice(level.toLowerCase())}
+                                onClick={() => handleConfirmSpice(level?.toLowerCase())}
                                 sx={{
                                     py: 1.5,
                                     borderRadius: 3,
@@ -1137,7 +1137,7 @@ const CustomerHomePage: React.FC = () => {
                                     }
                                 }}
                             >
-                                {level.charAt(0).toUpperCase() + level.slice(1).replace(/_/g, ' ')}
+                                {level.charAt(0)?.toUpperCase() + level.slice(1).replace(/_/g, ' ')}
                             </Button>
                         ))}
                     </Stack>
@@ -1245,7 +1245,7 @@ const CustomerHomePage: React.FC = () => {
             </Container>
 
             {/* Sticky Cart bar parity on Home Page */}
-            {cart.items.length > 0 && (
+            {(cart?.items || []).length > 0 && (
                 <Box sx={{
                     position: 'fixed',
                     bottom: { xs: 12, sm: 24 },

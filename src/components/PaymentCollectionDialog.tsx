@@ -36,6 +36,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '../context/SettingsContext';
 import { ordersAPI, rewardsAPI } from '../services/api';
+import { openCashDrawer } from '../utils/cashDrawer';
 import PaymentModal from './PaymentModal';
 
 interface PaymentCollectionDialogProps {
@@ -195,6 +196,12 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
                 tipAmount: pendingTipAmount > 0 ? pendingTipAmount : 0
             });
             toast.success(`Payment of ${formatCurrency(amt)} added`);
+            // Cash collected — pop the drawer (wired to the billing printer). Best-effort.
+            if (paymentMethod === 'cash') {
+                openCashDrawer(settings.printer).catch((err) =>
+                    console.error('[CashDrawer] Failed to open drawer:', err),
+                );
+            }
             // If fully paid, auto-forward/complete
             if (res.data.paymentStatus === 'paid' || isFullyPaid) {
                 try {
@@ -319,7 +326,7 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
                                     {order.payments.map((p: any) => (
                                         <ListItem key={p._id}>
                                             <ListItemText
-                                                primary={`${p.method.toUpperCase()} Payment`}
+                                                primary={`${p.method?.toUpperCase() || 'UNKNOWN'} Payment`}
                                                 secondary={new Date(p.recordedAt || p.createdAt).toLocaleString()}
                                             />
                                             <ListItemSecondaryAction>

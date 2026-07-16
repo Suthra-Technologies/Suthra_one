@@ -207,7 +207,7 @@ const ProfilePage: React.FC = () => {
                 } else if (cleaned.length < 10) {
                     validation = { isValid: true };
                 } else {
-                    validation = validatePhone(value);
+                    validation = validatePhone(value, profileData.dialCode);
                 }
                 break;
             default:
@@ -247,7 +247,7 @@ const ProfilePage: React.FC = () => {
             firstName: validateName(profileData.firstName, 'First name'),
             lastName: validateName(profileData.lastName, 'Last name'),
             email: validateEmail(profileData.email),
-            phone: validatePhone(profileData.phone),
+            phone: validatePhone(profileData.phone, profileData.dialCode),
         };
 
         setProfileErrors(newErrors);
@@ -648,7 +648,7 @@ const ProfilePage: React.FC = () => {
                                         <TextField
                                             fullWidth label="Email" type="email"
                                             value={profileData.email}
-                                            onChange={(e) => handleProfileChange('email', e.target.value.toLowerCase())}
+                                            onChange={(e) => handleProfileChange('email', e.target.value?.toLowerCase())}
                                             onBlur={() => handleProfileBlur('email')}
                                             error={hasError(profileErrors.email)}
                                             helperText={getHelperText(profileErrors.email)}
@@ -836,7 +836,7 @@ const ProfilePage: React.FC = () => {
                         size="small"
                         placeholder="DELETE"
                         value={deleteConfirmText}
-                        onChange={(e) => setDeleteConfirmText(e.target.value.toUpperCase())}
+                        onChange={(e) => setDeleteConfirmText(e.target.value?.toUpperCase())}
                     />
                 </DialogContent>
                 <DialogActions sx={{ px: 3, pb: 2 }}>

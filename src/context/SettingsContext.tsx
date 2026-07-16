@@ -60,6 +60,8 @@ export interface RestaurantSettings {
     currencySymbol: string;
     taxRate: number;
     processingFee?: number;
+    // Slab size ($ of order value per fee unit); 0/unset = processingFee is a percent
+    processingFeeOrderValue?: number;
     logo: string;
     stamp?: string;
     country: string;
@@ -139,11 +141,18 @@ export interface NotificationSettings {
 
 export interface PrinterConfig {
     name: string;
-    type: 'epson-epos' | 'escpos-tcp' | 'print-agent' | 'none';
+    type: 'epson-epos' | 'escpos-tcp' | 'print-agent' | 'usb' | 'none';
     ip: string;
     port: number;
     paperWidth: number;
     deviceId?: string;
+    /**
+     * Printer command language. Only relevant for type 'escpos-tcp':
+     *  - 'epos-print': Epson ePOS-Print over HTTP — for Epson TM-m30III/TM series (works when raw 9100 is off)
+     *  - 'escpos': raw ESC/POS over TCP 9100 — most generic thermal printers
+     *  - 'star-line': Star Line Mode over TCP 9100 — Star SP700/SP742/TSP
+     */
+    commandMode?: 'epos-print' | 'escpos' | 'star-line';
 }
 
 export interface TenantPrinterSettings {
@@ -177,6 +186,7 @@ export interface DeliverySettings {
         storeId: string;
         isSandbox: boolean;
         pickupBarcodeType?: string;
+        dropoffPinEnabled?: boolean;
     };
 }
 
@@ -331,6 +341,14 @@ const defaultSettings: SettingsState = {
         pointsPerRating: 0,
     },
     delivery: {
+        builtIn: {
+            enabled: false,
+            minDeliveryRange: 0,
+            maxDeliveryRange: 10,
+            baseFee: 0,
+            baseMiles: 0,
+            perMileRate: 0,
+        },
         doordash: {
             enabled: false,
             developerId: '',
@@ -444,7 +462,7 @@ export const IMPERIAL_UNITS: UnitConfig[] = [
 // Determine unit system from country
 export const getUnitSystem = (country: string): UnitSystem => {
     const normalizedCountry = country?.trim()?.toLowerCase() || '';
-    return IMPERIAL_COUNTRIES.some(c => normalizedCountry.includes(c.toLowerCase()))
+    return IMPERIAL_COUNTRIES.some(c => normalizedCountry.includes(c?.toLowerCase()))
         ? 'imperial'
         : 'metric';
 };
@@ -475,7 +493,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             let fetched: Partial<SettingsState> = {};
 
             if (Array.isArray(response.data)) {
-                fetched = response.data.reduce((acc: Partial<SettingsState>, curr: any) => {
+                fetched = (response?.data || []).reduce((acc: Partial<SettingsState>, curr: any) => {
                     if (curr?.category && curr?.settings) {
                         acc[curr.category as keyof SettingsState] = curr.settings;
                     }
@@ -562,6 +580,10 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                     ...(fetched.rewards || {}),
                 },
                 delivery: {
+                    builtIn: {
+                        ...defaultSettings.delivery!.builtIn,
+                        ...(fetched.delivery?.builtIn || {}),
+                    },
                     doordash: {
                         ...defaultSettings.delivery!.doordash,
                         ...(fetched.delivery?.doordash || {}),

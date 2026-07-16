@@ -15,10 +15,14 @@ import {
     Save as SaveIcon,
     Sms as SmsIcon,
     Star as StarIcon,
-    Terminal as TerminalIcon
+    Terminal as TerminalIcon,
+    Visibility,
+    VisibilityOff
 } from '@mui/icons-material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import {
     Alert,
     Avatar,
@@ -84,11 +88,15 @@ import {
     type UnitConfig
 } from '../../context/SettingsContext';
 
-import { menuAPI, paymentsAPI, printersAPI, settingsAPI, smsAPI, tenantAPI, usersAPI } from '../../services/api';
+import { apiBaseUrl, menuAPI, paymentsAPI, printersAPI, settingsAPI, smsAPI, tenantAPI, usersAPI } from '../../services/api';
+import { printBillThermal } from '../../utils/printBillThermal';
+import { printKotThermal } from '../../utils/kotThermal';
+import { isThermalPrintAvailable, startPrintStation, stopPrintStation } from '../../services/thermalPrint';
+import { connectUsbPrinter, disconnectUsbPrinter, isUsbPrintAvailable, isUsbPrinterConnected } from '../../services/usbPrint';
 
 import { NOTIFICATION_SOUNDS, previewSound } from '../../utils/notificationSounds';
 import type { ValidationResult } from '../../utils/validation';
-import { getHelperText, hasError, validateAddress, validateCompanyName, validateEmail, validatePhone } from '../../utils/validation';
+import { getHelperText, hasError, validateAddress, validateCompanyName, validateEmail, validatePhone, validateRequired } from '../../utils/validation';
 
 const countries = [
     {
@@ -298,7 +306,7 @@ const isCurrentlyOpen = (hours: BusinessHourDay[], timezone: string): boolean =>
         const minuteStr = timeParts.find(p => p.type === 'minute')?.value || '0';
         const currentMinutes = parseInt(hourStr, 10) * 60 + parseInt(minuteStr, 10);
 
-        const config = hours.find(h => h.day.toLowerCase() === todayName.toLowerCase());
+        const config = hours.find(h => h.day?.toLowerCase() === todayName?.toLowerCase());
         if (!config || !config.isOpen) return false;
 
         const slots = config.slots || (config.openTime && config.closeTime ? [{ openTime: config.openTime, closeTime: config.closeTime }] : []);
@@ -457,6 +465,7 @@ const createDefaultSettings = (): SettingsState => ({
         firstOrderBonus: 0,
         minPointsToRedeem: 100,
         maxRedemptionPercentage: 100,
+        pointsPerRating: 0,
     },
     delivery: {
         builtIn: {
@@ -583,9 +592,63 @@ const mergeSettingsWithDefaults = (defaults: SettingsState, partial: Partial<Set
 };
 
 
+/**
+ * Settings UI block for a wired (USB / WebUSB) printer. Lets the user grant access to the
+ * physically connected printer and run a test print. WebUSB only exists in Chromium desktop
+ * browsers (Chrome / Edge) on a secure context — hence the availability guard.
+ */
+const UsbPrinterSection: React.FC<{
+    role: 'billing' | 'kitchen';
+    connected: boolean;
+    available: boolean;
+    onConnect: () => void;
+    onDisconnect: () => void;
+    onTest: () => void;
+}> = ({ connected, available, onConnect, onDisconnect, onTest }) => {
+    if (!available) {
+        return (
+            <Grid size={{ xs: 12 }}>
+                <Alert severity="warning">
+                    Wired USB printing uses WebUSB, which is only supported in <strong>Chrome</strong> or <strong>Edge</strong> on a desktop.
+                    It is not available in this browser, the mobile app, or on Clover devices.
+                </Alert>
+            </Grid>
+        );
+    }
+    return (
+        <>
+            <Grid size={{ xs: 12 }}>
+                <Alert severity={connected ? 'success' : 'info'}>
+                    {connected
+                        ? 'USB printer connected. Bills/KOTs will print to it directly.'
+                        : 'Plug the printer into this computer via USB, then click "Connect USB Printer" and pick it from the list.'}
+                </Alert>
+            </Grid>
+            <Grid size={{ xs: 12 }} sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+                <Chip
+                    label={connected ? 'Connected' : 'Not connected'}
+                    color={connected ? 'success' : 'default'}
+                    size="small"
+                />
+                <Button variant="outlined" onClick={onConnect} startIcon={<PrintIcon />}>
+                    {connected ? 'Reconnect USB Printer' : 'Connect USB Printer'}
+                </Button>
+                {connected && (
+                    <Button variant="text" color="error" onClick={onDisconnect}>
+                        Disconnect
+                    </Button>
+                )}
+                <Button variant="outlined" onClick={onTest} startIcon={<PrintIcon />}>
+                    Send Test Print
+                </Button>
+            </Grid>
+        </>
+    );
+};
+
 const SettingsPage: React.FC = () => {
     const { user, tenantSlug } = useAuth();
-    const { updateSettings: updateGlobalSettings } = useSettings();
+    const { updateSettings: updateGlobalSettings, formatCurrency } = useSettings();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const headingFontSize = { xs: '1.12rem', sm: '1.4rem', md: '2.125rem' };
@@ -596,7 +659,15 @@ const SettingsPage: React.FC = () => {
     const [errors, setErrors] = useState<Record<string, ValidationResult>>({});
     const [fetchingTax, setFetchingTax] = useState(false);
     const [webhookUrl, setWebhookUrl] = useState<string>('');
+
+    const [showTwilioAuthToken, setShowTwilioAuthToken] = useState(false);
+    const [showStripeSecretKey, setShowStripeSecretKey] = useState(false);
+    const [showStripeWebhookSecret, setShowStripeWebhookSecret] = useState(false);
+
     const [stripeStatus, setStripeStatus] = useState<{ stripeMode?: string; hasPublishableKey?: boolean; hasSecretKey?: boolean; hasWebhookSecret?: boolean }>({});
+    // Stripe Connect payouts account (platform-managed Express account)
+    const [connectStatus, setConnectStatus] = useState<{ needsOnboarding?: boolean; accountId?: string | null; chargesEnabled?: boolean; payoutsEnabled?: boolean; detailsSubmitted?: boolean; status?: string } | null>(null);
+    const [connectDashboardLoading, setConnectDashboardLoading] = useState(false);
     const [phonePeStatus, setPhonePeStatus] = useState<{ phonePeEnv?: string; phonePeClientId?: string; phonePeClientVersion?: string; hasClientId?: boolean; hasClientSecret?: boolean }>({});
     const [usersList, setUsersList] = useState<any[]>([]);
     const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
@@ -811,18 +882,19 @@ const SettingsPage: React.FC = () => {
             const defaults = createDefaultSettings();
 
             if (Array.isArray(response.data)) {
-                const fetched = response.data.reduce((acc, curr) => {
+                const fetched = (response?.data || []).reduce((acc, curr) => {
                     if (curr?.category && curr?.settings) {
                         acc[curr.category] = curr.settings;
                     }
                     return acc;
                 }, {});
                 const merged = mergeSettingsWithDefaults(defaults, fetched);
-                if (!merged.restaurant.name) merged.restaurant.name = (user?.tenant)?.name || '';
-                if (!merged.restaurant.logo) merged.restaurant.logo = (user?.tenant)?.logo || '';
-                if (!merged.restaurant.email) merged.restaurant.email = (user?.tenant)?.contactEmail || user?.email || '';
+                const tenantObj = typeof user?.tenant === 'object' ? user.tenant : null;
+                if (!merged.restaurant.name) merged.restaurant.name = tenantObj?.name || '';
+                if (!merged.restaurant.logo) merged.restaurant.logo = tenantObj?.logo || '';
+                if (!merged.restaurant.email) merged.restaurant.email = tenantObj?.contactEmail || user?.email || '';
                 if (!merged.restaurant.phone) {
-                    const phoneVal = (user?.tenant)?.contactPhone || user?.phone || '';
+                    const phoneVal = tenantObj?.contactPhone || user?.phone || '';
                     merged.restaurant.phone = phoneVal.replace(/\D/g, '').slice(-10);
                 }
                 setSettings(merged);
@@ -832,23 +904,31 @@ const SettingsPage: React.FC = () => {
             } else if (response.data && typeof response.data === 'object') {
                 const fetched = response.data;
                 const merged = mergeSettingsWithDefaults(defaults, fetched);
-                if (!merged.restaurant.name) merged.restaurant.name = (user?.tenant)?.name || '';
-                if (!merged.restaurant.logo) merged.restaurant.logo = (user?.tenant)?.logo || '';
-                if (!merged.restaurant.email) merged.restaurant.email = (user?.tenant)?.contactEmail || user?.email || '';
+                const tenantObj = typeof user?.tenant === 'object' ? user.tenant : null;
+                if (!merged.restaurant.name) merged.restaurant.name = tenantObj?.name || '';
+                if (!merged.restaurant.logo) merged.restaurant.logo = tenantObj?.logo || '';
+                if (!merged.restaurant.email) merged.restaurant.email = tenantObj?.contactEmail || user?.email || '';
                 if (!merged.restaurant.phone) {
-                    const phoneVal = (user?.tenant)?.contactPhone || user?.phone || '';
-                    merged.restaurant.phone = phoneVal.replace(/\D/g, '').slice(-10);
+                    const phoneVal = tenantObj?.contactPhone || user?.phone || '';
+                    merged.restaurant.phone = String(phoneVal || '').replace(/\D/g, '');
+                    if ((merged.restaurant.dialCode === '1' || merged.restaurant.dialCode === '+1') && merged.restaurant.phone.length > 10) {
+                        merged.restaurant.phone = merged.restaurant.phone.slice(-10);
+                    }
                 }
                 setSettings(merged);
                 setWebhookUrl(webhookResp.data?.url || '');
                 setStripeStatus(stripeStatusResp.data || {});
                 setPhonePeStatus(phonePeStatusResp.data || {});
             } else {
-                defaults.restaurant.name = (user?.tenant)?.name || '';
-                defaults.restaurant.logo = (user?.tenant)?.logo || '';
-                defaults.restaurant.email = (user?.tenant)?.contactEmail || user?.email || '';
-                const phoneVal = (user?.tenant)?.contactPhone || user?.phone || '';
-                defaults.restaurant.phone = phoneVal.replace(/\D/g, '').slice(-10);
+                const tenantObj = typeof user?.tenant === 'object' ? user.tenant : null;
+                defaults.restaurant.name = tenantObj?.name || '';
+                defaults.restaurant.logo = tenantObj?.logo || '';
+                defaults.restaurant.email = tenantObj?.contactEmail || user?.email || '';
+                const phoneVal = tenantObj?.contactPhone || user?.phone || '';
+                defaults.restaurant.phone = String(phoneVal || '').replace(/\D/g, '');
+                if ((defaults.restaurant.dialCode === '1' || defaults.restaurant.dialCode === '+1') && defaults.restaurant.phone.length > 10) {
+                    defaults.restaurant.phone = defaults.restaurant.phone.slice(-10);
+                }
                 setSettings(defaults);
                 setWebhookUrl(webhookResp.data?.url || '');
                 setStripeStatus(stripeStatusResp.data || {});
@@ -864,7 +944,26 @@ const SettingsPage: React.FC = () => {
     useEffect(() => {
         fetchSettings();
         fetchUsers(0, 10);
+        paymentsAPI.getConnectStatus()
+            .then((res) => setConnectStatus(res.data || null))
+            .catch(() => setConnectStatus(null));
     }, []);
+
+    const handleOpenStripeDashboard = async () => {
+        setConnectDashboardLoading(true);
+        try {
+            const res = await paymentsAPI.getConnectDashboardLink();
+            if (res.data?.url) {
+                window.open(res.data.url, '_blank', 'noopener');
+            } else {
+                toast.error('Could not get the Stripe dashboard link');
+            }
+        } catch (err: any) {
+            toast.error(err?.response?.data?.message || 'Failed to open Stripe dashboard');
+        } finally {
+            setConnectDashboardLoading(false);
+        }
+    };
 
     useEffect(() => {
         fetchUsers(userAlertsPage, userAlertsRowsPerPage);
@@ -1063,8 +1162,83 @@ const SettingsPage: React.FC = () => {
 
     const handleTestPrint = async (role: 'billing' | 'kitchen') => {
         const config = settings.printer[role];
-        if (!config || !config.ip) {
+        if (!config) {
+            toast.error(`Please configure the ${role} printer first.`);
+            return;
+        }
+
+        const sampleBill = {
+            restaurant: {
+                name: settings.restaurant.name || 'Test Restaurant',
+                address: settings.restaurant.address,
+                phone: settings.restaurant.phone,
+            },
+            orderNumber: 'TEST-0001',
+            orderType: 'dine_in',
+            createdAt: new Date().toISOString(),
+            items: [
+                { name: 'Test Item A', quantity: 2, price: 120, total: 240 },
+                { name: 'Test Item B', quantity: 1, price: 80, total: 80 },
+            ],
+            subtotal: 320,
+            totalAmount: 320,
+            paymentStatus: 'paid',
+            paymentMethod: 'cash',
+        };
+
+        // Wired USB printer (WebUSB, desktop browser). No IP needed.
+        if (config.type === 'usb') {
+            if (!isUsbPrintAvailable()) {
+                toast.error('USB printing needs Chrome or Edge on a desktop. Not supported in this browser.');
+                return;
+            }
+            try {
+                if (!isUsbPrinterConnected()) {
+                    toast.loading('Select your USB printer...', { id: 'test-print' });
+                    await connectUsbPrinter();
+                }
+                toast.loading('Sending test print...', { id: 'test-print' });
+                if (role === 'kitchen') {
+                    await printKotThermal(sampleBill, { ...settings.printer, kitchen: config });
+                } else {
+                    await printBillThermal(sampleBill, { ...settings.printer, billing: config }, formatCurrency);
+                }
+                toast.success('Test print sent to USB printer', { id: 'test-print' });
+            } catch (error: any) {
+                console.error('USB test print failed:', error);
+                toast.error(error?.message || 'Could not print to the USB printer.', { id: 'test-print' });
+            }
+            return;
+        }
+
+        if (!config.ip) {
             toast.error(`Please configure the ${role} printer IP first.`);
+            return;
+        }
+
+        // Wi-Fi thermal printer: print directly from the device (the backend can't reach a LAN printer).
+        if (config.type === 'escpos-tcp') {
+            // ePOS-Print is plain HTTP and works from this browser. Raw ESC/POS / Star Line use a
+            // TCP socket that only the native Android app can open. Default to epos-print to match
+            // the dropdown's default display value (it shows ePOS-Print when commandMode is unset).
+            const isEpos = (config.commandMode || 'epos-print') === 'epos-print';
+            if (!isEpos && !isThermalPrintAvailable()) {
+                toast.error('Raw ESC/POS & Star Line test prints only work inside the installed Android app. For the TM-m30III use Command Mode = ePOS-Print.');
+                return;
+            }
+            try {
+                toast.loading('Sending test print...', { id: 'test-print' });
+                if (role === 'kitchen') {
+                    // Kitchen receiver: print an actual KOT (kitchen ticket), not a bill.
+                    await printKotThermal(sampleBill, { ...settings.printer, kitchen: config });
+                } else {
+                    await printBillThermal(sampleBill, { ...settings.printer, billing: config }, formatCurrency);
+                }
+                toast.success('Test print sent to printer', { id: 'test-print' });
+            } catch (error: any) {
+                console.error('Wi-Fi test print failed:', error);
+                toast.error(error?.message || 'Could not reach the printer. Check Wi-Fi and IP.', { id: 'test-print' });
+            }
             return;
         }
 
@@ -1075,6 +1249,67 @@ const SettingsPage: React.FC = () => {
         } catch (error: any) {
             console.error(`Test print failed for ${role}:`, error);
             toast.error(error.response?.data?.message || `Failed to connect to ${role} printer`, { id: 'test-print' });
+        }
+    };
+
+    // Wired USB printer (WebUSB) connection state — re-renders the "connected" status badge.
+    const [usbConnected, setUsbConnected] = useState(isUsbPrinterConnected());
+    const handleConnectUsb = async () => {
+        try {
+            const name = await connectUsbPrinter();
+            setUsbConnected(true);
+            toast.success(`Connected to ${name}`);
+        } catch (e: any) {
+            toast.error(e?.message || 'Could not connect to the USB printer.');
+        }
+    };
+    const handleDisconnectUsb = async () => {
+        await disconnectUsbPrinter();
+        setUsbConnected(false);
+        toast.success('USB printer disconnected.');
+    };
+
+    // Background print station (Android only): polls for new orders and prints them automatically.
+    const [printStationOn, setPrintStationOn] = useState(() => localStorage.getItem('printStationOn') === '1');
+    const handleTogglePrintStation = async (on: boolean) => {
+        try {
+            if (on) {
+                const jwt = localStorage.getItem('jwt') || '';
+                // apiBaseUrl includes a trailing /api; strip it since the station builds its own paths.
+                const apiBase = apiBaseUrl.replace(/\/api$/, '');
+                const billing = settings.printer.billing;
+                const kitchen = settings.printer.kitchen;
+
+                // Prefer billing printer; fall back to kitchen/KOT printer for KOT-only mode.
+                const printerCfg = (billing?.ip) ? billing : kitchen;
+                if (!printerCfg?.ip) {
+                    toast.error('Set a printer IP in the Billing or Kitchen/KOT printer section first.');
+                    return;
+                }
+
+                const kotOnly = !billing?.ip; // no billing IP → print KOT only
+                await startPrintStation({
+                    jwt,
+                    apiBase,
+                    printerIp: printerCfg.ip,
+                    printerPort: printerCfg.port || 9100,
+                    commandMode: printerCfg.commandMode || 'epos-print',
+                    devId: printerCfg.deviceId || 'local_printer',
+                    kotOnly,
+                });
+                setPrintStationOn(true);
+                localStorage.setItem('printStationOn', '1');
+                toast.success(kotOnly
+                    ? 'Print station started — KOT only (no billing printer configured).'
+                    : 'Print station started — KOT + bill will print in the background.');
+            } else {
+                await stopPrintStation();
+                setPrintStationOn(false);
+                localStorage.setItem('printStationOn', '0');
+                toast.success('Print station stopped.');
+            }
+        } catch (e: any) {
+            toast.error(e?.message || 'Failed to toggle print station.');
         }
     };
 
@@ -1305,7 +1540,7 @@ const SettingsPage: React.FC = () => {
                 validation = validateEmail(String(settings.restaurant.email ?? ''));
                 break;
             case 'phone':
-                validation = validatePhone(String(settings.restaurant.phone ?? ''));
+                validation = validatePhone(String(settings.restaurant.phone ?? ''), settings.restaurant.dialCode);
                 break;
             case 'address':
                 validation = validateAddress(String(settings.restaurant.address ?? ''));
@@ -1321,7 +1556,7 @@ const SettingsPage: React.FC = () => {
         const newErrors: Record<string, ValidationResult> = {
             restaurant_name: validateCompanyName(settings.restaurant.name),
             restaurant_email: validateEmail(settings.restaurant.email),
-            restaurant_phone: validatePhone(settings.restaurant.phone),
+            restaurant_phone: validatePhone(settings.restaurant.phone, settings.restaurant.dialCode),
             restaurant_address: validateAddress(settings.restaurant.address),
         };
 
@@ -1434,19 +1669,19 @@ const SettingsPage: React.FC = () => {
 
         try {
             setLoading(true);
-            let successMessage = 'Settings saved successfully';
+            let successMessage = 'Setting updated successfully';
 
             if (category === 'restaurant') {
                 const restaurantPayload = buildRestaurantPayload();
                 await settingsAPI.update('restaurant', restaurantPayload);
                 updateGlobalSettings(settings); // Update global context
                 await fetchSettings();
-                successMessage = 'Restaurant settings saved successfully';
+                successMessage = 'Setting updated successfully';
             } else if (category === 'system') {
                 await settingsAPI.update('system', settings.system);
                 updateGlobalSettings(settings); // Update global context
                 await fetchSettings();
-                successMessage = 'System preferences saved successfully';
+                successMessage = 'Setting updated successfully';
             } else if (category === 'notification') {
                 await settingsAPI.update('notification', {
                     sms: {
@@ -1461,24 +1696,25 @@ const SettingsPage: React.FC = () => {
                     // @ts-ignore
                     push: settings.notification.push,
                     // @ts-ignore
-                    sound: settings.notification.sound || 'notification'
+                    sound: settings.notification.sound || 'notification',
+                    soundDuration: settings.notification.soundDuration || 6
                 });
                 await fetchSettings();
-                successMessage = 'Notification settings saved successfully';
+                successMessage = 'Setting updated successfully';
             } else if (category === 'printer') {
                 await settingsAPI.update('printer', settings.printer);
                 updateGlobalSettings(settings);
-                successMessage = 'Printer settings saved successfully';
+                successMessage = 'Setting updated successfully';
             } else if (category === 'rewards') {
                 await settingsAPI.update('rewards', settings.rewards);
                 updateGlobalSettings(settings); // Update global context
                 await fetchSettings();
-                successMessage = 'Rewards settings saved successfully';
+                successMessage = 'Setting updated successfully';
             } else if (category === 'delivery') {
                 await settingsAPI.update('delivery', settings.delivery);
                 updateGlobalSettings(settings);
                 await fetchSettings();
-                successMessage = 'Delivery providers configured successfully';
+                successMessage = 'Setting updated successfully';
             }
 
 
@@ -2744,7 +2980,7 @@ const SettingsPage: React.FC = () => {
                                         const labelInput = document.getElementById('new-unit-label') as HTMLInputElement;
                                         const typeInput = document.getElementById('new-unit-type')?.querySelector('input') as HTMLInputElement;
 
-                                        const value = valueInput?.value?.trim().toLowerCase().replace(/\s+/g, '_');
+                                        const value = valueInput?.value?.trim()?.toLowerCase().replace(/\s+/g, '_');
                                         const label = labelInput?.value?.trim();
                                         const type = (typeInput?.value || 'count') as 'weight' | 'volume' | 'count';
 
@@ -2915,13 +3151,22 @@ const SettingsPage: React.FC = () => {
                         <Grid size={{ xs: 12, md: 4 }}>
                             <TextField
                                 fullWidth
-                                type="password"
+                                type={showTwilioAuthToken ? "text" : "password"}
                                 label="Twilio Auth Token"
                                 value={settings.notification.sms.twilio.authToken}
                                 onChange={(e) => handleNotificationChange('authToken', e.target.value.trim())}
                                 disabled={!settings.notification.sms.enabled}
                                 autoComplete="new-password"
                                 helperText={settings.notification.sms.status?.hasAuthToken ? 'A Twilio auth token is already saved.' : ''}
+                                InputProps={{
+                                    endAdornment: (
+                                        <InputAdornment position="end">
+                                            <IconButton onClick={() => setShowTwilioAuthToken(!showTwilioAuthToken)} edge="end" disabled={!settings.notification.sms.enabled}>
+                                                {showTwilioAuthToken ? <Visibility /> : <VisibilityOff />}
+                                            </IconButton>
+                                        </InputAdornment>
+                                    )
+                                }}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
@@ -3388,34 +3633,44 @@ const SettingsPage: React.FC = () => {
 
                         <Paper variant="outlined" sx={{ p: 3, borderRadius: 3, mb: 2 }}>
                             <Grid container spacing={2}>
-                                {['cash', 'card', 'zelle', 'venmo', 'cheque'].map((method) => (
-                                    <Grid size={{ xs: 6, sm: 3 }} key={method}>
-                                        <FormControlLabel
-                                            control={
-                                                <Checkbox
-                                                    checked={settings.system.posPaymentMethods?.[method as keyof typeof settings.system.posPaymentMethods] ?? true}
-                                                    onChange={(e) => {
-                                                        const isChecked = e.target.checked;
-                                                        setSettings(prev => {
-                                                            const currentMethods = prev.system.posPaymentMethods || { cash: true, card: true, zelle: true, venmo: true, cheque: true };
-                                                            return {
-                                                                ...prev,
-                                                                system: {
-                                                                    ...prev.system,
-                                                                    posPaymentMethods: {
-                                                                        ...currentMethods,
-                                                                        [method]: isChecked
+                                {(() => {
+                                    // The POS page swaps the Zelle/Venmo methods for India-specific
+                                    // payment apps (see CustomerInfoSection.tsx). Zelle controls both
+                                    // PhonePe & GPay, and Venmo controls Paytm. Relabel the checkboxes
+                                    // here so Settings matches what is shown on the POS.
+                                    const isIndia = settings.restaurant.country?.toLowerCase() === 'india';
+                                    const methodLabels: Record<string, string> = isIndia
+                                        ? { cash: 'Cash', card: 'Card', zelle: 'PhonePe / GPay', venmo: 'Paytm', cheque: 'Cheque' }
+                                        : { cash: 'Cash', card: 'Card', zelle: 'Zelle', venmo: 'Venmo', cheque: 'Cheque' };
+                                    return ['cash', 'card', 'zelle', 'venmo', 'cheque'].map((method) => (
+                                        <Grid size={{ xs: 6, sm: 3 }} key={method}>
+                                            <FormControlLabel
+                                                control={
+                                                    <Checkbox
+                                                        checked={settings.system.posPaymentMethods?.[method as keyof typeof settings.system.posPaymentMethods] ?? true}
+                                                        onChange={(e) => {
+                                                            const isChecked = e.target.checked;
+                                                            setSettings(prev => {
+                                                                const currentMethods = prev.system.posPaymentMethods || { cash: true, card: true, zelle: true, venmo: true, cheque: true };
+                                                                return {
+                                                                    ...prev,
+                                                                    system: {
+                                                                        ...prev.system,
+                                                                        posPaymentMethods: {
+                                                                            ...currentMethods,
+                                                                            [method]: isChecked
+                                                                        }
                                                                     }
-                                                                }
-                                                            };
-                                                        });
-                                                    }}
-                                                />
-                                            }
-                                            label={<Typography sx={{ textTransform: 'capitalize' }}>{method}</Typography>}
-                                        />
-                                    </Grid>
-                                ))}
+                                                                };
+                                                            });
+                                                        }}
+                                                    />
+                                                }
+                                                label={<Typography>{methodLabels[method]}</Typography>}
+                                            />
+                                        </Grid>
+                                    ));
+                                })()}
                             </Grid>
 
                             {/* Card sub-types — shown only when Card is enabled */}
@@ -3482,6 +3737,10 @@ const SettingsPage: React.FC = () => {
 
                     <Divider sx={{ my: 4 }} />
 
+                    {/* Tenant Stripe keys banner — hidden once Connect onboarding is
+                        complete: payments then run on the platform account and the
+                        Payouts Account panel below is the source of truth. */}
+                    {!(connectStatus?.chargesEnabled && connectStatus?.payoutsEnabled) && (
                     <Paper
                         variant="outlined"
                         sx={{
@@ -3510,6 +3769,82 @@ const SettingsPage: React.FC = () => {
                         </Stack>
                         {(stripeStatus?.hasPublishableKey && stripeStatus?.hasSecretKey) ? <CheckCircleIcon sx={{ color: '#16a34a' }} /> : null}
                     </Paper>
+                    )}
+
+                    {/* Payouts account (Stripe Connect) — shown once the tenant has a Connect account */}
+                    {connectStatus?.accountId && (
+                        <Paper
+                            variant="outlined"
+                            sx={{
+                                p: 2.5,
+                                mb: 3,
+                                borderRadius: 3,
+                                bgcolor: (connectStatus.chargesEnabled && connectStatus.payoutsEnabled) ? alpha('#635bff', 0.06) : alpha('#f59e0b', 0.08),
+                                borderColor: (connectStatus.chargesEnabled && connectStatus.payoutsEnabled) ? alpha('#635bff', 0.3) : alpha('#f59e0b', 0.3),
+                            }}
+                        >
+                            <Stack
+                                direction={{ xs: 'column', sm: 'row' }}
+                                spacing={2}
+                                alignItems={{ xs: 'flex-start', sm: 'center' }}
+                                justifyContent="space-between"
+                            >
+                                <Stack direction="row" spacing={2} alignItems="center">
+                                    <Avatar sx={{ bgcolor: '#635bff', color: '#fff' }}>
+                                        <AccountBalanceIcon />
+                                    </Avatar>
+                                    <Box>
+                                        <Typography variant="subtitle1" fontWeight={700}>
+                                            Payouts Account
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary" sx={{ wordBreak: 'break-all' }}>
+                                            {connectStatus.accountId}
+                                        </Typography>
+                                        <Stack direction="row" spacing={1} sx={{ mt: 0.75 }} flexWrap="wrap" useFlexGap>
+                                            <Chip
+                                                size="small"
+                                                color={connectStatus.chargesEnabled ? 'success' : 'warning'}
+                                                label={connectStatus.chargesEnabled ? 'Charges enabled' : 'Charges pending'}
+                                            />
+                                            <Chip
+                                                size="small"
+                                                color={connectStatus.payoutsEnabled ? 'success' : 'warning'}
+                                                label={connectStatus.payoutsEnabled ? 'Payouts enabled' : 'Payouts pending'}
+                                            />
+                                        </Stack>
+                                    </Box>
+                                </Stack>
+                                {(connectStatus.chargesEnabled && connectStatus.payoutsEnabled) ? (
+                                    <Button
+                                        variant="contained"
+                                        startIcon={connectDashboardLoading ? <CircularProgress size={18} color="inherit" /> : <OpenInNewIcon />}
+                                        onClick={() => void handleOpenStripeDashboard()}
+                                        disabled={connectDashboardLoading}
+                                        sx={{
+                                            bgcolor: '#635bff',
+                                            '&:hover': { bgcolor: '#5148e0' },
+                                            fontWeight: 700,
+                                            borderRadius: 2.5,
+                                            whiteSpace: 'nowrap',
+                                            width: { xs: '100%', sm: 'auto' },
+                                        }}
+                                    >
+                                        Open Stripe Dashboard
+                                    </Button>
+                                ) : (
+                                    <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 260 }}>
+                                        Stripe is verifying your details. The dashboard becomes available once payouts are enabled.
+                                    </Typography>
+                                )}
+                            </Stack>
+                        </Paper>
+                    )}
+
+                    {/* Key entry — only while Connect onboarding is incomplete. Once the
+                        tenant's Express account is fully enabled, all card payments run
+                        through the platform account and no tenant keys are needed. */}
+                    {!(connectStatus?.chargesEnabled && connectStatus?.payoutsEnabled) && (
+                    <>
                     <Typography variant="h6" sx={{ mb: 1, fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
                         Stripe Payments
                     </Typography>
@@ -3570,7 +3905,7 @@ const SettingsPage: React.FC = () => {
                             <TextField
                                 fullWidth
                                 label="Secret Key"
-                                type="password"
+                                type={showStripeSecretKey ? "text" : "password"}
                                 value={settings.payment.stripeSecretKey || ''}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({
                                     ...prev,
@@ -3579,13 +3914,22 @@ const SettingsPage: React.FC = () => {
                                 placeholder="sk_test_..."
                                 autoComplete="new-password"
                                 helperText={stripeStatus.hasSecretKey ? 'Already set. Leave blank to keep current key.' : ''}
+                                InputProps={{
+                                    endAdornment: (
+                                        <InputAdornment position="end">
+                                            <IconButton onClick={() => setShowStripeSecretKey(!showStripeSecretKey)} edge="end">
+                                                {showStripeSecretKey ? <Visibility /> : <VisibilityOff />}
+                                            </IconButton>
+                                        </InputAdornment>
+                                    )
+                                }}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 6 }}>
                             <TextField
                                 fullWidth
                                 label="Webhook Signing Secret"
-                                type="password"
+                                type={showStripeWebhookSecret ? "text" : "password"}
                                 value={settings.payment.stripeWebhookSecret || ''}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({
                                     ...prev,
@@ -3596,6 +3940,15 @@ const SettingsPage: React.FC = () => {
                                 helperText={stripeStatus.hasWebhookSecret
                                     ? 'Already set. Leave blank to keep current key.'
                                     : 'Found in Stripe Dashboard → Developers → Webhooks'}
+                                InputProps={{
+                                    endAdornment: (
+                                        <InputAdornment position="end">
+                                            <IconButton onClick={() => setShowStripeWebhookSecret(!showStripeWebhookSecret)} edge="end">
+                                                {showStripeWebhookSecret ? <Visibility /> : <VisibilityOff />}
+                                            </IconButton>
+                                        </InputAdornment>
+                                    )
+                                }}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 6 }}>
@@ -3679,6 +4032,8 @@ const SettingsPage: React.FC = () => {
                             </Button>
                         </Grid>
                     </Grid>
+                    </>
+                    )}
 
                     {/* ── PhonePe (India) ─────────────────────────────────────── */}
                     {settings.restaurant.country?.toLowerCase() === 'india' && (
@@ -3888,6 +4243,26 @@ const SettingsPage: React.FC = () => {
                             </Paper>
                         </Grid>
 
+                        {/* Background Print Station (mobile app only) */}
+                        {isThermalPrintAvailable() && (
+                            <Grid size={{ xs: 12 }}>
+                                <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <Box>
+                                        <Typography variant="subtitle1" fontWeight={700}>
+                                            Run as Print Station (Background)
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary">
+                                            Keeps printing KOT (and bill if configured) for all orders even when the app is in the background or screen is off. Uses Billing printer if set, otherwise uses the KOT/Kitchen printer for KOT-only mode.
+                                        </Typography>
+                                    </Box>
+                                    <Switch
+                                        checked={printStationOn}
+                                        onChange={(e) => handleTogglePrintStation(e.target.checked)}
+                                    />
+                                </Paper>
+                            </Grid>
+                        )}
+
                         {/* Billing Printer Section */}
                         <Grid size={{ xs: 12, md: 6 }}>
                             <Box sx={{ p: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
@@ -3907,10 +4282,96 @@ const SettingsPage: React.FC = () => {
                                         >
                                             <MenuItem value="none">None (Disabled)</MenuItem>
                                             <MenuItem value="print-agent">Print Agent (Electron)</MenuItem>
+                                            <MenuItem value="escpos-tcp">Wi-Fi Thermal Printer (Mobile App)</MenuItem>
+                                            <MenuItem value="usb">Wired USB Printer (Desktop browser)</MenuItem>
                                         </TextField>
                                     </Grid>
 
-                                    {settings.printer.billing?.type !== 'none' && (
+                                    {settings.printer.billing?.type === 'usb' && (
+                                        <UsbPrinterSection
+                                            role="billing"
+                                            connected={usbConnected}
+                                            available={isUsbPrintAvailable()}
+                                            onConnect={handleConnectUsb}
+                                            onDisconnect={handleDisconnectUsb}
+                                            onTest={() => handleTestPrint('billing')}
+                                        />
+                                    )}
+
+                                    {/* Wi-Fi / LAN thermal printer (Android app): direct TCP to printer IP:9100 */}
+                                    {settings.printer.billing?.type === 'escpos-tcp' && (
+                                        <>
+                                            <Grid size={{ xs: 12, md: 8 }}>
+                                                <TextField
+                                                    fullWidth
+                                                    label="Printer IP Address"
+                                                    placeholder="192.168.1.50"
+                                                    value={settings.printer.billing?.ip || ''}
+                                                    onChange={(e) => handlePrinterChange('billing', 'ip', e.target.value.trim())}
+                                                    helperText="The Wi-Fi/LAN IP of the printer. Power off, hold FEED, power on to print the SP700's network config."
+                                                />
+                                            </Grid>
+                                            <Grid size={{ xs: 12, md: 4 }}>
+                                                <TextField
+                                                    fullWidth
+                                                    type="number"
+                                                    label="Port"
+                                                    value={settings.printer.billing?.port ?? 9100}
+                                                    onChange={(e) => handlePrinterChange('billing', 'port', parseInt(e.target.value, 10) || 9100)}
+                                                    helperText="Usually 9100"
+                                                />
+                                            </Grid>
+                                            <Grid size={{ xs: 12, md: 6 }}>
+                                                <TextField
+                                                    select
+                                                    fullWidth
+                                                    label="Command Mode"
+                                                    value={settings.printer.billing?.commandMode || 'epos-print'}
+                                                    onChange={(e) => handlePrinterChange('billing', 'commandMode', e.target.value)}
+                                                    helperText="Epson TM-m30III = ePOS-Print. Star SP700/SP742 = Star Line. Generic = ESC/POS."
+                                                >
+                                                    <MenuItem value="epos-print">ePOS-Print (Epson TM-m30III / TM series)</MenuItem>
+                                                    <MenuItem value="escpos">ESC/POS raw (generic, port 9100)</MenuItem>
+                                                    <MenuItem value="star-line">Star Line (Star printers)</MenuItem>
+                                                </TextField>
+                                            </Grid>
+                                            <Grid size={{ xs: 12, md: 6 }}>
+                                                <TextField
+                                                    select
+                                                    fullWidth
+                                                    label="Paper Width"
+                                                    value={settings.printer.billing?.paperWidth ?? 76}
+                                                    onChange={(e) => handlePrinterChange('billing', 'paperWidth', parseInt(e.target.value, 10))}
+                                                >
+                                                    <MenuItem value={58}>58mm (2 inch)</MenuItem>
+                                                    <MenuItem value={76}>76mm / 3 inch (SP700)</MenuItem>
+                                                    <MenuItem value={80}>80mm</MenuItem>
+                                                </TextField>
+                                            </Grid>
+                                            <Grid size={{ xs: 12 }}>
+                                                <Alert severity="info">
+                                                    {settings.printer.billing?.commandMode === 'epos-print' ? (
+                                                        <>ePOS-Print (Epson TM-m30III) prints over the network from <strong>this browser</strong> — works on the laptop and Clover, no app needed. This device and the printer must be on the same network. Turn on <strong>Auto-print</strong> to print bills automatically.</>
+                                                    ) : (
+                                                        <>Raw ESC/POS & Star Line printing runs from the installed mobile app (Android). The phone and printer must be on the same Wi-Fi network. Turn on <strong>Auto-print</strong> under General settings to print bills automatically.</>
+                                                    )}
+                                                </Alert>
+                                            </Grid>
+                                            <Grid size={{ xs: 12 }}>
+                                                <Button
+                                                    variant="outlined"
+                                                    fullWidth
+                                                    onClick={() => handleTestPrint('billing')}
+                                                    startIcon={<PrintIcon />}
+                                                    disabled={!settings.printer.billing?.ip}
+                                                >
+                                                    Send Test Print
+                                                </Button>
+                                            </Grid>
+                                        </>
+                                    )}
+
+                                    {settings.printer.billing?.type === 'print-agent' && (
                                         <>
                                             <Grid size={{ xs: 12, md: 6 }}>
                                                 <TextField
@@ -3971,10 +4432,87 @@ const SettingsPage: React.FC = () => {
                                         >
                                             <MenuItem value="none">None (Disabled)</MenuItem>
                                             <MenuItem value="print-agent">Print Agent (Electron)</MenuItem>
+                                            <MenuItem value="escpos-tcp">Wi-Fi Thermal Printer (Mobile App)</MenuItem>
+                                            <MenuItem value="usb">Wired USB Printer (Desktop browser)</MenuItem>
                                         </TextField>
                                     </Grid>
 
-                                    {settings.printer.kitchen?.type !== 'none' && (
+                                    {settings.printer.kitchen?.type === 'usb' && (
+                                        <UsbPrinterSection
+                                            role="kitchen"
+                                            connected={usbConnected}
+                                            available={isUsbPrintAvailable()}
+                                            onConnect={handleConnectUsb}
+                                            onDisconnect={handleDisconnectUsb}
+                                            onTest={() => handleTestPrint('kitchen')}
+                                        />
+                                    )}
+
+                                    {/* Wi-Fi / LAN kitchen thermal printer (Android app) */}
+                                    {settings.printer.kitchen?.type === 'escpos-tcp' && (
+                                        <>
+                                            <Grid size={{ xs: 12, md: 8 }}>
+                                                <TextField
+                                                    fullWidth
+                                                    label="Kitchen Printer IP"
+                                                    placeholder="192.168.1.51"
+                                                    value={settings.printer.kitchen?.ip || ''}
+                                                    onChange={(e) => handlePrinterChange('kitchen', 'ip', e.target.value.trim())}
+                                                    helperText="The Wi-Fi/LAN IP of the kitchen printer."
+                                                />
+                                            </Grid>
+                                            <Grid size={{ xs: 12, md: 4 }}>
+                                                <TextField
+                                                    fullWidth
+                                                    type="number"
+                                                    label="Port"
+                                                    value={settings.printer.kitchen?.port ?? 9100}
+                                                    onChange={(e) => handlePrinterChange('kitchen', 'port', parseInt(e.target.value, 10) || 9100)}
+                                                    helperText="Usually 9100"
+                                                />
+                                            </Grid>
+                                            <Grid size={{ xs: 12, md: 6 }}>
+                                                <TextField
+                                                    select
+                                                    fullWidth
+                                                    label="Command Mode"
+                                                    value={settings.printer.kitchen?.commandMode || 'epos-print'}
+                                                    onChange={(e) => handlePrinterChange('kitchen', 'commandMode', e.target.value)}
+                                                    helperText="Epson TM-m30III = ePOS-Print. Star = Star Line. Generic = ESC/POS."
+                                                >
+                                                    <MenuItem value="epos-print">ePOS-Print (Epson TM-m30III / TM series)</MenuItem>
+                                                    <MenuItem value="escpos">ESC/POS raw (generic, port 9100)</MenuItem>
+                                                    <MenuItem value="star-line">Star Line (Star printers)</MenuItem>
+                                                </TextField>
+                                            </Grid>
+                                            <Grid size={{ xs: 12, md: 6 }}>
+                                                <TextField
+                                                    select
+                                                    fullWidth
+                                                    label="Paper Width"
+                                                    value={settings.printer.kitchen?.paperWidth ?? 76}
+                                                    onChange={(e) => handlePrinterChange('kitchen', 'paperWidth', parseInt(e.target.value, 10))}
+                                                >
+                                                    <MenuItem value={58}>58mm (2 inch)</MenuItem>
+                                                    <MenuItem value={76}>76mm / 3 inch (SP700)</MenuItem>
+                                                    <MenuItem value={80}>80mm</MenuItem>
+                                                </TextField>
+                                            </Grid>
+                                            <Grid size={{ xs: 12 }}>
+                                                <Button
+                                                    variant="outlined"
+                                                    fullWidth
+                                                    onClick={() => handleTestPrint('kitchen')}
+                                                    startIcon={<PrintIcon />}
+                                                    disabled={!settings.printer.kitchen?.ip}
+                                                >
+                                                    Send Test Print
+                                                </Button>
+                                            </Grid>
+                                        </>
+                                    )}
+
+                                    {settings.printer.kitchen?.type === 'print-agent' && (
                                         <>
                                             <Grid size={{ xs: 12, md: 6 }}>
                                                 <TextField

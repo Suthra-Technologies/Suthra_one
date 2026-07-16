@@ -1,5 +1,6 @@
 import {
     TableRestaurant as GroupIcon,
+    History as HistoryIcon,
     Link as LinkIcon,
     LinkOff as LinkOffIcon
 } from '@mui/icons-material';
@@ -26,6 +27,7 @@ import {
 import React, { useEffect } from 'react';
 import AddressAutocomplete from '../../../components/AddressAutocomplete';
 import PhoneInput from '../../../components/PhoneInput';
+import { formatPhoneDisplay, validateEmail, validatePhone } from '../../../utils/validation';
 
 interface CustomerInfoSectionProps {
     customerName: string;
@@ -264,7 +266,7 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                         fullWidth
                         value={customerName}
                         onChange={(e) => {
-                            const value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                            const value = e.target.value.replace(/[^a-zA-Z\s]/g, '').slice(0, 30);
                             setCustomerName(value);
                             if (customerNameTouched && value.trim()) {
                                 setCustomerNameError('');
@@ -277,6 +279,8 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                 setCustomerNameError('Customer name is required');
                             } else if (trimmedName.length < 3) {
                                 setCustomerNameError('Customer name must be at least 3 characters');
+                            } else if (trimmedName.length > 30) {
+                                setCustomerNameError('Customer name must not exceed 30 characters');
                             } else {
                                 setCustomerNameError('');
                             }
@@ -285,6 +289,7 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                         helperText={customerNameTouched && customerNameError}
                         disabled={user?.role === 'customer'}
                         required
+                        inputProps={{ maxLength: 30 }}
                         InputLabelProps={{
                             sx: {
                                 '& .MuiFormLabel-asterisk': {
@@ -302,44 +307,50 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                         fullWidth
                         value={customerPhone}
                         onChange={(value) => {
-                            const cleaned = value.replace(/\D/g, '').slice(0, 10);
-                            setCustomerPhone(cleaned);
-                            if (customerPhoneTouched && cleaned) {
-                                setCustomerPhoneError('');
+                            const cleaned = String(value || '').replace(/\D/g, '');
+                            const isUS = customerDialCode === '1' || customerDialCode === '+1';
+                            const final = (isUS && cleaned.length > 10) ? cleaned.slice(0, 10) : cleaned;
+                            setCustomerPhone(final);
+                            if (customerPhoneTouched && final) {
+                                const validation = validatePhone(final, customerDialCode);
+                                setCustomerPhoneError(validation.isValid ? '' : (validation.message || ''));
                             }
                         }}
                         onBlur={() => {
                             setCustomerPhoneTouched(true);
-                            if (!customerPhone) {
-                                setCustomerPhoneError('Phone number is required');
-                            } else if (customerPhone.length !== 10) {
-                                setCustomerPhoneError('Phone number must be exactly 10 digits');
-                            } else {
-                                setCustomerPhoneError('');
-                            }
+                            const validation = validatePhone(customerPhone, customerDialCode);
+                            setCustomerPhoneError(validation.isValid ? '' : (validation.message || ''));
                         }}
                         error={customerPhoneTouched && !!customerPhoneError}
-                        helperText={suggestedPhone ? (
-                            <Box component="span" sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-                                <Typography variant="caption" color="primary">Previously used: {suggestedPhone}</Typography>
-                                <Button
-                                    size="small"
-                                    variant="outlined"
-                                    sx={{ height: 20, px: 1, minWidth: 0, textTransform: 'none', fontSize: '0.65rem' }}
-                                    onClick={() => {
-                                        const clean = suggestedPhone.replace(/\D/g, '').slice(-10);
-                                        setCustomerPhone(clean);
-                                    }}
-                                >
-                                    Use this
-                                </Button>
-                            </Box>
-                        ) : (customerPhoneTouched && customerPhoneError)}
+                        helperText={customerPhoneTouched && customerPhoneError}
                         disabled={user?.role === 'customer'}
                         required
                         dialCode={customerDialCode}
                         onDialCodeChange={setCustomerDialCode}
                     />
+                    {suggestedPhone && (
+                        <Tooltip title="Fill in this customer's previous phone number" arrow>
+                            <Chip
+                                icon={<HistoryIcon sx={{ fontSize: 14 }} />}
+                                label={`Use previous: ${formatPhoneDisplay(suggestedPhone)}`}
+                                size="small"
+                                color="primary"
+                                variant="outlined"
+                                clickable
+                                onClick={() => {
+                                    const clean = suggestedPhone.replace(/\D/g, '').slice(-10);
+                                    setCustomerPhone(clean);
+                                }}
+                                sx={{
+                                    mt: 0.75,
+                                    height: 24,
+                                    fontSize: '0.72rem',
+                                    fontWeight: 600,
+                                    maxWidth: '100%',
+                                }}
+                            />
+                        </Tooltip>
+                    )}
                 </Grid>
                 <Grid item xs={12} sm={4}>
                     <TextField
@@ -349,26 +360,19 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                         type="email"
                         value={customerEmail}
                         onChange={(e) => {
-                            const val = e.target.value.toLowerCase();
+                            const val = e.target.value?.toLowerCase();
                             setCustomerEmail(val);
                             if (customerEmailTouched) {
-                                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                                if (val && !emailRegex.test(val)) {
-                                    setCustomerEmailError('Please enter a valid email address');
-                                } else {
-                                    setCustomerEmailError('');
-                                }
+                                const validation = validateEmail(val, false);
+                                setCustomerEmailError(validation.isValid ? '' : (validation.message || 'Please enter a valid email address'));
                             }
                         }}
                         onBlur={() => {
                             setCustomerEmailTouched(true);
-                            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                            if (customerEmail && !emailRegex.test(customerEmail)) {
-                                setCustomerEmailError('Please enter a valid email address');
-                            } else {
-                                setCustomerEmailError('');
-                            }
+                            const validation = validateEmail(customerEmail, false);
+                            setCustomerEmailError(validation.isValid ? '' : (validation.message || 'Please enter a valid email address'));
                         }}
+                        inputProps={{ maxLength: 254 }}
                         error={customerEmailTouched && !!customerEmailError}
                         helperText={customerEmailTouched && customerEmailError}
                         disabled={user?.role === 'customer'}

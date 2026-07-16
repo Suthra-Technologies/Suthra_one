@@ -294,7 +294,7 @@ const CouponsPage: React.FC = () => {
                 setTotalCoupons(response.data.total);
             } else {
                 setCoupons(response.data);
-                setTotalCoupons(response.data.length);
+                setTotalCoupons((response?.data || []).length);
             }
         } catch (error) {
             console.error('Error fetching coupons:', error);
@@ -428,7 +428,7 @@ const CouponsPage: React.FC = () => {
         try {
             const payload = {
                 ...formData,
-                code: formData.code.toUpperCase(),
+                code: formData.code?.toUpperCase(),
                 discountValue: parseFloat(formData.discountValue) || 0,
                 maxDiscountAmount: formData.maxDiscountAmount ? parseFloat(formData.maxDiscountAmount) : undefined,
                 minBillAmount: parseFloat(formData.minBillAmount) || 0,
@@ -489,7 +489,7 @@ const CouponsPage: React.FC = () => {
 
     const getDiscountDisplay = (coupon: any) => {
         if (coupon.discountType === 'percentage') {
-            return `${coupon.discountValue}% OFF${coupon.maxDiscountAmount ? ` (Max $${coupon.maxDiscountAmount})` : ''}`;
+            return `${coupon.discountValue}% OFF${coupon.maxDiscountAmount ? ` (Max $${Number(coupon.maxDiscountAmount || 0).toFixed(2)})` : ''}`;
         }
         return `$${coupon.discountValue} OFF`;
     };
@@ -497,7 +497,7 @@ const CouponsPage: React.FC = () => {
     // Client-side filtered list
     const filteredCoupons = searchQuery.trim()
         ? coupons.filter((c) => {
-            const q = searchQuery.toLowerCase();
+            const q = searchQuery?.toLowerCase();
             return (
                 c.code?.toLowerCase().includes(q) ||
                 c.name?.toLowerCase().includes(q) ||
@@ -830,8 +830,8 @@ const CouponsPage: React.FC = () => {
                                     name="code"
                                     value={formData.code}
                                     onChange={(val) => {
-                                        setFormData(prev => ({ ...prev, code: val.toUpperCase() }));
-                                        validateField('code', val.toUpperCase());
+                                        setFormData(prev => ({ ...prev, code: val?.toUpperCase() }));
+                                        validateField('code', val?.toUpperCase());
                                     }}
                                     onBlur={() => {
                                         setTouched(prev => ({ ...prev, code: true }));

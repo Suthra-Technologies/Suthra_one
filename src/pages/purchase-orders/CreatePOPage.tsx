@@ -55,7 +55,7 @@ import { useActiveTenant } from '../../hooks/useActiveTenant';
 
 // --- Global Utilities ---
 const normalizeUnit = (unit: string): string => {
-    const u = (unit || '').toLowerCase().trim();
+    const u = (unit || '')?.toLowerCase().trim();
     if (u === 'box') return 'boxes';
     if (u === 'packet') return 'packets';
     if (u === 'piece') return 'pieces';
@@ -126,7 +126,7 @@ const CreatePOPage: React.FC = () => {
                 category: po.category || 'raw_materials',
                 referenceNumber: po.referenceNumber || '',
                 dueDate: po.dueDate ? new Date(po.dueDate).toISOString().split('T')[0] : '',
-                items: (po.items && po.items.length > 0) ? po.items : [{ description: '', quantity: 1, unit: 'kg', unitPrice: 0, total: 0, inventoryItem: '', weightValue: '', weightUnit: 'lb' }],
+                items: (po.items && (po?.items || []).length > 0) ? po.items : [{ description: '', quantity: 1, unit: 'kg', unitPrice: 0, total: 0, inventoryItem: '', weightValue: '', weightUnit: 'lb' }],
                 taxRate: po.taxRate || 0,
                 shippingCost: po.shippingCost || 0,
                 notes: po.notes || '',
@@ -406,8 +406,8 @@ const CreatePOPage: React.FC = () => {
                 let matchedInventoryId = item.inventory_id || item.inventoryId || item.matched_id || item._id || '';
                 if (!matchedInventoryId && itemName) {
                     const matchedInv = inventoryItems.find((inv: any) =>
-                        inv.name.toLowerCase().includes(itemName.toLowerCase()) ||
-                        itemName.toLowerCase().includes(inv.name.toLowerCase())
+                        inv.name?.toLowerCase().includes(itemName?.toLowerCase()) ||
+                        itemName?.toLowerCase().includes(inv.name?.toLowerCase())
                     );
                     if (matchedInv) matchedInventoryId = matchedInv._id;
                 }
@@ -468,7 +468,7 @@ const CreatePOPage: React.FC = () => {
             // Try to match vendor from existing vendors list
             if (vendorName) {
                 const matched = vendors.find((v: any) =>
-                    v.name.toLowerCase().trim() === vendorName.toLowerCase().trim()
+                    v.name?.toLowerCase().trim() === vendorName?.toLowerCase().trim()
                 );
                 if (matched) {
                     setSelectedVendor(matched);
@@ -573,11 +573,11 @@ const CreatePOPage: React.FC = () => {
     };
 
     const removeItem = (index: number) => {
-        setFormData({ ...formData, items: formData.items.filter((_, i) => i !== index) });
+        setFormData({ ...formData, items: (formData?.items || []).filter((_: any, i: number) => i !== index) });
     };
 
     const handleRestockAll = async () => {
-        const verifiedItems = formData.items.filter(item => item.inventoryItem && item.inventoryItem !== 'verified' && item.quantity > 0);
+        const verifiedItems = (formData?.items || []).filter((item: any) => item.inventoryItem && item.inventoryItem !== 'verified' && item.quantity > 0);
         if (verifiedItems.length === 0) {
             toast.error('No verified inventory items to restock. Ensure all items are matched to inventory first.');
             return;
@@ -585,7 +585,7 @@ const CreatePOPage: React.FC = () => {
 
         toast.loading(`Restocking ${verifiedItems.length} items...`, { id: 'restock-toast' });
         try {
-            const restockPayload = verifiedItems.map(item => ({
+            const restockPayload = verifiedItems.map((item: any) => ({
                 inventoryId: item.inventoryItem,
                 quantity: item.quantity,
                 costPrice: item.unitPrice || undefined,
@@ -609,7 +609,7 @@ const CreatePOPage: React.FC = () => {
         }
     };
 
-    const calculateSubtotal = () => formData.items.reduce((sum, item) => sum + (item.total || 0), 0);
+    const calculateSubtotal = () => (formData?.items || []).reduce((sum: number, item: any) => sum + (item.total || 0), 0);
     const calculateTax = () => (calculateSubtotal() * (formData.taxRate || 0)) / 100;
     const calculateTotal = () => calculateSubtotal() + calculateTax() + (formData.shippingCost || 0);
 
@@ -1056,7 +1056,7 @@ const CreatePOPage: React.FC = () => {
                                     sx={{ mb: 0, width: 'auto' }}
                                 />
                                 <Box sx={{ display: 'flex', gap: 1 }}>
-                                    {isInventory && formData.items.some(i => i.inventoryItem && i.inventoryItem !== 'verified') && (
+                                    {isInventory && formData.items.some((i: any) => i.inventoryItem && i.inventoryItem !== 'verified') && (
                                         <Button
                                             size="small"
                                             startIcon={<RestockIcon sx={{ fontSize: 16 }} />}
@@ -1099,13 +1099,13 @@ const CreatePOPage: React.FC = () => {
                             }}>
                                 {/* MOBILE CARD VIEW */}
                                 {isMobile ? (
-                                    formData.items.length === 0 ? (
+                                    (formData?.items || []).length === 0 ? (
                                         <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
                                             <Typography variant="caption">No items available</Typography>
                                         </Box>
                                     ) : (
                                         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                                            {formData.items.map((item, index) => (
+                                            {(formData?.items || []).map((item: any, index: number) => (
                                                 <Box key={index} sx={{
                                                     width: '100%',
                                                     maxWidth: 500,
@@ -1185,7 +1185,7 @@ const CreatePOPage: React.FC = () => {
                                                         <IconButton
                                                             size="small" color="error"
                                                             onClick={() => removeItem(index)}
-                                                            disabled={formData.items.length === 1}
+                                                            disabled={(formData?.items || []).length === 1}
                                                             sx={{ p: 0.5 }}
                                                         >
                                                             <DeleteIcon fontSize="small" />
@@ -1209,7 +1209,7 @@ const CreatePOPage: React.FC = () => {
                                                 </TableRow>
                                             </TableHead>
                                             <TableBody>
-                                                {formData.items.map((item, index) => (
+                                                {(formData?.items || []).map((item: any, index: number) => (
                                                     <TableRow key={index}>
                                                         <TableCell>
                                                             {isInventory ? (
@@ -1260,7 +1260,7 @@ const CreatePOPage: React.FC = () => {
                                                         <TableCell align="right">${(isSalary ? item.unitPrice : item.total || 0).toFixed(2)}</TableCell>
                                                         {!isSalary && (
                                                             <TableCell>
-                                                                <IconButton onClick={() => removeItem(index)} disabled={formData.items.length === 1} size="small" color="error"><DeleteIcon /></IconButton>
+                                                                <IconButton onClick={() => removeItem(index)} disabled={(formData?.items || []).length === 1} size="small" color="error"><DeleteIcon /></IconButton>
                                                             </TableCell>
                                                         )}
                                                     </TableRow>
@@ -1290,7 +1290,7 @@ const CreatePOPage: React.FC = () => {
                                         <Typography variant={isMobile ? "subtitle1" : "h5"} fontWeight={900}>Goal</Typography>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                             <Typography variant="caption" sx={{ opacity: 0.6 }}>Method:</Typography>
-                                            <Chip label={formData.paymentMethod.toUpperCase()} size="small" sx={{ bgcolor: alpha('#fff', 0.1), color: 'white', fontWeight: 800, fontSize: '0.65rem' }} />
+                                            <Chip label={formData.paymentMethod?.toUpperCase()} size="small" sx={{ bgcolor: alpha('#fff', 0.1), color: 'white', fontWeight: 800, fontSize: '0.65rem' }} />
                                         </Box>
                                     </Box>
                                     <Divider sx={{ mb: 2, bgcolor: alpha('#fff', 0.1) }} />

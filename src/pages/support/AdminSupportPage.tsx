@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { fixImageUrl } from '../../utils/imageUtils';
 import {
   Container,
   Paper,
@@ -53,23 +54,13 @@ interface Ticket {
   }[];
 }
 
-const fixS3Url = (url: string) => {
-  if (!url) return '';
-  // Check for virtual-hosted-style URLs (bucket.s3.region.amazonaws.com)
-  // This causes SSL errors if the bucket name contains dots
-  const match = url.match(/^https:\/\/([a-zA-Z0-9.-]+)\.s3\.([a-zA-Z0-9-]+)\.amazonaws\.com\/(.+)$/);
-  if (match) {
-    const [, bucket, region, key] = match;
-    // content-style (path-style): s3.region.amazonaws.com/bucket/key
-    return `https://s3.${region}.amazonaws.com/${bucket}/${key}`;
-  }
-  return url;
-};
+// fixImageUrl removed to use centralized utility
 
 const AdminSupportPage: React.FC = () => {
   const { user } = useAuth();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const topRef = React.useRef<HTMLDivElement>(null);
   const [subject, setSubject] = useState('');
   const [category, setCategory] = useState('technical');
   const [priority, setPriority] = useState('medium');
@@ -133,9 +124,9 @@ const AdminSupportPage: React.FC = () => {
       toast.dismiss();
       const backendMessage = error?.response?.data?.message || error?.message || '';
       if (
-        backendMessage.toLowerCase().includes('file too large') ||
-        backendMessage.toLowerCase().includes('limit_file_size') ||
-        backendMessage.toLowerCase().includes('10mb')
+        backendMessage?.toLowerCase().includes('file too large') ||
+        backendMessage?.toLowerCase().includes('limit_file_size') ||
+        backendMessage?.toLowerCase().includes('10mb')
       ) {
         toast.error('upload image failed image size should not exceed more than 10 MB');
       } else {
@@ -185,7 +176,7 @@ const AdminSupportPage: React.FC = () => {
       loadTickets();
     } catch (e: any) {
       console.error(e);
-      const errText = `${e?.response?.data?.message || ''} ${e?.message || ''}`.toLowerCase();
+      const errText = `${e?.response?.data?.message || ''} ${e?.message || ''}`?.toLowerCase();
       if (editingTicket && (e?.response?.status === 404 || errText.includes('cannot patch'))) {
         toast.error('Update API route not available. Please restart backend and try again.');
       } else {
@@ -203,7 +194,7 @@ const AdminSupportPage: React.FC = () => {
     setPriority(ticket.priority || 'medium');
     setMessage(ticket.messages?.[0]?.message || '');
     setAttachments(ticket.messages?.[0]?.attachments || []);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   const handleDeleteTicket = async (ticket: Ticket) => {
@@ -219,7 +210,7 @@ const AdminSupportPage: React.FC = () => {
       }
       loadTickets();
     } catch (e: any) {
-      const errText = `${e?.response?.data?.message || ''} ${e?.message || ''}`.toLowerCase();
+      const errText = `${e?.response?.data?.message || ''} ${e?.message || ''}`?.toLowerCase();
       if (e?.response?.status === 404 || errText.includes('cannot delete')) {
         toast.error('Delete API route not available. Please restart backend and try again.');
       } else {
@@ -267,6 +258,7 @@ const AdminSupportPage: React.FC = () => {
 
   return (
     <Container maxWidth="md" sx={{ py: { xs: 2, md: 4 }, px: { xs: 1, sm: 2 } }}>
+      <div ref={topRef} />
       <Box sx={{ mb: { xs: 2, sm: 3 } }}>
         <Typography 
           variant="h4" 
@@ -344,7 +336,7 @@ const AdminSupportPage: React.FC = () => {
               {attachments.map((att, index) => (
                 <Grid item xs={6} sm={4} key={index}>
                   <Card sx={{ position: 'relative' }}>
-                    <CardMedia component="img" height="100" image={fixS3Url(att.url)} alt={att.name} />
+                    <CardMedia component="img" height="100" image={fixImageUrl(att.url)} alt={att.name} />
                     <IconButton
                       size="small"
                       sx={{
@@ -537,7 +529,14 @@ const AdminSupportPage: React.FC = () => {
       </Paper>
 
       {/* View Ticket Details Dialog */}
-      <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth>
+      <Dialog open={viewDialogOpen} onClose={() => setViewDialogOpen(false)} maxWidth="md" fullWidth PaperProps={{
+        sx: {
+          borderRadius: { xs: 3, md: 4 },
+          m: { xs: 2, md: 4 },
+          width: { xs: 'calc(100% - 32px)', md: '100%' },
+          maxHeight: 'calc(100% - 64px)'
+        }
+      }}>
         <DialogTitle>
           Ticket Details
           <IconButton
@@ -591,10 +590,10 @@ const AdminSupportPage: React.FC = () => {
                               <CardMedia
                                 component="img"
                                 height="150"
-                                image={fixS3Url(att.url)}
+                                image={fixImageUrl(att.url)}
                                 alt={att.name}
                                 sx={{ cursor: 'pointer' }}
-                                onClick={() => window.open(att.url, '_blank')}
+                                onClick={() => window.open(fixImageUrl(att.url), '_blank')}
                               />
                             </Card>
                           </Grid>

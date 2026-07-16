@@ -44,7 +44,7 @@ const ActionHistoryList: React.FC<ActionHistoryListProps> = ({ history, emptyMes
     }
 
     const getActionIcon = (action: string) => {
-        switch (action.toUpperCase()) {
+        switch (action?.toUpperCase()) {
             case 'CREATED':
                 return <PersonAddIcon />;
             case 'UPDATED':
@@ -63,7 +63,7 @@ const ActionHistoryList: React.FC<ActionHistoryListProps> = ({ history, emptyMes
     };
 
     const getActionColor = (action: string): "primary" | "secondary" | "success" | "error" | "warning" | "info" => {
-        switch (action.toUpperCase()) {
+        switch (action?.toUpperCase()) {
             case 'CREATED':
                 return 'success';
             case 'UPDATED':

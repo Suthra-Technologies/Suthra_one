@@ -1,4 +1,5 @@
 // src/pages/kitchen/KitchenInterface.tsx
+import { Capacitor } from '@capacitor/core';
 import {
   Cancel as CancelIcon,
   CheckCircle as CheckCircleIcon,
@@ -54,8 +55,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
+import { useSettings } from '../../context/SettingsContext';
 import { ordersAPI } from '../../services/api';
 import { formatSpiceLevelLabel } from '../../utils/spiceLevel';
+import { printKotThermal } from '../../utils/kotThermal';
 
 interface OrderItem {
   name: string;
@@ -64,10 +67,15 @@ interface OrderItem {
   notes?: string;
   spiceLevel?: string | null;
   preparationStatus?: 'pending' | 'preparing' | 'ready' | 'cancelled';
+  disputedQuantity?: number; // qty under an active dispute — not to be prepared
   cancelReason?: string;
   preparedAt?: Date;
   cancelledAt?: Date;
 }
+
+// Quantity the kitchen should actually prepare (ordered minus disputed)
+const getCookQty = (item: OrderItem): number =>
+  Math.max(0, Number(item.quantity || 0) - Number(item.disputedQuantity || 0));
 
 interface Order {
   _id: string;
@@ -95,6 +103,7 @@ const KitchenInterface: React.FC = () => {
   const theme = useTheme();
   const { socket } = useSocket();
   const { hasRole } = useAuth();
+  const { settings } = useSettings();
   const canRefund = hasRole(['admin', 'manager', 'cashier']);
   const [activeTab, setActiveTab] = useState<number>(0); // 0: Live Orders, 1: Pre-Orders
   const [filterStatus, setFilterStatus] = useState<string>('all'); // 'all', 'urgent', 'pending', 'preparing', 'ready'
@@ -114,6 +123,16 @@ const KitchenInterface: React.FC = () => {
   const [refundMethod, setRefundMethod] = useState<'original' | 'cash'>('original');
 
   const handlePrintKOT = async (order: Order) => {
+    // Native Android Wi-Fi kitchen printer (ESC/POS or ePOS over the LAN). Fastest, no dialog.
+    try {
+      const printed = await printKotThermal(order, settings.printer);
+      if (printed) return; // Sent to kitchen printer, skip all other paths.
+    } catch (err) {
+      console.error('[KOT ThermalPrint] Wi-Fi kitchen print failed:', err);
+      toast.error('Check your printer connection');
+      return;
+    }
+
     // Try direct printing via local print agent first (QZ Tray style fast path)
     try {
       const controller = new AbortController();
@@ -129,10 +148,16 @@ const KitchenInterface: React.FC = () => {
           jobId: `kot_${order._id || Date.now()}_${Date.now()}`,
           order: {
             ...order,
-            items: (order.items || []).map((item: any) => ({
-              ...item,
-              spiceLevel: item.spiceLevel || '',
-            })),
+            // Disputed quantities are not to be prepared — send only the cookable qty
+            items: (order.items || [])
+              .map((item: any) => ({
+                ...item,
+                spiceLevel: item.spiceLevel || '',
+                quantity: item.preparationStatus === 'cancelled'
+                  ? item.quantity
+                  : Math.max(0, Number(item.quantity || 0) - Number(item.disputedQuantity || 0)),
+              }))
+              .filter((item: any) => item.preparationStatus === 'cancelled' || item.quantity > 0),
           },
           timestamp: Date.now(),
         }),
@@ -147,8 +172,23 @@ const KitchenInterface: React.FC = () => {
           return; // Successfully printed locally, skip browser print dialog
         }
       }
+      
+      // If we expected it to print but it didn't (and hardware printer is enabled)
+      if (settings.printer?.enabled) {
+          toast.error('Check your printer connection');
+          return;
+      }
     } catch (err) {
-      console.warn('[DirectPrint] Local agent direct KOT print failed, falling back to browser print:', err);
+      console.warn('[DirectPrint] Local agent direct KOT print failed:', err);
+      if (settings.printer?.enabled) {
+          toast.error('Check your printer connection');
+          return;
+      }
+    }
+
+    if (Capacitor.isNativePlatform()) {
+      toast.error('Check your printer connection');
+      return;
     }
 
     const printWindow = window.open('', '_blank', 'width=350,height=600');
@@ -158,11 +198,11 @@ const KitchenInterface: React.FC = () => {
     }
 
     const itemsHtml = order.items
-      .filter(item => item.preparationStatus !== 'cancelled')
+      .filter(item => item.preparationStatus !== 'cancelled' && getCookQty(item) > 0)
       .map(item => `
         <div style="display: flex; font-size: 14px; margin-bottom: 4px; color: #444;">
           <div style="flex: 1; padding-right: 10px;">${item.name}</div>
-          <div style="width: 40px; text-align: center;">${item.quantity}</div>
+          <div style="width: 40px; text-align: center;">${getCookQty(item)}</div>
         </div>
         ${item.notes ? `<div style="font-size: 12px; color: #666; margin-left: 10px; font-style: italic; margin-bottom: 4px;">📝 ${item.notes}</div>` : ''}
         ${item.spiceLevel ? `<div style="font-size: 12px; color: #000; margin-left: 10px; margin-bottom: 4px;">Spice: ${formatSpiceLevelLabel(item.spiceLevel)}</div>` : ''}
@@ -190,7 +230,7 @@ const KitchenInterface: React.FC = () => {
             Order No: <strong style="background-color: #e3f2fd; color: #1565c0; padding: 2px 6px; border-radius: 4px; font-size: 1.1em;">#${order.orderNumber?.split('-').pop() || 'N/A'}</strong>
           </div>
           <div class="info-item">Customer: ${order.customer?.name || 'Guest'}</div>
-          <div class="info-item">Type: ${order.orderType?.replace(/_/g, ' ').toUpperCase()}</div>
+          <div class="info-item">Type: ${order.orderType?.replace(/_/g, ' ')?.toUpperCase()}</div>
           
           <div class="header-row">
             <div style="flex: 1;">Item</div>
@@ -247,7 +287,7 @@ const KitchenInterface: React.FC = () => {
 
   const getOrderProgress = (items: OrderItem[]) => {
     if (!items || items.length === 0) return 0;
-    const activeItems = items.filter(item => item.preparationStatus !== 'cancelled');
+    const activeItems = items.filter(item => item.preparationStatus !== 'cancelled' && getCookQty(item) > 0);
     if (activeItems.length === 0) return 100;
     const readyCount = activeItems.filter(item => item.preparationStatus === 'ready').length;
     return (readyCount / activeItems.length) * 100;
@@ -395,7 +435,7 @@ const KitchenInterface: React.FC = () => {
 
   const handleRefundItem = (orderId: string, itemIndex: number, item: OrderItem, order: Order) => {
     const itemSubtotal = (item.price ?? 0) * item.quantity;
-    const orderSubtotal = order.subtotal ?? order.items.reduce((sum, i) => sum + (i.price ?? 0) * i.quantity, 0);
+    const orderSubtotal = order.subtotal ?? (order?.items || []).reduce((sum, i) => sum + (i.price ?? 0) * i.quantity, 0);
     const orderTax = order.tax?.amount ?? 0;
     const itemTax = orderSubtotal > 0 ? (itemSubtotal / orderSubtotal) * orderTax : 0;
     setRefundItemRef({ orderId, itemIndex, itemName: item.name, orderType: order.orderType, itemSubtotal, itemTax });
@@ -438,7 +478,7 @@ const KitchenInterface: React.FC = () => {
 
       setOrders(prev => prev.map(order => {
         if (order._id === orderId) {
-          const updatedItems = order.items.map(item =>
+          const updatedItems = (order?.items || []).map(item =>
             item.preparationStatus !== 'cancelled'
               ? { ...item, preparationStatus: 'ready' as any }
               : item
@@ -735,7 +775,7 @@ const KitchenInterface: React.FC = () => {
                     <Stack direction="row" spacing={1} sx={{ mb: { xs: 1, sm: 2 }, flexWrap: 'wrap', gap: 1 }} alignItems="center">
                       <Chip
                         icon={getOrderTypeIcon(order.orderType)}
-                        label={order.orderType?.replace(/_/g, ' ').toUpperCase() || 'DINE IN'}
+                        label={order.orderType?.replace(/_/g, ' ')?.toUpperCase() || 'DINE IN'}
                         size="small"
                         variant="outlined"
                         sx={{ fontSize: '0.65rem', height: 22 }}
@@ -790,6 +830,9 @@ const KitchenInterface: React.FC = () => {
                       {order.items?.map((item, idx) => {
                         const isReady = item.preparationStatus === 'ready';
                         const isCancelled = item.preparationStatus === 'cancelled';
+                        const disputedQty = Number(item.disputedQuantity || 0);
+                        const cookQty = getCookQty(item);
+                        const isFullyDisputed = !isCancelled && item.quantity > 0 && cookQty <= 0;
                         const isUpdating = updatingItems.has(`${order._id}-${idx}`);
 
                         return (
@@ -800,17 +843,36 @@ const KitchenInterface: React.FC = () => {
                               alignItems: 'flex-start',
                               py: { xs: 0.25, sm: 0.5 },
                               px: { xs: 0.5, sm: 1 },
-                              borderBottom: idx < order.items.length - 1 ? '1px dashed' : 'none',
+                              borderBottom: idx < (order?.items || []).length - 1 ? '1px dashed' : 'none',
                               borderColor: 'divider',
-                              bgcolor: isCancelled ? alpha(theme.palette.error.main, 0.03) : 'transparent',
-                              borderRadius: isCancelled ? 1 : 0,
+                              bgcolor: (isCancelled || isFullyDisputed) ? alpha(theme.palette.error.main, 0.03) : 'transparent',
+                              borderRadius: (isCancelled || isFullyDisputed) ? 1 : 0,
                               opacity: isReady ? 0.7 : 1,
                               textDecoration: isReady ? 'line-through' : 'none',
                               transition: 'all 0.2s ease',
-                              mb: isCancelled ? 0.25 : 0
+                              mb: (isCancelled || isFullyDisputed) ? 0.25 : 0
                             }}
                           >
-                            {!isCancelled ? (
+                            {isFullyDisputed ? (
+                              <Box sx={{ ml: 1, py: 0.5, flexGrow: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Typography
+                                  variant="body2"
+                                  sx={{
+                                    color: 'text.disabled',
+                                    textDecoration: 'line-through',
+                                    fontSize: bodyFontSize,
+                                  }}
+                                >
+                                  <strong>{item.quantity}x</strong> {item.name}
+                                </Typography>
+                                <Chip
+                                  label="DISPUTED — DO NOT PREPARE"
+                                  size="small"
+                                  color="error"
+                                  sx={{ height: 16, fontSize: bodyFontSize, fontWeight: 'bold', px: 0.5 }}
+                                />
+                              </Box>
+                            ) : !isCancelled ? (
                               <FormControlLabel
                                 control={
                                   <Checkbox
@@ -835,8 +897,13 @@ const KitchenInterface: React.FC = () => {
                                         fontSize: bodyFontSize,
                                       }}
                                     >
-                                      <strong>{item.quantity}x</strong> {item.name}
+                                      <strong>{cookQty}x</strong> {item.name}
                                     </Typography>
+                                    {disputedQty > 0 && (
+                                      <Typography variant="caption" color="error.main" display="block" sx={{ fontSize: bodyFontSize, fontWeight: 700 }}>
+                                        ⚖️ {disputedQty} of {item.quantity} disputed — prepare {cookQty} only
+                                      </Typography>
+                                    )}
                                     {item.notes && (
                                       <Typography variant="caption" color="warning.main" display="block" sx={{ fontSize: bodyFontSize }}>
                                         📝 {item.notes}
@@ -944,7 +1011,7 @@ const KitchenInterface: React.FC = () => {
                       size="small"
                       onClick={() => handlePrintKOT(order)}
                       startIcon={<PrintIcon />}
-                      sx={{ display: { xs: 'none', sm: 'inline-flex' }, mb: { xs: 0, sm: 0.5 }, flex: { xs: 1, sm: 'initial' }, minWidth: 0, fontSize: { xs: '0.62rem', sm: '0.78rem' }, py: { xs: 0.45, sm: 0.7 }, px: { xs: 0.5, sm: 1 }, minHeight: { xs: 28, sm: 34 }, '& .MuiButton-startIcon': { mr: { xs: 0.3, sm: 0.75 } } }}
+                      sx={{ display: 'inline-flex', mb: { xs: 0, sm: 0.5 }, flex: { xs: 1, sm: 'initial' }, minWidth: 0, fontSize: { xs: '0.62rem', sm: '0.78rem' }, py: { xs: 0.45, sm: 0.7 }, px: { xs: 0.5, sm: 1 }, minHeight: { xs: 28, sm: 34 }, '& .MuiButton-startIcon': { mr: { xs: 0.3, sm: 0.75 } } }}
                     >
                       Print KOT
                     </Button>
@@ -968,7 +1035,7 @@ const KitchenInterface: React.FC = () => {
                         fullWidth
                         variant="contained"
                         color={isAllReady ? "success" : (getStatusColor(order.status) as any)}
-                        onClick={() => handleOrderStatusUpdate(order._id, order.status, order.orderType, !!(order.doordashDeliveryId || order.uberEatsDeliveryId))}
+                        onClick={() => handleOrderStatusUpdate(order._id, order.status, order.orderType, !!((order as any).doordashDeliveryId || (order as any).uberEatsDeliveryId))}
                         startIcon={isAllReady ? <CheckCircleIcon /> : <PlayArrowIcon />}
                         disabled={isProcessing || (!isAllReady && order.status === 'preparing')}
                         sx={{ flex: { xs: 1, sm: 'initial' }, minWidth: 0, fontSize: { xs: '0.62rem', sm: '0.78rem' }, py: { xs: 0.45, sm: 0.7 }, px: { xs: 0.5, sm: 1 }, minHeight: { xs: 28, sm: 34 }, '& .MuiButton-startIcon': { mr: { xs: 0.3, sm: 0.75 } } }}

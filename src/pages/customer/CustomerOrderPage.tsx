@@ -197,7 +197,7 @@ const CustomerOrderPage: React.FC = () => {
                                 key={level}
                                 variant="outlined"
                                 fullWidth
-                                onClick={() => handleConfirmSpice(level.toLowerCase())}
+                                onClick={() => handleConfirmSpice(level?.toLowerCase())}
                                 sx={{
                                     py: 1.5,
                                     borderRadius: 3,
@@ -212,7 +212,7 @@ const CustomerOrderPage: React.FC = () => {
                                     }
                                 }}
                             >
-                                {level.charAt(0).toUpperCase() + level.slice(1).replace(/_/g, ' ')}
+                                {level.charAt(0)?.toUpperCase() + level.slice(1).replace(/_/g, ' ')}
                             </Button>
                         ))}
                     </Stack>
@@ -235,7 +235,7 @@ const CustomerOrderPage: React.FC = () => {
             sx={{
                 bgcolor: '#f8f9fa',
                 /* Height follows menu content; layout flex was stretching empty space above the footer */
-                pb: { xs: cart.items.length ? 14 : 5, sm: cart.items.length ? 12 : 8 },
+                pb: { xs: (cart?.items || []).length ? 14 : 5, sm: (cart?.items || []).length ? 12 : 8 },
             }}
         >
             <SpiceLevelDialog />
@@ -350,7 +350,7 @@ const CustomerOrderPage: React.FC = () => {
                 <Grid container spacing={{ xs: 1.25, sm: 3 }}>
                     {menuItems.filter(item =>
                         (selectedCategory === 'All' || (typeof item.category === 'string' ? item.category : item.category?.name) === selectedCategory) &&
-                        item.name.toLowerCase() !== 'cheese pizza'
+                        item.name?.toLowerCase() !== 'cheese pizza'
                     ).map((item, index) => {
                         const qty = getItemQuantity(item._id);
                         return (

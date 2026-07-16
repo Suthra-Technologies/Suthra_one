@@ -268,7 +268,7 @@ const VendorsPage: React.FC = () => {
             else if (value.replace(/\D/g, '').length !== 10) error = 'Contact number must be 10 digits';
         }
         if (name === 'email') {
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
             if (!value.trim()) error = 'Email is required';
             else if (!emailRegex.test(value)) error = 'Invalid email address';
         }
@@ -285,7 +285,7 @@ const VendorsPage: React.FC = () => {
         if (!formData.contact.trim()) newErrors.contact = 'Contact number is required';
         else if (formData.contact.replace(/\D/g, '').length !== 10) newErrors.contact = 'Contact number must be 10 digits';
 
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
         if (!formData.email.trim()) newErrors.email = 'Email is required';
         else if (!emailRegex.test(formData.email)) newErrors.email = 'Invalid email address';
 
@@ -432,7 +432,7 @@ const VendorsPage: React.FC = () => {
     const handleEmailReorder = () => {
         if (!selectedVendor || reorderItems.length === 0) return;
 
-        const restaurantName = settings?.restaurant?.restaurantName || settings?.restaurant?.name || 'our restaurant';
+        const restaurantName = (settings?.restaurant as any)?.restaurantName || settings?.restaurant?.name || 'our restaurant';
         const dateStr = new Date().toLocaleDateString();
 
         const itemBody = reorderItems.map(item => `- ${item.name}: ${item.lastOrderQuantity} ${item.unit}`).join('\n');
@@ -445,7 +445,7 @@ const VendorsPage: React.FC = () => {
     const handleWhatsAppReorder = () => {
         if (!selectedVendor || reorderItems.length === 0) return;
 
-        const restaurantName = settings?.restaurant?.restaurantName || settings?.restaurant?.name || 'our restaurant';
+        const restaurantName = (settings?.restaurant as any)?.restaurantName || settings?.restaurant?.name || 'our restaurant';
         const dateStr = new Date().toLocaleDateString();
 
         const itemBody = reorderItems.map(item => `* ${item.name}: ${item.lastOrderQuantity} ${item.unit}`).join('%0A');
@@ -459,7 +459,7 @@ const VendorsPage: React.FC = () => {
         setFormData(prev => ({
             ...prev,
             categories: prev.categories.includes(category)
-                ? prev.categories.filter(c => c !== category)
+                ? (prev?.categories || []).filter(c => c !== category)
                 : [...prev.categories, category],
         }));
     };
@@ -655,7 +655,7 @@ const VendorsPage: React.FC = () => {
                                                     sx={{ fontSize: '0.65rem', height: 20, fontWeight: 700 }}
                                                 />
                                             ))}
-                                            {vendor.categories?.length > 2 && <Chip label={`+${vendor.categories.length - 2}`} size="small" sx={{ height: 20, fontSize: '0.65rem' }} />}
+                                            {vendor.categories?.length > 2 && <Chip label={`+${(vendor?.categories || []).length - 2}`} size="small" sx={{ height: 20, fontSize: '0.65rem' }} />}
                                         </Box>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                             <Typography
@@ -765,7 +765,7 @@ const VendorsPage: React.FC = () => {
                                                 />
                                             ))}
                                             {vendor.categories?.length > 2 && (
-                                                <Chip label={`+${vendor.categories.length - 2}`} size="small" />
+                                                <Chip label={`+${(vendor?.categories || []).length - 2}`} size="small" />
                                             )}
                                         </Box>
                                     </TableCell>
@@ -959,12 +959,11 @@ const VendorsPage: React.FC = () => {
                                         />
                                     </Grid>
                                     <Grid item xs={12} md={6}>
-                                        <CustomInput
-                                            type="name"
+                                        <TextField
                                             fullWidth
                                             label="Shop Name"
                                             value={formData.shopName}
-                                            onChange={(val) => setFormData({ ...formData, shopName: val })}
+                                            onChange={(e) => setFormData({ ...formData, shopName: e.target.value })}
                                             size={isMobile ? "small" : "medium"}
                                         />
                                     </Grid>
@@ -1264,7 +1263,7 @@ const VendorsPage: React.FC = () => {
                                                         value={formData.bankDetails.ifscCode}
                                                         onChange={(e) => setFormData({
                                                             ...formData,
-                                                            bankDetails: { ...formData.bankDetails, ifscCode: e.target.value.toUpperCase() }
+                                                            bankDetails: { ...formData.bankDetails, ifscCode: e.target.value?.toUpperCase() }
                                                         })}
                                                     />
                                                 </Grid>

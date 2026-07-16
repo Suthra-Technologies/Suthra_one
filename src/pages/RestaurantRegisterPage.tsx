@@ -134,8 +134,9 @@ const RestaurantRegisterPage: React.FC = () => {
 
     // Special rule for phone input
     if (name === "phone") {
-      const numeric = value.replace(/\D/g, ""); // keep only digits
-      const final = numeric.length > 10 ? numeric.slice(-10) : numeric;
+      const numeric = String(value || '').replace(/\D/g, ""); // keep only digits
+      const isUS = form.dialCode === '1' || form.dialCode === '+1';
+      const final = (isUS && numeric.length > 10) ? numeric.slice(-10) : numeric;
       setForm({ ...form, [name]: final });
 
       // Clear error when user types a valid phone number (10 digits)
@@ -214,7 +215,7 @@ const RestaurantRegisterPage: React.FC = () => {
         validation = validateEmail(value);
         break;
       case 'phone':
-        validation = validatePhone(value);
+        validation = validatePhone(value, form.dialCode);
         break;
       case 'password':
         validation = validatePassword(value);
@@ -236,7 +237,7 @@ const RestaurantRegisterPage: React.FC = () => {
       firstName: validateName(form.firstName, 'First name'),
       lastName: validateName(form.lastName, 'Last name'),
       email: validateEmail(form.email),
-      phone: validatePhone(form.phone),
+      phone: validatePhone(form.phone, form.dialCode),
       password: validatePassword(form.password),
       confirmPassword: { isValid: form.password === form.confirmPassword, message: form.password === form.confirmPassword ? '' : 'Passwords do not match' },
     };
@@ -367,7 +368,7 @@ const RestaurantRegisterPage: React.FC = () => {
                   helperText={
                     getHelperText(errors.slug) ||
                     (form.slug.trim()
-                      ? `Your store will be at: ${form.slug.trim().toLowerCase()}.nexzenpos.com`
+                      ? `Your store will be at: ${form.slug.trim()?.toLowerCase()}.nexzenpos.com`
                       : "URL identifier — your store address will be yourname.nexzenpos.com")
                   }
                   required
@@ -455,8 +456,8 @@ const RestaurantRegisterPage: React.FC = () => {
                   value={form.phone}
                   onChange={(val) => {
                     const clean = val.replace(/\D/g, '');
-                    // If they paste a full number with country code, take the last 10 digits
-                    const final = clean.length > 10 ? clean.slice(-10) : clean;
+                    const isUS = form.dialCode === '1' || form.dialCode === '+1';
+                    const final = (isUS && clean.length > 10) ? clean.slice(-10) : clean;
                     setForm({ ...form, phone: final });
 
                     // Clear error when user types or corrects the number
@@ -587,7 +588,7 @@ const RestaurantRegisterPage: React.FC = () => {
                           </Typography>
                           <Box sx={{ display: 'flex', alignItems: 'baseline', mb: 1 }}>
                             <Typography variant="h4" fontWeight="bold" color="text.primary">
-                              ${plan.price || 0}
+                              ${Number(plan.price || 0).toFixed(2)}
                             </Typography>
                             <Typography variant="body2" color="text.secondary" sx={{ ml: 1, textTransform: 'capitalize' }}>
                               / {plan.interval}

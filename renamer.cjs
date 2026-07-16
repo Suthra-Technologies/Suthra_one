@@ -90,10 +90,11 @@ if (fs.existsSync(htmlPath)) {
     console.log('✅ Updated index.html <title>');
 }
 
-// ── 5. Update .env ────────────────────────────────────────────────────────
-const envPath = path.join(__dirname, '.env');
-if (fs.existsSync(envPath)) {
-    let envContent = fs.readFileSync(envPath, 'utf-8');
+// ── 5. Update .env AND .env.local ─────────────────────────────────────────
+// IMPORTANT: Vite loads env files in priority order: .env.local > .env > brandConfig.
+// We MUST update both so that .env.local never silently overrides the brand API URL.
+const updateEnvFile = (filePath, label) => {
+    let envContent = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf-8') : '';
 
     // Replace or add VITE_API_URL
     if (/^VITE_API_URL=/m.test(envContent)) {
@@ -118,9 +119,13 @@ if (fs.existsSync(envPath)) {
         }
     }
 
-    fs.writeFileSync(envPath, envContent);
-    console.log('✅ Updated .env (VITE_API_URL, VITE_TENANT_SLUG)');
-}
+    fs.writeFileSync(filePath, envContent);
+    console.log(`✅ Updated ${label} (VITE_API_URL=${config.apiBaseUrl}, VITE_TENANT_SLUG=${config.tenantSlug})`);
+};
+
+// Update both .env and .env.local so higher-priority file never overrides brand URL
+updateEnvFile(path.join(__dirname, '.env'), '.env');
+updateEnvFile(path.join(__dirname, '.env.local'), '.env.local');
 
 // ── 6. Android native: strings.xml ───────────────────────────────────────
 const stringsXmlPath = path.join(__dirname, 'android/app/src/main/res/values/strings.xml');

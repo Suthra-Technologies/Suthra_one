@@ -44,7 +44,7 @@ export const apiBaseUrl = (() => {
 
 const api: AxiosInstance = axios.create({
   baseURL: apiBaseUrl,
-  timeout: 30000, // Increased from 10000 to 30000 (30 seconds)
+  timeout: 60000, // Login can take >30s: the backend scans every tenant DB on the remote Mongo host when no tenantSlug is given
   headers: {
     'Content-Type': 'application/json',
   },
@@ -139,6 +139,8 @@ export const usersAPI = {
   delete: (id: string) => api.delete(`/users/${id}`),
   toggleUserStatus: (id: string) => api.patch(`/users/${id}/toggle-status`),
   resetPassword: (id: string, data: any) => api.put(`/users/${id}/reset-password`, data),
+  registerFcmToken: (token: string) => api.post('/users/fcm-token', { token }),
+  unregisterFcmToken: (token: string) => api.delete('/users/fcm-token', { data: { token } }),
 };
 
 // -------------------- Billing API --------------------
@@ -198,6 +200,8 @@ export const ordersAPI = {
     api.post(`/orders/${id}/status`, { status, notes }),
   cancel: (id: string, reason?: string) =>
     api.patch(`/orders/${id}/cancel`, { reason }),
+  // Auto-close all open orders (mark completed) — used by the closing auto-close request
+  closeAllOrders: () => api.post('/orders/close-all'),
 
   // Add items to existing order
   addItems: (id: string, items: any[], kotNumber?: string) =>
@@ -223,6 +227,11 @@ export const ordersAPI = {
 
   // Bill generation
   getBillData: (id: string) => api.get(`/orders/${id}/bill`),
+  // Mark a print stage done (kot | bill | both) so the background station won't reprint it.
+  markPrintStage: (id: string, stage: 'kot' | 'bill' | 'both') =>
+    api.post(`/orders/station/${id}/mark-printed`, { stage }),
+  // Atomically claim an order for printing — only one device gets { claimed: true }.
+  claimPrint: (id: string) => api.post(`/orders/station/${id}/claim-print`),
   downloadPDF: (id: string) => api.get(`/orders/${id}/pdf`, { responseType: 'blob' }),
 
   // Coupon management
@@ -327,11 +336,12 @@ export const menuAPI = {
 
 // -------------------- Modifier Templates API --------------------
 export const modifierTemplatesAPI = {
-  getAll: () => api.get('/menu/templates'),
+  getAll: (params?: { isDeleted?: boolean }) => api.get('/menu/templates', { params }),
   getOne: (id: string) => api.get(`/menu/templates/${id}`),
   create: (data: any) => api.post('/menu/templates', data),
   update: (id: string, data: any) => api.put(`/menu/templates/${id}`, data),
   delete: (id: string) => api.delete(`/menu/templates/${id}`),
+  restore: (id: string) => api.patch(`/menu/templates/${id}/restore`),
 };
 
 // -------------------- Tax Categories API (External) --------------------
@@ -347,11 +357,12 @@ export const taxAPI = {
 
 // -------------------- Trays API --------------------
 export const traysAPI = {
-  getAll: () => api.get('/trays'),
+  getAll: (params?: { isDeleted?: boolean }) => api.get('/trays', { params }),
   getOne: (id: string) => api.get(`/trays/${id}`),
   create: (trayData: any) => api.post('/trays', trayData),
   update: (id: string, trayData: any) => api.put(`/trays/${id}`, trayData),
   delete: (id: string) => api.delete(`/trays/${id}`),
+  restore: (id: string) => api.patch(`/trays/${id}/restore`),
 };
 
 // -------------------- Tables API --------------------
@@ -439,6 +450,31 @@ export const settingsAPI = {
   getTaxRate: (zipCode: string, state?: string) =>
     api.get(`/settings/tax-rate/${zipCode}`, { params: state ? { state } : {} }),
   getPublicHours: (slug: string) => api.get(`/settings/public/${slug}/hours`),
+};
+
+// -------------------- Customer Activity API --------------------
+type ActivityRangeParams = { startDate?: string; endDate?: string };
+
+export const activityAPI = {
+  // Per-tenant admin reads
+  getAnalytics: (params: ActivityRangeParams = {}) =>
+    api.get('/activity/analytics', { params }),
+  getUniqueUsers: (params: ActivityRangeParams & { source?: string; page?: number; limit?: number } = {}) =>
+    api.get('/activity/unique-users', { params }),
+  getScreenVisitors: (params: ActivityRangeParams = {}) =>
+    api.get('/activity/screen-visitors', { params }),
+  getTopItems: (params: ActivityRangeParams & { limit?: number } = {}) =>
+    api.get('/activity/top-items', { params }),
+  // Public website page-view ingestion (no auth)
+  trackStatic: (payload: { tenantSlug: string; staticPath: string; isLoggedIn?: boolean }) =>
+    api.post('/activity/static-track', payload),
+};
+
+export const superActivityAPI = {
+  getOverview: (params: ActivityRangeParams = {}) =>
+    api.get('/activity/superadmin/overview', { params }),
+  getTenant: (tenantSlug: string, params: ActivityRangeParams = {}) =>
+    api.get('/activity/superadmin/tenant', { params: { tenantSlug, ...params } }),
 };
 
 // -------------------- Subscription API --------------------
@@ -541,6 +577,11 @@ export const paymentsAPI = {
   syncTransactions: () => api.post('/payments/transactions/sync'),
   verifyTransactionsInDb: (paymentIntentIds: string[]) =>
     api.post('/payments/transactions/verify-db', { paymentIntentIds }),
+  // Tenant self-service Stripe Connect onboarding (dashboard "pending actions")
+  getConnectStatus: () => api.get('/payments/connect/status'),
+  startConnectOnboarding: (returnUrl: string, refreshUrl?: string) =>
+    api.post('/payments/connect/onboard', { returnUrl, refreshUrl }),
+  getConnectDashboardLink: () => api.get('/payments/connect/dashboard-link'),
 };
 
 // -------------------- PhonePe API (India tenants) --------------------
@@ -630,8 +671,8 @@ export const superAPI = {
   // Tenant platform processing fee (managed by superadmin only)
   getTenantProcessingFee: (tenantId: string) =>
     api.get(`/superadmin/tenants/${tenantId}/processing-fee`),
-  updateTenantProcessingFee: (tenantId: string, processingFee: number) =>
-    api.patch(`/superadmin/tenants/${tenantId}/processing-fee`, { processingFee }),
+  updateTenantProcessingFee: (tenantId: string, processingFee: number, processingFeeOrderValue?: number) =>
+    api.patch(`/superadmin/tenants/${tenantId}/processing-fee`, { processingFee, processingFeeOrderValue }),
 
   // Admin activity logs
   getAdminLogs: (params?: any) => api.get('/superadmin/admin-logs', { params }),
@@ -723,7 +764,9 @@ export const purchaseOrdersAPI = {
   receiveMaterialOrder: (id: string, data?: any) => api.patch(`/purchase-orders/material-orders/${id}/receive`, data || {}),
   getAnalytics: (params?: any) => api.get('/purchase-orders/analytics', { params }),
   extractInvoice: (formData: FormData) => api.post('/purchase-orders/extract-invoice', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
+    headers: { 'Content-Type': 'multipart/form-data' },
+    // Backend makes two sequential AI calls (60s each); cover that worst case.
+    timeout: 120000,
   }),
 };
 
@@ -747,6 +790,7 @@ export const recipesAPI = {
   getByMenuItem: (menuItemId: string) => api.get(`/recipes/menu-item/${menuItemId}`),
   update: (id: string, data: any) => api.put(`/recipes/${id}`, data),
   delete: (id: string) => api.delete(`/recipes/${id}`),
+  restore: (id: string) => api.patch(`/recipes/${id}/restore`),
   recalculateCost: (id: string) => api.post(`/recipes/${id}/calculate-cost`),
 };
 
@@ -837,6 +881,8 @@ export const auditLogsAPI = {
 export const mapsAPI = {
   getNearby: (location: string, radius: number, type: string) =>
     api.get('/maps/nearby', { params: { location, radius, type } }),
+  getDirections: (origin: string, destination: string) =>
+    api.get('/maps/directions', { params: { origin, destination } }),
 };
 
 // -------------------- Homepage API --------------------

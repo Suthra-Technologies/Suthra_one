@@ -640,7 +640,7 @@ const ReportsPage: React.FC = () => {
 
     const formatOrderType = (type: string) => {
         if (!type) return '';
-        return type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        return type.split('_').map(word => word.charAt(0)?.toUpperCase() + word.slice(1)).join(' ');
     };
 
     // Top 10 items for dashboard pie chart
@@ -895,7 +895,7 @@ const ReportsPage: React.FC = () => {
                                                         minAngle={3}
                                                         paddingAngle={2}
                                                         labelLine={itemCount > 1}
-                                                        label={({ cx, cy, midAngle, outerRadius, percent }) => {
+                                                        label={({ cx, cy, midAngle, outerRadius, percent }: any) => {
                                                             if (!percent) return null;
 
                                                             const value = Math.round(percent * 100);
@@ -1435,7 +1435,7 @@ const ReportsPage: React.FC = () => {
                                                             paddingAngle={0}
                                                             isAnimationActive={false}
                                                             labelLine={true}
-                                                            label={({ cx, cy, midAngle, outerRadius, percent }) => {
+                                                            label={({ cx, cy, midAngle, outerRadius, percent }: any) => {
                                                                 if (!percent) return null;
                                                                 const value = Math.round(percent * 100);
                                                                 if (value < 2) return null;
@@ -2395,7 +2395,7 @@ const ReportsPage: React.FC = () => {
                                                     paddingAngle={3}
                                                     isAnimationActive={false}
 
-                                                    label={isMobile ? false : ({ percent, cx, cy, midAngle, outerRadius }) => {
+                                                    label={isMobile ? false : ({ percent, cx, cy, midAngle, outerRadius }: any) => {
                                                         if (!percent) return null;
 
                                                         const value = Math.round(percent * 100);
@@ -3382,8 +3382,8 @@ const ReportsPage: React.FC = () => {
                                         innerRadius={isMobile ? 45 : 0}
                                         outerRadius={isMobile ? 75 : 120}
                                         stroke="none"
-                                        label={isMobile ? false : ({ percent }) =>
-                                            `${(percent * 100).toFixed(0)}%`
+                                        label={isMobile ? false : ({ percent }: any) =>
+                                            `${((percent || 0) * 100).toFixed(0)}%`
                                         }
                                         isAnimationActive={false}
                                     >
@@ -3703,8 +3703,8 @@ const ReportsPage: React.FC = () => {
                                         innerRadius={isMobile ? 45 : 70}
                                         outerRadius={isMobile ? 75 : 120}
                                         stroke="none"
-                                        label={isMobile ? false : ({ percent }) =>
-                                            `${(percent * 100).toFixed(0)}%`
+                                        label={isMobile ? false : ({ percent }: any) =>
+                                            `${((percent || 0) * 100).toFixed(0)}%`
                                         }
                                         isAnimationActive={false}
                                     >
@@ -4582,7 +4582,7 @@ const ReportsPage: React.FC = () => {
                     <TablePagination
                         rowsPerPageOptions={[5, 10, 25, 50]}
                         component="div"
-                        count={inventoryStock.items.length}
+                        count={(inventoryStock?.items || []).length}
                         rowsPerPage={inventoryRowsPerPage}
                         page={inventoryPage}
                         onPageChange={(_, newPage) => setInventoryPage(newPage)}
@@ -5256,7 +5256,7 @@ const ReportsPage: React.FC = () => {
                                                     <Box sx={{ pl: 1 }}>
                                                         {fb.itemRatings.map((item: any, idx: number) => (
                                                             <Typography variant="caption" display="block" key={`${item.menuItem}-${idx}`} color="text.secondary">
-                                                                {item.name}{item.modifiers && item.modifiers.length > 0 ? ` (${item.modifiers.map((m: any) => m.name).join(', ')})` : ''}: {item.tasteRating} (Taste), {item.quantityRating} (Qty)
+                                                                {item.name}{item.modifiers && (item?.modifiers || []).length > 0 ? ` (${(item?.modifiers || []).map((m: any) => m.name).join(', ')})` : ''}: {item.tasteRating} (Taste), {item.quantityRating} (Qty)
                                                             </Typography>
                                                         ))}
                                                     </Box>
@@ -5319,7 +5319,7 @@ const ReportsPage: React.FC = () => {
                                                     <Box sx={{ maxHeight: 100, overflowY: 'auto' }}>
                                                         {fb.itemRatings && fb.itemRatings.map((item: any, idx: number) => (
                                                             <Typography variant="caption" display="block" key={`${item.menuItem}-${idx}`}>
-                                                                {item.name}{item.modifiers && item.modifiers.length > 0 ? ` (${item.modifiers.map((m: any) => m.name).join(', ')})` : ''}: {item.tasteRating} (Taste), {item.quantityRating} (Qty)
+                                                                {item.name}{item.modifiers && (item?.modifiers || []).length > 0 ? ` (${(item?.modifiers || []).map((m: any) => m.name).join(', ')})` : ''}: {item.tasteRating} (Taste), {item.quantityRating} (Qty)
                                                             </Typography>
                                                         ))}
                                                     </Box>
@@ -6067,7 +6067,7 @@ const ReportsPage: React.FC = () => {
                                                     {selectedCateringOrder.items?.map((item: any, i: number) => (
                                                         <ListItem
                                                             key={i}
-                                                            divider={i < selectedCateringOrder.items.length - 1}
+                                                            divider={i < (selectedCateringOrder?.items || []).length - 1}
                                                             sx={{ py: 1.5, px: 2 }}
                                                         >
                                                             <ListItemText

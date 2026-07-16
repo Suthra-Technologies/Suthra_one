@@ -227,7 +227,7 @@ const CustomerBookingsPage: React.FC = () => {
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Chip
               icon={getStatusIcon(booking.status)}
-              label={booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+              label={booking.status.charAt(0)?.toUpperCase() + booking.status.slice(1)}
               color={getStatusColor(booking.status)}
               size="small"
             />
@@ -308,7 +308,7 @@ const CustomerBookingsPage: React.FC = () => {
                           o.status === 'ready_to_takeaway' ? 'Ready for Pickup' :
                             o.status === 'ready_to_pickup' ? 'Ready for Pickup' :
                               o.status === 'on_the_way' ? 'Out for Delivery' :
-                                o.status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+                                o.status.replace(/_/g, ' ').replace(/\b\w/g, c => c?.toUpperCase())
                         }
                         color={
                           ['ready', 'ready_to_takeaway', 'ready_to_pickup', 'delivered', 'completed'].includes(o.status) ? 'success' :

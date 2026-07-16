@@ -600,13 +600,13 @@ const CouponsAdminPage: React.FC = () => {
 
     const handleExportUnsubscribesCsv = () => {
         const rows = allUnsubscribeDetails.filter((record) => {
-            const q = unsubscribeSearch.trim().toLowerCase();
+            const q = unsubscribeSearch.trim()?.toLowerCase();
             if (!q) return true;
             return (
-                (record.name || '').toLowerCase().includes(q) ||
-                (record.email || '').toLowerCase().includes(q) ||
-                (record.phone || '').toLowerCase().includes(q) ||
-                (record.emailUnsubscribeSource || '').toLowerCase().includes(q)
+                (record.name || '')?.toLowerCase().includes(q) ||
+                (record.email || '')?.toLowerCase().includes(q) ||
+                (record.phone || '')?.toLowerCase().includes(q) ||
+                (record.emailUnsubscribeSource || '')?.toLowerCase().includes(q)
             );
         });
 
@@ -1217,8 +1217,15 @@ const CouponsAdminPage: React.FC = () => {
                 onClose={handleCloseDialog}
                 maxWidth="md"
                 fullWidth
-                fullScreen={isMobile}
-                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 4, bgcolor: 'background.default' } }}
+                PaperProps={{
+                    sx: {
+                        borderRadius: { xs: 3, md: 4 },
+                        bgcolor: 'background.default',
+                        m: { xs: 2, md: 4 },
+                        width: { xs: 'calc(100% - 32px)', md: '100%' },
+                        maxHeight: 'calc(100% - 64px)'
+                    }
+                }}
             >
                 <DialogTitle sx={{
                     display: 'flex',
@@ -1227,8 +1234,7 @@ const CouponsAdminPage: React.FC = () => {
                     borderBottom: '1px solid',
                     borderColor: alpha(theme.palette.divider, 0.1),
                     bgcolor: 'background.paper',
-                    p: isMobile ? 1.5 : 2,
-                    pt: isMobile ? 2 : 2
+                    p: { xs: 1.5, md: 2 }
                 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                         <Box sx={{
@@ -1286,7 +1292,7 @@ const CouponsAdminPage: React.FC = () => {
                                             required
                                             size="small"
                                             value={formData.code}
-                                            onChange={(val) => setFormData({ ...formData, code: val.toUpperCase() })}
+                                            onChange={(val) => setFormData({ ...formData, code: val?.toUpperCase() })}
                                             placeholder="E.g. VIP2026"
                                             InputProps={{ sx: { borderRadius: 2, fontWeight: 700, fontFamily: 'monospace' } }}
                                         />
@@ -1579,7 +1585,7 @@ const CouponsAdminPage: React.FC = () => {
                                             {['dine_in', 'takeaway', 'delivery', 'online_takeaway'].map((type) => (
                                                 <Chip
                                                     key={type}
-                                                    label={type.replace('_', ' ').toUpperCase()}
+                                                    label={type.replace('_', ' ')?.toUpperCase()}
                                                     size="small"
                                                     onClick={() => {
                                                         const current = [...formData.applicableOrderTypes];
@@ -1628,14 +1634,20 @@ const CouponsAdminPage: React.FC = () => {
                 </DialogActions>
             </Dialog>
 
-            {/* Bulk Email Dialog */}
             <Dialog
                 open={openEmailDialog}
                 onClose={handleCloseEmailDialog}
                 maxWidth="md"
                 fullWidth
-                fullScreen={isMobile}
-                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 4, bgcolor: 'background.default' } }}
+                PaperProps={{
+                    sx: {
+                        borderRadius: { xs: 3, md: 4 },
+                        bgcolor: 'background.default',
+                        m: { xs: 2, md: 4 },
+                        width: { xs: 'calc(100% - 32px)', md: '100%' },
+                        maxHeight: 'calc(100% - 64px)'
+                    }
+                }}
             >
                 <DialogTitle sx={{
                     display: 'flex',
@@ -1644,8 +1656,7 @@ const CouponsAdminPage: React.FC = () => {
                     borderBottom: '1px solid',
                     borderColor: alpha(theme.palette.divider, 0.1),
                     bgcolor: 'background.paper',
-                    p: isMobile ? 2 : 2.5,
-                    pt: isMobile ? '60px' : 2.5
+                    p: { xs: 1.5, md: 2.5 }
                 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                         <Box sx={{
@@ -1825,8 +1836,15 @@ const CouponsAdminPage: React.FC = () => {
                 onClose={handleCloseSmsDialog}
                 maxWidth="sm"
                 fullWidth
-                fullScreen={isMobile}
-                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 4, bgcolor: 'background.default' } }}
+                PaperProps={{
+                    sx: {
+                        borderRadius: { xs: 3, md: 4 },
+                        bgcolor: 'background.default',
+                        m: { xs: 2, md: 4 },
+                        width: { xs: 'calc(100% - 32px)', md: '100%' },
+                        maxHeight: 'calc(100% - 64px)'
+                    }
+                }}
             >
                 <DialogTitle sx={{
                     display: 'flex',
@@ -1835,8 +1853,7 @@ const CouponsAdminPage: React.FC = () => {
                     borderBottom: '1px solid',
                     borderColor: alpha(theme.palette.divider, 0.1),
                     bgcolor: 'background.paper',
-                    p: isMobile ? 2 : 2.5,
-                    pt: isMobile ? '80px' : 2.5
+                    p: { xs: 1.5, md: 2.5 }
                 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                         <Box sx={{
@@ -2051,8 +2068,8 @@ const CouponsAdminPage: React.FC = () => {
                     }}>
                         {(() => {
                             const filtered = customersWithPhone.filter((c: any) => {
-                                const q = smsSearch.toLowerCase();
-                                return !q || (c.name || '').toLowerCase().includes(q) || (c.phone || '').includes(q);
+                                const q = smsSearch?.toLowerCase();
+                                return !q || (c.name || '')?.toLowerCase().includes(q) || (c.phone || '').includes(q);
                             });
                             if (filtered.length === 0) {
                                 return (
@@ -2264,10 +2281,22 @@ const CouponsAdminPage: React.FC = () => {
                 onClose={() => setOpenUnsubscribesDialog(false)}
                 maxWidth="lg"
                 fullWidth
-                fullScreen={isMobile}
-                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 3 } }}
+                PaperProps={{
+                    sx: {
+                        borderRadius: { xs: 3, md: 4 },
+                        bgcolor: 'background.default',
+                        m: { xs: 2, md: 4 },
+                        width: { xs: 'calc(100% - 32px)', md: '100%' },
+                        maxHeight: 'calc(100% - 64px)'
+                    }
+                }}
             >
-                <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <DialogTitle sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    p: { xs: 1.5, md: 2.5 }
+                }}>
                     <Typography variant="h6" fontWeight={700}>Coupon Email Unsubscribes</Typography>
                     <IconButton onClick={() => setOpenUnsubscribesDialog(false)}>
                         <CloseIcon />
@@ -2317,13 +2346,13 @@ const CouponsAdminPage: React.FC = () => {
                                 <TableBody>
                                     {allUnsubscribeDetails
                                         .filter((record) => {
-                                            const q = unsubscribeSearch.trim().toLowerCase();
+                                            const q = unsubscribeSearch.trim()?.toLowerCase();
                                             if (!q) return true;
                                             return (
-                                                (record.name || '').toLowerCase().includes(q) ||
-                                                (record.email || '').toLowerCase().includes(q) ||
-                                                (record.phone || '').toLowerCase().includes(q) ||
-                                                (record.emailUnsubscribeSource || '').toLowerCase().includes(q)
+                                                (record.name || '')?.toLowerCase().includes(q) ||
+                                                (record.email || '')?.toLowerCase().includes(q) ||
+                                                (record.phone || '')?.toLowerCase().includes(q) ||
+                                                (record.emailUnsubscribeSource || '')?.toLowerCase().includes(q)
                                             );
                                         })
                                         .map((record) => (

@@ -69,6 +69,12 @@ const SuperAdminPortal: React.FC = () => {
       permKey: 'team',
     },
     {
+      title: 'Customer Activity',
+      icon: <LogIcon fontSize="large" sx={{ color: '#0369a1' }} />,
+      path: '/superadmin/activity',
+      desc: 'Visitor & customer analytics across all tenants',
+    },
+    {
       title: 'Settings',
       icon: <SettingsIcon fontSize="large" sx={{ color: 'grey.600' }} />,
       path: '/superadmin/settings',

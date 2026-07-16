@@ -210,6 +210,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
       items: [
         { path: '/reports', label: 'Reports', icon: <Assessment />, roles: ['admin', 'manager'] },
         { path: '/service-usage', label: 'Service Usage', icon: <WebIcon />, roles: ['admin', 'manager'] },
+        { path: '/customer-activities', label: 'Customer Activities', icon: <Assessment />, roles: ['admin', 'manager'] },
         { path: '/invoices', label: 'Invoices', icon: <Receipt />, roles: ['admin', 'superadmin'], laptopOnly: true },
       ]
     },
@@ -333,7 +334,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
                   fontSize: '1rem',
                   fontWeight: 'bold',
                 }}>
-                  {(restaurantSettings.name || (user?.tenant as any)?.name || 'P').charAt(0).toUpperCase()}
+                  {(restaurantSettings.name || (user?.tenant as any)?.name || 'P').charAt(0)?.toUpperCase()}
                 </Avatar>
               )}
             </>
@@ -366,7 +367,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
                 height: collapsed ? 32 : 36,
                 transition: 'all 0.3s ease',
               }}>
-                {activeRole?.charAt(0).toUpperCase()}
+                {activeRole?.charAt(0)?.toUpperCase()}
               </Avatar>
               {!collapsed && (
                 <Box sx={{ flexGrow: 1, overflow: 'hidden' }}>

@@ -170,7 +170,7 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
     }, []);
 
     const handleNumberFieldChange = React.useCallback((field: string, rawValue: string) => {
-        let cleanValue = rawValue;
+        let cleanValue = rawValue.replace(/[^0-9.]/g, '');
         
         // Remove leading zeros unless it's "0" or starts with "0."
         if (cleanValue.length > 1 && cleanValue.startsWith('0') && !cleanValue.startsWith('0.')) {
@@ -181,6 +181,7 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
         // Limit to 5 digits before the decimal
         const parts = cleanValue.split('.');
         if (parts[0].length > 5) return;
+        if (parts.length > 2) return;
 
         handleChange(field, cleanValue);
     }, [handleChange]);
@@ -188,8 +189,12 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
     const handleSupplierChange = React.useCallback((field: string, value: string) => {
         let finalValue = value;
         if (field === 'contact') {
-            // Only allow numbers and limit to 10 digits
-            finalValue = value.replace(/\D/g, '').slice(0, 10);
+            // Only allow numbers and limit to 15 digits
+            finalValue = value.replace(/\D/g, '').slice(0, 15);
+            // If US format, maybe limit to 10? But wait, this is just a contact field.
+            if (settings?.restaurant?.dialCode === '1' || settings?.restaurant?.dialCode === '+1') {
+                if (finalValue.length > 10) finalValue = finalValue.slice(0, 10);
+            }
         }
         setFormData((prev) => ({
             ...prev,
@@ -254,7 +259,7 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
                 break;
             case 'supplier_contact':
                 if (formData.supplier?.contact && formData.supplier.contact.trim() !== '') {
-                    validation = validatePhone(formData.supplier.contact);
+                    validation = validatePhone(formData.supplier.contact, settings?.restaurant?.dialCode);
                 } else {
                     validation = { isValid: true }; // Optional field
                 }
@@ -298,7 +303,7 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
             newErrors.supplier_email = validateEmail(formData.supplier.email);
         }
         if (formData.supplier?.contact && formData.supplier.contact.trim() !== '') {
-            newErrors.supplier_contact = validatePhone(formData.supplier.contact);
+            newErrors.supplier_contact = validatePhone(formData.supplier.contact, settings?.restaurant?.dialCode);
         }
 
         setErrors(newErrors);
@@ -429,13 +434,13 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
                             <TextField
                                 fullWidth
                                 label="Current Stock"
-                                type="number"
+                                type="text"
                                 value={formData.currentStock}
                                 onChange={(e) => handleNumberFieldChange('currentStock', e.target.value)}
                                 onBlur={() => handleBlur('currentStock')}
                                 error={hasError(errors.currentStock)}
                                 helperText={getHelperText(errors.currentStock)}
-                                inputProps={{ min: 0, step: "any" }}
+                                inputProps={{ inputMode: "decimal" }}
                                 InputProps={{
                                     endAdornment: <InputAdornment position="end">{formData.unit}</InputAdornment>,
                                 }}
@@ -446,13 +451,13 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
                             <TextField
                                 fullWidth
                                 label="Minimum Stock"
-                                type="number"
+                                type="text"
                                 value={formData.minimumStock}
                                 onChange={(e) => handleNumberFieldChange('minimumStock', e.target.value)}
                                 onBlur={() => handleBlur('minimumStock')}
                                 error={hasError(errors.minimumStock)}
                                 helperText={getHelperText(errors.minimumStock)}
-                                inputProps={{ min: 0, step: "any" }}
+                                inputProps={{ inputMode: "decimal" }}
                                 InputProps={{
                                     endAdornment: <InputAdornment position="end">{formData.unit}</InputAdornment>,
                                 }}
@@ -463,13 +468,13 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
                             <TextField
                                 fullWidth
                                 label="Maximum Stock"
-                                type="number"
+                                type="text"
                                 value={formData.maximumStock}
                                 onChange={(e) => handleNumberFieldChange('maximumStock', e.target.value)}
                                 onBlur={() => handleBlur('maximumStock')}
                                 error={hasError(errors.maximumStock)}
                                 helperText={getHelperText(errors.maximumStock)}
-                                inputProps={{ min: 0, step: "any" }}
+                                inputProps={{ inputMode: "decimal" }}
                                 InputProps={{
                                     endAdornment: <InputAdornment position="end">{formData.unit}</InputAdornment>,
                                 }}
@@ -480,13 +485,13 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
                             <TextField
                                 fullWidth
                                 label="Reorder Level"
-                                type="number"
+                                type="text"
                                 value={formData.reorderLevel}
                                 onChange={(e) => handleNumberFieldChange('reorderLevel', e.target.value)}
                                 onBlur={() => handleBlur('reorderLevel')}
                                 error={hasError(errors.reorderLevel)}
                                 helperText={getHelperText(errors.reorderLevel) || "Alert when stock falls below"}
-                                inputProps={{ min: 0, step: "any" }}
+                                inputProps={{ inputMode: "decimal" }}
                                 InputProps={{
                                     endAdornment: <InputAdornment position="end">{formData.unit}</InputAdornment>,
                                 }}
@@ -497,13 +502,13 @@ const RawMaterialDialog: React.FC<Props> = ({ open, onClose, onSave, material })
                             <TextField
                                 fullWidth
                                 label="Cost Price"
-                                type="number"
+                                type="text"
                                 value={formData.costPrice}
                                 onChange={(e) => handleNumberFieldChange('costPrice', e.target.value)}
                                 onBlur={() => handleBlur('costPrice')}
                                 error={hasError(errors.costPrice)}
                                 helperText={getHelperText(errors.costPrice)}
-                                inputProps={{ min: 0, step: "any" }}
+                                inputProps={{ inputMode: "decimal" }}
                                 InputProps={{
                                     startAdornment: <InputAdornment position="start">{settings.restaurant.currencySymbol}</InputAdornment>,
                                 }}

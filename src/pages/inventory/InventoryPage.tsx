@@ -142,7 +142,7 @@ const MemoizedMaterialCard = React.memo(({
     material: RawMaterial;
     onUsage: (m: RawMaterial) => void;
     onNotes: (m: RawMaterial) => void;
-    onItemNotes: (m: RawMaterial) => void;
+    onItemNotes?: (m: RawMaterial) => void;
     onEdit: (m: RawMaterial) => void;
     onDelete: (m: RawMaterial) => void;
     getStatus: (m: RawMaterial) => { label: string; color: "error" | "warning" | "success" };
@@ -187,7 +187,7 @@ const MemoizedMaterialCard = React.memo(({
                     {material.supplier?.name && (
                         <Button size="small" startIcon={<NotesIcon />} onClick={() => onNotes(material)} color="info">Notes</Button>
                     )}
-                    <Button size="small" startIcon={<ItemNotesIcon />} onClick={() => onItemNotes(material)} color="primary">Item Notes</Button>
+                    <Button size="small" startIcon={<ItemNotesIcon />} onClick={() => onItemNotes?.(material)} color="primary">Item Notes</Button>
                     <IconButton size="small" color="primary" onClick={() => onEdit(material)}><EditIcon /></IconButton>
                     <IconButton size="small" color="error" onClick={() => onDelete(material)}><DeleteIcon /></IconButton>
                 </Stack>
@@ -206,7 +206,7 @@ const MemoizedMaterialRow = React.memo(({
 }: {
     material: RawMaterial;
     onUsage: (m: RawMaterial) => void;
-    onItemNotes: (m: RawMaterial) => void;
+    onItemNotes?: (m: RawMaterial) => void;
     onEdit: (m: RawMaterial) => void;
     onDelete: (m: RawMaterial) => void;
     getStatus: (m: RawMaterial) => { label: string; color: "error" | "warning" | "success" };
@@ -231,7 +231,7 @@ const MemoizedMaterialRow = React.memo(({
             </TableCell>
             <TableCell align="center">
                 <IconButton size="small" color="primary" onClick={() => onUsage(material)} title="Record Usage"><UsageIcon /></IconButton>
-                <IconButton size="small" color="primary" onClick={() => onItemNotes(material)} title="Item Notes"><ItemNotesIcon /></IconButton>
+                <IconButton size="small" color="primary" onClick={() => onItemNotes?.(material)} title="Item Notes"><ItemNotesIcon /></IconButton>
                 <IconButton size="small" color="primary" onClick={() => onEdit(material)} title="Edit"><EditIcon /></IconButton>
                 <IconButton size="small" color="error" onClick={() => onDelete(material)} title="Delete"><DeleteIcon /></IconButton>
             </TableCell>
@@ -463,8 +463,8 @@ const InventoryPage: React.FC = () => {
                 address: (material.supplier as any).address,
                 status: 'active'
             };
-            setSelectedVendorForNotes(vendor);
-            setVendorNotesOpen(true);
+            // setSelectedVendorForNotes(vendor);
+            // setVendorNotesOpen(true);
         } else {
             toast.error('No vendor assigned to this material');
         }

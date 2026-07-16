@@ -156,7 +156,7 @@ const AssetDashboard: React.FC = () => {
   }, [tabValue]);
 
   const getAssetIcon = (type: string) => {
-    switch (type.toLowerCase()) {
+    switch (type?.toLowerCase()) {
       case 'vehicle': return <DirectionsCar />;
       case 'document': return <Description />;
       case 'license': return <Badge />;
@@ -284,12 +284,12 @@ const AssetDashboard: React.FC = () => {
               <>
                 {isMobile ? (
                   <Stack spacing={2} sx={{ p: 2 }}>
-                    {tabData.data.length === 0 ? (
+                    {(tabData?.data || []).length === 0 ? (
                       <Box sx={{ py: 4, textAlign: 'center' }}>
                         <Typography variant="body2" color="text.secondary">No assets found in this category</Typography>
                       </Box>
                     ) : (
-                      tabData.data.map((asset: any) => (
+                      (tabData?.data || []).map((asset: any) => (
                         <Card
                           key={asset._id}
                           onClick={() => navigate(`/assets/${asset._id}/edit`)}
@@ -370,14 +370,14 @@ const AssetDashboard: React.FC = () => {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {tabData.data.length === 0 ? (
+                        {(tabData?.data || []).length === 0 ? (
                           <TableRow>
                             <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
                               <Typography variant="body2" color="text.secondary">No assets found in this category</Typography>
                             </TableCell>
                           </TableRow>
                         ) : (
-                          tabData.data.map((asset: any) => (
+                          (tabData?.data || []).map((asset: any) => (
                             <TableRow key={asset._id} hover>
                               <TableCell>
                                 <Typography variant="subtitle2" fontWeight="700">{asset.name}</Typography>

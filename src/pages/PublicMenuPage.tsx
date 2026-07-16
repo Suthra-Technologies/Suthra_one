@@ -134,8 +134,8 @@ const PublicMenuPage: React.FC = () => {
     return null;
   };
   const filteredItems = menuItems.filter(item => {
-    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      item.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = item.name?.toLowerCase().includes(searchTerm?.toLowerCase()) ||
+      item.description?.toLowerCase().includes(searchTerm?.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
     const isAvailable = item.isAvailable && isItemAvailableForDay(item, today);
     return matchesSearch && matchesCategory && isAvailable;
@@ -469,7 +469,7 @@ const PublicMenuPage: React.FC = () => {
             </Box>
           </DialogTitle>
           <DialogContent>
-            {cart.items.map((item: any, index: number) => (
+            {(cart?.items || []).map((item: any, index: number) => (
               <Box key={index} sx={{ mb: 2, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Box>

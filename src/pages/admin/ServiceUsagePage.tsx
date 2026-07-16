@@ -312,7 +312,7 @@ const ServiceUsagePage: React.FC = () => {
             .then(res => {
                 const { credited, resourceType, newBalance } = res.data;
                 if (credited > 0) {
-                    toast.success(`${credited.toLocaleString()} ${resourceType.toUpperCase()} credits added! New balance: ${newBalance.toLocaleString()}`);
+                    toast.success(`${credited.toLocaleString()} ${resourceType?.toUpperCase()} credits added! New balance: ${newBalance.toLocaleString()}`);
                 } else {
                     toast.success('Credits already applied.');
                 }
@@ -1253,7 +1253,7 @@ const ServiceUsagePage: React.FC = () => {
                                             {plan.resourceCount.toLocaleString()} {topUpType === 'email' ? 'Emails' : 'SMS'}
                                         </Typography>
                                         <Typography variant="h5" fontWeight={900} sx={{ my: 1 }}>
-                                            ${plan.price}
+                                            ${Number(plan.price || 0).toFixed(2)}
                                         </Typography>
                                         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
                                             One-time payment

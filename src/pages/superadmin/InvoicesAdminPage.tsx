@@ -186,7 +186,7 @@ const InvoicesAdminPage = () => {
                                         </TableCell>
                                         <TableCell>
                                             <Chip
-                                                label={invoice.status.toUpperCase()}
+                                                label={invoice.status?.toUpperCase()}
                                                 color={getStatusColor(invoice.status) as any}
                                                 size="small"
                                                 sx={{ fontWeight: 'bold' }}
@@ -240,7 +240,7 @@ const InvoicesAdminPage = () => {
                                             </Typography>
                                         </Box>
                                         <Chip
-                                            label={invoice.status.toUpperCase()}
+                                            label={invoice.status?.toUpperCase()}
                                             color={getStatusColor(invoice.status) as any}
                                             size="small"
                                             sx={{ fontWeight: 'bold' }}

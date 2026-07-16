@@ -1,6 +1,7 @@
 /**
  * Utility functions for sanitizing input strings based on input type.
  */
+import { validateEmail as validateEmailStrict } from './validation';
 
 export type InputType = 'name' | 'alphanumeric' | 'code' | 'phone' | 'email' | 'number' | 'textarea' | 'text' | 'password';
 
@@ -40,7 +41,7 @@ export const sanitizePhone = (value: string): string => {
 export const sanitizeEmail = (value: string): string => {
   if (!value) return '';
   // Auto convert to lowercase, remove all spaces
-  return value.toLowerCase().replace(/\s/g, '');
+  return value?.toLowerCase().replace(/\s/g, '');
 };
 
 export const sanitizeNumber = (value: string, allowDecimals: boolean = true): string => {
@@ -100,8 +101,8 @@ export const applySanitization = (
 
 /**
  * Validates if the email is in a valid format.
+ * Delegates to the shared validator (RFC length limits included).
  */
 export const validateEmail = (email: string): boolean => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
+  return validateEmailStrict(email).isValid;
 };

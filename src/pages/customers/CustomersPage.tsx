@@ -201,7 +201,7 @@ const CustomersPage: React.FC = () => {
     };
 
     const getOrderTypeLabel = (type: string) => {
-        return type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        return type.split('_').map(word => word.charAt(0)?.toUpperCase() + word.slice(1)).join(' ');
     };
 
 
@@ -505,7 +505,7 @@ const CustomersPage: React.FC = () => {
                                             ) : (
                                                 rewardDetails?.history?.map((entry: any, i: number) => (
                                                     <TableRow key={i}>
-                                                        <TableCell variant="body2">{format(new Date(entry.date), 'MMM dd, yyyy HH:mm')}</TableCell>
+                                                        <TableCell><Typography variant="body2">{format(new Date(entry.date), 'MMM dd, yyyy HH:mm')}</Typography></TableCell>
                                                         <TableCell>
                                                             <Typography variant="body2">{entry.description}</Typography>
                                                             {entry.orderId && <Typography variant="caption" color="text.secondary">Order: #{entry.orderId.slice(-6)}</Typography>}

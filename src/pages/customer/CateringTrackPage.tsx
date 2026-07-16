@@ -432,7 +432,7 @@ const CateringTrackPage = () => {
                                 <Receipt sx={{ mr: 1, color: 'primary.main' }} /> Order Items
                             </Typography>
                             <List disablePadding>
-                                {order.items.map((item: any, i: number) => (
+                                {(order?.items || []).map((item: any, i: number) => (
                                     <ListItem key={i} sx={{ px: 0, py: 1.5 }}>
                                         <ListItemText
                                             primary={<Typography variant="subtitle1" fontWeight="600">{item.name}</Typography>}
@@ -525,7 +525,7 @@ const CateringTrackPage = () => {
                                                 primary={(
                                                     <Box display="flex" alignItems="center" gap={1} flexWrap="wrap">
                                                         <Typography fontWeight="600">
-                                                            {formatCurrency(p.amount)} via {String(p.method || '').toUpperCase()}
+                                                            {formatCurrency(p.amount)} via {String(p.method || '')?.toUpperCase()}
                                                         </Typography>
                                                         {p.paymentIntentId && <Chip size="small" color="info" label="Stripe" />}
                                                         {p.refundId && <Chip size="small" color="warning" label={`Refunded ${formatCurrency(p.refundedAmount || 0)}`} />}

@@ -67,7 +67,7 @@ const OrderConfirmationPage: React.FC = () => {
   const location = useLocation();
   const { user } = useAuth();
   const [orderData] = useState<OrderData>({
-    orderNumber: 'ORD-' + Math.random().toString(36).substr(2, 9).toUpperCase(),
+    orderNumber: 'ORD-' + Math.random().toString(36).substr(2, 9)?.toUpperCase(),
     status: 'confirmed',
     orderType: 'delivery',
     estimatedTime: '35-45',
@@ -282,8 +282,8 @@ const OrderConfirmationPage: React.FC = () => {
               <Typography variant="h6" gutterBottom>
                 Order Details
               </Typography>
-              {orderData.items.map((item, index) => (
-                <Box key={index} sx={{ py: 2, borderBottom: index < orderData.items.length - 1 ? '1px solid' : 'none', borderColor: 'divider' }}>
+              {(orderData?.items || []).map((item, index) => (
+                <Box key={index} sx={{ py: 2, borderBottom: index < (orderData?.items || []).length - 1 ? '1px solid' : 'none', borderColor: 'divider' }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <Box sx={{ flex: 1 }}>
                       <Typography variant="subtitle1" fontWeight="bold">

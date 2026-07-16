@@ -156,7 +156,7 @@ export function getOrderTypeLabel(orderType: string, order?: any): string {
         if (orderType === 'dine_in' || orderType === 'global_dine_in') return 'Online Dine In';
         if (orderType === 'takeaway' || orderType === 'online_takeaway' || orderType === 'global_takeaway') return 'Online Takeaway';
     }
-    return ORDER_TYPE_LABELS[orderType] || orderType;
+    return ORDER_TYPE_LABELS[orderType] || orderType || '';
 }
 
 /**
@@ -167,7 +167,7 @@ export function getPaymentMethodLabel(paymentMethod: string | string[]): string 
         if (paymentMethod.length === 0) return 'UNKNOWN';
         // Unique map to ensure we don't say "CASH, CASH". Unlikely given design, but safe.
         const uniqueMethods = Array.from(new Set(paymentMethod));
-        return uniqueMethods.map(pm => PAYMENT_METHOD_LABELS[pm] || pm.toUpperCase()).join(' & ');
+        return uniqueMethods.map(pm => PAYMENT_METHOD_LABELS[pm] || (pm ? pm?.toUpperCase() : 'UNKNOWN')).join(' & ');
     }
     return PAYMENT_METHOD_LABELS[paymentMethod] || paymentMethod?.toUpperCase() || 'UNKNOWN';
 }
@@ -240,13 +240,14 @@ export function formatCurrency(amount: number): string {
 /**
  * Format date and time
  */
-export function formatDateTime(date: string | Date): string {
+export function formatDateTime(date: string | Date, timeZone?: string): string {
     return new Date(date).toLocaleString('en-US', {
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
+        ...(timeZone ? { timeZone } : {}),
     });
 }
 

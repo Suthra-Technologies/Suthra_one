@@ -75,7 +75,7 @@ const DeliveryReportsPage: React.FC = () => {
 
     const handleExport = () => {
         if (!data?.orders?.length) { toast.error('No data to export'); return; }
-        const rows = data.orders.map((o: any) => ({
+        const rows = (data?.orders || []).map((o: any) => ({
             'Store': o.storeName,
             'Order #': o.orderNumber,
             'Date': o.date ? new Date(o.date).toLocaleString() : '',

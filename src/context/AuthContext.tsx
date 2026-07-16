@@ -266,7 +266,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
     if (user.name) return user.name;
     if (user.firstName) return `${user.firstName} ${user.lastName || ''}`.trim();
     if (user.email) return user.email.split('@')[0];
-    return user.sub?.slice(0, 8) || 'User';
+    if (user.sub) {
+      return String(user.sub).slice(0, 8);
+    }
+    return 'User';
   };
 
   const updateUserData = (data: Partial<JwtPayload>) => {
