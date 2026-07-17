@@ -1526,8 +1526,7 @@ const POSPage: React.FC = () => {
             // Then handle table status update and refresh
             if (orderType === "dine_in" && selectedTable?._id) {
                 try {
-                    const updateData = { status: "occupied" };
-                    await tablesAPI.update(selectedTable._id, updateData);
+                    await tablesAPI.updateStatus(selectedTable._id, "occupied");
                 } catch (err) {
                     console.error("Table status update failed:", err);
                     toast.error("Failed to update table status");

@@ -304,6 +304,7 @@ export const attendanceAPI = {
   getAllAttendance: (filters: any) => api.get('/attendance/admin/all', { params: filters }),
   createManual: (data: any) => api.post('/attendance/admin/manual', data),
   update: (id: string, data: any) => api.patch(`/attendance/admin/${id}`, data),
+  exportFinancials: (filters: any) => api.get('/attendance/admin/export', { params: filters, responseType: 'blob' }),
 };
 
 // -------------------- Menu API --------------------

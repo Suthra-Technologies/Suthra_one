@@ -80,7 +80,7 @@ const OrderUpdateDialog: React.FC<OrderUpdateDialogProps> = ({ open, order, onCl
                     // const table = tables.find(t => t.tableNumber === order.tableNumber);
                     console.log(order.table?._id, 'chk');
                     if (order.table?._id) {
-                        await tablesAPI.update(order.table._id, { status: "available" });
+                        await tablesAPI.updateStatus(order.table._id, "available");
                     }
                 } catch (err) {
                     console.error("Failed to free table:", err);
