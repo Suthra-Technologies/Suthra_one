@@ -423,7 +423,8 @@ const createDefaultSettings = (): SettingsState => ({
         },
         push: {
             roles: {
-                superadmin: { orders: true, catering: true, inventory: true, bookings: true },
+                // superadmin has its own separate portal and is never a target for
+                // in-restaurant notifications, so it has no row here.
                 admin: { orders: true, catering: true, inventory: true, bookings: true },
                 manager: { orders: true, catering: true, inventory: true, bookings: true },
                 cashier: { orders: true, catering: false, inventory: false, bookings: true },

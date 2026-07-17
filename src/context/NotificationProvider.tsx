@@ -227,7 +227,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         console.log(`🔔 [NotificationProvider] Processing for user role: ${userRole}`);
 
         // Staff roles that should be notified of ALL new orders
-        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
+        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier'];
 
         const orderType = (data.order?.orderType || data.orderType || 'unknown')?.toLowerCase();
         const isDeliveryOrder = orderType === 'delivery';
@@ -347,7 +347,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
         if (!user) return;
         const userRole = user.role?.toLowerCase() || '';
-        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
+        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier'];
         const isStaff = staffRoles.includes(userRole);
 
         if (!isStaff) return;
@@ -405,7 +405,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const currentUserId = user.sub || user._id || user.id;
 
         // Simple permissions check
-        const isStaff = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'].includes(userRole);
+        const isStaff = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier'].includes(userRole);
         const isCustomer = userRole === 'customer';
         const isOwnOrder = isCustomer && (data.order?.customerUser === currentUserId || data.order?.customer?.userId === currentUserId);
         const isDelivery = userRole === 'delivery' && orderType === 'delivery';
@@ -469,7 +469,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const handleStaleOrdersAlert = useCallback((data: any) => {
         if (!user) return;
         const userRole = user.role?.toLowerCase() || '';
-        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
+        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier'];
         if (!staffRoles.includes(userRole)) return;
 
         const count = data?.count ?? (data?.orders?.length || 0);
@@ -499,7 +499,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const handleAutoCloseRequest = useCallback((data: any) => {
         if (!user) return;
         const userRole = user.role?.toLowerCase() || '';
-        if (!['admin', 'manager', 'superadmin', 'kitchen', 'kitchen_staff'].includes(userRole)) return;
+        if (!['admin', 'manager', 'kitchen', 'kitchen_staff'].includes(userRole)) return;
 
         const count = data?.count ?? (data?.orders?.length || 0);
         const closeTime = data?.closeTime || '';
@@ -535,7 +535,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         console.log('🔔 [NotificationProvider] RAW newCateringOrder event:', data);
         if (!user) return;
         const userRole = user.role?.toLowerCase() || '';
-        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
+        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier'];
         const isStaff = staffRoles.includes(userRole);
         const isCustomer = userRole === 'customer';
         const orderCustomerId = data.order?.customerUser || data.order?.customer?.userId || data.order?.customerId;
@@ -570,7 +570,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         console.log('🔔 [NotificationProvider] RAW cateringOrderStatusUpdate event:', data);
         if (!user) return;
         const userRole = user.role?.toLowerCase() || '';
-        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
+        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier'];
         const isStaff = staffRoles.includes(userRole);
         const isCustomer = userRole === 'customer';
         const orderCustomerId = data.order?.customerUser || data.order?.customer?.userId || data.order?.customerId;
@@ -606,7 +606,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         console.log('🔔 [NotificationProvider] RAW cateringOrderUpdate event:', data);
         if (!user) return;
         const userRole = user.role?.toLowerCase() || '';
-        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
+        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier'];
         const isStaff = staffRoles.includes(userRole);
         const isCustomer = userRole === 'customer';
         const orderCustomerId = data.order?.customerUser || data.order?.customer?.userId || data.order?.customerId;
@@ -644,7 +644,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             if (!user) return;
 
             const userRole = user.role?.toLowerCase() || '';
-            const staffRoles = ['admin', 'manager', 'waiter', 'cashier', 'superadmin'];
+            const staffRoles = ['admin', 'manager', 'waiter', 'cashier'];
             const isStaff = staffRoles.includes(userRole);
 
             const booking = data.booking || {};
