@@ -170,16 +170,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
     localStorage.removeItem('availableTenants');
   };
 
+  // Mirrors TenantPermissionsGuard on the backend so the UI can disable actions the
+  // server would reject. The guard stays the source of truth; this only avoids
+  // offering a control that is guaranteed to 403.
   const hasPermission = (module: string, action: string): boolean => {
     if (!activeRole) return false;
-    if (activeRole === 'admin') return true;
-    if (activeRole === 'superadmin') {
-      if (user?.isRootAdmin) return true;
-      const perm = user?.permissions?.find(p => p.module === module);
-      if (!perm) return false;
-      return perm.actions.includes(action) || perm.actions.includes('full');
-    }
-    return true; // placeholder for other roles
+    if (user?.isRootAdmin) return true;
+    if (activeRole === 'superadmin' || user?.roles?.includes('superadmin')) return true;
+
+    const perm = user?.permissions?.find(p => p.module === module);
+
+    // An admin with no explicit permissions keeps full access, matching the guard's
+    // opt-in model; one with a permissions array is restricted by it.
+    if (activeRole === 'admin' && !user?.permissions?.length) return true;
+
+    if (!perm) return false;
+    return perm.actions.includes(action) || perm.actions.includes('full');
   };
 
   const hasRole = (roles: string[]): boolean => {
