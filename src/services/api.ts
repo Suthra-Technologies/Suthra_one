@@ -844,7 +844,7 @@ export const customersAPI = {
 
 // -------------------- Audit Logs API --------------------
 export const auditLogsAPI = {
-  getAll: (params?: { module?: string; action?: string; startDate?: string; endDate?: string; page?: number; limit?: number }) =>
+  getAll: (params?: { module?: string; action?: string; targetId?: string; startDate?: string; endDate?: string; page?: number; limit?: number }) =>
     api.get('/audit-logs', { params }),
 };
 

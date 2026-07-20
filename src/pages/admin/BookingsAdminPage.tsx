@@ -9,7 +9,8 @@ import {
     Cancel as RejectIcon,
     Timeline as TimelineIcon,
     AccessTime as TimeIcon,
-    Today as TodayIcon
+    Today as TodayIcon,
+    History as HistoryIcon
 } from '@mui/icons-material';
 import { alpha } from '@mui/material/styles';
 import {
@@ -54,6 +55,7 @@ import { useNavigate } from 'react-router-dom';
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { toast } from 'react-hot-toast';
+import HistoryDialog from '../../components/common/HistoryDialog';
 import PhoneInput from 'src/components/PhoneInput';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
@@ -104,6 +106,11 @@ const BookingsAdminPage: React.FC = () => {
     const [actionDialogOpen, setActionDialogOpen] = useState(false);
     const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
     const [actionNote, setActionNote] = useState('');
+
+    // History Dialog
+    const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+    const [historyTargetId, setHistoryTargetId] = useState('');
+    const [historyTitle, setHistoryTitle] = useState('');
     const [processing, setProcessing] = useState(false);
 
     // New State for Timeline
@@ -637,6 +644,19 @@ const BookingsAdminPage: React.FC = () => {
                                                         </IconButton>
                                                     </Stack>
                                                 )}
+                                                <IconButton
+                                                    size="small"
+                                                    color="info"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setHistoryTargetId(booking._id);
+                                                        setHistoryTitle(`Booking ${booking.bookingId} History`);
+                                                        setHistoryDialogOpen(true);
+                                                    }}
+                                                    sx={{ bgcolor: alpha(theme.palette.info.main, 0.1), ml: 1 }}
+                                                >
+                                                    <HistoryIcon fontSize="small" />
+                                                </IconButton>
                                             </Box>
                                         </Card>
                                     );
@@ -753,6 +773,20 @@ const BookingsAdminPage: React.FC = () => {
                                                             </Tooltip>
                                                         </>
                                                     )}
+                                                    <Tooltip title="View History">
+                                                        <IconButton
+                                                            size="small"
+                                                            color="info"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setHistoryTargetId(booking._id);
+                                                                setHistoryTitle(`Booking ${booking.bookingId} History`);
+                                                                setHistoryDialogOpen(true);
+                                                            }}
+                                                        >
+                                                            <HistoryIcon />
+                                                        </IconButton>
+                                                    </Tooltip>
                                                 </TableCell>
                                             </TableRow>
                                         ))}
@@ -1255,6 +1289,15 @@ const BookingsAdminPage: React.FC = () => {
                         </Button>
                     </DialogActions>
                 </Dialog>
+
+                {/* History Dialog */}
+                <HistoryDialog
+                    open={historyDialogOpen}
+                    onClose={() => setHistoryDialogOpen(false)}
+                    targetId={historyTargetId}
+                    module="bookings"
+                    title={historyTitle}
+                />
             </Box>
         </LocalizationProvider>
     );

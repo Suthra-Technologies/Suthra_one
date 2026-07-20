@@ -17,9 +17,9 @@ export const validateEmail = (email: string): ValidationResult => {
         return { isValid: false, message: 'Email is required' };
     }
 
-    // RFC 5321 limits: 254 total, 64 for the local part.
-    if (trimmed.length > 254) {
-        return { isValid: false, message: 'Email address must not exceed 254 characters' };
+    // Limit to 50 characters as requested for POS/admin operations.
+    if (trimmed.length > 50) {
+        return { isValid: false, message: 'Email address must not exceed 50 characters' };
     }
 
     const [localPart] = trimmed.split('@');

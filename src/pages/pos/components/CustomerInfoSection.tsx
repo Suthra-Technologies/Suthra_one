@@ -327,7 +327,7 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                         type="email"
                         value={customerEmail}
                         onChange={(e) => {
-                            const val = e.target.value?.toLowerCase().slice(0, 254);
+                            const val = e.target.value?.toLowerCase().slice(0, 50);
                             setCustomerEmail(val);
                             if (customerEmailTouched) {
                                 // Email is optional on POS orders, so only validate a non-empty value.
@@ -343,7 +343,7 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                         error={customerEmailTouched && !!customerEmailError}
                         helperText={customerEmailTouched && customerEmailError}
                         disabled={readOnly || user?.role === 'customer'}
-                        inputProps={{ maxLength: 254 }}
+                        inputProps={{ maxLength: 50 }}
                         autoComplete="off"
                     />
                 </Grid>

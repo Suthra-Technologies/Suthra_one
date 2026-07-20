@@ -1,13 +1,41 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { socketService } from '../services/socket.service';
 import { useAuth } from './AuthContext';
-import { toast } from 'react-hot-toast';
+import { toast as realToast } from 'react-hot-toast';
 import { Box, Typography, IconButton } from '@mui/material';
 import { Close as CloseIcon, Restaurant as RestaurantIcon } from '@mui/icons-material';
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
-
+import { PushNotifications } from '@capacitor/push-notifications';
 import { getSoundSrc, getSoundConfig, preloadNativeSounds } from '../utils/notificationSounds';
+
+const checkNotificationPerm = async () => {
+    let isAllowed = true;
+    if (Capacitor.isNativePlatform()) {
+        try {
+            const pushPerm = await PushNotifications.checkPermissions();
+            if (pushPerm.receive === 'denied' || pushPerm.receive === 'prompt') {
+                isAllowed = false;
+            }
+        } catch(e) {}
+        try {
+            const localPerm = await LocalNotifications.checkPermissions();
+            if (localPerm.display === 'denied' || localPerm.display === 'prompt') {
+                isAllowed = false;
+            }
+        } catch(e) {}
+    } else if ('Notification' in window) {
+        if (Notification.permission === 'denied') isAllowed = false;
+    }
+    return isAllowed;
+};
+
+const toast = {
+    custom: async (jsx: Parameters<typeof realToast.custom>[0], opts?: Parameters<typeof realToast.custom>[1]) => { if (await checkNotificationPerm()) realToast.custom(jsx, opts); },
+    success: async (msg: Parameters<typeof realToast.success>[0], opts?: Parameters<typeof realToast.success>[1]) => { if (await checkNotificationPerm()) realToast.success(msg, opts); },
+    error: async (msg: Parameters<typeof realToast.error>[0], opts?: Parameters<typeof realToast.error>[1]) => { if (await checkNotificationPerm()) realToast.error(msg, opts); },
+    dismiss: (id?: any) => realToast.dismiss(id)
+};
 import { NativeAudio } from '@capacitor-community/native-audio';
 import { useSettings } from './SettingsContext';
 import { autoPrintOrder } from '../utils/autoPrintOrder';
@@ -73,7 +101,23 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         printCtxRef.current = { printer: settings.printer, autoPrint: settings.system?.autoPrint, formatCurrency };
     }, [settings.printer, settings.system?.autoPrint, formatCurrency]);
 
-    const playNotificationSound = useCallback(() => {
+    const playNotificationSound = useCallback(async () => {
+        // Check if user has explicitly denied OS notifications
+        let isAllowed = true;
+        if (Capacitor.isNativePlatform()) {
+            try {
+                const perm = await LocalNotifications.checkPermissions();
+                if (perm.display !== 'granted') isAllowed = false;
+            } catch(e) {}
+        } else if ('Notification' in window) {
+            if (Notification.permission === 'denied') isAllowed = false;
+        }
+
+        if (!isAllowed) {
+            console.log('🔕 [NotificationProvider] OS Notifications denied. Skipping sound.');
+            return;
+        }
+
         // Dispatch an event so the Dashboard (and other views) can instantly refresh live data
         window.dispatchEvent(new CustomEvent('dashboardRefetch'));
 
@@ -95,12 +139,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const selectedSrc = getSoundSrc(selectedId);
         const durationMs = (settings?.notification?.soundDuration || 6) * 1000;
 
-        // --- NATIVE AUDIO PLAYER ---
-        // NativeAudio is completely disabled here because it fails silently on some Androids
-        // and its loop fallback ignores custom durations.
-        // We rely 100% on the Web Browser Audio Player below, which we unlocked via touch event.
-
-        // --- WEB BROWSER AUDIO PLAYER ---
+        // --- WEB BROWSER AUDIO PLAYER (Used on Native too) ---
         const audio       = new Audio(selectedSrc);
         audio.volume      = 0.6;
         audio.loop        = true;            // loop so it fills the full duration
@@ -120,12 +159,20 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }, durationMs);
     }, [settings?.notification?.sound, settings?.notification?.soundDuration]);
 
-    const showNotification = useCallback(async (title: string, body: string) => {
+    const showNotification = useCallback(async (title: string, body: string, soundId?: string) => {
         console.log('🔔 [NotificationProvider] Requesting to show notification:', title);
+
+        const finalSoundId = soundId || settings?.notification?.sound || localStorage.getItem('notificationSoundId') || 'notification';
 
         // NATIVE MOBILE NOTIFICATION
         if (Capacitor.isNativePlatform()) {
             try {
+                const permStatus = await LocalNotifications.checkPermissions();
+                if (permStatus.display !== 'granted') {
+                    console.log('🔔 [NotificationProvider] OS Notification permission denied. Skipping native banner.');
+                    return;
+                }
+
                 await LocalNotifications.schedule({
                     notifications: [
                         {
@@ -133,8 +180,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                             body: body,
                             id: Math.floor(Math.random() * 2147483647), // Must be 32-bit int
                             schedule: { at: new Date(Date.now() + 100) },
-                            sound: 'notification.mp3',
-                            channelId: 'orders_v3', // This will play the OS sound!
+                            channelId: 'orders_v4_silent', // Silent OS banner, because HTML5 audio handles the sound!
                             smallIcon: 'ic_stat_icon_config_sample',
                             actionTypeId: '',
                             extra: null
@@ -155,7 +201,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
         if (Notification.permission === 'granted') {
             try {
-                new Notification(title, { body, icon: '/logo.png' });
+                // Pass silent: true so the browser/OS doesn't play a default ping sound,
+                // since we are already playing the custom sound via HTML5 Audio.
+                new Notification(title, { body, icon: '/logo.png', silent: true });
             } catch (e) {
                 console.error('🔔 [NotificationProvider] Failed to show OS notification:', e);
             }
@@ -215,7 +263,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         return { displayOrderId, displayTokenNo, displayOrderType, displayStatus };
     }, []);
 
-    const handleNewOrder = useCallback((data: any) => {
+    const handleNewOrder = useCallback(async (data: any) => {
         console.log('🔔 [NotificationProvider] RAW newOrder event:', data);
 
         if (!user) {
@@ -250,7 +298,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             return;
         }
 
-        // Play sound
+        // Play sound (internally checks permissions)
         playNotificationSound();
 
         // Format Order Type
@@ -274,38 +322,40 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             body = `Token No #${displayTokenNo}\nType: ${displayOrderType}\nStatus: Placed`;
         }
 
-        console.log(`✅ [NotificationProvider] Showing notification: ${title}`);
+        if (true) {
+            console.log(`✅ [NotificationProvider] Showing notification: ${title}`);
+            // Show OS / Native Notification
+            const selectedId = settings?.notification?.sound || localStorage.getItem('notificationSoundId') || 'notification';
+            showNotification(title, body, selectedId);
 
-        // Show OS / Native Notification
-        showNotification(title, body);
-
-        // Show Toast
-        toast.custom((t) => (
-            <Box
-                sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 2,
-                    bgcolor: 'primary.main',
-                    color: 'white',
-                    p: 2,
-                    borderRadius: 2,
-                    boxShadow: 3,
-                    minWidth: 300,
-                    cursor: 'pointer'
-                }}
-                onClick={() => toast.dismiss(t.id)}
-            >
-                <RestaurantIcon />
-                <Box sx={{ flexGrow: 1 }}>
-                    <Typography variant="subtitle1" fontWeight="bold">{title}</Typography>
-                    <Typography variant="body2">{body}</Typography>
+            // Show Toast
+            toast.custom((t) => (
+                <Box
+                    sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2,
+                        bgcolor: 'primary.main',
+                        color: 'white',
+                        p: 2,
+                        borderRadius: 2,
+                        boxShadow: 3,
+                        minWidth: 300,
+                        cursor: 'pointer'
+                    }}
+                    onClick={() => toast.dismiss(t.id)}
+                >
+                    <RestaurantIcon />
+                    <Box sx={{ flexGrow: 1 }}>
+                        <Typography variant="subtitle1" fontWeight="bold">{title}</Typography>
+                        <Typography variant="body2">{body}</Typography>
+                    </Box>
+                    <IconButton size="small" sx={{ color: 'white' }}>
+                        <CloseIcon />
+                    </IconButton>
                 </Box>
-                <IconButton size="small" sx={{ color: 'white' }}>
-                    <CloseIcon />
-                </IconButton>
-            </Box>
-        ), { duration: 5000, position: 'top-right' });
+            ), { duration: 5000, position: 'top-right' });
+        }
 
         // Add to local state list
         const newNotif: Notification = {
@@ -677,6 +727,17 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                     vibration: true,
                 });
                 
+                // Create Silent Channel for foreground local notifications (prevents double sound)
+                await LocalNotifications.createChannel({
+                    id: 'orders_v4_silent',
+                    name: 'Order Notifications (Foreground)',
+                    description: 'Silent notifications for when app is open',
+                    importance: 2, // Low importance (2) guarantees NO SOUND and no audio ducking
+                    visibility: 1, 
+                    sound: '', // No sound
+                    vibration: false,
+                });
+
                 // BACKWARD COMPATIBILITY: 
                 // The production backend is still sending push notifications to the old 'orders' channel.
                 // We MUST recreate the 'orders' channel here or Android will silently drop the push notifications from production!
@@ -689,6 +750,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                     sound: 'notification.mp3', // Force the custom sound even if production backend says 'default'
                     vibration: true,
                 });
+                
                 console.log('🔔 [NotificationProvider] Notification channels created');
             } else if ('Notification' in window && Notification.permission === 'default') {
                 Notification.requestPermission();
@@ -700,15 +762,25 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         // Android blocks autoplaying audio unless the user has interacted.
         // We unlock the audio engine on the first tap anywhere on the screen!
         const unlockAudio = () => {
-            const silent = new Audio();
-            silent.play().catch(() => {});
-            document.removeEventListener('touchstart', unlockAudio);
-            document.removeEventListener('click', unlockAudio);
-            console.log('✅ [NotificationProvider] Web Audio Context unlocked!');
-        };
-        document.addEventListener('touchstart', unlockAudio);
-        document.addEventListener('click', unlockAudio);
+            // Unlock HTMLAudioElement
+            try {
+                const dummy = new Audio('/sounds/notification.mp3');
+                dummy.volume = 0;
+                dummy.play().then(() => {
+                    dummy.pause();
+                    dummy.currentTime = 0;
+                    console.log('✅ [NotificationProvider] HTMLAudioElement unlocked!');
+                }).catch(() => {});
+            } catch (e) {}
 
+            // Unlock Web Audio API
+            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            ctx.resume().then(() => {
+                console.log('✅ [NotificationProvider] Web Audio Context unlocked!');
+                ['click', 'touchstart', 'keydown'].forEach(evt => document.removeEventListener(evt, unlockAudio));
+            });
+        };
+        ['click', 'touchstart', 'keydown'].forEach(evt => document.addEventListener(evt, unlockAudio));
         const token = localStorage.getItem('jwt');
         if (!token || !user) {
             console.log('🔔 [NotificationProvider] No token or user, skipping socket connect');
@@ -775,7 +847,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const testNotification = useCallback(() => {
         console.log('🔔 Testing notification system...');
         playNotificationSound();
-        showNotification('Test System', 'Notifications are working!');
+        const selectedId = settings?.notification?.sound || localStorage.getItem('notificationSoundId') || 'notification';
+        showNotification('Test System', 'Notifications are working!', selectedId);
         toast.success('Test Notification Works!');
         setNotifications(prev => [{
             id: 'test-' + Date.now(),

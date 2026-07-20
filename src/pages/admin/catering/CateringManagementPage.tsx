@@ -564,7 +564,7 @@ const CateringManagementPage = () => {
         }));
     };
 
-    const recalculateEditTotals = (newItems: any[], newStaffCharge?: number, newTransCharge?: number) => {
+    const recalculateEditTotals = (newItems: any[], newStaffCharge?: number, newTransCharge?: number, newServiceCharge?: number) => {
         const subtotal = newItems.reduce((sum, item) => sum + (item.total || 0), 0);
         let discountAmt = editData.discount?.type === 'percentage'
             ? (subtotal * (editData.discount?.value || 0)) / 100
@@ -574,16 +574,18 @@ const CateringManagementPage = () => {
         
         const staff = newStaffCharge !== undefined ? newStaffCharge : (parseFloat(editData.staffCharge) || 0);
         const trans = newTransCharge !== undefined ? newTransCharge : (parseFloat(editData.transportationCharge) || 0);
+        const service = newServiceCharge !== undefined ? newServiceCharge : (parseFloat(editData.serviceCharge) || 0);
         
         // Preserve old cateringServers amount if still there, but prefer staffCharge
         const oldServersTotal = parseFloat(editData.cateringServers?.amount) || 0;
-        const totalAmount = Math.max(0, subtotal - discountAmt) + taxAmount + staff + trans + oldServersTotal;
+        const totalAmount = Math.max(0, subtotal - discountAmt) + taxAmount + staff + trans + service + oldServersTotal;
 
         setEditData((prev: any) => ({
             ...prev,
             items: newItems,
             staffCharge: staff,
             transportationCharge: trans,
+            serviceCharge: service,
             subtotal,
             totalAmount,
             tax: { ...prev.tax, amount: taxAmount }
@@ -2247,6 +2249,12 @@ const CateringManagementPage = () => {
                                                         {Number(selectedOrder.transportationCharge) > 0 && (
                                                             <Typography variant="body2">Transportation Charge: {formatCurrency(selectedOrder.transportationCharge)}</Typography>
                                                         )}
+                                                        {Number(selectedOrder.serviceCharge) > 0 && (
+                                                            <Typography variant="body2">Service Charge: {formatCurrency(selectedOrder.serviceCharge)}</Typography>
+                                                        )}
+                                                        {selectedOrder.deliveryItemsList && (
+                                                            <Typography variant="body2">Delivery Items: {selectedOrder.deliveryItemsList}</Typography>
+                                                        )}
                                                         {Number(selectedOrder.staffCharge) > 0 && (
                                                             <Typography variant="body2">Staffing Fee: {formatCurrency(selectedOrder.staffCharge)}</Typography>
                                                         )}
@@ -2359,18 +2367,6 @@ const CateringManagementPage = () => {
                                                         />
                                                     </Grid>
                                                 )}
-                                                {/* <Grid item xs={12} sm={6}>
-                                                    <TextField
-                                                        fullWidth
-                                                        label="Required Date & Time"
-                                                        type="datetime-local"
-                                                        value={editData.requiredDate ? new Date(new Date(editData.requiredDate).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : ''}
-                                                        onChange={(e) => setEditData({ ...editData, requiredDate: e.target.value })}
-                                                        margin="normal"
-                                                        size="small"
-                                                        InputLabelProps={{ shrink: true }}
-                                                    />
-                                                </Grid> */}
                                             </Grid>
 
                                             <Divider sx={{ my: 2 }} />
@@ -2412,6 +2408,12 @@ const CateringManagementPage = () => {
                                                                         size="small"
                                                                         inputProps={{ min: 0, step: "0.01" }}
                                                                         value={item.quantity}
+                                                                        onFocus={(e) => e.target.select()}
+                                                                        onBlur={(e) => {
+                                                                            const val = parseFloat(e.target.value) || 0;
+                                                                            handleUpdateEditItemQty(i, val);
+                                                                            e.target.value = val.toString();
+                                                                        }}
                                                                         onChange={(e) => handleUpdateEditItemQty(i, parseFloat(e.target.value) || 0)}
                                                                         sx={{ width: 80 }}
                                                                     />
@@ -2424,6 +2426,12 @@ const CateringManagementPage = () => {
                                                                             size="small"
                                                                             inputProps={{ min: 0, step: "0.01" }}
                                                                             value={item.unitPrice}
+                                                                            onFocus={(e) => e.target.select()}
+                                                                            onBlur={(e) => {
+                                                                                const val = parseFloat(e.target.value) || 0;
+                                                                                handleUpdateEditItemPrice(i, val);
+                                                                                e.target.value = val.toString();
+                                                                            }}
                                                                             onChange={(e) => handleUpdateEditItemPrice(i, parseFloat(e.target.value) || 0)}
                                                                             sx={{ width: 80 }}
                                                                         />
@@ -2539,7 +2547,6 @@ const CateringManagementPage = () => {
                                                 <Box sx={{ mt: 3, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
                                                     <Typography variant="h6" mb={2}>Service Details</Typography>
                                                     <Grid container spacing={2}>
-
                                                         <Grid item xs={12} sm={6}>
                                                             <TextField
                                                                 fullWidth
@@ -2551,7 +2558,7 @@ const CateringManagementPage = () => {
                                                                 value={editData.staffCharge || ''}
                                                                 onChange={(e) => {
                                                                     const newAmount = Math.max(0, parseFloat(e.target.value) || 0);
-                                                                    recalculateEditTotals(editData.items, newAmount, editData.transportationCharge);
+                                                                    recalculateEditTotals(editData.items, newAmount, editData.transportationCharge, editData.serviceCharge);
                                                                 }}
                                                             />
                                                         </Grid>
@@ -2585,8 +2592,34 @@ const CateringManagementPage = () => {
                                                                 value={editData.transportationCharge || ''}
                                                                 onChange={(e) => {
                                                                     const newAmount = Math.max(0, parseFloat(e.target.value) || 0);
-                                                                    recalculateEditTotals(editData.items, editData.staffCharge, newAmount);
+                                                                    recalculateEditTotals(editData.items, editData.staffCharge, newAmount, editData.serviceCharge);
                                                                 }}
+                                                            />
+                                                        </Grid>
+                                                        <Grid item xs={12} sm={6}>
+                                                            <TextField
+                                                                fullWidth
+                                                                label="Service Charge ($)"
+                                                                type="number"
+                                                                size="small"
+                                                                inputProps={{ min: 0, step: "0.01" }}
+                                                                onKeyDown={preventScientificNotation}
+                                                                value={editData.serviceCharge || ''}
+                                                                onChange={(e) => {
+                                                                    const newAmount = Math.max(0, parseFloat(e.target.value) || 0);
+                                                                    recalculateEditTotals(editData.items, editData.staffCharge, editData.transportationCharge, newAmount);
+                                                                }}
+                                                            />
+                                                        </Grid>
+                                                        <Grid item xs={12}>
+                                                            <TextField
+                                                                fullWidth
+                                                                label="Delivery Items List (e.g. Spoons, Plates)"
+                                                                size="small"
+                                                                multiline
+                                                                rows={2}
+                                                                value={editData.deliveryItemsList || ''}
+                                                                onChange={(e) => setEditData({...editData, deliveryItemsList: e.target.value})}
                                                             />
                                                         </Grid>
                                                     </Grid>
@@ -3409,6 +3442,12 @@ const CateringManagementPage = () => {
                                                             size="small"
                                                             fullWidth
                                                             value={adminCustomItemPrice}
+                                                            onFocus={(e) => e.target.select()}
+                                                            onBlur={(e) => {
+                                                                const val = Math.max(0, parseFloat(e.target.value) || 0);
+                                                                setAdminCustomItemPrice(val);
+                                                                e.target.value = val.toString();
+                                                            }}
                                                             onChange={e => setAdminCustomItemPrice(Math.max(0, parseFloat(e.target.value) || 0))}
                                                             inputProps={{ min: 0, step: '0.01' }}
                                                         />

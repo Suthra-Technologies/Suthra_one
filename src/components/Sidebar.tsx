@@ -235,6 +235,25 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
     return currentPath === path;
   };
 
+  React.useEffect(() => {
+    setOpenGroups((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      navigationGroups.forEach(group => {
+        group.items.forEach((item: any) => {
+          if (item.children && item.children.some((c: any) => isActiveRoute(c.path || ''))) {
+            if (!next[item.label]) {
+              next[item.label] = true;
+              changed = true;
+            }
+          }
+        });
+      });
+      return changed ? next : prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
   const tenantConfig: any = user?.tenant;
   const currentFeatures = tenantConfig?.currentPlan?.features || [];
   const hasSuperAdmin = activeRole === 'superadmin' || user?.roles?.includes('superadmin');
@@ -473,7 +492,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
                   const active = isActiveRoute(item.path || '');
 
                   const renderItem = (navItem: any, isChild = false) => {
-                    const navActive = isActiveRoute(navItem.path || '');
+                    const navActive = isActiveRoute(navItem.path || '') || (navItem.children && navItem.children.some((c: any) => isActiveRoute(c.path || '')));
                     const navHasChildren = navItem.children && navItem.children.length > 0;
 
                     return (

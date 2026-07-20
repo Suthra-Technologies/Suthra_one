@@ -85,6 +85,7 @@ import AddTableDialog from './components/AddTableDialog';
 import EditTableDialog from './components/EditTableDialog';
 import BookingDialog from './components/BookingDialog';
 import ViewBookingDialog from './components/ViewBookingDialog';
+import HistoryDialog from '../../components/common/HistoryDialog';
 
 // Import Table Images
 import Table2Img from '../../assets/images/table-2.jpeg';
@@ -176,6 +177,11 @@ const TablesPage: React.FC = () => {
     // Edit Table Dialog
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [selectedTable, setSelectedTable] = useState<any>(null);
+
+    // History Dialog
+    const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+    const [historyTargetId, setHistoryTargetId] = useState('');
+    const [historyTitle, setHistoryTitle] = useState('');
 
     // Booking Dialog State
     const [bookingDialogOpen, setBookingDialogOpen] = useState(false);
@@ -1753,6 +1759,25 @@ const TablesPage: React.FC = () => {
                                 primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }} 
                             />
                         </MenuItem>
+                        <MenuItem 
+                            onClick={() => {
+                                if (menuTable) {
+                                    setHistoryTargetId(menuTable._id);
+                                    setHistoryTitle(`Table ${menuTable.tableNumber || menuTable.tableName} History`);
+                                    setHistoryDialogOpen(true);
+                                }
+                                handleCloseMenu();
+                            }}
+                            sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
+                        >
+                            <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
+                                <TimelineIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
+                            </ListItemIcon>
+                            <ListItemText 
+                                primary="View History" 
+                                primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }} 
+                            />
+                        </MenuItem>
                         {(menuTable?.isMerged || menuTable?.isPrimary) && (
                             <MenuItem 
                                 onClick={() => menuTable && handleUnmerge(menuTable)}
@@ -1807,6 +1832,15 @@ const TablesPage: React.FC = () => {
                 table={selectedTable}
                 customLocations={customLocations}
                 onOpenAddLocation={() => setAddLocationDialogOpen(true)}
+            />
+
+            {/* History Dialog */}
+            <HistoryDialog
+                open={historyDialogOpen}
+                onClose={() => setHistoryDialogOpen(false)}
+                targetId={historyTargetId}
+                module="tables"
+                title={historyTitle}
             />
 
             {/* Booking Dialog */}

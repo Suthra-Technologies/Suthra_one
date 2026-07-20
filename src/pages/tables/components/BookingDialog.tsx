@@ -417,8 +417,9 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
                         label="Email (Optional)"
                         value={customerEmail}
                         onChange={e => {
-                            setCustomerEmail(e.target.value);
-                            if (bookingTouched.customerEmail) validateBookingField('customerEmail', e.target.value);
+                            const val = e.target.value?.toLowerCase().slice(0, 50);
+                            setCustomerEmail(val);
+                            if (bookingTouched.customerEmail) validateBookingField('customerEmail', val);
                         }}
                         onBlur={() => {
                             setBookingTouched(prev => ({ ...prev, customerEmail: true }));
@@ -428,7 +429,8 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
                         helperText={bookingTouched.customerEmail && bookingErrors.customerEmail ? bookingErrors.customerEmail : ''}
                         fullWidth
                         type="email"
-                    />
+                        inputProps={{ maxLength: 50 }}
+                        size="small"/>
                 </Box>
             </DialogContent>
             <DialogActions>
