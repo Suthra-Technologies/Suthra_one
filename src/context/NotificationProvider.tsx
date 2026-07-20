@@ -3,7 +3,7 @@ import { socketService } from '../services/socket.service';
 import { useAuth } from './AuthContext';
 import { toast as realToast } from 'react-hot-toast';
 import { Box, Typography, IconButton } from '@mui/material';
-import { Close as CloseIcon, Restaurant as RestaurantIcon } from '@mui/icons-material';
+import { Close as CloseIcon, Restaurant as RestaurantIcon, EventSeat as BookIcon } from '@mui/icons-material';
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { PushNotifications } from '@capacitor/push-notifications';
@@ -275,7 +275,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         console.log(`🔔 [NotificationProvider] Processing for user role: ${userRole}`);
 
         // Staff roles that should be notified of ALL new orders
-        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
+        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier'];
 
         const orderType = (data.order?.orderType || data.orderType || 'unknown')?.toLowerCase();
         const isDeliveryOrder = orderType === 'delivery';
@@ -397,7 +397,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
         if (!user) return;
         const userRole = user.role?.toLowerCase() || '';
-        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
+        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier'];
         const isStaff = staffRoles.includes(userRole);
 
         if (!isStaff) return;
@@ -455,7 +455,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const currentUserId = user.sub || user._id || user.id;
 
         // Simple permissions check
-        const isStaff = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'].includes(userRole);
+        const isStaff = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier'].includes(userRole);
         const isCustomer = userRole === 'customer';
         const isOwnOrder = isCustomer && (data.order?.customerUser === currentUserId || data.order?.customer?.userId === currentUserId);
         const isDelivery = userRole === 'delivery' && orderType === 'delivery';
@@ -519,7 +519,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const handleStaleOrdersAlert = useCallback((data: any) => {
         if (!user) return;
         const userRole = user.role?.toLowerCase() || '';
-        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
+        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier'];
         if (!staffRoles.includes(userRole)) return;
 
         const count = data?.count ?? (data?.orders?.length || 0);
@@ -549,7 +549,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const handleAutoCloseRequest = useCallback((data: any) => {
         if (!user) return;
         const userRole = user.role?.toLowerCase() || '';
-        if (!['admin', 'manager', 'superadmin', 'kitchen', 'kitchen_staff'].includes(userRole)) return;
+        if (!['admin', 'manager', 'kitchen', 'kitchen_staff'].includes(userRole)) return;
 
         const count = data?.count ?? (data?.orders?.length || 0);
         const closeTime = data?.closeTime || '';
@@ -585,7 +585,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         console.log('🔔 [NotificationProvider] RAW newCateringOrder event:', data);
         if (!user) return;
         const userRole = user.role?.toLowerCase() || '';
-        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
+        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier'];
         const isStaff = staffRoles.includes(userRole);
         const isCustomer = userRole === 'customer';
         const orderCustomerId = data.order?.customerUser || data.order?.customer?.userId || data.order?.customerId;
@@ -620,7 +620,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         console.log('🔔 [NotificationProvider] RAW cateringOrderStatusUpdate event:', data);
         if (!user) return;
         const userRole = user.role?.toLowerCase() || '';
-        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
+        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier'];
         const isStaff = staffRoles.includes(userRole);
         const isCustomer = userRole === 'customer';
         const orderCustomerId = data.order?.customerUser || data.order?.customer?.userId || data.order?.customerId;
@@ -656,7 +656,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         console.log('🔔 [NotificationProvider] RAW cateringOrderUpdate event:', data);
         if (!user) return;
         const userRole = user.role?.toLowerCase() || '';
-        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
+        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier'];
         const isStaff = staffRoles.includes(userRole);
         const isCustomer = userRole === 'customer';
         const orderCustomerId = data.order?.customerUser || data.order?.customer?.userId || data.order?.customerId;
@@ -685,6 +685,68 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const newNotif: Notification = { id: 'catering-update-' + Date.now(), timestamp: new Date(), read: false, type: 'catering-update', title, message: body, priority: 'low', data: data };
         setNotifications(prev => [newNotif, ...prev].slice(0, 50));
     }, [user, playNotificationSound, showNotification]);
+
+    // Table bookings. The backend already filters who receives these by role and by
+    // the `bookings` push toggle, so this mirrors the catering staff check only.
+    const handleBookingEvent = useCallback((title: string, priority: 'high' | 'medium', type: string) =>
+        (data: any) => {
+            console.log(`🔔 [NotificationProvider] RAW ${type} event:`, data);
+            if (!user) return;
+
+            const userRole = user.role?.toLowerCase() || '';
+            const staffRoles = ['admin', 'manager', 'waiter', 'cashier'];
+            const isStaff = staffRoles.includes(userRole);
+
+            const booking = data.booking || {};
+            const currentUserId = user.sub || user._id || user.id;
+            const bookingCustomerId = booking.customerUser || booking.customer?.userId;
+            const isOwnBooking = userRole === 'customer' && bookingCustomerId === currentUserId;
+
+            if (!isStaff && !isOwnBooking) return;
+
+            playNotificationSound();
+
+            const customerName = booking.customerName || booking.guestInfo?.firstName || 'Customer';
+            const tableName = booking.tableName || booking.table?.tableNumber;
+            const guests = booking.guests ?? booking.numberOfGuests ?? booking.partySize;
+            const slot = booking.timeSlot?.requested;
+            const day = booking.date ? new Date(booking.date).toLocaleDateString() : '';
+            const status = data.status ? String(data.status).replace(/_/g, ' ') : '';
+
+            const body = [
+                `Customer: ${customerName}`,
+                guests ? `Guests: ${guests}` : null,
+                tableName ? `Table: ${tableName}` : null,
+                [day, slot].filter(Boolean).length ? `Time: ${[day, slot].filter(Boolean).join(' ')}` : null,
+                status ? `Status: ${status}` : null,
+            ].filter(Boolean).join('\n');
+
+            showNotification(title, body);
+
+            toast.custom((t) => (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, bgcolor: priority === 'high' ? 'success.main' : 'info.main', color: 'white', p: 2, borderRadius: 2, boxShadow: 3, minWidth: 300, cursor: 'pointer' }} onClick={() => toast.dismiss(t.id)}>
+                    <BookIcon />
+                    <Box sx={{ flexGrow: 1 }}>
+                        <Typography variant="subtitle1" fontWeight="bold">{title}</Typography>
+                        <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>{body}</Typography>
+                    </Box>
+                    <IconButton size="small" sx={{ color: 'white' }}><CloseIcon /></IconButton>
+                </Box>
+            ), { duration: 6000, position: 'top-right' });
+
+            const newNotif: Notification = {
+                id: `${type}-${booking._id || Date.now()}`,
+                timestamp: new Date(), read: false, type, title, message: body, priority, data,
+            };
+            setNotifications(prev => [newNotif, ...prev].slice(0, 50));
+        }, [user, playNotificationSound, showNotification]);
+
+    const handleNewBooking = useCallback(
+        handleBookingEvent('New Table Booking!', 'high', 'booking'), [handleBookingEvent]);
+    const handleBookingStatusUpdate = useCallback(
+        handleBookingEvent('Booking Update', 'medium', 'booking-status'), [handleBookingEvent]);
+    const handleBookingCheckedIn = useCallback(
+        handleBookingEvent('Guest Checked In', 'high', 'booking-checkin'), [handleBookingEvent]);
 
     const [deliveryLocations, setDeliveryLocations] = useState<Record<string, { lat: number, lng: number, timestamp: Date }>>({});
 
@@ -815,6 +877,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         socketService.on('cateringOrderStatusUpdate', handleCateringOrderStatusUpdate);
         socketService.on('cateringOrderUpdate', handleCateringOrderUpdate);
 
+        // Table booking events
+        socketService.on('newBooking', handleNewBooking);
+        socketService.on('bookingStatusUpdate', handleBookingStatusUpdate);
+        socketService.on('bookingCheckedIn', handleBookingCheckedIn);
+
         return () => {
             console.log('🔌 [NotificationProvider] Cleanup: removing listeners');
             socketService.off('newOrder', handleNewOrder);
@@ -828,11 +895,15 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             socketService.off('newCateringOrder', handleNewCateringOrder);
             socketService.off('cateringOrderStatusUpdate', handleCateringOrderStatusUpdate);
             socketService.off('cateringOrderUpdate', handleCateringOrderUpdate);
+
+            socketService.off('newBooking', handleNewBooking);
+            socketService.off('bookingStatusUpdate', handleBookingStatusUpdate);
+            socketService.off('bookingCheckedIn', handleBookingCheckedIn);
             // Optional: disconnect on unmount? Better to keep it alive? 
             // Usually disconnecting is safer to prevent duplicate handlers if remounted.
             socketService.disconnect();
         };
-    }, [user?.sub, user?.role, handleNewOrder, handleOrderStatusUpdate, handleNewCateringOrder, handleCateringOrderStatusUpdate, handleCateringOrderUpdate]); // Re-connect only if identity changes
+    }, [user?.sub, user?.role, handleNewOrder, handleOrderStatusUpdate, handleNewCateringOrder, handleCateringOrderStatusUpdate, handleCateringOrderUpdate, handleNewBooking, handleBookingStatusUpdate, handleBookingCheckedIn]); // Re-connect only if identity changes
 
     const dismissAutoCloseRequest = useCallback(() => setAutoCloseRequest(null), []);
 

@@ -93,7 +93,14 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
     if (error.response?.status === 403) {
-      toast.error('Access denied. You do not have permission to perform this action.');
+      // A fixed id collapses this with any toast a caller raises for the same
+      // rejection, so a single denial can't stack two overlapping messages.
+      toast.error(
+        typeof message === 'string' && message
+          ? message
+          : 'You do not have permission to perform this action.',
+        { id: 'forbidden' }
+      );
       return Promise.reject(error);
     }
     // if (error.response?.status >= 500) {

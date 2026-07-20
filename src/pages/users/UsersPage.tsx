@@ -261,7 +261,17 @@ const UsersPage = () => {
   const headingFontSize = { xs: '1.12rem', sm: '1.4rem', md: '2.125rem' };
   const bodyFontSize = { xs: '0.78rem', sm: '0.88rem', md: '0.95rem' };
   const { settings } = useSettings();
-  const { activeRole, user: currentUser } = useAuth();
+  const { activeRole, user: currentUser, hasPermission } = useAuth();
+
+  // Admins may still raise a deletion ticket for another admin, so the control stays
+  // available to them; it is only hidden from users the server would reject outright.
+  const canDeleteUsers =
+    hasPermission('users', 'delete') ||
+    activeRole === 'admin' ||
+    activeRole === 'superadmin' ||
+    Boolean(currentUser?.roles?.includes('admin')) ||
+    Boolean(currentUser?.roles?.includes('superadmin'));
+
   const [tabValue, setTabValue] = useState(0);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
@@ -620,7 +630,11 @@ const UsersPage = () => {
       }
       closeDeleteDialog();
     } catch (err: any) {
-      toast.error('Deletion failed: ' + (err.response?.data?.message || err.message));
+      // 401/403 are already surfaced by the api interceptor; re-toasting stacks a
+      // second message for the same failure.
+      if (err.response?.status !== 403 && err.response?.status !== 401) {
+        toast.error('Deletion failed: ' + (err.response?.data?.message || err.message));
+      }
     } finally {
       setSubmitting(false);
     }
@@ -1328,14 +1342,19 @@ const UsersPage = () => {
                           </Tooltip>
                         </Stack>
 
-                        <IconButton 
-                          size="small" 
-                          onClick={() => handleDeleteUser(user)}
-                          sx={{ color: 'error.light', '&:hover': { color: 'error.main', bgcolor: alpha(theme.palette.error.main, 0.08) } }}
-                          disabled={!(activeRole === 'admin' || activeRole === 'superadmin' || currentUser?.roles?.includes('admin') || currentUser?.roles?.includes('superadmin'))}
-                        >
-                          <DeleteIcon sx={{ fontSize: '1.1rem' }} />
-                        </IconButton>
+                        <Tooltip title={canDeleteUsers ? 'Delete User' : "You don't have permission to delete users"}>
+                          {/* span keeps the tooltip working while the button is disabled */}
+                          <span>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleDeleteUser(user)}
+                              sx={{ color: 'error.light', '&:hover': { color: 'error.main', bgcolor: alpha(theme.palette.error.main, 0.08) } }}
+                              disabled={!canDeleteUsers}
+                            >
+                              <DeleteIcon sx={{ fontSize: '1.1rem' }} />
+                            </IconButton>
+                          </span>
+                        </Tooltip>
                       </>
                     )}
                   </CardActions>
