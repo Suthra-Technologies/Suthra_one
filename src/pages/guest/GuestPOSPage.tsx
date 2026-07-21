@@ -254,7 +254,11 @@ const GuestPOSPage: React.FC = () => {
             if (!slug) return;
             try {
                 setIsCalculatingTax(true);
-                const to_zip = restaurantSettings?.zipCode || restaurantSettings?.pincode || '30040';
+                // Tax is sourced from the restaurant's address for every order type.
+                const to_zip = restaurantSettings?.zipCode || restaurantSettings?.pincode || '';
+                const to_state = restaurantSettings?.state || '';
+                const to_city = restaurantSettings?.city || '';
+                const to_street = restaurantSettings?.address || '';
 
                 // Compute discount amount for tax input
                 const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -280,6 +284,9 @@ const GuestPOSPage: React.FC = () => {
 
                 const payload = {
                     to_zip,
+                    to_state,
+                    to_city,
+                    to_street,
                     discount: discountAmount,
                     line_items: cart.map(item => ({
                         itemId: item._id,
