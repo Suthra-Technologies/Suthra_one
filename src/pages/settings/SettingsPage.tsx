@@ -53,6 +53,8 @@ import {
     TableRow,
     Tabs,
     TextField,
+    ToggleButton,
+    ToggleButtonGroup,
     Tooltip,
     Typography,
     alpha,
@@ -635,7 +637,8 @@ const UsbPrinterSection: React.FC<{
 };
 
 const SettingsPage: React.FC = () => {
-    const { user } = useAuth();
+    const { user, hasRole } = useAuth();
+    const isAdmin = hasRole(['admin']);
     const { updateSettings: updateGlobalSettings, formatCurrency } = useSettings();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -764,6 +767,7 @@ const SettingsPage: React.FC = () => {
             const res = await usersAPI.getUsers({
                 page: page + 1,
                 limit,
+                role: 'all', // staff + management only — excludes customer accounts
             });
             const allUsers = res.data?.data || res.data?.users || (Array.isArray(res.data) ? res.data : []);
             setUsersList(allUsers);
@@ -972,6 +976,7 @@ const SettingsPage: React.FC = () => {
     // }, [settings.restaurant.zipCode, settings.restaurant.state]);
 
     const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
+        if (newValue === 4 && !isAdmin) return; // Payment tab — admin only
         setTabValue(newValue);
         if (newValue === 8 && priceCategories.length === 0) {
             fetchPriceCategories();
@@ -1783,7 +1788,7 @@ const SettingsPage: React.FC = () => {
                     <Tab label="System Preferences" />
                     <Tab label="Inventory Settings" />
                     <Tab label="Notifications" icon={<SmsIcon />} iconPosition="start" />
-                    <Tab label="Payment" icon={<CreditCardIcon />} iconPosition="start" />
+                    <Tab label="Payment" icon={<CreditCardIcon />} iconPosition="start" disabled={!isAdmin} sx={!isAdmin ? { opacity: 0.4 } : undefined} />
                     <Tab label="Printers" icon={<PrintIcon />} iconPosition="start" />
                     <Tab label="Loyalty / Rewards" icon={<StarIcon />} iconPosition="start" />
                     <Tab label="Delivery" icon={<DeliveryDiningIcon />} iconPosition="start" />
@@ -3584,6 +3589,12 @@ const SettingsPage: React.FC = () => {
                 </TabPanel>
 
                 <TabPanel value={tabValue} index={4}>
+                    {!isAdmin ? (
+                        <Alert severity="warning" sx={{ borderRadius: 3 }}>
+                            Payment settings are only accessible to Admin users.
+                        </Alert>
+                    ) : (
+                    <>
                     <Box sx={{ mb: 4 }}>
                         <Typography variant="h6" sx={{ mb: 1, fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
                             Point of Sale Payment Methods
@@ -3903,6 +3914,8 @@ const SettingsPage: React.FC = () => {
                             </Button>
                         </Grid>
                     </Grid>
+                    </>
+                    )}
                 </TabPanel>
 
                 {/* Printers Tab */}
@@ -3951,6 +3964,36 @@ const SettingsPage: React.FC = () => {
                                 />
                             </Paper>
                         </Grid>
+
+                        {settings.printer.enabled && (
+                            <Grid size={{ xs: 12 }}>
+                                <Paper variant="outlined" sx={{ p: 2.5, borderRadius: 3 }}>
+                                    <Typography variant="subtitle2" fontWeight={700} gutterBottom>
+                                        What to Auto-Print
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                        Choose what prints automatically when an order is created.
+                                    </Typography>
+                                    <ToggleButtonGroup
+                                        exclusive
+                                        value={settings.printer.autoPrintMode || 'both'}
+                                        onChange={(_e, value) => {
+                                            if (!value) return;
+                                            setSettings(prev => ({
+                                                ...prev,
+                                                printer: { ...prev.printer, autoPrintMode: value }
+                                            }));
+                                        }}
+                                        size="small"
+                                        color="primary"
+                                    >
+                                        <ToggleButton value="both">KOT + Bill</ToggleButton>
+                                        <ToggleButton value="kot">KOT Only</ToggleButton>
+                                        <ToggleButton value="bill">Bill Only</ToggleButton>
+                                    </ToggleButtonGroup>
+                                </Paper>
+                            </Grid>
+                        )}
 
                         {/* Background Print Station (mobile app only) */}
                         {isThermalPrintAvailable() && (

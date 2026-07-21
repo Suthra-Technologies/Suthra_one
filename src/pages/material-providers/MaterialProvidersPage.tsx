@@ -20,6 +20,7 @@ import {
     DialogContent,
     DialogActions,
     Stack,
+    Autocomplete,
 } from '@mui/material';
 import {
     Search as SearchIcon,
@@ -53,6 +54,7 @@ interface MaterialProvider {
     notes?: string;
     logo?: string;
     materialImage?: string;
+    materials?: { name: string; unit?: string; defaultUnitPrice?: number }[];
 }
 
 const POS_PROVIDER_NAME = 'NexZen POS';
@@ -176,6 +178,12 @@ const MaterialProvidersPage: React.FC = () => {
     const [receiveItems, setReceiveItems] = useState<ReceiveItem[]>([]);
     const [receiveNotes, setReceiveNotes] = useState('');
 
+    const receiveProvider = React.useMemo(
+        () => providers.find(p => p._id === receiveTarget?.providerId) || null,
+        [providers, receiveTarget]
+    );
+    const receiveMaterialOptions = receiveProvider?.materials || [];
+
     const openReceive = (order: any) => {
         setReceiveTarget(order);
         setReceiveItems([{ description: order.orderText || '', quantity: '1', unit: '', unitPrice: '' }]);
@@ -198,6 +206,17 @@ const MaterialProvidersPage: React.FC = () => {
     };
     const addItem = () => setReceiveItems(prev => [...prev, { description: '', quantity: '1', unit: '', unitPrice: '' }]);
     const removeItem = (i: number) => setReceiveItems(prev => prev.filter((_, idx) => idx !== i));
+
+    // When a catalog item is picked, auto-fill its unit/default price alongside the description.
+    const selectMaterial = (i: number, materialName: string) => {
+        const match = receiveMaterialOptions.find(m => m.name === materialName);
+        setReceiveItems(prev => prev.map((it, idx) => idx === i ? {
+            ...it,
+            description: materialName,
+            unit: match?.unit ?? it.unit,
+            unitPrice: match?.defaultUnitPrice != null ? String(match.defaultUnitPrice) : it.unitPrice,
+        } : it));
+    };
 
     const receiveTotal = receiveItems.reduce((sum, it) => sum + (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0), 0);
 
@@ -631,12 +650,22 @@ const MaterialProvidersPage: React.FC = () => {
                     <Stack spacing={1.5}>
                         {receiveItems.map((it, i) => (
                             <Box key={i} sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                                <TextField
-                                    label="Item"
+                                <Autocomplete
+                                    freeSolo
+                                    options={receiveMaterialOptions.map(m => m.name)}
                                     value={it.description}
-                                    onChange={(e) => updateItem(i, 'description', e.target.value)}
+                                    inputValue={it.description}
+                                    onChange={(_e, val) => selectMaterial(i, val || '')}
+                                    onInputChange={(_e, val) => updateItem(i, 'description', val)}
                                     size="small"
                                     sx={{ flex: '2 1 160px' }}
+                                    renderInput={(params) => (
+                                        <TextField
+                                            {...params}
+                                            label="Item"
+                                            placeholder={receiveMaterialOptions.length ? 'Select an item' : 'No catalog set for this provider'}
+                                        />
+                                    )}
                                 />
                                 <TextField
                                     label="Qty"
