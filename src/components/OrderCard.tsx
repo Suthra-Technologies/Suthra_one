@@ -346,6 +346,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                         <Stack direction="row" spacing={0.5} alignItems="center" sx={{ mb: 0.5, flexWrap: 'nowrap', overflow: 'hidden' }}>
                             <Typography variant="caption" sx={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}>
                                 {getOrderTypeLabel(order.orderType, order)}
+                                {order.orderType === 'dine_in' && (order.tableNumber || order.table) && ` - Table: ${order.tableNumber || order.table?.tableNumber || order.table?.number || order.table?.tableName || order.table?.name || 'N/A'}`}
                             </Typography>
                             <Box sx={{ width: 3, height: 3, borderRadius: '50%', bgcolor: 'text.disabled', flexShrink: 0 }} />
                             <Typography variant="caption" color="text.secondary" sx={{ whiteSpace: 'nowrap' }}>

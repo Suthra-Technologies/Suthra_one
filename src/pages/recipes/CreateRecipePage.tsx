@@ -108,9 +108,11 @@ const CreateRecipePage: React.FC = () => {
         }
     };
 
-    const fetchMenuItems = async () => {
+    const fetchMenuItems = async (search?: string) => {
         try {
-            const response = await menuAPI.getAll();
+            const params: any = {};
+            if (search) params.search = search;
+            const response = await menuAPI.getAll(params);
             const data = response.data;
             const items = Array.isArray(data) ? data : (data?.items || []);
             setMenuItems(items);
@@ -266,6 +268,11 @@ const CreateRecipePage: React.FC = () => {
                             getOptionLabel={(option) => option.name || ''}
                             isOptionEqualToValue={(option, value) => option._id === value._id}
                             value={formData.menuItem || null}
+                            onInputChange={(_, newValue, reason) => {
+                                if (reason === 'input') {
+                                    fetchMenuItems(newValue);
+                                }
+                            }}
                             onChange={(_, newValue) => {
                                 setFormData({
                                     ...formData,
@@ -276,7 +283,7 @@ const CreateRecipePage: React.FC = () => {
                             fullWidth
                             size={isMobile ? "small" : "medium"}
                             renderInput={(params) => (
-                                <TextField {...params} label="Menu Item" placeholder="Select menu item" required />
+                                <TextField {...params} label="Menu Item" placeholder="Search menu item" required />
                             )}
                         />
                         <CustomInput
