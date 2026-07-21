@@ -138,6 +138,7 @@ const CateringManagementPage = () => {
     const [menuItems, setMenuItems] = useState<any[]>([]);
     const [taxDetails, setTaxDetails] = useState<any>(null);
     const [isCalculatingTax, setIsCalculatingTax] = useState(false);
+    const [taxError, setTaxError] = useState<string | null>(null);
     const [newOrder, setNewOrder] = useState({
         customerName: '',
         customerPhone: '',
@@ -190,13 +191,18 @@ const CateringManagementPage = () => {
     useEffect(() => {
         if ((newOrder?.items || []).length === 0) {
             setTaxDetails(null);
+            setTaxError(null);
             return;
         }
+
+        // Address edits retrigger this on every keystroke (debounced), so a slow
+        // earlier response could otherwise land after a newer one and overwrite it.
+        let cancelled = false;
 
         const timer = setTimeout(async () => {
             try {
                 setIsCalculatingTax(true);
-                
+
                 let subtotal = (newOrder?.items || []).reduce((sum, item) => sum + (item.total || 0), 0);
                 let discountAmt = 0;
                 if (newOrder.discount.type === 'percentage') {
@@ -205,11 +211,17 @@ const CateringManagementPage = () => {
                     discountAmt = newOrder.discount.value || 0;
                 }
 
+                // Catering tax is sourced from the RESTAURANT's address, not the customer's
+                // delivery address — so we explicitly send the restaurant address as the
+                // tax destination. Sending it (rather than the delivery address, or nothing)
+                // keeps the request self-describing: the payload shows exactly which address
+                // the returned rate belongs to.
+                const restaurant = settings?.restaurant || {};
                 const payload = {
-                    to_zip: newOrder.zipCode || settings.restaurant?.zipCode || '30040',
-                    to_state: newOrder.state,
-                    to_city: newOrder.city,
-                    to_street: newOrder.address,
+                    to_zip: restaurant.zipCode || '',
+                    to_state: restaurant.state || '',
+                    to_city: restaurant.city || '',
+                    to_street: restaurant.address || '',
                     discount: discountAmt,
                     line_items: (newOrder?.items || []).map(item => ({
                         itemId: item.menuItem,
@@ -220,16 +232,26 @@ const CateringManagementPage = () => {
                 };
 
                 const res = await taxAPI.calculate(payload);
+                if (cancelled) return;
                 setTaxDetails(res.data);
-            } catch (err) {
+                setTaxError(null);
+            } catch (err: any) {
+                if (cancelled) return;
                 console.error("[Catering Tax] Failed:", err);
                 setTaxDetails(null);
+                setTaxError(
+                    err?.response?.data?.message ||
+                    'Tax could not be calculated. Please check the delivery address and retry before creating the order.'
+                );
             } finally {
-                setIsCalculatingTax(false);
+                if (!cancelled) setIsCalculatingTax(false);
             }
         }, 800);
 
-        return () => clearTimeout(timer);
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
     }, [newOrder.items, newOrder.discount, newOrder.zipCode, newOrder.address, settings]);
 
     const [expanded, setExpanded] = useState<string | false>('customer');
@@ -3590,12 +3612,18 @@ const CateringManagementPage = () => {
                                                         size="small"
                                                         disabled
                                                         value={isCalculatingTax ? 'Calculating...' : currentFinalTotal.toFixed(2)}
-                                                        InputProps={{ 
+                                                        error={!!taxError && !isCalculatingTax}
+                                                        InputProps={{
                                                             sx: { fontWeight: 'bold', bgcolor: alpha(theme.palette.success.main, 0.05) },
                                                             endAdornment: isCalculatingTax ? <CircularProgress size={20} /> : null
                                                         }}
                                                     />
                                                 </Grid>
+                                                {taxError && !isCalculatingTax && (
+                                                    <Grid item xs={12}>
+                                                        <Alert severity="warning" sx={{ py: 0.5 }}>{taxError}</Alert>
+                                                    </Grid>
+                                                )}
                                                 <Grid item xs={12}>
                                                     <Box display="flex" justifyContent="space-between" alignItems="center" mb={1} mt={2}>
                                                         <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>Payment Details</Typography>
@@ -3921,9 +3949,9 @@ const CateringManagementPage = () => {
                                                     color="success"
                                                     onClick={handleCreateOrder}
                                                     sx={{ px: 3 }}
-                                                    disabled={creating || isCalculatingTax}
+                                                    disabled={creating || isCalculatingTax || !!taxError}
                                                 >
-                                                    {creating ? 'Creating...' : isCalculatingTax ? 'Calculating Tax...' : '✓ Create Order'}
+                                                    {creating ? 'Creating...' : isCalculatingTax ? 'Calculating Tax...' : taxError ? 'Complete address to continue' : '✓ Create Order'}
                                                 </Button>
                                             </Box>
                                         </Box>

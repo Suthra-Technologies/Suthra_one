@@ -1146,19 +1146,15 @@ const POSPage: React.FC = () => {
                 setIsCalculatingTax(true);
                 const restaurantSettings = settings?.restaurant || {};
 
-                // Determine to_zip
-                let to_zip = '';
-                if (typeof deliveryAddress === 'object' && (deliveryAddress as any).zipCode) {
-                    to_zip = (deliveryAddress as any).zipCode;
-                } else if (typeof deliveryAddress === 'string') {
-                    const match = deliveryAddress.match(/\b\d{5}\b/);
-                    if (match) to_zip = match[0];
-                }
-
-                if (!to_zip) to_zip = restaurantSettings.zipCode || '30040';
-
+                // Tax is sourced from the RESTAURANT's address for every order type,
+                // including delivery — the customer's delivery address never drives the
+                // rate. Send the restaurant address explicitly so the payload shows which
+                // address the returned rate belongs to.
                 const payload = {
-                    to_zip,
+                    to_zip: restaurantSettings.zipCode || '',
+                    to_state: restaurantSettings.state || '',
+                    to_city: restaurantSettings.city || '',
+                    to_street: restaurantSettings.address || '',
                     discount: discountAmount + couponDiscount,
                     line_items: cart.map(item => ({
                         itemId: item.originalMenuItemId || item._id,
@@ -1180,7 +1176,9 @@ const POSPage: React.FC = () => {
         }, 800);
 
         return () => clearTimeout(timer);
-    }, [cart, discountAmount, couponDiscount, deliveryAddress, settings]);
+        // deliveryAddress is intentionally not a dependency: tax comes from the
+        // restaurant's address, so editing the delivery address must not refire this.
+    }, [cart, discountAmount, couponDiscount, settings]);
 
     const taxAmount = useMemo(() => {
         return taxDetails?.taxAmount || 0;
