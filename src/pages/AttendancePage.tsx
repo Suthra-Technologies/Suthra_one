@@ -193,6 +193,31 @@ const AttendancePage: React.FC = () => {
         }
     };
 
+    const handleExportFinancials = async () => {
+        try {
+            const toastId = toast.loading('Generating export batch...');
+            const response = await attendanceAPI.exportFinancials({
+                startDate: filters.startDate,
+                endDate: filters.endDate,
+                search: filters.search,
+                role: activeRoleFilter === 'all' ? undefined : activeRoleFilter,
+            });
+
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `attendance-financials-${new Date().getTime()}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode?.removeChild(link);
+            toast.success('Export downloaded successfully!', { id: toastId });
+        } catch (error) {
+            console.error('Failed to export financials', error);
+            toast.dismiss();
+            toast.error('Failed to export financials');
+        }
+    };
+
     useEffect(() => {
         fetchAttendance();
         fetchUsers();
@@ -481,7 +506,7 @@ const AttendancePage: React.FC = () => {
                             fullWidth
                             variant="outlined"
                             startIcon={<DownloadIcon />}
-                            onClick={() => toast.success('Generation export batch...')}
+                            onClick={handleExportFinancials}
                             sx={{ borderRadius: 3, py: 1.8, fontWeight: 'bold', borderStyle: 'dashed' }}
                         >
                             Export Financials

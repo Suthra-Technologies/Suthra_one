@@ -93,7 +93,14 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
     if (error.response?.status === 403) {
-      toast.error('Access denied. You do not have permission to perform this action.');
+      // A fixed id collapses this with any toast a caller raises for the same
+      // rejection, so a single denial can't stack two overlapping messages.
+      toast.error(
+        typeof message === 'string' && message
+          ? message
+          : 'You do not have permission to perform this action.',
+        { id: 'forbidden' }
+      );
       return Promise.reject(error);
     }
     // if (error.response?.status >= 500) {
@@ -304,6 +311,7 @@ export const attendanceAPI = {
   getAllAttendance: (filters: any) => api.get('/attendance/admin/all', { params: filters }),
   createManual: (data: any) => api.post('/attendance/admin/manual', data),
   update: (id: string, data: any) => api.patch(`/attendance/admin/${id}`, data),
+  exportFinancials: (filters: any) => api.get('/attendance/admin/export', { params: filters, responseType: 'blob' }),
 };
 
 // -------------------- Menu API --------------------
@@ -843,7 +851,7 @@ export const customersAPI = {
 
 // -------------------- Audit Logs API --------------------
 export const auditLogsAPI = {
-  getAll: (params?: { module?: string; action?: string; startDate?: string; endDate?: string; page?: number; limit?: number }) =>
+  getAll: (params?: { module?: string; action?: string; targetId?: string; startDate?: string; endDate?: string; page?: number; limit?: number }) =>
     api.get('/audit-logs', { params }),
 };
 

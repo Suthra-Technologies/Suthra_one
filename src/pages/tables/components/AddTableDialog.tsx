@@ -313,7 +313,6 @@ const AddTableDialog: React.FC<AddTableDialogProps> = ({
                             <MenuItem value="available">Available</MenuItem>
                             <MenuItem value="occupied">Occupied</MenuItem>
                             <MenuItem value="reserved">Reserved</MenuItem>
-                            <MenuItem value="cleaning">Cleaning</MenuItem>
                         </Select>
                     </FormControl>
                 </Box>

@@ -732,15 +732,13 @@ const DashboardPage: React.FC = () => {
       {/* Order Type Breakdown Bar */}
       <Box className="hide-scrollbar" sx={{ mb: 2, display: 'flex', gap: 2, flexWrap: 'nowrap', alignItems: 'center', overflowX: 'auto', pb: 0.5 }}>
         {[
-          { label: 'Online Takeaway', key: 'online takeaway', color: 'primary' },
-          { label: 'Online Delivery', key: 'online delivery', color: 'primary' },
-          { label: 'Global Takeaway', key: 'global takeaway', color: 'secondary' },
-          { label: 'Global Dine In', key: 'global dine in', color: 'secondary' },
           { label: 'Dine In', key: 'dine in', color: 'info' },
           { label: 'Takeaway', key: 'takeaway', color: 'info' },
-          { label: 'Pre Order', key: 'pre order', color: 'warning' }
+          { label: 'Delivery', key: 'delivery', color: 'success' },
+          { label: 'Pre Order', key: 'pre order', color: 'warning' },
+          { label: 'Catering', key: 'catering', color: 'error' }
         ].map((type) => {
-           const count = normalizedOrders.find((o: any) => o.orderType?.toLowerCase() === type.key)?.totalOrders || 0;
+           const count = normalizedOrders.find((o: any) => o.orderType?.toLowerCase().replace(/_/g, ' ') === type.key)?.totalOrders || 0;
            return (
              <Chip 
                key={type.key} 

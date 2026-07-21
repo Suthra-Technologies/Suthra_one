@@ -425,15 +425,16 @@ const createDefaultSettings = (): SettingsState => ({
         },
         push: {
             roles: {
-                superadmin: { orders: true, catering: true, inventory: true },
-                admin: { orders: true, catering: true, inventory: true },
-                manager: { orders: true, catering: true, inventory: true },
-                cashier: { orders: true, catering: false, inventory: false },
-                waiter: { orders: true, catering: false, inventory: false },
-                kitchen_staff: { orders: false, catering: false, inventory: true },
-                food_runner: { orders: false, catering: false, inventory: false },
-                delivery: { orders: false, catering: false, inventory: false },
-                customer: { orders: false, catering: false, inventory: false }
+                // superadmin has its own separate portal and is never a target for
+                // in-restaurant notifications, so it has no row here.
+                admin: { orders: true, catering: true, inventory: true, bookings: true },
+                manager: { orders: true, catering: true, inventory: true, bookings: true },
+                cashier: { orders: true, catering: false, inventory: false, bookings: true },
+                waiter: { orders: true, catering: false, inventory: false, bookings: true },
+                kitchen_staff: { orders: false, catering: false, inventory: true, bookings: false },
+                food_runner: { orders: false, catering: false, inventory: false, bookings: false },
+                delivery: { orders: false, catering: false, inventory: false, bookings: false },
+                customer: { orders: false, catering: false, inventory: false, bookings: false }
             },
             users: {}
         },
@@ -3460,6 +3461,7 @@ const SettingsPage: React.FC = () => {
                                                 <TableCell align="center" sx={{ fontWeight: 700 }}>Orders</TableCell>
                                                 <TableCell align="center" sx={{ fontWeight: 700 }}>Catering</TableCell>
                                                 <TableCell align="center" sx={{ fontWeight: 700 }}>Inventory</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 700 }}>Bookings</TableCell>
                                             </TableRow>
                                         </TableHead>
                                         <TableBody>
@@ -3467,7 +3469,7 @@ const SettingsPage: React.FC = () => {
                                                 const userRole = Array.isArray(u.roles) ? u.roles[0] : 'cashier';
                                                 const config = settings.notification.push?.users?.[u._id] ||
                                                     settings.notification.push?.roles?.[userRole] ||
-                                                    { orders: true, catering: true, inventory: true };
+                                                    { orders: true, catering: true, inventory: true, bookings: true };
                                                 return (
                                                     <TableRow key={u._id} hover>
                                                         <TableCell sx={{ fontWeight: 500 }}>
@@ -3535,6 +3537,28 @@ const SettingsPage: React.FC = () => {
                                                                                 [u._id]: {
                                                                                     ...prev.notification.push?.users?.[u._id] || config,
                                                                                     inventory: e.target.checked
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }))}
+                                                            />
+                                                        </TableCell>
+                                                        <TableCell align="center">
+                                                            <Switch
+                                                                size="small"
+                                                                checked={config.bookings !== false}
+                                                                onChange={(e) => setSettings((prev: any) => ({
+                                                                    ...prev,
+                                                                    notification: {
+                                                                        ...prev.notification,
+                                                                        push: {
+                                                                            ...prev.notification.push,
+                                                                            users: {
+                                                                                ...prev.notification.push?.users,
+                                                                                [u._id]: {
+                                                                                    ...prev.notification.push?.users?.[u._id] || config,
+                                                                                    bookings: e.target.checked
                                                                                 }
                                                                             }
                                                                         }

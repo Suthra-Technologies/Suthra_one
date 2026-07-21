@@ -85,6 +85,7 @@ import AddTableDialog from './components/AddTableDialog';
 import EditTableDialog from './components/EditTableDialog';
 import BookingDialog from './components/BookingDialog';
 import ViewBookingDialog from './components/ViewBookingDialog';
+import HistoryDialog from '../../components/common/HistoryDialog';
 
 // Import Table Images
 import Table2Img from '../../assets/images/table-2.jpeg';
@@ -139,7 +140,11 @@ const calculateEndTime = (startTimeStr: string | undefined, durationMin: number)
 };
 
 const TablesPage: React.FC = () => {
-    const { tenantSlug } = useAuth();
+    const { tenantSlug, hasPermission } = useAuth();
+
+    // Mirrors @RequireTenantPermissions('tables.delete') on the backend, so the menu
+    // doesn't offer an action the server would reject with a 403.
+    const canDeleteTables = hasPermission('tables', 'delete');
     const { settings } = useSettings();
     const navigate = useNavigate();
     const [tables, setTables] = useState<any[]>([]);
@@ -176,6 +181,11 @@ const TablesPage: React.FC = () => {
     // Edit Table Dialog
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [selectedTable, setSelectedTable] = useState<any>(null);
+
+    // History Dialog
+    const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+    const [historyTargetId, setHistoryTargetId] = useState('');
+    const [historyTitle, setHistoryTitle] = useState('');
 
     // Booking Dialog State
     const [bookingDialogOpen, setBookingDialogOpen] = useState(false);
@@ -304,7 +314,11 @@ const TablesPage: React.FC = () => {
             fetchTables();
         } catch (error: any) {
             console.error('Error deleting table:', error);
-            toast.error(error.response?.data?.message || 'Failed to delete table');
+            // 401/403 are already surfaced by the api interceptor; re-toasting here
+            // would stack a second message for the same failure.
+            if (error.response?.status !== 403 && error.response?.status !== 401) {
+                toast.error(error.response?.data?.message || 'Failed to delete table');
+            }
         } finally {
             setIsProcessing(false);
         }
@@ -320,7 +334,9 @@ const TablesPage: React.FC = () => {
             fetchTables();
         } catch (error: any) {
             console.error('Error restoring table:', error);
-            toast.error(error.response?.data?.message || 'Failed to restore table');
+            if (error.response?.status !== 403 && error.response?.status !== 401) {
+                toast.error(error.response?.data?.message || 'Failed to restore table');
+            }
         } finally {
             setIsProcessing(false);
         }
@@ -984,10 +1000,12 @@ const TablesPage: React.FC = () => {
                                     <Box sx={{ p: 1, pt: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <Stack direction="row" spacing={0.5}>
                                             {table.isActive === false ? (
-                                                <Tooltip title="Restore Table">
-                                                    <IconButton size="small" color="success" onClick={() => handleRestoreTable(table)} disabled={isProcessing}>
-                                                        <RestoreIcon fontSize="small" />
-                                                    </IconButton>
+                                                <Tooltip title={canDeleteTables ? 'Restore Table' : "You don't have permission to restore tables"}>
+                                                    <span>
+                                                        <IconButton size="small" color="success" onClick={() => handleRestoreTable(table)} disabled={isProcessing || !canDeleteTables}>
+                                                            <RestoreIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </span>
                                                 </Tooltip>
                                             ) : (
                                                 <Tooltip title={table.status === 'occupied' || table.status === 'partially_occupied' || table.status === 'served' ? "View Order / Checkout" : "Take Order"}>
@@ -1715,18 +1733,23 @@ const TablesPage: React.FC = () => {
                 }}
             >
                 {menuTable?.isActive === false ? (
-                    <MenuItem
-                        onClick={() => menuTable && handleRestoreTable(menuTable)}
-                        sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 }, color: 'success.main' }}
-                    >
-                        <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
-                            <RestoreIcon sx={{ fontSize: { xs: 16, sm: 20 } }} color="success" />
-                        </ListItemIcon>
-                        <ListItemText
-                            primary="Restore Table"
-                            primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, color: 'success.main', my: 0 } }}
-                        />
-                    </MenuItem>
+                    <Tooltip title={canDeleteTables ? '' : "You don't have permission to restore tables"}>
+                        <span>
+                            <MenuItem
+                                onClick={() => menuTable && handleRestoreTable(menuTable)}
+                                disabled={!canDeleteTables}
+                                sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 }, color: 'success.main' }}
+                            >
+                                <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
+                                    <RestoreIcon sx={{ fontSize: { xs: 16, sm: 20 } }} color="success" />
+                                </ListItemIcon>
+                                <ListItemText
+                                    primary="Restore Table"
+                                    primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, color: 'success.main', my: 0 } }}
+                                />
+                            </MenuItem>
+                        </span>
+                    </Tooltip>
                 ) : (
                     <>
                         <MenuItem 
@@ -1753,6 +1776,25 @@ const TablesPage: React.FC = () => {
                                 primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }} 
                             />
                         </MenuItem>
+                        <MenuItem 
+                            onClick={() => {
+                                if (menuTable) {
+                                    setHistoryTargetId(menuTable._id);
+                                    setHistoryTitle(`Table ${menuTable.tableNumber || menuTable.tableName} History`);
+                                    setHistoryDialogOpen(true);
+                                }
+                                handleCloseMenu();
+                            }}
+                            sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
+                        >
+                            <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
+                                <TimelineIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
+                            </ListItemIcon>
+                            <ListItemText 
+                                primary="View History" 
+                                primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }} 
+                            />
+                        </MenuItem>
                         {(menuTable?.isMerged || menuTable?.isPrimary) && (
                             <MenuItem 
                                 onClick={() => menuTable && handleUnmerge(menuTable)}
@@ -1768,18 +1810,24 @@ const TablesPage: React.FC = () => {
                             </MenuItem>
                         )}
                         <Divider sx={{ my: { xs: 0.25, sm: 1 } }} />
-                        <MenuItem 
-                            onClick={() => menuTable && handleDeleteTable(menuTable)}
-                            sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 }, color: 'error.main' }}
-                        >
-                            <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
-                                <DeleteIcon sx={{ fontSize: { xs: 16, sm: 20 } }} color="error" />
-                            </ListItemIcon>
-                            <ListItemText 
-                                primary="Delete Table" 
-                                primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, color: 'error.main', my: 0 } }} 
-                            />
-                        </MenuItem>
+                        <Tooltip title={canDeleteTables ? '' : "You don't have permission to delete tables"}>
+                            {/* span keeps the tooltip working while the item is disabled */}
+                            <span>
+                                <MenuItem
+                                    onClick={() => menuTable && handleDeleteTable(menuTable)}
+                                    disabled={!canDeleteTables}
+                                    sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 }, color: 'error.main' }}
+                                >
+                                    <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
+                                        <DeleteIcon sx={{ fontSize: { xs: 16, sm: 20 } }} color="error" />
+                                    </ListItemIcon>
+                                    <ListItemText
+                                        primary="Delete Table"
+                                        primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, color: 'error.main', my: 0 } }}
+                                    />
+                                </MenuItem>
+                            </span>
+                        </Tooltip>
                     </>
                 )}
             </Menu>
@@ -1807,6 +1855,15 @@ const TablesPage: React.FC = () => {
                 table={selectedTable}
                 customLocations={customLocations}
                 onOpenAddLocation={() => setAddLocationDialogOpen(true)}
+            />
+
+            {/* History Dialog */}
+            <HistoryDialog
+                open={historyDialogOpen}
+                onClose={() => setHistoryDialogOpen(false)}
+                targetId={historyTargetId}
+                module="tables"
+                title={historyTitle}
             />
 
             {/* Booking Dialog */}

@@ -825,7 +825,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                             <Typography variant="body1" fontWeight="bold">
                                 Total:
                             </Typography>
-                            <Typography variant="h6" fontWeight="bold" color="primary.main">
+                            <Typography variant="h6" fontWeight="bold" color="primary.main" sx={{ textAlign: 'right !important', width: 'auto !important' }}>
                                 {formatCurrency(order.totalAmount)}
                             </Typography>
                         </Box>

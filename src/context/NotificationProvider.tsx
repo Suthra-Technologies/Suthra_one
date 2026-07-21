@@ -1,13 +1,41 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { socketService } from '../services/socket.service';
 import { useAuth } from './AuthContext';
-import { toast } from 'react-hot-toast';
+import { toast as realToast } from 'react-hot-toast';
 import { Box, Typography, IconButton } from '@mui/material';
-import { Close as CloseIcon, Restaurant as RestaurantIcon } from '@mui/icons-material';
+import { Close as CloseIcon, Restaurant as RestaurantIcon, EventSeat as BookIcon } from '@mui/icons-material';
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
-
+import { PushNotifications } from '@capacitor/push-notifications';
 import { getSoundSrc, getSoundConfig, preloadNativeSounds } from '../utils/notificationSounds';
+
+const checkNotificationPerm = async () => {
+    let isAllowed = true;
+    if (Capacitor.isNativePlatform()) {
+        try {
+            const pushPerm = await PushNotifications.checkPermissions();
+            if (pushPerm.receive === 'denied' || pushPerm.receive === 'prompt') {
+                isAllowed = false;
+            }
+        } catch(e) {}
+        try {
+            const localPerm = await LocalNotifications.checkPermissions();
+            if (localPerm.display === 'denied' || localPerm.display === 'prompt') {
+                isAllowed = false;
+            }
+        } catch(e) {}
+    } else if ('Notification' in window) {
+        if (Notification.permission === 'denied') isAllowed = false;
+    }
+    return isAllowed;
+};
+
+const toast = {
+    custom: async (jsx: Parameters<typeof realToast.custom>[0], opts?: Parameters<typeof realToast.custom>[1]) => { if (await checkNotificationPerm()) realToast.custom(jsx, opts); },
+    success: async (msg: Parameters<typeof realToast.success>[0], opts?: Parameters<typeof realToast.success>[1]) => { if (await checkNotificationPerm()) realToast.success(msg, opts); },
+    error: async (msg: Parameters<typeof realToast.error>[0], opts?: Parameters<typeof realToast.error>[1]) => { if (await checkNotificationPerm()) realToast.error(msg, opts); },
+    dismiss: (id?: any) => realToast.dismiss(id)
+};
 import { NativeAudio } from '@capacitor-community/native-audio';
 import { useSettings } from './SettingsContext';
 import { autoPrintOrder } from '../utils/autoPrintOrder';
@@ -73,7 +101,23 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         printCtxRef.current = { printer: settings.printer, autoPrint: settings.system?.autoPrint, formatCurrency };
     }, [settings.printer, settings.system?.autoPrint, formatCurrency]);
 
-    const playNotificationSound = useCallback(() => {
+    const playNotificationSound = useCallback(async () => {
+        // Check if user has explicitly denied OS notifications
+        let isAllowed = true;
+        if (Capacitor.isNativePlatform()) {
+            try {
+                const perm = await LocalNotifications.checkPermissions();
+                if (perm.display !== 'granted') isAllowed = false;
+            } catch(e) {}
+        } else if ('Notification' in window) {
+            if (Notification.permission === 'denied') isAllowed = false;
+        }
+
+        if (!isAllowed) {
+            console.log('🔕 [NotificationProvider] OS Notifications denied. Skipping sound.');
+            return;
+        }
+
         // Dispatch an event so the Dashboard (and other views) can instantly refresh live data
         window.dispatchEvent(new CustomEvent('dashboardRefetch'));
 
@@ -95,12 +139,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const selectedSrc = getSoundSrc(selectedId);
         const durationMs = (settings?.notification?.soundDuration || 6) * 1000;
 
-        // --- NATIVE AUDIO PLAYER ---
-        // NativeAudio is completely disabled here because it fails silently on some Androids
-        // and its loop fallback ignores custom durations.
-        // We rely 100% on the Web Browser Audio Player below, which we unlocked via touch event.
-
-        // --- WEB BROWSER AUDIO PLAYER ---
+        // --- WEB BROWSER AUDIO PLAYER (Used on Native too) ---
         const audio       = new Audio(selectedSrc);
         audio.volume      = 0.6;
         audio.loop        = true;            // loop so it fills the full duration
@@ -120,12 +159,20 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         }, durationMs);
     }, [settings?.notification?.sound, settings?.notification?.soundDuration]);
 
-    const showNotification = useCallback(async (title: string, body: string) => {
+    const showNotification = useCallback(async (title: string, body: string, soundId?: string) => {
         console.log('🔔 [NotificationProvider] Requesting to show notification:', title);
+
+        const finalSoundId = soundId || settings?.notification?.sound || localStorage.getItem('notificationSoundId') || 'notification';
 
         // NATIVE MOBILE NOTIFICATION
         if (Capacitor.isNativePlatform()) {
             try {
+                const permStatus = await LocalNotifications.checkPermissions();
+                if (permStatus.display !== 'granted') {
+                    console.log('🔔 [NotificationProvider] OS Notification permission denied. Skipping native banner.');
+                    return;
+                }
+
                 await LocalNotifications.schedule({
                     notifications: [
                         {
@@ -133,8 +180,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                             body: body,
                             id: Math.floor(Math.random() * 2147483647), // Must be 32-bit int
                             schedule: { at: new Date(Date.now() + 100) },
-                            sound: 'notification.mp3',
-                            channelId: 'orders_v3', // This will play the OS sound!
+                            channelId: 'orders_v4_silent', // Silent OS banner, because HTML5 audio handles the sound!
                             smallIcon: 'ic_stat_icon_config_sample',
                             actionTypeId: '',
                             extra: null
@@ -155,7 +201,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
         if (Notification.permission === 'granted') {
             try {
-                new Notification(title, { body, icon: '/logo.png' });
+                // Pass silent: true so the browser/OS doesn't play a default ping sound,
+                // since we are already playing the custom sound via HTML5 Audio.
+                new Notification(title, { body, icon: '/logo.png', silent: true });
             } catch (e) {
                 console.error('🔔 [NotificationProvider] Failed to show OS notification:', e);
             }
@@ -215,7 +263,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         return { displayOrderId, displayTokenNo, displayOrderType, displayStatus };
     }, []);
 
-    const handleNewOrder = useCallback((data: any) => {
+    const handleNewOrder = useCallback(async (data: any) => {
         console.log('🔔 [NotificationProvider] RAW newOrder event:', data);
 
         if (!user) {
@@ -227,7 +275,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         console.log(`🔔 [NotificationProvider] Processing for user role: ${userRole}`);
 
         // Staff roles that should be notified of ALL new orders
-        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
+        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier'];
 
         const orderType = (data.order?.orderType || data.orderType || 'unknown')?.toLowerCase();
         const isDeliveryOrder = orderType === 'delivery';
@@ -250,7 +298,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             return;
         }
 
-        // Play sound
+        // Play sound (internally checks permissions)
         playNotificationSound();
 
         // Format Order Type
@@ -274,38 +322,40 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             body = `Token No #${displayTokenNo}\nType: ${displayOrderType}\nStatus: Placed`;
         }
 
-        console.log(`✅ [NotificationProvider] Showing notification: ${title}`);
+        if (true) {
+            console.log(`✅ [NotificationProvider] Showing notification: ${title}`);
+            // Show OS / Native Notification
+            const selectedId = settings?.notification?.sound || localStorage.getItem('notificationSoundId') || 'notification';
+            showNotification(title, body, selectedId);
 
-        // Show OS / Native Notification
-        showNotification(title, body);
-
-        // Show Toast
-        toast.custom((t) => (
-            <Box
-                sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 2,
-                    bgcolor: 'primary.main',
-                    color: 'white',
-                    p: 2,
-                    borderRadius: 2,
-                    boxShadow: 3,
-                    minWidth: 300,
-                    cursor: 'pointer'
-                }}
-                onClick={() => toast.dismiss(t.id)}
-            >
-                <RestaurantIcon />
-                <Box sx={{ flexGrow: 1 }}>
-                    <Typography variant="subtitle1" fontWeight="bold">{title}</Typography>
-                    <Typography variant="body2">{body}</Typography>
+            // Show Toast
+            toast.custom((t) => (
+                <Box
+                    sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 2,
+                        bgcolor: 'primary.main',
+                        color: 'white',
+                        p: 2,
+                        borderRadius: 2,
+                        boxShadow: 3,
+                        minWidth: 300,
+                        cursor: 'pointer'
+                    }}
+                    onClick={() => toast.dismiss(t.id)}
+                >
+                    <RestaurantIcon />
+                    <Box sx={{ flexGrow: 1 }}>
+                        <Typography variant="subtitle1" fontWeight="bold">{title}</Typography>
+                        <Typography variant="body2">{body}</Typography>
+                    </Box>
+                    <IconButton size="small" sx={{ color: 'white' }}>
+                        <CloseIcon />
+                    </IconButton>
                 </Box>
-                <IconButton size="small" sx={{ color: 'white' }}>
-                    <CloseIcon />
-                </IconButton>
-            </Box>
-        ), { duration: 5000, position: 'top-right' });
+            ), { duration: 5000, position: 'top-right' });
+        }
 
         // Add to local state list
         const newNotif: Notification = {
@@ -347,7 +397,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
         if (!user) return;
         const userRole = user.role?.toLowerCase() || '';
-        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
+        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier'];
         const isStaff = staffRoles.includes(userRole);
 
         if (!isStaff) return;
@@ -405,7 +455,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const currentUserId = user.sub || user._id || user.id;
 
         // Simple permissions check
-        const isStaff = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'].includes(userRole);
+        const isStaff = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier'].includes(userRole);
         const isCustomer = userRole === 'customer';
         const isOwnOrder = isCustomer && (data.order?.customerUser === currentUserId || data.order?.customer?.userId === currentUserId);
         const isDelivery = userRole === 'delivery' && orderType === 'delivery';
@@ -469,7 +519,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const handleStaleOrdersAlert = useCallback((data: any) => {
         if (!user) return;
         const userRole = user.role?.toLowerCase() || '';
-        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
+        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier'];
         if (!staffRoles.includes(userRole)) return;
 
         const count = data?.count ?? (data?.orders?.length || 0);
@@ -499,7 +549,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const handleAutoCloseRequest = useCallback((data: any) => {
         if (!user) return;
         const userRole = user.role?.toLowerCase() || '';
-        if (!['admin', 'manager', 'superadmin', 'kitchen', 'kitchen_staff'].includes(userRole)) return;
+        if (!['admin', 'manager', 'kitchen', 'kitchen_staff'].includes(userRole)) return;
 
         const count = data?.count ?? (data?.orders?.length || 0);
         const closeTime = data?.closeTime || '';
@@ -535,7 +585,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         console.log('🔔 [NotificationProvider] RAW newCateringOrder event:', data);
         if (!user) return;
         const userRole = user.role?.toLowerCase() || '';
-        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
+        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier'];
         const isStaff = staffRoles.includes(userRole);
         const isCustomer = userRole === 'customer';
         const orderCustomerId = data.order?.customerUser || data.order?.customer?.userId || data.order?.customerId;
@@ -570,7 +620,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         console.log('🔔 [NotificationProvider] RAW cateringOrderStatusUpdate event:', data);
         if (!user) return;
         const userRole = user.role?.toLowerCase() || '';
-        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
+        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier'];
         const isStaff = staffRoles.includes(userRole);
         const isCustomer = userRole === 'customer';
         const orderCustomerId = data.order?.customerUser || data.order?.customer?.userId || data.order?.customerId;
@@ -606,7 +656,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         console.log('🔔 [NotificationProvider] RAW cateringOrderUpdate event:', data);
         if (!user) return;
         const userRole = user.role?.toLowerCase() || '';
-        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier', 'superadmin'];
+        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier'];
         const isStaff = staffRoles.includes(userRole);
         const isCustomer = userRole === 'customer';
         const orderCustomerId = data.order?.customerUser || data.order?.customer?.userId || data.order?.customerId;
@@ -635,6 +685,68 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const newNotif: Notification = { id: 'catering-update-' + Date.now(), timestamp: new Date(), read: false, type: 'catering-update', title, message: body, priority: 'low', data: data };
         setNotifications(prev => [newNotif, ...prev].slice(0, 50));
     }, [user, playNotificationSound, showNotification]);
+
+    // Table bookings. The backend already filters who receives these by role and by
+    // the `bookings` push toggle, so this mirrors the catering staff check only.
+    const handleBookingEvent = useCallback((title: string, priority: 'high' | 'medium', type: string) =>
+        (data: any) => {
+            console.log(`🔔 [NotificationProvider] RAW ${type} event:`, data);
+            if (!user) return;
+
+            const userRole = user.role?.toLowerCase() || '';
+            const staffRoles = ['admin', 'manager', 'waiter', 'cashier'];
+            const isStaff = staffRoles.includes(userRole);
+
+            const booking = data.booking || {};
+            const currentUserId = user.sub || user._id || user.id;
+            const bookingCustomerId = booking.customerUser || booking.customer?.userId;
+            const isOwnBooking = userRole === 'customer' && bookingCustomerId === currentUserId;
+
+            if (!isStaff && !isOwnBooking) return;
+
+            playNotificationSound();
+
+            const customerName = booking.customerName || booking.guestInfo?.firstName || 'Customer';
+            const tableName = booking.tableName || booking.table?.tableNumber;
+            const guests = booking.guests ?? booking.numberOfGuests ?? booking.partySize;
+            const slot = booking.timeSlot?.requested;
+            const day = booking.date ? new Date(booking.date).toLocaleDateString() : '';
+            const status = data.status ? String(data.status).replace(/_/g, ' ') : '';
+
+            const body = [
+                `Customer: ${customerName}`,
+                guests ? `Guests: ${guests}` : null,
+                tableName ? `Table: ${tableName}` : null,
+                [day, slot].filter(Boolean).length ? `Time: ${[day, slot].filter(Boolean).join(' ')}` : null,
+                status ? `Status: ${status}` : null,
+            ].filter(Boolean).join('\n');
+
+            showNotification(title, body);
+
+            toast.custom((t) => (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, bgcolor: priority === 'high' ? 'success.main' : 'info.main', color: 'white', p: 2, borderRadius: 2, boxShadow: 3, minWidth: 300, cursor: 'pointer' }} onClick={() => toast.dismiss(t.id)}>
+                    <BookIcon />
+                    <Box sx={{ flexGrow: 1 }}>
+                        <Typography variant="subtitle1" fontWeight="bold">{title}</Typography>
+                        <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>{body}</Typography>
+                    </Box>
+                    <IconButton size="small" sx={{ color: 'white' }}><CloseIcon /></IconButton>
+                </Box>
+            ), { duration: 6000, position: 'top-right' });
+
+            const newNotif: Notification = {
+                id: `${type}-${booking._id || Date.now()}`,
+                timestamp: new Date(), read: false, type, title, message: body, priority, data,
+            };
+            setNotifications(prev => [newNotif, ...prev].slice(0, 50));
+        }, [user, playNotificationSound, showNotification]);
+
+    const handleNewBooking = useCallback(
+        handleBookingEvent('New Table Booking!', 'high', 'booking'), [handleBookingEvent]);
+    const handleBookingStatusUpdate = useCallback(
+        handleBookingEvent('Booking Update', 'medium', 'booking-status'), [handleBookingEvent]);
+    const handleBookingCheckedIn = useCallback(
+        handleBookingEvent('Guest Checked In', 'high', 'booking-checkin'), [handleBookingEvent]);
 
     const [deliveryLocations, setDeliveryLocations] = useState<Record<string, { lat: number, lng: number, timestamp: Date }>>({});
 
@@ -677,6 +789,17 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                     vibration: true,
                 });
                 
+                // Create Silent Channel for foreground local notifications (prevents double sound)
+                await LocalNotifications.createChannel({
+                    id: 'orders_v4_silent',
+                    name: 'Order Notifications (Foreground)',
+                    description: 'Silent notifications for when app is open',
+                    importance: 2, // Low importance (2) guarantees NO SOUND and no audio ducking
+                    visibility: 1, 
+                    sound: '', // No sound
+                    vibration: false,
+                });
+
                 // BACKWARD COMPATIBILITY: 
                 // The production backend is still sending push notifications to the old 'orders' channel.
                 // We MUST recreate the 'orders' channel here or Android will silently drop the push notifications from production!
@@ -689,6 +812,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
                     sound: 'notification.mp3', // Force the custom sound even if production backend says 'default'
                     vibration: true,
                 });
+                
                 console.log('🔔 [NotificationProvider] Notification channels created');
             } else if ('Notification' in window && Notification.permission === 'default') {
                 Notification.requestPermission();
@@ -700,15 +824,25 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         // Android blocks autoplaying audio unless the user has interacted.
         // We unlock the audio engine on the first tap anywhere on the screen!
         const unlockAudio = () => {
-            const silent = new Audio();
-            silent.play().catch(() => {});
-            document.removeEventListener('touchstart', unlockAudio);
-            document.removeEventListener('click', unlockAudio);
-            console.log('✅ [NotificationProvider] Web Audio Context unlocked!');
-        };
-        document.addEventListener('touchstart', unlockAudio);
-        document.addEventListener('click', unlockAudio);
+            // Unlock HTMLAudioElement
+            try {
+                const dummy = new Audio('/sounds/notification.mp3');
+                dummy.volume = 0;
+                dummy.play().then(() => {
+                    dummy.pause();
+                    dummy.currentTime = 0;
+                    console.log('✅ [NotificationProvider] HTMLAudioElement unlocked!');
+                }).catch(() => {});
+            } catch (e) {}
 
+            // Unlock Web Audio API
+            const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+            ctx.resume().then(() => {
+                console.log('✅ [NotificationProvider] Web Audio Context unlocked!');
+                ['click', 'touchstart', 'keydown'].forEach(evt => document.removeEventListener(evt, unlockAudio));
+            });
+        };
+        ['click', 'touchstart', 'keydown'].forEach(evt => document.addEventListener(evt, unlockAudio));
         const token = localStorage.getItem('jwt');
         if (!token || !user) {
             console.log('🔔 [NotificationProvider] No token or user, skipping socket connect');
@@ -743,6 +877,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         socketService.on('cateringOrderStatusUpdate', handleCateringOrderStatusUpdate);
         socketService.on('cateringOrderUpdate', handleCateringOrderUpdate);
 
+        // Table booking events
+        socketService.on('newBooking', handleNewBooking);
+        socketService.on('bookingStatusUpdate', handleBookingStatusUpdate);
+        socketService.on('bookingCheckedIn', handleBookingCheckedIn);
+
         return () => {
             console.log('🔌 [NotificationProvider] Cleanup: removing listeners');
             socketService.off('newOrder', handleNewOrder);
@@ -756,11 +895,15 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             socketService.off('newCateringOrder', handleNewCateringOrder);
             socketService.off('cateringOrderStatusUpdate', handleCateringOrderStatusUpdate);
             socketService.off('cateringOrderUpdate', handleCateringOrderUpdate);
+
+            socketService.off('newBooking', handleNewBooking);
+            socketService.off('bookingStatusUpdate', handleBookingStatusUpdate);
+            socketService.off('bookingCheckedIn', handleBookingCheckedIn);
             // Optional: disconnect on unmount? Better to keep it alive? 
             // Usually disconnecting is safer to prevent duplicate handlers if remounted.
             socketService.disconnect();
         };
-    }, [user?.sub, user?.role, handleNewOrder, handleOrderStatusUpdate, handleNewCateringOrder, handleCateringOrderStatusUpdate, handleCateringOrderUpdate]); // Re-connect only if identity changes
+    }, [user?.sub, user?.role, handleNewOrder, handleOrderStatusUpdate, handleNewCateringOrder, handleCateringOrderStatusUpdate, handleCateringOrderUpdate, handleNewBooking, handleBookingStatusUpdate, handleBookingCheckedIn]); // Re-connect only if identity changes
 
     const dismissAutoCloseRequest = useCallback(() => setAutoCloseRequest(null), []);
 
@@ -775,7 +918,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const testNotification = useCallback(() => {
         console.log('🔔 Testing notification system...');
         playNotificationSound();
-        showNotification('Test System', 'Notifications are working!');
+        const selectedId = settings?.notification?.sound || localStorage.getItem('notificationSoundId') || 'notification';
+        showNotification('Test System', 'Notifications are working!', selectedId);
         toast.success('Test Notification Works!');
         setNotifications(prev => [{
             id: 'test-' + Date.now(),
