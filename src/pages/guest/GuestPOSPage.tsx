@@ -26,6 +26,7 @@ import {
     Alert,
     TextField,
     MenuItem as MuiMenuItem,
+    InputAdornment,
 } from '@mui/material';
 import { loadStripe } from '@stripe/stripe-js';
 import { PaymentElement, Elements, useStripe, useElements } from '@stripe/react-stripe-js';
@@ -40,6 +41,7 @@ import {
     TakeoutDining as TakeawayIcon,
     DeliveryDining as DeliveryIcon,
     ShoppingBag as OnlineTakeawayIcon,
+    Search as SearchIcon,
 } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
@@ -64,6 +66,20 @@ interface CartItem extends MenuItem {
     cartId: string; // unique id for cart item (in case of variants later)
 }
 
+// Mirrors the backend rule in orders.service.ts: a coupon matches if it lists the
+// exact order type, or the base type the global one maps to. Keeping both means a
+// coupon can target QR ordering alone without also covering in-restaurant orders.
+const BASE_ORDER_TYPE: Record<string, string> = {
+    global_dine_in: 'dine_in',
+    global_takeaway: 'takeaway',
+};
+
+const couponAppliesToOrderType = (coupon: any, orderType: string): boolean => {
+    const types: string[] = coupon?.applicableOrderTypes || [];
+    if (types.length === 0) return true;
+    return types.includes(orderType) || types.includes(BASE_ORDER_TYPE[orderType]);
+};
+
 const GuestPOSPage: React.FC = () => {
     const { slug, getRelativePath } = useActiveTenant();
     const navigate = useNavigate();
@@ -77,6 +93,8 @@ const GuestPOSPage: React.FC = () => {
     const [categories, setCategories] = useState<string[]>([]);
     const [selectedCategory, setSelectedCategory] = useState<string>('All');
     const [foodTypeFilter, setFoodTypeFilter] = useState<'all' | 'veg' | 'non-veg'>('all');
+    const [searchInput, setSearchInput] = useState<string>('');
+    const [searchTerm, setSearchTerm] = useState<string>('');
     const [nextCursor, setNextCursor] = useState<string | null>(null);
     const [isFetchingMore, setIsFetchingMore] = useState(false);
     const [totalMenuCount, setTotalMenuCount] = useState(0);
@@ -93,8 +111,10 @@ const GuestPOSPage: React.FC = () => {
     const [isCalculatingTax, setIsCalculatingTax] = useState(false);
     const [showPayment, setShowPayment] = useState(false);
     const [successOrderNumber, setSuccessOrderNumber] = useState<string | null>(null);
+    const [successTokenNumber, setSuccessTokenNumber] = useState<number | null>(null);
     const [orderType, setOrderType] = useState<'global_dine_in' | 'global_takeaway' | 'delivery' | 'online_takeaway'>('global_dine_in');
     const [tableNumber, setTableNumber] = useState<string>('');
+    const [tables, setTables] = useState<any[]>([]);
     const [taxRate, setTaxRate] = useState<number>(5); // Default 5%, will be updated from settings
 
     // Stripe card payment
@@ -158,6 +178,7 @@ const GuestPOSPage: React.FC = () => {
             ordersAPI.createPublic({ ...savedData, paymentIntentId }, savedData.slug)
                 .then((res: any) => {
                     setSuccessOrderNumber(res.data.orderNumber || 'Unknown');
+                    setSuccessTokenNumber(res.data.dailyTokenNumber ?? null);
                 })
                 .catch((err: any) => {
                     console.error('Order error after redirect payment:', err);
@@ -173,18 +194,33 @@ const GuestPOSPage: React.FC = () => {
 
     useEffect(() => {
         if (slug) {
-            fetchMenu(slug, null, false);
             fetchPublicInfo(slug);
         }
     }, [slug]);
 
+    // Debounce typing so we don't fire a request per keystroke.
+    useEffect(() => {
+        const timer = setTimeout(() => setSearchTerm(searchInput.trim()), 400);
+        return () => clearTimeout(timer);
+    }, [searchInput]);
+
+    // The menu is cursor-paginated, so searching has to go to the server —
+    // filtering locally would only ever match the pages already loaded.
+    useEffect(() => {
+        if (slug) {
+            fetchMenu(slug, null, false, searchTerm);
+        }
+    }, [slug, searchTerm]);
+
     const fetchPublicInfo = async (tenantSlug: string) => {
         try {
-            const [couponsRes, settingsRes] = await Promise.all([
+            const [couponsRes, settingsRes, tablesRes] = await Promise.all([
                 ordersAPI.getPublicCoupons(tenantSlug),
-                ordersAPI.getPublicSettings(tenantSlug)
+                ordersAPI.getPublicSettings(tenantSlug),
+                ordersAPI.getPublicTables(tenantSlug)
             ]);
             setAvailableCoupons(couponsRes.data);
+            setTables(Array.isArray(tablesRes.data) ? tablesRes.data : []);
             setPaymentSettings(settingsRes.data);
             setRestaurantSettings(settingsRes.data?.restaurant || null);
 
@@ -198,7 +234,7 @@ const GuestPOSPage: React.FC = () => {
         }
     };
 
-    const fetchMenu = async (tenantSlug: string, cursor?: string | null, loadMore = false) => {
+    const fetchMenu = async (tenantSlug: string, cursor?: string | null, loadMore = false, search?: string) => {
         try {
             if (loadMore) {
                 setIsFetchingMore(true);
@@ -207,7 +243,7 @@ const GuestPOSPage: React.FC = () => {
             }
 
             const limit = loadMore ? LOAD_MORE_LIMIT : PAGE_LIMIT;
-            const response = await menuAPI.getPublicMenu(tenantSlug, undefined, cursor, limit);
+            const response = await menuAPI.getPublicMenu(tenantSlug, search || undefined, cursor, limit);
             const data = response.data;
             const items: any[] = data?.items || [];
             const newCursor: string | null = data?.nextCursor ?? null;
@@ -340,8 +376,10 @@ const GuestPOSPage: React.FC = () => {
     const handleApplyCoupon = async () => {
         if (!slug || !couponCode) return;
         try {
-            const backendOrderType = orderType === 'global_dine_in' ? 'dine_in' : orderType === 'global_takeaway' ? 'takeaway' : orderType;
-            const res = await ordersAPI.validatePublicCoupon(couponCode, slug, backendOrderType);
+            // Send the real order type. The backend matches the global type first and
+            // falls back to its base counterpart, so mapping it down here would make a
+            // global-only coupon indistinguishable from a restaurant one.
+            const res = await ordersAPI.validatePublicCoupon(couponCode, slug, orderType);
             const coupon = res.data;
 
             if (coupon.offerType === 'menu_item' && coupon.applicableItems?.length > 0) {
@@ -452,6 +490,7 @@ const GuestPOSPage: React.FC = () => {
 
             const res = await ordersAPI.createPublic(orderData, slug);
             setSuccessOrderNumber(res.data.orderNumber || 'Unknown');
+            setSuccessTokenNumber(res.data.dailyTokenNumber ?? null);
             setCart([]);
             handleClosePayment();
         } catch (error: any) {
@@ -660,10 +699,21 @@ const GuestPOSPage: React.FC = () => {
                 <Typography color="text.secondary" gutterBottom>Payment Verified</Typography>
 
                 <Box sx={{ my: 3, p: 3, bgcolor: 'primary.light', borderRadius: 2, width: '100%', textAlign: 'center', color: 'primary.contrastText' }}>
-                    <Typography variant="overline" sx={{ opacity: 0.8 }}>ORDER NUMBER</Typography>
-                    <Typography variant="h4" sx={{ fontWeight: 'bold' }}>
-                        {successOrderNumber}
-                    </Typography>
+                    {successTokenNumber != null ? (
+                        <>
+                            <Typography variant="overline" sx={{ opacity: 0.8 }}>TOKEN NUMBER</Typography>
+                            <Typography sx={{ fontWeight: 'bold', fontSize: '3.5rem', lineHeight: 1.1 }}>
+                                {successTokenNumber}
+                            </Typography>
+                        </>
+                    ) : (
+                        <>
+                            <Typography variant="overline" sx={{ opacity: 0.8 }}>ORDER NUMBER</Typography>
+                            <Typography variant="h5" sx={{ fontWeight: 'bold', wordBreak: 'break-all' }}>
+                                {successOrderNumber}
+                            </Typography>
+                        </>
+                    )}
                     <Chip
                         label={
                             orderType === 'global_takeaway' ? 'Global Takeaway' :
@@ -671,16 +721,27 @@ const GuestPOSPage: React.FC = () => {
                                     orderType === 'delivery' ? 'Delivery' : 'Global Takeaway'
                         }
                         color="secondary"
-                        sx={{ mt: 1, bgcolor: 'white', color: 'primary.main', fontWeight: 'bold' }}
+                        sx={{ mt: 1.5, bgcolor: 'white', color: 'primary.main', fontWeight: 'bold' }}
                     />
                 </Box>
+
+                {successTokenNumber != null && (
+                    <Typography variant="caption" color="text.secondary" align="center" sx={{ mb: 1, wordBreak: 'break-all' }}>
+                        Order ID: {successOrderNumber}
+                    </Typography>
+                )}
 
                 <Typography variant="body2" color="text.secondary" align="center">
                     Please show this number at the counter when collecting your order.
                 </Typography>
             </DialogContent>
             <DialogActions sx={{ p: 2 }}>
-                <Button onClick={() => setSuccessOrderNumber(null)} fullWidth variant="contained" size="large">
+                <Button
+                    onClick={() => { setSuccessOrderNumber(null); setSuccessTokenNumber(null); }}
+                    fullWidth
+                    variant="contained"
+                    size="large"
+                >
                     Start New Order
                 </Button>
             </DialogActions>
@@ -752,6 +813,41 @@ const GuestPOSPage: React.FC = () => {
             <Box sx={{ p: { xs: 1.5, sm: 3 } }}>
                 {/* Filters */}
                 <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 3, alignItems: 'center' }}>
+                    {/* Search */}
+                    <Box sx={{ flex: 1, minWidth: 200, width: '100%' }}>
+                        <TextField
+                            fullWidth
+                            size="small"
+                            placeholder="Search for dishes..."
+                            value={searchInput}
+                            onChange={(e) => setSearchInput(e.target.value)}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <SearchIcon sx={{ fontSize: '1.2rem', color: 'text.secondary' }} />
+                                    </InputAdornment>
+                                ),
+                                endAdornment: searchInput ? (
+                                    <InputAdornment position="end">
+                                        <IconButton size="small" onClick={() => setSearchInput('')} aria-label="Clear search">
+                                            <CloseIcon sx={{ fontSize: '1rem' }} />
+                                        </IconButton>
+                                    </InputAdornment>
+                                ) : undefined,
+                            }}
+                            sx={{
+                                '& .MuiOutlinedInput-root': {
+                                    borderRadius: '12px',
+                                    bgcolor: '#fff',
+                                    boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
+                                    '& fieldset': { borderColor: 'rgba(0,0,0,0.08)' },
+                                    '&:hover fieldset': { borderColor: '#4f46e5' },
+                                    '&.Mui-focused fieldset': { borderColor: '#4f46e5' }
+                                }
+                            }}
+                        />
+                    </Box>
+
                     {/* Category Dropdown */}
                     <Box sx={{ flex: 1, minWidth: 200, width: '100%' }}>
                         <TextField
@@ -841,6 +937,22 @@ const GuestPOSPage: React.FC = () => {
 
                 {loading ? (
                     <Typography align="center" sx={{ mt: 4 }}>Loading menu...</Typography>
+                ) : filteredItems.length === 0 ? (
+                    <Box sx={{ textAlign: 'center', mt: 6, mb: 4 }}>
+                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                            No dishes found
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                            {searchTerm
+                                ? `Nothing matched "${searchTerm}". Try a different search or filter.`
+                                : 'Try adjusting your filters.'}
+                        </Typography>
+                        {searchTerm && (
+                            <Button variant="outlined" sx={{ mt: 2, borderRadius: '10px' }} onClick={() => setSearchInput('')}>
+                                Clear search
+                            </Button>
+                        )}
+                    </Box>
                 ) : (
                     <Grid container spacing={{ xs: 1.5, sm: 3 }}>
                         {filteredItems.map(item => (
@@ -913,10 +1025,9 @@ const GuestPOSPage: React.FC = () => {
                                                     // Check Order Type (if defined in coupon)
                                                     // If applicableOrderTypes is missing or empty, assume valid for all.
                                                     // Otherwise, must include current orderType.
-                                                    const backendOrderType = orderType === 'global_dine_in' ? 'dine_in' : orderType === 'global_takeaway' ? 'takeaway' : orderType;
                                                     const isOrderTypeValid = !coupon.applicableOrderTypes ||
                                                         coupon.applicableOrderTypes.length === 0 ||
-                                                        coupon.applicableOrderTypes.includes(backendOrderType);
+                                                        couponAppliesToOrderType(coupon, orderType);
 
                                                     return isActive && isMenuItemOffer && isItemIncluded && isOrderTypeValid;
                                                 });
@@ -957,7 +1068,7 @@ const GuestPOSPage: React.FC = () => {
                                                                 gap: 0.5
                                                             }}
                                                         >
-                                                            🏷️ {discountText} • {coupon.code}
+                                                            🏷️ {discountText}
                                                         </Typography>
                                                         <Typography variant="caption" display="block" color="text.secondary" sx={{ fontSize: { xs: '0.52rem', sm: '0.68rem' }, fontWeight: 500 }}>
                                                             {coupon.minBillAmount ? `Min Order: ${formatCurrency(coupon.minBillAmount)}` : 'No Min Order'}
@@ -1080,7 +1191,7 @@ const GuestPOSPage: React.FC = () => {
                         </Typography>
                         <Button
                             variant="outlined"
-                            onClick={() => fetchMenu(slug!, nextCursor, true)}
+                            onClick={() => fetchMenu(slug!, nextCursor, true, searchTerm)}
                             disabled={isFetchingMore}
                             startIcon={isFetchingMore ? <CircularProgress size={16} /> : undefined}
                         >
@@ -1205,24 +1316,47 @@ const GuestPOSPage: React.FC = () => {
                                     <Typography variant="subtitle2" gutterBottom>
                                         Table Number <Typography component="span" color="text.secondary" variant="caption">(recommended)</Typography>
                                     </Typography>
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        placeholder="Enter your table number"
+                                    <TextField
+                                        select
+                                        fullWidth
+                                        size="small"
                                         value={tableNumber}
                                         onChange={e => setTableNumber(e.target.value)}
-                                        style={{
-                                            width: '100%',
-                                            padding: '10px 12px',
-                                            fontSize: '16px',
-                                            borderRadius: '8px',
-                                            border: `2px solid ${tableNumber ? '#4F46E5' : '#ddd'}`,
-                                            outline: 'none',
-                                            boxSizing: 'border-box',
+                                        disabled={tables.length === 0}
+                                        SelectProps={{
+                                            displayEmpty: true,
+                                            renderValue: (selected: any) => {
+                                                if (!selected) {
+                                                    return <Typography component="span" color="text.secondary">Select your table</Typography>;
+                                                }
+                                                const t = tables.find(tb => String(tb.tableNumber) === String(selected));
+                                                return t ? (t.tableName || `Table ${t.tableNumber}`) : String(selected);
+                                            },
                                         }}
-                                    />
+                                        sx={{
+                                            '& .MuiOutlinedInput-root': {
+                                                borderRadius: '8px',
+                                                '& fieldset': { borderWidth: '2px', borderColor: tableNumber ? '#4F46E5' : '#ddd' },
+                                            },
+                                        }}
+                                    >
+                                        {tables.map(t => (
+                                            <MuiMenuItem key={t._id} value={String(t.tableNumber)}>
+                                                <Box>
+                                                    <Typography variant="body2">
+                                                        {t.tableName || `Table ${t.tableNumber}`}
+                                                    </Typography>
+                                                    <Typography variant="caption" color="text.secondary">
+                                                        Seats {t.capacity}{t.location ? ` • ${t.location}` : ''}
+                                                    </Typography>
+                                                </Box>
+                                            </MuiMenuItem>
+                                        ))}
+                                    </TextField>
                                     <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                                        So the server knows which table to bring your order to
+                                        {tables.length === 0
+                                            ? 'Table list unavailable — please tell your server your table number.'
+                                            : 'So the server knows which table to bring your order to'}
                                     </Typography>
                                 </Box>
                             )}
@@ -1245,21 +1379,6 @@ const GuestPOSPage: React.FC = () => {
                                     )}
                                 </Box>
 
-                                {availableCoupons.length > 0 && !appliedCoupon && (
-                                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                                        {availableCoupons.map(c => (
-                                            <Chip
-                                                key={c._id}
-                                                label={c.code}
-                                                size="small"
-                                                onClick={() => setCouponCode(c.code)}
-                                                color="primary"
-                                                variant="outlined"
-                                                clickable
-                                            />
-                                        ))}
-                                    </Box>
-                                )}
                             </Box>
 
                             <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid #eee' }}>

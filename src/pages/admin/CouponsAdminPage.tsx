@@ -76,6 +76,21 @@ interface Coupon {
     comboConfig?: Array<{ menuItem: string; quantity: number }>;
 }
 
+const ORDER_TYPES = [
+    'dine_in', 'takeaway',
+    'global_dine_in', 'global_takeaway',
+    'online_takeaway', 'delivery',
+];
+
+const ORDER_TYPE_LABELS: Record<string, string> = {
+    dine_in: 'Dine-in',
+    takeaway: 'Takeaway',
+    global_dine_in: 'Global Dine-in (QR)',
+    global_takeaway: 'Global Takeaway (QR)',
+    online_takeaway: 'Online Takeaway',
+    delivery: 'Delivery',
+};
+
 interface Customer {
     _id?: string;
     name: string;
@@ -155,7 +170,7 @@ const CouponsAdminPage: React.FC = () => {
         validTo: '',
         maxTotalUses: 0,
         maxUsesPerCustomer: 1,
-        applicableOrderTypes: ['dine_in', 'takeaway', 'delivery', 'online_takeaway'] as string[],
+        applicableOrderTypes: [...ORDER_TYPES] as string[],
         active: true,
         description: '',
         offerType: 'cart_total' as 'cart_total' | 'menu_item' | 'combo',
@@ -256,7 +271,7 @@ const CouponsAdminPage: React.FC = () => {
                 validTo: coupon.validTo ? new Date(coupon.validTo).toISOString().split('T')[0] : '',
                 maxTotalUses: coupon.maxTotalUses || 0,
                 maxUsesPerCustomer: coupon.maxUsesPerCustomer || 1,
-                applicableOrderTypes: coupon.applicableOrderTypes || ['dine_in', 'takeaway', 'delivery', 'online_takeaway'],
+                applicableOrderTypes: coupon.applicableOrderTypes || [...ORDER_TYPES],
                 active: coupon.active,
                 description: coupon.description || '',
                 offerType: (coupon.offerType as any) || 'cart_total',
@@ -276,7 +291,7 @@ const CouponsAdminPage: React.FC = () => {
                 validTo: '',
                 maxTotalUses: 0,
                 maxUsesPerCustomer: 1,
-                applicableOrderTypes: ['dine_in', 'takeaway', 'delivery', 'online_takeaway'],
+                applicableOrderTypes: [...ORDER_TYPES],
                 active: true,
                 description: '',
                 offerType: 'cart_total',
@@ -332,6 +347,12 @@ const CouponsAdminPage: React.FC = () => {
             } else {
                 toast.error('Please fill in required fields');
             }
+            return;
+        }
+        // An empty list is not "restrict everything" — the backend skips the order
+        // type check when the array is empty, so the coupon would apply everywhere.
+        if (formData.applicableOrderTypes.length === 0) {
+            toast.error('Select at least one applicable order type');
             return;
         }
 
@@ -1582,10 +1603,10 @@ const CouponsAdminPage: React.FC = () => {
                                     <Grid item xs={12}>
                                         <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, display: 'block', mb: 1 }}>Order Types</Typography>
                                         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
-                                            {['dine_in', 'takeaway', 'delivery', 'online_takeaway'].map((type) => (
+                                            {ORDER_TYPES.map((type) => (
                                                 <Chip
                                                     key={type}
-                                                    label={type.replace('_', ' ')?.toUpperCase()}
+                                                    label={ORDER_TYPE_LABELS[type] || type}
                                                     size="small"
                                                     onClick={() => {
                                                         const current = [...formData.applicableOrderTypes];
@@ -1600,6 +1621,11 @@ const CouponsAdminPage: React.FC = () => {
                                                 />
                                             ))}
                                         </Box>
+                                        <Typography variant="caption" sx={{ color: formData.applicableOrderTypes.length === 0 ? 'error.main' : 'text.secondary', display: 'block', mt: 0.75 }}>
+                                            {formData.applicableOrderTypes.length === 0
+                                                ? 'Select at least one order type, or the coupon cannot be redeemed anywhere.'
+                                                : 'Unselect a type to stop this coupon applying to those orders.'}
+                                        </Typography>
                                     </Grid>
                                 </Grid>
                             </Paper>
