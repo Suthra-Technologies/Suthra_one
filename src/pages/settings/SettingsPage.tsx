@@ -1977,6 +1977,50 @@ const SettingsPage: React.FC = () => {
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 2 }} />
                             <Typography variant="subtitle2" gutterBottom>
+                                Address Details
+                            </Typography>
+                        </Grid>
+                        <Grid size={{ xs: 12 }}>
+                            <AddressAutocomplete
+                                label="Address"
+                                value={settings.restaurant.address}
+                                onChange={(val) => handleInputChange('restaurant', 'address', val)}
+                                onSelect={(addr) => {
+                                    handleInputChange('restaurant', 'address', addr.fullAddress);
+                                    handleInputChange('restaurant', 'city', addr.city || '');
+                                    handleInputChange('restaurant', 'state', addr.state || '');
+                                    handleInputChange('restaurant', 'zipCode', addr.zipCode || '');
+                                }}
+                                apiKey={settings.system.googleMapsApiKey || import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 4 }}>
+                            <TextField
+                                fullWidth
+                                label="City"
+                                value={settings.restaurant.city || ''}
+                                onChange={(e) => handleInputChange('restaurant', 'city', e.target.value)}
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 4 }}>
+                            <TextField
+                                fullWidth
+                                label="State"
+                                value={settings.restaurant.state || ''}
+                                onChange={(e) => handleInputChange('restaurant', 'state', e.target.value)}
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12, md: 4 }}>
+                            <TextField
+                                fullWidth
+                                label="Zip / Pincode"
+                                value={settings.restaurant.zipCode || ''}
+                                onChange={(e) => handleInputChange('restaurant', 'zipCode', e.target.value)}
+                            />
+                        </Grid>
+                        <Grid size={{ xs: 12 }}>
+                            <Divider sx={{ my: 2 }} />
+                            <Typography variant="subtitle2" gutterBottom>
                                 Restaurant Logo
                             </Typography>
                             <Stack direction="row" spacing={2} alignItems="center">
@@ -2110,44 +2154,6 @@ const SettingsPage: React.FC = () => {
                                     </Paper>
                                 </Box>
                             )}
-                        </Grid>
-                        <Grid size={{ xs: 12 }}>
-                            <AddressAutocomplete
-                                label="Address"
-                                value={settings.restaurant.address}
-                                onChange={(val) => handleInputChange('restaurant', 'address', val)}
-                                onSelect={(addr) => {
-                                    handleInputChange('restaurant', 'address', addr.fullAddress);
-                                    handleInputChange('restaurant', 'city', addr.city || '');
-                                    handleInputChange('restaurant', 'state', addr.state || '');
-                                    handleInputChange('restaurant', 'zipCode', addr.zipCode || '');
-                                }}
-                                apiKey={settings.system.googleMapsApiKey || import.meta.env.VITE_GOOGLE_MAPS_API_KEY}
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 4 }}>
-                            <TextField
-                                fullWidth
-                                label="City"
-                                value={settings.restaurant.city || ''}
-                                onChange={(e) => handleInputChange('restaurant', 'city', e.target.value)}
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 4 }}>
-                            <TextField
-                                fullWidth
-                                label="State"
-                                value={settings.restaurant.state || ''}
-                                onChange={(e) => handleInputChange('restaurant', 'state', e.target.value)}
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 4 }}>
-                            <TextField
-                                fullWidth
-                                label="Zip / Pincode"
-                                value={settings.restaurant.zipCode || ''}
-                                onChange={(e) => handleInputChange('restaurant', 'zipCode', e.target.value)}
-                            />
                         </Grid>
                         {/* MANUAL TAX REMOVED — tax is now calculated exclusively via the TaxJar engine.
                         <Grid size={{ xs: 12, md: 6 }}>

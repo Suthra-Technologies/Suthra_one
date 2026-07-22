@@ -190,7 +190,22 @@ const LoginPage: React.FC = () => {
           const from = (location.state as any)?.from;
           console.log('LoginPage: Redirecting. "from" state:', from);
           
-          if (from) {
+          const tenant = result.user?.tenant;
+          const isSettingsIncomplete = tenant 
+            ? (tenant.isProfileComplete === false || (tenant.isProfileComplete === undefined && !tenant.logo))
+            : false;
+          
+          const forceSettings = userRole === 'admin' && (result.user?.isFirstLogin || isSettingsIncomplete);
+          
+          if (forceSettings) {
+            console.log('LoginPage: Forcing newly registered/incomplete admin to /settings');
+            if (isSubdomain) {
+              setTimeout(() => navigate('/settings', { replace: true }), 100);
+            } else {
+              const url = getTenantUrl(targetSlug, '/settings', result.token);
+              window.location.href = url;
+            }
+          } else if (from) {
             console.log('LoginPage: Navigating to "from":', from);
             setTimeout(() => navigate(from, { replace: true }), 100);
           } else if (userRole === 'customer') {
@@ -205,8 +220,9 @@ const LoginPage: React.FC = () => {
             }
           } else {
             console.log('LoginPage: Staff/Admin detected. isSubdomain:', isSubdomain);
+            
             if (isSubdomain) {
-              console.log('LoginPage: Navigating to /dashboard');
+              console.log(`LoginPage: Navigating to /dashboard`);
               setTimeout(() => navigate('/dashboard', { replace: true }), 100);
             } else {
               const url = getTenantUrl(targetSlug, '/dashboard', result.token);

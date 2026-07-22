@@ -58,6 +58,7 @@ import SubscriptionBanner from './SubscriptionBanner';
 import SubscriptionStatus from './SubscriptionStatus';
 import { Capacitor } from '@capacitor/core';
 import { usePullToRefresh } from '../hooks/usePullToRefresh';
+import OnboardingBanner from './OnboardingBanner';
 
 
 /**
@@ -910,6 +911,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
 
         <Box sx={{ position: 'relative', zIndex: 1 }}>
           {Capacitor.getPlatform() !== 'ios' && <SubscriptionBanner />}
+          <OnboardingBanner />
           {children || <Outlet />}
         </Box>
       </Box>
