@@ -332,7 +332,7 @@ const RestaurantRegisterPage: React.FC = () => {
         >
           <Box sx={{ mb: 4, textAlign: 'center' }}>
             <Typography component="h1" variant="h4" fontWeight="bold" sx={{ color: 'primary.main', letterSpacing: 1 }}>
-              REST POS
+              NexZen POS
             </Typography>
             <Typography variant="body2" color="text.secondary">
               Partner Registration
@@ -645,13 +645,13 @@ const RestaurantRegisterPage: React.FC = () => {
               fullWidth
               variant="contained"
               size="large"
-              sx={{ 
-                mt: 4, 
-                mb: 2, 
-                height: 48, 
-                borderRadius: 2, 
-                textTransform: 'none', 
-                fontSize: '1.1rem', 
+              sx={{
+                mt: 4,
+                mb: 2,
+                height: 48,
+                borderRadius: 2,
+                textTransform: 'none',
+                fontSize: '1.1rem',
                 fontWeight: 600,
                 transition: 'all 0.3s ease',
                 '&:hover': {

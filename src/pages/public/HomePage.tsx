@@ -48,6 +48,7 @@ import {
   TextField,
 } from "@mui/material";
 import PhoneInput from "../../components/PhoneInput";
+import { getEasternTzAbbreviation, formatSlotLabel } from "../../utils/demoSlots";
 
 // Orders
 import OrdersIconActiveImg from "/src/assets/images/icons/orders-active.png";
@@ -2333,14 +2334,14 @@ const HomePage: React.FC = () => {
                       fullWidth
                       select
                       name="preferredTime"
-                      label={fetchingSlots ? "Loading slots..." : "Preferred Time"}
+                      label={fetchingSlots ? "Loading slots..." : `Preferred Time (${getEasternTzAbbreviation()})`}
                       value={formData.preferredTime}
                       onChange={handleFormChange}
                       disabled={!formData.preferredDate || fetchingSlots}
                     >
                       {availableSlots.length > 0 ? (
                         availableSlots.map(slot => (
-                          <MenuItem key={slot} value={slot}>{slot}</MenuItem>
+                          <MenuItem key={slot} value={slot}>{formatSlotLabel(slot, getEasternTzAbbreviation())}</MenuItem>
                         ))
                       ) : (
                         <MenuItem value="" disabled>No slots available</MenuItem>

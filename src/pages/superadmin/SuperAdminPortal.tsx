@@ -1,5 +1,5 @@
-import React from 'react';
-import { Box, Typography, Grid, Card, CardContent, CardActionArea, Divider } from '@mui/material';
+import React, { useEffect, useState } from 'react';
+import { Box, Typography, Grid, Card, CardContent, CardActionArea, Divider, Skeleton } from '@mui/material';
 import {
   SupportAgent as SupportIcon,
   Store as StoreIcon,
@@ -10,13 +10,41 @@ import {
   Receipt as ReceiptIcon,
   Settings as SettingsIcon,
   Group as TeamIcon,
+  PlaylistAddCheck as TasksIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { superAPI } from '../../services/api';
 
 const SuperAdminPortal: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [taskCounts, setTaskCounts] = useState<{ demoRequests: number; openTickets: number; newRegistrations: number } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadTaskCounts = async () => {
+      try {
+        const [demoRes, ticketsRes, tenantsRes] = await Promise.all([
+          superAPI.listDemoRequests({ status: 'pending', limit: 1 }),
+          superAPI.listSupportTickets({ status: 'open', limit: 1 }),
+          superAPI.listTenants({ status: 'pending', limit: 1 }),
+        ]);
+        if (cancelled) return;
+        setTaskCounts({
+          demoRequests: demoRes.data?.total || 0,
+          openTickets: ticketsRes.data?.total || 0,
+          newRegistrations: tenantsRes.data?.total || 0,
+        });
+      } catch {
+        if (!cancelled) setTaskCounts({ demoRequests: 0, openTickets: 0, newRegistrations: 0 });
+      }
+    };
+
+    loadTaskCounts();
+    return () => { cancelled = true; };
+  }, []);
 
   const cards = [
     {
@@ -90,6 +118,30 @@ const SuperAdminPortal: React.FC = () => {
     { title: 'Support Tickets Log', icon: <SupportIcon fontSize="medium" color="secondary" />, path: '/superadmin/logs/tickets', desc: 'Full support ticket history', permKey: 'logs' },
   ];
 
+  const todoTasks = [
+    {
+      title: 'Pending demo requests',
+      desc: `${taskCounts?.demoRequests ?? 0} new request${taskCounts?.demoRequests === 1 ? '' : 's'} awaiting confirmation`,
+      path: '/superadmin/demo-requests',
+      count: taskCounts?.demoRequests ?? 0,
+      icon: <DemoIcon fontSize="small" color="info" />,
+    },
+    {
+      title: 'Open support tickets',
+      desc: `${taskCounts?.openTickets ?? 0} ticket${taskCounts?.openTickets === 1 ? '' : 's'} need a response`,
+      path: '/superadmin/tickets',
+      count: taskCounts?.openTickets ?? 0,
+      icon: <SupportIcon fontSize="small" color="secondary" />,
+    },
+    {
+      title: 'New registrations',
+      desc: `${taskCounts?.newRegistrations ?? 0} store${taskCounts?.newRegistrations === 1 ? '' : 's'} pending approval`,
+      path: '/superadmin/tenants',
+      count: taskCounts?.newRegistrations ?? 0,
+      icon: <StoreIcon fontSize="small" color="primary" />,
+    },
+  ].filter(task => task.count > 0);
+
   // RBAC permissions logic
   const isRootAdmin = (user as any)?.isRootAdmin;
   const userPermissions: Array<{ module: string }> = (user as any)?.permissions || [];
@@ -115,47 +167,106 @@ const SuperAdminPortal: React.FC = () => {
           fontSize: { xs: '1.5rem', sm: '2.125rem' },
         }}
       >
-        Super Admin Portal
+        Dashboard
       </Typography>
 
-      <Grid container spacing={{ xs: 2, sm: 3 }}>
-        {filteredCards.map((card, index) => (
-          <Grid item xs={12} sm={6} lg={3} key={index}>
-            <Card sx={{ height: '100%', borderRadius: 2 }}>
-              <CardActionArea
-                onClick={() => navigate(card.path)}
-                sx={{ height: '100%', p: { xs: 1.5, sm: 2 } }}
-              >
-                <CardContent
-                  sx={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    textAlign: 'center',
-                    gap: 0.5,
-                    p: { xs: 1, sm: 1.5 },
-                  }}
+      <Box sx={{ display: 'flex', gap: { xs: 2, sm: 3 }, alignItems: 'flex-start', flexDirection: { xs: 'column', md: 'row' } }}>
+        <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ flex: 1 }}>
+          {filteredCards.map((card, index) => (
+            <Grid item xs={12} sm={6} lg={4} key={index}>
+              <Card sx={{ height: '100%', borderRadius: 2 }}>
+                <CardActionArea
+                  onClick={() => navigate(card.path)}
+                  sx={{ height: '100%', p: { xs: 1.5, sm: 2 } }}
                 >
-                  {card.icon}
-                  <Typography
-                    variant="h6"
-                    sx={{ mt: { xs: 1.5, sm: 2 }, mb: 0.5, fontSize: { xs: '1.05rem', sm: '1.25rem' } }}
+                  <CardContent
+                    sx={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      textAlign: 'center',
+                      gap: 0.5,
+                      p: { xs: 1, sm: 1.5 },
+                    }}
                   >
-                    {card.title}
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    color="text.secondary"
-                    sx={{ fontSize: { xs: '0.85rem', sm: '0.875rem' } }}
+                    {card.icon}
+                    <Typography
+                      variant="h6"
+                      sx={{ mt: { xs: 1.5, sm: 2 }, mb: 0.5, fontSize: { xs: '1.05rem', sm: '1.25rem' } }}
+                    >
+                      {card.title}
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ fontSize: { xs: '0.85rem', sm: '0.875rem' } }}
+                    >
+                      {card.desc}
+                    </Typography>
+                  </CardContent>
+                </CardActionArea>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+
+        <Card
+          sx={{
+            width: { xs: '100%', md: 300 },
+            flexShrink: 0,
+            borderRadius: 2,
+            alignSelf: 'stretch',
+          }}
+        >
+          <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mb: 2 }}>
+              <TasksIcon color="secondary" />
+              <Typography variant="h6" fontWeight="bold" sx={{ fontSize: '1rem' }}>
+                To Do Tasks
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+              {taskCounts === null ? (
+                [...Array(3)].map((_, index) => (
+                  <Skeleton key={index} variant="rounded" height={56} sx={{ borderRadius: 1.5 }} />
+                ))
+              ) : todoTasks.length === 0 ? (
+                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.85rem' }}>
+                  Nothing pending — you're all caught up.
+                </Typography>
+              ) : (
+                todoTasks.map((task, index) => (
+                  <Box
+                    key={index}
+                    onClick={() => navigate(task.path)}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 1.25,
+                      p: 1.5,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      borderRadius: 1.5,
+                      cursor: 'pointer',
+                      '&:hover': { borderColor: 'text.secondary' },
+                    }}
                   >
-                    {card.desc}
-                  </Typography>
-                </CardContent>
-              </CardActionArea>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mt: '1px' }}>{task.icon}</Box>
+                    <Box>
+                      <Typography variant="body2" fontWeight={600} sx={{ fontSize: '0.85rem' }}>
+                        {task.title}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.25 }}>
+                        {task.desc}
+                      </Typography>
+                    </Box>
+                  </Box>
+                ))
+              )}
+            </Box>
+          </CardContent>
+        </Card>
+      </Box>
 
       {/* Logs Section */}
       {filteredLogCards.length > 0 && (
