@@ -48,6 +48,9 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
     const [customerDialCode, setCustomerDialCode] = useState(settings?.restaurant?.dialCode || '1');
     const [customerEmail, setCustomerEmail] = useState('');
     const [bookingDuration, setBookingDuration] = useState(120);
+    const [occasion, setOccasion] = useState('');
+    const [customOccasion, setCustomOccasion] = useState('');
+    const [specialRequests, setSpecialRequests] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
     const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
 
@@ -65,6 +68,9 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
         setBookingDate(new Date().toISOString().split('T')[0]);
         setBookingTime('19:00');
         setBookingDuration(120);
+        setOccasion('');
+        setCustomOccasion('');
+        setSpecialRequests('');
         setBookingTouched({ date: false, time: false, customerName: false, customerPhone: false, guests: false, duration: false, customerEmail: false });
         setBookingErrors({ date: '', time: '', customerName: '', customerPhone: '', guests: '', duration: '', customerEmail: '' });
     };
@@ -213,12 +219,19 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
 
         try {
             setIsProcessing(true);
+            
+            const finalSpecialRequests = occasion === 'Other' && customOccasion.trim()
+                ? `Occasion: ${customOccasion} - ${specialRequests}`
+                : specialRequests;
+
             const payload = {
                 tableId: table._id,
                 bookingDate,
                 bookingTime,
                 guestCount,
                 duration: bookingDuration,
+                occasion,
+                specialRequests: finalSpecialRequests,
                 guestInfo: {
                     firstName: customerName.split(' ')[0] || customerName,
                     lastName: customerName.split(' ').slice(1).join(' ') || '',
@@ -352,8 +365,8 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
                             }}
                         />
                         <TextField
-                            label="Duration (min)"
-                            type="number"
+                            label="Duration"
+                            select
                             value={bookingDuration}
                             onChange={e => {
                                 const val = Number(e.target.value);
@@ -368,11 +381,17 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
                             helperText={bookingTouched.duration && bookingErrors.duration ? bookingErrors.duration : ''}
                             fullWidth
                             required
-                            inputProps={{ min: 1 }}
                             InputLabelProps={{
                                 sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } }
                             }}
-                        />
+                        >
+                            <MenuItem value={30}>30 mins</MenuItem>
+                            <MenuItem value={60}>1 hour (60 mins)</MenuItem>
+                            <MenuItem value={90}>1.5 hours (90 mins)</MenuItem>
+                            <MenuItem value={120}>2 hours (120 mins)</MenuItem>
+                            <MenuItem value={150}>2.5 hours (150 mins)</MenuItem>
+                            <MenuItem value={180}>3 hours (180 mins)</MenuItem>
+                        </TextField>
                     </Stack>
 
                     <CustomInput
@@ -431,6 +450,50 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
                         type="email"
                         inputProps={{ maxLength: 50 }}
                         size="small"/>
+
+                    <TextField
+                        select
+                        label="Occasion (Optional)"
+                        value={occasion}
+                        onChange={(e) => setOccasion(e.target.value)}
+                        fullWidth
+                        size="small"
+                    >
+                        <MenuItem value="">None</MenuItem>
+                        <MenuItem value="Birthday Celebration">Birthday Celebration</MenuItem>
+                        <MenuItem value="Anniversary">Anniversary</MenuItem>
+                        <MenuItem value="Business Meeting">Business Meeting</MenuItem>
+                        <MenuItem value="Date Night">Date Night</MenuItem>
+                        <MenuItem value="Family Dinner">Family Dinner</MenuItem>
+                        <MenuItem value="Friends Gathering">Friends Gathering</MenuItem>
+                        <MenuItem value="Special Occasion">Special Occasion</MenuItem>
+                        <MenuItem value="Other">Other</MenuItem>
+                    </TextField>
+
+                    {occasion === 'Other' && (
+                        <TextField
+                            label="Please describe your occasion"
+                            value={customOccasion}
+                            onChange={(e) => setCustomOccasion(e.target.value)}
+                            fullWidth
+                            size="small"
+                            inputProps={{ maxLength: 100 }}
+                            autoFocus
+                            sx={{ '& .MuiOutlinedInput-root': { '&.Mui-focused fieldset': { borderColor: 'error.main' } }, '& .MuiInputLabel-root.Mui-focused': { color: 'error.main' } }}
+                        />
+                    )}
+
+                    <TextField
+                        label="Special Requests / Notes"
+                        value={specialRequests}
+                        onChange={(e) => setSpecialRequests(e.target.value)}
+                        fullWidth
+                        size="small"
+                        multiline
+                        rows={2}
+                        inputProps={{ maxLength: 1000 }}
+                        placeholder="e.g. High chair needed, allergies"
+                    />
                 </Box>
             </DialogContent>
             <DialogActions>

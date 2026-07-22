@@ -1897,6 +1897,27 @@ const CateringManagementPage = () => {
                                                             <Visibility fontSize="small" />
                                                         </IconButton>
                                                     </Tooltip>
+                                                    {order.status !== 'completed' && (
+                                                        <Tooltip title="Edit Order">
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={() => {
+                                                                    setSelectedOrder(order);
+                                                                    setEditData({
+                                                                        ...order,
+                                                                        processingPerson: order?.processingPerson || getUserFullName() || ''
+                                                                    });
+                                                                    setOccasionInputValue(order?.occasion || '');
+                                                                    setDialogTab(0);
+                                                                    setIsEditing(true);
+                                                                    setViewDialogOpen(true);
+                                                                }}
+                                                                sx={{ color: '#f59e0b', bgcolor: alpha('#f59e0b', 0.08), '&:hover': { bgcolor: alpha('#f59e0b', 0.18) }, borderRadius: 1.5, ml: 1 }}
+                                                            >
+                                                                <Edit fontSize="small" />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    )}
                                                     <Tooltip title="Chat Support">
                                                         <IconButton
                                                             size="small"
@@ -1919,12 +1940,12 @@ const CateringManagementPage = () => {
                                                         </Tooltip>
                                                     )}
                                                     {order.status === 'confirmed' && (
-                                                        <Tooltip title={Math.max(0, (order.totalAmount || 0) - (order.advanceReceived || 0)) > 0 ? "Payment not completed" : "Mark Complete"}>
+                                                        <Tooltip title={Math.max(0, (order.totalAmount || 0) - (order.advanceReceived || 0)) > 0.01 ? "Payment not completed" : "Mark Complete"}>
                                                             <span>
                                                                 <IconButton
                                                                     size="small"
                                                                     onClick={() => handleUpdateStatus(order._id, 'completed')}
-                                                                    disabled={updatingOrderId === order._id || Math.max(0, (order.totalAmount || 0) - (order.advanceReceived || 0)) > 0}
+                                                                    disabled={updatingOrderId === order._id || Math.max(0, (order.totalAmount || 0) - (order.advanceReceived || 0)) > 0.01}
                                                                     sx={{ color: '#3730a3', bgcolor: alpha('#3730a3', 0.08), '&:hover': { bgcolor: alpha('#3730a3', 0.18) }, borderRadius: 1.5 }}
                                                                 >
                                                                     {updatingOrderId === order._id ? <CircularProgress size={20} color="inherit" /> : <CheckCircle fontSize="small" />}
@@ -2729,16 +2750,6 @@ const CateringManagementPage = () => {
                                         >
                                             {sendingEmail ? 'Sending...' : 'Email Receipt'}
                                         </Button>
-                                        {selectedOrder.status !== 'completed' && (
-                                            <Button
-                                                size="small"
-                                                variant="contained"
-                                                onClick={handleEditOrder}
-                                                color="primary"
-                                            >
-                                                Edit Order
-                                            </Button>
-                                        )}
                                     </>
                                 ) : (
                                     <>
@@ -4009,14 +4020,14 @@ const CateringManagementPage = () => {
                 {actionOrder?.status === 'confirmed' && (
                     <MenuItem 
                         onClick={() => { handleUpdateStatus(actionOrder._id, 'completed'); handleActionMenuClose(); }}
-                        disabled={updatingOrderId === actionOrder?._id || Math.max(0, (actionOrder?.totalAmount || 0) - (actionOrder?.advanceReceived || 0)) > 0}
+                        disabled={updatingOrderId === actionOrder?._id || Math.max(0, (actionOrder?.totalAmount || 0) - (actionOrder?.advanceReceived || 0)) > 0.01}
                     >
                         <ListItemIcon>
-                            {updatingOrderId === actionOrder?._id ? <CircularProgress size={20} color="inherit" /> : <CheckCircle fontSize="small" sx={{ color: Math.max(0, (actionOrder?.totalAmount || 0) - (actionOrder?.advanceReceived || 0)) > 0 ? 'text.disabled' : '#3730a3' }} />}
+                            {updatingOrderId === actionOrder?._id ? <CircularProgress size={20} color="inherit" /> : <CheckCircle fontSize="small" sx={{ color: Math.max(0, (actionOrder?.totalAmount || 0) - (actionOrder?.advanceReceived || 0)) > 0.01 ? 'text.disabled' : '#3730a3' }} />}
                         </ListItemIcon>
                         <Box>
-                            <Typography variant="body2" fontWeight="600" sx={{ color: Math.max(0, (actionOrder?.totalAmount || 0) - (actionOrder?.advanceReceived || 0)) > 0 ? 'text.disabled' : '#3730a3' }}>Mark Complete</Typography>
-                            {Math.max(0, (actionOrder?.totalAmount || 0) - (actionOrder?.advanceReceived || 0)) > 0 && (
+                            <Typography variant="body2" fontWeight="600" sx={{ color: Math.max(0, (actionOrder?.totalAmount || 0) - (actionOrder?.advanceReceived || 0)) > 0.01 ? 'text.disabled' : '#3730a3' }}>Mark Complete</Typography>
+                            {Math.max(0, (actionOrder?.totalAmount || 0) - (actionOrder?.advanceReceived || 0)) > 0.01 && (
                                 <Typography variant="caption" color="error.main" display="block">Awaiting full payment</Typography>
                             )}
                         </Box>

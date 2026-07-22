@@ -116,6 +116,30 @@ const ViewBookingDialog: React.FC<ViewBookingDialogProps> = ({
                                 {booking.guestInfo?.email || '-'}
                             </Typography>
                         </Grid>
+
+                        {(booking.occasion || booking.specialRequests) && (
+                            <>
+                                <Grid size={{ xs: 12 }}>
+                                    <Divider sx={{ my: 1 }} />
+                                </Grid>
+                                {booking.occasion && (
+                                    <Grid size={{ xs: 12 }}>
+                                        <Typography variant="caption" color="text.secondary">Occasion</Typography>
+                                        <Typography variant="body2" fontWeight={500}>
+                                            {booking.occasion}
+                                        </Typography>
+                                    </Grid>
+                                )}
+                                {booking.specialRequests && (
+                                    <Grid size={{ xs: 12 }}>
+                                        <Typography variant="caption" color="text.secondary">Special Requests / Notes</Typography>
+                                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>
+                                            {booking.specialRequests}
+                                        </Typography>
+                                    </Grid>
+                                )}
+                            </>
+                        )}
                     </Grid>
                 </Box>
             </DialogContent>

@@ -179,6 +179,9 @@ export const ordersAPI = {
   getPublicSettings: (tenantSlug: string) =>
     api.get('/public/orders/settings', { params: { tenantSlug } }),
 
+  getPublicTables: (tenantSlug: string) =>
+    api.get('/public/orders/tables', { params: { tenantSlug } }),
+
   getPublicPaymentConfig: (tenantSlug: string, orderType?: string) =>
     api.get('/public/orders/payment-config', { params: { tenantSlug, orderType } }),
 

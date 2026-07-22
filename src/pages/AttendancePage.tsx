@@ -341,6 +341,11 @@ const AttendancePage: React.FC = () => {
         setDetailsOpen(true);
     };
 
+    const isShiftFinished = (row: any) => {
+        const isFutureClockOut = row.clockOutTime && new Date(row.clockOutTime).getTime() > Date.now();
+        return !(row.status?.toLowerCase() === 'active' || isFutureClockOut);
+    };
+
     const getStatusChip = (row: any) => {
         const isFutureClockOut = row.clockOutTime && new Date(row.clockOutTime).getTime() > Date.now();
         if (row.status?.toLowerCase() === 'active' || isFutureClockOut) {
@@ -594,7 +599,7 @@ const AttendancePage: React.FC = () => {
                                                                 </Typography>
                                                             </Box>
                                                         </Stack>
-                                                        {getStatusChip(row.status)}
+                                                        {getStatusChip(row)}
                                                     </Stack>
 
                                                     <Divider />
@@ -612,7 +617,7 @@ const AttendancePage: React.FC = () => {
                                                         <Grid item xs={6}>
                                                             <Typography variant="caption" color="text.secondary" display="block">FINANCIALS</Typography>
                                                             <Typography variant="subtitle2" fontWeight="800" color="primary">
-                                                                {row.estimatedEarnings ? formatCurrency(row.estimatedEarnings) : '--'}
+                                                                {isShiftFinished(row) && row.estimatedEarnings ? formatCurrency(row.estimatedEarnings) : '--'}
                                                             </Typography>
                                                             <Typography variant="caption" color="text.secondary">Work: {row.totalHours ? `${row.totalHours}h` : '--'}</Typography>
                                                         </Grid>
@@ -729,7 +734,7 @@ const AttendancePage: React.FC = () => {
                                                 </TableCell>
                                                 <TableCell>
                                                     <Typography variant="subtitle1" fontWeight="900" color="primary">
-                                                        {row.estimatedEarnings ? formatCurrency(row.estimatedEarnings) : '--'}
+                                                        {isShiftFinished(row) && row.estimatedEarnings ? formatCurrency(row.estimatedEarnings) : '--'}
                                                     </Typography>
                                                 </TableCell>
                                                 <TableCell align="right">

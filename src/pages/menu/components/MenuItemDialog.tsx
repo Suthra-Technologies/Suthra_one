@@ -196,7 +196,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                     taxRate: item.taxRate ? item.taxRate.toString() : '',
                     isAutoDebit: item.isAutoDebit !== undefined ? item.isAutoDebit : true,
                     foodType: item.foodType || '',
-                    trayOptions: item.trayOptions || [],
+                    trayOptions: item.trayOptions ? item.trayOptions.map((o: any) => ({ ...o, tray: typeof o.tray === 'object' ? o.tray._id : o.tray })) : [],
                     quantityType: item.quantityType || 'number',
                     baseTray: item.baseTray || '',
                     servingSize: item.servingSize || 1,
