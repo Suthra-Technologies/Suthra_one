@@ -151,6 +151,13 @@ export interface PrinterConfig {
 
 export interface TenantPrinterSettings {
     enabled: boolean;
+    /**
+     * What Print Automation prints when an order is created:
+     *  - 'both': KOT then bill (default, existing behavior)
+     *  - 'kot': KOT only
+     *  - 'bill': billing receipt only
+     */
+    autoPrintMode?: 'both' | 'kot' | 'bill';
     preferredAgentId?: string;
     billing?: PrinterConfig;
     kitchen?: PrinterConfig;
@@ -316,6 +323,7 @@ const defaultSettings: SettingsState = {
     },
     printer: {
         enabled: false,
+        autoPrintMode: 'both',
         billing: { name: 'Main Printer', type: 'none', ip: '', port: 80, paperWidth: 80, deviceId: 'local_printer' },
         kitchen: { name: 'Kitchen Printer', type: 'none', ip: '', port: 80, paperWidth: 80, deviceId: 'local_printer' },
     },

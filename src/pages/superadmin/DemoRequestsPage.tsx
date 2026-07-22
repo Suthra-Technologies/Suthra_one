@@ -49,11 +49,22 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { publicDemoAPI, superAPI } from '../../services/api';
 
+// Ordered pipeline: once a request has moved to a later step, earlier steps
+// become unavailable — status can only move forward, never backward.
 const STATUS_OPTIONS = [
-  { value: 'demo_scheduled', label: 'Demo Scheduled', color: 'primary' as const },
   { value: 'pending', label: 'Pending', color: 'warning' as const },
-  { value: 'contacted', label: 'Contacted', color: 'info' as const }
+  { value: 'demo_scheduled', label: 'Demo Scheduled', color: 'primary' as const },
+  { value: 'completed', label: 'Demo Completed', color: 'success' as const },
+  { value: 'contacted', label: 'Contacted', color: 'info' as const },
 ];
+
+const getStatusStep = (status: string): number => {
+  const index = STATUS_OPTIONS.findIndex((s) => s.value === status);
+  return index === -1 ? 0 : index;
+};
+
+const isStatusOptionDisabled = (optionValue: string, currentStatus: string): boolean =>
+  getStatusStep(optionValue) <= getStatusStep(currentStatus);
 
 const getStatusChipColor = (status: string): 'default' | 'warning' | 'info' | 'primary' | 'success' | 'error' => {
   const found = STATUS_OPTIONS.find((s) => s.value === status);
@@ -422,7 +433,7 @@ const DemoRequestsPage: React.FC = () => {
                             size="small"
                           >
                             {STATUS_OPTIONS.map((opt) => (
-                              <MenuItem key={opt.value} value={opt.value}>
+                              <MenuItem key={opt.value} value={opt.value} disabled={isStatusOptionDisabled(opt.value, req.status)}>
                                 {opt.label}
                               </MenuItem>
                             ))}
@@ -537,7 +548,7 @@ const DemoRequestsPage: React.FC = () => {
                       size="small"
                     >
                       {STATUS_OPTIONS.map((opt) => (
-                        <MenuItem key={opt.value} value={opt.value}>
+                        <MenuItem key={opt.value} value={opt.value} disabled={isStatusOptionDisabled(opt.value, req.status)}>
                           {opt.label}
                         </MenuItem>
                       ))}
@@ -680,7 +691,7 @@ const DemoRequestsPage: React.FC = () => {
                     onChange={(e) => handleStatusChange(selectedRequest._id, e.target.value)}
                   >
                     {STATUS_OPTIONS.map((opt) => (
-                      <MenuItem key={opt.value} value={opt.value}>
+                      <MenuItem key={opt.value} value={opt.value} disabled={isStatusOptionDisabled(opt.value, selectedRequest.status)}>
                         {opt.label}
                       </MenuItem>
                     ))}

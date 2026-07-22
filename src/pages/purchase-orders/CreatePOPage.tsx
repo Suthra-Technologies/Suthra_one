@@ -790,10 +790,10 @@ const CreatePOPage: React.FC = () => {
                 />
             </Stack>
 
-            <Grid container spacing={isMobile ? 0 : 4} justifyContent="center" sx={{ width: '100%', m: 0 }}>
+            <Grid container spacing={0} justifyContent="center" sx={{ width: '100%', m: 0 }}>
                 {/* Left Column - Main Form */}
                 <Grid item xs={12} md={12}>
-                    <Stack spacing={isMobile ? 2 : 4} alignItems={isMobile ? "center" : "stretch"}>
+                    <Stack spacing={isMobile ? 2 : 3} alignItems={isMobile ? "center" : "stretch"}>
                         {/* 1. Transaction Type & Category */}
                         <Box sx={{ display: 'flex', justifyContent: 'flex-end', width: '100%', mb: 0 }}>
                             <Button
@@ -1273,44 +1273,37 @@ const CreatePOPage: React.FC = () => {
                         </Paper>
 
                         {/* 4. Financial Summary + Settlement */}
-                        <Grid container spacing={isMobile ? 0 : 4} justifyContent="center" sx={{ width: '100%', m: 0 }}>
+                        <Grid container spacing={isMobile ? 0 : 3} justifyContent="center" sx={{ width: '100%', m: 0 }}>
                             <Grid item xs={12} md={8} sx={{ display: 'flex', justifyContent: 'center' }}>
                                 <Paper sx={{
                                     p: { xs: 2.5, md: 4 },
                                     borderRadius: { xs: 4, md: 5 },
-                                    bgcolor: '#111827',
-                                    color: 'white',
-                                    boxShadow: '0 12px 40px rgba(0,0,0,0.15)',
-                                    height: '100%',
+                                    boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
                                     maxWidth: { xs: 500, md: 'none' },
                                     mx: { xs: 'auto', md: 0 },
                                     width: '100%'
                                 }}>
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-                                        <Typography variant={isMobile ? "subtitle1" : "h5"} fontWeight={900}>Goal</Typography>
+                                        <SectionHeader icon={<InfoIcon />} title="Goal" sx={{ mb: 0 }} />
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <Typography variant="caption" sx={{ opacity: 0.6 }}>Method:</Typography>
-                                            <Chip label={formData.paymentMethod?.toUpperCase()} size="small" sx={{ bgcolor: alpha('#fff', 0.1), color: 'white', fontWeight: 800, fontSize: '0.65rem' }} />
+                                            <Typography variant="caption" color="text.secondary">Method:</Typography>
+                                            <Chip label={formData.paymentMethod?.toUpperCase()} size="small" sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), color: 'primary.main', fontWeight: 800, fontSize: '0.65rem' }} />
                                         </Box>
                                     </Box>
-                                    <Divider sx={{ mb: 2, bgcolor: alpha('#fff', 0.1) }} />
+                                    <Divider sx={{ mb: 2 }} />
                                     <Stack spacing={isMobile ? 1.5 : 2}>
                                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <Typography variant="caption" sx={{ opacity: 0.6 }}>Estimated Delivery / Due</Typography>
+                                            <Typography variant="caption" color="text.secondary">Estimated Delivery / Due</Typography>
                                             <TextField
                                                 type="date" size="small"
                                                 value={formData.dueDate}
                                                 onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                                                sx={{
-                                                    '& input': { color: 'white', py: 0.2, px: 1, fontSize: '0.8rem' },
-                                                    '& .MuiOutlinedInput-notchedOutline': { borderColor: alpha('#fff', 0.1) },
-                                                    '& input::-webkit-calendar-picker-indicator': { filter: 'invert(1)', cursor: 'pointer' }
-                                                }}
+                                                sx={{ '& input': { py: 0.2, px: 1, fontSize: '0.8rem' } }}
                                             />
                                         </Box>
-                                        <Box sx={{ p: isMobile ? 1.5 : 2, borderRadius: isMobile ? 2 : 3, bgcolor: alpha(theme.palette.primary.main, 0.15), border: '1px solid', borderColor: alpha(theme.palette.primary.main, 0.3) }}>
+                                        <Box sx={{ p: isMobile ? 1.5 : 2, borderRadius: isMobile ? 2 : 3, bgcolor: alpha(theme.palette.primary.main, 0.08), border: '1px solid', borderColor: alpha(theme.palette.primary.main, 0.2) }}>
                                             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <Typography variant="body2" fontWeight="bold">Grand Net</Typography>
+                                                <Typography variant="body2" fontWeight="bold" color="text.primary">Grand Net</Typography>
                                                 <Typography variant={isMobile ? "h5" : "h4"} fontWeight={900} color="primary.main">
                                                     ${calculateTotal().toFixed(2)}
                                                 </Typography>
@@ -1322,7 +1315,7 @@ const CreatePOPage: React.FC = () => {
                                             <Grid item xs={6}>
                                                 <Button fullWidth variant="outlined"
                                                     onClick={() => handleSubmit('draft')}
-                                                    sx={{ borderRadius: 2, py: isMobile ? 1 : 1.5, color: 'white', fontSize: isMobile ? '0.8rem' : '1rem', borderColor: 'rgba(255,255,255,0.2)' }}
+                                                    sx={{ borderRadius: 2, py: isMobile ? 1 : 1.5, fontSize: isMobile ? '0.8rem' : '1rem' }}
                                                 >
                                                     Draft
                                                 </Button>
@@ -1340,13 +1333,10 @@ const CreatePOPage: React.FC = () => {
                                     </Box>
                                 </Paper>
                             </Grid>
-                            <Grid item xs={12} md={4} sx={{ display: 'flex', justifyContent: 'center' }}>
+                            <Grid item xs={12} md={4} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>
                                 <Paper sx={{
                                     p: { xs: 2.5, md: 4 },
                                     borderRadius: { xs: 4, md: 5 },
-                                    border: '1px solid',
-                                    borderColor: 'divider',
-                                    height: '100%',
                                     boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
                                     maxWidth: { xs: 500, md: 'none' },
                                     mx: { xs: 'auto', md: 0 },
@@ -1379,115 +1369,74 @@ const CreatePOPage: React.FC = () => {
                             </Grid>
                         </Grid>
 
-                        {/* 5. Evidence & Notes */}
-                        <Grid container spacing={isMobile ? 0 : 4} justifyContent="center" sx={{ width: '100%', m: 0 }}>
-
-                            <Grid item xs={12} sm={6} sx={{ display: 'flex', justifyContent: 'center' }}>
-                                <Paper sx={{
-                                    p: { xs: 2.5, md: 4 },
-                                    borderRadius: { xs: 4, md: 5 },
-                                    height: '100%',
-                                    boxShadow: '0 8px 32px rgba(0,0,0,0.05)',
-                                    border: '1px solid',
-                                    borderColor: alpha(theme.palette.divider, 0.1),
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    maxWidth: { xs: 500, md: 'none' },
-                                    mx: { xs: 'auto', md: 0 },
-                                    width: '100%'
-                                }}>
-                                    <SectionHeader icon={<AttachmentIcon />} title="Photos" />
-                                    <Stack
-                                        direction="row"
-                                        flexWrap="wrap"
-                                        gap={isMobile ? 1 : 2}
-                                        mb={isMobile ? 1.5 : 3}
-                                    >
-                                        {formData.attachments.map((att, idx) => (
-                                            <Card key={idx} sx={{ width: isMobile ? 60 : 80, height: isMobile ? 60 : 80, position: 'relative', borderRadius: 1.5, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
-                                                <CardMedia component="img" height={isMobile ? "60" : "80"} image={att.url} sx={{ objectFit: 'cover' }} />
-                                                <IconButton
-                                                    size="small"
-                                                    sx={{ position: 'absolute', top: 2, right: 2, bgcolor: alpha('#f44336', 0.8), color: 'white', '&:hover': { bgcolor: '#f44336' }, width: 14, height: 14, p: 0 }}
-                                                    onClick={() => removeAttachment(idx)}
-                                                >
-                                                    <DeleteIcon sx={{ fontSize: 10 }} />
-                                                </IconButton>
-                                            </Card>
-                                        ))}
-                                        <Button
-                                            component="label"
-                                            sx={{
-                                                width: isMobile ? 60 : 80,
-                                                height: isMobile ? 60 : 80,
-                                                borderRadius: 1.5,
-                                                border: '2px dashed',
-                                                borderColor: 'divider',
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                color: 'text.secondary',
-                                                '&:hover': {
-                                                    borderColor: 'primary.main',
-                                                    color: 'primary.main',
-                                                    bgcolor: alpha(theme.palette.primary.main, 0.02)
-                                                }
-                                            }}
-                                            disabled={uploading}
+                        {/* 5. Evidence */}
+                        <Paper sx={{
+                            p: { xs: 2.5, md: 4 },
+                            borderRadius: { xs: 4, md: 5 },
+                            boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+                            border: '1px solid',
+                            borderColor: alpha(theme.palette.divider, 0.1),
+                            maxWidth: { xs: 500, md: 'none' },
+                            mx: { xs: 'auto', md: 0 },
+                            width: '100%'
+                        }}>
+                            <SectionHeader icon={<AttachmentIcon />} title="Photos" />
+                            <Stack
+                                direction="row"
+                                flexWrap="wrap"
+                                gap={isMobile ? 1 : 2}
+                                mb={isMobile ? 1.5 : 3}
+                            >
+                                {formData.attachments.map((att, idx) => (
+                                    <Card key={idx} sx={{ width: isMobile ? 60 : 80, height: isMobile ? 60 : 80, position: 'relative', borderRadius: 1.5, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
+                                        <CardMedia component="img" height={isMobile ? "60" : "80"} image={att.url} sx={{ objectFit: 'cover' }} />
+                                        <IconButton
+                                            size="small"
+                                            sx={{ position: 'absolute', top: 2, right: 2, bgcolor: alpha('#f44336', 0.8), color: 'white', '&:hover': { bgcolor: '#f44336' }, width: 14, height: 14, p: 0 }}
+                                            onClick={() => removeAttachment(idx)}
                                         >
-                                            {uploading ? (
-                                                <CircularProgress size={16} />
-                                            ) : (
-                                                <>
-                                                    <UploadIcon sx={{ fontSize: isMobile ? 20 : 24 }} />
-                                                    <Typography variant="caption" sx={{ mt: 0.2, fontWeight: 800, fontSize: '0.6rem' }}>ADD</Typography>
-                                                </>
-                                            )}
-                                            <input type="file" hidden accept="image/*" onChange={handleFileUpload} />
-                                        </Button>
-                                    </Stack>
-                                    <Typography
-                                        variant="caption"
-                                        color="text.secondary"
-                                        sx={{ opacity: 0.7, fontSize: '0.65rem' }}
-                                    >
-                                        Upload bills or receipts for auditing.
-                                    </Typography>
-                                </Paper>
-                            </Grid>
-                            <Grid item xs={12} sm={6} sx={{ display: 'flex', justifyContent: 'center' }}>
-                                <Paper sx={{
-                                    p: { xs: 2.5, md: 4 },
-                                    borderRadius: { xs: 4, md: 5 },
-                                    height: '100%',
-                                    boxShadow: '0 8px 32px rgba(0,0,0,0.05)',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    maxWidth: { xs: 500, md: 'none' },
-                                    mx: { xs: 'auto', md: 0 },
-                                    width: '100%'
-                                }}>
-                                    <SectionHeader
-                                        icon={<BackIcon sx={{ transform: 'rotate(-90deg)' }} />}
-                                        title="Notes"
-                                    />
-                                    <TextField
-                                        fullWidth multiline rows={isMobile ? 2 : 3}
-                                        placeholder="Internal reasoning..."
-                                        value={formData.notes}
-                                        onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                                        variant="outlined"
-                                        sx={{
-                                            '& .MuiOutlinedInput-root': {
-                                                borderRadius: 1.5,
-                                                fontSize: '0.875rem',
-                                                bgcolor: alpha(theme.palette.divider, 0.04),
-                                                '& fieldset': { borderColor: alpha(theme.palette.divider, 0.1) }
-                                            }
-                                        }}
-                                    />
-                                </Paper>
-                            </Grid>
-                        </Grid>
+                                            <DeleteIcon sx={{ fontSize: 10 }} />
+                                        </IconButton>
+                                    </Card>
+                                ))}
+                                <Button
+                                    component="label"
+                                    sx={{
+                                        width: isMobile ? 60 : 80,
+                                        height: isMobile ? 60 : 80,
+                                        borderRadius: 1.5,
+                                        border: '2px dashed',
+                                        borderColor: 'divider',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        color: 'text.secondary',
+                                        '&:hover': {
+                                            borderColor: 'primary.main',
+                                            color: 'primary.main',
+                                            bgcolor: alpha(theme.palette.primary.main, 0.02)
+                                        }
+                                    }}
+                                    disabled={uploading}
+                                >
+                                    {uploading ? (
+                                        <CircularProgress size={16} />
+                                    ) : (
+                                        <>
+                                            <UploadIcon sx={{ fontSize: isMobile ? 20 : 24 }} />
+                                            <Typography variant="caption" sx={{ mt: 0.2, fontWeight: 800, fontSize: '0.6rem' }}>ADD</Typography>
+                                        </>
+                                    )}
+                                    <input type="file" hidden accept="image/*" onChange={handleFileUpload} />
+                                </Button>
+                            </Stack>
+                            <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{ opacity: 0.7, fontSize: '0.65rem' }}
+                            >
+                                Upload bills or receipts for auditing.
+                            </Typography>
+                        </Paper>
                     </Stack>
                 </Grid>
 

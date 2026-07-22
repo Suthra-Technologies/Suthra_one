@@ -91,15 +91,31 @@ export async function autoPrintOrder(
             return false;
         }
 
+        // Print Automation mode picks what gets auto-printed: both (default), KOT only, or bill only.
+        const mode = printerSettings?.autoPrintMode || 'both';
+        const shouldPrintKot = mode === 'both' || mode === 'kot';
+        const shouldPrintBill = mode === 'both' || mode === 'bill';
+
         // Delivery: print the KOT now (kitchen starts cooking) but DEFER the bill. The bill prints
         // later via the background station once the Uber pickup barcode (handoffQr) is set — which
         // happens when staff move the order to ready-to-takeaway. Non-delivery: print KOT + bill now.
-        try {
-            await printKotThermal(billData, printerSettings);
-            // Mark KOT done so the background station doesn't reprint it.
+        if (shouldPrintKot) {
+            try {
+                await printKotThermal(billData, printerSettings);
+                // Mark KOT done so the background station doesn't reprint it.
+                await ordersAPI.markPrintStage(orderId, 'kot').catch(() => {});
+            } catch (kotErr) {
+                console.error('[AutoPrint] KOT print failed:', kotErr);
+            }
+        } else {
+            console.log('[AutoPrint] Mode excludes KOT — skipping, marking done to prevent background reprint');
             await ordersAPI.markPrintStage(orderId, 'kot').catch(() => {});
-        } catch (kotErr) {
-            console.error('[AutoPrint] KOT print failed:', kotErr);
+        }
+
+        if (!shouldPrintBill) {
+            console.log('[AutoPrint] Mode excludes bill — marking done to prevent background reprint');
+            await ordersAPI.markPrintStage(orderId, 'bill').catch(() => {});
+            return true;
         }
 
         if (isDelivery) {

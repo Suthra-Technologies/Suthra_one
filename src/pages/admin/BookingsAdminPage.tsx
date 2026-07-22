@@ -60,6 +60,7 @@ import PhoneInput from 'src/components/PhoneInput';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { bookingsAPI, tablesAPI } from '../../services/api';
+import { validateEmail } from '../../utils/validation';
 
 const formatUSPhone = (phone: string) => {
     if (!phone) return phone;
@@ -129,6 +130,7 @@ const BookingsAdminPage: React.FC = () => {
         tableId: '',
         firstName: '',
         phone: '',
+        email: '',
         dialCode: settings?.restaurant?.dialCode || '1',
         specialRequests: ''
     });
@@ -257,6 +259,15 @@ const BookingsAdminPage: React.FC = () => {
             toast.error('Guest name should only contain characters');
             return;
         }
+        // Email is optional, but validate the format when one is entered.
+        const trimmedEmail = newBooking.email.trim();
+        if (trimmedEmail) {
+            const emailValidation = validateEmail(trimmedEmail);
+            if (!emailValidation.isValid) {
+                toast.error(emailValidation.message || 'Please enter a valid email address');
+                return;
+            }
+        }
         setProcessing(true);
         try {
             const bookingData = {
@@ -268,7 +279,9 @@ const BookingsAdminPage: React.FC = () => {
                 specialRequests: newBooking.specialRequests,
                 guestInfo: {
                     firstName: newBooking.firstName,
-                    phone: newBooking.phone
+                    phone: newBooking.phone,
+                    dialCode: newBooking.dialCode,
+                    email: trimmedEmail
                 },
                 status: 'confirmed', // Auto-confirm admin bookings
                 source: 'admin'
@@ -286,6 +299,7 @@ const BookingsAdminPage: React.FC = () => {
                 tableId: '',
                 firstName: '',
                 phone: '',
+                email: '',
                 dialCode: settings?.restaurant?.dialCode || '1',
                 specialRequests: ''
             });
@@ -1109,6 +1123,20 @@ const BookingsAdminPage: React.FC = () => {
                                             fullWidth
                                         />
                                     </Box>
+                                </Grid>
+                                <Grid item xs={12}>
+                                    <TextField
+                                        label="Email (optional)"
+                                        type="email"
+                                        fullWidth
+                                        autoComplete="off"
+                                        inputProps={{ maxLength: 50 }}
+                                        value={newBooking.email}
+                                        onChange={(e) => {
+                                            const val = e.target.value.toLowerCase().slice(0, 50);
+                                            setNewBooking({ ...newBooking, email: val });
+                                        }}
+                                    />
                                 </Grid>
                                 <Grid item xs={12}>
                                     <TextField
