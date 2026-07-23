@@ -3,11 +3,13 @@ import { Typography, Button, Paper } from '@mui/material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSettings } from '../context/SettingsContext';
 import { useAuth } from '../context/AuthContext';
+import { useActiveTenant } from '../hooks/useActiveTenant';
 import { menuAPI } from '../services/api';
 
 const OnboardingBanner: React.FC = () => {
-  const { settings } = useSettings();
+  const { settings, loading } = useSettings();
   const { activeRole } = useAuth();
+  const { getRelativePath } = useActiveTenant();
   const navigate = useNavigate();
   const location = useLocation();
   const [hasMenu, setHasMenu] = useState<boolean | null>(null);
@@ -22,12 +24,14 @@ const OnboardingBanner: React.FC = () => {
         setHasMenu(items && items.length > 0);
       } catch (err) {
         console.error('Failed to check menu:', err);
+        setHasMenu(true); // Default to true on error to avoid blocking the user incorrectly
       }
     };
     checkMenu();
   }, [activeRole]);
 
   if (activeRole !== 'admin') return null;
+  if (loading || hasMenu === null) return null; // Wait until data is fully loaded
 
   const isSettingsIncomplete = !settings?.restaurant?.address || !settings?.restaurant?.logo;
   const isMenuIncomplete = hasMenu === false;
@@ -54,13 +58,13 @@ const OnboardingBanner: React.FC = () => {
       {isSettingsIncomplete ? (
         <>
           <Typography variant="body1" fontWeight="bold">
-            Step 1: Welcome aboard! 👋 Let's get things rolling—please add your restaurant's logo and address below to officially unlock your store.
+            Step 1: Welcome! 👋 Please complete your restaurant profile by adding your address and logo to unlock all features.
           </Typography>
-          {location.pathname !== '/settings' && (
+          {location.pathname !== getRelativePath('/settings') && (
             <Button 
               variant="contained" 
               sx={{ bgcolor: '#fff', color: 'primary.main', '&:hover': { bgcolor: '#f0f0f0' } }} 
-              onClick={() => navigate('/settings')}
+              onClick={() => navigate(getRelativePath('/settings'))}
             >
               Complete Settings
             </Button>
@@ -71,11 +75,11 @@ const OnboardingBanner: React.FC = () => {
           <Typography variant="body1" fontWeight="bold">
             🎉 Profile saved! Step 2: Please upload your first Menu Item to start taking orders.
           </Typography>
-          {location.pathname !== '/menu' && (
+          {location.pathname !== getRelativePath('/menu') && (
             <Button 
               variant="contained" 
               sx={{ bgcolor: '#fff', color: 'primary.main', '&:hover': { bgcolor: '#f0f0f0' } }} 
-              onClick={() => navigate('/menu')}
+              onClick={() => navigate(getRelativePath('/menu'))}
             >
               Upload Menu
             </Button>
