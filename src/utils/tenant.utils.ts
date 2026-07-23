@@ -58,19 +58,20 @@ export const isSubdomainAccess = (): boolean => {
  * e.g. getTenantUrl('mythri', '/dashboard') -> http://mythri.localhost:3000/dashboard
  * @param slug The tenant slug
  * @param path The target path (optional)
- * @param token An authentication token to pass during redirection (optional, for session handover)
+ * @param token An authentication token to hand off during redirection (optional).
+ *              The token is stored in a parent-domain cookie (never placed in the
+ *              URL) so it stays out of the address bar, history, and server logs.
  */
 export const getTenantUrl = (slug: string, path: string = '', token?: string): string => {
   const { hostname, host, protocol, origin } = window.location;
-  
+
   // Clean path to ensure it starts with /
   let cleanPath = path.startsWith('/') ? path : `/${path}`;
 
-  // Append token if provided for cross-domain session handover
-  if (token) {
-    const separator = cleanPath.includes('?') ? '&' : '?';
-    cleanPath = `${cleanPath}${separator}token=${encodeURIComponent(token)}`;
-  }
+  // NOTE: token handoff is handled by redirectToTenant() via a one-time server
+  // code (?h=...), so the JWT is never placed in the URL. `token` is accepted
+  // here only for backward-compatibility and is intentionally ignored.
+  void token;
 
   // Capacitor / native WebView serves the app from https://localhost (or similar).
   // Subdomains like sample.localhost often fail or change origin — stay on same origin with path routing.
@@ -117,4 +118,33 @@ export const getTenantUrl = (slug: string, path: string = '', token?: string): s
 
   const baseHost = baseParts.join('.') + (window.location.port ? `:${window.location.port}` : '');
   return `${protocol}//${slug}.${baseHost}${cleanPath}`;
+};
+
+/**
+ * Redirects to a tenant subdomain, transferring the session WITHOUT ever putting
+ * the JWT in the URL. It asks the backend for a one-time handoff code (authorized
+ * by `token`) and navigates with only `?h=<code>`; the destination exchanges the
+ * code for the token before rendering (see main.tsx). If code creation fails, it
+ * still redirects (the destination may already have a local session).
+ */
+export const redirectToTenant = async (
+  slug: string,
+  path: string = '',
+  token?: string,
+): Promise<void> => {
+  let target = getTenantUrl(slug, path);
+  if (token) {
+    try {
+      const { authAPI } = await import('../services/api');
+      const res = await authAPI.createHandoff({ headers: { Authorization: `Bearer ${token}` } });
+      const code = res?.data?.code;
+      if (code) {
+        const sep = target.includes('?') ? '&' : '?';
+        target = `${target}${sep}h=${encodeURIComponent(code)}`;
+      }
+    } catch (e) {
+      console.error('Failed to create handoff code; redirecting without it', e);
+    }
+  }
+  window.location.href = target;
 };

@@ -36,15 +36,27 @@ const SubscriptionStatus: React.FC = () => {
     const expiryDate = subscriptionStatus === 'trial' ? trialEndsAt : subscriptionEndsAt;
     const daysRemaining = expiryDate ? Math.ceil((new Date(expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : 0;
 
+    const dayLabel = daysRemaining === 1 ? '1 day' : `${daysRemaining} days`;
+
     let chipColor: 'default' | 'primary' | 'success' | 'warning' | 'error' = 'default';
     let statusText = '';
 
     if (subscriptionStatus === 'trial') {
         chipColor = daysRemaining <= 3 ? 'warning' : 'primary';
-        statusText = 'Trial';
+        // Only surface the countdown within the final week; otherwise just "Trial".
+        statusText = daysRemaining <= 0
+            ? 'Trial expired'
+            : daysRemaining <= 7
+                ? `Trial · expiring in ${dayLabel}`
+                : 'Trial';
     } else if (subscriptionStatus === 'active') {
         chipColor = daysRemaining <= 7 ? 'warning' : 'success';
-        statusText = currentPlan?.name || 'Active';
+        // Only surface the countdown within the final week; otherwise the plan name.
+        statusText = daysRemaining <= 0
+            ? 'Expired'
+            : daysRemaining <= 7
+                ? `Expiring in ${dayLabel}`
+                : (currentPlan?.name || 'Active');
     } else if (subscriptionStatus === 'expired') {
         chipColor = 'error';
         statusText = 'Expired';
@@ -76,7 +88,7 @@ const SubscriptionStatus: React.FC = () => {
                 }}
             >
                 <Chip label={statusText} color={chipColor} size="small" sx={{ fontWeight: 600 }} />
-                {currentPlan?.name && (
+                {currentPlan?.name && statusText !== currentPlan.name && (
                     <Typography
                         variant="caption"
                         color="text.secondary"
