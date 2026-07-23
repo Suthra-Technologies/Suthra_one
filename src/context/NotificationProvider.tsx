@@ -39,6 +39,7 @@ const toast = {
 import { NativeAudio } from '@capacitor-community/native-audio';
 import { useSettings } from './SettingsContext';
 import { autoPrintOrder } from '../utils/autoPrintOrder';
+import { tenantAPI } from '../services/api';
 
 interface Notification {
     id: number | string;
@@ -51,6 +52,66 @@ interface Notification {
     data?: any;
     targetRoles?: string[];
 }
+
+// Stable id so refreshing/re-injecting replaces the existing subscription
+// notification instead of stacking duplicates.
+const SUBSCRIPTION_NOTIFICATION_ID = 'subscription-status';
+// Start warning when the subscription/trial has this many whole days left.
+const SUBSCRIPTION_WARNING_DAYS = 3;
+
+const MS_PER_DAY = 1000 * 60 * 60 * 24;
+
+/**
+ * Builds a subscription warning notification from the tenant record, or null
+ * when nothing needs surfacing (healthy subscription with plenty of time left).
+ * Warns when a trial/subscription expires within SUBSCRIPTION_WARNING_DAYS, and
+ * flags an expired subscription outright.
+ */
+const buildSubscriptionNotification = (tenant: any): Notification | null => {
+    if (!tenant) return null;
+
+    const status = tenant.subscriptionStatus;
+    const endDate = status === 'trial' ? tenant.trialEndsAt : tenant.subscriptionEndsAt;
+    const daysRemaining = endDate
+        ? Math.ceil((new Date(endDate).getTime() - Date.now()) / MS_PER_DAY)
+        : null;
+
+    const isTrial = status === 'trial';
+    const label = isTrial ? 'free trial' : 'subscription';
+
+    // Already expired (either flagged by the backend, or the end date has passed).
+    const isExpired =
+        status === 'expired' ||
+        status === 'cancelled' ||
+        (daysRemaining !== null && daysRemaining <= 0 && (status === 'trial' || status === 'active'));
+
+    let title: string;
+    let message: string;
+
+    if (isExpired) {
+        title = isTrial ? 'Free trial ended' : 'Subscription expired';
+        message = `Your ${label} has ended. Please renew to keep using the system without interruption.`;
+    } else if (daysRemaining !== null && daysRemaining <= SUBSCRIPTION_WARNING_DAYS) {
+        const dayWord = daysRemaining === 1 ? 'day' : 'days';
+        title = isTrial ? 'Free trial ending soon' : 'Subscription expiring soon';
+        message = `Your ${label} expires in ${daysRemaining} ${dayWord}. Renew now to avoid any interruption.`;
+    } else {
+        // Healthy subscription with time to spare — nothing to surface.
+        return null;
+    }
+
+    return {
+        id: SUBSCRIPTION_NOTIFICATION_ID,
+        timestamp: new Date(),
+        read: false,
+        type: isExpired ? 'error' : 'warning',
+        title,
+        message,
+        priority: 'high',
+        data: { subscription: true, subscriptionStatus: status, daysRemaining, expiresAt: endDate },
+        targetRoles: ['admin', 'manager'],
+    };
+};
 
 interface AutoCloseRequest {
     orders: any[];
@@ -905,7 +966,135 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         };
     }, [user?.sub, user?.role, handleNewOrder, handleOrderStatusUpdate, handleNewCateringOrder, handleCateringOrderStatusUpdate, handleCateringOrderUpdate, handleNewBooking, handleBookingStatusUpdate, handleBookingCheckedIn]); // Re-connect only if identity changes
 
+    // ── Subscription expiry / expired warning ─────────────────────────────
+    // Derives a synthetic notification from the tenant's subscription state
+    // (baked into the JWT at login) and keeps it in sync as days tick down.
+    // Shows an "expiring in N days" warning when 3/2/1/0 days remain, and an
+    // "expired" error once the subscription has lapsed. Staff only.
+    useEffect(() => {
+        const tenant: any = user && typeof (user as any).tenant === 'object' ? (user as any).tenant : null;
+        const role = user?.role?.toLowerCase() || '';
+        const staffRoles = ['admin', 'manager', 'kitchen', 'kitchen_staff', 'waiter', 'cashier'];
+
+        // Only surface billing warnings to staff who can act on them.
+        if (!tenant || !staffRoles.includes(role)) {
+            setNotifications(prev => prev.filter(n => n.type !== 'subscription'));
+            return;
+        }
+
+        const status = tenant.subscriptionStatus as string | undefined;
+        const endDate = status === 'trial' ? tenant.trialEndsAt : tenant.subscriptionEndsAt;
+
+        const build = (): Notification | null => {
+            const daysRemaining = endDate
+                ? Math.ceil((new Date(endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+                : null;
+
+            const isExpired = status === 'expired' || status === 'cancelled' ||
+                (['trial', 'active'].includes(status || '') && daysRemaining !== null && daysRemaining <= 0);
+
+            if (isExpired) {
+                const isTrial = status === 'trial';
+                return {
+                    id: 'subscription-warning',
+                    timestamp: new Date(),
+                    read: false,
+                    type: 'subscription',
+                    title: isTrial ? 'Free trial ended' : 'Subscription expired',
+                    message: isTrial
+                        ? 'Your free trial has ended. Please upgrade to keep using the system.'
+                        : 'Your subscription has expired. Please renew to continue using the system.',
+                    priority: 'high',
+                    data: { subscriptionStatus: status, expired: true },
+                };
+            }
+
+            // Expiring soon: warn only within the final 3 days.
+            if (daysRemaining !== null && daysRemaining >= 1 && daysRemaining <= 3) {
+                const dayLabel = daysRemaining === 1 ? '1 day' : `${daysRemaining} days`;
+                const isTrial = status === 'trial';
+                return {
+                    id: 'subscription-warning',
+                    timestamp: new Date(),
+                    read: false,
+                    type: 'subscription',
+                    title: isTrial ? 'Free trial ending soon' : 'Subscription expiring soon',
+                    message: isTrial
+                        ? `Your free trial expires in ${dayLabel}. Upgrade now to avoid interruption.`
+                        : `Your subscription expires in ${dayLabel}. Renew now to avoid interruption.`,
+                    priority: 'high',
+                    data: { subscriptionStatus: status, daysRemaining },
+                };
+            }
+
+            return null;
+        };
+
+        const sync = () => {
+            const notif = build();
+            setNotifications(prev => {
+                const existing = prev.find(n => n.type === 'subscription');
+                const rest = prev.filter(n => n.type !== 'subscription');
+                if (!notif) return rest;
+                // Preserve read state / timestamp if the message hasn't changed,
+                // so re-syncs don't keep re-alerting the user.
+                if (existing && existing.message === notif.message) {
+                    return [existing, ...rest];
+                }
+                return [notif, ...rest];
+            });
+        };
+
+        sync();
+        // Re-evaluate hourly so the day counter rolls over without a reload.
+        const interval = setInterval(sync, 60 * 60 * 1000);
+        return () => clearInterval(interval);
+    }, [user]);
+
     const dismissAutoCloseRequest = useCallback(() => setAutoCloseRequest(null), []);
+
+    // Upsert (replace-by-id) the subscription notification so refreshes don't
+    // stack duplicates. A null notification clears any previously injected one.
+    const upsertSubscriptionNotification = useCallback((notif: Notification | null) => {
+        setNotifications(prev => {
+            const withoutSub = prev.filter(n => n.id !== SUBSCRIPTION_NOTIFICATION_ID);
+            if (!notif) return withoutSub;
+            // Preserve the read flag if the user already dismissed the same warning.
+            const existing = prev.find(n => n.id === SUBSCRIPTION_NOTIFICATION_ID);
+            const merged = existing && existing.message === notif.message
+                ? { ...notif, read: existing.read, timestamp: existing.timestamp }
+                : notif;
+            return [merged, ...withoutSub];
+        });
+    }, []);
+
+    // Subscription expiry warning: fetch tenant status on login and poll daily so
+    // the "expires in N days" countdown stays accurate for long-lived sessions.
+    useEffect(() => {
+        const role = user?.role?.toLowerCase();
+        if (!user || !['admin', 'manager'].includes(role || '')) {
+            upsertSubscriptionNotification(null);
+            return;
+        }
+
+        let cancelled = false;
+        const checkSubscription = async () => {
+            try {
+                const res = await tenantAPI.getCurrent();
+                if (cancelled) return;
+                upsertSubscriptionNotification(buildSubscriptionNotification(res.data));
+            } catch (err) {
+                console.warn('🔔 [NotificationProvider] Failed to fetch subscription status:', err);
+            }
+        };
+
+        checkSubscription();
+        const interval = setInterval(checkSubscription, MS_PER_DAY);
+        return () => {
+            cancelled = true;
+            clearInterval(interval);
+        };
+    }, [user?.sub, user?.role, upsertSubscriptionNotification]);
 
     const clearNotifications = useCallback(() => setNotifications([]), []);
     const markAsRead = useCallback((id: string | number) => {

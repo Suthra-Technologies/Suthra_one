@@ -117,6 +117,9 @@ api.interceptors.response.use(
 // -------------------- Auth API --------------------
 export const authAPI = {
   login: (credentials: any) => api.post('/auth/login', credentials),
+  switchTenant: (body: { targetTenantSlug: string }, config?: any) => api.post('/auth/switch-tenant', body, config),
+  createHandoff: (config?: any) => api.post('/auth/handoff/create', {}, config),
+  consumeHandoff: (code: string) => api.post('/auth/handoff/consume', { code }),
   register: (userData: any) => api.post('/auth/register', userData),
   customerRegister: (userData: any) => api.post('/auth/customer/register', userData),
   getProfile: () => api.get('/auth/profile'),

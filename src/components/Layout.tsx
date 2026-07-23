@@ -732,7 +732,7 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
           Profile
         </MenuItem>
 
-        {availableTenants && availableTenants.length > 1 && activeRole !== 'customer' && (
+        {availableTenants && availableTenants.length > 1 && activeRole === 'admin' && (
           <Box>
             <Divider sx={{ my: 1 }}>
               <Typography variant="caption" sx={{ px: 1, color: 'text.secondary' }}>
