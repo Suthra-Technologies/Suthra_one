@@ -696,10 +696,10 @@ const BookingsAdminPage: React.FC = () => {
                                             <TableRow
                                                 key={booking._id}
                                                 hover
-                                                onClick={() => handleCreateOrder(booking)}
+                                                onClick={() => openDetailsDialog(booking)}
                                                 sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'action.hover' } }}
                                             >
-                                                <TableCell onClick={(e) => { e.stopPropagation(); openDetailsDialog(booking); }}>
+                                                <TableCell>
                                                     {booking.bookingId}
                                                 </TableCell>
                                                 <TableCell>
