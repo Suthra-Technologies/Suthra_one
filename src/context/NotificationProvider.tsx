@@ -771,7 +771,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             const tableName = booking.tableName || booking.table?.tableNumber;
             const guests = booking.guests ?? booking.numberOfGuests ?? booking.partySize;
             const slot = booking.timeSlot?.requested;
-            const day = booking.date ? new Date(booking.date).toLocaleDateString() : '';
+            const day = booking.date ? new Date(booking.date).toLocaleDateString(undefined, { timeZone: 'UTC' }) : '';
             const status = data.status ? String(data.status).replace(/_/g, ' ') : '';
 
             const body = [
