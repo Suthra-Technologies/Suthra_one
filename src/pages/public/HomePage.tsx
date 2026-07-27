@@ -874,7 +874,7 @@ const HomePage: React.FC = () => {
                 component="img"
                 src="/logo.png"
                 alt="NexZen POS"
-                sx={{ height: 45, filter: "brightness(0)" }}
+                sx={{ height: 45 }}
               />
               <Typography
                 variant="h6"
@@ -1307,7 +1307,7 @@ const HomePage: React.FC = () => {
                 }}
               >
                 <img
-                  // src={womenserved}
+                   src={womenserved1}
                   alt="Waiter serving customer"
                   style={{
                     maxWidth: "100%",
@@ -2416,7 +2416,7 @@ const HomePage: React.FC = () => {
                     component="img"
                     src="/logo.png"
                     alt="NexZen POS"
-                    sx={{ height: 55, filter: 'brightness(0) invert(1)' }}
+                    sx={{ height: 55 }}
                   />
                   <Typography variant="h5" fontWeight="900" sx={{ letterSpacing: -0.5 }}>
                     NexZen

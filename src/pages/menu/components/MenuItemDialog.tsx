@@ -301,9 +301,9 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
         }
 
         const parsedPrice = parseFloat(menuItemForm.price as any);
-        if (isNaN(parsedPrice) || parsedPrice < 0) {
+        if (isNaN(parsedPrice) || parsedPrice <= 0) {
             setMenuItemTouched(prev => ({ ...prev, price: true }));
-            toast.error('Enter a valid base price');
+            toast.error('Base price must be greater than 0');
             return;
         }
 

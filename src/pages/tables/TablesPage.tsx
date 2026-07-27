@@ -1330,7 +1330,7 @@ const TablesPage: React.FC = () => {
 
                                                                 return (
                                                                     <>
-                                                                        {(booking.status === 'confirmed' || booking.status === 'pending') && (!booking.checkedIn || !hasActiveOrder) && (
+                                                                        {(booking.status === 'confirmed') && (!booking.checkedIn || !hasActiveOrder) && (
                                                                             <Button 
                                                                                 size="small" 
                                                                                 variant="contained" 
@@ -1395,12 +1395,8 @@ const TablesPage: React.FC = () => {
                                                     <TableRow
                                                         key={booking._id}
                                                         hover
-                                                        onClick={() => {
-                                                            if (booking.status !== 'completed' && booking.status !== 'cancelled') {
-                                                                handleCheckIn(booking._id);
-                                                            }
-                                                        }}
-                                                        sx={{ cursor: (booking.status === 'completed' || booking.status === 'cancelled') ? 'default' : 'pointer' }}
+                                                        onClick={() => handleViewBooking(booking)}
+                                                        sx={{ cursor: 'pointer' }}
                                                     >
                                                         <TableCell>
                                                             <Typography variant="body2" sx={{ fontWeight: 600 }}>
@@ -1485,7 +1481,7 @@ const TablesPage: React.FC = () => {
 
                                                                     return (
                                                                         <>
-                                                                            {(booking.status === 'confirmed' || booking.status === 'pending') && (!booking.checkedIn || !hasActiveOrder) && (
+                                                                            {(booking.status === 'confirmed') && (!booking.checkedIn || !hasActiveOrder) && (
                                                                                 <Button
                                                                                     size="small"
                                                                                     variant="contained"

@@ -37,7 +37,7 @@ import { authAPI, tenantAPI } from '../../services/api';
 import { useActiveTenant } from '../../hooks/useActiveTenant';
 import { toast } from 'react-hot-toast';
 import logo from '../../assets/images/icons/logo.jpeg';
-import { getTenantSlugFromHostname, getTenantUrl } from '../../utils/tenant.utils';
+import { getTenantSlugFromHostname, redirectToTenant } from '../../utils/tenant.utils';
 
 
 const LoginPage: React.FC = () => {
@@ -60,6 +60,11 @@ const LoginPage: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [forgotPasswordView, setForgotPasswordView] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+
+  // Company picker: shown after login when an admin belongs to >1 company.
+  const [companyChoices, setCompanyChoices] = useState<Array<{ slug: string; name: string }> | null>(null);
+  const [pendingLogin, setPendingLogin] = useState<{ slug?: string; token?: string } | null>(null);
+  const [switching, setSwitching] = useState(false);
   
   // Dynamic Tenant Branding
   const [activeTenant, setActiveTenant] = useState<{
@@ -171,17 +176,33 @@ const LoginPage: React.FC = () => {
       // Use detected slug if present, otherwise fallback to URL param
       const slugToUse = activeTenant?.slug || targetTenant || undefined;
 
-      // Pass tenantSlug if we are switching tenants or on dynamic subdomain
-      const result = await login({
-        ...formData,
-        tenantSlug: slugToUse
-      });
+      // Pass tenantSlug if we are switching tenants or on dynamic subdomain.
+      // deferCommit lets a multi-company admin see the picker without the session
+      // committing (which would otherwise redirect away from /login instantly).
+      const result = await login(
+        { ...formData, tenantSlug: slugToUse },
+        { deferCommit: !isSubdomain && !slugToUse && !(location.state as any)?.from },
+      );
 
       if (result.success) {
         console.log('LoginPage: Login successful. User:', result.user);
         const userRole = result.user?.role;
         const targetSlug = result.slug;
         console.log('LoginPage: User role:', userRole, 'Tenant Slug:', targetSlug);
+
+        // If an admin belongs to more than one company, let them choose which to
+        // enter — unless they logged in on a specific tenant subdomain or via a
+        // targeted link (which already implies the company).
+        // If login deferred the session (multi-company admin on the root domain),
+        // show the company picker instead of redirecting.
+        if (result.deferred) {
+          const choices = result.availableTenants || [];
+          console.log('LoginPage: Admin has multiple companies, showing picker', choices);
+          setPendingLogin({ slug: targetSlug, token: result.token });
+          setCompanyChoices(choices);
+          setLoading(false);
+          return;
+        }
 
         if (userRole === 'superadmin') {
           console.log('LoginPage: Superadmin detected, navigating to /superadmin');
@@ -190,7 +211,21 @@ const LoginPage: React.FC = () => {
           const from = (location.state as any)?.from;
           console.log('LoginPage: Redirecting. "from" state:', from);
           
-          if (from) {
+          const tenant = result.user?.tenant;
+          const isSettingsIncomplete = tenant 
+            ? (tenant.isProfileComplete === false || (tenant.isProfileComplete === undefined && !tenant.logo))
+            : false;
+          
+          const forceSettings = userRole === 'admin' && (result.user?.isFirstLogin || isSettingsIncomplete);
+          
+          if (forceSettings) {
+            console.log('LoginPage: Forcing newly registered/incomplete admin to /settings');
+            if (isSubdomain) {
+              setTimeout(() => navigate('/settings', { replace: true }), 100);
+            } else {
+              await redirectToTenant(targetSlug, '/settings', result.token);
+            }
+          } else if (from) {
             console.log('LoginPage: Navigating to "from":', from);
             setTimeout(() => navigate(from, { replace: true }), 100);
           } else if (userRole === 'customer') {
@@ -199,19 +234,16 @@ const LoginPage: React.FC = () => {
               console.log('LoginPage: Navigating to /customer/order');
               setTimeout(() => navigate('/customer/order', { replace: true }), 100);
             } else {
-              const url = getTenantUrl(targetSlug, '/customer/order', result.token);
-              console.log('LoginPage: Redirecting to subdomain URL:', url);
-              window.location.href = url;
+              await redirectToTenant(targetSlug, '/customer/order', result.token);
             }
           } else {
             console.log('LoginPage: Staff/Admin detected. isSubdomain:', isSubdomain);
+            
             if (isSubdomain) {
-              console.log('LoginPage: Navigating to /dashboard');
+              console.log(`LoginPage: Navigating to /dashboard`);
               setTimeout(() => navigate('/dashboard', { replace: true }), 100);
             } else {
-              const url = getTenantUrl(targetSlug, '/dashboard', result.token);
-              console.log('LoginPage: Redirecting to subdomain URL:', url);
-              window.location.href = url;
+              await redirectToTenant(targetSlug, '/dashboard', result.token);
             }
           }
         } else {
@@ -230,6 +262,32 @@ const LoginPage: React.FC = () => {
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Admin picked a restaurant from the post-login picker. The session was NOT
+  // committed at login (deferred), so we obtain a token scoped to the chosen
+  // restaurant and hand off to its subdomain via a one-time code (no token in URL).
+  const handleSelectCompany = async (slug: string) => {
+    setSwitching(true);
+    setApiError('');
+    try {
+      let tokenForCompany = pendingLogin?.token;
+
+      // If they picked a restaurant other than the login-default, re-scope the token.
+      if (!pendingLogin?.slug || slug !== pendingLogin.slug) {
+        const res = await authAPI.switchTenant(
+          { targetTenantSlug: slug },
+          { headers: { Authorization: `Bearer ${pendingLogin?.token}` } },
+        );
+        tokenForCompany = res.data?.token || tokenForCompany;
+      }
+
+      await redirectToTenant(slug, '/dashboard', tokenForCompany);
+    } catch (error: any) {
+      console.error('Restaurant select error:', error);
+      setApiError(error?.response?.data?.message || 'Failed to open the selected restaurant. Please try again.');
+      setSwitching(false);
     }
   };
 
@@ -432,16 +490,18 @@ const LoginPage: React.FC = () => {
               letterSpacing: '-0.5px'
             }}
           >
-            {forgotPasswordView ? 'Reset Password' : 'Sign In'}
+            {companyChoices ? 'Choose a Restaurant' : forgotPasswordView ? 'Reset Password' : 'Sign In'}
           </Typography>
           <Typography
             variant="body2"
             color="text.secondary"
             sx={{ mb: 4, textAlign: 'center', px: 2, fontSize: bodyFontSize }}
           >
-            {forgotPasswordView
-              ? "Enter your email address and we'll send you a link to reset your password."
-              : ''}
+            {companyChoices
+              ? 'You have access to multiple restaurants. Select one to continue.'
+              : forgotPasswordView
+                ? "Enter your email address and we'll send you a link to reset your password."
+                : ''}
           </Typography>
 
           {/* Error Alert */}
@@ -451,7 +511,36 @@ const LoginPage: React.FC = () => {
             </Alert>
           )}
 
-          {forgotPasswordView ? (
+          {companyChoices ? (
+            <Box sx={{ mt: 1, width: '100%', maxWidth: 400 }}>
+              {companyChoices.map((c) => (
+                <Button
+                  key={c.slug}
+                  fullWidth
+                  variant="outlined"
+                  disabled={switching}
+                  onClick={() => handleSelectCompany(c.slug)}
+                  startIcon={<Restaurant />}
+                  sx={{
+                    mb: 1.5,
+                    py: 1.5,
+                    justifyContent: 'flex-start',
+                    borderRadius: 3,
+                    textTransform: 'none',
+                    fontSize: '1rem',
+                    fontWeight: 700,
+                  }}
+                >
+                  {c.name}
+                </Button>
+              ))}
+              {switching && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+                  <CircularProgress size={24} />
+                </Box>
+              )}
+            </Box>
+          ) : forgotPasswordView ? (
             <Box component="form" noValidate onSubmit={handleForgotPasswordSubmit} sx={{ mt: 1, width: '100%', maxWidth: 400 }}>
               {isSuccess ? (
                 <Alert severity="success" sx={{ mb: 3 }}>

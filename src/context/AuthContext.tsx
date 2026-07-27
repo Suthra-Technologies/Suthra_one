@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import api from '../services/api';
-import { getTenantUrl } from '../utils/tenant.utils';
+import { getTenantSlugFromHostname, redirectToTenant } from '../utils/tenant.utils';
 import { toast } from 'react-hot-toast';
 
 // JWT payload shape
@@ -61,6 +61,7 @@ type LoginResponse = {
   user?: any;
   token?: string;
   availableTenants?: Array<{ slug: string; name: string }>; // Added field
+  deferred?: boolean; // true = session NOT committed yet (multi-company admin picker)
 };
 
 // Context interface
@@ -69,7 +70,7 @@ interface AuthContextProps {
   user: JwtPayload | null;
   activeRole: string | null;
   availableTenants: Array<{ slug: string; name: string }>;
-  login: (credentials: { email: string; password: string; tenantSlug?: string }) => Promise<LoginResponse>;
+  login: (credentials: { email: string; password: string; tenantSlug?: string }, opts?: { deferCommit?: boolean }) => Promise<LoginResponse>;
   logout: () => void;
   isLoading: boolean;
   hasPermission: (module: string, action: string) => boolean;
@@ -93,7 +94,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
   const [tenantSlug, setTenantSlug] = useState<string | null>(null);
   const [availableTenants, setAvailableTenants] = useState<Array<{ slug: string; name: string }>>([]);
 
-  const login = async (credentials: { email: string; password: string; tenantSlug?: string }): Promise<LoginResponse> => {
+  const login = async (
+    credentials: { email: string; password: string; tenantSlug?: string },
+    opts?: { deferCommit?: boolean },
+  ): Promise<LoginResponse> => {
     try {
       console.log('AuthContext: Attempting login with', credentials.email, credentials.tenantSlug);
       const response = await api.post('/auth/login', credentials);
@@ -101,37 +105,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
 
       if (response.data && response.data.token) {
         const jwt = response.data.token;
-        setToken(jwt);
-        console.log('AuthContext: Token set');
-
         const decoded = jwtDecode<JwtPayload>(jwt);
-        console.log('AuthContext: Token decoded', decoded);
 
-        // Merge response data (which has full objects) with decoded token
-        // IMPORTANT: decoded token has 'tenant' as string ID, but we want the full tenant object from response.
-        // So we spread decoded FIRST, then response user data (or manually fix tenant)
-        // Actually, backend returns flattened response at root in some cases, or under .user
         const responseUser = response.data.user || response.data;
-
         const userObj = { ...decoded, ...responseUser };
-
-        // Ensure tenant object is preserved (derived from response)
         if (response.data.tenant) {
           userObj.tenant = response.data.tenant;
         }
-
-        // Ensure roles array exists
         if (!userObj.roles && userObj.role) {
           userObj.roles = [userObj.role];
         } else if (!userObj.roles) {
           userObj.roles = ['cashier'];
         }
 
+        const tenants = response.data.availableTenants || [];
+
+        // Multi-company admins get a company picker on the login page. Committing
+        // the session here would flip `isAuthenticated` and cause the /login route
+        // guard to redirect away before the picker can render — so when the caller
+        // asks to defer, we DON'T touch auth state/localStorage yet. The caller
+        // (LoginPage) commits once the admin picks a company.
+        const isMultiCompanyAdmin =
+          opts?.deferCommit === true &&
+          (userObj.role === 'admin' || userObj.roles?.[0] === 'admin') &&
+          tenants.length > 1;
+
+        if (isMultiCompanyAdmin) {
+          console.log('AuthContext: Deferring session commit for multi-company admin');
+          return { success: true, slug: response.data.tenant?.slug, user: userObj, token: jwt, availableTenants: tenants, deferred: true };
+        }
+
+        // Commit the session.
+        setToken(jwt);
         setUser(userObj);
         setActiveRole(userObj.roles[0] || userObj.role || 'cashier');
-
-        // Handle available tenants
-        const tenants = response.data.availableTenants || [];
         setAvailableTenants(tenants);
 
         localStorage.setItem('jwt', jwt);
@@ -147,7 +154,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
           console.warn('AuthContext: No tenant slug in response (likely superadmin)');
         }
 
-        return { success: true, slug: response.data.tenant?.slug, user: userObj, token: jwt };
+        return { success: true, slug: response.data.tenant?.slug, user: userObj, token: jwt, availableTenants: tenants };
       }
       console.error('AuthContext: Invalid response structure', response.data);
       return { success: false, error: 'Invalid response from server' };
@@ -204,12 +211,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
   };
 
   const switchTenant = async (slug: string) => {
-    if (slug === tenantSlug) return;
+    // Resolve the slug we're *actually* viewing. On a subdomain the hostname is
+    // the source of truth; the AuthContext tenantSlug (from localStorage) can lag
+    // behind after a redirect, which previously made clicks silently no-op.
+    const activeSlug = getTenantSlugFromHostname() || localStorage.getItem('tenantSlug') || tenantSlug;
+    if (slug === activeSlug) {
+      console.log('[switchTenant] Already on', slug, '- skipping');
+      return;
+    }
+    console.log('[switchTenant] Switching from', activeSlug, 'to', slug);
 
     try {
       setIsLoading(true);
-     
- const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5006'}/api`;
+
+      const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5006'}/api`;
 
       // Use the current token to authorize the switch
       const response = await api.post(
@@ -255,8 +270,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
           localStorage.setItem('availableTenants', JSON.stringify(response.data.availableTenants));
         }
 
-        // Reload to ensure fresh start in new context with correct subdomain and token handover
-        window.location.href = getTenantUrl(slug, '/dashboard', newToken);
+        // Reload into the new subdomain, transferring the session via a one-time
+        // code (no token in the URL).
+        await redirectToTenant(slug, '/dashboard', newToken);
       }
     } catch (error: any) {
       console.error('Failed to switch tenant', error);
@@ -290,7 +306,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
       const { authAPI } = await import('../services/api');
       const response = await authAPI.getProfile();
       const userData = response.data;
-      
+
+      // availableTenants isn't stored in the JWT and gets lost on the subdomain
+      // reload after add-store / switch-tenant, so rebuild the switcher from the
+      // profile response here.
+      const tenants = userData.availableTenants;
+      if (Array.isArray(tenants)) {
+        setAvailableTenants(tenants);
+        localStorage.setItem('availableTenants', JSON.stringify(tenants));
+      }
+
       setUser(userData);
       localStorage.setItem('user', JSON.stringify(userData));
       console.log('AuthContext: Profile refreshed');
@@ -305,48 +330,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
       setIsLoading(false);
       return;
     }
-    // Check for token in URL (for cross-subdomain session handover).
-    // Excluded here: routes that use their own `?token=` for an unrelated
-    // purpose (e.g. /reset-password's password-reset token is not a JWT).
-    const params = new URLSearchParams(window.location.search);
-    const isForeignTokenRoute = window.location.pathname.startsWith('/reset-password');
-    const urlToken = isForeignTokenRoute ? null : params.get('token');
-
-    if (urlToken) {
-      console.log('AuthContext: Found token in URL, initiating handover...');
-      localStorage.setItem('jwt', urlToken);
-      // Clean up URL instantly
-      params.delete('token');
-      const cleanUrl = window.location.pathname + (params.toString() ? `?${params.toString()}` : '') + window.location.hash;
-      window.history.replaceState({}, '', cleanUrl);
-    }
-
-    const stored = urlToken || localStorage.getItem('jwt');
+    // Cross-subdomain handover already happened synchronously in main.tsx (it
+    // exchanged the one-time ?h= code for the JWT and stored it), so here we just
+    // rehydrate from localStorage. When the jwt is present but there's no stored
+    // user (fresh subdomain — localStorage is per-origin), we decode the token.
+    const stored = localStorage.getItem('jwt');
     const storedSlug = localStorage.getItem('tenantSlug');
     const storedUser = localStorage.getItem('user');
     const storedActiveRole = localStorage.getItem('activeRole');
     const storedAvailableTenants = localStorage.getItem('availableTenants');
+    const isFreshHandover = !!stored && !storedUser;
 
     if (stored) {
       try {
         setToken(stored);
 
         let u: any = null;
-        if (urlToken) {
-          u = jwtDecode<JwtPayload>(stored);
-          console.log('AuthContext: Decoded fresh user from urlToken during handover', u.email);
-        } else if (storedUser) {
+        if (storedUser && !isFreshHandover) {
           u = JSON.parse(storedUser);
         } else {
+          // Fresh subdomain handover (or missing stored user): decode from the JWT.
           u = jwtDecode<JwtPayload>(stored);
+          console.log('AuthContext: Decoded user from token during handover', u.email);
         }
 
         if (u) {
           console.log('AuthContext: Successfully rehydrated user:', u.email, 'Tenant:', u.tenantSlug);
           setUser(u);
-          
+
           // Save back to localStorage if it was missing (e.g. during subdomain handover)
-          if (!storedUser || urlToken) {
+          if (!storedUser || isFreshHandover) {
             localStorage.setItem('user', JSON.stringify(u));
           }
 
@@ -354,7 +367,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
           const roles = u.roles || (u.role ? [u.role] : ['cashier']);
           const targetRole = (storedActiveRole && roles.includes(storedActiveRole)) ? storedActiveRole : roles[0];
           setActiveRole(targetRole);
-          if (!storedActiveRole || urlToken) {
+          if (!storedActiveRole || isFreshHandover) {
             localStorage.setItem('activeRole', targetRole);
           }
 
@@ -378,7 +391,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
         localStorage.removeItem('tenantSlug');
         localStorage.removeItem('user');
       }
-      
+
       // Attempt to refresh profile to get full user data (savedAddresses, etc.)
       refreshProfile();
     }

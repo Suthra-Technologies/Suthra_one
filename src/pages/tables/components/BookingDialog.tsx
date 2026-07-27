@@ -20,6 +20,9 @@ import {
     Close as CloseIcon
 } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
+import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { parseISO, format } from 'date-fns';
 import { bookingsAPI } from '../../../services/api';
 import { validatePhone, validateEmail } from '../../../utils/validation';
 import PhoneInput from '../../../components/PhoneInput';
@@ -41,7 +44,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
     settings
 }) => {
     const [bookingDate, setBookingDate] = useState(new Date().toISOString().split('T')[0]);
-    const [bookingTime, setBookingTime] = useState('19:00');
+    const [bookingTime, setBookingTime] = useState('');
     const [guestCount, setGuestCount] = useState(2);
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
@@ -66,7 +69,7 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
         setCustomerPhone('');
         setCustomerEmail('');
         setBookingDate(new Date().toISOString().split('T')[0]);
-        setBookingTime('19:00');
+        setBookingTime('');
         setBookingDuration(120);
         setOccasion('');
         setCustomOccasion('');
@@ -270,28 +273,37 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
             <DialogContent>
                 <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
                     <Stack direction="row" spacing={2}>
-                        <TextField
-                            label="Date"
-                            type="date"
-                            value={bookingDate}
-                            onChange={e => {
-                                setBookingDate(e.target.value);
-                                if (bookingTouched.date) validateBookingField('date', e.target.value);
-                            }}
-                            onBlur={() => {
-                                setBookingTouched(prev => ({ ...prev, date: true }));
-                                validateBookingField('date', bookingDate);
-                            }}
-                            error={bookingTouched.date && Boolean(bookingErrors.date)}
-                            helperText={bookingTouched.date && bookingErrors.date ? bookingErrors.date : ''}
-                            fullWidth
-                            InputLabelProps={{
-                                shrink: true,
-                                sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } }
-                            }}
-                            inputProps={{ min: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0] }}
-                            required
-                        />
+                        <LocalizationProvider dateAdapter={AdapterDateFns}>
+                            <DatePicker
+                                label="Date"
+                                value={parseISO(bookingDate)}
+                                onChange={(newValue: Date | null) => {
+                                    if (newValue && !isNaN(newValue.getTime())) {
+                                        const dateStr = format(newValue, 'yyyy-MM-dd');
+                                        setBookingDate(dateStr);
+                                        if (bookingTouched.date) validateBookingField('date', dateStr);
+                                    }
+                                }}
+                                format={customerDialCode === '1' || customerDialCode === '+1' ? 'MM/dd/yyyy' : 'dd/MM/yyyy'}
+                                minDate={new Date()}
+                                slotProps={{
+                                    textField: {
+                                        required: true,
+                                        fullWidth: true,
+                                        onBlur: () => {
+                                            setBookingTouched(prev => ({ ...prev, date: true }));
+                                            validateBookingField('date', bookingDate);
+                                        },
+                                        error: bookingTouched.date && Boolean(bookingErrors.date),
+                                        helperText: bookingTouched.date && bookingErrors.date ? bookingErrors.date : '',
+                                        InputLabelProps: {
+                                            shrink: true,
+                                            sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } }
+                                        }
+                                    }
+                                }}
+                            />
+                        </LocalizationProvider>
                         <FormControl fullWidth required error={bookingTouched.time && Boolean(bookingErrors.time)}>
                             <InputLabel id="booking-time-label" sx={{ '& .MuiFormLabel-asterisk': { color: 'error.main' } }}>Time</InputLabel>
                             <Select
