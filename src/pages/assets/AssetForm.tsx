@@ -109,23 +109,25 @@ const AssetForm: React.FC = () => {
         value: value as string
       }));
 
+      const lifecycle = asset.lifecycle || {};
+
       setForm({
         ...asset,
         metadata: metaArray,
         lifecycle: {
-          ...asset.lifecycle,
-          issueDate: asset.lifecycle.issueDate ? asset.lifecycle.issueDate.split('T')[0] : '',
-          purchaseDate: asset.lifecycle.purchaseDate ? asset.lifecycle.purchaseDate.split('T')[0] : '',
-          expiryDate: asset.lifecycle.expiryDate ? asset.lifecycle.expiryDate.split('T')[0] : '',
-          nextServiceDate: asset.lifecycle.nextServiceDate ? asset.lifecycle.nextServiceDate.split('T')[0] : '',
-          serviceRequired: asset.lifecycle.serviceRequired || false,
-          serviceFrequency: asset.lifecycle.serviceFrequency || 6,
-          serviceUnit: asset.lifecycle.serviceUnit || 'months',
-          reminderDaysForService: asset.lifecycle.reminderDaysForService || [30, 7, 1],
-          nextRenewalDate: asset.lifecycle.nextRenewalDate ? asset.lifecycle.nextRenewalDate.split('T')[0] : '',
-          renewalFrequency: asset.lifecycle.renewalFrequency || 365,
-          renewalUnit: asset.lifecycle.renewalUnit || 'days',
-          reminderDaysForRenewals: asset.lifecycle.reminderDaysForRenewals || [30, 7, 1],
+          ...lifecycle,
+          issueDate: lifecycle.issueDate ? lifecycle.issueDate.split('T')[0] : '',
+          purchaseDate: lifecycle.purchaseDate ? lifecycle.purchaseDate.split('T')[0] : '',
+          expiryDate: lifecycle.expiryDate ? lifecycle.expiryDate.split('T')[0] : '',
+          nextServiceDate: lifecycle.nextServiceDate ? lifecycle.nextServiceDate.split('T')[0] : '',
+          serviceRequired: lifecycle.serviceRequired || false,
+          serviceFrequency: lifecycle.serviceFrequency || 6,
+          serviceUnit: lifecycle.serviceUnit || 'months',
+          reminderDaysForService: lifecycle.reminderDaysForService || [30, 7, 1],
+          nextRenewalDate: lifecycle.nextRenewalDate ? lifecycle.nextRenewalDate.split('T')[0] : '',
+          renewalFrequency: lifecycle.renewalFrequency || 365,
+          renewalUnit: lifecycle.renewalUnit || 'days',
+          reminderDaysForRenewals: lifecycle.reminderDaysForRenewals || [30, 7, 1],
         },
         fileLinks: (asset.files || []).map((f: any) => f.url),
       });

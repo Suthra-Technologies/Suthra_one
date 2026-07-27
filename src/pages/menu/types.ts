@@ -25,6 +25,7 @@ export interface Variant {
 export interface ModifierOption {
     name: string;
     price: number;
+    qty?: number;                    // Serving quantity given to the customer for this option
     isDefault?: boolean;
     linkedMenuItem?: string;        // ObjectId of a MenuItem (deducts via its Recipe)
     linkedInventoryItem?: string;   // ObjectId of an InventoryItem (deducts directly)
@@ -44,7 +45,7 @@ export interface ModifierGroup {
 export interface ModifierGroupTemplate extends ModifierGroup {
     _id: string;
     isActive: boolean;
-    menuItem?: string;
+    menuItems?: string[];
 }
 
 export interface TrayOption {

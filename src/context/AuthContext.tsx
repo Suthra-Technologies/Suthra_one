@@ -305,10 +305,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
       setIsLoading(false);
       return;
     }
-    // Check for token in URL (for cross-subdomain session handover)
+    // Check for token in URL (for cross-subdomain session handover).
+    // Excluded here: routes that use their own `?token=` for an unrelated
+    // purpose (e.g. /reset-password's password-reset token is not a JWT).
     const params = new URLSearchParams(window.location.search);
-    const urlToken = params.get('token');
-    
+    const isForeignTokenRoute = window.location.pathname.startsWith('/reset-password');
+    const urlToken = isForeignTokenRoute ? null : params.get('token');
+
     if (urlToken) {
       console.log('AuthContext: Found token in URL, initiating handover...');
       localStorage.setItem('jwt', urlToken);

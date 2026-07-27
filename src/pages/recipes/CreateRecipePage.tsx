@@ -225,7 +225,7 @@ const CreateRecipePage: React.FC = () => {
                 menuItem: formData.menuItem._id || formData.menuItem,
                 ingredients: formData.ingredients.map(ing => ({
                     inventoryItem: (ing.inventoryItem as any)?._id || ing.inventoryItem,
-                    quantity: ing.quantity,
+                    quantity: parseFloat(ing.quantity as any) || 0,
                     unit: ing.unit,
                 })),
             };
@@ -386,8 +386,7 @@ const CreateRecipePage: React.FC = () => {
                                             label="Quantity"
                                             value={ingredient.quantity}
                                             onChange={(val) => {
-                                                const parsedVal = parseFloat(val);
-                                                handleIngredientChange(index, 'quantity', Math.max(0, isNaN(parsedVal) ? 0 : parsedVal));
+                                                handleIngredientChange(index, 'quantity', val);
                                             }}
                                             inputProps={{ min: 0 }}
                                             size="small"
@@ -445,8 +444,7 @@ const CreateRecipePage: React.FC = () => {
                                                 type="number"
                                                 value={ingredient.quantity}
                                                 onChange={(val) => {
-                                                    const parsedVal = parseFloat(val);
-                                                    handleIngredientChange(index, 'quantity', Math.max(0, isNaN(parsedVal) ? 0 : parsedVal));
+                                                    handleIngredientChange(index, 'quantity', val);
                                                 }}
                                                 inputProps={{ min: 0 }}
                                                 size="small"
@@ -550,7 +548,7 @@ const CreateRecipePage: React.FC = () => {
                                                     const recipeServings = formData.servingSize || 1;
                                                     const trayServings = opt.servingSize || 1;
                                                     const ratio = trayServings / recipeServings;
-                                                    const scaledQty = (ing.quantity * ratio).toFixed(2);
+                                                    const scaledQty = ((parseFloat(ing.quantity as any) || 0) * ratio).toFixed(2);
                                                     return <TableCell key={tIdx} align="right" sx={{ fontSize: isMobile ? '0.7rem' : 'inherit' }}><Box component="span" sx={{ fontWeight: 'bold' }}>{scaledQty}</Box> {ing.unit}</TableCell>;
                                                 })}
                                             </TableRow>

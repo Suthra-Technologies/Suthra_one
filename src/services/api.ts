@@ -84,7 +84,9 @@ api.interceptors.response.use(
       const publicPaths = ['customer/order', 'customer/catering', 'customer/book-table', 'customer/gallery', 'customer/about', 'customer/home'];
       const isPublicPath = publicPaths.some(p => window.location.pathname.includes(p));
 
-      if (!isPublicPath) {
+      const isPasswordReset = window.location.pathname.includes('/reset-password');
+
+      if (!isPublicPath && !isPasswordReset) {
         toast.error('Session expired. Please login again.');
         if (!window.location.pathname.includes('/login')) {
           window.location.href = '/login';
@@ -746,8 +748,8 @@ export const purchaseOrdersAPI = {
   getAnalytics: (params?: any) => api.get('/purchase-orders/analytics', { params }),
   extractInvoice: (formData: FormData) => api.post('/purchase-orders/extract-invoice', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
-    // Backend makes two sequential AI calls (60s each); cover that worst case.
-    timeout: 120000,
+    // Backend AI extraction observed up to ~6.5 min for a small invoice; must exceed backend's 600s timeout.
+    timeout: 610000,
   }),
 };
 
