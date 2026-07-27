@@ -4,7 +4,6 @@ import {
   Close as CloseIcon,
   Email as EmailIcon,
   Error as ErrorIcon,
-  ExpandMore as ExpandMoreIcon,
   Inventory as InventoryIcon,
   Kitchen as KitchenIcon,
   Map as MapIcon,
@@ -38,9 +37,6 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import {
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
   Checkbox,
   FormControlLabel,
   InputAdornment,
@@ -134,7 +130,6 @@ import CM from "../../assets/images/CM.png";
 import COUPONS_PIC from "../../assets/images/coupons.png";
 import cup from "../../assets/images/cup-image.jpg";
 import fqaimage from "../../assets/images/faq-image.jpg";
-import FAQ_SUPPORT_PIC from "../../assets/images/faq-restaurant-v2.png";
 import GUEST_ORDER_PIC from "../../assets/images/guest-order.png";
 import IM from "../../assets/images/IM.png";
 import KO from "../../assets/images/KO.png";
@@ -175,7 +170,6 @@ const MOCKUP_CASHIER_CATERING =
 const MOCKUP_GUEST_ORDER = GUEST_ORDER_PIC;
 const MOCKUP_KITCHEN_KDS =
   "https://images.unsplash.com/photo-1556740758-90de374c12ad?auto=format&fit=crop&w=1200&q=80"; // Tablet/Display in kitchen context for KDS
-const IMG_FAQ_SUPPORT = FAQ_SUPPORT_PIC;
 const IMG_SUPERADMIN =
   "https://images.unsplash.com/photo-1551434678-e076c2236033?auto=format&fit=crop&w=800&q=80";
 const IMG_KITCHEN =
@@ -719,6 +713,15 @@ const HomePage: React.FC = () => {
       setErrors({ phoneNumber: "Phone number must be exactly 10 digits" });
       return;
     }
+    if (!formData.preferredDate || !formData.preferredTime) {
+      setDialogState({
+        open: true,
+        type: "error",
+        title: "Preferred Slot Required",
+        message: "Please select a preferred date and time for your demo.",
+      });
+      return;
+    }
 
     setLoading(true);
     try {
@@ -730,9 +733,9 @@ const HomePage: React.FC = () => {
         email: formData.email,
         phonePrefix: formData.phonePrefix,
         phoneNumber: formData.phoneNumber,
-        preferredDateTime: formData.preferredDate && formData.preferredTime
-          ? new Date(`${formData.preferredDate}T${formData.preferredTime}:00`).toISOString()
-          : undefined
+        preferredDateTime: new Date(
+          `${formData.preferredDate}T${formData.preferredTime}:00`
+        ).toISOString()
       };
 
       const response = await fetch(`${apiUrl}/api/email/demo-request`, {
@@ -2133,69 +2136,6 @@ const HomePage: React.FC = () => {
         </Container>
       </Box>
 
-      {/* --- FAQ Section --- */}
-      <Box
-        sx={{
-          py: { xs: 8, md: 12 },
-          bgcolor: "#fff5ec",
-          backgroundImage: 'url("/src/assets/images/bg.png")',
-        }}
-      >
-        <Container maxWidth="md">
-          {/* SECTION TITLE */}
-          <Typography variant="h4" fontWeight={900} align="center" mb={6}>
-            FAQ’s
-          </Typography>
-
-          {/* FAQ LIST */}
-          {[
-            {
-              q: "Is the system 100% GST Compliant?",
-              a: "Yes, our POS is fully updated with the latest GST norms. It automatically calculates CGST & SGST and generates compliant tax invoices.",
-            },
-            {
-              q: "Can I generate tax reports for filing?",
-              a: "Absolutely. You can download detailed GSTR-1 and GSTR-3B summaries instantly to simplify your monthly filings.",
-            },
-            {
-              q: "Is the system cloud-based or local?",
-              a: "NexZen POS is a hybrid system. You get the speed of local hardware with the security and accessibility of cloud-based reporting.",
-            },
-            {
-              q: "Can I use my existing hardware?",
-              a: "Our software is compatible with most Android/iOS tablets and Windows terminals. Contact us for a full compatibility check.",
-            },
-          ].map((faq, index) => (
-            <Accordion
-              key={index}
-              elevation={0}
-              disableGutters
-              sx={{
-                bgcolor: "transparent",
-                borderBottom: "1px solid #e6d9cd",
-                "&:before": { display: "none" },
-              }}
-            >
-              <AccordionSummary
-                expandIcon={<ExpandMoreIcon />}
-                sx={{
-                  px: 0,
-                  py: 2,
-                }}
-              >
-                <Typography fontWeight={600}>{faq.q}</Typography>
-              </AccordionSummary>
-
-              <AccordionDetails sx={{ px: 0, pb: 3 }}>
-                <Typography color="text.secondary" lineHeight={1.7}>
-                  {faq.a}
-                </Typography>
-              </AccordionDetails>
-            </Accordion>
-          ))}
-        </Container>
-      </Box>
-
       {/* --- Demo Request & Testimonial Section --- */}
       <Box
         id="demo-form"
@@ -2235,6 +2175,11 @@ const HomePage: React.FC = () => {
                   p: { xs: 4, md: 6 },
                   borderRadius: 6,
                   bgcolor: "#ffffff",
+                  // Keep every required-field asterisk red, including while focused
+                  "& .MuiFormLabel-asterisk": { color: "#d32f2f" },
+                  "& .MuiFormLabel-root.Mui-focused .MuiFormLabel-asterisk": {
+                    color: "#d32f2f",
+                  },
                 }}
               >
                 <Typography variant="h4" fontWeight={900} gutterBottom>
@@ -2319,9 +2264,10 @@ const HomePage: React.FC = () => {
                   <Grid item xs={12} sm={6}>
                     <TextField
                       fullWidth
+                      required
                       type="date"
                       name="preferredDate"
-                      label="Preferred Date (Optional)"
+                      label="Preferred Date"
                       value={formData.preferredDate}
                       onChange={handleFormChange}
                       InputLabelProps={{ shrink: true }}
@@ -2332,6 +2278,7 @@ const HomePage: React.FC = () => {
                   <Grid item xs={12} sm={6}>
                     <TextField
                       fullWidth
+                      required
                       select
                       name="preferredTime"
                       label={fetchingSlots ? "Loading slots..." : `Preferred Time (${getEasternTzAbbreviation()})`}

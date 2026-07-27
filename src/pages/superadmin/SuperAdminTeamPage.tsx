@@ -80,6 +80,17 @@ const defaultForm = {
   roles: ['superadmin'] as string[],
 };
 
+// Each role implies access to its own module, so selecting the role enables it automatically
+const ROLE_REQUIRED_MODULE: Record<string, string> = {
+  sales_admin: 'demo_requests',
+  support_admin: 'tickets',
+};
+
+// Names: letters plus the separators that appear in real names (space, hyphen, apostrophe)
+const sanitizeName = (value: string) => value.replace(/[^a-zA-Z\s'-]/g, '').slice(0, 50);
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
+
 const SuperAdminTeamPage: React.FC = () => {
   const { user } = useAuth();
   const [members, setMembers] = useState<TeamMember[]>([]);
@@ -138,7 +149,12 @@ const SuperAdminTeamPage: React.FC = () => {
 
   const handleOpenCreate = () => {
     setEditing(null);
-    setForm(defaultForm);
+    // Mirror the role the Select shows by default, along with the module it implies
+    setForm({
+      ...defaultForm,
+      roles: ['superadmin', 'sales_admin'],
+      permissions: [{ module: ROLE_REQUIRED_MODULE.sales_admin, actions: ['full'] }],
+    });
     setShowPassword(false);
     setDialogOpen(true);
   };
@@ -177,8 +193,20 @@ const SuperAdminTeamPage: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (!form.firstName || !form.lastName || !form.email) {
+    const firstName = form.firstName.trim();
+    const lastName = form.lastName.trim();
+    const email = form.email.trim();
+
+    if (!firstName || !lastName || !email) {
       toast.error('First name, last name, and email are required');
+      return;
+    }
+    if (!EMAIL_REGEX.test(email)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+    if (form.phone && form.phone.length < 10) {
+      toast.error('Phone number must be at least 10 digits');
       return;
     }
     if (!editing && !form.password) {
@@ -190,8 +218,8 @@ const SuperAdminTeamPage: React.FC = () => {
       setSaving(true);
       if (editing) {
         const updateData: any = {
-          firstName: form.firstName,
-          lastName: form.lastName,
+          firstName,
+          lastName,
           phone: form.phone,
           permissions: form.permissions,
           roles: form.roles,
@@ -200,7 +228,7 @@ const SuperAdminTeamPage: React.FC = () => {
         await superAPI.updateTeamMember(editing._id, updateData);
         toast.success('Team member updated successfully');
       } else {
-        await superAPI.createTeamMember(form);
+        await superAPI.createTeamMember({ ...form, firstName, lastName, email });
         toast.success('Team member created successfully');
       }
       setDialogOpen(false);
@@ -413,31 +441,36 @@ const SuperAdminTeamPage: React.FC = () => {
             <Grid item xs={6}>
               <TextField
                 label="First Name" fullWidth size="small" required
+                inputProps={{ maxLength: 50 }}
                 value={form.firstName}
-                onChange={e => setForm(prev => ({ ...prev, firstName: e.target.value }))}
+                onChange={e => setForm(prev => ({ ...prev, firstName: sanitizeName(e.target.value) }))}
               />
             </Grid>
             <Grid item xs={6}>
               <TextField
                 label="Last Name" fullWidth size="small" required
+                inputProps={{ maxLength: 50 }}
                 value={form.lastName}
-                onChange={e => setForm(prev => ({ ...prev, lastName: e.target.value }))}
+                onChange={e => setForm(prev => ({ ...prev, lastName: sanitizeName(e.target.value) }))}
               />
             </Grid>
             <Grid item xs={12}>
               <TextField
                 label="Email" fullWidth size="small" required
                 type="email"
+                inputProps={{ maxLength: 100 }}
                 value={form.email}
-                onChange={e => setForm(prev => ({ ...prev, email: e.target.value }))}
+                onChange={e => setForm(prev => ({ ...prev, email: e.target.value.replace(/\s/g, '').toLowerCase() }))}
                 disabled={!!editing}
               />
             </Grid>
             <Grid item xs={6}>
               <TextField
                 label="Phone" fullWidth size="small"
+                type="tel"
+                inputProps={{ inputMode: 'numeric', pattern: '[0-9]*', maxLength: 15 }}
                 value={form.phone}
-                onChange={e => setForm(prev => ({ ...prev, phone: e.target.value }))}
+                onChange={e => setForm(prev => ({ ...prev, phone: e.target.value.replace(/\D/g, '').slice(0, 15) }))}
               />
             </Grid>
             <Grid item xs={6}>
@@ -469,7 +502,19 @@ const SuperAdminTeamPage: React.FC = () => {
                     let rolesArray = ['superadmin'];
                     if (val === 'sales_admin') rolesArray = ['superadmin', 'sales_admin'];
                     else if (val === 'support_admin') rolesArray = ['superadmin', 'support_admin'];
-                    setForm(prev => ({ ...prev, roles: rolesArray }));
+                    const requiredModule = ROLE_REQUIRED_MODULE[val];
+                    setForm(prev => {
+                      // Drop the module implied by the previous role, then enable the new one,
+                      // so switching roles swaps the module instead of accumulating both
+                      const previousRoleModules = (prev.roles || [])
+                        .map(role => ROLE_REQUIRED_MODULE[role])
+                        .filter(m => m && m !== requiredModule);
+                      const permissions = prev.permissions.filter(p => !previousRoleModules.includes(p.module));
+                      if (requiredModule && !permissions.some(p => p.module === requiredModule)) {
+                        permissions.push({ module: requiredModule, actions: ['full'] });
+                      }
+                      return { ...prev, roles: rolesArray, permissions };
+                    });
                   }}
                 >
                   {/* <MenuItem value="superadmin">General Admin</MenuItem> */}
