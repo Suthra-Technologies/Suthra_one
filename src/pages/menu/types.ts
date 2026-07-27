@@ -27,7 +27,6 @@ export interface ModifierOption {
     price: number;
     qty?: number;                    // Serving quantity given to the customer for this option
     isDefault?: boolean;
-    linkedMenuItem?: string;        // ObjectId of a MenuItem (deducts via its Recipe)
     linkedInventoryItem?: string;   // ObjectId of an InventoryItem (deducts directly)
     consumptionQty?: number;        // Qty to deduct per selection (default: 1)
     consumptionUnit?: string;       // Unit override

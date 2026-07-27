@@ -22,6 +22,7 @@ const TenantOrdersPage: React.FC = () => {
 
   const [rows, setRows] = useState<any[]>([]);
   const [total, setTotal] = useState(0);
+  const [totalProcessingFee, setTotalProcessingFee] = useState(0);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(20);
   const [loading, setLoading] = useState(false);
@@ -42,6 +43,7 @@ const TenantOrdersPage: React.FC = () => {
       });
       setRows(res.data.orders || []);
       setTotal(res.data.total || 0);
+      setTotalProcessingFee(res.data.totalProcessingFee || 0);
     } catch {
       toast.error('Failed to load orders');
     } finally {
@@ -61,14 +63,27 @@ const TenantOrdersPage: React.FC = () => {
 
   return (
     <Box sx={{ px: { xs: 1.5, sm: 3 }, pb: 4, pt: { xs: 0.5, sm: 3 } }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-        <IconButton onClick={() => navigate(`/superadmin/tenants/${tenantId}`, { state: { tenant } })} sx={{ mr: 2 }}>
-          <ArrowBackIcon />
-        </IconButton>
-        <ShoppingBagIcon sx={{ mr: 1, color: '#ed6c02' }} />
-        <Typography variant="h5" fontWeight="bold">
-          Manage Orders — {tenant?.name || 'Store'}
-        </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 2 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <IconButton onClick={() => navigate(`/superadmin/tenants/${tenantId}`, { state: { tenant } })} sx={{ mr: 2 }}>
+            <ArrowBackIcon />
+          </IconButton>
+          <ShoppingBagIcon sx={{ mr: 1, color: '#ed6c02' }} />
+          <Typography variant="h5" fontWeight="bold">
+            Manage Orders — {tenant?.name || 'Store'}
+          </Typography>
+        </Box>
+
+        <Card elevation={0} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 3, minWidth: 220 }}>
+          <CardContent sx={{ py: 1.5, px: 2.5, '&:last-child': { pb: 1.5 } }}>
+            <Typography variant="caption" color="text.secondary" fontWeight={600} textTransform="uppercase">
+              Total Processing Fee
+            </Typography>
+            <Typography variant="h5" fontWeight="bold" color="primary.main">
+              {fmt(totalProcessingFee)}
+            </Typography>
+          </CardContent>
+        </Card>
       </Box>
 
       <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
@@ -111,6 +126,7 @@ const TenantOrdersPage: React.FC = () => {
                 <TableCell sx={{ fontWeight: 700 }}>Type</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Customer</TableCell>
                 <TableCell sx={{ fontWeight: 700 }} align="right">Amount</TableCell>
+                <TableCell sx={{ fontWeight: 700 }} align="right">Processing</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Status</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Delivery</TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>Payment</TableCell>
@@ -119,13 +135,13 @@ const TenantOrdersPage: React.FC = () => {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
                     <CircularProgress size={28} />
                   </TableCell>
                 </TableRow>
               ) : rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                  <TableCell colSpan={9} align="center" sx={{ py: 4 }}>
                     <Typography color="text.secondary">No orders found for this store.</Typography>
                   </TableCell>
                 </TableRow>
@@ -148,7 +164,63 @@ const TenantOrdersPage: React.FC = () => {
                     <Typography variant="inherit" noWrap sx={{ maxWidth: 140 }}>{row.customer?.name || 'Guest'}</Typography>
                     {row.customer?.phone && <Typography variant="caption" color="text.secondary" display="block">{row.customer.phone}</Typography>}
                   </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.85rem', color: 'primary.main' }}>{fmt(row.totalAmount)}</TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700, fontSize: '0.85rem', color: 'primary.main' }}>
+                    <Tooltip
+                      title={
+                        <Stack spacing={0.4} sx={{ py: 0.5 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
+                            <span>Subtotal</span><span>{fmt(row.subtotal)}</span>
+                          </Box>
+                          {row.tax?.amount > 0 && (
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
+                              <span>Tax</span><span>{fmt(row.tax.amount)}</span>
+                            </Box>
+                          )}
+                          {row.processingFee > 0 && (
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
+                              <span>Processing Fee</span><span>{fmt(row.processingFee)}</span>
+                            </Box>
+                          )}
+                          {row.serviceCharge?.amount > 0 && (
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
+                              <span>Service Charge ({row.serviceCharge.rate}%)</span><span>{fmt(row.serviceCharge.amount)}</span>
+                            </Box>
+                          )}
+                          {row.discount?.amount > 0 && (
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
+                              <span>Discount{row.discount?.couponCode ? ` (${row.discount.couponCode})` : ''}</span><span>-{fmt(row.discount.amount)}</span>
+                            </Box>
+                          )}
+                          {row.rewardDiscount > 0 && (
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
+                              <span>Points Discount</span><span>-{fmt(row.rewardDiscount)}</span>
+                            </Box>
+                          )}
+                          {row.deliveryCharge > 0 && (
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
+                              <span>Delivery Charge</span><span>{fmt(row.deliveryCharge)}</span>
+                            </Box>
+                          )}
+                          {row.tip > 0 && (
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2 }}>
+                              <span>Tip</span><span>{fmt(row.tip)}</span>
+                            </Box>
+                          )}
+                          <Divider sx={{ borderColor: 'rgba(255,255,255,0.3)', my: 0.3 }} />
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', gap: 2, fontWeight: 700 }}>
+                            <span>Total</span><span>{fmt(row.totalAmount)}</span>
+                          </Box>
+                        </Stack>
+                      }
+                      arrow
+                      placement="left"
+                    >
+                      <Box component="span" sx={{ borderBottom: '1px dashed', borderColor: 'primary.main', cursor: 'help' }}>
+                        {fmt(row.totalAmount)}
+                      </Box>
+                    </Tooltip>
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontSize: '0.78rem' }}>{fmt(row.processingFee)}</TableCell>
                   <TableCell>
                     <Chip
                       label={getStatusLabel(row.status)}
