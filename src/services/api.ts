@@ -4,6 +4,7 @@ import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { BRAND_CONFIG } from '../config/brandConfig';
 import { Capacitor } from '@capacitor/core';
+import { handleRequestStart, handleRequestEnd } from '../utils/globalLoader';
 
 const envApiBase = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
 const brandApiBase = (BRAND_CONFIG.apiBaseUrl as string | undefined)?.trim();
@@ -50,9 +51,11 @@ const api: AxiosInstance = axios.create({
   },
 });
 
-// Request interceptor – attach JWT if present
+// Request interceptor - attach JWT if present
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    handleRequestStart(config.method);
+
     const token = localStorage.getItem('jwt');
     if (token && token !== 'undefined' && token !== '' && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -64,10 +67,15 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor – generic error handling
+// Response interceptor - generic error handling
 api.interceptors.response.use(
-  (response: AxiosResponse) => response,
+  (response: AxiosResponse) => {
+    handleRequestEnd(response.config.method);
+    return response;
+  },
   (error) => {
+    handleRequestEnd(error.config?.method, true);
+    
     const message = error.response?.data?.message || error.message || 'An error occurred';
     if (error.response?.status === 401) {
       // Mobile-only: keep local session until explicit logout.

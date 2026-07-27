@@ -286,15 +286,23 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                             const isUS = customerDialCode === '1' || customerDialCode === '+1';
                             const final = (isUS && cleaned.length > 10) ? cleaned.slice(0, 10) : cleaned;
                             setCustomerPhone(final);
-                            if (customerPhoneTouched && final) {
-                                const validation = validatePhone(final, customerDialCode);
-                                setCustomerPhoneError(validation.isValid ? '' : (validation.message || ''));
+                            if (customerPhoneTouched) {
+                                if (final && final.trim().length > 0) {
+                                    const validation = validatePhone(final, customerDialCode);
+                                    setCustomerPhoneError(validation.isValid ? '' : (validation.message || ''));
+                                } else {
+                                    setCustomerPhoneError('');
+                                }
                             }
                         }}
                         onBlur={() => {
                             setCustomerPhoneTouched(true);
-                            const validation = validatePhone(customerPhone, customerDialCode);
-                            setCustomerPhoneError(validation.isValid ? '' : (validation.message || ''));
+                            if (customerPhone && customerPhone.trim().length > 0) {
+                                const validation = validatePhone(customerPhone, customerDialCode);
+                                setCustomerPhoneError(validation.isValid ? '' : (validation.message || ''));
+                            } else {
+                                setCustomerPhoneError('');
+                            }
                         }}
                         error={customerPhoneTouched && !!customerPhoneError}
                         helperText={suggestedPhone ? (
@@ -314,7 +322,6 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                             </Box>
                         ) : (customerPhoneTouched && customerPhoneError)}
                         disabled={readOnly || user?.role === 'customer'}
-                        required
                         dialCode={customerDialCode}
                         onDialCodeChange={setCustomerDialCode}
                     />

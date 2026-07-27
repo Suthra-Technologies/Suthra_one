@@ -1259,12 +1259,16 @@ const POSPage: React.FC = () => {
             hasError = true;
         }
 
-        // Validate phone
-        const phoneValidation = validatePhone(customerPhone, customerDialCode);
-        if (!phoneValidation.isValid) {
-            setCustomerPhoneTouched(true);
-            setCustomerPhoneError(phoneValidation.message || 'Invalid phone number');
-            hasError = true;
+        // Validate phone (optional)
+        if (customerPhone && customerPhone.trim().length > 0) {
+            const phoneValidation = validatePhone(customerPhone, customerDialCode);
+            if (!phoneValidation.isValid) {
+                setCustomerPhoneTouched(true);
+                setCustomerPhoneError(phoneValidation.message || 'Invalid phone number');
+                hasError = true;
+            } else {
+                setCustomerPhoneError('');
+            }
         } else {
             setCustomerPhoneError('');
         }
