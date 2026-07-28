@@ -30,11 +30,35 @@ const OnboardingBanner: React.FC = () => {
     checkMenu();
   }, [activeRole]);
 
-  if (activeRole !== 'admin') return null;
-  if (loading || hasMenu === null) return null; // Wait until data is fully loaded
-
   const isSettingsIncomplete = !settings?.restaurant?.address || !settings?.restaurant?.logo;
   const isMenuIncomplete = hasMenu === false;
+
+  useEffect(() => {
+    if (activeRole !== 'admin') return;
+    if (loading || hasMenu === null) return;
+
+    const currentPath = location.pathname;
+    const settingsPath = getRelativePath('/settings');
+    const menuPath = getRelativePath('/menu');
+
+    if (isSettingsIncomplete && currentPath !== settingsPath) {
+      navigate(settingsPath, { replace: true });
+    } else if (!isSettingsIncomplete && isMenuIncomplete && currentPath !== menuPath) {
+      navigate(menuPath, { replace: true });
+    }
+  }, [
+    activeRole,
+    loading,
+    hasMenu,
+    isSettingsIncomplete,
+    isMenuIncomplete,
+    location.pathname,
+    navigate,
+    getRelativePath
+  ]);
+
+  if (activeRole !== 'admin') return null;
+  if (loading || hasMenu === null) return null; // Wait until data is fully loaded
 
   if (!isSettingsIncomplete && !isMenuIncomplete) return null;
 

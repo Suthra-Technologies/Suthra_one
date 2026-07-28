@@ -84,7 +84,7 @@ export interface IMenuItem {
     availableDays?: string[];
     isWeeklyScheduleEnabled?: boolean;
     availabilityType?: 'highlight' | 'available_only';
-    displayOption?: 'normal' | 'weekly_special' | 'todays_special';
+    displayOption?: 'normal' | 'weekly_special' | 'weekend_special' | 'todays_special';
     validFrom?: Date | null;
     validTo?: Date | null;
     priority?: number;

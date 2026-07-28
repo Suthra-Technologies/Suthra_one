@@ -497,6 +497,7 @@ const mergeSettingsWithDefaults = (defaults: SettingsState, partial: Partial<Set
         autoPrint: fetchedSystem.autoPrint ?? defaults.system.autoPrint,
         googleMapsApiKey: fetchedSystem.googleMapsApiKey ?? defaults.system.googleMapsApiKey,
         posPaymentMethods: {
+            ...(fetchedSystem.posPaymentMethods || {}),
             cash: fetchedSystem.posPaymentMethods?.cash ?? (defaults.system.posPaymentMethods?.cash ?? true),
             card: fetchedSystem.posPaymentMethods?.card ?? (defaults.system.posPaymentMethods?.card ?? true),
             zelle: fetchedSystem.posPaymentMethods?.zelle ?? (defaults.system.posPaymentMethods?.zelle ?? true),
@@ -658,6 +659,7 @@ const SettingsPage: React.FC = () => {
 
     const [stripeStatus, setStripeStatus] = useState<{ stripeMode?: string; hasPublishableKey?: boolean; hasSecretKey?: boolean; hasWebhookSecret?: boolean }>({});
     const [usersList, setUsersList] = useState<any[]>([]);
+    const [newPaymentMethod, setNewPaymentMethod] = useState<string>('');
     const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
     const [pairedAgents, setPairedAgents] = useState<any[]>([]);
     const [agentsLoading, setAgentsLoading] = useState(false);
@@ -1950,18 +1952,83 @@ const SettingsPage: React.FC = () => {
                                 <Typography variant="subtitle2" color="text.secondary" gutterBottom sx={{ textTransform: 'uppercase', letterSpacing: 1 }}>
                                     Storefront Preview
                                 </Typography>
-                                <Box sx={{ mt: 2, mb: 3 }}>
-                                    {(settings.restaurant.logo || (user?.tenant as any)?.logo) ? (
-                                        <Avatar
-                                            src={settings.restaurant.logo || (user?.tenant as any)?.logo}
-                                            alt="Logo"
-                                            sx={{ width: 100, height: 100, mx: 'auto', boxShadow: '0 8px 16px rgba(0,0,0,0.1)', border: '4px solid #fff' }}
+                                <Box sx={{ mt: 2, mb: 3, display: 'flex', justifyContent: 'center' }}>
+                                    <Box
+                                        component="label"
+                                        sx={{
+                                            cursor: 'pointer',
+                                            position: 'relative',
+                                            borderRadius: '50%',
+                                            width: 100,
+                                            height: 100,
+                                            '&:hover .edit-overlay': {
+                                                opacity: 1
+                                            }
+                                        }}
+                                    >
+                                        {(settings.restaurant.logo || (user?.tenant as any)?.logo) ? (
+                                            <Avatar
+                                                src={settings.restaurant.logo || (user?.tenant as any)?.logo}
+                                                alt="Logo"
+                                                sx={{ width: 100, height: 100, boxShadow: '0 8px 16px rgba(0,0,0,0.1)', border: '4px solid #fff' }}
+                                            />
+                                        ) : (
+                                            <Avatar sx={{ width: 100, height: 100, bgcolor: 'primary.main', fontSize: '2rem' }}>
+                                                {settings.restaurant.name?.charAt(0) || 'R'}
+                                            </Avatar>
+                                        )}
+                                        <Box
+                                            className="edit-overlay"
+                                            sx={{
+                                                position: 'absolute',
+                                                top: 0,
+                                                left: 0,
+                                                width: '100%',
+                                                height: '100%',
+                                                bgcolor: 'rgba(0, 0, 0, 0.4)',
+                                                borderRadius: '50%',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                opacity: 0,
+                                                transition: 'opacity 0.2s ease-in-out',
+                                            }}
+                                        >
+                                            <EditIcon sx={{ color: '#fff', fontSize: 28 }} />
+                                        </Box>
+                                        <input
+                                            type="file"
+                                            hidden
+                                            accept="image/*"
+                                            onChange={async (e: React.ChangeEvent<HTMLInputElement>) => {
+                                                const file = e.target.files?.[0];
+                                                if (file) {
+                                                    if (file.size > 15 * 1024 * 1024) {
+                                                        import('react-hot-toast').then(m => m.toast.error('Image upload failed: Image size exceeds the 15MB limit.'));
+                                                        return;
+                                                    }
+                                                    try {
+                                                        const { toast } = await import('react-hot-toast');
+                                                        toast.loading('Uploading logo...');
+                                                        const { uploadAPI } = await import('../../services/api');
+                                                        const response = await uploadAPI.uploadImage(file);
+                                                        toast.dismiss();
+                                                        toast.success('Logo uploaded successfully!');
+                                                        handleInputChange('restaurant', 'logo', response.data.url);
+                                                    } catch (error: any) {
+                                                        const { toast } = await import('react-hot-toast');
+                                                        toast.dismiss();
+                                                        if (error?.response?.status === 413) {
+                                                            toast.error('Image upload failed: Image size exceeds the 15MB limit.');
+                                                        } else {
+                                                            toast.error('Failed to upload logo');
+                                                        }
+                                                        console.error(error);
+                                                    }
+                                                }
+                                            }}
                                         />
-                                    ) : (
-                                        <Avatar sx={{ width: 100, height: 100, mx: 'auto', bgcolor: 'primary.main', fontSize: '2rem' }}>
-                                            {settings.restaurant.name?.charAt(0) || 'R'}
-                                        </Avatar>
-                                    )}
+                                    </Box>
                                 </Box>
                                 <Typography variant="h5" fontWeight="bold">
                                     {settings.restaurant.name || 'Your Restaurant Name'}
@@ -2005,6 +2072,7 @@ const SettingsPage: React.FC = () => {
                                 label="City"
                                 value={settings.restaurant.city || ''}
                                 onChange={(e) => handleInputChange('restaurant', 'city', e.target.value)}
+                                InputProps={{ readOnly: true, sx: { bgcolor: 'action.hover' } }}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
@@ -2013,6 +2081,7 @@ const SettingsPage: React.FC = () => {
                                 label="State"
                                 value={settings.restaurant.state || ''}
                                 onChange={(e) => handleInputChange('restaurant', 'state', e.target.value)}
+                                InputProps={{ readOnly: true, sx: { bgcolor: 'action.hover' } }}
                             />
                         </Grid>
                         <Grid size={{ xs: 12, md: 4 }}>
@@ -2021,6 +2090,7 @@ const SettingsPage: React.FC = () => {
                                 label="Zip / Pincode"
                                 value={settings.restaurant.zipCode || ''}
                                 onChange={(e) => handleInputChange('restaurant', 'zipCode', e.target.value)}
+                                InputProps={{ readOnly: true, sx: { bgcolor: 'action.hover' } }}
                             />
                         </Grid>
                         <Grid size={{ xs: 12 }}>
@@ -2043,10 +2113,11 @@ const SettingsPage: React.FC = () => {
                                             const file = e.target.files?.[0];
                                             if (file) {
                                                 if (file.size > 15 * 1024 * 1024) {
-                                                    toast.error('Image upload failed: Image size exceeds the 15MB limit.');
+                                                    import('react-hot-toast').then(m => m.toast.error('Image upload failed: Image size exceeds the 15MB limit.'));
                                                     return;
                                                 }
                                                 try {
+                                                    const { toast } = await import('react-hot-toast');
                                                     toast.loading('Uploading logo...');
                                                     const { uploadAPI } = await import('../../services/api');
                                                     const response = await uploadAPI.uploadImage(file);
@@ -2054,6 +2125,7 @@ const SettingsPage: React.FC = () => {
                                                     toast.success('Logo uploaded successfully!');
                                                     handleInputChange('restaurant', 'logo', response.data.url);
                                                 } catch (error: any) {
+                                                    const { toast } = await import('react-hot-toast');
                                                     toast.dismiss();
                                                     if (error?.response?.status === 413) {
                                                         toast.error('Image upload failed: Image size exceeds the 15MB limit.');
@@ -2076,6 +2148,7 @@ const SettingsPage: React.FC = () => {
                                 />
                             </Stack>
                         </Grid>
+
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 2 }} />
                             <Typography variant="subtitle2" gutterBottom>
@@ -3635,35 +3708,100 @@ const SettingsPage: React.FC = () => {
 
                         <Paper variant="outlined" sx={{ p: 3, borderRadius: 3, mb: 2 }}>
                             <Grid container spacing={2}>
-                                {['cash', 'card', 'zelle', 'venmo', 'cheque'].map((method) => (
-                                    <Grid size={{ xs: 6, sm: 3 }} key={method}>
-                                        <FormControlLabel
-                                            control={
-                                                <Checkbox
-                                                    checked={settings.system.posPaymentMethods?.[method as keyof typeof settings.system.posPaymentMethods] ?? true}
-                                                    onChange={(e) => {
-                                                        const isChecked = e.target.checked;
-                                                        setSettings(prev => {
-                                                            const currentMethods = prev.system.posPaymentMethods || { cash: true, card: true, zelle: true, venmo: true, cheque: true };
-                                                            return {
-                                                                ...prev,
-                                                                system: {
-                                                                    ...prev.system,
-                                                                    posPaymentMethods: {
-                                                                        ...currentMethods,
-                                                                        [method]: isChecked
+                                {(() => {
+                                    const isIndia = settings?.restaurant?.country?.toLowerCase() === 'india';
+                                    const defaultMethods = isIndia ? ['cash', 'card', 'cheque', 'phonepe', 'gpay', 'paytm'] : ['cash', 'card', 'zelle', 'venmo', 'cheque'];
+                                    const standardMethods = ['cash', 'card', 'zelle', 'venmo', 'cheque', 'creditCard', 'debitCard', 'phonepe', 'gpay', 'paytm'];
+                                    const customKeys = Object.keys(settings.system.posPaymentMethods || {}).filter(k => !standardMethods.includes(k));
+                                    const allDisplayMethods = [...new Set([...defaultMethods, ...customKeys])];
+                                    
+                                    return allDisplayMethods.map((method) => (
+                                        <Grid size={{ xs: 6, sm: 3 }} key={method}>
+                                            <FormControlLabel
+                                                control={
+                                                    <Checkbox
+                                                        checked={settings.system.posPaymentMethods?.[method] ?? true}
+                                                        onChange={(e) => {
+                                                            const isChecked = e.target.checked;
+                                                            setSettings(prev => {
+                                                                const currentMethods = prev.system.posPaymentMethods || { cash: true, card: true, zelle: true, venmo: true, cheque: true };
+                                                                return {
+                                                                    ...prev,
+                                                                    system: {
+                                                                        ...prev.system,
+                                                                        posPaymentMethods: {
+                                                                            ...currentMethods,
+                                                                            [method]: isChecked
+                                                                        }
                                                                     }
-                                                                }
-                                                            };
-                                                        });
-                                                    }}
-                                                />
-                                            }
-                                            label={<Typography sx={{ textTransform: 'capitalize' }}>{method}</Typography>}
-                                        />
-                                    </Grid>
-                                ))}
+                                                                };
+                                                            });
+                                                        }}
+                                                    />
+                                                }
+                                                label={
+                                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                        <Typography sx={{ textTransform: 'capitalize' }}>{method}</Typography>
+                                                        {customKeys.includes(method) && (
+                                                            <IconButton
+                                                                size="small"
+                                                                color="error"
+                                                                onClick={(e) => {
+                                                                    e.preventDefault(); // Prevent toggling the checkbox
+                                                                    setSettings(prev => {
+                                                                        const currentMethods = { ...(prev.system.posPaymentMethods || {}) };
+                                                                        delete currentMethods[method];
+                                                                        return {
+                                                                            ...prev,
+                                                                            system: {
+                                                                                ...prev.system,
+                                                                                posPaymentMethods: currentMethods
+                                                                            }
+                                                                        };
+                                                                    });
+                                                                }}
+                                                                sx={{ ml: 0.5, p: 0.5 }}
+                                                            >
+                                                                <DeleteIcon fontSize="small" />
+                                                            </IconButton>
+                                                        )}
+                                                    </Box>
+                                                }
+                                            />
+                                        </Grid>
+                                    ));
+                                })()}
                             </Grid>
+
+                            <Box sx={{ mt: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
+                                <TextField
+                                    size="small"
+                                    placeholder="Add Custom Method (e.g. CashApp)"
+                                    value={newPaymentMethod}
+                                    onChange={(e) => setNewPaymentMethod(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ''))}
+                                    sx={{ maxWidth: 300 }}
+                                />
+                                <Button
+                                    variant="outlined"
+                                    onClick={() => {
+                                        if (newPaymentMethod.trim()) {
+                                            setSettings(prev => ({
+                                                ...prev,
+                                                system: {
+                                                    ...prev.system,
+                                                    posPaymentMethods: {
+                                                        ...(prev.system.posPaymentMethods || {}),
+                                                        [newPaymentMethod.trim()]: true
+                                                    }
+                                                }
+                                            }));
+                                            setNewPaymentMethod('');
+                                        }
+                                    }}
+                                >
+                                    Add Method
+                                </Button>
+                            </Box>
 
                             {/* Card sub-types — shown only when Card is enabled */}
                             {(settings.system.posPaymentMethods?.card ?? true) && (

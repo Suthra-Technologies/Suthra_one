@@ -35,6 +35,7 @@ import {
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '../context/SettingsContext';
+import { getActivePaymentMethods } from '../utils/orderWorkflows';
 import { ordersAPI, rewardsAPI } from '../services/api';
 import { openCashDrawer } from '../utils/cashDrawer';
 import PaymentModal from './PaymentModal';
@@ -54,44 +55,31 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
 }) => {
     const { formatCurrency, settings } = useSettings();
     const [order, setOrder] = useState<any>(initialOrder);
-    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'zelle' | 'venmo' | 'cheque' | 'phonepe' | 'gpay' | 'paytm'>('cash');
+    const [paymentMethod, setPaymentMethod] = useState<string>('cash');
 
     const isIndia = settings?.restaurant?.country?.toLowerCase() === 'india';
 
     // Available payment methods based on settings
     const availableMethods = useMemo(() => {
-        const methods = [
-            { val: 'cash', icon: <CashIcon color="success" />, title: 'Cash', subtitle: 'Accept cash from customer' }
-        ];
-
-        if (isIndia) {
-            methods.push(
-                { val: 'phonepe', icon: <SmartphoneIcon color="secondary" />, title: 'PhonePe', subtitle: 'Manual PhonePe Transfer' },
-                { val: 'gpay', icon: <SmartphoneIcon color="success" />, title: 'GPay', subtitle: 'Manual GPay Transfer' },
-                { val: 'paytm', icon: <SmartphoneIcon color="primary" />, title: 'Paytm', subtitle: 'Manual Paytm Transfer' }
-            );
-        } else {
-            methods.push(
-                { val: 'zelle', icon: <SmartphoneIcon color="secondary" />, title: 'Zelle', subtitle: 'Manual Zelle Transfer' },
-                { val: 'venmo', icon: <SmartphoneIcon color="success" />, title: 'Venmo', subtitle: 'Manual Venmo Transfer' }
-            );
-        }
-
-        methods.push(
-            { val: 'cheque', icon: <ChequeIcon color="warning" />, title: 'Cheque', subtitle: 'Record a cheque payment' }
-        );
-
-        methods.push(
-            { val: 'card', icon: <CardIcon color="info" />, title: 'Card', subtitle: 'Process card via Stripe' }
-        );
-
-        return methods.filter(m => {
-            if (m.val === 'phonepe' || m.val === 'gpay' || m.val === 'paytm') {
-                return settings.system?.posPaymentMethods?.zelle !== false || settings.system?.posPaymentMethods?.venmo !== false;
-            }
-            return settings.system?.posPaymentMethods?.[m.val as keyof typeof settings.system.posPaymentMethods] !== false;
+        const activeMethods = getActivePaymentMethods(settings);
+        
+        return activeMethods.map(m => {
+            if (m.val === 'cash') return { val: 'cash', icon: <CashIcon color="success" />, title: 'Cash', subtitle: 'Record a cash payment' };
+            if (m.val === 'cheque') return { val: 'cheque', icon: <ChequeIcon color="warning" />, title: 'Cheque', subtitle: 'Record a cheque payment' };
+            if (m.val === 'card') return { val: 'card', icon: <CardIcon color="info" />, title: 'Card', subtitle: 'Process card via Stripe' };
+            
+            let iconColor: 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error' = 'primary';
+            if (m.val === 'zelle' || m.val === 'phonepe') iconColor = 'secondary';
+            if (m.val === 'venmo' || m.val === 'gpay') iconColor = 'success';
+            
+            return {
+                val: m.val,
+                icon: <SmartphoneIcon color={iconColor} />,
+                title: m.label,
+                subtitle: `Manual ${m.label} Transfer`
+            };
         });
-    }, [settings.system?.posPaymentMethods, isIndia]);
+    }, [settings]);
 
     // Ensure initial payment method is valid when dialog opens
     useEffect(() => {

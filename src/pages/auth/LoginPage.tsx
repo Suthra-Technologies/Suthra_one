@@ -582,7 +582,7 @@ const LoginPage: React.FC = () => {
                 disabled={loading || isSuccess}
                 sx={{ mt: 3, mb: 2, py: 1.5, fontSize: '1.1rem' }}
               >
-                {loading ? <CircularProgress size={24} color="inherit" /> : 'Send Reset Link'}
+                {loading ? 'Sending...' : 'Send Reset Link'}
               </Button>
               <Grid container justifyContent="center">
                 <Grid item>
@@ -705,7 +705,7 @@ const LoginPage: React.FC = () => {
                   boxShadow: '0 4px 12px rgba(79, 70, 229, 0.2)'
                 }}
               >
-                {loading ? <CircularProgress size={24} color="inherit" /> : 'Log In'}
+                {loading ? 'Logging in...' : 'Log In'}
               </Button>
               <Grid container>
                 <Grid item xs>
