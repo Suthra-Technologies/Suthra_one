@@ -2416,7 +2416,7 @@ const POSPage: React.FC = () => {
                                                                     position: 'absolute',
                                                                     top: 0,
                                                                     left: 0,
-                                                                    bgcolor: item.displayOption === 'todays_special' ? 'warning.main' : 'info.main',
+                                                                    bgcolor: item.displayOption === 'todays_special' ? 'warning.main' : item.displayOption === 'weekend_special' ? 'success.main' : 'info.main',
                                                                     color: 'white',
                                                                     px: 1,
                                                                     py: 0.5,
@@ -2427,7 +2427,7 @@ const POSPage: React.FC = () => {
                                                                     textTransform: 'uppercase',
                                                                 }}
                                                             >
-                                                                {item.displayOption === 'todays_special' ? "Today's Special" : 'Weekly Special'}
+                                                                {item.displayOption === 'todays_special' ? "Today's Special" : item.displayOption === 'weekend_special' ? 'Weekend Special' : 'Weekly Special'}
                                                             </Box>
                                                         )}
                                                     </Box>
@@ -2584,7 +2584,7 @@ const POSPage: React.FC = () => {
                                                             position: 'absolute',
                                                             top: 10,
                                                             right: 10,
-                                                            bgcolor: item.displayOption === 'todays_special' ? 'warning.main' : 'info.main',
+                                                            bgcolor: item.displayOption === 'todays_special' ? 'warning.main' : item.displayOption === 'weekend_special' ? 'success.main' : 'info.main',
                                                             color: 'white',
                                                             px: 1,
                                                             py: 0.2,
@@ -2596,7 +2596,7 @@ const POSPage: React.FC = () => {
                                                             textTransform: 'uppercase'
                                                         }}
                                                     >
-                                                        {item.displayOption === 'todays_special' ? "Today's Special" : 'Weekly Special'}
+                                                        {item.displayOption === 'todays_special' ? "Today's Special" : item.displayOption === 'weekend_special' ? 'Weekend Special' : 'Weekly Special'}
                                                     </Box>
                                                 )}
                                             </Box>

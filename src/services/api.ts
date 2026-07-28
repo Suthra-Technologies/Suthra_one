@@ -54,7 +54,14 @@ const api: AxiosInstance = axios.create({
 // Request interceptor - attach JWT if present
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    handleRequestStart(config.method);
+    const isSkippedUrl = config.url && (
+      config.url.includes('/auth/login') || 
+      config.url.includes('/auth/forgot-password') || 
+      config.url.includes('/auth/switch-tenant')
+    );
+    if (!isSkippedUrl) {
+      handleRequestStart(config.method);
+    }
 
     const token = localStorage.getItem('jwt');
     if (token && token !== 'undefined' && token !== '' && config.headers) {
@@ -70,11 +77,25 @@ api.interceptors.request.use(
 // Response interceptor - generic error handling
 api.interceptors.response.use(
   (response: AxiosResponse) => {
-    handleRequestEnd(response.config.method);
+    const isSkippedUrl = response.config?.url && (
+      response.config.url.includes('/auth/login') || 
+      response.config.url.includes('/auth/forgot-password') || 
+      response.config.url.includes('/auth/switch-tenant')
+    );
+    if (!isSkippedUrl) {
+      handleRequestEnd(response.config.method);
+    }
     return response;
   },
   (error) => {
-    handleRequestEnd(error.config?.method, true);
+    const isSkippedUrl = error.config?.url && (
+      error.config.url.includes('/auth/login') || 
+      error.config.url.includes('/auth/forgot-password') || 
+      error.config.url.includes('/auth/switch-tenant')
+    );
+    if (!isSkippedUrl) {
+      handleRequestEnd(error.config?.method, true);
+    }
     
     const message = error.response?.data?.message || error.message || 'An error occurred';
     if (error.response?.status === 401) {

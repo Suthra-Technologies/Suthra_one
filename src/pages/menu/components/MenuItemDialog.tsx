@@ -124,7 +124,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
         availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as string[],
         isWeeklyScheduleEnabled: false,
         availabilityType: 'highlight' as 'highlight' | 'available_only',
-        displayOption: 'normal' as 'normal' | 'weekly_special' | 'todays_special',
+        displayOption: 'normal' as 'normal' | 'weekly_special' | 'weekend_special' | 'todays_special',
         validFrom: null as Date | null,
         validTo: null as Date | null,
         priority: '' as string | number,
@@ -868,6 +868,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                                 >
                                                     <MenuItem value="normal">Normal</MenuItem>
                                                     <MenuItem value="weekly_special">Weekly Special</MenuItem>
+                                                    <MenuItem value="weekend_special">Weekend Special</MenuItem>
                                                     <MenuItem value="todays_special">Today's Special</MenuItem>
                                                 </Select>
                                             </FormControl>

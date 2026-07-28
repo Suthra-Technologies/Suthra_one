@@ -418,9 +418,23 @@ const RestaurantRegisterPage: React.FC = () => {
                       : slugAvailability === 'checking'
                       ? 'Checking availability...'
                       : slugAvailability === 'available'
-                      ? `Available! Your store will be at: ${form.slug.trim().toLowerCase()}.nexzenpos.com`
+                      ? (
+                        <span>
+                          Available! Your store will be at:{' '}
+                          <Box component="span" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
+                            {form.slug.trim().toLowerCase()}.nexzenpos.com
+                          </Box>
+                        </span>
+                      )
                       : form.slug.trim()
-                      ? `Your store will be at: ${form.slug.trim()?.toLowerCase()}.nexzenpos.com`
+                      ? (
+                        <span>
+                          Your store will be at:{' '}
+                          <Box component="span" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
+                            {form.slug.trim().toLowerCase()}.nexzenpos.com
+                          </Box>
+                        </span>
+                      )
                       : "URL identifier — your store address will be yourname.nexzenpos.com")
                   }
                   required
