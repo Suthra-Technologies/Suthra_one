@@ -44,7 +44,7 @@ import {
   TextField,
 } from "@mui/material";
 import PhoneInput from "../../components/PhoneInput";
-import { getEasternTzAbbreviation, formatSlotLabel } from "../../utils/demoSlots";
+import { getEasternTzAbbreviation, formatSlotLabel, easternWallClockToUtcIso } from "../../utils/demoSlots";
 
 // Orders
 import OrdersIconActiveImg from "/src/assets/images/icons/orders-active.png";
@@ -733,9 +733,10 @@ const HomePage: React.FC = () => {
         email: formData.email,
         phonePrefix: formData.phonePrefix,
         phoneNumber: formData.phoneNumber,
-        preferredDateTime: new Date(
-          `${formData.preferredDate}T${formData.preferredTime}:00`
-        ).toISOString()
+        preferredDateTime: easternWallClockToUtcIso(
+          formData.preferredDate,
+          formData.preferredTime
+        )
       };
 
       const response = await fetch(`${apiUrl}/api/email/demo-request`, {

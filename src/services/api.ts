@@ -650,11 +650,12 @@ export const superAPI = {
   linkUberPickupLocation: (tenantId: string, organizationId: string, businessLocationId: string) =>
     api.post(`/superadmin/tenants/${tenantId}/uber-link-location`, { organizationId, businessLocationId }),
 
-  // Tenant delivery settings (credentials managed by superadmin)
-  getTenantDeliverySettings: (tenantId: string) =>
-    api.get(`/superadmin/tenants/${tenantId}/delivery-settings`),
-  updateTenantDeliverySettings: (tenantId: string, payload: any) =>
-    api.patch(`/superadmin/tenants/${tenantId}/delivery-settings`, payload),
+  // Global fallback delivery credentials — used by any tenant that hasn't configured
+  // its own DoorDash/Uber Eats account. Not tenant-scoped.
+  getGlobalDeliverySettings: () =>
+    api.get('/superadmin/global-delivery-settings'),
+  updateGlobalDeliverySettings: (payload: any) =>
+    api.patch('/superadmin/global-delivery-settings', payload),
 
   // Tenant platform processing fee (managed by superadmin only)
   getTenantProcessingFee: (tenantId: string) =>
