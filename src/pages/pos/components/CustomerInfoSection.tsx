@@ -27,6 +27,7 @@ import React, { useEffect } from 'react';
 import AddressAutocomplete from '../../../components/AddressAutocomplete';
 import PhoneInput from '../../../components/PhoneInput';
 import { validateEmail, validatePhone } from '../../../utils/validation';
+import { getActivePaymentMethods } from '../../../utils/orderWorkflows';
 import { getMaxGuests, getMergedGroup } from '../utils/tableCapacity';
 
 interface CustomerInfoSectionProps {
@@ -486,37 +487,14 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                     pointerEvents: finalTotal === 0 ? 'none' : 'auto'
                                 }}
                             >
-                                {(settings.system?.posPaymentMethods?.cash ?? true) && (
-                                    <FormControlLabel value="cash" control={<Radio size="small" />} label="Cash" />
-                                )}
-                                {isIndia ? (
-                                    <>
-                                        {(settings.system?.posPaymentMethods?.zelle ?? true) && (
-                                            <FormControlLabel value="phonepe" control={<Radio size="small" />} label="PhonePe" />
-                                        )}
-                                        {(settings.system?.posPaymentMethods?.zelle ?? true) && (
-                                            <FormControlLabel value="gpay" control={<Radio size="small" />} label="GPay" />
-                                        )}
-                                        {(settings.system?.posPaymentMethods?.venmo ?? true) && (
-                                            <FormControlLabel value="paytm" control={<Radio size="small" />} label="Paytm" />
-                                        )}
-                                    </>
-                                ) : (
-                                    <>
-                                        {(settings.system?.posPaymentMethods?.zelle ?? true) && (
-                                            <FormControlLabel value="zelle" control={<Radio size="small" />} label="Zelle" />
-                                        )}
-                                    </>
-                                )}
-                                {(settings.system?.posPaymentMethods?.card ?? true) && (
-                                    <FormControlLabel value="card" control={<Radio size="small" />} label="Card" />
-                                )}
-                                {!isIndia && (settings.system?.posPaymentMethods?.venmo ?? true) && (
-                                    <FormControlLabel value="venmo" control={<Radio size="small" />} label="Venmo" />
-                                )}
-                                {(settings.system?.posPaymentMethods?.cheque ?? true) && (
-                                    <FormControlLabel value="cheque" control={<Radio size="small" />} label="Cheque" />
-                                )}
+                                {getActivePaymentMethods(settings).map(pm => (
+                                    <FormControlLabel 
+                                        key={pm.val} 
+                                        value={pm.val} 
+                                        control={<Radio size="small" />} 
+                                        label={<span>{pm.label}</span>} 
+                                    />
+                                ))}
                             </RadioGroup>
                         </FormControl>
                     )}

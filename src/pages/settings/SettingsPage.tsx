@@ -497,6 +497,7 @@ const mergeSettingsWithDefaults = (defaults: SettingsState, partial: Partial<Set
         autoPrint: fetchedSystem.autoPrint ?? defaults.system.autoPrint,
         googleMapsApiKey: fetchedSystem.googleMapsApiKey ?? defaults.system.googleMapsApiKey,
         posPaymentMethods: {
+            ...(fetchedSystem.posPaymentMethods || {}),
             cash: fetchedSystem.posPaymentMethods?.cash ?? (defaults.system.posPaymentMethods?.cash ?? true),
             card: fetchedSystem.posPaymentMethods?.card ?? (defaults.system.posPaymentMethods?.card ?? true),
             zelle: fetchedSystem.posPaymentMethods?.zelle ?? (defaults.system.posPaymentMethods?.zelle ?? true),
@@ -658,6 +659,7 @@ const SettingsPage: React.FC = () => {
 
     const [stripeStatus, setStripeStatus] = useState<{ stripeMode?: string; hasPublishableKey?: boolean; hasSecretKey?: boolean; hasWebhookSecret?: boolean }>({});
     const [usersList, setUsersList] = useState<any[]>([]);
+    const [newPaymentMethod, setNewPaymentMethod] = useState<string>('');
     const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
     const [pairedAgents, setPairedAgents] = useState<any[]>([]);
     const [agentsLoading, setAgentsLoading] = useState(false);
@@ -3706,35 +3708,100 @@ const SettingsPage: React.FC = () => {
 
                         <Paper variant="outlined" sx={{ p: 3, borderRadius: 3, mb: 2 }}>
                             <Grid container spacing={2}>
-                                {['cash', 'card', 'zelle', 'venmo', 'cheque'].map((method) => (
-                                    <Grid size={{ xs: 6, sm: 3 }} key={method}>
-                                        <FormControlLabel
-                                            control={
-                                                <Checkbox
-                                                    checked={settings.system.posPaymentMethods?.[method as keyof typeof settings.system.posPaymentMethods] ?? true}
-                                                    onChange={(e) => {
-                                                        const isChecked = e.target.checked;
-                                                        setSettings(prev => {
-                                                            const currentMethods = prev.system.posPaymentMethods || { cash: true, card: true, zelle: true, venmo: true, cheque: true };
-                                                            return {
-                                                                ...prev,
-                                                                system: {
-                                                                    ...prev.system,
-                                                                    posPaymentMethods: {
-                                                                        ...currentMethods,
-                                                                        [method]: isChecked
+                                {(() => {
+                                    const isIndia = settings?.restaurant?.country?.toLowerCase() === 'india';
+                                    const defaultMethods = isIndia ? ['cash', 'card', 'cheque', 'phonepe', 'gpay', 'paytm'] : ['cash', 'card', 'zelle', 'venmo', 'cheque'];
+                                    const standardMethods = ['cash', 'card', 'zelle', 'venmo', 'cheque', 'creditCard', 'debitCard', 'phonepe', 'gpay', 'paytm'];
+                                    const customKeys = Object.keys(settings.system.posPaymentMethods || {}).filter(k => !standardMethods.includes(k));
+                                    const allDisplayMethods = [...new Set([...defaultMethods, ...customKeys])];
+                                    
+                                    return allDisplayMethods.map((method) => (
+                                        <Grid size={{ xs: 6, sm: 3 }} key={method}>
+                                            <FormControlLabel
+                                                control={
+                                                    <Checkbox
+                                                        checked={settings.system.posPaymentMethods?.[method] ?? true}
+                                                        onChange={(e) => {
+                                                            const isChecked = e.target.checked;
+                                                            setSettings(prev => {
+                                                                const currentMethods = prev.system.posPaymentMethods || { cash: true, card: true, zelle: true, venmo: true, cheque: true };
+                                                                return {
+                                                                    ...prev,
+                                                                    system: {
+                                                                        ...prev.system,
+                                                                        posPaymentMethods: {
+                                                                            ...currentMethods,
+                                                                            [method]: isChecked
+                                                                        }
                                                                     }
-                                                                }
-                                                            };
-                                                        });
-                                                    }}
-                                                />
-                                            }
-                                            label={<Typography sx={{ textTransform: 'capitalize' }}>{method}</Typography>}
-                                        />
-                                    </Grid>
-                                ))}
+                                                                };
+                                                            });
+                                                        }}
+                                                    />
+                                                }
+                                                label={
+                                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                        <Typography sx={{ textTransform: 'capitalize' }}>{method}</Typography>
+                                                        {customKeys.includes(method) && (
+                                                            <IconButton
+                                                                size="small"
+                                                                color="error"
+                                                                onClick={(e) => {
+                                                                    e.preventDefault(); // Prevent toggling the checkbox
+                                                                    setSettings(prev => {
+                                                                        const currentMethods = { ...(prev.system.posPaymentMethods || {}) };
+                                                                        delete currentMethods[method];
+                                                                        return {
+                                                                            ...prev,
+                                                                            system: {
+                                                                                ...prev.system,
+                                                                                posPaymentMethods: currentMethods
+                                                                            }
+                                                                        };
+                                                                    });
+                                                                }}
+                                                                sx={{ ml: 0.5, p: 0.5 }}
+                                                            >
+                                                                <DeleteIcon fontSize="small" />
+                                                            </IconButton>
+                                                        )}
+                                                    </Box>
+                                                }
+                                            />
+                                        </Grid>
+                                    ));
+                                })()}
                             </Grid>
+
+                            <Box sx={{ mt: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
+                                <TextField
+                                    size="small"
+                                    placeholder="Add Custom Method (e.g. CashApp)"
+                                    value={newPaymentMethod}
+                                    onChange={(e) => setNewPaymentMethod(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ''))}
+                                    sx={{ maxWidth: 300 }}
+                                />
+                                <Button
+                                    variant="outlined"
+                                    onClick={() => {
+                                        if (newPaymentMethod.trim()) {
+                                            setSettings(prev => ({
+                                                ...prev,
+                                                system: {
+                                                    ...prev.system,
+                                                    posPaymentMethods: {
+                                                        ...(prev.system.posPaymentMethods || {}),
+                                                        [newPaymentMethod.trim()]: true
+                                                    }
+                                                }
+                                            }));
+                                            setNewPaymentMethod('');
+                                        }
+                                    }}
+                                >
+                                    Add Method
+                                </Button>
+                            </Box>
 
                             {/* Card sub-types — shown only when Card is enabled */}
                             {(settings.system.posPaymentMethods?.card ?? true) && (

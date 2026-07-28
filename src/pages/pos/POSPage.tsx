@@ -217,7 +217,7 @@ const POSPage: React.FC = () => {
     const [deliveryAddress, setDeliveryAddress] = useState<any>({});
     const [discountPercent, setDiscountPercent] = useState(0);
     const [tip, setTip] = useState(0);
-    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'online' | 'card' | 'zelle' | 'venmo' | 'cheque' | 'phonepe' | 'gpay' | 'paytm'>('cash');
+    const [paymentMethod, setPaymentMethod] = useState<string>('cash');
     const [cardType, setCardType] = useState<'credit' | 'debit'>('credit');
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
     const [manualPaymentDialogOpen, setManualPaymentDialogOpen] = useState(false);
@@ -1311,7 +1311,7 @@ const POSPage: React.FC = () => {
                 return;
             }
 
-            if (['zelle', 'venmo', 'cheque', 'phonepe', 'gpay', 'paytm'].includes(paymentMethod)) {
+            if (paymentMethod !== 'cash' && paymentMethod !== 'online' && paymentMethod !== 'card') {
                 setManualPaymentDialogOpen(true);
                 return;
             }
