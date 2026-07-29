@@ -14,7 +14,9 @@ import {
   QrCode as QrIcon,
   Smartphone as SmartphoneIcon,
   EventSeat as TableIcon,
-  DeleteSweep as WastageIcon
+  DeleteSweep as WastageIcon,
+  VideoCall as VideoCallIcon,
+  ContentCopy as CopyIcon
 } from "@mui/icons-material";
 import {
   AppBar,
@@ -31,7 +33,8 @@ import {
   Stack,
   Toolbar,
   useTheme,
-  Zoom
+  Zoom,
+  Tooltip
 } from "@mui/material";
 import { keyframes } from "@mui/system";
 import React, { useEffect, useState } from "react";
@@ -687,12 +690,15 @@ const HomePage: React.FC = () => {
     type: "success" | "error";
     title: string;
     message: string;
+    meetingLink?: string;
   }>({
     open: false,
     type: "success",
     title: "",
     message: "",
+    meetingLink: "",
   });
+  const [copied, setCopied] = useState(false);
 
   const handleFormChange = (e: any) => {
     const { name, value } = e.target;
@@ -741,12 +747,16 @@ const HomePage: React.FC = () => {
         body: JSON.stringify(payload),
       });
       if (response.ok) {
+        const data = await response.json().catch(() => ({}));
+        const meetLink = data.meetingLink;
         setDialogState({
           open: true,
           type: "success",
-          title: "Request Sent Successfully!",
-          message:
-            "Thank you for your interest. Our team will contact you shortly to schedule your personalized demo.",
+          title: meetLink ? "Demo Scheduled Successfully!" : "Request Sent Successfully!",
+          message: meetLink
+            ? "Your demo is confirmed! A Google Meet link has been generated. You can join the meeting directly using the link below."
+            : "Thank you for your interest. Our team will contact you shortly to schedule your personalized demo.",
+          meetingLink: meetLink || "",
         });
         setFormData({
           businessName: "",
@@ -767,6 +777,7 @@ const HomePage: React.FC = () => {
         title: "Submission Failed",
         message:
           "Something went wrong. Please check your connection and try again, or contact us directly.",
+        meetingLink: "",
       });
     } finally {
       setLoading(false);
@@ -2755,9 +2766,85 @@ const HomePage: React.FC = () => {
           <Typography variant="h5" fontWeight="900" gutterBottom>
             {dialogState.title}
           </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: dialogState.meetingLink ? 2 : 4 }}>
             {dialogState.message}
           </Typography>
+          {dialogState.meetingLink && (
+            <Box
+              sx={{
+                mt: 2,
+                mb: 4,
+                p: 2.5,
+                borderRadius: 4,
+                bgcolor: "#f0fdf4",
+                border: "1px solid #bbf7d0",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 2,
+              }}
+            >
+              <Button
+                variant="contained"
+                color="success"
+                href={dialogState.meetingLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                startIcon={<VideoCallIcon />}
+                fullWidth
+                sx={{
+                  borderRadius: 50,
+                  fontWeight: "bold",
+                  py: 1.5,
+                  textTransform: "none",
+                  boxShadow: "0 4px 12px rgba(76, 175, 80, 0.2)",
+                }}
+              >
+                Join Google Meet
+              </Button>
+              
+              <Box
+                sx={{
+                  display: "flex",
+                  width: "100%",
+                  alignItems: "center",
+                  bgcolor: "white",
+                  borderRadius: 3,
+                  border: "1px solid #e0e0e0",
+                  p: 1,
+                  gap: 1,
+                }}
+              >
+                <Typography
+                  variant="body2"
+                  sx={{
+                    flexGrow: 1,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    textAlign: "left",
+                    color: "text.secondary",
+                    px: 1,
+                  }}
+                >
+                  {dialogState.meetingLink}
+                </Typography>
+                <Tooltip title={copied ? "Copied!" : "Copy Link"} placement="top">
+                  <IconButton
+                    size="small"
+                    onClick={() => {
+                      navigator.clipboard.writeText(dialogState.meetingLink || "");
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }}
+                    sx={{ color: "primary.main" }}
+                  >
+                    {copied ? <CheckIcon fontSize="small" /> : <CopyIcon fontSize="small" />}
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            </Box>
+          )}
           <Button
             variant="contained"
             color={dialogState.type === "success" ? "success" : "error"}
