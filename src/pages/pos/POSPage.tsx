@@ -54,6 +54,7 @@ import { isWithinDeliveryRadius, METERS_PER_MILE } from '../../services/googleMa
 import CustomerInfoSection from './components/CustomerInfoSection';
 import MergeTablesDialog from './components/MergeTablesDialog';
 import OrderDetailsSection from './components/OrderDetailsSection';
+import CustomItemDialog from './components/CustomItemDialog';
 import { validateEmail, validatePhone } from '../../utils/validation';
 import { getMaxGuests, getMergedGroup } from './utils/tableCapacity';
 
@@ -232,6 +233,7 @@ const POSPage: React.FC = () => {
     const cartSectionRef = useRef<HTMLDivElement | null>(null);
     const loadMoreRef = useRef<HTMLDivElement | null>(null);
     const menuFetchRequestId = useRef(0);
+    const preOrderLoadedRef = useRef(false);
     // Guard to prevent re-loading stale order data after an order is submitted
     const orderSubmittedRef = useRef(false);
     const [trays, setTrays] = useState<any[]>([]);
@@ -242,6 +244,7 @@ const POSPage: React.FC = () => {
     const [isFetchingQuote, setIsFetchingQuote] = useState<boolean>(false);
     const [quoteError, setQuoteError] = useState<string | null>(null);
     const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
+    const [customItemModalOpen, setCustomItemModalOpen] = useState(false);
 
     // Sync dial code with settings when they load
     useEffect(() => {
@@ -786,6 +789,26 @@ const POSPage: React.FC = () => {
             }
 
             if (urlEmail) setCustomerEmail(urlEmail);
+
+            const urlPreOrder = searchParams.get("preOrder");
+            if (urlPreOrder && !preOrderLoadedRef.current) {
+                preOrderLoadedRef.current = true;
+                try {
+                    const items = JSON.parse(urlPreOrder);
+                    items.forEach((item: any) => {
+                        addToCart({
+                            menuItem: null,
+                            name: item.name,
+                            price: item.price,
+                            quantity: 1,
+                            isCustom: true,
+                            notes: 'Pre-ordered outsourced item'
+                        });
+                    });
+                } catch(e) {
+                    console.error("Failed to parse preOrder", e);
+                }
+            }
         }
     }, [isEditMode, existingOrderId, tables, searchParams, resetData, settings?.restaurant?.dialCode]);
 
@@ -1085,6 +1108,20 @@ const POSPage: React.FC = () => {
             }];
         });
     }, []);
+
+    const handleAddCustomItem = React.useCallback((name: string, price: number, quantity: number, notes?: string) => {
+        const cartId = `custom::${Date.now()}`;
+        addToCart({
+            _id: cartId,
+            cartId,
+            name,
+            price,
+            quantity,
+            isCustom: true,
+            notes,
+        });
+        setCustomItemModalOpen(false);
+    }, [addToCart]);
 
     const removeFromCart = React.useCallback((cartId: string) => {
         setCart((prev) => {
@@ -1413,7 +1450,7 @@ const POSPage: React.FC = () => {
                 finalPaymentMethod = 'rewards' as any;
                 finalPaymentStatus = 'paid';
                 console.log("[POS] Order fully covered by rewards/coupons. Setting status to PAID.");
-            } else if (orderType === 'dine_in') {
+            } else if (orderType === 'dine_in' && !isManualCollectedPayment && !isVerifiedStripePayment) {
                 // For dine-in, always start with pending status and use 'cash' as a placeholder
                 // since the actual payment method is chosen at checkout.
                 finalPaymentStatus = 'pending';
@@ -1997,6 +2034,15 @@ const POSPage: React.FC = () => {
                             </Box>
                         )}
                     </Box>
+                    <Button 
+                        variant="outlined" 
+                        color="secondary" 
+                        startIcon={<AddIcon />} 
+                        onClick={() => setCustomItemModalOpen(true)}
+                        sx={{ whiteSpace: 'nowrap', minWidth: { xs: '100%', sm: 'auto' }, alignSelf: 'stretch' }}
+                    >
+                        Custom Item
+                    </Button>
                 </Box>
                 {/* Food Type Toggle — above tabs, right-aligned */}
                 <Box
@@ -3217,7 +3263,13 @@ const POSPage: React.FC = () => {
                 />
             </Paper>
 
-            {/* Payment modal */}
+            <CustomItemDialog 
+                open={customItemModalOpen} 
+                onClose={() => setCustomItemModalOpen(false)} 
+                onAdd={handleAddCustomItem} 
+            />
+
+            {/* Payment Modal */}
             <PaymentModal
                 open={paymentModalOpen}
                 onClose={() => setPaymentModalOpen(false)}

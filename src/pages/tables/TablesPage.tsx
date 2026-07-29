@@ -237,61 +237,6 @@ const TablesPage: React.FC = () => {
         }
     };
 
-    // Auto-checkout paid bookings
-    useEffect(() => {
-        // We need both bookings and tables to be loaded to cross-reference
-        if (bookings.length === 0 || tables.length === 0) return;
-
-        const checkPaidBookings = async () => {
-            const paidBookings = bookings.filter(b => {
-                // Must be active booking that is checked in
-                if (!((b.status === 'confirmed' || b.status === 'pending') && b.checkedIn)) return false;
-
-                // Find the real table object from the tables state to get the most up-to-date order info
-                // b.table might be just an ID or a partial object
-                const tableId = b.table?._id || (typeof b.table === 'string' ? b.table : null);
-                if (!tableId) return false;
-
-                const realTable = tables.find(t => t._id === tableId);
-
-                // If the table has an active order, check its status
-                if (realTable?.currentOrder) {
-                    const order = realTable.currentOrder;
-                    // Check if the order is completed/paid
-                    // Note: 'status' or 'paymentStatus' might be used depending on API response
-                    return (
-                        order.paymentStatus === 'completed' ||
-                        order.paymentStatus === 'paid' ||
-                        order.status === 'completed'
-                    );
-                }
-
-                // If table has no current order but booking is checked in:
-                // 1. If table is available/cleaning, it implies the order was completed and table freed -> Complete Booking.
-                // 2. If table is occupied, it implies the guests are seated but haven't ordered -> Keep Active (Check In).
-                if (realTable.status === 'available' || realTable.status === 'cleaning') {
-                    return true;
-                }
-
-                return false;
-            });
-
-            if (paidBookings.length > 0) {
-                try {
-                    await Promise.all(paidBookings.map(b => bookingsAPI.updateStatus(b._id, 'completed')));
-                    toast.success(`Automatically checked out ${paidBookings.length} paid booking(s)`);
-                    fetchBookings();
-                    // fetchTables(); // No need to fetch tables again if we just used them, but maybe to reflect booking status?
-                } catch (error) {
-                    console.error('Error auto-checking out bookings:', error);
-                }
-            }
-        };
-
-        if (!bookingsLoading) {
-            checkPaidBookings();
-        }
-    }, [bookings, tables, bookingsLoading]);
     const handleEditTable = (table: any) => {
         setSelectedTable(table);
         setEditDialogOpen(true);

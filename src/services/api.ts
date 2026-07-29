@@ -600,6 +600,7 @@ export const bookingsAPI = {
   getUnavailableSlots: (date: string, guests: number) => api.get('/bookings/unavailable-slots', { params: { date, guests } }),
   getAvailableSlots: (date: string, guests: number) => api.get('/bookings/available-slots', { params: { date, guests } }),
   checkIn: (id: string) => api.post(`/bookings/${id}/check-in`),
+  addPreOrderedItem: (id: string, item: { name: string, cost: number, price: number }) => api.post(`/bookings/${id}/pre-order`, item),
 
   // Public (no auth) — for guest users
   publicGetUnavailableSlots: (tenantSlug: string, date: string, guests: number) =>
