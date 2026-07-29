@@ -4,6 +4,7 @@ import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { BRAND_CONFIG } from '../config/brandConfig';
 import { Capacitor } from '@capacitor/core';
+import { handleRequestStart, handleRequestEnd } from '../utils/globalLoader';
 
 const envApiBase = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
 const brandApiBase = (BRAND_CONFIG.apiBaseUrl as string | undefined)?.trim();
@@ -50,9 +51,18 @@ const api: AxiosInstance = axios.create({
   },
 });
 
-// Request interceptor – attach JWT if present
+// Request interceptor - attach JWT if present
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    const isSkippedUrl = config.url && (
+      config.url.includes('/auth/login') || 
+      config.url.includes('/auth/forgot-password') || 
+      config.url.includes('/auth/switch-tenant')
+    );
+    if (!isSkippedUrl) {
+      handleRequestStart(config.method);
+    }
+
     const token = localStorage.getItem('jwt');
     if (token && token !== 'undefined' && token !== '' && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -64,10 +74,29 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor – generic error handling
+// Response interceptor - generic error handling
 api.interceptors.response.use(
-  (response: AxiosResponse) => response,
+  (response: AxiosResponse) => {
+    const isSkippedUrl = response.config?.url && (
+      response.config.url.includes('/auth/login') || 
+      response.config.url.includes('/auth/forgot-password') || 
+      response.config.url.includes('/auth/switch-tenant')
+    );
+    if (!isSkippedUrl) {
+      handleRequestEnd(response.config.method);
+    }
+    return response;
+  },
   (error) => {
+    const isSkippedUrl = error.config?.url && (
+      error.config.url.includes('/auth/login') || 
+      error.config.url.includes('/auth/forgot-password') || 
+      error.config.url.includes('/auth/switch-tenant')
+    );
+    if (!isSkippedUrl) {
+      handleRequestEnd(error.config?.method, true);
+    }
+    
     const message = error.response?.data?.message || error.message || 'An error occurred';
     if (error.response?.status === 401) {
       // Mobile-only: keep local session until explicit logout.
@@ -84,7 +113,9 @@ api.interceptors.response.use(
       const publicPaths = ['customer/order', 'customer/catering', 'customer/book-table', 'customer/gallery', 'customer/about', 'customer/home'];
       const isPublicPath = publicPaths.some(p => window.location.pathname.includes(p));
 
-      if (!isPublicPath) {
+      const isPasswordReset = window.location.pathname.includes('/reset-password');
+
+      if (!isPublicPath && !isPasswordReset) {
         toast.error('Session expired. Please login again.');
         if (!window.location.pathname.includes('/login')) {
           window.location.href = '/login';
@@ -648,11 +679,12 @@ export const superAPI = {
   linkUberPickupLocation: (tenantId: string, organizationId: string, businessLocationId: string) =>
     api.post(`/superadmin/tenants/${tenantId}/uber-link-location`, { organizationId, businessLocationId }),
 
-  // Tenant delivery settings (credentials managed by superadmin)
-  getTenantDeliverySettings: (tenantId: string) =>
-    api.get(`/superadmin/tenants/${tenantId}/delivery-settings`),
-  updateTenantDeliverySettings: (tenantId: string, payload: any) =>
-    api.patch(`/superadmin/tenants/${tenantId}/delivery-settings`, payload),
+  // Global fallback delivery credentials — used by any tenant that hasn't configured
+  // its own DoorDash/Uber Eats account. Not tenant-scoped.
+  getGlobalDeliverySettings: () =>
+    api.get('/superadmin/global-delivery-settings'),
+  updateGlobalDeliverySettings: (payload: any) =>
+    api.patch('/superadmin/global-delivery-settings', payload),
 
   // Tenant platform processing fee (managed by superadmin only)
   getTenantProcessingFee: (tenantId: string) =>
@@ -749,8 +781,8 @@ export const purchaseOrdersAPI = {
   getAnalytics: (params?: any) => api.get('/purchase-orders/analytics', { params }),
   extractInvoice: (formData: FormData) => api.post('/purchase-orders/extract-invoice', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
-    // Backend makes two sequential AI calls (60s each); cover that worst case.
-    timeout: 120000,
+    // Backend AI extraction observed up to ~6.5 min for a small invoice; must exceed backend's 600s timeout.
+    timeout: 610000,
   }),
 };
 

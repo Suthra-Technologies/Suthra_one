@@ -73,6 +73,31 @@ const MaterialProvidersPage: React.FC = () => {
     const [orderNeedDate, setOrderNeedDate] = useState('');
     const [requesting, setRequesting] = useState(false);
 
+    // Order dialog — item picker (catalog curated by superadmin for this provider)
+    type OrderItem = { name: string; quantity: string; unit: string };
+    const [orderItems, setOrderItems] = useState<OrderItem[]>([{ name: '', quantity: '', unit: '' }]);
+    const orderMaterialOptions = orderProvider?.materials || [];
+
+    const updateOrderItem = (i: number, field: keyof OrderItem, value: string) => {
+        setOrderItems(prev => prev.map((it, idx) => idx === i ? { ...it, [field]: value } : it));
+    };
+    const addOrderItem = () => setOrderItems(prev => [...prev, { name: '', quantity: '', unit: '' }]);
+    const removeOrderItem = (i: number) => setOrderItems(prev => prev.filter((_, idx) => idx !== i));
+    const selectOrderMaterial = (i: number, materialName: string) => {
+        const match = orderMaterialOptions.find(m => m.name === materialName);
+        setOrderItems(prev => prev.map((it, idx) => idx === i ? {
+            ...it,
+            name: materialName,
+            unit: match?.unit ?? it.unit,
+        } : it));
+    };
+    // Combined free text sent to the provider: picked catalog items first, then any extra notes typed below.
+    const orderItemsText = orderItems
+        .filter(it => it.name.trim())
+        .map(it => `${it.quantity ? `${it.quantity} ` : ''}${it.unit ? `${it.unit} ` : ''}${it.name}`.trim())
+        .join('\n');
+    const combinedOrderText = [orderItemsText, orderText.trim()].filter(Boolean).join('\n');
+
     // Our restaurant's contact details (included in every order)
     const r = settings?.restaurant;
     const restPhone = (r as any)?.phone || '';
@@ -84,6 +109,7 @@ const MaterialProvidersPage: React.FC = () => {
         setOrderProvider(provider);
         setOrderText('');
         setOrderNeedDate('');
+        setOrderItems([{ name: '', quantity: '', unit: '' }]);
     };
     const closeOrder = () => setOrderProvider(null);
 
@@ -94,7 +120,7 @@ const MaterialProvidersPage: React.FC = () => {
             '',
             `${restaurantName} would like to place the following order. We found you through ${POS_PROVIDER_NAME}.`,
             '',
-            orderText.trim() || '(order details)',
+            combinedOrderText || '(order details)',
             '',
         ];
         if (orderNeedDate) {
@@ -133,7 +159,10 @@ const MaterialProvidersPage: React.FC = () => {
         providerEmail: p.email || '',
         providerPhone: p.phone || '',
         providerAddress: p.address || '',
-        orderText: orderText.trim(),
+        orderText: combinedOrderText,
+        items: orderItems
+            .filter(it => it.name.trim())
+            .map(it => ({ name: it.name.trim(), quantity: it.quantity || '1', unit: it.unit || '' })),
         needByDate: orderNeedDate || undefined,
         channel,
     });
@@ -186,7 +215,17 @@ const MaterialProvidersPage: React.FC = () => {
 
     const openReceive = (order: any) => {
         setReceiveTarget(order);
-        setReceiveItems([{ description: order.orderText || '', quantity: '1', unit: '', unitPrice: '' }]);
+        const structuredItems = Array.isArray(order.items) ? order.items.filter((it: any) => it?.name) : [];
+        setReceiveItems(
+            structuredItems.length > 0
+                ? structuredItems.map((it: any) => ({
+                    description: it.name,
+                    quantity: String(it.quantity ?? 1),
+                    unit: it.unit || '',
+                    unitPrice: '',
+                }))
+                : [{ description: order.orderText || '', quantity: '1', unit: '', unitPrice: '' }]
+        );
         setReceiveNotes('');
     };
     const closeReceive = () => { setReceiveTarget(null); setReceiveItems([]); setReceiveNotes(''); };
@@ -470,16 +509,61 @@ const MaterialProvidersPage: React.FC = () => {
                         <>
                             <DialogTitle sx={{ pb: 1 }}>Order from {orderProvider.name}</DialogTitle>
                             <DialogContent>
+                                <Typography variant="caption" color="text.secondary" fontWeight={700} sx={{ display: 'block', mt: 1, mb: 1, textTransform: 'uppercase', letterSpacing: 0.4 }}>
+                                    Items
+                                </Typography>
+                                <Stack spacing={1.5}>
+                                    {orderItems.map((it, i) => (
+                                        <Box key={i} sx={{ display: 'flex', gap: 1, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                                            <Autocomplete
+                                                freeSolo
+                                                options={orderMaterialOptions.map(m => m.name)}
+                                                value={it.name}
+                                                inputValue={it.name}
+                                                onChange={(_e, val) => selectOrderMaterial(i, val || '')}
+                                                onInputChange={(_e, val) => updateOrderItem(i, 'name', val)}
+                                                size="small"
+                                                sx={{ flex: '2 1 160px' }}
+                                                renderInput={(params) => (
+                                                    <TextField
+                                                        {...params}
+                                                        label="Item"
+                                                        autoFocus={i === 0}
+                                                        placeholder={orderMaterialOptions.length ? 'Select an item' : 'No catalog set for this provider'}
+                                                    />
+                                                )}
+                                            />
+                                            <TextField
+                                                label="Qty"
+                                                value={it.quantity}
+                                                onChange={(e) => updateOrderItem(i, 'quantity', e.target.value)}
+                                                size="small"
+                                                sx={{ flex: '0 1 70px' }}
+                                            />
+                                            <TextField
+                                                label="Unit"
+                                                value={it.unit}
+                                                onChange={(e) => updateOrderItem(i, 'unit', e.target.value)}
+                                                size="small"
+                                                placeholder="kg"
+                                                sx={{ flex: '0 1 80px' }}
+                                            />
+                                            <IconButton size="small" color="error" onClick={() => removeOrderItem(i)} disabled={orderItems.length === 1} sx={{ mt: 0.5 }}>
+                                                <DeleteIcon fontSize="small" />
+                                            </IconButton>
+                                        </Box>
+                                    ))}
+                                </Stack>
+                                <Button size="small" startIcon={<AddIcon />} onClick={addOrderItem} sx={{ mt: 1 }}>Add item</Button>
                                 <TextField
-                                    label="Order details"
-                                    placeholder="e.g. 50 kg chicken, 20 L water…"
+                                    label="Additional notes (optional)"
+                                    placeholder="e.g. deliver before noon"
                                     value={orderText}
                                     onChange={(e) => setOrderText(e.target.value)}
                                     fullWidth
                                     multiline
-                                    minRows={4}
-                                    autoFocus
-                                    sx={{ mt: 1 }}
+                                    minRows={2}
+                                    sx={{ mt: 2 }}
                                 />
                                 <TextField
                                     label="Need by date"

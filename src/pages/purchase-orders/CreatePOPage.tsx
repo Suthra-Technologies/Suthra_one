@@ -42,11 +42,9 @@ import {
     LocalShipping as ShippingIcon,
     AccountBalance as BankIcon,
     InfoOutlined as InfoIcon,
-    AutoAwesome as AutoAwesomeIcon,
     CheckCircle as CheckCircleIcon,
     AddCircleOutline as AddCircleIcon,
-    MoveToInbox as RestockIcon,
-    Save as SaveIcon
+    MoveToInbox as RestockIcon
 } from '@mui/icons-material';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { purchaseOrdersAPI, uploadAPI, inventoryAPI, usersAPI, vendorsAPI } from '../../services/api';
@@ -65,6 +63,27 @@ const normalizeUnit = (unit: string): string => {
     if (u === 'l') return 'l';
     if (u === 'ml') return 'ml';
     return u;
+};
+
+// --- Bill Entry design tokens ---
+const TOKENS = {
+    bg: '#f6f1e7',
+    surface: '#ffffff',
+    ink: '#26221b',
+    muted: '#8a8272',
+    border: '#e3dac6',
+    borderLight: '#ece5d3',
+    accent: '#b3492f',
+    danger: '#b3492f',
+    status: {
+        paid: { bg: '#e2ecdc', fg: '#3f6b2c' },
+        overdue: { bg: '#f3dcd6', fg: '#a5432b' },
+        due: { bg: '#f6e6c8', fg: '#93551f' },
+    },
+    inventoryWarning: { bg: '#f6e6d0', fg: '#93551f' },
+    fontSerif: '"Spectral", Georgia, serif',
+    fontSans: '"IBM Plex Sans", -apple-system, BlinkMacSystemFont, sans-serif',
+    fontMono: '"IBM Plex Mono", ui-monospace, monospace',
 };
 
 const CreatePOPage: React.FC = () => {
@@ -90,7 +109,7 @@ const CreatePOPage: React.FC = () => {
         category: state?.category || 'raw_materials',
         referenceNumber: '',
         dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        items: state?.items || [{ description: '', quantity: 1, unit: 'kg', unitPrice: 0, total: 0, inventoryItem: '', weightValue: '', weightUnit: 'lb' }],
+        items: state?.items || [{ description: '', quantity: 1, unit: 'kg', unitPrice: 0, taxRate: 0, total: 0, inventoryItem: '', weightValue: '', weightUnit: 'lb' }],
         taxRate: 0, // No tax for purchase orders
         shippingCost: 0,
         notes: state?.notes || '',
@@ -126,7 +145,7 @@ const CreatePOPage: React.FC = () => {
                 category: po.category || 'raw_materials',
                 referenceNumber: po.referenceNumber || '',
                 dueDate: po.dueDate ? new Date(po.dueDate).toISOString().split('T')[0] : '',
-                items: (po.items && (po?.items || []).length > 0) ? po.items : [{ description: '', quantity: 1, unit: 'kg', unitPrice: 0, total: 0, inventoryItem: '', weightValue: '', weightUnit: 'lb' }],
+                items: (po.items && (po?.items || []).length > 0) ? po.items : [{ description: '', quantity: 1, unit: 'kg', unitPrice: 0, taxRate: 0, total: 0, inventoryItem: '', weightValue: '', weightUnit: 'lb' }],
                 taxRate: po.taxRate || 0,
                 shippingCost: po.shippingCost || 0,
                 notes: po.notes || '',
@@ -154,7 +173,6 @@ const CreatePOPage: React.FC = () => {
         fetchVendors();
         setSelectedVendor(null); // Reset selected vendor when category changes
     }, [formData.category]);
-
     const fetchInventory = async () => {
         try {
             const response = await inventoryAPI.getAll();
@@ -275,21 +293,24 @@ const CreatePOPage: React.FC = () => {
         if (field === 'inventoryItem' && value) {
             const item = inventoryItems.find(i => i._id === value);
             if (item) {
+                const q = parseFloat(newItems[index].quantity as any) || 1;
+                const t = parseFloat(newItems[index].taxRate as any) || 0;
                 newItems[index] = {
                     ...newItems[index],
                     description: item.name,
                     unit: item.unit,
                     unitPrice: item.costPrice || 0,
                     inventoryItem: item._id,
-                    total: (newItems[index].quantity || 1) * (item.costPrice || 0)
+                    total: q * (item.costPrice || 0) * (1 + t / 100)
                 };
             }
         } else {
             newItems[index] = { ...newItems[index], [field]: value };
-            if (field === 'quantity' || field === 'unitPrice') {
+            if (field === 'quantity' || field === 'unitPrice' || field === 'taxRate') {
                 const q = parseFloat(newItems[index].quantity as any) || 0;
                 const p = parseFloat(newItems[index].unitPrice as any) || 0;
-                newItems[index].total = q * p;
+                const t = parseFloat(newItems[index].taxRate as any) || 0;
+                newItems[index].total = q * p * (1 + t / 100);
             }
         }
 
@@ -345,6 +366,8 @@ const CreatePOPage: React.FC = () => {
             const responseData = response.data?.data || response.data;
             const extractionData = responseData.extraction || responseData;
             const verificationData = responseData.verification || {};
+            const vendorFailed = !!responseData.vendorFailed || !!extractionData?.error;
+            const itemsFailed = !!responseData.itemsFailed || !!verificationData?.error;
 
             // Helper: recursively find an object with certain keys
             const findNested = (obj: any, ...keys: string[]): any => {
@@ -416,17 +439,23 @@ const CreatePOPage: React.FC = () => {
                 const isVerified = item.verified === true || item.matched === true || item.exists === true ||
                     item.status === 'matched' || item.status === 'verified' || item.status === 'found';
 
+                const tax = parseFloat(item.tax_rate || item.taxRate || item.tax || 0);
+                const safeTax = isNaN(tax) ? 0 : tax;
+                const safeQty = isNaN(qty) ? 1 : qty;
+                const safePrice = isNaN(price) ? 0 : price;
+
                 return {
                     description: itemName,
-                    quantity: isNaN(qty) ? 1 : qty,
+                    quantity: safeQty,
                     unit: normalizeUnit(item.unit || item.uom || 'kg'),
-                    unitPrice: isNaN(price) ? 0 : price,
-                    total: (isNaN(qty) ? 1 : qty) * (isNaN(price) ? 0 : price),
+                    unitPrice: safePrice,
+                    taxRate: safeTax,
+                    total: safeQty * safePrice * (1 + safeTax / 100),
                     inventoryItem: matchedInventoryId || (isVerified ? 'verified' : ''),
                     weightValue: item.weight_value || item.weightValue || item.weight || '',
                     weightUnit: normalizeUnit(item.weight_unit || item.weightUnit || item.unit || 'lb')
                 };
-            }) : [{ description: '', quantity: 1, unit: 'kg', unitPrice: 0, total: 0, inventoryItem: '', weightValue: '', weightUnit: 'lb' }];
+            }) : [{ description: '', quantity: 1, unit: 'kg', unitPrice: 0, taxRate: 0, total: 0, inventoryItem: '', weightValue: '', weightUnit: 'lb' }];
 
             console.log('=== MAPPED ITEMS ===', JSON.stringify(extractedItems, null, 2));
 
@@ -466,7 +495,13 @@ const CreatePOPage: React.FC = () => {
             }));
 
             // Try to match vendor from existing vendors list
-            if (vendorName) {
+            if (vendorFailed && itemsFailed) {
+                toast.error('AI extraction timed out for both vendor and items. Please enter the details manually.', { id: 'extract-toast', duration: 6000 });
+            } else if (vendorFailed) {
+                toast.error('Vendor detection timed out, but items were extracted. Please fill in the vendor manually.', { id: 'extract-toast', duration: 6000 });
+            } else if (itemsFailed) {
+                toast.error('Item detection timed out, but vendor was extracted. Please add items manually.', { id: 'extract-toast', duration: 6000 });
+            } else if (vendorName) {
                 const matched = vendors.find((v: any) =>
                     v.name?.toLowerCase().trim() === vendorName?.toLowerCase().trim()
                 );
@@ -505,7 +540,11 @@ const CreatePOPage: React.FC = () => {
 
         } catch (error: any) {
             console.error('Extraction error:', error);
-            toast.error(error.response?.data?.message || 'Failed to extract invoice', { id: 'extract-toast' });
+            const isTimeout = error.code === 'ECONNABORTED' || /timeout/i.test(error.message || '');
+            const message = isTimeout
+                ? 'AI extraction timed out. The service may be slow right now — try again, or enter the vendor and items manually.'
+                : (error.response?.data?.message || 'Failed to extract invoice. Please enter the details manually.');
+            toast.error(message, { id: 'extract-toast', duration: 6000 });
         } finally {
             setExtracting(false);
         }
@@ -514,7 +553,7 @@ const CreatePOPage: React.FC = () => {
     const addItem = () => {
         setFormData({
             ...formData,
-            items: [...formData.items, { description: '', quantity: 1, unit: 'kg', unitPrice: 0, total: 0, inventoryItem: '', weightValue: '', weightUnit: 'lb' }],
+            items: [...formData.items, { description: '', quantity: 1, unit: 'kg', unitPrice: 0, taxRate: 0, total: 0, inventoryItem: '', weightValue: '', weightUnit: 'lb' }],
         });
     };
 
@@ -609,9 +648,34 @@ const CreatePOPage: React.FC = () => {
         }
     };
 
-    const calculateSubtotal = () => (formData?.items || []).reduce((sum: number, item: any) => sum + (item.total || 0), 0);
-    const calculateTax = () => (calculateSubtotal() * (formData.taxRate || 0)) / 100;
+    const calculateSubtotal = () => (formData?.items || []).reduce((sum: number, item: any) => {
+        const q = parseFloat(item.quantity) || 0;
+        const p = parseFloat(item.unitPrice) || 0;
+        return sum + q * p;
+    }, 0);
+    const calculateTax = () => (formData?.items || []).reduce((sum: number, item: any) => {
+        const q = parseFloat(item.quantity) || 0;
+        const p = parseFloat(item.unitPrice) || 0;
+        const t = parseFloat(item.taxRate) || 0;
+        return sum + q * p * (t / 100);
+    }, 0);
     const calculateTotal = () => calculateSubtotal() + calculateTax() + (formData.shippingCost || 0);
+
+    const getStatusPill = () => {
+        if (formData.paymentStatus === 'paid') {
+            return { label: 'Paid', ...TOKENS.status.paid };
+        }
+        if (formData.dueDate) {
+            const due = new Date(formData.dueDate);
+            const today = new Date();
+            due.setHours(0, 0, 0, 0);
+            today.setHours(0, 0, 0, 0);
+            const days = Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            if (days < 0) return { label: 'Overdue', ...TOKENS.status.overdue };
+            return { label: `Due in ${days} day${days === 1 ? '' : 's'}`, ...TOKENS.status.due };
+        }
+        return { label: 'Due', ...TOKENS.status.due };
+    };
 
     const handleSubmit = async (status: string) => {
         if (loading) return;
@@ -647,13 +711,24 @@ const CreatePOPage: React.FC = () => {
         }
     };
 
+    const cardSx = {
+        p: { xs: 2.5, md: 3.5 },
+        borderRadius: '14px',
+        bgcolor: TOKENS.surface,
+        border: `1px solid ${TOKENS.border}`,
+        boxShadow: 'none',
+        maxWidth: { xs: 500, md: 'none' },
+        mx: { xs: 'auto', md: 0 },
+        width: '100%'
+    };
+
     const SectionHeader = ({ icon, title, centeredOnMobile, sx }: { icon: React.ReactNode, title: string, centeredOnMobile?: boolean, sx?: any }) => (
         <Stack
             direction="row"
             spacing={isMobile ? 1.25 : 2}
             alignItems="center"
             sx={{
-                mb: isMobile ? 1.5 : 3,
+                mb: isMobile ? 1.5 : 2.5,
                 width: '100%',
                 ...sx
             }}
@@ -661,24 +736,22 @@ const CreatePOPage: React.FC = () => {
             <Box sx={{
                 p: isMobile ? 0.75 : 1.25,
                 borderRadius: isMobile ? 1.5 : 2.5,
-                bgcolor: alpha(theme.palette.primary.main, 0.08),
-                color: 'primary.main',
+                bgcolor: alpha(TOKENS.accent, 0.08),
+                color: TOKENS.accent,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: `inset 0 0 0 1px ${alpha(theme.palette.primary.main, 0.1)}`,
+                boxShadow: `inset 0 0 0 1px ${alpha(TOKENS.accent, 0.15)}`,
                 '& .MuiSvgIcon-root': { fontSize: isMobile ? 18 : 24 }
             }}>
                 {icon}
             </Box>
             <Typography
-                variant="body1"
-                fontWeight={900}
                 sx={{
-                    fontSize: { xs: '0.9rem', md: '1.25rem' },
-                    letterSpacing: '-0.02em',
-                    color: 'text.primary',
-                    textTransform: 'uppercase',
+                    fontFamily: TOKENS.fontSerif,
+                    fontWeight: 600,
+                    fontSize: { xs: '0.95rem', md: '1.1rem' },
+                    color: TOKENS.ink,
                     opacity: 0.9
                 }}
             >
@@ -686,58 +759,6 @@ const CreatePOPage: React.FC = () => {
             </Typography>
         </Stack>
     );
-
-    <Paper sx={{
-        p: { xs: 2.5, md: 4 },
-        borderRadius: { xs: 4, md: 5 },
-        boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-        maxWidth: { xs: 500, md: 'none' },
-        mx: { xs: 'auto', md: 0 },
-        width: '100%'
-    }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: isMobile ? 1.5 : 3, flexWrap: 'nowrap', gap: 1 }}>
-            <SectionHeader icon={<DetailsIcon />} title="Category" sx={{ mb: 0 }} />
-
-            <Button
-                component="label"
-                variant="contained"
-                color="secondary"
-                disabled={extracting}
-                startIcon={extracting ? <CircularProgress size={16} color="inherit" /> : <AutoAwesomeIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />}
-                sx={{
-                    borderRadius: 2,
-                    px: { xs: 1.5, sm: 3 },
-                    py: { xs: 0.5, sm: 1 },
-                    fontSize: { xs: '0.7rem', sm: '0.875rem' },
-                    minWidth: 'auto',
-                    whiteSpace: 'nowrap',
-                    background: 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)',
-                    boxShadow: '0 4px 14px 0 rgba(139,92,246,0.2)',
-                    textTransform: 'none',
-                    height: { xs: 32, md: 40 }
-                }}
-            >
-                {extracting ? '...' : (isMobile ? 'AI Extract' : 'AI Invoice Extraction')}
-                <input type="file" hidden accept="image/*,application/pdf,.doc,.docx" onChange={handleExtractInvoice} />
-            </Button>
-        </Box>
-        <Grid container spacing={isMobile ? 1.5 : 3}>
-            <Grid item xs={12}>
-                <TextField
-                    select
-                    fullWidth
-                    size={isMobile ? "small" : "medium"}
-                    label="Primary Category"
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    SelectProps={{
-                        MenuProps: { PaperProps: { sx: { borderRadius: 3 } } },
-                        sx: { fontSize: isMobile ? '0.875rem' : '1rem' }
-                    }}
-                />
-            </Grid>
-        </Grid>
-    </Paper>
 
     // --- Dynamic UI Logic ---
     const isSalary = formData.category === 'salaries';
@@ -752,749 +773,714 @@ const CreatePOPage: React.FC = () => {
         );
     }
 
+    const statusPill = getStatusPill();
+
     return (
         <Box sx={{
-            p: { xs: 1.5, md: 4 },
-            maxWidth: 1400,
-            mx: 'auto',
+            width: '100%',
             minHeight: '100vh',
-            bgcolor: '#f9fafb',
+            fontFamily: TOKENS.fontSans,
             overflowX: 'hidden'
         }}>
-            <Stack
-                direction={isMobile ? "column" : "row"}
-                alignItems="center"
-                spacing={isMobile ? 1.5 : 2}
-                mb={isMobile ? 3 : 5}
-                sx={{ textAlign: 'center', width: '100%' }}
-            >
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2 }, width: { xs: '100%', sm: 'auto' }, justifyContent: 'center' }}>
-                    <IconButton size={isMobile ? "small" : "medium"} onClick={() => navigate(getRelativePath('/purchase-orders'))} sx={{ border: '1px solid', borderColor: 'divider', p: isMobile ? 1 : 1.25, bgcolor: 'white' }}>
-                        <BackIcon fontSize={isMobile ? "small" : "medium"} />
-                    </IconButton>
-                    <Box>
-                        <Typography variant="h4" fontWeight={900} sx={{ fontSize: { xs: '1.5rem', sm: '2.125rem' }, letterSpacing: '-0.04em' }}>{id ? 'Edit Entry' : 'Create Entry'}</Typography>
-                    </Box>
-                </Box>
-                <Box sx={{ flexGrow: 1, display: { xs: 'none', sm: 'block' } }} />
-                <Chip
-                    label={formData.poNumber}
-                    color="primary"
-                    variant="outlined"
-                    sx={{
-                        fontWeight: 'bold',
-                        fontSize: { xs: '0.75rem', sm: '1rem' },
-                        height: isMobile ? 24 : 32,
-                        px: 0.5,
-                    }}
-                />
-            </Stack>
-
-            <Grid container spacing={0} justifyContent="center" sx={{ width: '100%', m: 0 }}>
-                {/* Left Column - Main Form */}
-                <Grid item xs={12} md={12}>
-                    <Stack spacing={isMobile ? 2 : 3} alignItems={isMobile ? "center" : "stretch"}>
-                        {/* 1. Transaction Type & Category */}
-                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', width: '100%', mb: 0 }}>
-                            <Button
-                                component="label"
-                                variant="contained"
-                                color="secondary"
-                                disabled={extracting}
-                                startIcon={extracting ? <CircularProgress size={16} color="inherit" /> : <AutoAwesomeIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />}
-                                sx={{
-                                    borderRadius: 2,
-                                    px: { xs: 1.5, sm: 3 },
-                                    py: { xs: 0.5, sm: 1 },
-                                    fontSize: { xs: '0.7rem', sm: '0.875rem' },
-                                    minWidth: 'auto',
-                                    whiteSpace: 'nowrap',
-                                    background: 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)',
-                                    boxShadow: '0 4px 14px 0 rgba(139,92,246,0.2)',
-                                    textTransform: 'none',
-                                    height: { xs: 32, md: 40 }
-                                }}
-                            >
-                                {extracting ? '...' : (isMobile ? 'AI Extract' : 'AI Invoice Extraction')}
-                                <input type="file" hidden accept="image/*,application/pdf,.doc,.docx" onChange={handleExtractInvoice} />
-                            </Button>
-                        </Box>
-
-
-                        {/* 2. Specialized Entity Selection */}
-                        <Paper sx={{
-                            p: { xs: 2.5, md: 4 },
-                            borderRadius: { xs: 4, md: 5 },
-                            boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                            maxWidth: { xs: 500, md: 'none' },
-                            mx: { xs: 'auto', md: 0 },
-                            width: '100%'
-                        }}>
-                            <SectionHeader
-                                icon={<VendorIcon />}
-                                title={isSalary ? 'Staff' : isUtility ? 'Provider' : 'Vendor Details'}
-                            />
-                            <Grid container spacing={isMobile ? 1.5 : 3}>
-                                {isSalary ? (
-                                    <Grid item xs={12} sm={6}>
-                                        <FormControl fullWidth>
-                                            <Autocomplete
-                                                options={users}
-                                                size={isMobile ? "small" : "medium"}
-                                                getOptionLabel={(option) => `${option.firstName} ${option.lastName} (${option.roles?.[0]})`}
-                                                onChange={(_, newValue) => {
-                                                    if (newValue) {
-                                                        setFormData(prev => ({
-                                                            ...prev,
-                                                            vendor: {
-                                                                name: `${newValue.firstName} ${newValue.lastName}`,
-                                                                email: newValue.email,
-                                                                contact: newValue.email, // fallback
-                                                                address: ''
-                                                            },
-                                                            metadata: { ...prev.metadata, employeeId: newValue._id }
-                                                        }));
-                                                    }
-                                                }}
-                                                renderInput={(params) => <TextField {...params} label="Select Staff Member *" sx={{ '& .MuiInputLabel-root': { fontSize: isMobile ? '0.8rem' : '1rem' } }} />}
-                                            />
-                                        </FormControl>
-                                    </Grid>
-                                ) : (
-                                    <Grid item xs={12} sm={6}>
-                                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                                            <Autocomplete
-                                                options={vendors}
-                                                size={isMobile ? "small" : "medium"}
-                                                value={selectedVendor}
-                                                getOptionLabel={(option) => typeof option === 'string' ? option : (option.name || '')}
-                                                onChange={(_, newValue) => {
-                                                    if (typeof newValue === 'string') {
-                                                        handleVendorChange('name', newValue);
-                                                    } else {
-                                                        handleVendorSelect(newValue);
-                                                    }
-                                                }}
-                                                inputValue={formData.vendor.name}
-                                                onInputChange={(_, val, reason) => {
-                                                    if (reason === 'input') {
-                                                        handleVendorChange('name', val);
-                                                        if (selectedVendor && val !== selectedVendor.name) {
-                                                            setSelectedVendor(null);
-                                                        }
-                                                    }
-                                                }}
-                                                freeSolo
-                                                sx={{ flex: 1 }}
-                                                renderOption={(props, option) => (
-                                                    <Box component="li" {...props} sx={{ fontSize: '0.875rem' }}>
-                                                        <Box>
-                                                            <Typography fontWeight="bold" variant="body2">{option.name}</Typography>
-                                                            {option.contact && (
-                                                                <Typography variant="caption" color="text.secondary">
-                                                                    {option.contact} {option.email && `• ${option.email}`}
-                                                                </Typography>
-                                                            )}
-                                                        </Box>
-                                                    </Box>
-                                                )}
-                                                renderInput={(params) => (
-                                                    <TextField
-                                                        {...params}
-                                                        label={isUtility ? "Provider *" : "Vendor *"}
-                                                        error={!!errors.name}
-                                                        sx={{ '& .MuiInputLabel-root': { fontSize: isMobile ? '0.8rem' : '1rem' } }}
-                                                    />
-                                                )}
-                                                noOptionsText={
-                                                    formData.vendor.name ? (
-                                                        <Box sx={{ textAlign: 'center', py: 1 }}>
-                                                            <Typography variant="caption" color="text.secondary" gutterBottom sx={{ display: 'block' }}>
-                                                                "{formData.vendor.name}" not found
-                                                            </Typography>
-                                                            <Button
-                                                                size="small"
-                                                                variant="contained"
-                                                                startIcon={<AddIcon sx={{ fontSize: 14 }} />}
-                                                                onClick={handleCreateVendor}
-                                                                sx={{
-                                                                    textTransform: 'none',
-                                                                    borderRadius: 1.5,
-                                                                    fontSize: '0.7rem',
-                                                                    background: 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)',
-                                                                }}
-                                                            >
-                                                                Create
-                                                            </Button>
-                                                        </Box>
-                                                    ) : (
-                                                        <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center', display: 'block', py: 1 }}>
-                                                            Type to search...
-                                                        </Typography>
-                                                    )
-                                                }
-                                            />
-                                            {formData.vendor.name && !selectedVendor && (
-                                                <IconButton
-                                                    onClick={handleCreateVendor}
-                                                    size="small"
-                                                    sx={{
-                                                        bgcolor: alpha(theme.palette.warning.main, 0.1),
-                                                        color: theme.palette.warning.dark,
-                                                        borderRadius: 1.5,
-                                                        p: 1
-                                                    }}
-                                                >
-                                                    <AddIcon fontSize="small" />
-                                                </IconButton>
-                                            )}
-                                        </Box>
-                                    </Grid>
-                                )}
-
-                                {isSalary && (
-                                    <Grid item xs={12} sm={6}>
-                                        <TextField
-                                            fullWidth
-                                            type="month"
-                                            size={isMobile ? "small" : "medium"}
-                                            label="Salary Month"
-                                            value={formData.metadata.payMonth || ''}
-                                            onChange={(e) => handleMetadataChange('payMonth', e.target.value)}
-                                            InputLabelProps={{ shrink: true, sx: { fontSize: isMobile ? '0.8rem' : '1rem' } }}
-                                            sx={{ '& .MuiInputBase-input': { fontSize: isMobile ? '0.875rem' : '1rem' } }}
-                                        />
-                                    </Grid>
-                                )}
-
-                                {isUtility && (
-                                    <Grid item xs={12} sm={6}>
-                                        <TextField
-                                            fullWidth
-                                            size={isMobile ? "small" : "medium"}
-                                            label="Meter Reading"
-                                            value={formData.metadata.meterReading || ''}
-                                            onChange={(e) => handleMetadataChange('meterReading', e.target.value)}
-                                            sx={{ '& .MuiInputLabel-root': { fontSize: isMobile ? '0.8rem' : '1rem' } }}
-                                        />
-                                    </Grid>
-                                )}
-
-                                {!isSalary && (
-                                    <>
-                                        <Grid item xs={isMobile ? 6 : 4} sm={4}>
-                                            <TextField
-                                                fullWidth
-                                                size={isMobile ? "small" : "medium"}
-                                                label="Contact"
-                                                value={formData.vendor.contact}
-                                                onChange={(e) => handleVendorChange('contact', e.target.value)}
-                                                sx={{ '& .MuiInputLabel-root': { fontSize: isMobile ? '0.8rem' : '1rem' } }}
-                                            />
-                                        </Grid>
-                                        <Grid item xs={isMobile ? 6 : 4} sm={4}>
-                                            <TextField
-                                                fullWidth
-                                                size={isMobile ? "small" : "medium"}
-                                                label="Invoice #"
-                                                value={formData.referenceNumber}
-                                                onChange={(e) => setFormData({ ...formData, referenceNumber: e.target.value })}
-                                                placeholder="INV-001"
-                                                sx={{ '& .MuiInputLabel-root': { fontSize: isMobile ? '0.8rem' : '1rem' } }}
-                                            />
-                                        </Grid>
-                                        <Grid item xs={12} sm={4}>
-                                            <TextField
-                                                fullWidth
-                                                size={isMobile ? "small" : "medium"}
-                                                label="Email"
-                                                value={formData.vendor.email}
-                                                onChange={(e) => handleVendorChange('email', e.target.value)}
-                                                sx={{
-                                                    display: { xs: isMobile ? 'none' : 'block', sm: 'block' },
-                                                    '& .MuiInputLabel-root': { fontSize: isMobile ? '0.8rem' : '1rem' }
-                                                }}
-                                            />
-                                            {isMobile && (
-                                                <TextField
-                                                    fullWidth
-                                                    size="small"
-                                                    label="Address"
-                                                    value={formData.vendor.address}
-                                                    onChange={(e) => handleVendorChange('address', e.target.value)}
-                                                    sx={{ '& .MuiInputLabel-root': { fontSize: '0.8rem' } }}
-                                                />
-                                            )}
-                                        </Grid>
-                                        {!isMobile && (
-                                            <Grid item xs={12}>
-                                                <TextField
-                                                    fullWidth
-                                                    label="Address / Branch"
-                                                    multiline rows={1}
-                                                    value={formData.vendor.address}
-                                                    onChange={(e) => handleVendorChange('address', e.target.value)}
-                                                />
-                                            </Grid>
-                                        )}
-                                    </>
-                                )}
-                            </Grid>
-                        </Paper>                        {/* 3. Dynamic Items Table */}
-                        <Paper sx={{
-                            p: { xs: 2, md: 4 },
-                            borderRadius: { xs: 4, md: 5 },
-                            boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                            maxWidth: { xs: 500, md: 'none' },
-                            mx: { xs: 'auto', md: 0 },
-                            width: '100%'
-                        }}>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: isMobile ? 1.5 : 3, gap: 1 }}>
-                                <SectionHeader
-                                    icon={<ItemsIcon />}
-                                    title={isSalary ? 'Pay' : 'Items'}
-                                    sx={{ mb: 0, width: 'auto' }}
-                                />
-                                <Box sx={{ display: 'flex', gap: 1 }}>
-                                    {isInventory && formData.items.some((i: any) => i.inventoryItem && i.inventoryItem !== 'verified') && (
-                                        <Button
-                                            size="small"
-                                            startIcon={<RestockIcon sx={{ fontSize: 16 }} />}
-                                            onClick={handleRestockAll}
-                                            variant="contained"
-                                            sx={{
-                                                borderRadius: 1.5,
-                                                whiteSpace: 'nowrap',
-                                                textTransform: 'none',
-                                                fontSize: '0.7rem',
-                                                px: 1,
-                                                background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-                                            }}
-                                        >
-                                            Restock
-                                        </Button>
-                                    )}
-                                    <Button
-                                        size="small"
-                                        startIcon={<AddIcon sx={{ fontSize: 16 }} />}
-                                        onClick={addItem}
-                                        variant="outlined"
-                                        sx={{
-                                            borderRadius: 1.5,
-                                            width: 'auto',
-                                            whiteSpace: 'nowrap',
-                                            fontSize: '0.7rem',
-                                            px: 1
-                                        }}
-                                    >
-                                        Add
-                                    </Button>
-                                </Box>
-                            </Box>
-
-                            <TableContainer sx={{
-                                overflowX: 'auto',
-                                maxHeight: { xs: 'none', sm: 500 },
-                                '&::-webkit-scrollbar': { width: '8px', height: '8px' },
+            <Box sx={{
+                p: { xs: 1.5, md: 4 },
+                pb: { xs: 12, md: 14 },
+                maxWidth: 1400,
+                mx: 'auto',
+            }}>
+                <Stack
+                    direction={isMobile ? "column" : "row"}
+                    justifyContent="space-between"
+                    alignItems={isMobile ? "stretch" : "center"}
+                    spacing={isMobile ? 1.5 : 2}
+                    mb={isMobile ? 3 : 4}
+                    sx={{ width: '100%', flexWrap: 'wrap' }}
+                >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <IconButton size={isMobile ? "small" : "medium"} onClick={() => navigate(getRelativePath('/purchase-orders'))} sx={{ border: `1px solid ${TOKENS.border}`, p: isMobile ? 1 : 1.25, bgcolor: TOKENS.surface }}>
+                            <BackIcon fontSize={isMobile ? "small" : "medium"} />
+                        </IconButton>
+                        <Box>
+                            <Typography sx={{
+                                fontSize: '0.75rem',
+                                letterSpacing: '0.12em',
+                                textTransform: 'uppercase',
+                                color: TOKENS.muted,
+                                fontWeight: 600,
+                                mb: 0.3
                             }}>
-                                {/* MOBILE CARD VIEW */}
-                                {isMobile ? (
-                                    (formData?.items || []).length === 0 ? (
-                                        <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
-                                            <Typography variant="caption">No items available</Typography>
-                                        </Box>
+                                Purchase Ledger
+                            </Typography>
+                            <Typography sx={{
+                                fontFamily: TOKENS.fontSerif,
+                                fontWeight: 600,
+                                fontSize: { xs: '1.5rem', sm: '2.125rem' },
+                                color: TOKENS.ink,
+                                lineHeight: 1.1
+                            }}>
+                                {id ? 'Edit Bill Entry' : 'New Bill Entry'}
+                            </Typography>
+                        </Box>
+                    </Box>
+                    <Stack direction="row" spacing={1.5} alignItems="center" sx={{ flexWrap: 'wrap', gap: 1 }}>
+                        <Button
+                            component="label"
+                            variant="outlined"
+                            disabled={extracting}
+                            startIcon={extracting ? <CircularProgress size={16} color="inherit" /> : null}
+                            sx={{
+                                borderRadius: 2,
+                                px: { xs: 1.5, sm: 2.5 },
+                                py: 1,
+                                fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                                fontWeight: 600,
+                                textTransform: 'none',
+                                color: TOKENS.accent,
+                                borderColor: TOKENS.accent,
+                                bgcolor: TOKENS.surface,
+                                '&:hover': { borderColor: TOKENS.accent, bgcolor: alpha(TOKENS.accent, 0.06) }
+                            }}
+                        >
+                            {extracting ? 'Extracting...' : (isMobile ? '✦ Auto-fill' : '✦ Auto-fill from invoice')}
+                            <input type="file" hidden accept="image/*,application/pdf,.doc,.docx" onChange={handleExtractInvoice} />
+                        </Button>
+                        <Chip
+                            label={statusPill.label}
+                            sx={{
+                                bgcolor: statusPill.bg,
+                                color: statusPill.fg,
+                                fontWeight: 700,
+                                fontSize: '0.7rem',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.03em',
+                                borderRadius: 999,
+                                height: 28
+                            }}
+                        />
+                    </Stack>
+                </Stack>
+
+                <Grid container spacing={0} justifyContent="center" sx={{ width: '100%', m: 0 }}>
+                    {/* Left Column - Main Form */}
+                    <Grid item xs={12} md={12}>
+                        <Stack spacing={isMobile ? 2 : 3} alignItems={isMobile ? "center" : "stretch"}>
+                            {/* 2. Specialized Entity Selection */}
+                            <Paper sx={cardSx}>
+                                <SectionHeader
+                                    icon={<VendorIcon />}
+                                    title={isSalary ? 'Staff' : isUtility ? 'Provider' : 'Vendor Details'}
+                                />
+                                <Grid container spacing={isMobile ? 1.5 : 3}>
+                                    {isSalary ? (
+                                        <Grid item xs={12} sm={6}>
+                                            <FormControl fullWidth>
+                                                <Autocomplete
+                                                    options={users}
+                                                    size={isMobile ? "small" : "medium"}
+                                                    getOptionLabel={(option) => `${option.firstName} ${option.lastName} (${option.roles?.[0]})`}
+                                                    onChange={(_, newValue) => {
+                                                        if (newValue) {
+                                                            setFormData(prev => ({
+                                                                ...prev,
+                                                                vendor: {
+                                                                    name: `${newValue.firstName} ${newValue.lastName}`,
+                                                                    email: newValue.email,
+                                                                    contact: newValue.email, // fallback
+                                                                    address: ''
+                                                                },
+                                                                metadata: { ...prev.metadata, employeeId: newValue._id }
+                                                            }));
+                                                        }
+                                                    }}
+                                                    renderInput={(params) => <TextField {...params} label="Select Staff Member *" sx={{ '& .MuiInputLabel-root': { fontSize: isMobile ? '0.8rem' : '1rem' } }} />}
+                                                />
+                                            </FormControl>
+                                        </Grid>
                                     ) : (
-                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                                            {(formData?.items || []).map((item: any, index: number) => (
-                                                <Box key={index} sx={{
-                                                    width: '100%',
-                                                    maxWidth: 500,
-                                                    mx: 'auto',
-                                                    border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
-                                                    borderRadius: 2,
-                                                    p: 1.5,
-                                                    bgcolor: alpha(theme.palette.background.default, 0.3),
-                                                }}>
-                                                    {/* Description / Pay Component */}
-                                                    <Box sx={{ mb: 1 }}>
-                                                        {isInventory ? (
-                                                            <Autocomplete
-                                                                options={inventoryItems}
-                                                                size="small"
-                                                                freeSolo
-                                                                getOptionLabel={(o) => typeof o === 'string' ? o : (o.name || '')}
-                                                                value={item.description}
-                                                                onInputChange={(_, val) => handleItemChange(index, 'description', val)}
-                                                                onChange={(_, val: any) => {
-                                                                    if (val && typeof val !== 'string') {
-                                                                        handleItemChange(index, 'inventoryItem', val._id);
-                                                                    }
-                                                                }}
-                                                                renderInput={(p) => <TextField {...p} fullWidth placeholder="Search material..." sx={{ '& .MuiInputBase-input': { fontSize: '0.875rem' } }} />}
-                                                            />
-                                                        ) : (
-                                                            <TextField
-                                                                fullWidth size="small" placeholder="Item description..."
-                                                                value={item.description}
-                                                                onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                                                                sx={{ '& .MuiInputBase-input': { fontSize: '0.875rem' } }}
-                                                            />
-                                                        )}
-                                                    </Box>
-
-                                                    {/* QTY / Amount row */}
-                                                    <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+                                        <Grid item xs={12} sm={6}>
+                                            <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                                                <Autocomplete
+                                                    options={vendors}
+                                                    size={isMobile ? "small" : "medium"}
+                                                    value={selectedVendor}
+                                                    getOptionLabel={(option) => typeof option === 'string' ? option : (option.name || '')}
+                                                    onChange={(_, newValue) => {
+                                                        if (typeof newValue === 'string') {
+                                                            handleVendorChange('name', newValue);
+                                                        } else {
+                                                            handleVendorSelect(newValue);
+                                                        }
+                                                    }}
+                                                    inputValue={formData.vendor.name}
+                                                    onInputChange={(_, val, reason) => {
+                                                        if (reason === 'input') {
+                                                            handleVendorChange('name', val);
+                                                            if (selectedVendor && val !== selectedVendor.name) {
+                                                                setSelectedVendor(null);
+                                                            }
+                                                        }
+                                                    }}
+                                                    freeSolo
+                                                    sx={{ flex: 1 }}
+                                                    renderOption={(props, option) => (
+                                                        <Box component="li" {...props} sx={{ fontSize: '0.875rem' }}>
+                                                            <Box>
+                                                                <Typography fontWeight="bold" variant="body2">{option.name}</Typography>
+                                                                {option.contact && (
+                                                                    <Typography variant="caption" color="text.secondary">
+                                                                        {option.contact} {option.email && `• ${option.email}`}
+                                                                    </Typography>
+                                                                )}
+                                                            </Box>
+                                                        </Box>
+                                                    )}
+                                                    renderInput={(params) => (
                                                         <TextField
-                                                            type="number" size="small" label={isSalary ? "Amount" : "Qty"}
-                                                            value={isSalary ? item.unitPrice : item.quantity}
-                                                            onChange={(e) => handleNumberInput(index, isSalary ? 'unitPrice' : 'quantity', e.target.value)}
-                                                            sx={{ flex: 1, '& .MuiInputLabel-root': { fontSize: '0.75rem' } }}
+                                                            {...params}
+                                                            label={isUtility ? "Provider *" : "Vendor *"}
+                                                            error={!!errors.name}
+                                                            sx={{ '& .MuiInputLabel-root': { fontSize: isMobile ? '0.8rem' : '1rem' } }}
                                                         />
-
-                                                        {!isSalary && (
-                                                            <TextField
-                                                                type="number" size="small" label="Price"
-                                                                value={item.unitPrice}
-                                                                onChange={(e) => handleNumberInput(index, 'unitPrice', e.target.value)}
-                                                                sx={{ flex: 1, '& .MuiInputLabel-root': { fontSize: '0.75rem' } }}
-                                                                InputProps={{ startAdornment: <InputAdornment position="start" sx={{ '& p': { fontSize: '0.75rem' } }}>$</InputAdornment> }}
-                                                            />
-                                                        )}
-                                                    </Box>
-
-                                                    {/* Footer: Sum + Status + Delete */}
-                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                            <Typography variant="caption" fontWeight={900} sx={{ color: 'primary.main', fontSize: '0.9rem' }}>
-                                                                ${(isSalary ? item.unitPrice : item.total || 0).toFixed(2)}
-                                                            </Typography>
-                                                            {isInventory && item.inventoryItem && (
-                                                                <Chip label="MATCHED" size="small" color="success" variant="outlined" sx={{ fontSize: '0.6rem', height: 16, fontWeight: 800 }} />
-                                                            )}
-                                                            {isInventory && !item.inventoryItem && item.description && (
+                                                    )}
+                                                    noOptionsText={
+                                                        formData.vendor.name ? (
+                                                            <Box sx={{ textAlign: 'center', py: 1 }}>
+                                                                <Typography variant="caption" color="text.secondary" gutterBottom sx={{ display: 'block' }}>
+                                                                    "{formData.vendor.name}" not found
+                                                                </Typography>
                                                                 <Button
                                                                     size="small"
-                                                                    onClick={() => handleCreateInventoryItem(index)}
-                                                                    sx={{ fontSize: '0.6rem', height: 20, p: 0, textTransform: 'none', minWidth: 'auto', color: 'orange' }}
+                                                                    variant="contained"
+                                                                    startIcon={<AddIcon sx={{ fontSize: 14 }} />}
+                                                                    onClick={handleCreateVendor}
+                                                                    sx={{
+                                                                        textTransform: 'none',
+                                                                        borderRadius: 1.5,
+                                                                        fontSize: '0.7rem',
+                                                                        background: 'linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%)',
+                                                                    }}
                                                                 >
-                                                                    + INVENTORY
+                                                                    Create
                                                                 </Button>
+                                                            </Box>
+                                                        ) : (
+                                                            <Typography variant="caption" color="text.secondary" sx={{ textAlign: 'center', display: 'block', py: 1 }}>
+                                                                Type to search...
+                                                            </Typography>
+                                                        )
+                                                    }
+                                                />
+                                                {formData.vendor.name && !selectedVendor && (
+                                                    <IconButton
+                                                        onClick={handleCreateVendor}
+                                                        size="small"
+                                                        sx={{
+                                                            bgcolor: alpha(theme.palette.warning.main, 0.1),
+                                                            color: theme.palette.warning.dark,
+                                                            borderRadius: 1.5,
+                                                            p: 1
+                                                        }}
+                                                    >
+                                                        <AddIcon fontSize="small" />
+                                                    </IconButton>
+                                                )}
+                                            </Box>
+                                        </Grid>
+                                    )}
+
+                                    {isSalary && (
+                                        <Grid item xs={12} sm={6}>
+                                            <TextField
+                                                fullWidth
+                                                type="month"
+                                                size={isMobile ? "small" : "medium"}
+                                                label="Salary Month"
+                                                value={formData.metadata.payMonth || ''}
+                                                onChange={(e) => handleMetadataChange('payMonth', e.target.value)}
+                                                InputLabelProps={{ shrink: true, sx: { fontSize: isMobile ? '0.8rem' : '1rem' } }}
+                                                sx={{ '& .MuiInputBase-input': { fontSize: isMobile ? '0.875rem' : '1rem' } }}
+                                            />
+                                        </Grid>
+                                    )}
+
+                                    {isUtility && (
+                                        <Grid item xs={12} sm={6}>
+                                            <TextField
+                                                fullWidth
+                                                size={isMobile ? "small" : "medium"}
+                                                label="Meter Reading"
+                                                value={formData.metadata.meterReading || ''}
+                                                onChange={(e) => handleMetadataChange('meterReading', e.target.value)}
+                                                sx={{ '& .MuiInputLabel-root': { fontSize: isMobile ? '0.8rem' : '1rem' } }}
+                                            />
+                                        </Grid>
+                                    )}
+
+                                    {!isSalary && (
+                                        <>
+                                            <Grid item xs={isMobile ? 6 : 2.67} sm={2.67}>
+                                                <TextField
+                                                    fullWidth
+                                                    size={isMobile ? "small" : "medium"}
+                                                    label="Contact"
+                                                    value={formData.vendor.contact}
+                                                    onChange={(e) => handleVendorChange('contact', e.target.value)}
+                                                    sx={{ '& .MuiInputLabel-root': { fontSize: isMobile ? '0.8rem' : '1rem' } }}
+                                                />
+                                            </Grid>
+                                            <Grid item xs={isMobile ? 6 : 2.67} sm={2.67}>
+                                                <TextField
+                                                    fullWidth
+                                                    size={isMobile ? "small" : "medium"}
+                                                    label="Invoice #"
+                                                    value={formData.referenceNumber}
+                                                    onChange={(e) => setFormData({ ...formData, referenceNumber: e.target.value })}
+                                                    placeholder="INV-001"
+                                                    sx={{ '& .MuiInputLabel-root': { fontSize: isMobile ? '0.8rem' : '1rem' } }}
+                                                />
+                                            </Grid>
+                                            <Grid item xs={12} sm={2.66}>
+                                                <TextField
+                                                    fullWidth
+                                                    size={isMobile ? "small" : "medium"}
+                                                    label="Email"
+                                                    value={formData.vendor.email}
+                                                    onChange={(e) => handleVendorChange('email', e.target.value)}
+                                                    sx={{
+                                                        display: { xs: isMobile ? 'none' : 'block', sm: 'block' },
+                                                        '& .MuiInputLabel-root': { fontSize: isMobile ? '0.8rem' : '1rem' }
+                                                    }}
+                                                />
+                                                {isMobile && (
+                                                    <TextField
+                                                        fullWidth
+                                                        size="small"
+                                                        label="Address"
+                                                        value={formData.vendor.address}
+                                                        onChange={(e) => handleVendorChange('address', e.target.value)}
+                                                        sx={{ '& .MuiInputLabel-root': { fontSize: '0.8rem' } }}
+                                                    />
+                                                )}
+                                            </Grid>
+                                            {!isMobile && (
+                                                <Grid item xs={12}>
+                                                    <TextField
+                                                        fullWidth
+                                                        label="Address / Branch"
+                                                        multiline rows={1}
+                                                        value={formData.vendor.address}
+                                                        onChange={(e) => handleVendorChange('address', e.target.value)}
+                                                    />
+                                                </Grid>
+                                            )}
+                                        </>
+                                    )}
+                                </Grid>
+                            </Paper>
+                            {/* 3. Dynamic Items Table */}
+                            <Paper sx={cardSx}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: isMobile ? 1.5 : 2.5, gap: 1 }}>
+                                    <SectionHeader
+                                        icon={<ItemsIcon />}
+                                        title={isSalary ? 'Pay' : 'Items'}
+                                        sx={{ mb: 0, width: 'auto' }}
+                                    />
+                                    <Box sx={{ display: 'flex', gap: 1 }}>
+                                        {isInventory && formData.items.some((i: any) => i.inventoryItem && i.inventoryItem !== 'verified') && (
+                                            <Button
+                                                size="small"
+                                                startIcon={<RestockIcon sx={{ fontSize: 16 }} />}
+                                                onClick={handleRestockAll}
+                                                variant="contained"
+                                                sx={{
+                                                    borderRadius: 1.5,
+                                                    whiteSpace: 'nowrap',
+                                                    textTransform: 'none',
+                                                    fontSize: '0.7rem',
+                                                    px: 1,
+                                                    background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
+                                                }}
+                                            >
+                                                Restock
+                                            </Button>
+                                        )}
+                                        <Button
+                                            size="small"
+                                            startIcon={<AddIcon sx={{ fontSize: 16 }} />}
+                                            onClick={addItem}
+                                            variant="outlined"
+                                            sx={{
+                                                borderRadius: '8px',
+                                                borderStyle: 'dashed',
+                                                width: 'auto',
+                                                whiteSpace: 'nowrap',
+                                                fontSize: '0.7rem',
+                                                fontWeight: 600,
+                                                textTransform: 'none',
+                                                px: 1.25,
+                                                color: TOKENS.accent,
+                                                borderColor: TOKENS.accent,
+                                                '&:hover': { borderColor: TOKENS.accent, borderStyle: 'dashed', bgcolor: alpha(TOKENS.accent, 0.06) }
+                                            }}
+                                        >
+                                            + Add item
+                                        </Button>
+                                    </Box>
+                                </Box>
+
+                                <TableContainer sx={{
+                                    overflowX: 'auto',
+                                    maxHeight: { xs: 'none', sm: 500 },
+                                    '&::-webkit-scrollbar': { width: '8px', height: '8px' },
+                                }}>
+                                    {/* MOBILE CARD VIEW */}
+                                    {isMobile ? (
+                                        (formData?.items || []).length === 0 ? (
+                                            <Box sx={{ textAlign: 'center', py: 4, color: 'text.secondary' }}>
+                                                <Typography variant="caption">No items available</Typography>
+                                            </Box>
+                                        ) : (
+                                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                                                {(formData?.items || []).map((item: any, index: number) => (
+                                                    <Box key={index} sx={{
+                                                        width: '100%',
+                                                        maxWidth: 500,
+                                                        mx: 'auto',
+                                                        border: `1px solid ${alpha(theme.palette.divider, 0.1)}`,
+                                                        borderRadius: 2,
+                                                        p: 1.5,
+                                                        bgcolor: alpha(theme.palette.background.default, 0.3),
+                                                    }}>
+                                                        {/* Description / Pay Component */}
+                                                        <Box sx={{ mb: 1 }}>
+                                                            {isInventory ? (
+                                                                <Autocomplete
+                                                                    options={inventoryItems}
+                                                                    size="small"
+                                                                    freeSolo
+                                                                    getOptionLabel={(o) => typeof o === 'string' ? o : (o.name || '')}
+                                                                    value={item.description}
+                                                                    onInputChange={(_, val) => handleItemChange(index, 'description', val)}
+                                                                    onChange={(_, val: any) => {
+                                                                        if (val && typeof val !== 'string') {
+                                                                            handleItemChange(index, 'inventoryItem', val._id);
+                                                                        }
+                                                                    }}
+                                                                    renderInput={(p) => <TextField {...p} fullWidth placeholder="Search material..." sx={{ '& .MuiInputBase-input': { fontSize: '0.875rem' } }} />}
+                                                                />
+                                                            ) : (
+                                                                <TextField
+                                                                    fullWidth size="small" placeholder="Item description..."
+                                                                    value={item.description}
+                                                                    onChange={(e) => handleItemChange(index, 'description', e.target.value)}
+                                                                    sx={{ '& .MuiInputBase-input': { fontSize: '0.875rem' } }}
+                                                                />
                                                             )}
                                                         </Box>
 
-                                                        <IconButton
-                                                            size="small" color="error"
-                                                            onClick={() => removeItem(index)}
-                                                            disabled={(formData?.items || []).length === 1}
-                                                            sx={{ p: 0.5 }}
-                                                        >
-                                                            <DeleteIcon fontSize="small" />
-                                                        </IconButton>
-                                                    </Box>
-                                                </Box>
-                                            ))}
-                                        </Box>
-                                    )
-                                ) : (
-                                    /* DESKTOP TABLE VIEW - Simplified for better grep matching */
-                                    <Box>
-                                        <Table sx={{ minWidth: 800 }}>
-                                            <TableHead>
-                                                <TableRow>
-                                                    <TableCell sx={{ fontWeight: 'bold' }}>{isSalary ? 'Pay Component' : isInventory ? 'Inventory Item' : 'Description'}</TableCell>
-                                                    {!isSalary && <TableCell align="right" sx={{ fontWeight: 'bold' }}>Quantity</TableCell>}
-                                                    {!isSalary && <TableCell align="right" sx={{ fontWeight: 'bold' }}>Unit Price</TableCell>}
-                                                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>{isSalary ? 'Amount' : 'Total'}</TableCell>
-                                                    {!isSalary && <TableCell width={50}></TableCell>}
-                                                </TableRow>
-                                            </TableHead>
-                                            <TableBody>
-                                                {(formData?.items || []).map((item: any, index: number) => (
-                                                    <TableRow key={index}>
-                                                        <TableCell>
-                                                            {isInventory ? (
-                                                                <Box>
-                                                                    <Autocomplete
-                                                                        options={inventoryItems}
-                                                                        size="small"
-                                                                        freeSolo
-                                                                        getOptionLabel={(o) => typeof o === 'string' ? o : (o.name || '')}
-                                                                        value={item.description}
-                                                                        onInputChange={(_, val) => handleItemChange(index, 'description', val)}
-                                                                        onChange={(_, val: any) => {
-                                                                            if (val && typeof val !== 'string') {
-                                                                                handleItemChange(index, 'inventoryItem', val._id);
-                                                                            }
-                                                                        }}
-                                                                        renderInput={(p) => <TextField {...p} size="small" fullWidth placeholder="Search..." />}
-                                                                    />
-                                                                    <Box sx={{ mt: 0.5, display: 'flex', gap: 1, alignItems: 'center' }}>
-                                                                        {item.inventoryItem && item.inventoryItem !== 'verified' && (
-                                                                            <Chip label="MATCHED" size="small" color="success" variant="outlined" sx={{ fontSize: '0.6rem', height: 16, fontWeight: 800 }} />
-                                                                        )}
-                                                                        {!item.inventoryItem && item.description && (
-                                                                            <Button
-                                                                                size="small"
-                                                                                onClick={() => handleCreateInventoryItem(index)}
-                                                                                sx={{ fontSize: '0.65rem', height: 20, p: 0, textTransform: 'none', minWidth: 'auto', color: 'orange', fontWeight: 'bold' }}
-                                                                            >
-                                                                                + INVENTORY
-                                                                            </Button>
-                                                                        )}
-                                                                    </Box>
-                                                                </Box>
-                                                            ) : (
-                                                                <TextField fullWidth size="small" value={item.description} onChange={(e) => handleItemChange(index, 'description', e.target.value)} />
-                                                            )}
-                                                        </TableCell>
-                                                        {!isSalary && (
-                                                            <TableCell align="right">
-                                                                <TextField type="number" size="small" value={item.quantity} onChange={(e) => handleNumberInput(index, 'quantity', e.target.value)} />
-                                                            </TableCell>
-                                                        )}
-                                                        {!isSalary && (
-                                                            <TableCell align="right">
-                                                                <TextField type="number" size="small" value={item.unitPrice} onChange={(e) => handleNumberInput(index, 'unitPrice', e.target.value)} />
-                                                            </TableCell>
-                                                        )}
-                                                        <TableCell align="right">${(isSalary ? item.unitPrice : item.total || 0).toFixed(2)}</TableCell>
-                                                        {!isSalary && (
-                                                            <TableCell>
-                                                                <IconButton onClick={() => removeItem(index)} disabled={(formData?.items || []).length === 1} size="small" color="error"><DeleteIcon /></IconButton>
-                                                            </TableCell>
-                                                        )}
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </Box>
-                                )}
-                            </TableContainer>
-                        </Paper>
+                                                        {/* QTY / Unit / Price row */}
+                                                        <Box sx={{ display: 'flex', gap: 1, mb: 1 }}>
+                                                            <TextField
+                                                                type="number" size="small" label={isSalary ? "Amount" : "Qty"}
+                                                                value={isSalary ? item.unitPrice : item.quantity}
+                                                                onChange={(e) => handleNumberInput(index, isSalary ? 'unitPrice' : 'quantity', e.target.value)}
+                                                                sx={{ flex: 1, '& .MuiInputLabel-root': { fontSize: '0.75rem' } }}
+                                                            />
 
-                        {/* 4. Financial Summary + Settlement */}
-                        <Grid container spacing={isMobile ? 0 : 3} justifyContent="center" sx={{ width: '100%', m: 0 }}>
-                            <Grid item xs={12} md={8} sx={{ display: 'flex', justifyContent: 'center' }}>
-                                <Paper sx={{
-                                    p: { xs: 2.5, md: 4 },
-                                    borderRadius: { xs: 4, md: 5 },
-                                    boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                                    maxWidth: { xs: 500, md: 'none' },
-                                    mx: { xs: 'auto', md: 0 },
-                                    width: '100%'
-                                }}>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-                                        <SectionHeader icon={<InfoIcon />} title="Goal" sx={{ mb: 0 }} />
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <Typography variant="caption" color="text.secondary">Method:</Typography>
-                                            <Chip label={formData.paymentMethod?.toUpperCase()} size="small" sx={{ bgcolor: alpha(theme.palette.primary.main, 0.1), color: 'primary.main', fontWeight: 800, fontSize: '0.65rem' }} />
+                                                            {!isSalary && (
+                                                                <TextField
+                                                                    size="small" label="Unit"
+                                                                    value={item.unit || ''}
+                                                                    onChange={(e) => handleItemChange(index, 'unit', e.target.value)}
+                                                                    sx={{ flex: 1, '& .MuiInputLabel-root': { fontSize: '0.75rem' } }}
+                                                                />
+                                                            )}
+
+                                                            {!isSalary && (
+                                                                <TextField
+                                                                    type="number" size="small" label="Price"
+                                                                    value={item.unitPrice}
+                                                                    onChange={(e) => handleNumberInput(index, 'unitPrice', e.target.value)}
+                                                                    sx={{ flex: 1, '& .MuiInputLabel-root': { fontSize: '0.75rem' } }}
+                                                                    InputProps={{ startAdornment: <InputAdornment position="start" sx={{ '& p': { fontSize: '0.75rem' } }}>$</InputAdornment> }}
+                                                                />
+                                                            )}
+                                                        </Box>
+
+                                                        {!isSalary && (
+                                                            <Box sx={{ mb: 1 }}>
+                                                                <TextField
+                                                                    type="number" size="small" label="Tax %"
+                                                                    value={item.taxRate ?? 0}
+                                                                    onChange={(e) => handleNumberInput(index, 'taxRate', e.target.value)}
+                                                                    sx={{ width: '50%', '& .MuiInputLabel-root': { fontSize: '0.75rem' } }}
+                                                                />
+                                                            </Box>
+                                                        )}
+
+                                                        {/* Footer: Sum + Status + Delete */}
+                                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                <Typography variant="caption" fontWeight={900} sx={{ color: 'primary.main', fontSize: '0.9rem' }}>
+                                                                    ${(isSalary ? item.unitPrice : item.total || 0).toFixed(2)}
+                                                                </Typography>
+                                                                {isInventory && item.inventoryItem && (
+                                                                    <Chip label="MATCHED" size="small" color="success" variant="outlined" sx={{ fontSize: '0.6rem', height: 16, fontWeight: 800 }} />
+                                                                )}
+                                                                {isInventory && !item.inventoryItem && item.description && (
+                                                                    <Button
+                                                                        size="small"
+                                                                        onClick={() => handleCreateInventoryItem(index)}
+                                                                        sx={{ fontSize: '0.6rem', height: 20, p: 0, textTransform: 'none', minWidth: 'auto', color: 'orange' }}
+                                                                    >
+                                                                        + INVENTORY
+                                                                    </Button>
+                                                                )}
+                                                            </Box>
+
+                                                            <IconButton
+                                                                size="small" color="error"
+                                                                onClick={() => removeItem(index)}
+                                                                disabled={(formData?.items || []).length === 1}
+                                                                sx={{ p: 0.5 }}
+                                                            >
+                                                                <DeleteIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </Box>
+                                                    </Box>
+                                                ))}
+                                            </Box>
+                                        )
+                                    ) : (
+                                        /* DESKTOP GRID VIEW */
+                                        <Box sx={{ minWidth: 720 }}>
+                                            {(() => {
+                                                const gridCols = isSalary ? '3fr 1fr 32px' : '2.6fr 0.6fr 0.7fr 0.8fr 0.6fr 1fr 32px';
+                                                return (
+                                                    <>
+                                                        <Box sx={{
+                                                            display: 'grid',
+                                                            gridTemplateColumns: gridCols,
+                                                            gap: 1.5,
+                                                            px: 1,
+                                                            pb: 1,
+                                                            borderBottom: `1px solid ${TOKENS.border}`,
+                                                        }}>
+                                                            <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: TOKENS.muted }}>
+                                                                {isSalary ? 'Pay Component' : isInventory ? 'Inventory Item' : 'Description'}
+                                                            </Typography>
+                                                            {!isSalary && <Typography align="right" sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: TOKENS.muted }}>Qty</Typography>}
+                                                            {!isSalary && <Typography sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: TOKENS.muted }}>Unit</Typography>}
+                                                            {!isSalary && <Typography align="right" sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: TOKENS.muted }}>Unit price</Typography>}
+                                                            {!isSalary && <Typography align="right" sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: TOKENS.muted }}>Tax %</Typography>}
+                                                            <Typography align="right" sx={{ fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: TOKENS.muted }}>{isSalary ? 'Amount' : 'Total'}</Typography>
+                                                            <Box />
+                                                        </Box>
+                                                        {(formData?.items || []).map((item: any, index: number) => (
+                                                            <Box key={index} sx={{
+                                                                display: 'grid',
+                                                                gridTemplateColumns: gridCols,
+                                                                gap: 1.5,
+                                                                alignItems: 'center',
+                                                                px: 1,
+                                                                py: 1.5,
+                                                                borderBottom: `1px solid ${TOKENS.borderLight}`,
+                                                            }}>
+                                                                <Box>
+                                                                    {isInventory ? (
+                                                                        <Box>
+                                                                            <Autocomplete
+                                                                                options={inventoryItems}
+                                                                                size="small"
+                                                                                freeSolo
+                                                                                fullWidth
+                                                                                getOptionLabel={(o) => typeof o === 'string' ? o : (o.name || '')}
+                                                                                value={item.description}
+                                                                                onInputChange={(_, val) => handleItemChange(index, 'description', val)}
+                                                                                onChange={(_, val: any) => {
+                                                                                    if (val && typeof val !== 'string') {
+                                                                                        handleItemChange(index, 'inventoryItem', val._id);
+                                                                                    }
+                                                                                }}
+                                                                                renderInput={(p) => <TextField {...p} size="small" fullWidth placeholder="Search inventory..." />}
+                                                                            />
+                                                                            <Box sx={{ mt: 0.5, display: 'flex', gap: 1, alignItems: 'center' }}>
+                                                                                {item.inventoryItem && item.inventoryItem !== 'verified' && (
+                                                                                    <Chip label="MATCHED" size="small" color="success" variant="outlined" sx={{ fontSize: '0.6rem', height: 16, fontWeight: 800 }} />
+                                                                                )}
+                                                                                {!item.inventoryItem && item.description && (
+                                                                                    <Button
+                                                                                        size="small"
+                                                                                        onClick={() => handleCreateInventoryItem(index)}
+                                                                                        sx={{ fontSize: '0.65rem', height: 20, p: 0, textTransform: 'none', minWidth: 'auto', color: TOKENS.accent, fontWeight: 700 }}
+                                                                                    >
+                                                                                        + Add to inventory
+                                                                                    </Button>
+                                                                                )}
+                                                                            </Box>
+                                                                        </Box>
+                                                                    ) : (
+                                                                        <TextField fullWidth size="small" value={item.description} onChange={(e) => handleItemChange(index, 'description', e.target.value)} />
+                                                                    )}
+                                                                </Box>
+                                                                {!isSalary && (
+                                                                    <TextField type="number" size="small" value={item.quantity} onChange={(e) => handleNumberInput(index, 'quantity', e.target.value)} sx={{ '& input': { textAlign: 'right' } }} />
+                                                                )}
+                                                                {!isSalary && (
+                                                                    <TextField size="small" value={item.unit || ''} onChange={(e) => handleItemChange(index, 'unit', e.target.value)} placeholder="kg" />
+                                                                )}
+                                                                {!isSalary && (
+                                                                    <TextField type="number" size="small" value={item.unitPrice} onChange={(e) => handleNumberInput(index, 'unitPrice', e.target.value)} sx={{ '& input': { textAlign: 'right' } }} />
+                                                                )}
+                                                                {!isSalary && (
+                                                                    <TextField type="number" size="small" value={item.taxRate ?? 0} onChange={(e) => handleNumberInput(index, 'taxRate', e.target.value)} sx={{ '& input': { textAlign: 'right' } }} />
+                                                                )}
+                                                                <Typography align="right" sx={{ fontFamily: TOKENS.fontMono, fontWeight: 700, fontSize: '0.9rem', color: TOKENS.ink }}>
+                                                                    ${(isSalary ? item.unitPrice : item.total || 0).toFixed(2)}
+                                                                </Typography>
+                                                                {!isSalary && (
+                                                                    <IconButton onClick={() => removeItem(index)} disabled={(formData?.items || []).length === 1} size="small" sx={{ color: TOKENS.muted, '&:hover': { color: TOKENS.danger } }}>
+                                                                        <DeleteIcon fontSize="small" />
+                                                                    </IconButton>
+                                                                )}
+                                                            </Box>
+                                                        ))}
+                                                    </>
+                                                );
+                                            })()}
                                         </Box>
-                                    </Box>
-                                    <Divider sx={{ mb: 2 }} />
-                                    <Stack spacing={isMobile ? 1.5 : 2}>
+                                    )}
+                                </TableContainer>
+                            </Paper>
+
+                            {/* 4. Price Breakdown */}
+                            <Paper sx={cardSx}>
+                                <SectionHeader icon={<InfoIcon />} title="Price Breakdown" />
+                                <Box sx={{ maxWidth: 320, ml: 'auto' }}>
+                                    <Stack spacing={1.25}>
                                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <Typography variant="caption" color="text.secondary">Estimated Delivery / Due</Typography>
+                                            <Typography sx={{ fontSize: '0.85rem', color: TOKENS.muted }}>Subtotal</Typography>
+                                            <Typography sx={{ fontFamily: TOKENS.fontMono, fontSize: '0.9rem', color: TOKENS.ink }}>
+                                                ${calculateSubtotal().toFixed(2)}
+                                            </Typography>
+                                        </Box>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <Typography sx={{ fontSize: '0.85rem', color: TOKENS.muted }}>Tax</Typography>
+                                            <Typography sx={{ fontFamily: TOKENS.fontMono, fontSize: '0.9rem', color: TOKENS.ink }}>
+                                                ${calculateTax().toFixed(2)}
+                                            </Typography>
+                                        </Box>
+                                        <Divider sx={{ borderColor: TOKENS.borderLight }} />
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <Typography sx={{ fontWeight: 700, color: TOKENS.ink }}>Total</Typography>
+                                            <Typography sx={{ fontFamily: TOKENS.fontMono, fontWeight: 700, fontSize: '1.375rem', color: TOKENS.ink }}>
+                                                ${calculateTotal().toFixed(2)}
+                                            </Typography>
+                                        </Box>
+                                        <Divider sx={{ borderColor: TOKENS.borderLight }} />
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <Typography sx={{ fontSize: '0.85rem', color: TOKENS.muted }}>Due date</Typography>
                                             <TextField
                                                 type="date" size="small"
                                                 value={formData.dueDate}
                                                 onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                                                sx={{ '& input': { py: 0.2, px: 1, fontSize: '0.8rem' } }}
+                                                sx={{ '& input': { py: 0.5, px: 1, fontSize: '0.85rem' } }}
                                             />
                                         </Box>
-                                        <Box sx={{ p: isMobile ? 1.5 : 2, borderRadius: isMobile ? 2 : 3, bgcolor: alpha(theme.palette.primary.main, 0.08), border: '1px solid', borderColor: alpha(theme.palette.primary.main, 0.2) }}>
-                                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <Typography variant="body2" fontWeight="bold" color="text.primary">Grand Net</Typography>
-                                                <Typography variant={isMobile ? "h5" : "h4"} fontWeight={900} color="primary.main">
-                                                    ${calculateTotal().toFixed(2)}
-                                                </Typography>
-                                            </Box>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <Typography sx={{ fontSize: '0.85rem', color: TOKENS.muted }}>Payment status</Typography>
+                                            <TextField
+                                                select size="small"
+                                                value={formData.paymentStatus}
+                                                onChange={(e) => setFormData({ ...formData, paymentStatus: e.target.value })}
+                                                sx={{ minWidth: 120, '& .MuiInputBase-input': { fontSize: '0.85rem', py: 0.5 } }}
+                                            >
+                                                <MenuItem value="unpaid" sx={{ fontSize: '0.85rem' }}>Due</MenuItem>
+                                                <MenuItem value="partial" sx={{ fontSize: '0.85rem' }}>Overdue</MenuItem>
+                                                <MenuItem value="paid" sx={{ fontSize: '0.85rem' }}>Paid</MenuItem>
+                                            </TextField>
                                         </Box>
                                     </Stack>
-                                    <Box sx={{ mt: isMobile ? 2 : 3 }}>
-                                        <Grid container spacing={isMobile ? 1.5 : 2}>
-                                            <Grid item xs={6}>
-                                                <Button fullWidth variant="outlined"
-                                                    onClick={() => handleSubmit('draft')}
-                                                    sx={{ borderRadius: 2, py: isMobile ? 1 : 1.5, fontSize: isMobile ? '0.8rem' : '1rem' }}
-                                                >
-                                                    Draft
-                                                </Button>
-                                            </Grid>
-                                            <Grid item xs={6}>
-                                                <Button fullWidth variant="contained"
-                                                    onClick={() => handleSubmit('pending')}
-                                                    sx={{ borderRadius: 2, py: isMobile ? 1 : 1.5, fontWeight: 'bold', fontSize: isMobile ? '0.8rem' : '1rem' }}
-                                                    disabled={loading}
-                                                >
-                                                    {loading ? <CircularProgress size={20} color="inherit" /> : 'Process'}
-                                                </Button>
-                                            </Grid>
-                                        </Grid>
-                                    </Box>
-                                </Paper>
-                            </Grid>
-                            <Grid item xs={12} md={4} sx={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start' }}>
-                                <Paper sx={{
-                                    p: { xs: 2.5, md: 4 },
-                                    borderRadius: { xs: 4, md: 5 },
-                                    boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                                    maxWidth: { xs: 500, md: 'none' },
-                                    mx: { xs: 'auto', md: 0 },
-                                    width: '100%'
-                                }}>
-                                    <SectionHeader icon={<BankIcon />} title="Settlement" />
-                                    <Stack spacing={isMobile ? 1.5 : 2.5}>
-                                        <TextField
-                                            select fullWidth label="Payment Method" size="small"
-                                            value={formData.paymentMethod}
-                                            onChange={(e) => setFormData({ ...formData, paymentMethod: e.target.value })}
-                                            SelectProps={{ sx: { fontSize: '0.875rem' } }}
-                                        >
-                                            <MenuItem value="cash" sx={{ fontSize: '0.875rem' }}>💵 Cash</MenuItem>
-                                            <MenuItem value="bank_transfer" sx={{ fontSize: '0.875rem' }}>🏛️ Bank Transfer</MenuItem>
-                                            <MenuItem value="upi" sx={{ fontSize: '0.875rem' }}>📱 UPI / Online</MenuItem>
-                                            <MenuItem value="card" sx={{ fontSize: '0.875rem' }}>💳 Card</MenuItem>
-                                        </TextField>
-                                        <TextField
-                                            select fullWidth label="Settlement Source" size="small"
-                                            value={formData.paymentSource}
-                                            onChange={(e) => setFormData({ ...formData, paymentSource: e.target.value })}
-                                            SelectProps={{ sx: { fontSize: '0.875rem' } }}
-                                        >
-                                            <MenuItem value="bank_account" sx={{ fontSize: '0.875rem' }}>Bank Account</MenuItem>
-                                            <MenuItem value="petty_cash" sx={{ fontSize: '0.875rem' }}>Petty Cash</MenuItem>
-                                        </TextField>
-                                    </Stack>
-                                </Paper>
-                            </Grid>
-                        </Grid>
+                                </Box>
+                            </Paper>
+                        </Stack>
+                    </Grid>
 
-                        {/* 5. Evidence */}
-                        <Paper sx={{
-                            p: { xs: 2.5, md: 4 },
-                            borderRadius: { xs: 4, md: 5 },
-                            boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
-                            border: '1px solid',
-                            borderColor: alpha(theme.palette.divider, 0.1),
-                            maxWidth: { xs: 500, md: 'none' },
-                            mx: { xs: 'auto', md: 0 },
-                            width: '100%'
-                        }}>
-                            <SectionHeader icon={<AttachmentIcon />} title="Photos" />
-                            <Stack
-                                direction="row"
-                                flexWrap="wrap"
-                                gap={isMobile ? 1 : 2}
-                                mb={isMobile ? 1.5 : 3}
-                            >
-                                {formData.attachments.map((att, idx) => (
-                                    <Card key={idx} sx={{ width: isMobile ? 60 : 80, height: isMobile ? 60 : 80, position: 'relative', borderRadius: 1.5, overflow: 'hidden', border: '1px solid', borderColor: 'divider' }}>
-                                        <CardMedia component="img" height={isMobile ? "60" : "80"} image={att.url} sx={{ objectFit: 'cover' }} />
-                                        <IconButton
-                                            size="small"
-                                            sx={{ position: 'absolute', top: 2, right: 2, bgcolor: alpha('#f44336', 0.8), color: 'white', '&:hover': { bgcolor: '#f44336' }, width: 14, height: 14, p: 0 }}
-                                            onClick={() => removeAttachment(idx)}
-                                        >
-                                            <DeleteIcon sx={{ fontSize: 10 }} />
-                                        </IconButton>
-                                    </Card>
-                                ))}
-                                <Button
-                                    component="label"
-                                    sx={{
-                                        width: isMobile ? 60 : 80,
-                                        height: isMobile ? 60 : 80,
-                                        borderRadius: 1.5,
-                                        border: '2px dashed',
-                                        borderColor: 'divider',
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        color: 'text.secondary',
-                                        '&:hover': {
-                                            borderColor: 'primary.main',
-                                            color: 'primary.main',
-                                            bgcolor: alpha(theme.palette.primary.main, 0.02)
-                                        }
-                                    }}
-                                    disabled={uploading}
-                                >
-                                    {uploading ? (
-                                        <CircularProgress size={16} />
-                                    ) : (
-                                        <>
-                                            <UploadIcon sx={{ fontSize: isMobile ? 20 : 24 }} />
-                                            <Typography variant="caption" sx={{ mt: 0.2, fontWeight: 800, fontSize: '0.6rem' }}>ADD</Typography>
-                                        </>
-                                    )}
-                                    <input type="file" hidden accept="image/*" onChange={handleFileUpload} />
-                                </Button>
-                            </Stack>
-                            <Typography
-                                variant="caption"
-                                color="text.secondary"
-                                sx={{ opacity: 0.7, fontSize: '0.65rem' }}
-                            >
-                                Upload bills or receipts for auditing.
-                            </Typography>
-                        </Paper>
-                    </Stack>
+                    {/* Right Column - Removed (Financial Goal + Settlement) */}
                 </Grid>
+            </Box>
 
-                {/* Right Column - Removed (Financial Goal + Settlement) */}
-            </Grid>
-
-            {/* Bottom Action Section */}
+            {/* Sticky bottom action bar */}
             <Box sx={{
-                mt: 6,
-                mb: 4,
+                position: 'fixed',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                bgcolor: TOKENS.surface,
+                borderTop: `1px solid ${TOKENS.border}`,
+                px: { xs: 2, md: 4 },
+                py: { xs: 1.5, md: 2 },
                 display: 'flex',
                 flexDirection: { xs: 'column', sm: 'row' },
                 justifyContent: 'flex-end',
                 alignItems: 'center',
-                gap: 2,
-                bgcolor: 'transparent'
+                gap: 1.5,
+                zIndex: 1200
             }}>
                 <Button
-                    variant="outlined"
+                    variant="text"
                     fullWidth={isMobile}
                     onClick={() => navigate(getRelativePath('/purchase-orders'))}
                     sx={{
-                        borderRadius: 2.5,
-                        px: 4,
-                        py: 1.5,
-                        fontWeight: 700,
-                        color: 'text.secondary',
-                        borderColor: 'divider',
-                        '&:hover': {
-                            borderColor: 'text.primary',
-                            bgcolor: alpha(theme.palette.action.hover, 0.04)
-                        }
+                        borderRadius: 2,
+                        px: 3,
+                        py: 1.25,
+                        fontWeight: 600,
+                        textTransform: 'none',
+                        color: TOKENS.muted,
+                        '&:hover': { bgcolor: alpha(TOKENS.ink, 0.04) }
                     }}
                 >
                     Cancel
                 </Button>
                 <Button
                     variant="contained"
-                    color="primary"
+                    fullWidth={isMobile}
+                    onClick={() => handleSubmit('draft')}
+                    disabled={loading}
+                    sx={{
+                        borderRadius: 2,
+                        px: 3,
+                        py: 1.25,
+                        fontWeight: 600,
+                        textTransform: 'none',
+                        bgcolor: TOKENS.borderLight,
+                        color: TOKENS.ink,
+                        boxShadow: 'none',
+                        '&:hover': { bgcolor: TOKENS.border, boxShadow: 'none' }
+                    }}
+                >
+                    Save as draft
+                </Button>
+                <Button
+                    variant="contained"
                     fullWidth={isMobile}
                     onClick={() => handleSubmit('pending')}
                     disabled={loading}
-                    startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <SaveIcon />}
+                    startIcon={loading ? <CircularProgress size={18} color="inherit" /> : null}
                     sx={{
-                        borderRadius: 2.5,
-                        px: 8,
-                        py: 1.5,
-                        fontWeight: 900,
-                        fontSize: '1rem',
-                        boxShadow: '0 8px 24px rgba(59, 130, 246, 0.35)',
-                        '&:hover': {
-                            boxShadow: '0 12px 30px rgba(59, 130, 246, 0.5)',
-                            transform: 'translateY(-2px)'
-                        },
-                        transition: 'all 0.3s ease'
+                        borderRadius: 2,
+                        px: 4,
+                        py: 1.25,
+                        fontWeight: 700,
+                        textTransform: 'none',
+                        bgcolor: TOKENS.accent,
+                        color: '#fff',
+                        boxShadow: 'none',
+                        '&:hover': { bgcolor: '#96391f', boxShadow: 'none' }
                     }}
                 >
-                    {loading ? 'Saving...' : (id ? 'Update Entry' : 'Save Entry')}
+                    {loading ? 'Saving...' : (id ? 'Update entry' : 'Save entry')}
                 </Button>
             </Box>
         </Box>

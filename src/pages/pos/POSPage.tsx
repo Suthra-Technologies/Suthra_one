@@ -217,7 +217,7 @@ const POSPage: React.FC = () => {
     const [deliveryAddress, setDeliveryAddress] = useState<any>({});
     const [discountPercent, setDiscountPercent] = useState(0);
     const [tip, setTip] = useState(0);
-    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'online' | 'card' | 'zelle' | 'venmo' | 'cheque' | 'phonepe' | 'gpay' | 'paytm'>('cash');
+    const [paymentMethod, setPaymentMethod] = useState<string>('cash');
     const [cardType, setCardType] = useState<'credit' | 'debit'>('credit');
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
     const [manualPaymentDialogOpen, setManualPaymentDialogOpen] = useState(false);
@@ -1259,12 +1259,16 @@ const POSPage: React.FC = () => {
             hasError = true;
         }
 
-        // Validate phone
-        const phoneValidation = validatePhone(customerPhone, customerDialCode);
-        if (!phoneValidation.isValid) {
-            setCustomerPhoneTouched(true);
-            setCustomerPhoneError(phoneValidation.message || 'Invalid phone number');
-            hasError = true;
+        // Validate phone (optional)
+        if (customerPhone && customerPhone.trim().length > 0) {
+            const phoneValidation = validatePhone(customerPhone, customerDialCode);
+            if (!phoneValidation.isValid) {
+                setCustomerPhoneTouched(true);
+                setCustomerPhoneError(phoneValidation.message || 'Invalid phone number');
+                hasError = true;
+            } else {
+                setCustomerPhoneError('');
+            }
         } else {
             setCustomerPhoneError('');
         }
@@ -1307,7 +1311,7 @@ const POSPage: React.FC = () => {
                 return;
             }
 
-            if (['zelle', 'venmo', 'cheque', 'phonepe', 'gpay', 'paytm'].includes(paymentMethod)) {
+            if (paymentMethod !== 'cash' && paymentMethod !== 'online' && paymentMethod !== 'card') {
                 setManualPaymentDialogOpen(true);
                 return;
             }
@@ -2412,7 +2416,7 @@ const POSPage: React.FC = () => {
                                                                     position: 'absolute',
                                                                     top: 0,
                                                                     left: 0,
-                                                                    bgcolor: item.displayOption === 'todays_special' ? 'warning.main' : 'info.main',
+                                                                    bgcolor: item.displayOption === 'todays_special' ? 'warning.main' : item.displayOption === 'weekend_special' ? 'success.main' : 'info.main',
                                                                     color: 'white',
                                                                     px: 1,
                                                                     py: 0.5,
@@ -2423,7 +2427,7 @@ const POSPage: React.FC = () => {
                                                                     textTransform: 'uppercase',
                                                                 }}
                                                             >
-                                                                {item.displayOption === 'todays_special' ? "Today's Special" : 'Weekly Special'}
+                                                                {item.displayOption === 'todays_special' ? "Today's Special" : item.displayOption === 'weekend_special' ? 'Weekend Special' : 'Weekly Special'}
                                                             </Box>
                                                         )}
                                                     </Box>
@@ -2580,7 +2584,7 @@ const POSPage: React.FC = () => {
                                                             position: 'absolute',
                                                             top: 10,
                                                             right: 10,
-                                                            bgcolor: item.displayOption === 'todays_special' ? 'warning.main' : 'info.main',
+                                                            bgcolor: item.displayOption === 'todays_special' ? 'warning.main' : item.displayOption === 'weekend_special' ? 'success.main' : 'info.main',
                                                             color: 'white',
                                                             px: 1,
                                                             py: 0.2,
@@ -2592,7 +2596,7 @@ const POSPage: React.FC = () => {
                                                             textTransform: 'uppercase'
                                                         }}
                                                     >
-                                                        {item.displayOption === 'todays_special' ? "Today's Special" : 'Weekly Special'}
+                                                        {item.displayOption === 'todays_special' ? "Today's Special" : item.displayOption === 'weekend_special' ? 'Weekend Special' : 'Weekly Special'}
                                                     </Box>
                                                 )}
                                             </Box>

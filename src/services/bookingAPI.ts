@@ -1,5 +1,6 @@
 import axios from 'axios';
 import type { AxiosInstance } from 'axios';
+import { handleRequestStart, handleRequestEnd } from '../utils/globalLoader';
 
 const API_BASE_URL = `${import.meta.env.VITE_API_URL || 'http://localhost:5006'}/api`;
 
@@ -11,12 +12,24 @@ const api: AxiosInstance = axios.create({
 });
 
 api.interceptors.request.use((config) => {
+  handleRequestStart(config.method);
   const token = localStorage.getItem('token');
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => {
+    handleRequestEnd(response.config.method);
+    return response;
+  },
+  (error) => {
+    handleRequestEnd(error.config?.method, true);
+    return Promise.reject(error);
+  }
+);
 
 export const tablesAPI = {
   getPublicTables: (params: any = {}) => api.get('/tables-new/public', { params }),

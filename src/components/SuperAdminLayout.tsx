@@ -9,6 +9,7 @@ import {
     Assessment as LogIcon,
     Logout,
     Menu as MenuIcon,
+    Person as PersonIcon,
     CardMembership as PlansIcon,
     Receipt as ReceiptIcon,
     Settings as SettingsIcon,
@@ -346,6 +347,10 @@ const SuperAdminLayout: React.FC = () => {
                 onClose={handleProfileMenuClose}
                 onClick={handleProfileMenuClose}
             >
+                <MenuItem onClick={() => navigate('/superadmin/profile')}>
+                    <PersonIcon fontSize="small" sx={{ mr: 1 }} />
+                    Profile
+                </MenuItem>
                 <MenuItem onClick={handleLogout}>
                     <Logout fontSize="small" sx={{ mr: 1 }} />
                     Logout

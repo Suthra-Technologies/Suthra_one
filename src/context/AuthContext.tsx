@@ -223,8 +223,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
 
     try {
       setIsLoading(true);
-     
- const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5006'}/api`;
+
+      const API_BASE = `${import.meta.env.VITE_API_URL || 'http://localhost:5006'}/api`;
 
       // Use the current token to authorize the switch
       const response = await api.post(
@@ -391,7 +391,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
         localStorage.removeItem('tenantSlug');
         localStorage.removeItem('user');
       }
-      
+
       // Attempt to refresh profile to get full user data (savedAddresses, etc.)
       refreshProfile();
     }

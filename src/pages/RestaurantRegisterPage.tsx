@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Backdrop, Box, Paper, TextField, Button, Typography, Alert, CircularProgress, Grid, CssBaseline, Avatar, MenuItem, InputAdornment, Select, IconButton, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { Restaurant, Visibility, VisibilityOff, CheckCircle } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { validateEmail, validatePhone, validateName, validatePassword, validateCompanyName, validateRequired, getHelperText, hasError } from '../utils/validation';
+import { validateEmail, validatePhone, validateName, validatePassword, validateCompanyName, validateRequired, validateEin, getHelperText, hasError } from '../utils/validation';
 import type { ValidationResult } from '../utils/validation';
 import { useAuth } from '../context/AuthContext';
 import PhoneInput from '../components/PhoneInput';
@@ -19,6 +19,7 @@ interface RestaurantRegisterForm {
   password: string;
   confirmPassword?: string;
   planId?: string;
+  ein?: string;
 }
 
 interface Plan {
@@ -73,6 +74,7 @@ const RestaurantRegisterPage: React.FC = () => {
       password: '',
       confirmPassword: '',
       planId: undefined,
+      ein: '',
     };
   });
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -85,6 +87,29 @@ const RestaurantRegisterPage: React.FC = () => {
   const [successData, setSuccessData] = useState<{ restaurantName: string } | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
   const [errors, setErrors] = useState<Record<string, ValidationResult>>({});
+  const [slugAvailability, setSlugAvailability] = useState<'idle' | 'checking' | 'available' | 'taken'>('idle');
+
+  useEffect(() => {
+    const slug = form.slug.trim().toLowerCase();
+    if (!slug || !/^[a-z0-9-]+$/.test(slug)) {
+      setSlugAvailability('idle');
+      return;
+    }
+
+    setSlugAvailability('checking');
+    const timeoutId = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/tenants/check-slug/${encodeURIComponent(slug)}`);
+        const data = await res.json();
+        setSlugAvailability(data.available ? 'available' : 'taken');
+      } catch (err) {
+        console.error('Failed to check domain availability', err);
+        setSlugAvailability('idle');
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [form.slug]);
 
   useEffect(() => {
     const fetchPlans = async () => {
@@ -137,7 +162,7 @@ const RestaurantRegisterPage: React.FC = () => {
       const numeric = String(value || '').replace(/\D/g, ""); // keep only digits
       const isUS = form.dialCode === '1' || form.dialCode === '+1';
       const final = (isUS && numeric.length > 10) ? numeric.slice(-10) : numeric;
-      setForm({ ...form, [name]: final });
+      setForm(prev => ({ ...prev, [name]: final }));
 
       // Clear error when user types a valid phone number (10 digits)
       if (errors[name]) {
@@ -146,7 +171,19 @@ const RestaurantRegisterPage: React.FC = () => {
       return;
     }
 
-    setForm({ ...form, [name]: value });
+    // Auto-format EIN as ##-####### (max 9 digits)
+    if (name === "ein") {
+      const digits = String(value || '').replace(/\D/g, '').slice(0, 9);
+      const formatted = digits.length > 2 ? `${digits.slice(0, 2)}-${digits.slice(2)}` : digits;
+      setForm(prev => ({ ...prev, [name]: formatted }));
+
+      if (errors[name]) {
+        setErrors(prev => ({ ...prev, [name]: { isValid: true } }));
+      }
+      return;
+    }
+
+    setForm(prev => ({ ...prev, [name]: value }));
 
     if (name === 'password') {
       setErrors(prev => ({ ...prev, [name]: validatePassword(value) }));
@@ -223,6 +260,9 @@ const RestaurantRegisterPage: React.FC = () => {
       case 'confirmPassword':
         validation = { isValid: value === form.password, message: value === form.password ? '' : 'Passwords do not match' };
         break;
+      case 'ein':
+        validation = validateEin(value);
+        break;
       default:
         validation = { isValid: true };
     }
@@ -240,6 +280,7 @@ const RestaurantRegisterPage: React.FC = () => {
       phone: validatePhone(form.phone, form.dialCode),
       password: validatePassword(form.password),
       confirmPassword: { isValid: form.password === form.confirmPassword, message: form.password === form.confirmPassword ? '' : 'Passwords do not match' },
+      ein: validateEin(form.ein || ''),
     };
 
     // Additional slug validation
@@ -269,6 +310,11 @@ const RestaurantRegisterPage: React.FC = () => {
     // Validate all fields before submission
     if (!validateForm()) {
       setError('Please fix the errors in the form');
+      return;
+    }
+
+    if (slugAvailability === 'taken') {
+      setError('This domain is already taken — please choose another');
       return;
     }
 
@@ -364,11 +410,31 @@ const RestaurantRegisterPage: React.FC = () => {
                   value={form.slug}
                   onChange={onChange}
                   onBlur={() => handleBlur('slug')}
-                  error={hasError(errors.slug)}
+                  error={hasError(errors.slug) || slugAvailability === 'taken'}
                   helperText={
                     getHelperText(errors.slug) ||
-                    (form.slug.trim()
-                      ? `Your store will be at: ${form.slug.trim()?.toLowerCase()}.nexzenpos.com`
+                    (slugAvailability === 'taken'
+                      ? 'This domain is already taken — please choose another'
+                      : slugAvailability === 'checking'
+                      ? 'Checking availability...'
+                      : slugAvailability === 'available'
+                      ? (
+                        <span>
+                          Available! Your store will be at:{' '}
+                          <Box component="span" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
+                            {form.slug.trim().toLowerCase()}.nexzenpos.com
+                          </Box>
+                        </span>
+                      )
+                      : form.slug.trim()
+                      ? (
+                        <span>
+                          Your store will be at:{' '}
+                          <Box component="span" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
+                            {form.slug.trim().toLowerCase()}.nexzenpos.com
+                          </Box>
+                        </span>
+                      )
                       : "URL identifier — your store address will be yourname.nexzenpos.com")
                   }
                   required
@@ -522,6 +588,20 @@ const RestaurantRegisterPage: React.FC = () => {
                       </InputAdornment>
                     ),
                   }}
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="EIN (Employer Identification Number)"
+                  name="ein"
+                  value={form.ein}
+                  onChange={onChange}
+                  onBlur={() => handleBlur('ein')}
+                  error={hasError(errors.ein)}
+                  helperText={getHelperText(errors.ein) || 'Optional — e.g. 12-3456789'}
+                  placeholder="12-3456789"
+                  inputProps={{ maxLength: 10 }}
                 />
               </Grid>
             </Grid>

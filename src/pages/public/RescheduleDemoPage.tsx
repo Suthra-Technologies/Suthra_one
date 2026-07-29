@@ -6,7 +6,7 @@ import {
 } from '@mui/material';
 import { publicDemoAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
-import { getEasternTzAbbreviation, formatSlotLabel } from '../../utils/demoSlots';
+import { getEasternTzAbbreviation, formatSlotLabel, easternWallClockToUtcIso } from '../../utils/demoSlots';
 
 const RescheduleDemoPage: React.FC = () => {
   const { token } = useParams<{ token: string }>();
@@ -66,7 +66,7 @@ const RescheduleDemoPage: React.FC = () => {
 
     setSubmitting(true);
     try {
-      const newDateTime = new Date(`${formData.preferredDate}T${formData.preferredTime}:00`).toISOString();
+      const newDateTime = easternWallClockToUtcIso(formData.preferredDate, formData.preferredTime);
       await publicDemoAPI.rescheduleDemo(token, newDateTime);
       setSuccess(true);
       toast.success('Successfully rescheduled!');

@@ -71,6 +71,11 @@ interface RawMaterial {
         name?: string;
         contact?: string;
     };
+    linkedProviders?: {
+        providerId: string;
+        providerName: string;
+        lastReceivedAt?: string;
+    }[];
     createdBy?: {
         firstName: string;
         lastName: string;
@@ -171,6 +176,16 @@ const MemoizedMaterialCard = React.memo(({
                             {parseFloat((material.reorderLevel || 0).toFixed(2))}
                         </Typography>
                     </Grid>
+                    {material.linkedProviders && material.linkedProviders.length > 0 && (
+                        <Grid item xs={12}>
+                            <Typography variant="caption" color="text.secondary" display="block" mb={0.5}>Vendors</Typography>
+                            <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                                {material.linkedProviders.map((p) => (
+                                    <Chip key={p.providerId} label={p.providerName} size="small" variant="outlined" />
+                                ))}
+                            </Stack>
+                        </Grid>
+                    )}
                     <Grid item xs={12}>
                         <Typography variant="caption" color="text.secondary">Last Modified</Typography>
                         <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
@@ -215,7 +230,17 @@ const MemoizedMaterialRow = React.memo(({
             <TableCell align="right">{parseFloat((material.reorderLevel || 0).toFixed(2))}</TableCell>
             <TableCell>{material.unit}</TableCell>
             <TableCell><Chip label={status.label} color={status.color} size="small" /></TableCell>
-            <TableCell>{material.supplier?.name || '-'}</TableCell>
+            <TableCell>
+                {material.linkedProviders && material.linkedProviders.length > 0 ? (
+                    <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                        {material.linkedProviders.map((p) => (
+                            <Chip key={p.providerId} label={p.providerName} size="small" variant="outlined" />
+                        ))}
+                    </Stack>
+                ) : (
+                    material.supplier?.name || '-'
+                )}
+            </TableCell>
             <TableCell>
                 <Box>
                     <Typography variant="body2" fontWeight="bold">

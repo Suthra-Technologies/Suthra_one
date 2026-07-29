@@ -102,6 +102,7 @@ export interface SystemSettings {
         cheque?: boolean;
         creditCard?: boolean;
         debitCard?: boolean;
+        [key: string]: boolean | undefined;
     };
 }
 
@@ -537,6 +538,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                     ...(fetched.system || {}),
                     googleMapsApiKey: (fetched.system?.googleMapsApiKey) || defaultSettings.system.googleMapsApiKey,
                     posPaymentMethods: {
+                        ...(fetched.system?.posPaymentMethods || {}),
                         cash: fetched.system?.posPaymentMethods?.cash ?? defaultSettings.system.posPaymentMethods?.cash ?? true,
                         card: fetched.system?.posPaymentMethods?.card ?? defaultSettings.system.posPaymentMethods?.card ?? true,
                         zelle: fetched.system?.posPaymentMethods?.zelle ?? defaultSettings.system.posPaymentMethods?.zelle ?? true,

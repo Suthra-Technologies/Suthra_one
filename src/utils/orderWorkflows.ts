@@ -233,6 +233,39 @@ export function getPaymentMethodLabel(paymentMethod: string | string[]): string 
 }
 
 /**
+ * Get active payment methods based on system settings and country context.
+ */
+export function getActivePaymentMethods(settings: any): { val: string; label: string }[] {
+    const isIndia = settings?.restaurant?.country?.toLowerCase() === 'india';
+    const defaultMethods = isIndia ? ['cash', 'card', 'cheque', 'phonepe', 'gpay', 'paytm'] : ['cash', 'card', 'zelle', 'venmo', 'cheque'];
+    const standardMethods = ['cash', 'card', 'zelle', 'venmo', 'cheque', 'creditCard', 'debitCard', 'phonepe', 'gpay', 'paytm'];
+    const customKeys = Object.keys(settings?.system?.posPaymentMethods || {}).filter(k => !standardMethods.includes(k));
+    const allMethods = [...new Set([...defaultMethods, ...customKeys])];
+
+    const activeMethods: { val: string; label: string }[] = [];
+
+    allMethods.forEach(m => {
+        let isVisible = true;
+        if (m === 'phonepe' || m === 'gpay' || m === 'paytm') {
+            isVisible = settings?.system?.posPaymentMethods?.zelle !== false || settings?.system?.posPaymentMethods?.venmo !== false;
+        } else {
+            isVisible = settings?.system?.posPaymentMethods?.[m] !== false;
+        }
+
+        if (isVisible) {
+            let label = m.charAt(0).toUpperCase() + m.slice(1);
+            if (m === 'gpay') label = 'GPay';
+            if (m === 'phonepe') label = 'PhonePe';
+            if (m === 'paytm') label = 'Paytm';
+            
+            activeMethods.push({ val: m, label });
+        }
+    });
+
+    return activeMethods;
+}
+
+/**
  * Check if an order is a Global Dine In order (placed via website, already paid)
  */
 export function isGlobalDineIn(order: any): boolean {

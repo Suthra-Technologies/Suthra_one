@@ -231,6 +231,21 @@ export const validateRequired = (value: any, fieldName: string = 'This field'): 
     return { isValid: true };
 };
 
+// EIN (US Employer Identification Number) validation — optional field, format ##-#######
+export const validateEin = (ein: string): ValidationResult => {
+    const trimmed = (ein || '').trim();
+
+    if (trimmed === '') {
+        return { isValid: true }; // Optional field
+    }
+
+    if (!/^\d{2}-\d{7}$/.test(trimmed)) {
+        return { isValid: false, message: 'EIN must be in the format 12-3456789' };
+    }
+
+    return { isValid: true };
+};
+
 // URL validation
 export const validateURL = (url: string): ValidationResult => {
     if (!url || url.trim() === '') {

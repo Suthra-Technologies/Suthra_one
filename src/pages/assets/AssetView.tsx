@@ -210,12 +210,12 @@ const getStatusDisplay = (asset: any) => {
     const now = new Date();
     
     // Check Expiry (Only if expires is true)
-    if (asset.lifecycle.expires && asset.lifecycle.expiryDate) {
+    if (asset.lifecycle?.expires && asset.lifecycle?.expiryDate) {
       const expiryDate = new Date(asset.lifecycle.expiryDate);
       if (expiryDate < now) {
         return { label: 'Expired', color: 'error', icon: <ErrorIcon /> };
       }
-      
+
       const thirtyDays = new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000);
       if (expiryDate <= thirtyDays) {
         return { label: 'Expiring Soon', color: 'warning', icon: <Warning /> };
@@ -223,7 +223,7 @@ const getStatusDisplay = (asset: any) => {
     }
 
     // Check Service (Only if serviceRequired is true)
-    if (asset.lifecycle.serviceRequired && asset.lifecycle.nextServiceDate) {
+    if (asset.lifecycle?.serviceRequired && asset.lifecycle?.nextServiceDate) {
       if (new Date(asset.lifecycle.nextServiceDate) < now) {
         return { label: 'Service Overdue', color: 'info', icon: <Build /> };
       }
@@ -284,25 +284,25 @@ const getStatusDisplay = (asset: any) => {
               <CardContent>
                 <Typography variant="h6" fontWeight="700" mb={2}>Lifecycle Status</Typography>
                 <List disablePadding>
-                  {asset.lifecycle.purchaseDate && (
+                  {asset.lifecycle?.purchaseDate && (
                     <ListItem sx={{ px: 0 }}>
                       <ListItemIcon><CalendarMonth color="action" /></ListItemIcon>
                       <ListItemText primary="Purchase Date" secondary={new Date(asset.lifecycle.purchaseDate).toLocaleDateString()} />
                     </ListItem>
                   )}
-                  {asset.lifecycle.issueDate && (
+                  {asset.lifecycle?.issueDate && (
                     <ListItem sx={{ px: 0 }}>
                       <ListItemIcon><CalendarMonth color="action" /></ListItemIcon>
                       <ListItemText primary="Issue Date" secondary={new Date(asset.lifecycle.issueDate).toLocaleDateString()} />
                     </ListItem>
                   )}
-                  {asset.lifecycle.expiryDate && (
+                  {asset.lifecycle?.expiryDate && (
                     <ListItem sx={{ px: 0 }}>
                       <ListItemIcon><Warning color={status.color === 'error' || status.color === 'warning' ? (status.color as any) : 'action'} /></ListItemIcon>
                       <ListItemText primary="Expiry Date" secondary={new Date(asset.lifecycle.expiryDate).toLocaleDateString()} />
                     </ListItem>
                   )}
-                  {asset.lifecycle.nextServiceDate && (
+                  {asset.lifecycle?.nextServiceDate && (
                     <ListItem sx={{ px: 0 }}>
                       <ListItemIcon><Build color="action" /></ListItemIcon>
                       <ListItemText primary="Next Service" secondary={new Date(asset.lifecycle.nextServiceDate).toLocaleDateString()} />
@@ -317,17 +317,17 @@ const getStatusDisplay = (asset: any) => {
               <CardContent>
                 <Typography variant="h6" fontWeight="700" mb={2}>Quick Actions</Typography>
                 <Stack spacing={2}>
-                  {asset.lifecycle.serviceRequired && (
-                    <Button 
-                      fullWidth 
-                      variant="contained" 
+                  {asset.lifecycle?.serviceRequired && (
+                    <Button
+                      fullWidth
+                      variant="contained"
                       startIcon={<Build />}
                       onClick={() => setCompletionDialog({ ...completionDialog, open: true, type: 'service' })}
                     >
                       Record Maintenance
                     </Button>
                   )}
-                  {(asset.type === 'Document' || asset.type === 'License') && asset.lifecycle.renewalRequired && (
+                  {(asset.type === 'Document' || asset.type === 'License') && asset.lifecycle?.renewalRequired && (
                     <Button 
                       fullWidth 
                       variant="contained" 
