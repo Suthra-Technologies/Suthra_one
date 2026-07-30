@@ -90,6 +90,17 @@ if (fs.existsSync(htmlPath)) {
     console.log('✅ Updated index.html <title>');
 }
 
+// ── 4b. Update public/privacy-policy.html ────────────────────────────────
+const privacyHtmlPath = path.join(__dirname, 'public', 'privacy-policy.html');
+if (fs.existsSync(privacyHtmlPath)) {
+    let htmlContent = fs.readFileSync(privacyHtmlPath, 'utf-8');
+    htmlContent = htmlContent.replace(/<title>[^<]*<\/title>/, `<title>Privacy Policy - ${config.appName}</title>`);
+    htmlContent = htmlContent.replace(/property="og:title" content="[^"]*"/, `property="og:title" content="Privacy Policy - ${config.appName}"`);
+    htmlContent = htmlContent.replace(/refers to <strong>[^<]*<\/strong>/g, `refers to <strong>${config.appName}</strong>`);
+    fs.writeFileSync(privacyHtmlPath, htmlContent);
+    console.log('✅ Updated public/privacy-policy.html');
+}
+
 // ── 5. Update .env AND .env.local ─────────────────────────────────────────
 // IMPORTANT: Vite loads env files in priority order: .env.local > .env > brandConfig.
 // We MUST update both so that .env.local never silently overrides the brand API URL.
