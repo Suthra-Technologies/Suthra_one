@@ -87,7 +87,7 @@ const BookingsAdminPage: React.FC = () => {
             }
         }
 
-        const query = new URLSearchParams({
+        const queryParams: any = {
             tableId: booking.table?._id || '',
             tableName: booking.table?.tableName || booking.table?.tableNumber || '',
             customerName: booking.customer?.name ||
@@ -95,9 +95,42 @@ const BookingsAdminPage: React.FC = () => {
             customerPhone: booking.customer?.phone || booking.guestInfo?.phone || '',
             customerEmail: booking.customer?.email || booking.guestInfo?.email || '',
             guestCount: booking.guests?.toString() || '1'
-        }).toString();
+        };
+
+        if (booking.preOrderedItems && booking.preOrderedItems.length > 0) {
+            queryParams.preOrder = JSON.stringify(booking.preOrderedItems);
+        }
+
+        const query = new URLSearchParams(queryParams).toString();
 
         navigate(`/${tenantSlug}/pos?${query}`);
+    };
+
+    const handleAddPreOrder = (booking: any) => {
+        setOutsourcedItemBooking(booking);
+        setOutsourcedItemName('');
+        setOutsourcedItemPrice('');
+        setOutsourcedItemDialogOpen(true);
+    };
+
+    const submitOutsourcedItem = async () => {
+        if (!outsourcedItemBooking) return;
+        
+        const name = outsourcedItemName.trim();
+        if (!name) return toast.error("Name is required");
+        
+        const price = Number(outsourcedItemPrice);
+        if (isNaN(price) || price < 0) return toast.error("Invalid price");
+
+        try {
+            await bookingsAPI.addPreOrderedItem(outsourcedItemBooking._id, { name, cost: 0, price });
+            toast.success("Outsourced item attached to booking!");
+            fetchData();
+            setDetailsOpen(false);
+            setOutsourcedItemDialogOpen(false);
+        } catch (e) {
+            toast.error("Failed to attach outsourced item");
+        }
     };
     const [bookings, setBookings] = useState<any[]>([]);
     const [tables, setTables] = useState<any[]>([]);
@@ -107,6 +140,12 @@ const BookingsAdminPage: React.FC = () => {
     const [actionDialogOpen, setActionDialogOpen] = useState(false);
     const [actionType, setActionType] = useState<'approve' | 'reject' | null>(null);
     const [actionNote, setActionNote] = useState('');
+    
+    // Outsourced Item Dialog State
+    const [outsourcedItemDialogOpen, setOutsourcedItemDialogOpen] = useState(false);
+    const [outsourcedItemName, setOutsourcedItemName] = useState('');
+    const [outsourcedItemPrice, setOutsourcedItemPrice] = useState('');
+    const [outsourcedItemBooking, setOutsourcedItemBooking] = useState<any | null>(null);
 
     // History Dialog
     const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
@@ -1220,6 +1259,14 @@ const BookingsAdminPage: React.FC = () => {
                                 <Typography variant="subtitle1" gutterBottom>
                                     <strong>Status:</strong> {selectedBooking.status}
                                 </Typography>
+                                {selectedBooking.preOrderedItems && selectedBooking.preOrderedItems.length > 0 && (
+                                    <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+                                        <Typography variant="subtitle2" color="primary" gutterBottom>Pre-Ordered Outsourced Items</Typography>
+                                        {selectedBooking.preOrderedItems.map((item: any, idx: number) => (
+                                            <Typography key={idx} variant="body2">• {item.name} (${item.price})</Typography>
+                                        ))}
+                                    </Box>
+                                )}
                                 {selectedBooking.reservationFee && selectedBooking.reservationFee.amount > 0 && (
                                     <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
                                         <Typography variant="subtitle2" color="primary" gutterBottom>Reservation Fee</Typography>
@@ -1278,6 +1325,15 @@ const BookingsAdminPage: React.FC = () => {
                             </>
                         )}
                         <Button onClick={() => setDetailsOpen(false)}>Close</Button>
+                        {selectedBooking && (
+                            <Button 
+                                variant="outlined" 
+                                color="secondary"
+                                onClick={() => handleAddPreOrder(selectedBooking)}
+                            >
+                                Add Outsourced Item
+                            </Button>
+                        )}
                     </DialogActions>
                 </Dialog>
 
@@ -1326,6 +1382,42 @@ const BookingsAdminPage: React.FC = () => {
                     module="bookings"
                     title={historyTitle}
                 />
+
+                {/* Outsourced Item Dialog */}
+                <Dialog open={outsourcedItemDialogOpen} onClose={() => setOutsourcedItemDialogOpen(false)} maxWidth="xs" fullWidth>
+                    <DialogTitle>Add Outsourced Item</DialogTitle>
+                    <DialogContent>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+                            <TextField
+                                label="Item Name (e.g. Birthday Cake)"
+                                fullWidth
+                                value={outsourcedItemName}
+                                onChange={(e) => setOutsourcedItemName(e.target.value)}
+                                required
+                            />
+                            <TextField
+                                label="Price to charge customer"
+                                type="number"
+                                fullWidth
+                                value={outsourcedItemPrice}
+                                onChange={(e) => setOutsourcedItemPrice(e.target.value)}
+                                required
+                                inputProps={{ min: 0, step: "0.01" }}
+                            />
+                        </Box>
+                    </DialogContent>
+                    <DialogActions>
+                        <Button onClick={() => setOutsourcedItemDialogOpen(false)}>Cancel</Button>
+                        <Button 
+                            variant="contained" 
+                            color="primary"
+                            onClick={submitOutsourcedItem}
+                            disabled={!outsourcedItemName.trim() || isNaN(Number(outsourcedItemPrice)) || Number(outsourcedItemPrice) < 0 || outsourcedItemPrice === ''}
+                        >
+                            Add Item
+                        </Button>
+                    </DialogActions>
+                </Dialog>
             </Box>
         </LocalizationProvider>
     );
