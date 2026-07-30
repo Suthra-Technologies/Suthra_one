@@ -4,7 +4,6 @@ import {
   Close as CloseIcon,
   Email as EmailIcon,
   Error as ErrorIcon,
-  ExpandMore as ExpandMoreIcon,
   Inventory as InventoryIcon,
   Kitchen as KitchenIcon,
   Map as MapIcon,
@@ -14,7 +13,9 @@ import {
   QrCode as QrIcon,
   Smartphone as SmartphoneIcon,
   EventSeat as TableIcon,
-  DeleteSweep as WastageIcon
+  DeleteSweep as WastageIcon,
+  VideoCall as VideoCallIcon,
+  ContentCopy as CopyIcon
 } from "@mui/icons-material";
 import {
   AppBar,
@@ -31,16 +32,14 @@ import {
   Stack,
   Toolbar,
   useTheme,
-  Zoom
+  Zoom,
+  Tooltip
 } from "@mui/material";
 import { keyframes } from "@mui/system";
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 import {
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
   Checkbox,
   FormControlLabel,
   InputAdornment,
@@ -48,6 +47,7 @@ import {
   TextField,
 } from "@mui/material";
 import PhoneInput from "../../components/PhoneInput";
+import { getEasternTzAbbreviation, formatSlotLabel, easternWallClockToUtcIso } from "../../utils/demoSlots";
 
 // Orders
 import OrdersIconActiveImg from "/src/assets/images/icons/orders-active.png";
@@ -133,7 +133,6 @@ import CM from "../../assets/images/CM.png";
 import COUPONS_PIC from "../../assets/images/coupons.png";
 import cup from "../../assets/images/cup-image.jpg";
 import fqaimage from "../../assets/images/faq-image.jpg";
-import FAQ_SUPPORT_PIC from "../../assets/images/faq-restaurant-v2.png";
 import GUEST_ORDER_PIC from "../../assets/images/guest-order.png";
 import IM from "../../assets/images/IM.png";
 import KO from "../../assets/images/KO.png";
@@ -174,7 +173,6 @@ const MOCKUP_CASHIER_CATERING =
 const MOCKUP_GUEST_ORDER = GUEST_ORDER_PIC;
 const MOCKUP_KITCHEN_KDS =
   "https://images.unsplash.com/photo-1556740758-90de374c12ad?auto=format&fit=crop&w=1200&q=80"; // Tablet/Display in kitchen context for KDS
-const IMG_FAQ_SUPPORT = FAQ_SUPPORT_PIC;
 const IMG_SUPERADMIN =
   "https://images.unsplash.com/photo-1551434678-e076c2236033?auto=format&fit=crop&w=800&q=80";
 const IMG_KITCHEN =
@@ -686,12 +684,15 @@ const HomePage: React.FC = () => {
     type: "success" | "error";
     title: string;
     message: string;
+    meetingLink?: string;
   }>({
     open: false,
     type: "success",
     title: "",
     message: "",
+    meetingLink: "",
   });
+  const [copied, setCopied] = useState(false);
 
   const handleFormChange = (e: any) => {
     const { name, value } = e.target;
@@ -718,6 +719,15 @@ const HomePage: React.FC = () => {
       setErrors({ phoneNumber: "Phone number must be exactly 10 digits" });
       return;
     }
+    if (!formData.preferredDate || !formData.preferredTime) {
+      setDialogState({
+        open: true,
+        type: "error",
+        title: "Preferred Slot Required",
+        message: "Please select a preferred date and time for your demo.",
+      });
+      return;
+    }
 
     setLoading(true);
     try {
@@ -729,9 +739,10 @@ const HomePage: React.FC = () => {
         email: formData.email,
         phonePrefix: formData.phonePrefix,
         phoneNumber: formData.phoneNumber,
-        preferredDateTime: formData.preferredDate && formData.preferredTime
-          ? new Date(`${formData.preferredDate}T${formData.preferredTime}:00`).toISOString()
-          : undefined
+        preferredDateTime: easternWallClockToUtcIso(
+          formData.preferredDate,
+          formData.preferredTime
+        )
       };
 
       const response = await fetch(`${apiUrl}/api/email/demo-request`, {
@@ -740,12 +751,16 @@ const HomePage: React.FC = () => {
         body: JSON.stringify(payload),
       });
       if (response.ok) {
+        const data = await response.json().catch(() => ({}));
+        const meetLink = data.meetingLink;
         setDialogState({
           open: true,
           type: "success",
-          title: "Request Sent Successfully!",
-          message:
-            "Thank you for your interest. Our team will contact you shortly to schedule your personalized demo.",
+          title: meetLink ? "Demo Scheduled Successfully!" : "Request Sent Successfully!",
+          message: meetLink
+            ? "Your demo is confirmed! A Google Meet link has been generated. You can join the meeting directly using the link below."
+            : "Thank you for your interest. Our team will contact you shortly to schedule your personalized demo.",
+          meetingLink: meetLink || "",
         });
         setFormData({
           businessName: "",
@@ -766,6 +781,7 @@ const HomePage: React.FC = () => {
         title: "Submission Failed",
         message:
           "Something went wrong. Please check your connection and try again, or contact us directly.",
+        meetingLink: "",
       });
     } finally {
       setLoading(false);
@@ -873,7 +889,7 @@ const HomePage: React.FC = () => {
                 component="img"
                 src="/logo.png"
                 alt="NexZen POS"
-                sx={{ height: 45, filter: "brightness(0)" }}
+                sx={{ height: 45 }}
               />
               <Typography
                 variant="h6"
@@ -1306,7 +1322,7 @@ const HomePage: React.FC = () => {
                 }}
               >
                 <img
-                  // src={womenserved}
+                   src={womenserved1}
                   alt="Waiter serving customer"
                   style={{
                     maxWidth: "100%",
@@ -2132,69 +2148,6 @@ const HomePage: React.FC = () => {
         </Container>
       </Box>
 
-      {/* --- FAQ Section --- */}
-      <Box
-        sx={{
-          py: { xs: 8, md: 12 },
-          bgcolor: "#fff5ec",
-          backgroundImage: 'url("/src/assets/images/bg.png")',
-        }}
-      >
-        <Container maxWidth="md">
-          {/* SECTION TITLE */}
-          <Typography variant="h4" fontWeight={900} align="center" mb={6}>
-            FAQ’s
-          </Typography>
-
-          {/* FAQ LIST */}
-          {[
-            {
-              q: "Is the system 100% GST Compliant?",
-              a: "Yes, our POS is fully updated with the latest GST norms. It automatically calculates CGST & SGST and generates compliant tax invoices.",
-            },
-            {
-              q: "Can I generate tax reports for filing?",
-              a: "Absolutely. You can download detailed GSTR-1 and GSTR-3B summaries instantly to simplify your monthly filings.",
-            },
-            {
-              q: "Is the system cloud-based or local?",
-              a: "NexZen POS is a hybrid system. You get the speed of local hardware with the security and accessibility of cloud-based reporting.",
-            },
-            {
-              q: "Can I use my existing hardware?",
-              a: "Our software is compatible with most Android/iOS tablets and Windows terminals. Contact us for a full compatibility check.",
-            },
-          ].map((faq, index) => (
-            <Accordion
-              key={index}
-              elevation={0}
-              disableGutters
-              sx={{
-                bgcolor: "transparent",
-                borderBottom: "1px solid #e6d9cd",
-                "&:before": { display: "none" },
-              }}
-            >
-              <AccordionSummary
-                expandIcon={<ExpandMoreIcon />}
-                sx={{
-                  px: 0,
-                  py: 2,
-                }}
-              >
-                <Typography fontWeight={600}>{faq.q}</Typography>
-              </AccordionSummary>
-
-              <AccordionDetails sx={{ px: 0, pb: 3 }}>
-                <Typography color="text.secondary" lineHeight={1.7}>
-                  {faq.a}
-                </Typography>
-              </AccordionDetails>
-            </Accordion>
-          ))}
-        </Container>
-      </Box>
-
       {/* --- Demo Request & Testimonial Section --- */}
       <Box
         id="demo-form"
@@ -2234,6 +2187,11 @@ const HomePage: React.FC = () => {
                   p: { xs: 4, md: 6 },
                   borderRadius: 6,
                   bgcolor: "#ffffff",
+                  // Keep every required-field asterisk red, including while focused
+                  "& .MuiFormLabel-asterisk": { color: "#d32f2f" },
+                  "& .MuiFormLabel-root.Mui-focused .MuiFormLabel-asterisk": {
+                    color: "#d32f2f",
+                  },
                 }}
               >
                 <Typography variant="h4" fontWeight={900} gutterBottom>
@@ -2318,9 +2276,10 @@ const HomePage: React.FC = () => {
                   <Grid item xs={12} sm={6}>
                     <TextField
                       fullWidth
+                      required
                       type="date"
                       name="preferredDate"
-                      label="Preferred Date (Optional)"
+                      label="Preferred Date"
                       value={formData.preferredDate}
                       onChange={handleFormChange}
                       InputLabelProps={{ shrink: true }}
@@ -2331,16 +2290,17 @@ const HomePage: React.FC = () => {
                   <Grid item xs={12} sm={6}>
                     <TextField
                       fullWidth
+                      required
                       select
                       name="preferredTime"
-                      label={fetchingSlots ? "Loading slots..." : "Preferred Time"}
+                      label={fetchingSlots ? "Loading slots..." : `Preferred Time (${getEasternTzAbbreviation()})`}
                       value={formData.preferredTime}
                       onChange={handleFormChange}
                       disabled={!formData.preferredDate || fetchingSlots}
                     >
                       {availableSlots.length > 0 ? (
                         availableSlots.map(slot => (
-                          <MenuItem key={slot} value={slot}>{slot}</MenuItem>
+                          <MenuItem key={slot} value={slot}>{formatSlotLabel(slot, getEasternTzAbbreviation())}</MenuItem>
                         ))
                       ) : (
                         <MenuItem value="" disabled>No slots available</MenuItem>
@@ -2415,7 +2375,7 @@ const HomePage: React.FC = () => {
                     component="img"
                     src="/logo.png"
                     alt="NexZen POS"
-                    sx={{ height: 55, filter: 'brightness(0) invert(1)' }}
+                    sx={{ height: 55 }}
                   />
                   <Typography variant="h5" fontWeight="900" sx={{ letterSpacing: -0.5 }}>
                     NexZen
@@ -2754,9 +2714,85 @@ const HomePage: React.FC = () => {
           <Typography variant="h5" fontWeight="900" gutterBottom>
             {dialogState.title}
           </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
+          <Typography variant="body1" color="text.secondary" sx={{ mb: dialogState.meetingLink ? 2 : 4 }}>
             {dialogState.message}
           </Typography>
+          {dialogState.meetingLink && (
+            <Box
+              sx={{
+                mt: 2,
+                mb: 4,
+                p: 2.5,
+                borderRadius: 4,
+                bgcolor: "#f0fdf4",
+                border: "1px solid #bbf7d0",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 2,
+              }}
+            >
+              <Button
+                variant="contained"
+                color="success"
+                href={dialogState.meetingLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                startIcon={<VideoCallIcon />}
+                fullWidth
+                sx={{
+                  borderRadius: 50,
+                  fontWeight: "bold",
+                  py: 1.5,
+                  textTransform: "none",
+                  boxShadow: "0 4px 12px rgba(76, 175, 80, 0.2)",
+                }}
+              >
+                Join Google Meet
+              </Button>
+              
+              <Box
+                sx={{
+                  display: "flex",
+                  width: "100%",
+                  alignItems: "center",
+                  bgcolor: "white",
+                  borderRadius: 3,
+                  border: "1px solid #e0e0e0",
+                  p: 1,
+                  gap: 1,
+                }}
+              >
+                <Typography
+                  variant="body2"
+                  sx={{
+                    flexGrow: 1,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    textAlign: "left",
+                    color: "text.secondary",
+                    px: 1,
+                  }}
+                >
+                  {dialogState.meetingLink}
+                </Typography>
+                <Tooltip title={copied ? "Copied!" : "Copy Link"} placement="top">
+                  <IconButton
+                    size="small"
+                    onClick={() => {
+                      navigator.clipboard.writeText(dialogState.meetingLink || "");
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }}
+                    sx={{ color: "primary.main" }}
+                  >
+                    {copied ? <CheckIcon fontSize="small" /> : <CopyIcon fontSize="small" />}
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            </Box>
+          )}
           <Button
             variant="contained"
             color={dialogState.type === "success" ? "success" : "error"}

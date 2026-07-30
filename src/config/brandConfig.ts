@@ -5,12 +5,12 @@
 export const BRAND_CONFIG = {
   appName: "NexZen POS",
   appId: "com.nexzen.pos",
-  primaryColor: "#9C27B0",
-  secondaryColor: "#E91E63",
-  accentColor: "#FF9800",
-  apiBaseUrl: "http://localhost:5006",
+  primaryColor: "#4F46E5",
+  secondaryColor: "#EC4899",
+  accentColor: "#10B981",
+  apiBaseUrl: import.meta.env.VITE_API_URL || "http://localhost:5006",
   tenantSlug: "nexzen",
   stripePublicKey: "pk_test_andhraspicefeast",
   fontFamily: "Inter",
-  splashBg: "#1a0027",
+  splashBg: "#0f172a",
 } as const;

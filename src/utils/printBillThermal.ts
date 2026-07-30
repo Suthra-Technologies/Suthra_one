@@ -9,9 +9,11 @@ import {
     formatDateTime,
     getOrderTypeLabel,
     getPaymentMethodLabel,
+    groupBillItems,
 } from './orderWorkflows';
 import type { TenantPrinterSettings } from '../context/SettingsContext';
 import { isCashPayment } from './cashDrawer';
+import { formatSpiceLevelLabel, stripSpiceFromName } from './spiceLevel';
 
 /**
  * Public site base for QR/feedback links. In the native app window.location.origin is
@@ -62,21 +64,27 @@ export async function printBillThermal(
         }
     }
 
-    const items: EscPosBillItem[] = (billData.items || [])
-        .filter((it: any) => it.preparationStatus !== 'cancelled')
-        .map((it: any) => ({
-            name: (it.name || it.menuItem?.name || 'Item').replace(/[<>]/g, '').replace(/\s{2,}/g, ' ').trim(),
-            quantity: it.quantity ?? 1,
-            price: it.price ?? 0,
-            total: it.total ?? (it.price ?? 0) * (it.quantity ?? 1),
-            // Collect add-on / modifier names (supports a few shapes the API may return).
-            addOns: [
-                ...(Array.isArray(it.addOns) ? it.addOns : []),
-                ...(Array.isArray(it.modifiers) ? it.modifiers : []),
-            ]
-                .map((a: any) => (typeof a === 'string' ? a : a?.name || a?.label || ''))
-                .filter(Boolean),
-        }));
+    // Group before mapping: the map rewrites names and drops the fields the
+    // grouping key relies on. groupBillItems also drops cancelled lines.
+    const items: EscPosBillItem[] = groupBillItems(billData.items)
+        .map((it: any) => {
+            const spiceRaw = it.spiceLevel ? String(it.spiceLevel) : '';
+            const name = stripSpiceFromName(it.name || it.menuItem?.name, spiceRaw) || 'Item';
+            return {
+                name,
+                quantity: it.quantity ?? 1,
+                price: it.price ?? 0,
+                total: it.total ?? (it.price ?? 0) * (it.quantity ?? 1),
+                spiceLevel: spiceRaw ? formatSpiceLevelLabel(spiceRaw) : undefined,
+                // Collect add-on / modifier names (supports a few shapes the API may return).
+                addOns: [
+                    ...(Array.isArray(it.addOns) ? it.addOns : []),
+                    ...(Array.isArray(it.modifiers) ? it.modifiers : []),
+                ]
+                    .map((a: any) => (typeof a === 'string' ? a : a?.name || a?.label || ''))
+                    .filter(Boolean),
+            };
+        });
 
     const tableLabel =
         billData.tableNumber ||

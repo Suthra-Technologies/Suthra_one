@@ -51,6 +51,7 @@ import EventSeatIcon from '@mui/icons-material/EventSeat';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import RestaurantMenuOutlinedIcon from '@mui/icons-material/RestaurantMenuOutlined';
+import RoomServiceOutlinedIcon from '@mui/icons-material/RoomServiceOutlined';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 
 import { toast } from 'react-hot-toast';
@@ -73,14 +74,15 @@ import { useActiveTenant } from '../hooks/useActiveTenant';
 // ---------------------------------------------------------------------------
 interface StatCardProps {
   title: string;
-  value: string | number;
+  value?: string | number;
   icon: React.ReactNode;
   trend?: number;
   color?: string;
   subtitle?: string;
+  children?: React.ReactNode;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color = 'primary', subtitle }) => {
+const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color = 'primary', subtitle, children }) => {
   const theme = useTheme();
   const themeColor = (theme.palette as any)[color]?.main || theme.palette.primary.main;
 
@@ -160,19 +162,23 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, trend, color = 
             {title}
           </Typography>
 
-          <Typography
-            variant="h3"
-            fontWeight="800"
-            sx={{
-              background: `linear-gradient(45deg, ${themeColor}, ${alpha(themeColor, 0.7)})`,
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              fontSize: { xs: '1rem', sm: '2rem', lg: '2.5rem' },
-              mb: { xs: 0.25, sm: 1 }
-            }}
-          >
-            {value}
-          </Typography>
+          {value !== undefined && (
+            <Typography
+              variant="h3"
+              fontWeight="800"
+              sx={{
+                background: `linear-gradient(45deg, ${themeColor}, ${alpha(themeColor, 0.7)})`,
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                fontSize: { xs: '1rem', sm: '2rem', lg: '2.5rem' },
+                mb: { xs: 0.25, sm: 1 }
+              }}
+            >
+              {value}
+            </Typography>
+          )}
+          
+          {children}
         </Box>
 
         {subtitle && (
@@ -512,10 +518,21 @@ const DashboardPage: React.FC = () => {
 
 
 
+  // ✅ Orders by type from backend
+  const normalizedOrders = Array.isArray(dashboardData?.ordersByType)
+    ? dashboardData.ordersByType
+    : [];
+
+  // ✅ Total orders count for percentage bars
+  const totalOrdersAll = normalizedOrders.reduce(
+    (sum: number, o: any) => sum + (o?.totalOrders || 0),
+    0
+  );
+
   const currentRevenue = dashboardData?.summary?.totalRevenue || 0;
   const previousRevenue = dashboardData?.summary?.previousRevenue || 0;
 
-  const currentOrders = dashboardData?.summary?.totalOrders || 0;
+  const currentOrders = totalOrdersAll || 0;
   const previousOrders = dashboardData?.summary?.previousOrders || 0;
 
   const revenueTrend = previousRevenue
@@ -576,17 +593,6 @@ const DashboardPage: React.FC = () => {
 
   // ✅ Used to show empty state
 
-
-  // ✅ Orders by type from backend
-  const normalizedOrders = Array.isArray(dashboardData?.ordersByType)
-    ? dashboardData.ordersByType
-    : [];
-
-  // ✅ Total orders count for percentage bars
-  const totalOrdersAll = normalizedOrders.reduce(
-    (sum: number, o: any) => sum + (o?.totalOrders || 0),
-    0
-  );
 
   // ---------- PIE CALCULATIONS ----------
   const itemCount = pieData.length;
@@ -729,6 +735,167 @@ const DashboardPage: React.FC = () => {
         </Stack>
       </Box>
 
+      {/* Order Type Breakdown Bar */}
+      <Box sx={{ mb: 2, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', pb: 0.5 }}>
+        {(() => {
+          const aggregatedCounts: Record<string, { 
+             label: string, 
+             count: number, 
+             color: string, 
+             statuses: { [key: string]: number }
+          }> = {};
+
+          normalizedOrders.forEach((o: any) => {
+             if (!o.orderType) return;
+             
+             // Normalize key
+             const key = o.orderType.toLowerCase().replace(/_/g, ' ');
+             
+             if (!aggregatedCounts[key]) {
+                let label = key.replace(/\b\w/g, (c: string) => c.toUpperCase());
+                let color = 'info';
+                
+                // standard overwrites
+                if (key === 'dine in') { label = 'Dine In'; color = 'info'; }
+                else if (key === 'takeaway') { label = 'Takeaway'; color = 'info'; }
+                else if (key === 'delivery') { label = 'Delivery'; color = 'success'; }
+                else if (key === 'pre order') { label = 'Pre Order'; color = 'warning'; }
+                else if (key === 'catering') { label = 'Catering'; color = 'error'; }
+                else if (key.includes('delivery')) { color = 'success'; }
+                else if (key.includes('pre')) { color = 'warning'; }
+
+                aggregatedCounts[key] = { 
+                   label, 
+                   count: 0, 
+                   color,
+                   statuses: {
+                      pending: 0,
+                      confirmed: 0,
+                      preparing: 0,
+                      inProgress: 0,
+                      ready: 0,
+                      approved: 0,
+                      served: 0,
+                      completed: 0,
+                      readyToTakeaway: 0,
+                      readyToPickup: 0,
+                      onTheWay: 0,
+                      delivered: 0
+                   }
+                };
+             }
+             
+             aggregatedCounts[key].count += (o.totalOrders || 0);
+             if (o.pendingOrders) aggregatedCounts[key].statuses.pending += o.pendingOrders;
+             if (o.confirmedOrders) aggregatedCounts[key].statuses.confirmed += o.confirmedOrders;
+             if (o.preparingOrders) aggregatedCounts[key].statuses.preparing += o.preparingOrders;
+             if (o.inProgressOrders) aggregatedCounts[key].statuses.inProgress += o.inProgressOrders;
+             if (o.readyOrders) aggregatedCounts[key].statuses.ready += o.readyOrders;
+             if (o.approvedOrders) aggregatedCounts[key].statuses.approved += o.approvedOrders;
+             if (o.servedOrders) aggregatedCounts[key].statuses.served += o.servedOrders;
+             if (o.completedOrders) aggregatedCounts[key].statuses.completed += o.completedOrders;
+             if (o.readyToTakeawayOrders) aggregatedCounts[key].statuses.readyToTakeaway += o.readyToTakeawayOrders;
+             if (o.readyToPickupOrders) aggregatedCounts[key].statuses.readyToPickup += o.readyToPickupOrders;
+             if (o.onTheWayOrders) aggregatedCounts[key].statuses.onTheWay += o.onTheWayOrders;
+             if (o.deliveredOrders) aggregatedCounts[key].statuses.delivered += o.deliveredOrders;
+          });
+
+          return Object.values(aggregatedCounts)
+            .filter(type => type.count > 0)
+            .sort((a, b) => b.count - a.count)
+            .map((type, i) => {
+               const s = type.statuses;
+               const statusData = [
+                  { count: s.pending, label: 'Pending', color: theme.palette.warning.main },
+                  { count: s.confirmed, label: 'Confirmed', color: theme.palette.info.main },
+                  { count: s.approved, label: 'Approved', color: theme.palette.info.main },
+                  { count: s.preparing, label: 'Preparing', color: theme.palette.secondary.main },
+                  { count: s.inProgress, label: 'In Progress', color: theme.palette.secondary.main },
+                  { count: s.ready, label: 'Ready', color: theme.palette.primary.main },
+                  { count: s.served, label: 'Served', color: theme.palette.success.main },
+                  { count: s.readyToTakeaway, label: 'Ready to Takeaway', color: theme.palette.primary.main },
+                  { count: s.readyToPickup, label: 'Ready to Pickup', color: theme.palette.primary.main },
+                  { count: s.onTheWay, label: 'On the Way', color: theme.palette.warning.main },
+                  { count: s.delivered, label: 'Delivered', color: theme.palette.success.main },
+                  { count: s.completed, label: 'Completed', color: theme.palette.success.main },
+               ].filter(st => st.count > 0);
+               
+               const tooltipContent = statusData.length > 0 ? (
+                 <Box sx={{ p: 0.5, display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+                   {statusData.map((st, idx) => (
+                     <Box key={idx} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                       <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: st.color }} />
+                       <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.75rem' }}>
+                         {st.count} {st.label}
+                       </Typography>
+                     </Box>
+                   ))}
+                 </Box>
+               ) : (
+                 <Typography variant="body2" sx={{ fontSize: '0.75rem', p: 0.5 }}>
+                   No active status details
+                 </Typography>
+               );
+
+               return (
+                 <MuiTooltip key={i} title={tooltipContent} arrow placement="top">
+                   <Chip 
+                     label={`${type.label}: ${type.count}`} 
+                     size="small" 
+                     sx={{ 
+                       bgcolor: alpha((theme.palette as any)[type.color]?.main || theme.palette.info.main, 0.1), 
+                       color: (theme.palette as any)[type.color]?.dark || theme.palette.info.dark, 
+                       fontWeight: 600, 
+                       borderRadius: '8px',
+                       cursor: 'help'
+                     }} 
+                   />
+                 </MuiTooltip>
+               );
+            });
+        })()}
+      </Box>
+
+      {/* Global Status Overview Bar */}
+      <Box sx={{ mb: 3, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', pb: 0.5 }}>
+        {(() => {
+          const s = dashboardData?.summary || {};
+          const globalStatusData = [
+            { count: s.pendingOrders || 0, label: 'Pending', color: theme.palette.warning.main },
+            { count: s.confirmedOrders || 0, label: 'Confirmed', color: theme.palette.info.main },
+            { count: s.approvedOrders || 0, label: 'Approved', color: theme.palette.info.main },
+            { count: s.preparingOrders || 0, label: 'Preparing', color: theme.palette.secondary.main },
+            { count: s.inProgressOrders || 0, label: 'In Progress', color: theme.palette.secondary.main },
+            { count: s.readyOrders || 0, label: 'Ready', color: theme.palette.primary.main },
+            { count: s.servedOrders || 0, label: 'Served', color: theme.palette.success.main },
+            { count: s.readyToTakeawayOrders || 0, label: 'Ready to Takeaway', color: theme.palette.primary.main },
+            { count: s.readyToPickupOrders || 0, label: 'Ready to Pickup', color: theme.palette.primary.main },
+            { count: s.onTheWayOrders || 0, label: 'On the Way', color: theme.palette.warning.main },
+            { count: s.deliveredOrders || 0, label: 'Delivered', color: theme.palette.success.main },
+            { count: s.completedOrders || 0, label: 'Completed', color: theme.palette.success.main },
+          ].filter(st => st.count > 0);
+
+          if (globalStatusData.length === 0) return null;
+
+          return globalStatusData.map((st, i) => (
+            <Chip 
+              key={i}
+              icon={<Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: st.color, ml: 1 }} />}
+              label={`${st.label}: ${st.count}`} 
+              size="small" 
+              sx={{ 
+                bgcolor: alpha(st.color, 0.1), 
+                color: st.color, 
+                fontWeight: 700, 
+                borderRadius: '8px',
+                border: `1px solid ${alpha(st.color, 0.2)}`,
+                '& .MuiChip-label': { px: 1.5 }
+              }} 
+            />
+          ));
+        })()}
+      </Box>
+
       {/* Main Stats Grid */}
       <Grid container spacing={{ xs: 1.2, sm: 3 }} sx={{ mb: { xs: 2.2, sm: 4 } }}>
         <Grid item xs={6} sm={6} md={4} lg={3} xl={3}>
@@ -744,7 +911,7 @@ const DashboardPage: React.FC = () => {
             value={formatCurrency(dashboardData?.summary?.totalRevenue || 0)}
             icon={<TrendingUpIcon />}
             color="primary"
-            subtitle={`${dashboardData?.summary?.totalOrders || 0} orders`}
+            subtitle={`${totalOrdersAll || 0} orders`}
           />
 
         </Grid>
@@ -753,10 +920,10 @@ const DashboardPage: React.FC = () => {
 
           <StatCard
             title="Total Orders"
-            value={dashboardData?.summary?.totalOrders || 0}
+            value={totalOrdersAll || 0}
             icon={<ReceiptLongIcon />}
             color="secondary"
-            subtitle="Completed orders"
+          
           />
 
         </Grid>
@@ -782,6 +949,8 @@ const DashboardPage: React.FC = () => {
             subtitle={`${lowStockItems} Low Stock Alerts`}
           />
         </Grid>
+
+
 
         {/* Purchase Orders */}
         <Grid item xs={6} sm={6} md={3} sx={{ display: { xs: 'none', sm: 'block' } }}>
@@ -813,6 +982,17 @@ const DashboardPage: React.FC = () => {
             icon={<RestaurantMenuOutlinedIcon />}
             color="error"
             subtitle="Pending Preparation"
+          />
+        </Grid>
+
+        {/* Catering Orders */}
+        <Grid item xs={6} sm={6} md={3}>
+          <StatCard
+            title="Catering Orders"
+            value={dashboardData?.summary?.ordersByType?.find((o: any) => o.orderType === 'catering')?.totalOrders || 0}
+            icon={<RoomServiceOutlinedIcon />}
+            color="secondary"
+            subtitle="Total Catering"
           />
         </Grid>
 
@@ -1316,14 +1496,14 @@ const DashboardPage: React.FC = () => {
                         </TableRow>
                       </TableHead>
                       <TableBody>
-                        {assetTabData.data.length === 0 ? (
+                        {(assetTabData?.data || []).length === 0 ? (
                           <TableRow>
                             <TableCell colSpan={5} align="center" sx={{ py: 4 }}>
                               <Typography variant="body2" color="text.secondary">No assets found in this category</Typography>
                             </TableCell>
                           </TableRow>
                         ) : (
-                          assetTabData.data.map((asset: any) => (
+                          (assetTabData?.data || []).map((asset: any) => (
                             <TableRow key={asset._id} hover>
                               <TableCell>
                                 <Typography variant="subtitle2" fontWeight="700">{asset.name}</Typography>
@@ -1408,12 +1588,12 @@ const DashboardPage: React.FC = () => {
                   </TableContainer>
                 ) : (
                   <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    {assetTabData.data.length === 0 ? (
+                    {(assetTabData?.data || []).length === 0 ? (
                       <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 2 }}>
                         No assets found in this category
                       </Typography>
                     ) : (
-                      assetTabData.data.map((asset: any) => (
+                      (assetTabData?.data || []).map((asset: any) => (
                         <Card key={asset._id} variant="outlined" sx={{ borderRadius: 2, bgcolor: alpha(theme.palette.background.default, 0.5) }}>
                           <CardContent sx={{ p: 2, pb: "16px !important" }}>
                             <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={1}>

@@ -3,7 +3,6 @@ import {
     ShoppingCart as CartIcon,
     Close as CloseIcon,
     LocalOffer as CouponIcon,
-    Delete as DeleteIcon,
     Remove as RemoveIcon,
     RestaurantMenu,
     Search as SearchIcon,
@@ -26,8 +25,6 @@ import {
     Grid,
     IconButton,
     InputAdornment,
-    ListItem,
-    ListItemText,
     MenuItem,
     Modal,
     Paper,
@@ -57,7 +54,9 @@ import { isWithinDeliveryRadius, METERS_PER_MILE } from '../../services/googleMa
 import CustomerInfoSection from './components/CustomerInfoSection';
 import MergeTablesDialog from './components/MergeTablesDialog';
 import OrderDetailsSection from './components/OrderDetailsSection';
-import { validatePhone } from '../../utils/validation';
+import CustomItemDialog from './components/CustomItemDialog';
+import { validateEmail, validatePhone } from '../../utils/validation';
+import { getMaxGuests, getMergedGroup } from './utils/tableCapacity';
 
 
 type Variant = {
@@ -158,76 +157,6 @@ const MemoizedMenuItemCard = React.memo(({
     );
 });
 
-const MemoizedCartItem = React.memo(({
-    item,
-    onUpdateQuantity,
-    onRemove,
-    formatCurrency
-}: {
-    item: any;
-    onUpdateQuantity: (cartId: string, delta: number) => void;
-    onRemove: (cartId: string) => void;
-    formatCurrency: (amount: number) => string;
-}) => {
-    return (
-        <ListItem
-            divider
-            sx={{
-                px: 1,
-                py: 1.5,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'stretch',
-                gap: 0.5
-            }}
-        >
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', width: '100%' }}>
-                <ListItemText
-                    primary={item.name}
-                    secondary={
-                        <Box component="span">
-                            {item.variant && <Typography variant="caption" display="block">Variant: {item.variant.name}</Typography>}
-                            {item.modifiers && item.modifiers.length > 0 && (
-                                <Typography variant="caption" display="block" color="text.secondary">
-                                    Mods: {item.modifiers.map((m: any) => m.name).join(', ')}
-                                </Typography>
-                            )}
-                            {item.spiceLevel && <Typography variant="caption" display="block">Spice: {item.spiceLevel}</Typography>}
-                        </Box>
-                    }
-                    sx={{ m: 0, '& .MuiListItemText-primary': { fontWeight: 500, fontSize: '0.9rem' } }}
-                />
-                <Box sx={{ textAlign: 'right', ml: 1 }}>
-                    <Typography variant="body2" fontWeight="bold">
-                        {formatCurrency(item.price * item.quantity)}
-                    </Typography>
-                    {item.quantity > 1 && (
-                        <Typography variant="caption" color="text.secondary" display="block">
-                            ({formatCurrency(item.price)} ea)
-                        </Typography>
-                    )}
-                </Box>
-            </Box>
-
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 0.5 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, bgcolor: 'action.hover', borderRadius: 1, p: 0.25 }}>
-                    <IconButton size="small" onClick={() => onUpdateQuantity(item.cartId, -1)}>
-                        <RemoveIcon fontSize="small" />
-                    </IconButton>
-                    <Typography variant="body2" sx={{ minWidth: 20, textAlign: 'center', fontWeight: 'bold' }}>
-                        {item.quantity}
-                    </Typography>
-                    <IconButton size="small" onClick={() => onUpdateQuantity(item.cartId, 1)}>
-                        <AddIcon fontSize="small" />
-                    </IconButton>
-                </Box>
-                <IconButton size="small" color="error" onClick={() => onRemove(item.cartId)}>
-                    <DeleteIcon fontSize="small" />
-                </IconButton>
-            </Box>
-        </ListItem>
-    );
-});
 
 const POSPage: React.FC = () => {
     const { user, getUserFullName, tenantSlug } = useAuth();
@@ -289,7 +218,7 @@ const POSPage: React.FC = () => {
     const [deliveryAddress, setDeliveryAddress] = useState<any>({});
     const [discountPercent, setDiscountPercent] = useState(0);
     const [tip, setTip] = useState(0);
-    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'online' | 'card' | 'zelle' | 'venmo' | 'cheque' | 'phonepe' | 'gpay' | 'paytm'>('cash');
+    const [paymentMethod, setPaymentMethod] = useState<string>('cash');
     const [cardType, setCardType] = useState<'credit' | 'debit'>('credit');
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
     const [manualPaymentDialogOpen, setManualPaymentDialogOpen] = useState(false);
@@ -304,6 +233,7 @@ const POSPage: React.FC = () => {
     const cartSectionRef = useRef<HTMLDivElement | null>(null);
     const loadMoreRef = useRef<HTMLDivElement | null>(null);
     const menuFetchRequestId = useRef(0);
+    const preOrderLoadedRef = useRef(false);
     // Guard to prevent re-loading stale order data after an order is submitted
     const orderSubmittedRef = useRef(false);
     const [trays, setTrays] = useState<any[]>([]);
@@ -314,6 +244,7 @@ const POSPage: React.FC = () => {
     const [isFetchingQuote, setIsFetchingQuote] = useState<boolean>(false);
     const [quoteError, setQuoteError] = useState<string | null>(null);
     const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
+    const [customItemModalOpen, setCustomItemModalOpen] = useState(false);
 
     // Sync dial code with settings when they load
     useEffect(() => {
@@ -858,6 +789,26 @@ const POSPage: React.FC = () => {
             }
 
             if (urlEmail) setCustomerEmail(urlEmail);
+
+            const urlPreOrder = searchParams.get("preOrder");
+            if (urlPreOrder && !preOrderLoadedRef.current) {
+                preOrderLoadedRef.current = true;
+                try {
+                    const items = JSON.parse(urlPreOrder);
+                    items.forEach((item: any) => {
+                        addToCart({
+                            menuItem: null,
+                            name: item.name,
+                            price: item.price,
+                            quantity: 1,
+                            isCustom: true,
+                            notes: 'Pre-ordered outsourced item'
+                        });
+                    });
+                } catch(e) {
+                    console.error("Failed to parse preOrder", e);
+                }
+            }
         }
     }, [isEditMode, existingOrderId, tables, searchParams, resetData, settings?.restaurant?.dialCode]);
 
@@ -928,14 +879,36 @@ const POSPage: React.FC = () => {
             }
 
 
-            // Load items into cart
+            // Load items into cart, preserving every customisation. Dropping any of
+            // these would silently strip them from the order on save.
             const items = Array.isArray(ord.items) ? ord.items : [];
-            const formattedCart = items.map((i: any) => ({
-                _id: i.menuItem,
-                name: i.name,
-                price: i.price,
-                quantity: i.quantity,
-            }));
+            const formattedCart = items.map((i: any) => {
+                const menuItemId = (i.menuItem?._id || i.menuItem || '').toString();
+                const variantId = i.variant?._id || i.variant?.name || 'base';
+                const modifiersStr = (i.modifiers || [])
+                    .map((m: any) => m.name)
+                    .sort((a: string, b: string) => a.localeCompare(b))
+                    .join(',');
+
+                return {
+                    _id: menuItemId,
+                    cartId: `${menuItemId}::${i.tray || 'none'}::${variantId}::${i.spiceLevel || 'none'}::${modifiersStr}`,
+                    name: i.name,
+                    price: i.price,
+                    quantity: i.quantity,
+                    modifiers: i.modifiers || [],
+                    variant: i.variant,
+                    spiceLevel: i.spiceLevel,
+                    notes: i.notes,
+                    tray: i.tray,
+                    trayMultiplier: i.trayMultiplier,
+                    preparationStatus: i.preparationStatus,
+                    // Already on the order: display-only. This screen only appends —
+                    // changing an existing line is not its job, whatever the kitchen
+                    // has or hasn't started.
+                    isLocked: true,
+                };
+            });
 
             setCart(formattedCart);
 
@@ -1112,32 +1085,67 @@ const POSPage: React.FC = () => {
     const addToCart = React.useCallback((item: any) => {
         setCart((prev) => {
             const cartId = item.cartId || item._id;
-            const existing = prev.find((i) => i.cartId === cartId);
+            // Only merge into a line added in this session. Lines already on the
+            // order are display-only, so an identical dish becomes a new line.
+            // Match on lineKey (what the item *is*) rather than cartId (the row's
+            // unique key), so repeat clicks keep merging into that same new line.
+            const existing = prev.find((i) => (i.lineKey || i.cartId) === cartId && !i.isLocked);
             if (existing) {
                 toast.success(`${item.name} quantity updated`);
                 return prev.map((i) =>
-                    i.cartId === cartId ? { ...i, quantity: i.quantity + (item.quantity || 1) } : i
+                    i.cartId === existing.cartId ? { ...i, quantity: i.quantity + (item.quantity || 1) } : i
                 );
             }
             toast.success(`${item.name} added to cart`);
-            return [...prev, { ...item, cartId, quantity: item.quantity || 1 }];
+            // A locked line may already hold this cartId; keep the new row addressable.
+            const isTaken = prev.some((i) => i.cartId === cartId);
+            return [...prev, {
+                ...item,
+                cartId: isTaken ? `${cartId}::new-${Date.now()}` : cartId,
+                lineKey: cartId,
+                quantity: item.quantity || 1,
+                isLocked: false,
+            }];
         });
     }, []);
+
+    const handleAddCustomItem = React.useCallback((name: string, price: number, quantity: number, notes?: string) => {
+        const cartId = `custom::${Date.now()}`;
+        addToCart({
+            _id: cartId,
+            cartId,
+            name,
+            price,
+            quantity,
+            isCustom: true,
+            notes,
+        });
+        setCustomItemModalOpen(false);
+    }, [addToCart]);
 
     const removeFromCart = React.useCallback((cartId: string) => {
         setCart((prev) => {
             const item = prev.find(i => i.cartId === cartId);
+            if (item?.isLocked) {
+                toast.error(`${item.name} is already on this order and can't be removed here`);
+                return prev;
+            }
             if (item) toast.success(`${item.name} removed`);
             return prev.filter((i) => i.cartId !== cartId);
         });
     }, []);
 
     const updateCartItemQuantity = React.useCallback((cartId: string, delta: number) => {
-        setCart((prev) =>
-            prev
+        setCart((prev) => {
+            const target = prev.find((i) => i.cartId === cartId);
+            if (target?.isLocked) {
+                toast.error(`${target.name} is already on this order — add it again to order more`);
+                return prev;
+            }
+            return prev
                 .map((i) => (i.cartId === cartId ? { ...i, quantity: Math.max(0, i.quantity + delta) } : i))
-                .filter((i) => i.quantity > 0)
-        );
+                .filter((i) => i.quantity > 0);
+        });
     }, []);
 
     const getItemQuantity = (itemId: string) => {
@@ -1175,19 +1183,15 @@ const POSPage: React.FC = () => {
                 setIsCalculatingTax(true);
                 const restaurantSettings = settings?.restaurant || {};
 
-                // Determine to_zip
-                let to_zip = '';
-                if (typeof deliveryAddress === 'object' && (deliveryAddress as any).zipCode) {
-                    to_zip = (deliveryAddress as any).zipCode;
-                } else if (typeof deliveryAddress === 'string') {
-                    const match = deliveryAddress.match(/\b\d{5}\b/);
-                    if (match) to_zip = match[0];
-                }
-
-                if (!to_zip) to_zip = restaurantSettings.zipCode || '30040';
-
+                // Tax is sourced from the RESTAURANT's address for every order type,
+                // including delivery — the customer's delivery address never drives the
+                // rate. Send the restaurant address explicitly so the payload shows which
+                // address the returned rate belongs to.
                 const payload = {
-                    to_zip,
+                    to_zip: restaurantSettings.zipCode || '',
+                    to_state: restaurantSettings.state || '',
+                    to_city: restaurantSettings.city || '',
+                    to_street: restaurantSettings.address || '',
                     discount: discountAmount + couponDiscount,
                     line_items: cart.map(item => ({
                         itemId: item.originalMenuItemId || item._id,
@@ -1209,7 +1213,9 @@ const POSPage: React.FC = () => {
         }, 800);
 
         return () => clearTimeout(timer);
-    }, [cart, discountAmount, couponDiscount, deliveryAddress, settings]);
+        // deliveryAddress is intentionally not a dependency: tax comes from the
+        // restaurant's address, so editing the delivery address must not refire this.
+    }, [cart, discountAmount, couponDiscount, settings]);
 
     const taxAmount = useMemo(() => {
         return taxDetails?.taxAmount || 0;
@@ -1290,21 +1296,25 @@ const POSPage: React.FC = () => {
             hasError = true;
         }
 
-        // Validate phone
-        const phoneValidation = validatePhone(customerPhone, customerDialCode);
-        if (!phoneValidation.isValid) {
-            setCustomerPhoneTouched(true);
-            setCustomerPhoneError(phoneValidation.message || 'Invalid phone number');
-            hasError = true;
+        // Validate phone (optional)
+        if (customerPhone && customerPhone.trim().length > 0) {
+            const phoneValidation = validatePhone(customerPhone, customerDialCode);
+            if (!phoneValidation.isValid) {
+                setCustomerPhoneTouched(true);
+                setCustomerPhoneError(phoneValidation.message || 'Invalid phone number');
+                hasError = true;
+            } else {
+                setCustomerPhoneError('');
+            }
         } else {
             setCustomerPhoneError('');
         }
 
         // Validate email (optional)
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (customerEmail && !emailRegex.test(customerEmail)) {
+        const emailValidation = validateEmail(customerEmail);
+        if (customerEmail && !emailValidation.isValid) {
             setCustomerEmailTouched(true);
-            setCustomerEmailError('Please enter a valid email address');
+            setCustomerEmailError(emailValidation.message || 'Please enter a valid email address');
             hasError = true;
         } else {
             setCustomerEmailError('');
@@ -1314,6 +1324,17 @@ const POSPage: React.FC = () => {
         if (orderType === 'dine_in' && !selectedTable) {
             setTableError('Please select a table for dine-in orders');
             hasError = true;
+        }
+
+        // Guests must fit the table. The server rejects this too; catching it here
+        // avoids a round trip that loses the cart.
+        if (orderType === 'dine_in' && selectedTable) {
+            const mergedGroup = getMergedGroup(selectedTable, tables, pendingMergeSecondaryIds);
+            const maxGuests = getMaxGuests(mergedGroup);
+            if (guestCount > maxGuests) {
+                toast.error(`Guest count exceeds table capacity (${maxGuests})`);
+                hasError = true;
+            }
         }
 
         if (hasError) {
@@ -1327,7 +1348,7 @@ const POSPage: React.FC = () => {
                 return;
             }
 
-            if (['zelle', 'venmo', 'cheque', 'phonepe', 'gpay', 'paytm'].includes(paymentMethod)) {
+            if (paymentMethod !== 'cash' && paymentMethod !== 'online' && paymentMethod !== 'card') {
                 setManualPaymentDialogOpen(true);
                 return;
             }
@@ -1429,7 +1450,7 @@ const POSPage: React.FC = () => {
                 finalPaymentMethod = 'rewards' as any;
                 finalPaymentStatus = 'paid';
                 console.log("[POS] Order fully covered by rewards/coupons. Setting status to PAID.");
-            } else if (orderType === 'dine_in') {
+            } else if (orderType === 'dine_in' && !isManualCollectedPayment && !isVerifiedStripePayment) {
                 // For dine-in, always start with pending status and use 'cash' as a placeholder
                 // since the actual payment method is chosen at checkout.
                 finalPaymentStatus = 'pending';
@@ -1457,8 +1478,12 @@ const POSPage: React.FC = () => {
                     total: i.price * i.quantity,
                     modifiers: i.modifiers,
                     variant: i.variant,
+                    spiceLevel: i.spiceLevel,
+                    notes: i.notes,
                     tray: i.tray,
                     trayMultiplier: i.trayMultiplier,
+                    // Preserve kitchen progress across an edit.
+                    ...(i.preparationStatus && { preparationStatus: i.preparationStatus }),
                 })),
                 totalAmount: finalTotal,
                 subtotal: cartTotal,
@@ -1540,8 +1565,7 @@ const POSPage: React.FC = () => {
             // Then handle table status update and refresh
             if (orderType === "dine_in" && selectedTable?._id) {
                 try {
-                    const updateData = { status: "occupied" };
-                    await tablesAPI.update(selectedTable._id, updateData);
+                    await tablesAPI.updateStatus(selectedTable._id, "occupied");
                 } catch (err) {
                     console.error("Table status update failed:", err);
                     toast.error("Failed to update table status");
@@ -1850,6 +1874,15 @@ const POSPage: React.FC = () => {
 
 
 
+                {isEditMode && (
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                        Adding items to an existing order. Everything already on the
+                        order — items, customer, table and billing — is shown for
+                        reference and can't be changed here. Pick menu items below to
+                        add them; only those new lines are editable.
+                    </Alert>
+                )}
+
                 {/* Order details */}
                 {/* Order details extracted to CustomerInfoSection */}
                 <CustomerInfoSection
@@ -1915,6 +1948,7 @@ const POSPage: React.FC = () => {
                     setScheduledTime={setScheduledTime}
                     maxUsablePoints={maxUsablePoints}
                     isApplyingCoupon={isApplyingCoupon}
+                    readOnly={isEditMode}
                 />
                 {/* Table Group Actions (Clear Pending Merge) */}
                 {pendingMergeSecondaryIds.length > 0 && (
@@ -2000,6 +2034,15 @@ const POSPage: React.FC = () => {
                             </Box>
                         )}
                     </Box>
+                    <Button 
+                        variant="outlined" 
+                        color="secondary" 
+                        startIcon={<AddIcon />} 
+                        onClick={() => setCustomItemModalOpen(true)}
+                        sx={{ whiteSpace: 'nowrap', minWidth: { xs: '100%', sm: 'auto' }, alignSelf: 'stretch' }}
+                    >
+                        Custom Item
+                    </Button>
                 </Box>
                 {/* Food Type Toggle — above tabs, right-aligned */}
                 <Box
@@ -2419,7 +2462,7 @@ const POSPage: React.FC = () => {
                                                                     position: 'absolute',
                                                                     top: 0,
                                                                     left: 0,
-                                                                    bgcolor: item.displayOption === 'todays_special' ? 'warning.main' : 'info.main',
+                                                                    bgcolor: item.displayOption === 'todays_special' ? 'warning.main' : item.displayOption === 'weekend_special' ? 'success.main' : 'info.main',
                                                                     color: 'white',
                                                                     px: 1,
                                                                     py: 0.5,
@@ -2430,7 +2473,7 @@ const POSPage: React.FC = () => {
                                                                     textTransform: 'uppercase',
                                                                 }}
                                                             >
-                                                                {item.displayOption === 'todays_special' ? "Today's Special" : 'Weekly Special'}
+                                                                {item.displayOption === 'todays_special' ? "Today's Special" : item.displayOption === 'weekend_special' ? 'Weekend Special' : 'Weekly Special'}
                                                             </Box>
                                                         )}
                                                     </Box>
@@ -2587,7 +2630,7 @@ const POSPage: React.FC = () => {
                                                             position: 'absolute',
                                                             top: 10,
                                                             right: 10,
-                                                            bgcolor: item.displayOption === 'todays_special' ? 'warning.main' : 'info.main',
+                                                            bgcolor: item.displayOption === 'todays_special' ? 'warning.main' : item.displayOption === 'weekend_special' ? 'success.main' : 'info.main',
                                                             color: 'white',
                                                             px: 1,
                                                             py: 0.2,
@@ -2599,7 +2642,7 @@ const POSPage: React.FC = () => {
                                                             textTransform: 'uppercase'
                                                         }}
                                                     >
-                                                        {item.displayOption === 'todays_special' ? "Today's Special" : 'Weekly Special'}
+                                                        {item.displayOption === 'todays_special' ? "Today's Special" : item.displayOption === 'weekend_special' ? 'Weekend Special' : 'Weekly Special'}
                                                     </Box>
                                                 )}
                                             </Box>
@@ -3216,10 +3259,17 @@ const POSPage: React.FC = () => {
                     rewardDiscount={rewardDiscount}
                     placingOrder={placingOrder}
                     handlePlaceOrder={handlePlaceOrder}
+                    readOnly={isEditMode}
                 />
             </Paper>
 
-            {/* Payment modal */}
+            <CustomItemDialog 
+                open={customItemModalOpen} 
+                onClose={() => setCustomItemModalOpen(false)} 
+                onAdd={handleAddCustomItem} 
+            />
+
+            {/* Payment Modal */}
             <PaymentModal
                 open={paymentModalOpen}
                 onClose={() => setPaymentModalOpen(false)}

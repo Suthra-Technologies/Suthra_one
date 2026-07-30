@@ -129,7 +129,7 @@ const WasteManagementPage: React.FC = () => {
                 inventoryAPI.getAll(), // This fetches all inventory items, we should filter for raw materials if needed
                 menuAPI.getAll(),
             ]);
-            setRawMaterials(Array.isArray(rawRes.data) ? rawRes.data.filter((i: any) => i.category === 'raw_materials') : []);
+            setRawMaterials(Array.isArray(rawRes.data) ? (rawRes?.data || []).filter((i: any) => i.category === 'raw_materials') : []);
             const menuData = menuRes.data;
             setMenuItems(Array.isArray(menuData) ? menuData : (menuData?.items || []));
         } catch (error) {

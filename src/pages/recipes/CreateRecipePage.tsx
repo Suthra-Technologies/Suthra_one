@@ -108,9 +108,11 @@ const CreateRecipePage: React.FC = () => {
         }
     };
 
-    const fetchMenuItems = async () => {
+    const fetchMenuItems = async (search?: string) => {
         try {
-            const response = await menuAPI.getAll();
+            const params: any = {};
+            if (search) params.search = search;
+            const response = await menuAPI.getAll(params);
             const data = response.data;
             const items = Array.isArray(data) ? data : (data?.items || []);
             setMenuItems(items);
@@ -223,7 +225,7 @@ const CreateRecipePage: React.FC = () => {
                 menuItem: formData.menuItem._id || formData.menuItem,
                 ingredients: formData.ingredients.map(ing => ({
                     inventoryItem: (ing.inventoryItem as any)?._id || ing.inventoryItem,
-                    quantity: ing.quantity,
+                    quantity: parseFloat(ing.quantity as any) || 0,
                     unit: ing.unit,
                 })),
             };
@@ -266,6 +268,11 @@ const CreateRecipePage: React.FC = () => {
                             getOptionLabel={(option) => option.name || ''}
                             isOptionEqualToValue={(option, value) => option._id === value._id}
                             value={formData.menuItem || null}
+                            onInputChange={(_, newValue, reason) => {
+                                if (reason === 'input') {
+                                    fetchMenuItems(newValue);
+                                }
+                            }}
                             onChange={(_, newValue) => {
                                 setFormData({
                                     ...formData,
@@ -276,7 +283,7 @@ const CreateRecipePage: React.FC = () => {
                             fullWidth
                             size={isMobile ? "small" : "medium"}
                             renderInput={(params) => (
-                                <TextField {...params} label="Menu Item" placeholder="Select menu item" required />
+                                <TextField {...params} label="Menu Item" placeholder="Search menu item" required />
                             )}
                         />
                         <CustomInput
@@ -379,8 +386,7 @@ const CreateRecipePage: React.FC = () => {
                                             label="Quantity"
                                             value={ingredient.quantity}
                                             onChange={(val) => {
-                                                const parsedVal = parseFloat(val);
-                                                handleIngredientChange(index, 'quantity', Math.max(0, isNaN(parsedVal) ? 0 : parsedVal));
+                                                handleIngredientChange(index, 'quantity', val);
                                             }}
                                             inputProps={{ min: 0 }}
                                             size="small"
@@ -438,8 +444,7 @@ const CreateRecipePage: React.FC = () => {
                                                 type="number"
                                                 value={ingredient.quantity}
                                                 onChange={(val) => {
-                                                    const parsedVal = parseFloat(val);
-                                                    handleIngredientChange(index, 'quantity', Math.max(0, isNaN(parsedVal) ? 0 : parsedVal));
+                                                    handleIngredientChange(index, 'quantity', val);
                                                 }}
                                                 inputProps={{ min: 0 }}
                                                 size="small"
@@ -543,7 +548,7 @@ const CreateRecipePage: React.FC = () => {
                                                     const recipeServings = formData.servingSize || 1;
                                                     const trayServings = opt.servingSize || 1;
                                                     const ratio = trayServings / recipeServings;
-                                                    const scaledQty = (ing.quantity * ratio).toFixed(2);
+                                                    const scaledQty = ((parseFloat(ing.quantity as any) || 0) * ratio).toFixed(2);
                                                     return <TableCell key={tIdx} align="right" sx={{ fontSize: isMobile ? '0.7rem' : 'inherit' }}><Box component="span" sx={{ fontWeight: 'bold' }}>{scaledQty}</Box> {ing.unit}</TableCell>;
                                                 })}
                                             </TableRow>

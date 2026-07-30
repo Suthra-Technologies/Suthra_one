@@ -4,6 +4,7 @@ import {
     CheckCircle as CheckIcon,
     LocalOffer as CouponIcon,
     Delete as DeleteIcon,
+    Lock as LockIcon,
     Remove as RemoveIcon,
 } from '@mui/icons-material';
 import {
@@ -47,6 +48,8 @@ interface OrderDetailsSectionProps {
     placingOrder: boolean;
     isApplyingCoupon?: boolean;
     handlePlaceOrder: () => void;
+    /** Add-items mode: billing was settled when the order was placed. */
+    readOnly?: boolean;
 }
 
 const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
@@ -71,6 +74,7 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
     placingOrder,
     isApplyingCoupon = false,
     handlePlaceOrder,
+    readOnly = false,
 }) => {
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -93,26 +97,42 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
                             secondary={
                                 <>
                                     {formatSmartPrice(item.price)}
-                                    {item.modifiers && item.modifiers.length > 0 && (
+                                    {item.modifiers && (item?.modifiers || []).length > 0 && (
                                         <Typography variant="caption" display="block" color="text.secondary">
-                                            {item.modifiers.map((m: any) => m.name).join(', ')}
+                                            {(item?.modifiers || []).map((m: any) => m.name).join(', ')}
+                                        </Typography>
+                                    )}
+                                    {item.spiceLevel && (
+                                        <Typography variant="caption" display="block" color="text.secondary">
+                                            Spice: {item.spiceLevel}
                                         </Typography>
                                     )}
                                 </>
                             }
                         />
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <IconButton size="small" onClick={() => updateQuantity(item.cartId, -1)}>
-                                <RemoveIcon fontSize="small" />
-                            </IconButton>
-                            <Typography>{item.quantity}</Typography>
-                            <IconButton size="small" onClick={() => updateQuantity(item.cartId, 1)}>
-                                <AddIcon fontSize="small" />
-                            </IconButton>
-                            <IconButton size="small" color="error" onClick={() => removeFromCart(item.cartId)}>
-                                <DeleteIcon fontSize="small" />
-                            </IconButton>
-                        </Box>
+                        {item.isLocked ? (
+                            // Already on the order: display-only. Adding the same dish
+                            // again creates a new line rather than changing this one.
+                            <Tooltip title="Already on this order. Add it again from the menu to order more.">
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 'bold' }}>×{item.quantity}</Typography>
+                                    <LockIcon sx={{ fontSize: '0.9rem', color: 'text.disabled' }} />
+                                </Box>
+                            </Tooltip>
+                        ) : (
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <IconButton size="small" onClick={() => updateQuantity(item.cartId, -1)}>
+                                    <RemoveIcon fontSize="small" />
+                                </IconButton>
+                                <Typography>{item.quantity}</Typography>
+                                <IconButton size="small" onClick={() => updateQuantity(item.cartId, 1)}>
+                                    <AddIcon fontSize="small" />
+                                </IconButton>
+                                <IconButton size="small" color="error" onClick={() => removeFromCart(item.cartId)}>
+                                    <DeleteIcon fontSize="small" />
+                                </IconButton>
+                            </Box>
+                        )}
                     </ListItem>
                 ))}
                 {cart.length === 0 && (
@@ -131,7 +151,8 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
                 )}
             </List>
 
-            {/* Coupon Input */}
+            {/* Coupon Input — hidden while adding items; billing was settled at order time. */}
+            {!readOnly && (
             <Box sx={{ px: 2, pt: 2, pb: 1, borderTop: 1, borderColor: 'divider' }}>
                 <Stack direction="row" spacing={1}>
                     <TextField
@@ -196,6 +217,7 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
                     </Box>
                 )}
             </Box>
+            )}
 
             <Box sx={{ p: 2, borderTop: 1, borderColor: 'divider', bgcolor: 'background.default' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
@@ -239,10 +261,12 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
                     </Typography>
                 </Box>
                 <Box sx={{ mb: 2 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic', display: 'block', mb: 1 }}>
-                        ℹ️ Coupon is applied first, then rewards are used for the remaining balance.
-                    </Typography>
-                    {finalTotal === 0 && cart.length > 0 && (
+                    {!readOnly && (
+                        <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic', display: 'block', mb: 1 }}>
+                            ℹ️ Coupon is applied first, then rewards are used for the remaining balance.
+                        </Typography>
+                    )}
+                    {!readOnly && finalTotal === 0 && cart.length > 0 && (
                         <Alert severity="success" icon={false} sx={{ py: 0, px: 1, '& .MuiAlert-message': { fontSize: '0.75rem' } }}>
                             ✨ Fully paid using rewards!
                         </Alert>
@@ -253,11 +277,15 @@ const OrderDetailsSection: React.FC<OrderDetailsSectionProps> = ({
                     fullWidth
                     size="large"
                     disabled={cart.length === 0 || placingOrder}
-                    color={finalTotal === 0 && cart.length > 0 ? 'success' : 'primary'}
-                    startIcon={finalTotal === 0 && cart.length > 0 ? <CheckIcon /> : <CartIcon />}
+                    color={!readOnly && finalTotal === 0 && cart.length > 0 ? 'success' : 'primary'}
+                    startIcon={!readOnly && finalTotal === 0 && cart.length > 0 ? <CheckIcon /> : <CartIcon />}
                     onClick={handlePlaceOrder}
                 >
-                    {placingOrder ? 'Placing...' : (finalTotal === 0 && cart.length > 0 ? 'Complete Order' : 'Place Order')}
+                    {placingOrder
+                        ? (readOnly ? 'Updating...' : 'Placing...')
+                        : readOnly
+                            ? 'Update Order'
+                            : (finalTotal === 0 && cart.length > 0 ? 'Complete Order' : 'Place Order')}
                 </Button>
             </Box>
         </Box>

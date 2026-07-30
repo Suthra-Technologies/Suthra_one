@@ -4,7 +4,14 @@ import {
     Close as CloseIcon,
     Delete as DeleteIcon,
     Smartphone as SmartphoneIcon,
-    ReceiptLong as ChequeIcon
+    ReceiptLong as ChequeIcon,
+    Add as AddIcon,
+    AddCircleOutline as PlusIcon,
+    RemoveCircleOutline as MinusIcon,
+    PieChart as ShareIcon,
+    Autorenew as ResetIcon,
+    Lock as LockIcon,
+    LockOpen as LockOpenIcon
 } from '@mui/icons-material';
 import {
     Alert,
@@ -30,11 +37,17 @@ import {
     RadioGroup,
     Stack,
     TextField,
-    Typography
+    Typography,
+    MenuItem,
+    Select,
+    ToggleButton,
+    ToggleButtonGroup,
+    InputAdornment
 } from '@mui/material';
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '../context/SettingsContext';
+import { getActivePaymentMethods } from '../utils/orderWorkflows';
 import { ordersAPI, rewardsAPI } from '../services/api';
 import { openCashDrawer } from '../utils/cashDrawer';
 import PaymentModal from './PaymentModal';
@@ -54,44 +67,31 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
 }) => {
     const { formatCurrency, settings } = useSettings();
     const [order, setOrder] = useState<any>(initialOrder);
-    const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card' | 'zelle' | 'venmo' | 'cheque' | 'phonepe' | 'gpay' | 'paytm'>('cash');
+    const [paymentMethod, setPaymentMethod] = useState<string>('cash');
 
     const isIndia = settings?.restaurant?.country?.toLowerCase() === 'india';
 
     // Available payment methods based on settings
     const availableMethods = useMemo(() => {
-        const methods = [
-            { val: 'cash', icon: <CashIcon color="success" />, title: 'Cash', subtitle: 'Accept cash from customer' }
-        ];
-
-        if (isIndia) {
-            methods.push(
-                { val: 'phonepe', icon: <SmartphoneIcon color="secondary" />, title: 'PhonePe', subtitle: 'Manual PhonePe Transfer' },
-                { val: 'gpay', icon: <SmartphoneIcon color="success" />, title: 'GPay', subtitle: 'Manual GPay Transfer' },
-                { val: 'paytm', icon: <SmartphoneIcon color="primary" />, title: 'Paytm', subtitle: 'Manual Paytm Transfer' }
-            );
-        } else {
-            methods.push(
-                { val: 'zelle', icon: <SmartphoneIcon color="secondary" />, title: 'Zelle', subtitle: 'Manual Zelle Transfer' },
-                { val: 'venmo', icon: <SmartphoneIcon color="success" />, title: 'Venmo', subtitle: 'Manual Venmo Transfer' }
-            );
-        }
-
-        methods.push(
-            { val: 'cheque', icon: <ChequeIcon color="warning" />, title: 'Cheque', subtitle: 'Record a cheque payment' }
-        );
-
-        methods.push(
-            { val: 'card', icon: <CardIcon color="info" />, title: 'Card', subtitle: 'Process card via Stripe' }
-        );
-
-        return methods.filter(m => {
-            if (m.val === 'phonepe' || m.val === 'gpay' || m.val === 'paytm') {
-                return settings.system?.posPaymentMethods?.zelle !== false || settings.system?.posPaymentMethods?.venmo !== false;
-            }
-            return settings.system?.posPaymentMethods?.[m.val as keyof typeof settings.system.posPaymentMethods] !== false;
+        const activeMethods = getActivePaymentMethods(settings);
+        
+        return activeMethods.map(m => {
+            if (m.val === 'cash') return { val: 'cash', icon: <CashIcon color="success" />, title: 'Cash', subtitle: 'Record a cash payment' };
+            if (m.val === 'cheque') return { val: 'cheque', icon: <ChequeIcon color="warning" />, title: 'Cheque', subtitle: 'Record a cheque payment' };
+            if (m.val === 'card') return { val: 'card', icon: <CardIcon color="info" />, title: 'Card', subtitle: 'Process card via Stripe' };
+            
+            let iconColor: 'primary' | 'secondary' | 'success' | 'info' | 'warning' | 'error' = 'primary';
+            if (m.val === 'zelle' || m.val === 'phonepe') iconColor = 'secondary';
+            if (m.val === 'venmo' || m.val === 'gpay') iconColor = 'success';
+            
+            return {
+                val: m.val,
+                icon: <SmartphoneIcon color={iconColor} />,
+                title: m.label,
+                subtitle: `Manual ${m.label} Transfer`
+            };
         });
-    }, [settings.system?.posPaymentMethods, isIndia]);
+    }, [settings]);
 
     // Ensure initial payment method is valid when dialog opens
     useEffect(() => {
@@ -102,9 +102,24 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
             }
         }
     }, [open, availableMethods, paymentMethod]);
+    interface PaymentRow {
+        id: string;
+        amount: string;     // Read-only in Share/Percent modes, editable in Amount mode
+        shares: string;     // Used in Share mode (e.g. '1', '2')
+        percent: string;    // Used in Percent mode (e.g. '50', '25')
+        method: string;
+        transactionId: string;
+        isLocked?: boolean;
+    }
+
     const [loading, setLoading] = useState(false);
     const [stripeModalOpen, setStripeModalOpen] = useState(false);
     const [tipPercent, setTipPercent] = useState<number>(0);
+    const [customTipAmount, setCustomTipAmount] = useState<string>('');
+    const [isCustomActive, setIsCustomActive] = useState<boolean>(false);
+    const [paymentRows, setPaymentRows] = useState<PaymentRow[]>([]);
+    const [processingRowId, setProcessingRowId] = useState<string | null>(null);
+    const [splitMode, setSplitMode] = useState<'amount' | 'share' | 'percent'>('amount');
 
     // Rewards state
     const [rewardPointsInfo, setRewardPointsInfo] = useState<any>(null);
@@ -118,10 +133,68 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
         .reduce((sum: number, p: any) => sum + (p.amount || 0), 0);
 
     const baseAmount = order ? (order.totalAmount - (order.tip || 0)) : 0;
-    const targetTipAmount = (baseAmount * tipPercent) / 100;
+    const isCustomTip = customTipAmount !== '' && !isNaN(parseFloat(customTipAmount));
+    const targetTipAmount = isCustomTip 
+        ? Math.max(0, parseFloat(customTipAmount) || 0)
+        : (baseAmount * tipPercent) / 100;
     const pendingTipAmount = Math.max(0, targetTipAmount - (order?.tip || 0));
     const adjustedTotal = order ? (baseAmount + Math.max(order.tip || 0, targetTipAmount)) : 0;
     const amountDue = Math.max(0, adjustedTotal - totalPaid);
+
+    const redistributeRows = (
+        rows: PaymentRow[],
+        activeSplitMode: 'amount' | 'share' | 'percent',
+        targetAmountDue: number
+    ): PaymentRow[] => {
+        const lockedRows = rows.filter(r => r.isLocked);
+        const unlockedRows = rows.filter(r => !r.isLocked);
+        
+        if (activeSplitMode === 'amount') {
+            if (unlockedRows.length === 0) return rows;
+            
+            const sumLocked = lockedRows.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+            const remainingToDistribute = Math.max(0, targetAmountDue - sumLocked);
+            
+            const baseShare = Math.floor((remainingToDistribute / unlockedRows.length) * 100) / 100;
+            const allocated = baseShare * unlockedRows.length;
+            const difference = Math.round((remainingToDistribute - allocated) * 100) / 100;
+            
+            return rows.map(r => {
+                if (r.isLocked) return r;
+                
+                const idxInUnlocked = unlockedRows.findIndex(ur => ur.id === r.id);
+                const extra = idxInUnlocked === unlockedRows.length - 1 ? difference : 0;
+                const nextAmt = baseShare + extra;
+                return {
+                    ...r,
+                    amount: nextAmt.toFixed(2)
+                };
+            });
+        } else if (activeSplitMode === 'percent') {
+            if (unlockedRows.length === 0) return rows;
+            
+            const sumLocked = lockedRows.reduce((sum, r) => sum + (parseFloat(r.percent) || 0), 0);
+            const remainingToDistribute = Math.max(0, 100 - sumLocked);
+            
+            const baseShare = Math.floor((remainingToDistribute / unlockedRows.length) * 100) / 100;
+            const allocated = baseShare * unlockedRows.length;
+            const difference = Math.round((remainingToDistribute - allocated) * 100) / 100;
+            
+            return rows.map(r => {
+                if (r.isLocked) return r;
+                
+                const idxInUnlocked = unlockedRows.findIndex(ur => ur.id === r.id);
+                const extra = idxInUnlocked === unlockedRows.length - 1 ? difference : 0;
+                const nextPct = baseShare + extra;
+                return {
+                    ...r,
+                    percent: nextPct.toFixed(2)
+                };
+            });
+        }
+        
+        return rows;
+    };
 
     const maxUsablePoints = useMemo(() => {
         if (!rewardPointsInfo?.settings) return 0;
@@ -135,13 +208,127 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
         return Math.min(rewardPointsInfo.points || 0, maxPointsByBill);
     }, [rewardPointsInfo, order]);
 
-    const [splitAmount, setSplitAmount] = useState<number | string>(Number(amountDue).toFixed(2));
+    const calculatedRows = useMemo(() => {
+        if (splitMode === 'amount') {
+            return paymentRows;
+        }
+
+        if (splitMode === 'share') {
+            const totalShares = paymentRows.reduce((sum, r) => sum + (parseFloat(r.shares) || 0), 0);
+            if (totalShares <= 0) {
+                return paymentRows.map(r => ({ ...r, amount: '0.00' }));
+            }
+
+            const rowsWithAmount = paymentRows.map(r => {
+                const shareVal = parseFloat(r.shares) || 0;
+                const amt = Math.floor(((shareVal / totalShares) * amountDue) * 100) / 100;
+                return {
+                    ...r,
+                    amount: amt.toFixed(2)
+                };
+            });
+
+            const calculatedSum = rowsWithAmount.reduce((sum, r) => sum + parseFloat(r.amount), 0);
+            const diff = Math.round((amountDue - calculatedSum) * 100) / 100;
+            if (diff !== 0 && rowsWithAmount.length > 0) {
+                const lastIdx = rowsWithAmount.length - 1;
+                const lastAmt = parseFloat(rowsWithAmount[lastIdx].amount) + diff;
+                rowsWithAmount[lastIdx].amount = lastAmt.toFixed(2);
+            }
+
+            return rowsWithAmount;
+        }
+
+        if (splitMode === 'percent') {
+            const rowsWithAmount = paymentRows.map(r => {
+                const percentVal = parseFloat(r.percent) || 0;
+                const amt = Math.floor(((percentVal / 100) * amountDue) * 100) / 100;
+                return {
+                    ...r,
+                    amount: amt.toFixed(2)
+                };
+            });
+
+            const totalPercent = paymentRows.reduce((sum, r) => sum + (parseFloat(r.percent) || 0), 0);
+            if (Math.abs(totalPercent - 100) < 0.01 && rowsWithAmount.length > 0) {
+                const calculatedSum = rowsWithAmount.reduce((sum, r) => sum + parseFloat(r.amount), 0);
+                const diff = Math.round((amountDue - calculatedSum) * 100) / 100;
+                if (diff !== 0) {
+                    const lastIdx = rowsWithAmount.length - 1;
+                    const lastAmt = parseFloat(rowsWithAmount[lastIdx].amount) + diff;
+                    rowsWithAmount[lastIdx].amount = lastAmt.toFixed(2);
+                }
+            }
+
+            return rowsWithAmount;
+        }
+
+        return paymentRows;
+    }, [paymentRows, splitMode, amountDue]);
+
+    const plannedTotal = useMemo(() => {
+        return calculatedRows.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+    }, [calculatedRows]);
+
+    const totalPercent = useMemo(() => {
+        return paymentRows.reduce((sum, r) => sum + (parseFloat(r.percent) || 0), 0);
+    }, [paymentRows]);
+
+    const isOverAllocated = splitMode === 'amount' ? plannedTotal > amountDue + 0.01 : splitMode === 'percent' ? totalPercent > 100.01 : false;
+    const isFullyAllocated = splitMode === 'amount' ? Math.abs(plannedTotal - amountDue) < 0.01 : splitMode === 'percent' ? Math.abs(totalPercent - 100) < 0.01 : true;
+
+    const validationAlert = useMemo(() => {
+        if (splitMode === 'amount') {
+            const diff = Math.round((plannedTotal - amountDue) * 100) / 100;
+            if (diff > 0.01) {
+                return {
+                    severity: 'warning' as const,
+                    text: `Planned total exceeds remaining due by ${formatCurrency(diff)}`
+                };
+            } else if (diff < -0.01) {
+                return {
+                    severity: 'info' as const,
+                    text: `Planned total is short of remaining due by ${formatCurrency(Math.abs(diff))}`
+                };
+            } else {
+                return {
+                    severity: 'success' as const,
+                    text: 'Planned total matches remaining due exactly'
+                };
+            }
+        } else if (splitMode === 'percent') {
+            const diff = Math.round((totalPercent - 100) * 100) / 100;
+            if (diff > 0.01) {
+                return {
+                    severity: 'warning' as const,
+                    text: `Planned percentages sum to ${totalPercent.toFixed(2)}% (exceeds 100% by ${diff.toFixed(2)}%)`
+                };
+            } else if (diff < -0.01) {
+                return {
+                    severity: 'info' as const,
+                    text: `Planned percentages sum to ${totalPercent.toFixed(2)}% (short of 100% by ${Math.abs(diff).toFixed(2)}%)`
+                };
+            } else {
+                return {
+                    severity: 'success' as const,
+                    text: 'Planned percentages sum to exactly 100%'
+                };
+            }
+        } else {
+            return {
+                severity: 'success' as const,
+                text: `Splitting ${formatCurrency(amountDue)} proportionally based on shares`
+            };
+        }
+    }, [splitMode, plannedTotal, totalPercent, amountDue]);
 
     // Sync state when dialog opens or initial order changes
     useEffect(() => {
         if (initialOrder && open) {
             setOrder(initialOrder);
             setTipPercent(0);
+            setCustomTipAmount('');
+            setIsCustomActive(false);
 
             // Check for customer and fetch rewards
             const fetchRewards = async () => {
@@ -169,19 +356,157 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
         }
     }, [initialOrder, open]);
 
-    // Recalculate splitAmount input default when amountDue changes
+    // Manage/sync split bill rows
     useEffect(() => {
-        if (amountDue > 0) {
-            setSplitAmount(Number(amountDue).toFixed(2));
-        } else {
-            setSplitAmount('');
+        if (open && amountDue > 0) {
+            if (paymentRows.length <= 1) {
+                const currentMethod = paymentRows[0]?.method || paymentMethod || 'cash';
+                setPaymentRows([
+                    {
+                        id: paymentRows[0]?.id || Math.random().toString(),
+                        amount: Number(amountDue).toFixed(2),
+                        shares: '1',
+                        percent: '100',
+                        method: currentMethod,
+                        transactionId: paymentRows[0]?.transactionId || '',
+                        isLocked: false
+                    }
+                ]);
+            } else {
+                setPaymentRows(prev => redistributeRows(prev, splitMode, amountDue));
+            }
+        } else if (!open || amountDue === 0) {
+            setPaymentRows([]);
         }
-    }, [amountDue]);
+    }, [open, amountDue]);
 
     if (!order) return null;
 
-    const handleAddSplit = async (_paymentIntentId?: string) => {
-        const amt = parseFloat(splitAmount as string) || 0;
+    const handleSplitModeChange = (newMode: 'amount' | 'share' | 'percent') => {
+        if (!newMode) return;
+        
+        setPaymentRows(prev => {
+            const currentCalculated = calculatedRows;
+            
+            const nextRows = prev.map((row, idx) => {
+                const calcAmt = parseFloat(currentCalculated[idx]?.amount || '0');
+                
+                let newShares = row.shares;
+                let newPercent = row.percent;
+                let newAmount = row.amount;
+
+                if (newMode === 'amount') {
+                    newAmount = calcAmt.toFixed(2);
+                } else if (newMode === 'percent') {
+                    newPercent = amountDue > 0 ? ((calcAmt / amountDue) * 100).toFixed(2) : '0.00';
+                } else if (newMode === 'share') {
+                    newShares = '1';
+                }
+
+                return {
+                    ...row,
+                    amount: newAmount,
+                    shares: newShares,
+                    percent: newPercent,
+                    isLocked: newMode === 'share' ? false : row.isLocked
+                };
+            });
+            
+            return redistributeRows(nextRows, newMode, amountDue);
+        });
+        
+        setSplitMode(newMode);
+    };
+
+    // Split planners
+    const handleQuickSplit = (parts: number) => {
+        if (parts <= 0 || amountDue <= 0) return;
+        
+        const rows: PaymentRow[] = [];
+        for (let i = 0; i < parts; i++) {
+            rows.push({
+                id: Math.random().toString(),
+                amount: '0.00',
+                shares: '1',
+                percent: '0.00',
+                method: paymentMethod || 'cash',
+                transactionId: '',
+                isLocked: false
+            });
+        }
+        setPaymentRows(redistributeRows(rows, splitMode, amountDue));
+    };
+
+    const handleSplitEqually = () => {
+        if (paymentRows.length === 0 || amountDue <= 0) return;
+        setPaymentRows(prev => {
+            const unlocked = prev.map(row => ({
+                ...row,
+                isLocked: false
+            }));
+            return redistributeRows(unlocked, splitMode, amountDue);
+        });
+    };
+
+    const handleAddRow = () => {
+        setPaymentRows(prev => {
+            const newRow: PaymentRow = {
+                id: Math.random().toString(),
+                amount: '0.00',
+                shares: '1',
+                percent: '0.00',
+                method: paymentMethod || 'cash',
+                transactionId: '',
+                isLocked: false
+            };
+            
+            const updated = [...prev, newRow];
+            return redistributeRows(updated, splitMode, amountDue);
+        });
+    };
+
+    const handleRemoveRow = (rowId: string) => {
+        setPaymentRows(prev => {
+            const remaining = prev.filter(r => r.id !== rowId);
+            if (remaining.length === 0) return [];
+            
+            return redistributeRows(remaining, splitMode, amountDue);
+        });
+    };
+
+    const handleUpdateRow = (rowId: string, fields: Partial<PaymentRow>) => {
+        setPaymentRows(prev => prev.map(r => r.id === rowId ? { ...r, ...fields } : r));
+    };
+
+    const handleUpdateRowAmount = (rowId: string, newAmountVal: string) => {
+        setPaymentRows(prev => {
+            const updated = prev.map(r => r.id === rowId ? {
+                ...r,
+                amount: newAmountVal,
+                isLocked: true
+            } : r);
+            
+            return redistributeRows(updated, 'amount', amountDue);
+        });
+    };
+
+    const handleUpdateRowPercent = (rowId: string, newPercentVal: string) => {
+        setPaymentRows(prev => {
+            const updated = prev.map(r => r.id === rowId ? {
+                ...r,
+                percent: newPercentVal,
+                isLocked: true
+            } : r);
+            
+            return redistributeRows(updated, 'percent', amountDue);
+        });
+    };
+
+    const handleAddSplit = async (rowId: string, _paymentIntentId?: string) => {
+        const row = calculatedRows.find(r => r.id === rowId);
+        if (!row) return;
+
+        const amt = parseFloat(row.amount) || 0;
         if (amt <= 0 || amt > amountDue + 0.01) {
             toast.error('Invalid payment amount. Must not exceed remaining balance.');
             return;
@@ -191,17 +516,21 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
         try {
             const res = await ordersAPI.addPaymentSplit(order._id, {
                 amount: amt,
-                method: paymentMethod,
-                transactionId: _paymentIntentId,
+                method: row.method,
+                transactionId: _paymentIntentId || row.transactionId,
                 tipAmount: pendingTipAmount > 0 ? pendingTipAmount : 0
             });
             toast.success(`Payment of ${formatCurrency(amt)} added`);
             // Cash collected — pop the drawer (wired to the billing printer). Best-effort.
-            if (paymentMethod === 'cash') {
+            if (row.method === 'cash') {
                 openCashDrawer(settings.printer).catch((err) =>
                     console.error('[CashDrawer] Failed to open drawer:', err),
                 );
             }
+
+            // Remove the paid row from planner
+            setPaymentRows(prev => prev.filter(r => r.id !== rowId));
+
             // If fully paid, auto-forward/complete
             if (res.data.paymentStatus === 'paid' || isFullyPaid) {
                 try {
@@ -209,7 +538,6 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
                     toast.success('Order completed and fully paid!');
                     onSuccess();
                     onClose();
-                    setPaymentMethod('cash');
                 } catch (completeErr) {
                     console.error('Failed to auto-complete order:', completeErr);
                     // Update state so the user can manually click complete if auto-complete failed
@@ -224,6 +552,7 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
         } finally {
             setLoading(false);
             setStripeModalOpen(false);
+            setProcessingRowId(null);
         }
     };
 
@@ -269,7 +598,6 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
             toast.success('Order completed and fully paid!');
             onSuccess();
             onClose();
-            setPaymentMethod('cash');
         } catch (error: any) {
             toast.error('Failed to complete order');
         } finally {
@@ -277,12 +605,16 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
         }
     };
 
-    const handleCardPayment = () => {
-        const amt = parseFloat(splitAmount as string) || 0;
+    const handleCardPayment = (rowId: string) => {
+        const row = calculatedRows.find(r => r.id === rowId);
+        if (!row) return;
+
+        const amt = parseFloat(row.amount) || 0;
         if (amt <= 0 || amt > amountDue + 0.01) {
             toast.error('Invalid payment amount');
             return;
         }
+        setProcessingRowId(rowId);
         setStripeModalOpen(true);
     };
 
@@ -354,34 +686,99 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
                                 <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
                                     Add Tip (Optional)
                                 </Typography>
-                                <Stack direction="row" spacing={1} flexWrap="wrap">
+                                <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ gap: 1 }}>
                                     {[5, 10, 15, 20].map((rate) => (
                                         <Button
                                             key={rate}
-                                            variant={tipPercent === rate ? "contained" : "outlined"}
+                                            variant={tipPercent === rate && !isCustomActive ? "contained" : "outlined"}
                                             size="small"
-                                            sx={{ minWidth: '60px', borderRadius: 2 }}
+                                            sx={{ 
+                                                minWidth: '65px', 
+                                                borderRadius: 2,
+                                                textTransform: 'none',
+                                                fontWeight: 'medium'
+                                            }}
                                             onClick={() => {
-                                                const newRate = tipPercent === rate ? 0 : rate;
-                                                setTipPercent(newRate);
+                                                setCustomTipAmount('');
+                                                setTipPercent(rate);
+                                                setIsCustomActive(false);
                                             }}
                                         >
                                             {rate}%
                                         </Button>
                                     ))}
                                     <Button
-                                        variant={tipPercent === 0 ? "contained" : "outlined"}
+                                        variant={tipPercent === 0 && !isCustomActive ? "contained" : "outlined"}
                                         size="small"
-                                        sx={{ minWidth: '60px', borderRadius: 2 }}
+                                        sx={{ 
+                                            minWidth: '75px', 
+                                            borderRadius: 2,
+                                            textTransform: 'none',
+                                            fontWeight: 'medium'
+                                        }}
                                         onClick={() => {
                                             setTipPercent(0);
+                                            setCustomTipAmount('');
+                                            setIsCustomActive(false);
                                         }}
                                     >
-                                        No Addl. Tip
+                                        No Tip
+                                    </Button>
+                                    <Button
+                                        variant={isCustomActive ? "contained" : "outlined"}
+                                        size="small"
+                                        sx={{ 
+                                            minWidth: '100px', 
+                                            borderRadius: 2,
+                                            textTransform: 'none',
+                                            fontWeight: 'medium'
+                                        }}
+                                        onClick={() => {
+                                            setTipPercent(0);
+                                            setIsCustomActive(true);
+                                        }}
+                                    >
+                                        Other Amount
                                     </Button>
                                 </Stack>
-                                {tipPercent > 0 && pendingTipAmount > 0 && (
-                                    <Typography variant="caption" color="success.main" sx={{ mt: 0.5, display: 'block', fontWeight: 'medium' }}>
+                                
+                                {isCustomActive && (
+                                    <Box sx={{ 
+                                        mt: 1.5, 
+                                        p: 1.5, 
+                                        borderRadius: 2, 
+                                        bgcolor: 'action.hover', 
+                                        border: '1px solid', 
+                                        borderColor: 'divider',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 2
+                                    }}>
+                                        <TextField
+                                            label="Other Tip Amount"
+                                            type="number"
+                                            size="small"
+                                            placeholder="0.00"
+                                            autoFocus
+                                            value={customTipAmount}
+                                            onChange={(e) => setCustomTipAmount(e.target.value)}
+                                            InputProps={{
+                                                startAdornment: <InputAdornment position="start">{isIndia ? '₹' : '$'}</InputAdornment>,
+                                            }}
+                                            sx={{ 
+                                                width: '100%',
+                                                '& .MuiOutlinedInput-root': {
+                                                    borderRadius: 1.5,
+                                                    bgcolor: 'background.paper'
+                                                }
+                                            }}
+                                            inputProps={{ min: 0, step: 0.01 }}
+                                        />
+                                    </Box>
+                                )}
+                                
+                                {pendingTipAmount > 0 && (
+                                    <Typography variant="caption" color="success.main" sx={{ mt: 0.5, display: 'block', fontWeight: 'bold' }}>
                                         + {formatCurrency(pendingTipAmount)} Tip Selected
                                     </Typography>
                                 )}
@@ -460,59 +857,265 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
                                 </Box>
                             )}
 
-                            <Box sx={{ mb: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
-                                <TextField
-                                    label="Amount to Pay"
-                                    type="number"
-                                    value={splitAmount}
-                                    onChange={(e) => setSplitAmount(e.target.value)}
-                                    fullWidth
-                                    inputProps={{ min: 0.01, step: 0.01, max: amountDue }}
-                                />
-                                <Typography variant="caption" color="text.secondary" sx={{ minWidth: 80 }}>
-                                    (Max: {formatCurrency(amountDue)})
-                                </Typography>
-                            </Box>
+                            <Divider sx={{ my: 2 }} />
 
-                            <FormControl component="fieldset" fullWidth>
-                                <FormLabel component="legend" sx={{ mb: 2, fontWeight: 'bold' }}>
-                                    Select Payment Method
-                                </FormLabel>
-                                <RadioGroup
-                                    value={paymentMethod}
-                                    onChange={(e) => setPaymentMethod(e.target.value as any)}
+                            {/* Split Bill Planner Section */}
+                            <Box sx={{ mb: 3 }}>
+                                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+                                    <Typography variant="subtitle2" fontWeight="bold">
+                                        Split Bill Planner
+                                    </Typography>
+                                    <Stack direction="row" spacing={1}>
+                                        <Button size="small" variant="outlined" sx={{ borderRadius: 2 }} onClick={() => handleQuickSplit(2)}>
+                                            2-Ways
+                                        </Button>
+                                        <Button size="small" variant="outlined" sx={{ borderRadius: 2 }} onClick={() => handleQuickSplit(3)}>
+                                            3-Ways
+                                        </Button>
+                                        <Button size="small" variant="outlined" sx={{ borderRadius: 2 }} onClick={() => handleQuickSplit(4)}>
+                                            4-Ways
+                                        </Button>
+                                        <Button size="small" variant="contained" sx={{ borderRadius: 2 }} onClick={handleAddRow} startIcon={<AddIcon />}>
+                                            Add Split
+                                        </Button>
+                                    </Stack>
+                                </Stack>
+
+                                {/* Segment Switcher & Equal Action */}
+                                <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2, gap: 1 }}>
+                                    <ToggleButtonGroup
+                                        value={splitMode}
+                                        exclusive
+                                        onChange={(_, value) => handleSplitModeChange(value)}
+                                        size="small"
+                                        color="primary"
+                                        sx={{
+                                            bgcolor: 'background.paper',
+                                            '& .MuiToggleButton-root': {
+                                                px: 2,
+                                                py: 0.5,
+                                                textTransform: 'none',
+                                                fontWeight: 'medium',
+                                            }
+                                        }}
+                                    >
+                                        <ToggleButton value="amount">
+                                            {isIndia ? '₹' : '$'} Amount
+                                        </ToggleButton>
+                                        <ToggleButton value="share">
+                                            <Stack direction="row" spacing={0.5} alignItems="center">
+                                                <ShareIcon sx={{ fontSize: '0.9rem' }} />
+                                                <span>Share</span>
+                                            </Stack>
+                                        </ToggleButton>
+                                        <ToggleButton value="percent">
+                                            % Percent
+                                        </ToggleButton>
+                                    </ToggleButtonGroup>
+
+                                    <Button
+                                        size="small"
+                                        variant="text"
+                                        startIcon={<ResetIcon sx={{ fontSize: '0.9rem' }} />}
+                                        onClick={handleSplitEqually}
+                                        sx={{ textTransform: 'none', fontWeight: 'medium' }}
+                                    >
+                                        Split Equally
+                                    </Button>
+                                </Stack>
+
+                                {/* Allocation Alert Status */}
+                                <Alert 
+                                    severity={validationAlert.severity}
+                                    sx={{ mb: 2, py: 0.5, borderRadius: 2 }}
                                 >
-                                    {availableMethods.map((m) => (
-                                        <Paper
-                                            key={m.val}
-                                            variant="outlined"
-                                            sx={{
-                                                p: 2,
-                                                mb: 2,
-                                                cursor: 'pointer',
-                                                border: paymentMethod === m.val ? 2 : 1,
-                                                borderColor: paymentMethod === m.val ? 'primary.main' : 'divider',
-                                                '&:hover': { borderColor: 'primary.main' },
-                                            }}
-                                            onClick={() => setPaymentMethod(m.val as any)}
-                                        >
-                                            <FormControlLabel
-                                                value={m.val}
-                                                control={<Radio />}
-                                                label={
-                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                        {m.icon}
-                                                        <Box>
-                                                            <Typography variant="body1" fontWeight="medium">{m.title}</Typography>
-                                                            <Typography variant="caption" color="text.secondary">{m.subtitle}</Typography>
+                                    {validationAlert.text}
+                                </Alert>
+
+                                {/* Payment Rows List */}
+                                <Stack spacing={2}>
+                                    {calculatedRows.map((row, index) => {
+                                        const amt = parseFloat(row.amount) || 0;
+                                        const isRowAmountInvalid = amt <= 0 || amt > amountDue + 0.01;
+                                        return (
+                                            <Paper 
+                                                key={row.id} 
+                                                variant="outlined" 
+                                                sx={{ 
+                                                    p: 2, 
+                                                    display: 'flex', 
+                                                    flexDirection: 'column', 
+                                                    gap: 1.5,
+                                                    position: 'relative',
+                                                    borderRadius: 2,
+                                                    borderColor: processingRowId === row.id ? 'primary.main' : row.isLocked ? 'primary.light' : 'divider',
+                                                    bgcolor: processingRowId === row.id ? 'action.hover' : row.isLocked ? 'rgba(25, 118, 210, 0.02)' : 'background.paper',
+                                                    borderWidth: row.isLocked ? 1.5 : 1
+                                                }}
+                                            >
+                                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <Typography variant="caption" color={row.isLocked ? "primary.main" : "text.secondary"} fontWeight="bold">
+                                                        Part #{index + 1} {row.isLocked && "(Locked)"}
+                                                    </Typography>
+                                                    <IconButton 
+                                                        size="small" 
+                                                        color="error" 
+                                                        onClick={() => handleRemoveRow(row.id)}
+                                                        disabled={loading || paymentRows.length <= 1}
+                                                    >
+                                                        <DeleteIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Box>
+ 
+                                                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+                                                    {/* Mode specific allocation selector */}
+                                                    {splitMode === 'amount' && (
+                                                        <Stack direction="row" alignItems="center" spacing={0.5}>
+                                                            <TextField
+                                                                label="Amount"
+                                                                type="number"
+                                                                size="small"
+                                                                value={row.amount}
+                                                                onChange={(e) => handleUpdateRowAmount(row.id, e.target.value)}
+                                                                disabled={loading}
+                                                                sx={{ width: '110px' }}
+                                                                inputProps={{ min: 0.01, step: 0.01 }}
+                                                            />
+                                                            <IconButton
+                                                                size="small"
+                                                                disabled={loading || paymentRows.length <= 1}
+                                                                onClick={() => {
+                                                                    setPaymentRows(prev => {
+                                                                        const next = prev.map(r => r.id === row.id ? { ...r, isLocked: !r.isLocked } : r);
+                                                                        return redistributeRows(next, 'amount', amountDue);
+                                                                    });
+                                                                }}
+                                                                color={row.isLocked ? "primary" : "default"}
+                                                                title={row.isLocked ? "Locked. Click to unlock." : "Unlocked. Click to lock."}
+                                                            >
+                                                                {row.isLocked ? <LockIcon fontSize="small" /> : <LockOpenIcon fontSize="small" />}
+                                                            </IconButton>
+                                                        </Stack>
+                                                    )}
+ 
+                                                    {splitMode === 'share' && (
+                                                        <Stack direction="row" alignItems="center" spacing={1} sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1.5, px: 1, py: 0.5, height: 40 }}>
+                                                            <IconButton 
+                                                                size="small" 
+                                                                onClick={() => {
+                                                                    const currentShares = Math.max(1, Math.round(parseFloat(row.shares) || 1) - 1);
+                                                                    handleUpdateRow(row.id, { shares: currentShares.toString() });
+                                                                }}
+                                                                disabled={loading || (parseFloat(row.shares) || 1) <= 1}
+                                                            >
+                                                                <MinusIcon fontSize="small" />
+                                                            </IconButton>
+                                                            <Typography variant="body2" fontWeight="bold" sx={{ minWidth: 20, textAlign: 'center' }}>
+                                                                {row.shares}
+                                                            </Typography>
+                                                            <IconButton 
+                                                                size="small" 
+                                                                onClick={() => {
+                                                                    const currentShares = Math.round(parseFloat(row.shares) || 1) + 1;
+                                                                    handleUpdateRow(row.id, { shares: currentShares.toString() });
+                                                                }}
+                                                                disabled={loading}
+                                                            >
+                                                                <PlusIcon fontSize="small" />
+                                                            </IconButton>
+                                                        </Stack>
+                                                    )}
+ 
+                                                    {splitMode === 'percent' && (
+                                                        <Stack direction="row" alignItems="center" spacing={0.5}>
+                                                            <TextField
+                                                                label="Percent"
+                                                                type="number"
+                                                                size="small"
+                                                                value={row.percent}
+                                                                onChange={(e) => handleUpdateRowPercent(row.id, e.target.value)}
+                                                                disabled={loading}
+                                                                sx={{ width: '100px' }}
+                                                                InputProps={{
+                                                                    endAdornment: <InputAdornment position="end">%</InputAdornment>,
+                                                                }}
+                                                                inputProps={{ min: 0, max: 100, step: 0.01 }}
+                                                            />
+                                                            <IconButton
+                                                                size="small"
+                                                                disabled={loading || paymentRows.length <= 1}
+                                                                onClick={() => {
+                                                                    setPaymentRows(prev => {
+                                                                        const next = prev.map(r => r.id === row.id ? { ...r, isLocked: !r.isLocked } : r);
+                                                                        return redistributeRows(next, 'percent', amountDue);
+                                                                    });
+                                                                }}
+                                                                color={row.isLocked ? "primary" : "default"}
+                                                                title={row.isLocked ? "Locked. Click to unlock." : "Unlocked. Click to lock."}
+                                                            >
+                                                                {row.isLocked ? <LockIcon fontSize="small" /> : <LockOpenIcon fontSize="small" />}
+                                                            </IconButton>
+                                                        </Stack>
+                                                    )}
+
+                                                    {/* Calculated read-only amount for share/percent modes */}
+                                                    {splitMode !== 'amount' && (
+                                                        <Box sx={{ minWidth: 70 }}>
+                                                            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', lineHeight: 1 }}>
+                                                                Amount
+                                                            </Typography>
+                                                            <Typography variant="body2" fontWeight="bold" color="primary.main">
+                                                                {formatCurrency(amt)}
+                                                            </Typography>
                                                         </Box>
-                                                    </Box>
-                                                }
-                                            />
-                                        </Paper>
-                                    ))}
-                                </RadioGroup>
-                            </FormControl>
+                                                    )}
+
+                                                    <FormControl size="small" sx={{ minWidth: '120px', flexGrow: 1 }}>
+                                                        <Select
+                                                            value={row.method}
+                                                            onChange={(e) => handleUpdateRow(row.id, { method: e.target.value })}
+                                                            disabled={loading}
+                                                        >
+                                                            {availableMethods.map((m) => (
+                                                                <MenuItem key={m.val} value={m.val}>
+                                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                        {m.icon}
+                                                                        <Typography variant="body2">{m.title}</Typography>
+                                                                    </Box>
+                                                                </MenuItem>
+                                                            ))}
+                                                        </Select>
+                                                    </FormControl>
+
+                                                    <TextField
+                                                        label="Ref ID (Opt.)"
+                                                        size="small"
+                                                        value={row.transactionId}
+                                                        onChange={(e) => handleUpdateRow(row.id, { transactionId: e.target.value })}
+                                                        disabled={loading || row.method === 'card'}
+                                                        sx={{ width: '100px', flexGrow: 1 }}
+                                                    />
+
+                                                    <Button
+                                                        variant="contained"
+                                                        size="small"
+                                                        onClick={() => {
+                                                            if (row.method === 'card') {
+                                                                handleCardPayment(row.id);
+                                                            } else {
+                                                                handleAddSplit(row.id);
+                                                            }
+                                                        }}
+                                                        disabled={loading || isRowAmountInvalid}
+                                                    >
+                                                        {row.method === 'card' ? 'Pay Card' : 'Collect'}
+                                                    </Button>
+                                                </Box>
+                                            </Paper>
+                                        );
+                                    })}
+                                </Stack>
+                            </Box>
                         </>
                     ) : (
                         <Alert severity="success" sx={{ mt: 2, py: 2, fontSize: '1.2rem', display: 'flex', justifyContent: 'center' }}>
@@ -526,27 +1129,7 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
                         {amountDue > 0 ? "Cancel" : "Close"}
                     </Button>
 
-                    {amountDue > 0 ? (
-                        paymentMethod === 'card' ? (
-                            <Button
-                                onClick={handleCardPayment}
-                                variant="contained"
-                                disabled={loading || parseFloat(splitAmount as string) <= 0 || parseFloat(splitAmount as string) > amountDue}
-                            >
-                                Process Card {splitAmount ? formatCurrency(parseFloat(splitAmount as string)) : ''}
-                            </Button>
-                        ) : (
-                            <Button
-                                onClick={() => handleAddSplit()}
-                                variant="contained"
-                                disabled={loading || parseFloat(splitAmount as string) <= 0 || parseFloat(splitAmount as string) > amountDue + 0.01}
-                            >
-                                {loading ? 'Processing...' :
-                                    `${(parseFloat(splitAmount as string) || 0) >= (amountDue - 0.01) ? 'Collect Payment' : 'Add Payment Split'} ${splitAmount ? formatCurrency(parseFloat(splitAmount as string)) : ''}`
-                                }
-                            </Button>
-                        )
-                    ) : (
+                    {amountDue === 0 && (
                         <Button
                             onClick={handleCompleteOrder}
                             variant="contained"
@@ -561,9 +1144,16 @@ const PaymentCollectionDialog: React.FC<PaymentCollectionDialogProps> = ({
 
             <PaymentModal
                 open={stripeModalOpen}
-                onClose={() => setStripeModalOpen(false)}
-                amount={parseFloat(splitAmount as string) || 0}
-                onSuccess={(intentId) => handleAddSplit(intentId)}
+                onClose={() => {
+                    setStripeModalOpen(false);
+                    setProcessingRowId(null);
+                }}
+                amount={processingRowId ? (parseFloat(calculatedRows.find(r => r.id === processingRowId)?.amount || '0') || 0) : 0}
+                onSuccess={(intentId) => {
+                    if (processingRowId) {
+                        handleAddSplit(processingRowId, intentId);
+                    }
+                }}
             />
         </>
     );

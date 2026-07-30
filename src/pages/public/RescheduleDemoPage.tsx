@@ -6,6 +6,7 @@ import {
 } from '@mui/material';
 import { publicDemoAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
+import { getEasternTzAbbreviation, formatSlotLabel, easternWallClockToUtcIso } from '../../utils/demoSlots';
 
 const RescheduleDemoPage: React.FC = () => {
   const { token } = useParams<{ token: string }>();
@@ -65,7 +66,7 @@ const RescheduleDemoPage: React.FC = () => {
 
     setSubmitting(true);
     try {
-      const newDateTime = new Date(`${formData.preferredDate}T${formData.preferredTime}:00`).toISOString();
+      const newDateTime = easternWallClockToUtcIso(formData.preferredDate, formData.preferredTime);
       await publicDemoAPI.rescheduleDemo(token, newDateTime);
       setSuccess(true);
       toast.success('Successfully rescheduled!');
@@ -150,14 +151,14 @@ const RescheduleDemoPage: React.FC = () => {
                   required
                   select
                   name="preferredTime"
-                  label={fetchingSlots ? "Loading slots..." : "New Preferred Time"}
+                  label={fetchingSlots ? "Loading slots..." : `New Preferred Time (${getEasternTzAbbreviation()})`}
                   value={formData.preferredTime}
                   onChange={handleFormChange}
                   disabled={!formData.preferredDate || fetchingSlots}
                 >
                   {availableSlots.length > 0 ? (
                     availableSlots.map(slot => (
-                      <MenuItem key={slot} value={slot}>{slot}</MenuItem>
+                      <MenuItem key={slot} value={slot}>{formatSlotLabel(slot, getEasternTzAbbreviation())}</MenuItem>
                     ))
                   ) : (
                     <MenuItem value="" disabled>No slots available</MenuItem>

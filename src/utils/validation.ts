@@ -5,14 +5,29 @@ export interface ValidationResult {
     message?: string;
 }
 
+// Local part: no leading/trailing/consecutive dots. Domain: labels separated by
+// dots, ending in an alphabetic TLD of 2-24 chars (longest real TLD is 24).
+const EMAIL_REGEX = /^[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,24}$/;
+
 // Email validation
 export const validateEmail = (email: string): ValidationResult => {
-    if (!email || email.trim() === '') {
+    const trimmed = (email || '').trim();
+
+    if (trimmed === '') {
         return { isValid: false, message: 'Email is required' };
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
+    // Limit to 50 characters as requested for POS/admin operations.
+    if (trimmed.length > 50) {
+        return { isValid: false, message: 'Email address must not exceed 50 characters' };
+    }
+
+    const [localPart] = trimmed.split('@');
+    if (localPart && localPart.length > 64) {
+        return { isValid: false, message: 'Email address is too long before the @' };
+    }
+
+    if (!EMAIL_REGEX.test(trimmed)) {
         return { isValid: false, message: 'Please enter a valid email address' };
     }
 
@@ -211,6 +226,21 @@ export const validateSKU = (sku: string): ValidationResult => {
 export const validateRequired = (value: any, fieldName: string = 'This field'): ValidationResult => {
     if (value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) {
         return { isValid: false, message: `${fieldName} is required` };
+    }
+
+    return { isValid: true };
+};
+
+// EIN (US Employer Identification Number) validation — optional field, format ##-#######
+export const validateEin = (ein: string): ValidationResult => {
+    const trimmed = (ein || '').trim();
+
+    if (trimmed === '') {
+        return { isValid: true }; // Optional field
+    }
+
+    if (!/^\d{2}-\d{7}$/.test(trimmed)) {
+        return { isValid: false, message: 'EIN must be in the format 12-3456789' };
     }
 
     return { isValid: true };

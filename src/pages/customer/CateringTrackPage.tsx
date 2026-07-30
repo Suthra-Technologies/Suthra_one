@@ -23,11 +23,13 @@ import {
 import { useParams } from 'react-router-dom';
 import { loadStripe } from '@stripe/stripe-js';
 import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js';
+import { useSettings } from '../../context/SettingsContext';
 import { cateringAPI, ordersAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { downloadFromUrl } from '../../utils/fileDownload';
 import { apiBaseUrl } from '../../services/api';
 import { getTenantSlugFromHostname } from '../../utils/tenant.utils';
+import { getActivePaymentMethods } from '../../utils/orderWorkflows';
 import { Assignment, Chat, Event, History, Receipt } from '@mui/icons-material';
 
 const SUCCESS_STATUSES = new Set(['succeeded']);
@@ -206,6 +208,7 @@ const CateringTrackPage = () => {
     const { slug: pathSlug, id: token } = useParams<{ slug: string, id: string }>();
     const slug = pathSlug || getTenantSlugFromHostname();
     const theme = useTheme();
+    const { settings } = useSettings();
     const [order, setOrder] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [newMessage, setNewMessage] = useState('');
@@ -432,7 +435,7 @@ const CateringTrackPage = () => {
                                 <Receipt sx={{ mr: 1, color: 'primary.main' }} /> Order Items
                             </Typography>
                             <List disablePadding>
-                                {order.items.map((item: any, i: number) => (
+                                {(order?.items || []).map((item: any, i: number) => (
                                     <ListItem key={i} sx={{ px: 0, py: 1.5 }}>
                                         <ListItemText
                                             primary={<Typography variant="subtitle1" fontWeight="600">{item.name}</Typography>}
@@ -685,10 +688,9 @@ const CateringTrackPage = () => {
                                     value={paymentForm.method}
                                     onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })}
                                 >
-                                    <option value="zelle">Zelle</option>
-                                    <option value="venmo">Venmo</option>
-                                    <option value="card">Credit Card</option>
-                                    <option value="cash">Cash</option>
+                                    {getActivePaymentMethods(settings).map(pm => (
+                                        <option key={pm.val} value={pm.val}>{pm.label}</option>
+                                    ))}
                                 </TextField>
                                 <TextField
                                     label="Notes (Optional)"

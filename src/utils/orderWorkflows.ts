@@ -1,5 +1,65 @@
 // Order workflow utilities and helper functions
 
+/**
+ * Identity of a billed line: two lines print as one row only when every
+ * customer-visible attribute matches. Mirrors getOrderItemKey in the backend's
+ * orders.service.ts — keep the two in step.
+ */
+function getBillItemKey(item: any): string {
+    const menuItemId = (item.menuItem?._id || item.menuItem || item._id || '').toString();
+    const modifiers = (item.modifiers || [])
+        .map((m: any) => `${m.groupName || ''}:${m.name || ''}`)
+        .sort()
+        .join(',');
+    const addOns = (item.addOns || [])
+        .map((a: any) => (a?.name || a?._id || a || '').toString())
+        .sort()
+        .join(',');
+
+    return [
+        menuItemId || (item.name || '').trim().toLowerCase(),
+        item.variant?.name || item.variant?._id || 'base',
+        item.spiceLevel || 'none',
+        (item.notes || '').trim().toLowerCase(),
+        item.price ?? 0,
+        modifiers,
+        addOns,
+    ].join('::');
+}
+
+/**
+ * Collapses a bill's items to one row per distinct dish, summing quantity and
+ * total. The kitchen splits a dish across rows to track readiness per line, but a
+ * guest reading the bill should see "Aloo Methi Curry x3", not three rows.
+ *
+ * Cancelled lines are dropped: they are not charged and must not print.
+ */
+export function groupBillItems(items: any[]): any[] {
+    const grouped: any[] = [];
+    const indexByKey = new Map<string, number>();
+
+    for (const item of items || []) {
+        if (item?.preparationStatus === 'cancelled') continue;
+
+        const key = getBillItemKey(item);
+        const quantity = item.quantity ?? 1;
+        const price = item.price ?? 0;
+        const total = item.total ?? price * quantity;
+        const existingIndex = indexByKey.get(key);
+
+        if (existingIndex === undefined) {
+            indexByKey.set(key, grouped.length);
+            grouped.push({ ...item, quantity, price, total });
+        } else {
+            const target = grouped[existingIndex];
+            target.quantity += quantity;
+            target.total += total;
+        }
+    }
+
+    return grouped;
+}
+
 export interface OrderWorkflow {
     type: string;
     statuses: string[];
@@ -173,6 +233,39 @@ export function getPaymentMethodLabel(paymentMethod: string | string[]): string 
 }
 
 /**
+ * Get active payment methods based on system settings and country context.
+ */
+export function getActivePaymentMethods(settings: any): { val: string; label: string }[] {
+    const isIndia = settings?.restaurant?.country?.toLowerCase() === 'india';
+    const defaultMethods = isIndia ? ['cash', 'card', 'cheque', 'phonepe', 'gpay', 'paytm'] : ['cash', 'card', 'zelle', 'venmo', 'cheque'];
+    const standardMethods = ['cash', 'card', 'zelle', 'venmo', 'cheque', 'creditCard', 'debitCard', 'phonepe', 'gpay', 'paytm'];
+    const customKeys = Object.keys(settings?.system?.posPaymentMethods || {}).filter(k => !standardMethods.includes(k));
+    const allMethods = [...new Set([...defaultMethods, ...customKeys])];
+
+    const activeMethods: { val: string; label: string }[] = [];
+
+    allMethods.forEach(m => {
+        let isVisible = true;
+        if (m === 'phonepe' || m === 'gpay' || m === 'paytm') {
+            isVisible = settings?.system?.posPaymentMethods?.zelle !== false || settings?.system?.posPaymentMethods?.venmo !== false;
+        } else {
+            isVisible = settings?.system?.posPaymentMethods?.[m] !== false;
+        }
+
+        if (isVisible) {
+            let label = m.charAt(0).toUpperCase() + m.slice(1);
+            if (m === 'gpay') label = 'GPay';
+            if (m === 'phonepe') label = 'PhonePe';
+            if (m === 'paytm') label = 'Paytm';
+            
+            activeMethods.push({ val: m, label });
+        }
+    });
+
+    return activeMethods;
+}
+
+/**
  * Check if an order is a Global Dine In order (placed via website, already paid)
  */
 export function isGlobalDineIn(order: any): boolean {
@@ -182,6 +275,9 @@ export function isGlobalDineIn(order: any): boolean {
 /**
  * Check if items can be added to an order
  * Note: Global Dine In orders have already paid, so no items can be added
+ * Note: 'served' is excluded — the food is on the table and the bill is next, so
+ * those guests place a new order. Must stay in step with the allowed statuses in
+ * the backend's addItemsToOrder.
  */
 export function canAddItems(status: string, orderType: string, order?: any): boolean {
     // Global Dine In orders have already paid - don't allow adding items
@@ -190,7 +286,7 @@ export function canAddItems(status: string, orderType: string, order?: any): boo
     }
     // Allow adding items for dine-in orders in active statuses
     if (orderType === 'dine_in') {
-        return ['pending', 'confirmed', 'preparing', 'ready', 'approved', 'served'].includes(status);
+        return ['pending', 'confirmed', 'preparing', 'ready', 'approved'].includes(status);
     }
     return false;
 }

@@ -282,8 +282,8 @@ const OrderConfirmationPage: React.FC = () => {
               <Typography variant="h6" gutterBottom>
                 Order Details
               </Typography>
-              {orderData.items.map((item, index) => (
-                <Box key={index} sx={{ py: 2, borderBottom: index < orderData.items.length - 1 ? '1px solid' : 'none', borderColor: 'divider' }}>
+              {(orderData?.items || []).map((item, index) => (
+                <Box key={index} sx={{ py: 2, borderBottom: index < (orderData?.items || []).length - 1 ? '1px solid' : 'none', borderColor: 'divider' }}>
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <Box sx={{ flex: 1 }}>
                       <Typography variant="subtitle1" fontWeight="bold">

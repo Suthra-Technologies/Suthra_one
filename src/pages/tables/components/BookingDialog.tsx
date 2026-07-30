@@ -20,6 +20,9 @@ import {
     Close as CloseIcon
 } from '@mui/icons-material';
 import { toast } from 'react-hot-toast';
+import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { parseISO, format } from 'date-fns';
 import { bookingsAPI } from '../../../services/api';
 import { validatePhone, validateEmail } from '../../../utils/validation';
 import PhoneInput from '../../../components/PhoneInput';
@@ -41,13 +44,16 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
     settings
 }) => {
     const [bookingDate, setBookingDate] = useState(new Date().toISOString().split('T')[0]);
-    const [bookingTime, setBookingTime] = useState('19:00');
+    const [bookingTime, setBookingTime] = useState('');
     const [guestCount, setGuestCount] = useState(2);
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
     const [customerDialCode, setCustomerDialCode] = useState(settings?.restaurant?.dialCode || '1');
     const [customerEmail, setCustomerEmail] = useState('');
     const [bookingDuration, setBookingDuration] = useState(120);
+    const [occasion, setOccasion] = useState('');
+    const [customOccasion, setCustomOccasion] = useState('');
+    const [specialRequests, setSpecialRequests] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
     const [availableTimeSlots, setAvailableTimeSlots] = useState<string[]>([]);
 
@@ -63,8 +69,11 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
         setCustomerPhone('');
         setCustomerEmail('');
         setBookingDate(new Date().toISOString().split('T')[0]);
-        setBookingTime('19:00');
+        setBookingTime('');
         setBookingDuration(120);
+        setOccasion('');
+        setCustomOccasion('');
+        setSpecialRequests('');
         setBookingTouched({ date: false, time: false, customerName: false, customerPhone: false, guests: false, duration: false, customerEmail: false });
         setBookingErrors({ date: '', time: '', customerName: '', customerPhone: '', guests: '', duration: '', customerEmail: '' });
     };
@@ -91,42 +100,33 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
     useEffect(() => {
         if (!open) return;
 
-        const fetchUnavailableSlots = async () => {
-            const slots: string[] = [];
-            for (let h = 11; h < 22; h++) {
-                slots.push(`${h.toString().padStart(2, '0')}:00`);
-                slots.push(`${h.toString().padStart(2, '0')}:30`);
-            }
+        const fetchAvailableSlots = async () => {
+            if (!bookingDate) return;
+            try {
+                const res = await bookingsAPI.getAvailableSlots(bookingDate, guestCount || 2);
+                let fetchedSlots: string[] = res.data || [];
 
-            const today = new Date();
-            const selectedDate = new Date(bookingDate);
-            const isToday = selectedDate.toDateString() === today.toDateString();
+                const today = new Date();
+                const selectedDate = new Date(bookingDate);
+                const isToday = selectedDate.toDateString() === today.toDateString();
 
-            let filteredSlots = slots;
-            if (isToday) {
-                const currentHours = today.getHours();
-                const currentMinutes = today.getMinutes();
-                filteredSlots = slots.filter(slot => {
-                    const [h, m] = slot.split(':').map(Number);
-                    if (h < currentHours) return false;
-                    if (h === currentHours && m < currentMinutes) return false;
-                    return true;
-                });
-            }
-
-            if (bookingDate) {
-                try {
-                    const res = await bookingsAPI.getUnavailableSlots(bookingDate, guestCount || 2);
-                    const unavailable = res.data || [];
-                    filteredSlots = filteredSlots.filter(s => !unavailable.includes(s));
-                } catch (e) {
-                    console.error("Failed to fetch unavailable slots", e);
+                if (isToday) {
+                    const currentHours = today.getHours();
+                    const currentMinutes = today.getMinutes();
+                    fetchedSlots = fetchedSlots.filter(slot => {
+                        const [h, m] = slot.split(':').map(Number);
+                        if (h < currentHours) return false;
+                        if (h === currentHours && m < currentMinutes) return false;
+                        return true;
+                    });
                 }
-            }
 
-            setAvailableTimeSlots(filteredSlots);
+                setAvailableTimeSlots(fetchedSlots);
+            } catch (e) {
+                console.error("Failed to fetch available slots", e);
+            }
         };
-        fetchUnavailableSlots();
+        fetchAvailableSlots();
     }, [bookingDate, guestCount, open]);
 
     const validateBookingField = (name: string, value: any): string => {
@@ -222,12 +222,19 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
 
         try {
             setIsProcessing(true);
+            
+            const finalSpecialRequests = occasion === 'Other' && customOccasion.trim()
+                ? `Occasion: ${customOccasion} - ${specialRequests}`
+                : specialRequests;
+
             const payload = {
                 tableId: table._id,
                 bookingDate,
                 bookingTime,
                 guestCount,
                 duration: bookingDuration,
+                occasion,
+                specialRequests: finalSpecialRequests,
                 guestInfo: {
                     firstName: customerName.split(' ')[0] || customerName,
                     lastName: customerName.split(' ').slice(1).join(' ') || '',
@@ -266,28 +273,37 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
             <DialogContent>
                 <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
                     <Stack direction="row" spacing={2}>
-                        <TextField
-                            label="Date"
-                            type="date"
-                            value={bookingDate}
-                            onChange={e => {
-                                setBookingDate(e.target.value);
-                                if (bookingTouched.date) validateBookingField('date', e.target.value);
-                            }}
-                            onBlur={() => {
-                                setBookingTouched(prev => ({ ...prev, date: true }));
-                                validateBookingField('date', bookingDate);
-                            }}
-                            error={bookingTouched.date && Boolean(bookingErrors.date)}
-                            helperText={bookingTouched.date && bookingErrors.date ? bookingErrors.date : ''}
-                            fullWidth
-                            InputLabelProps={{
-                                shrink: true,
-                                sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } }
-                            }}
-                            inputProps={{ min: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().split('T')[0] }}
-                            required
-                        />
+                        <LocalizationProvider dateAdapter={AdapterDateFns}>
+                            <DatePicker
+                                label="Date"
+                                value={parseISO(bookingDate)}
+                                onChange={(newValue: Date | null) => {
+                                    if (newValue && !isNaN(newValue.getTime())) {
+                                        const dateStr = format(newValue, 'yyyy-MM-dd');
+                                        setBookingDate(dateStr);
+                                        if (bookingTouched.date) validateBookingField('date', dateStr);
+                                    }
+                                }}
+                                format={customerDialCode === '1' || customerDialCode === '+1' ? 'MM/dd/yyyy' : 'dd/MM/yyyy'}
+                                minDate={new Date()}
+                                slotProps={{
+                                    textField: {
+                                        required: true,
+                                        fullWidth: true,
+                                        onBlur: () => {
+                                            setBookingTouched(prev => ({ ...prev, date: true }));
+                                            validateBookingField('date', bookingDate);
+                                        },
+                                        error: bookingTouched.date && Boolean(bookingErrors.date),
+                                        helperText: bookingTouched.date && bookingErrors.date ? bookingErrors.date : '',
+                                        InputLabelProps: {
+                                            shrink: true,
+                                            sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } }
+                                        }
+                                    }
+                                }}
+                            />
+                        </LocalizationProvider>
                         <FormControl fullWidth required error={bookingTouched.time && Boolean(bookingErrors.time)}>
                             <InputLabel id="booking-time-label" sx={{ '& .MuiFormLabel-asterisk': { color: 'error.main' } }}>Time</InputLabel>
                             <Select
@@ -361,8 +377,8 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
                             }}
                         />
                         <TextField
-                            label="Duration (min)"
-                            type="number"
+                            label="Duration"
+                            select
                             value={bookingDuration}
                             onChange={e => {
                                 const val = Number(e.target.value);
@@ -377,11 +393,17 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
                             helperText={bookingTouched.duration && bookingErrors.duration ? bookingErrors.duration : ''}
                             fullWidth
                             required
-                            inputProps={{ min: 1 }}
                             InputLabelProps={{
                                 sx: { '& .MuiFormLabel-asterisk': { color: 'error.main' } }
                             }}
-                        />
+                        >
+                            <MenuItem value={30}>30 mins</MenuItem>
+                            <MenuItem value={60}>1 hour (60 mins)</MenuItem>
+                            <MenuItem value={90}>1.5 hours (90 mins)</MenuItem>
+                            <MenuItem value={120}>2 hours (120 mins)</MenuItem>
+                            <MenuItem value={150}>2.5 hours (150 mins)</MenuItem>
+                            <MenuItem value={180}>3 hours (180 mins)</MenuItem>
+                        </TextField>
                     </Stack>
 
                     <CustomInput
@@ -426,8 +448,9 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
                         label="Email (Optional)"
                         value={customerEmail}
                         onChange={e => {
-                            setCustomerEmail(e.target.value);
-                            if (bookingTouched.customerEmail) validateBookingField('customerEmail', e.target.value);
+                            const val = e.target.value?.toLowerCase().slice(0, 50);
+                            setCustomerEmail(val);
+                            if (bookingTouched.customerEmail) validateBookingField('customerEmail', val);
                         }}
                         onBlur={() => {
                             setBookingTouched(prev => ({ ...prev, customerEmail: true }));
@@ -437,6 +460,51 @@ const BookingDialog: React.FC<BookingDialogProps> = ({
                         helperText={bookingTouched.customerEmail && bookingErrors.customerEmail ? bookingErrors.customerEmail : ''}
                         fullWidth
                         type="email"
+                        inputProps={{ maxLength: 50 }}
+                        size="small"/>
+
+                    <TextField
+                        select
+                        label="Occasion (Optional)"
+                        value={occasion}
+                        onChange={(e) => setOccasion(e.target.value)}
+                        fullWidth
+                        size="small"
+                    >
+                        <MenuItem value="">None</MenuItem>
+                        <MenuItem value="Birthday Celebration">Birthday Celebration</MenuItem>
+                        <MenuItem value="Anniversary">Anniversary</MenuItem>
+                        <MenuItem value="Business Meeting">Business Meeting</MenuItem>
+                        <MenuItem value="Date Night">Date Night</MenuItem>
+                        <MenuItem value="Family Dinner">Family Dinner</MenuItem>
+                        <MenuItem value="Friends Gathering">Friends Gathering</MenuItem>
+                        <MenuItem value="Special Occasion">Special Occasion</MenuItem>
+                        <MenuItem value="Other">Other</MenuItem>
+                    </TextField>
+
+                    {occasion === 'Other' && (
+                        <TextField
+                            label="Please describe your occasion"
+                            value={customOccasion}
+                            onChange={(e) => setCustomOccasion(e.target.value)}
+                            fullWidth
+                            size="small"
+                            inputProps={{ maxLength: 100 }}
+                            autoFocus
+                            sx={{ '& .MuiOutlinedInput-root': { '&.Mui-focused fieldset': { borderColor: 'error.main' } }, '& .MuiInputLabel-root.Mui-focused': { color: 'error.main' } }}
+                        />
+                    )}
+
+                    <TextField
+                        label="Special Requests / Notes"
+                        value={specialRequests}
+                        onChange={(e) => setSpecialRequests(e.target.value)}
+                        fullWidth
+                        size="small"
+                        multiline
+                        rows={2}
+                        inputProps={{ maxLength: 1000 }}
+                        placeholder="e.g. High chair needed, allergies"
                     />
                 </Box>
             </DialogContent>

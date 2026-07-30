@@ -71,6 +71,11 @@ interface RawMaterial {
         name?: string;
         contact?: string;
     };
+    linkedProviders?: {
+        providerId: string;
+        providerName: string;
+        lastReceivedAt?: string;
+    }[];
     createdBy?: {
         firstName: string;
         lastName: string;
@@ -134,7 +139,6 @@ const MemoizedMaterialCard = React.memo(({
     material,
     onUsage,
     onNotes,
-    onItemNotes,
     onEdit,
     onDelete,
     getStatus
@@ -142,7 +146,6 @@ const MemoizedMaterialCard = React.memo(({
     material: RawMaterial;
     onUsage: (m: RawMaterial) => void;
     onNotes: (m: RawMaterial) => void;
-    onItemNotes?: (m: RawMaterial) => void;
     onEdit: (m: RawMaterial) => void;
     onDelete: (m: RawMaterial) => void;
     getStatus: (m: RawMaterial) => { label: string; color: "error" | "warning" | "success" };
@@ -173,6 +176,16 @@ const MemoizedMaterialCard = React.memo(({
                             {parseFloat((material.reorderLevel || 0).toFixed(2))}
                         </Typography>
                     </Grid>
+                    {material.linkedProviders && material.linkedProviders.length > 0 && (
+                        <Grid item xs={12}>
+                            <Typography variant="caption" color="text.secondary" display="block" mb={0.5}>Vendors</Typography>
+                            <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                                {material.linkedProviders.map((p) => (
+                                    <Chip key={p.providerId} label={p.providerName} size="small" variant="outlined" />
+                                ))}
+                            </Stack>
+                        </Grid>
+                    )}
                     <Grid item xs={12}>
                         <Typography variant="caption" color="text.secondary">Last Modified</Typography>
                         <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
@@ -187,7 +200,6 @@ const MemoizedMaterialCard = React.memo(({
                     {material.supplier?.name && (
                         <Button size="small" startIcon={<NotesIcon />} onClick={() => onNotes(material)} color="info">Notes</Button>
                     )}
-                    <Button size="small" startIcon={<ItemNotesIcon />} onClick={() => onItemNotes?.(material)} color="primary">Item Notes</Button>
                     <IconButton size="small" color="primary" onClick={() => onEdit(material)}><EditIcon /></IconButton>
                     <IconButton size="small" color="error" onClick={() => onDelete(material)}><DeleteIcon /></IconButton>
                 </Stack>
@@ -199,14 +211,12 @@ const MemoizedMaterialCard = React.memo(({
 const MemoizedMaterialRow = React.memo(({
     material,
     onUsage,
-    onItemNotes,
     onEdit,
     onDelete,
     getStatus
 }: {
     material: RawMaterial;
     onUsage: (m: RawMaterial) => void;
-    onItemNotes?: (m: RawMaterial) => void;
     onEdit: (m: RawMaterial) => void;
     onDelete: (m: RawMaterial) => void;
     getStatus: (m: RawMaterial) => { label: string; color: "error" | "warning" | "success" };
@@ -220,7 +230,17 @@ const MemoizedMaterialRow = React.memo(({
             <TableCell align="right">{parseFloat((material.reorderLevel || 0).toFixed(2))}</TableCell>
             <TableCell>{material.unit}</TableCell>
             <TableCell><Chip label={status.label} color={status.color} size="small" /></TableCell>
-            <TableCell>{material.supplier?.name || '-'}</TableCell>
+            <TableCell>
+                {material.linkedProviders && material.linkedProviders.length > 0 ? (
+                    <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
+                        {material.linkedProviders.map((p) => (
+                            <Chip key={p.providerId} label={p.providerName} size="small" variant="outlined" />
+                        ))}
+                    </Stack>
+                ) : (
+                    material.supplier?.name || '-'
+                )}
+            </TableCell>
             <TableCell>
                 <Box>
                     <Typography variant="body2" fontWeight="bold">
@@ -231,7 +251,6 @@ const MemoizedMaterialRow = React.memo(({
             </TableCell>
             <TableCell align="center">
                 <IconButton size="small" color="primary" onClick={() => onUsage(material)} title="Record Usage"><UsageIcon /></IconButton>
-                <IconButton size="small" color="primary" onClick={() => onItemNotes?.(material)} title="Item Notes"><ItemNotesIcon /></IconButton>
                 <IconButton size="small" color="primary" onClick={() => onEdit(material)} title="Edit"><EditIcon /></IconButton>
                 <IconButton size="small" color="error" onClick={() => onDelete(material)} title="Delete"><DeleteIcon /></IconButton>
             </TableCell>

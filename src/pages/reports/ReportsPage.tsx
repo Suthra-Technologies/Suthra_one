@@ -4582,7 +4582,7 @@ const ReportsPage: React.FC = () => {
                     <TablePagination
                         rowsPerPageOptions={[5, 10, 25, 50]}
                         component="div"
-                        count={inventoryStock.items.length}
+                        count={(inventoryStock?.items || []).length}
                         rowsPerPage={inventoryRowsPerPage}
                         page={inventoryPage}
                         onPageChange={(_, newPage) => setInventoryPage(newPage)}
@@ -5256,7 +5256,7 @@ const ReportsPage: React.FC = () => {
                                                     <Box sx={{ pl: 1 }}>
                                                         {fb.itemRatings.map((item: any, idx: number) => (
                                                             <Typography variant="caption" display="block" key={`${item.menuItem}-${idx}`} color="text.secondary">
-                                                                {item.name}{item.modifiers && item.modifiers.length > 0 ? ` (${item.modifiers.map((m: any) => m.name).join(', ')})` : ''}: {item.tasteRating} (Taste), {item.quantityRating} (Qty)
+                                                                {item.name}{item.modifiers && (item?.modifiers || []).length > 0 ? ` (${(item?.modifiers || []).map((m: any) => m.name).join(', ')})` : ''}: {item.tasteRating} (Taste), {item.quantityRating} (Qty)
                                                             </Typography>
                                                         ))}
                                                     </Box>
@@ -5319,7 +5319,7 @@ const ReportsPage: React.FC = () => {
                                                     <Box sx={{ maxHeight: 100, overflowY: 'auto' }}>
                                                         {fb.itemRatings && fb.itemRatings.map((item: any, idx: number) => (
                                                             <Typography variant="caption" display="block" key={`${item.menuItem}-${idx}`}>
-                                                                {item.name}{item.modifiers && item.modifiers.length > 0 ? ` (${item.modifiers.map((m: any) => m.name).join(', ')})` : ''}: {item.tasteRating} (Taste), {item.quantityRating} (Qty)
+                                                                {item.name}{item.modifiers && (item?.modifiers || []).length > 0 ? ` (${(item?.modifiers || []).map((m: any) => m.name).join(', ')})` : ''}: {item.tasteRating} (Taste), {item.quantityRating} (Qty)
                                                             </Typography>
                                                         ))}
                                                     </Box>
@@ -5794,9 +5794,6 @@ const ReportsPage: React.FC = () => {
             <Paper sx={{
                 p: { xs: 1.5, sm: 2 },
                 mb: { xs: 1.5, sm: 2 },
-                position: 'sticky',
-                top: isMobile ? 0 : 64,
-                zIndex: 100,
                 boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
                 borderRadius: { xs: 0, sm: 2 },
                 border: '1px solid',
@@ -5858,9 +5855,6 @@ const ReportsPage: React.FC = () => {
             {/* Tabs — sticky below filter bar */}
             <Paper sx={{
                 mb: { xs: 2, sm: 3 },
-                position: 'sticky',
-                top: isMobile ? 48 : 136,
-                zIndex: 99,
                 boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
                 borderRadius: { xs: 0, sm: 2 },
                 overflow: 'hidden',
@@ -6067,7 +6061,7 @@ const ReportsPage: React.FC = () => {
                                                     {selectedCateringOrder.items?.map((item: any, i: number) => (
                                                         <ListItem
                                                             key={i}
-                                                            divider={i < selectedCateringOrder.items.length - 1}
+                                                            divider={i < (selectedCateringOrder?.items || []).length - 1}
                                                             sx={{ py: 1.5, px: 2 }}
                                                         >
                                                             <ListItemText

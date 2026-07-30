@@ -102,6 +102,7 @@ export interface SystemSettings {
         cheque?: boolean;
         creditCard?: boolean;
         debitCard?: boolean;
+        [key: string]: boolean | undefined;
     };
 }
 
@@ -151,6 +152,13 @@ export interface PrinterConfig {
 
 export interface TenantPrinterSettings {
     enabled: boolean;
+    /**
+     * What Print Automation prints when an order is created:
+     *  - 'both': KOT then bill (default, existing behavior)
+     *  - 'kot': KOT only
+     *  - 'bill': billing receipt only
+     */
+    autoPrintMode?: 'both' | 'kot' | 'bill';
     preferredAgentId?: string;
     billing?: PrinterConfig;
     kitchen?: PrinterConfig;
@@ -316,6 +324,7 @@ const defaultSettings: SettingsState = {
     },
     printer: {
         enabled: false,
+        autoPrintMode: 'both',
         billing: { name: 'Main Printer', type: 'none', ip: '', port: 80, paperWidth: 80, deviceId: 'local_printer' },
         kitchen: { name: 'Kitchen Printer', type: 'none', ip: '', port: 80, paperWidth: 80, deviceId: 'local_printer' },
     },
@@ -485,7 +494,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             let fetched: Partial<SettingsState> = {};
 
             if (Array.isArray(response.data)) {
-                fetched = response.data.reduce((acc: Partial<SettingsState>, curr: any) => {
+                fetched = (response?.data || []).reduce((acc: Partial<SettingsState>, curr: any) => {
                     if (curr?.category && curr?.settings) {
                         acc[curr.category as keyof SettingsState] = curr.settings;
                     }
@@ -529,6 +538,7 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                     ...(fetched.system || {}),
                     googleMapsApiKey: (fetched.system?.googleMapsApiKey) || defaultSettings.system.googleMapsApiKey,
                     posPaymentMethods: {
+                        ...(fetched.system?.posPaymentMethods || {}),
                         cash: fetched.system?.posPaymentMethods?.cash ?? defaultSettings.system.posPaymentMethods?.cash ?? true,
                         card: fetched.system?.posPaymentMethods?.card ?? defaultSettings.system.posPaymentMethods?.card ?? true,
                         zelle: fetched.system?.posPaymentMethods?.zelle ?? defaultSettings.system.posPaymentMethods?.zelle ?? true,

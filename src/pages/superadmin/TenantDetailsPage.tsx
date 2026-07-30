@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   Box, Typography, Card, IconButton, Divider,
   TextField, Button, Alert, Chip, CircularProgress, Stack, Tooltip,
-  Switch, FormControlLabel, InputAdornment
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
@@ -15,13 +14,13 @@ import SupportAgentIcon from '@mui/icons-material/SupportAgent';
 import PaymentIcon from '@mui/icons-material/Payment';
 import PercentIcon from '@mui/icons-material/Percent';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
-import DeliveryDiningIcon from '@mui/icons-material/DeliveryDining';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import LinkIcon from '@mui/icons-material/Link';
 import SaveIcon from '@mui/icons-material/Save';
-import Visibility from '@mui/icons-material/Visibility';
-import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
 import { superAPI } from '../../services/api';
 
 const statusColor = (s?: string) => {
@@ -195,32 +194,18 @@ const TenantDetailsPage: React.FC = () => {
 
   const isConnected = !!connectAccountId;
 
-  // Delivery settings state
-  const [deliverySettings, setDeliverySettings] = useState<any>({
-    ubereats: { enabled: false, clientId: '', clientSecret: '', customerId: '', storeId: '', isSandbox: true },
-    doordash: { enabled: false, developerId: '', keyId: '', signingSecret: '', isSandbox: true },
-  });
-  const [deliveryLoading, setDeliveryLoading] = useState(false);
-  const [deliverySaving, setDeliverySaving] = useState(false);
-  const [deliveryError, setDeliveryError] = useState('');
-  const [deliveryInfo, setDeliveryInfo] = useState('');
-  const [showUberSecret, setShowUberSecret] = useState(false);
-  const [showDoorSecret, setShowDoorSecret] = useState(false);
+  // Global delivery platforms (read-only here — actual credentials are managed
+  // once, globally, from the superadmin's own Profile page, not per-tenant).
+  const [globalDeliverySettings, setGlobalDeliverySettings] = useState<any>(null);
+  const [globalDeliveryLoading, setGlobalDeliveryLoading] = useState(false);
 
   useEffect(() => {
-    if (!tenantId) return;
-    setDeliveryLoading(true);
-    superAPI.getTenantDeliverySettings(tenantId)
-      .then(res => {
-        const s = res.data || {};
-        setDeliverySettings({
-          ubereats: { enabled: false, clientId: '', clientSecret: '', customerId: '', storeId: '', isSandbox: true, ...s.ubereats },
-          doordash: { enabled: false, developerId: '', keyId: '', signingSecret: '', isSandbox: true, ...s.doordash },
-        });
-      })
+    setGlobalDeliveryLoading(true);
+    superAPI.getGlobalDeliverySettings()
+      .then(res => setGlobalDeliverySettings(res.data || {}))
       .catch(() => {})
-      .finally(() => setDeliveryLoading(false));
-  }, [tenantId]);
+      .finally(() => setGlobalDeliveryLoading(false));
+  }, []);
 
   // Platform processing fee (superadmin-managed) state
   const [processingFee, setProcessingFee] = useState<string>('');
@@ -256,27 +241,6 @@ const TenantDetailsPage: React.FC = () => {
       setFeeError(err?.response?.data?.message || 'Failed to update processing fee');
     } finally {
       setFeeSaving(false);
-    }
-  };
-
-  const setUber = (field: string, value: any) =>
-    setDeliverySettings((p: any) => ({ ...p, ubereats: { ...p.ubereats, [field]: value } }));
-
-  const setDoor = (field: string, value: any) =>
-    setDeliverySettings((p: any) => ({ ...p, doordash: { ...p.doordash, [field]: value } }));
-
-  const handleSaveDelivery = async () => {
-    if (!tenantId) return;
-    setDeliverySaving(true);
-    setDeliveryError('');
-    setDeliveryInfo('');
-    try {
-      await superAPI.updateTenantDeliverySettings(tenantId, deliverySettings);
-      setDeliveryInfo('Delivery settings saved.');
-    } catch (err: any) {
-      setDeliveryError(err?.response?.data?.message || 'Failed to save delivery settings');
-    } finally {
-      setDeliverySaving(false);
     }
   };
 
@@ -482,73 +446,56 @@ const TenantDetailsPage: React.FC = () => {
 
       <Divider sx={{ my: 4 }} />
 
-      {/* Delivery Settings Section */}
+      {/* Delivery Options — read-only view of the global fallback platforms.
+          Credentials are managed once, globally, from the superadmin's Profile page. */}
       <Card elevation={2} sx={{ borderRadius: 3, p: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-          <DeliveryDiningIcon sx={{ color: '#ed6c02', fontSize: 28 }} />
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>Delivery Credentials</Typography>
-          {deliveryLoading && <CircularProgress size={18} />}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+          <LocalShippingIcon sx={{ color: '#ed6c02', fontSize: 28 }} />
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>Delivery Options</Typography>
+          {globalDeliveryLoading && <CircularProgress size={18} />}
         </Box>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          These credentials are managed by superadmin only. The restaurant just enables/disables delivery from their settings page.
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+          Delivery platform credentials are managed globally by superadmin, not per restaurant.
+          This restaurant automatically uses whichever platforms are enabled below.{' '}
+          <Button
+            variant="text"
+            size="small"
+            onClick={() => navigate('/superadmin/profile')}
+            sx={{ p: 0, minWidth: 0, verticalAlign: 'baseline', textTransform: 'none' }}
+          >
+            Manage in Profile
+          </Button>
         </Typography>
 
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={3}>
-          {/* Uber Direct */}
-          <Box flex={1} sx={{ border: '1px solid', borderColor: deliverySettings.ubereats?.enabled ? 'primary.main' : 'divider', borderRadius: 2, p: 2.5 }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-              <Typography variant="subtitle1" fontWeight="bold">Uber Direct</Typography>
-              <FormControlLabel
-                control={<Switch checked={!!deliverySettings.ubereats?.enabled} onChange={e => setUber('enabled', e.target.checked)} />}
-                label={deliverySettings.ubereats?.enabled ? 'Enabled' : 'Disabled'}
-              />
-            </Stack>
-            <Stack spacing={2}>
-              <TextField size="small" fullWidth label="Client ID" value={deliverySettings.ubereats?.clientId || ''} onChange={e => setUber('clientId', e.target.value)} />
-              <TextField size="small" fullWidth type={showUberSecret ? 'text' : 'password'} label="Client Secret" value={deliverySettings.ubereats?.clientSecret || ''} onChange={e => setUber('clientSecret', e.target.value)} InputProps={{ endAdornment: <InputAdornment position="end"><IconButton onClick={() => setShowUberSecret(!showUberSecret)} size="small">{showUberSecret ? <Visibility fontSize="small" /> : <VisibilityOff fontSize="small" />}</IconButton></InputAdornment> }} />
-              <TextField size="small" fullWidth label="Customer ID" value={deliverySettings.ubereats?.customerId || ''} onChange={e => setUber('customerId', e.target.value)} />
-              <TextField size="small" fullWidth label="Store ID" value={deliverySettings.ubereats?.storeId || ''} onChange={e => setUber('storeId', e.target.value)} />
-              <FormControlLabel
-                control={<Switch size="small" checked={!!deliverySettings.ubereats?.isSandbox} onChange={e => setUber('isSandbox', e.target.checked)} />}
-                label="Sandbox Mode"
-              />
-            </Stack>
-          </Box>
-
-          {/* DoorDash */}
-          <Box flex={1} sx={{ border: '1px solid', borderColor: deliverySettings.doordash?.enabled ? 'primary.main' : 'divider', borderRadius: 2, p: 2.5 }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-              <Typography variant="subtitle1" fontWeight="bold">DoorDash Drive</Typography>
-              <FormControlLabel
-                control={<Switch checked={!!deliverySettings.doordash?.enabled} onChange={e => setDoor('enabled', e.target.checked)} />}
-                label={deliverySettings.doordash?.enabled ? 'Enabled' : 'Disabled'}
-              />
-            </Stack>
-            <Stack spacing={2}>
-              <TextField size="small" fullWidth label="Developer ID" value={deliverySettings.doordash?.developerId || ''} onChange={e => setDoor('developerId', e.target.value)} />
-              <TextField size="small" fullWidth label="Key ID" value={deliverySettings.doordash?.keyId || ''} onChange={e => setDoor('keyId', e.target.value)} />
-              <TextField size="small" fullWidth type={showDoorSecret ? 'text' : 'password'} label="Signing Secret" value={deliverySettings.doordash?.signingSecret || ''} onChange={e => setDoor('signingSecret', e.target.value)} InputProps={{ endAdornment: <InputAdornment position="end"><IconButton onClick={() => setShowDoorSecret(!showDoorSecret)} size="small">{showDoorSecret ? <Visibility fontSize="small" /> : <VisibilityOff fontSize="small" />}</IconButton></InputAdornment> }} />
-              <FormControlLabel
-                control={<Switch size="small" checked={!!deliverySettings.doordash?.isSandbox} onChange={e => setDoor('isSandbox', e.target.checked)} />}
-                label="Sandbox Mode"
-              />
-            </Stack>
-          </Box>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+          {([
+            { key: 'doordash', label: 'DoorDash' },
+            { key: 'ubereats', label: 'Uber Eats' },
+            { key: 'grubhub', label: 'Grubhub' },
+          ] as const).map(({ key, label }) => {
+            const enabled = !!globalDeliverySettings?.[key]?.enabled;
+            return (
+              <Box
+                key={key}
+                sx={{
+                  flex: 1,
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  border: '1px solid', borderColor: enabled ? 'success.main' : 'divider',
+                  borderRadius: 2, p: 2,
+                }}
+              >
+                <Typography variant="subtitle2" fontWeight="bold">{label}</Typography>
+                <Chip
+                  size="small"
+                  icon={enabled ? <CheckCircleIcon /> : <CancelIcon />}
+                  label={enabled ? 'Enabled' : 'Disabled'}
+                  color={enabled ? 'success' : 'default'}
+                  variant={enabled ? 'filled' : 'outlined'}
+                />
+              </Box>
+            );
+          })}
         </Stack>
-
-        <Stack direction="row" justifyContent="flex-end" sx={{ mt: 3 }}>
-          <Button
-            variant="contained"
-            startIcon={deliverySaving ? <CircularProgress size={16} color="inherit" /> : <SaveIcon />}
-            onClick={handleSaveDelivery}
-            disabled={deliverySaving || deliveryLoading}
-          >
-            {deliverySaving ? 'Saving...' : 'Save Delivery Settings'}
-          </Button>
-        </Stack>
-
-        {deliveryError && <Alert severity="error" sx={{ mt: 2 }}>{deliveryError}</Alert>}
-        {deliveryInfo && <Alert severity="success" sx={{ mt: 2 }}>{deliveryInfo}</Alert>}
       </Card>
     </Box>
   );

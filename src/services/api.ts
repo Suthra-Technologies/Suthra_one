@@ -4,6 +4,7 @@ import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import { BRAND_CONFIG } from '../config/brandConfig';
 import { Capacitor } from '@capacitor/core';
+import { handleRequestStart, handleRequestEnd } from '../utils/globalLoader';
 
 const envApiBase = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
 const brandApiBase = (BRAND_CONFIG.apiBaseUrl as string | undefined)?.trim();
@@ -50,9 +51,18 @@ const api: AxiosInstance = axios.create({
   },
 });
 
-// Request interceptor – attach JWT if present
+// Request interceptor - attach JWT if present
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
+    const isSkippedUrl = config.url && (
+      config.url.includes('/auth/login') || 
+      config.url.includes('/auth/forgot-password') || 
+      config.url.includes('/auth/switch-tenant')
+    );
+    if (!isSkippedUrl) {
+      handleRequestStart(config.method);
+    }
+
     const token = localStorage.getItem('jwt');
     if (token && token !== 'undefined' && token !== '' && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -64,10 +74,29 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor – generic error handling
+// Response interceptor - generic error handling
 api.interceptors.response.use(
-  (response: AxiosResponse) => response,
+  (response: AxiosResponse) => {
+    const isSkippedUrl = response.config?.url && (
+      response.config.url.includes('/auth/login') || 
+      response.config.url.includes('/auth/forgot-password') || 
+      response.config.url.includes('/auth/switch-tenant')
+    );
+    if (!isSkippedUrl) {
+      handleRequestEnd(response.config.method);
+    }
+    return response;
+  },
   (error) => {
+    const isSkippedUrl = error.config?.url && (
+      error.config.url.includes('/auth/login') || 
+      error.config.url.includes('/auth/forgot-password') || 
+      error.config.url.includes('/auth/switch-tenant')
+    );
+    if (!isSkippedUrl) {
+      handleRequestEnd(error.config?.method, true);
+    }
+    
     const message = error.response?.data?.message || error.message || 'An error occurred';
     if (error.response?.status === 401) {
       // Mobile-only: keep local session until explicit logout.
@@ -84,7 +113,9 @@ api.interceptors.response.use(
       const publicPaths = ['customer/order', 'customer/catering', 'customer/book-table', 'customer/gallery', 'customer/about', 'customer/home'];
       const isPublicPath = publicPaths.some(p => window.location.pathname.includes(p));
 
-      if (!isPublicPath) {
+      const isPasswordReset = window.location.pathname.includes('/reset-password');
+
+      if (!isPublicPath && !isPasswordReset) {
         toast.error('Session expired. Please login again.');
         if (!window.location.pathname.includes('/login')) {
           window.location.href = '/login';
@@ -93,7 +124,14 @@ api.interceptors.response.use(
       return Promise.reject(error);
     }
     if (error.response?.status === 403) {
-      toast.error('Access denied. You do not have permission to perform this action.');
+      // A fixed id collapses this with any toast a caller raises for the same
+      // rejection, so a single denial can't stack two overlapping messages.
+      toast.error(
+        typeof message === 'string' && message
+          ? message
+          : 'You do not have permission to perform this action.',
+        { id: 'forbidden' }
+      );
       return Promise.reject(error);
     }
     // if (error.response?.status >= 500) {
@@ -110,6 +148,9 @@ api.interceptors.response.use(
 // -------------------- Auth API --------------------
 export const authAPI = {
   login: (credentials: any) => api.post('/auth/login', credentials),
+  switchTenant: (body: { targetTenantSlug: string }, config?: any) => api.post('/auth/switch-tenant', body, config),
+  createHandoff: (config?: any) => api.post('/auth/handoff/create', {}, config),
+  consumeHandoff: (code: string) => api.post('/auth/handoff/consume', { code }),
   register: (userData: any) => api.post('/auth/register', userData),
   customerRegister: (userData: any) => api.post('/auth/customer/register', userData),
   getProfile: () => api.get('/auth/profile'),
@@ -171,6 +212,9 @@ export const ordersAPI = {
 
   getPublicSettings: (tenantSlug: string) =>
     api.get('/public/orders/settings', { params: { tenantSlug } }),
+
+  getPublicTables: (tenantSlug: string) =>
+    api.get('/public/orders/tables', { params: { tenantSlug } }),
 
   getPublicPaymentConfig: (tenantSlug: string, orderType?: string) =>
     api.get('/public/orders/payment-config', { params: { tenantSlug, orderType } }),
@@ -304,6 +348,7 @@ export const attendanceAPI = {
   getAllAttendance: (filters: any) => api.get('/attendance/admin/all', { params: filters }),
   createManual: (data: any) => api.post('/attendance/admin/manual', data),
   update: (id: string, data: any) => api.patch(`/attendance/admin/${id}`, data),
+  exportFinancials: (filters: any) => api.get('/attendance/admin/export', { params: filters, responseType: 'blob' }),
 };
 
 // -------------------- Menu API --------------------
@@ -318,6 +363,7 @@ export const menuAPI = {
   delete: (id: string) => api.delete(`/menu/${id}`),
   restore: (id: string) => api.patch(`/menu/${id}/restore`),
   getPublicMenu: (tenantSlug?: string, search?: string, cursor?: string | null, limit?: number) => api.get('/menu/public', { params: { tenantSlug, search, cursor: cursor || undefined, limit } }),
+  exportExcel: () => api.get(`/menu/export/excel?t=${new Date().getTime()}`, { responseType: 'blob' }),
 
   // Category management
   createCategory: (categoryData: any) => api.post('/menu/categories', categoryData),
@@ -336,11 +382,12 @@ export const menuAPI = {
 
 // -------------------- Modifier Templates API --------------------
 export const modifierTemplatesAPI = {
-  getAll: () => api.get('/menu/templates'),
+  getAll: (params?: { isDeleted?: boolean }) => api.get('/menu/templates', { params }),
   getOne: (id: string) => api.get(`/menu/templates/${id}`),
   create: (data: any) => api.post('/menu/templates', data),
   update: (id: string, data: any) => api.put(`/menu/templates/${id}`, data),
   delete: (id: string) => api.delete(`/menu/templates/${id}`),
+  restore: (id: string) => api.patch(`/menu/templates/${id}/restore`),
 };
 
 // -------------------- Tax Categories API (External) --------------------
@@ -356,11 +403,12 @@ export const taxAPI = {
 
 // -------------------- Trays API --------------------
 export const traysAPI = {
-  getAll: () => api.get('/trays'),
+  getAll: (params?: { isDeleted?: boolean }) => api.get('/trays', { params }),
   getOne: (id: string) => api.get(`/trays/${id}`),
   create: (trayData: any) => api.post('/trays', trayData),
   update: (id: string, trayData: any) => api.put(`/trays/${id}`, trayData),
   delete: (id: string) => api.delete(`/trays/${id}`),
+  restore: (id: string) => api.patch(`/trays/${id}/restore`),
 };
 
 // -------------------- Tables API --------------------
@@ -550,7 +598,9 @@ export const bookingsAPI = {
   cancel: (id: string) => api.patch(`/bookings/${id}/cancel`),
   updateStatus: (id: string, status: string, note?: string) => api.patch(`/bookings/${id}/status`, { status, note }),
   getUnavailableSlots: (date: string, guests: number) => api.get('/bookings/unavailable-slots', { params: { date, guests } }),
+  getAvailableSlots: (date: string, guests: number) => api.get('/bookings/available-slots', { params: { date, guests } }),
   checkIn: (id: string) => api.post(`/bookings/${id}/check-in`),
+  addPreOrderedItem: (id: string, item: { name: string, cost: number, price: number }) => api.post(`/bookings/${id}/pre-order`, item),
 
   // Public (no auth) — for guest users
   publicGetUnavailableSlots: (tenantSlug: string, date: string, guests: number) =>
@@ -630,11 +680,12 @@ export const superAPI = {
   linkUberPickupLocation: (tenantId: string, organizationId: string, businessLocationId: string) =>
     api.post(`/superadmin/tenants/${tenantId}/uber-link-location`, { organizationId, businessLocationId }),
 
-  // Tenant delivery settings (credentials managed by superadmin)
-  getTenantDeliverySettings: (tenantId: string) =>
-    api.get(`/superadmin/tenants/${tenantId}/delivery-settings`),
-  updateTenantDeliverySettings: (tenantId: string, payload: any) =>
-    api.patch(`/superadmin/tenants/${tenantId}/delivery-settings`, payload),
+  // Global fallback delivery credentials — used by any tenant that hasn't configured
+  // its own DoorDash/Uber Eats account. Not tenant-scoped.
+  getGlobalDeliverySettings: () =>
+    api.get('/superadmin/global-delivery-settings'),
+  updateGlobalDeliverySettings: (payload: any) =>
+    api.patch('/superadmin/global-delivery-settings', payload),
 
   // Tenant platform processing fee (managed by superadmin only)
   getTenantProcessingFee: (tenantId: string) =>
@@ -731,8 +782,8 @@ export const purchaseOrdersAPI = {
   getAnalytics: (params?: any) => api.get('/purchase-orders/analytics', { params }),
   extractInvoice: (formData: FormData) => api.post('/purchase-orders/extract-invoice', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
-    // Backend makes two sequential AI calls (60s each); cover that worst case.
-    timeout: 120000,
+    // Backend AI extraction observed up to ~6.5 min for a small invoice; must exceed backend's 600s timeout.
+    timeout: 610000,
   }),
 };
 
@@ -756,6 +807,7 @@ export const recipesAPI = {
   getByMenuItem: (menuItemId: string) => api.get(`/recipes/menu-item/${menuItemId}`),
   update: (id: string, data: any) => api.put(`/recipes/${id}`, data),
   delete: (id: string) => api.delete(`/recipes/${id}`),
+  restore: (id: string) => api.patch(`/recipes/${id}/restore`),
   recalculateCost: (id: string) => api.post(`/recipes/${id}/calculate-cost`),
 };
 
@@ -838,7 +890,7 @@ export const customersAPI = {
 
 // -------------------- Audit Logs API --------------------
 export const auditLogsAPI = {
-  getAll: (params?: { module?: string; action?: string; startDate?: string; endDate?: string; page?: number; limit?: number }) =>
+  getAll: (params?: { module?: string; action?: string; targetId?: string; startDate?: string; endDate?: string; page?: number; limit?: number }) =>
     api.get('/audit-logs', { params }),
 };
 

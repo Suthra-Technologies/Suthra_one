@@ -124,7 +124,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
         availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as string[],
         isWeeklyScheduleEnabled: false,
         availabilityType: 'highlight' as 'highlight' | 'available_only',
-        displayOption: 'normal' as 'normal' | 'weekly_special' | 'todays_special',
+        displayOption: 'normal' as 'normal' | 'weekly_special' | 'weekend_special' | 'todays_special',
         validFrom: null as Date | null,
         validTo: null as Date | null,
         priority: '' as string | number,
@@ -196,7 +196,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                     taxRate: item.taxRate ? item.taxRate.toString() : '',
                     isAutoDebit: item.isAutoDebit !== undefined ? item.isAutoDebit : true,
                     foodType: item.foodType || '',
-                    trayOptions: item.trayOptions || [],
+                    trayOptions: item.trayOptions ? item.trayOptions.map((o: any) => ({ ...o, tray: typeof o.tray === 'object' ? o.tray._id : o.tray })) : [],
                     quantityType: item.quantityType || 'number',
                     baseTray: item.baseTray || '',
                     servingSize: item.servingSize || 1,
@@ -301,9 +301,9 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
         }
 
         const parsedPrice = parseFloat(menuItemForm.price as any);
-        if (isNaN(parsedPrice) || parsedPrice < 0) {
+        if (isNaN(parsedPrice) || parsedPrice <= 0) {
             setMenuItemTouched(prev => ({ ...prev, price: true }));
-            toast.error('Enter a valid base price');
+            toast.error('Base price must be greater than 0');
             return;
         }
 
@@ -868,6 +868,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                                 >
                                                     <MenuItem value="normal">Normal</MenuItem>
                                                     <MenuItem value="weekly_special">Weekly Special</MenuItem>
+                                                    <MenuItem value="weekend_special">Weekend Special</MenuItem>
                                                     <MenuItem value="todays_special">Today's Special</MenuItem>
                                                 </Select>
                                             </FormControl>

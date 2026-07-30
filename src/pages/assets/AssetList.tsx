@@ -122,7 +122,7 @@ const AssetList: React.FC = () => {
 
   const getStatusChip = (asset: any) => {
     const now = new Date();
-    if (asset.lifecycle.expires && asset.lifecycle.expiryDate) {
+    if (asset.lifecycle?.expires && asset.lifecycle?.expiryDate) {
       const expiryDate = new Date(asset.lifecycle.expiryDate);
       if (expiryDate < now) {
         return <Chip icon={<ErrorIcon />} label="Expired" color="error" size="small" variant="filled" />;
@@ -132,7 +132,7 @@ const AssetList: React.FC = () => {
         return <Chip icon={<Warning />} label="Expiring Soon" color="warning" size="small" variant="filled" />;
       }
     }
-    if (asset.lifecycle.serviceRequired && asset.lifecycle.nextServiceDate) {
+    if (asset.lifecycle?.serviceRequired && asset.lifecycle?.nextServiceDate) {
       if (new Date(asset.lifecycle.nextServiceDate) < now) {
         return <Chip icon={<Build />} label="Service Overdue" color="info" size="small" variant="filled" />;
       }
@@ -194,7 +194,7 @@ const AssetList: React.FC = () => {
   // Shared action buttons used in both table rows and mobile cards
   const renderActionButtons = (asset: any) => (
     <Stack direction="row" spacing={0.5} justifyContent="flex-end">
-      {asset.lifecycle.serviceRequired && (
+      {asset.lifecycle?.serviceRequired && (
         <Tooltip title="Complete Service">
           <IconButton
             size="small"
@@ -208,7 +208,7 @@ const AssetList: React.FC = () => {
           </IconButton>
         </Tooltip>
       )}
-      {(asset.type === 'Document' || asset.type === 'License') && asset.lifecycle.renewalRequired && (
+      {(asset.type === 'Document' || asset.type === 'License') && asset.lifecycle?.renewalRequired && (
         <Tooltip title="Complete Renewal">
           <IconButton
             size="small"
@@ -402,7 +402,7 @@ const AssetList: React.FC = () => {
                       Expiry Date
                     </Typography>
                     <Typography variant="body2">
-                      {asset.lifecycle.expiryDate
+                      {asset.lifecycle?.expiryDate
                         ? new Date(asset.lifecycle.expiryDate).toLocaleDateString()
                         : 'Never'}
                     </Typography>
@@ -413,8 +413,8 @@ const AssetList: React.FC = () => {
                     </Typography>
                     <Typography variant="body2">
                       {asset.type === 'Document' || asset.type === 'License'
-                        ? (asset.lifecycle.nextRenewalDate ? new Date(asset.lifecycle.nextRenewalDate).toLocaleDateString() : 'N/A')
-                        : (asset.lifecycle.nextServiceDate ? new Date(asset.lifecycle.nextServiceDate).toLocaleDateString() : 'N/A')}
+                        ? (asset.lifecycle?.nextRenewalDate ? new Date(asset.lifecycle.nextRenewalDate).toLocaleDateString() : 'N/A')
+                        : (asset.lifecycle?.nextServiceDate ? new Date(asset.lifecycle.nextServiceDate).toLocaleDateString() : 'N/A')}
                     </Typography>
                   </Grid>
                 </Grid>
@@ -474,9 +474,9 @@ const AssetList: React.FC = () => {
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2">
-                        {asset.lifecycle.expiryDate ? new Date(asset.lifecycle.expiryDate).toLocaleDateString() : 'Never'}
+                        {asset.lifecycle?.expiryDate ? new Date(asset.lifecycle.expiryDate).toLocaleDateString() : 'Never'}
                       </Typography>
-                      {(asset.type === 'Document' || asset.type === 'License') && asset.lifecycle.renewalRequired && asset.lifecycle.renewalFrequency && (
+                      {(asset.type === 'Document' || asset.type === 'License') && asset.lifecycle?.renewalRequired && asset.lifecycle?.renewalFrequency && (
                         <Typography variant="caption" color="primary.main">
                           Renew: Every {asset.lifecycle.renewalFrequency} {asset.lifecycle.renewalUnit}
                         </Typography>
@@ -486,14 +486,14 @@ const AssetList: React.FC = () => {
                       {asset.type === 'Document' || asset.type === 'License' ? (
                         <>
                           <Typography variant="body2">
-                            {asset.lifecycle.nextRenewalDate ? new Date(asset.lifecycle.nextRenewalDate).toLocaleDateString() : 'N/A'}
+                            {asset.lifecycle?.nextRenewalDate ? new Date(asset.lifecycle.nextRenewalDate).toLocaleDateString() : 'N/A'}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">Next Renewal</Typography>
                         </>
                       ) : (
                         <>
                           <Typography variant="body2">
-                            {asset.lifecycle.nextServiceDate ? new Date(asset.lifecycle.nextServiceDate).toLocaleDateString() : 'N/A'}
+                            {asset.lifecycle?.nextServiceDate ? new Date(asset.lifecycle.nextServiceDate).toLocaleDateString() : 'N/A'}
                           </Typography>
                           <Typography variant="caption" color="text.secondary">Next Service</Typography>
                         </>

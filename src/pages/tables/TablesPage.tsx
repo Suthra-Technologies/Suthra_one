@@ -85,6 +85,7 @@ import AddTableDialog from './components/AddTableDialog';
 import EditTableDialog from './components/EditTableDialog';
 import BookingDialog from './components/BookingDialog';
 import ViewBookingDialog from './components/ViewBookingDialog';
+import HistoryDialog from '../../components/common/HistoryDialog';
 
 // Import Table Images
 import Table2Img from '../../assets/images/table-2.jpeg';
@@ -139,7 +140,11 @@ const calculateEndTime = (startTimeStr: string | undefined, durationMin: number)
 };
 
 const TablesPage: React.FC = () => {
-    const { tenantSlug } = useAuth();
+    const { tenantSlug, hasPermission } = useAuth();
+
+    // Mirrors @RequireTenantPermissions('tables.delete') on the backend, so the menu
+    // doesn't offer an action the server would reject with a 403.
+    const canDeleteTables = hasPermission('tables', 'delete');
     const { settings } = useSettings();
     const navigate = useNavigate();
     const [tables, setTables] = useState<any[]>([]);
@@ -176,6 +181,11 @@ const TablesPage: React.FC = () => {
     // Edit Table Dialog
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [selectedTable, setSelectedTable] = useState<any>(null);
+
+    // History Dialog
+    const [historyDialogOpen, setHistoryDialogOpen] = useState(false);
+    const [historyTargetId, setHistoryTargetId] = useState('');
+    const [historyTitle, setHistoryTitle] = useState('');
 
     // Booking Dialog State
     const [bookingDialogOpen, setBookingDialogOpen] = useState(false);
@@ -227,61 +237,6 @@ const TablesPage: React.FC = () => {
         }
     };
 
-    // Auto-checkout paid bookings
-    useEffect(() => {
-        // We need both bookings and tables to be loaded to cross-reference
-        if (bookings.length === 0 || tables.length === 0) return;
-
-        const checkPaidBookings = async () => {
-            const paidBookings = bookings.filter(b => {
-                // Must be active booking that is checked in
-                if (!((b.status === 'confirmed' || b.status === 'pending') && b.checkedIn)) return false;
-
-                // Find the real table object from the tables state to get the most up-to-date order info
-                // b.table might be just an ID or a partial object
-                const tableId = b.table?._id || (typeof b.table === 'string' ? b.table : null);
-                if (!tableId) return false;
-
-                const realTable = tables.find(t => t._id === tableId);
-
-                // If the table has an active order, check its status
-                if (realTable?.currentOrder) {
-                    const order = realTable.currentOrder;
-                    // Check if the order is completed/paid
-                    // Note: 'status' or 'paymentStatus' might be used depending on API response
-                    return (
-                        order.paymentStatus === 'completed' ||
-                        order.paymentStatus === 'paid' ||
-                        order.status === 'completed'
-                    );
-                }
-
-                // If table has no current order but booking is checked in:
-                // 1. If table is available/cleaning, it implies the order was completed and table freed -> Complete Booking.
-                // 2. If table is occupied, it implies the guests are seated but haven't ordered -> Keep Active (Check In).
-                if (realTable.status === 'available' || realTable.status === 'cleaning') {
-                    return true;
-                }
-
-                return false;
-            });
-
-            if (paidBookings.length > 0) {
-                try {
-                    await Promise.all(paidBookings.map(b => bookingsAPI.updateStatus(b._id, 'completed')));
-                    toast.success(`Automatically checked out ${paidBookings.length} paid booking(s)`);
-                    fetchBookings();
-                    // fetchTables(); // No need to fetch tables again if we just used them, but maybe to reflect booking status?
-                } catch (error) {
-                    console.error('Error auto-checking out bookings:', error);
-                }
-            }
-        };
-
-        if (!bookingsLoading) {
-            checkPaidBookings();
-        }
-    }, [bookings, tables, bookingsLoading]);
     const handleEditTable = (table: any) => {
         setSelectedTable(table);
         setEditDialogOpen(true);
@@ -304,7 +259,11 @@ const TablesPage: React.FC = () => {
             fetchTables();
         } catch (error: any) {
             console.error('Error deleting table:', error);
-            toast.error(error.response?.data?.message || 'Failed to delete table');
+            // 401/403 are already surfaced by the api interceptor; re-toasting here
+            // would stack a second message for the same failure.
+            if (error.response?.status !== 403 && error.response?.status !== 401) {
+                toast.error(error.response?.data?.message || 'Failed to delete table');
+            }
         } finally {
             setIsProcessing(false);
         }
@@ -320,7 +279,9 @@ const TablesPage: React.FC = () => {
             fetchTables();
         } catch (error: any) {
             console.error('Error restoring table:', error);
-            toast.error(error.response?.data?.message || 'Failed to restore table');
+            if (error.response?.status !== 403 && error.response?.status !== 401) {
+                toast.error(error.response?.data?.message || 'Failed to restore table');
+            }
         } finally {
             setIsProcessing(false);
         }
@@ -984,10 +945,12 @@ const TablesPage: React.FC = () => {
                                     <Box sx={{ p: 1, pt: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <Stack direction="row" spacing={0.5}>
                                             {table.isActive === false ? (
-                                                <Tooltip title="Restore Table">
-                                                    <IconButton size="small" color="success" onClick={() => handleRestoreTable(table)} disabled={isProcessing}>
-                                                        <RestoreIcon fontSize="small" />
-                                                    </IconButton>
+                                                <Tooltip title={canDeleteTables ? 'Restore Table' : "You don't have permission to restore tables"}>
+                                                    <span>
+                                                        <IconButton size="small" color="success" onClick={() => handleRestoreTable(table)} disabled={isProcessing || !canDeleteTables}>
+                                                            <RestoreIcon fontSize="small" />
+                                                        </IconButton>
+                                                    </span>
                                                 </Tooltip>
                                             ) : (
                                                 <Tooltip title={table.status === 'occupied' || table.status === 'partially_occupied' || table.status === 'served' ? "View Order / Checkout" : "Take Order"}>
@@ -1312,7 +1275,7 @@ const TablesPage: React.FC = () => {
 
                                                                 return (
                                                                     <>
-                                                                        {(booking.status === 'confirmed' || booking.status === 'pending') && (!booking.checkedIn || !hasActiveOrder) && (
+                                                                        {(booking.status === 'confirmed') && (!booking.checkedIn || !hasActiveOrder) && (
                                                                             <Button 
                                                                                 size="small" 
                                                                                 variant="contained" 
@@ -1377,12 +1340,8 @@ const TablesPage: React.FC = () => {
                                                     <TableRow
                                                         key={booking._id}
                                                         hover
-                                                        onClick={() => {
-                                                            if (booking.status !== 'completed' && booking.status !== 'cancelled') {
-                                                                handleCheckIn(booking._id);
-                                                            }
-                                                        }}
-                                                        sx={{ cursor: (booking.status === 'completed' || booking.status === 'cancelled') ? 'default' : 'pointer' }}
+                                                        onClick={() => handleViewBooking(booking)}
+                                                        sx={{ cursor: 'pointer' }}
                                                     >
                                                         <TableCell>
                                                             <Typography variant="body2" sx={{ fontWeight: 600 }}>
@@ -1467,7 +1426,7 @@ const TablesPage: React.FC = () => {
 
                                                                     return (
                                                                         <>
-                                                                            {(booking.status === 'confirmed' || booking.status === 'pending') && (!booking.checkedIn || !hasActiveOrder) && (
+                                                                            {(booking.status === 'confirmed') && (!booking.checkedIn || !hasActiveOrder) && (
                                                                                 <Button
                                                                                     size="small"
                                                                                     variant="contained"
@@ -1715,18 +1674,23 @@ const TablesPage: React.FC = () => {
                 }}
             >
                 {menuTable?.isActive === false ? (
-                    <MenuItem
-                        onClick={() => menuTable && handleRestoreTable(menuTable)}
-                        sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 }, color: 'success.main' }}
-                    >
-                        <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
-                            <RestoreIcon sx={{ fontSize: { xs: 16, sm: 20 } }} color="success" />
-                        </ListItemIcon>
-                        <ListItemText
-                            primary="Restore Table"
-                            primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, color: 'success.main', my: 0 } }}
-                        />
-                    </MenuItem>
+                    <Tooltip title={canDeleteTables ? '' : "You don't have permission to restore tables"}>
+                        <span>
+                            <MenuItem
+                                onClick={() => menuTable && handleRestoreTable(menuTable)}
+                                disabled={!canDeleteTables}
+                                sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 }, color: 'success.main' }}
+                            >
+                                <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
+                                    <RestoreIcon sx={{ fontSize: { xs: 16, sm: 20 } }} color="success" />
+                                </ListItemIcon>
+                                <ListItemText
+                                    primary="Restore Table"
+                                    primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, color: 'success.main', my: 0 } }}
+                                />
+                            </MenuItem>
+                        </span>
+                    </Tooltip>
                 ) : (
                     <>
                         <MenuItem 
@@ -1753,6 +1717,25 @@ const TablesPage: React.FC = () => {
                                 primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }} 
                             />
                         </MenuItem>
+                        <MenuItem 
+                            onClick={() => {
+                                if (menuTable) {
+                                    setHistoryTargetId(menuTable._id);
+                                    setHistoryTitle(`Table ${menuTable.tableNumber || menuTable.tableName} History`);
+                                    setHistoryDialogOpen(true);
+                                }
+                                handleCloseMenu();
+                            }}
+                            sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
+                        >
+                            <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
+                                <TimelineIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
+                            </ListItemIcon>
+                            <ListItemText 
+                                primary="View History" 
+                                primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }} 
+                            />
+                        </MenuItem>
                         {(menuTable?.isMerged || menuTable?.isPrimary) && (
                             <MenuItem 
                                 onClick={() => menuTable && handleUnmerge(menuTable)}
@@ -1768,18 +1751,24 @@ const TablesPage: React.FC = () => {
                             </MenuItem>
                         )}
                         <Divider sx={{ my: { xs: 0.25, sm: 1 } }} />
-                        <MenuItem 
-                            onClick={() => menuTable && handleDeleteTable(menuTable)}
-                            sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 }, color: 'error.main' }}
-                        >
-                            <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
-                                <DeleteIcon sx={{ fontSize: { xs: 16, sm: 20 } }} color="error" />
-                            </ListItemIcon>
-                            <ListItemText 
-                                primary="Delete Table" 
-                                primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, color: 'error.main', my: 0 } }} 
-                            />
-                        </MenuItem>
+                        <Tooltip title={canDeleteTables ? '' : "You don't have permission to delete tables"}>
+                            {/* span keeps the tooltip working while the item is disabled */}
+                            <span>
+                                <MenuItem
+                                    onClick={() => menuTable && handleDeleteTable(menuTable)}
+                                    disabled={!canDeleteTables}
+                                    sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 }, color: 'error.main' }}
+                                >
+                                    <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
+                                        <DeleteIcon sx={{ fontSize: { xs: 16, sm: 20 } }} color="error" />
+                                    </ListItemIcon>
+                                    <ListItemText
+                                        primary="Delete Table"
+                                        primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, color: 'error.main', my: 0 } }}
+                                    />
+                                </MenuItem>
+                            </span>
+                        </Tooltip>
                     </>
                 )}
             </Menu>
@@ -1807,6 +1796,15 @@ const TablesPage: React.FC = () => {
                 table={selectedTable}
                 customLocations={customLocations}
                 onOpenAddLocation={() => setAddLocationDialogOpen(true)}
+            />
+
+            {/* History Dialog */}
+            <HistoryDialog
+                open={historyDialogOpen}
+                onClose={() => setHistoryDialogOpen(false)}
+                targetId={historyTargetId}
+                module="tables"
+                title={historyTitle}
             />
 
             {/* Booking Dialog */}
@@ -1909,6 +1907,7 @@ const TablesPage: React.FC = () => {
                             label="Location Name"
                             fullWidth
                             value={newLocationName}
+                            inputProps={{ maxLength: 40 }}
                             onChange={(e) => {
                                 const val = e.target.value;
                                 if (/^[a-zA-Z_\s]*$/.test(val)) {

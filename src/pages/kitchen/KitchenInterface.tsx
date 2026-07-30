@@ -57,7 +57,7 @@ import { useSocket } from '../../context/SocketContext';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { ordersAPI } from '../../services/api';
-import { formatSpiceLevelLabel } from '../../utils/spiceLevel';
+import { formatSpiceLevelLabel, stripSpiceFromName } from '../../utils/spiceLevel';
 import { printKotThermal } from '../../utils/kotThermal';
 
 interface OrderItem {
@@ -113,6 +113,10 @@ const KitchenInterface: React.FC = () => {
   const [cancelReason, setCancelReason] = useState('');
   const [cancelQuantity, setCancelQuantity] = useState<number>(1);
 
+  const [cancelOrderDialogOpen, setCancelOrderDialogOpen] = useState(false);
+  const [cancelOrderRef, setCancelOrderRef] = useState<Order | null>(null);
+  const [cancelOrderReason, setCancelOrderReason] = useState('');
+
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [refundItemRef, setRefundItemRef] = useState<{ orderId: string, itemIndex: number, itemName: string, orderType: string, itemSubtotal: number, itemTax: number } | null>(null);
   const [refundMethod, setRefundMethod] = useState<'original' | 'cash'>('original');
@@ -145,6 +149,7 @@ const KitchenInterface: React.FC = () => {
             ...order,
             items: (order.items || []).map((item: any) => ({
               ...item,
+              name: stripSpiceFromName(item.name, item.spiceLevel) || item.name,
               spiceLevel: item.spiceLevel || '',
             })),
           },
@@ -190,7 +195,7 @@ const KitchenInterface: React.FC = () => {
       .filter(item => item.preparationStatus !== 'cancelled')
       .map(item => `
         <div style="display: flex; font-size: 14px; margin-bottom: 4px; color: #444;">
-          <div style="flex: 1; padding-right: 10px;">${item.name}</div>
+          <div style="flex: 1; padding-right: 10px;">${stripSpiceFromName(item.name, item.spiceLevel) || item.name}</div>
           <div style="width: 40px; text-align: center;">${item.quantity}</div>
         </div>
         ${item.notes ? `<div style="font-size: 12px; color: #666; margin-left: 10px; font-style: italic; margin-bottom: 4px;">📝 ${item.notes}</div>` : ''}
@@ -317,7 +322,7 @@ const KitchenInterface: React.FC = () => {
     if (socket) {
       socket.on('newOrder', (data: any) => {
         const newOrder = data.order || data;
-        if (['pending', 'confirmed', 'preparing', 'in-progress', 'ready'].includes(newOrder.status)) {
+        if (['pending', 'confirmed', 'preparing', 'in-progress', 'ready', 'ready_to_takeaway', 'ready_to_pickup'].includes(newOrder.status)) {
           setOrders(prev => [newOrder, ...prev]);
           toast.success(`New order #${newOrder.orderNumber} received!`);
 
@@ -330,7 +335,7 @@ const KitchenInterface: React.FC = () => {
       socket.on('orderStatusUpdate', (data: any) => {
         const updatedOrder = data.order || data;
         setOrders(prev => {
-          if (!['pending', 'confirmed', 'preparing', 'in-progress', 'ready'].includes(updatedOrder.status)) {
+          if (!['pending', 'confirmed', 'preparing', 'in-progress', 'ready', 'ready_to_takeaway', 'ready_to_pickup'].includes(updatedOrder.status)) {
             return prev.filter(o => o._id !== updatedOrder._id);
           }
           const exists = prev.find(o => o._id === updatedOrder._id);
@@ -422,9 +427,29 @@ const KitchenInterface: React.FC = () => {
     }
   };
 
+  const handleCancelOrderProcess = async () => {
+    if (isProcessing || !cancelOrderRef) return;
+    
+    setIsProcessing(true);
+    setCancelOrderDialogOpen(false);
+
+    try {
+      await ordersAPI.updateStatus(cancelOrderRef._id, 'cancelled', cancelOrderReason.trim() || 'Cancelled by Kitchen');
+      toast.success('Order cancelled successfully');
+      fetchOrders();
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      toast.error('Failed to cancel order');
+    } finally {
+      setCancelOrderReason('');
+      setCancelOrderRef(null);
+      setIsProcessing(false);
+    }
+  };
+
   const handleRefundItem = (orderId: string, itemIndex: number, item: OrderItem, order: Order) => {
     const itemSubtotal = (item.price ?? 0) * item.quantity;
-    const orderSubtotal = order.subtotal ?? order.items.reduce((sum, i) => sum + (i.price ?? 0) * i.quantity, 0);
+    const orderSubtotal = order.subtotal ?? (order?.items || []).reduce((sum, i) => sum + (i.price ?? 0) * i.quantity, 0);
     const orderTax = order.tax?.amount ?? 0;
     const itemTax = orderSubtotal > 0 ? (itemSubtotal / orderSubtotal) * orderTax : 0;
     setRefundItemRef({ orderId, itemIndex, itemName: item.name, orderType: order.orderType, itemSubtotal, itemTax });
@@ -467,7 +492,7 @@ const KitchenInterface: React.FC = () => {
 
       setOrders(prev => prev.map(order => {
         if (order._id === orderId) {
-          const updatedItems = order.items.map(item =>
+          const updatedItems = (order?.items || []).map(item =>
             item.preparationStatus !== 'cancelled'
               ? { ...item, preparationStatus: 'ready' as any }
               : item
@@ -479,6 +504,7 @@ const KitchenInterface: React.FC = () => {
       }));
 
       toast.success('All items marked as ready');
+      fetchOrders(); // Sync complete order status from backend
     } catch (error) {
       console.error('Error marking all items ready:', error);
       toast.error('Failed to mark all items ready');
@@ -717,7 +743,7 @@ const KitchenInterface: React.FC = () => {
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                         <Box>
                           <Typography variant="h6" fontWeight="bold" sx={{ display: 'flex', alignItems: 'center', gap: 1, lineHeight: 1.2, fontSize: headingFontSize }}>
-                            #{order.orderNumber?.split('-').pop() || order._id?.slice(-6)}
+                            Token No: {order.dailyTokenNumber || 'N/A'}
                             {urgency === 'critical' && (
                               <UrgentIcon color="error" sx={{ animation: 'pulse 0.5s infinite' }} />
                             )}
@@ -829,7 +855,7 @@ const KitchenInterface: React.FC = () => {
                               alignItems: 'flex-start',
                               py: { xs: 0.25, sm: 0.5 },
                               px: { xs: 0.5, sm: 1 },
-                              borderBottom: idx < order.items.length - 1 ? '1px dashed' : 'none',
+                              borderBottom: idx < (order?.items || []).length - 1 ? '1px dashed' : 'none',
                               borderColor: 'divider',
                               bgcolor: isCancelled ? alpha(theme.palette.error.main, 0.03) : 'transparent',
                               borderRadius: isCancelled ? 1 : 0,
@@ -977,7 +1003,7 @@ const KitchenInterface: React.FC = () => {
                     >
                       Print KOT
                     </Button>
-                    {!isAllReady && (
+                    {!isAllReady && order.status !== 'pending' && (
                       <Button
                         fullWidth
                         variant="outlined"
@@ -991,6 +1017,23 @@ const KitchenInterface: React.FC = () => {
                         Mark All Ready
                       </Button>
                     )}
+
+                    <Button
+                      fullWidth
+                      variant="outlined"
+                      color="error"
+                      size="small"
+                      onClick={() => {
+                        setCancelOrderRef(order);
+                        setCancelOrderReason('');
+                        setCancelOrderDialogOpen(true);
+                      }}
+                      disabled={isProcessing}
+                      startIcon={<CancelIcon />}
+                      sx={{ flex: { xs: 1, sm: 'initial' }, minWidth: 0, fontSize: { xs: '0.62rem', sm: '0.78rem' }, py: { xs: 0.45, sm: 0.7 }, px: { xs: 0.5, sm: 1 }, minHeight: { xs: 28, sm: 34 }, '& .MuiButton-startIcon': { mr: { xs: 0.3, sm: 0.75 } } }}
+                    >
+                      Cancel Order
+                    </Button>
 
                     {!(order.status === 'ready' || order.status === 'ready_to_takeaway' || order.status === 'ready_to_pickup') && (
                       <Button
@@ -1210,6 +1253,83 @@ const KitchenInterface: React.FC = () => {
     <Button onClick={() => setRefundDialogOpen(false)}>Cancel</Button>
     <Button onClick={handleRefundItemProcess} color="error" variant="contained">
       Confirm Refund
+    </Button>
+  </DialogActions>
+</Dialog>
+
+{/* Dialog for canceling order */}
+<Dialog 
+  open={cancelOrderDialogOpen} 
+  onClose={() => setCancelOrderDialogOpen(false)}
+  PaperProps={{
+    sx: {
+      borderRadius: 3,
+      width: '100%',
+      maxWidth: 420,
+      p: 1
+    }
+  }}
+>
+  <DialogTitle sx={{ pb: 1, fontWeight: '800', display: 'flex', alignItems: 'center', gap: 1 }}>
+    <CancelIcon color="error" />
+    Cancel Order
+  </DialogTitle>
+  <DialogContent sx={{ pb: 2 }}>
+    <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+      You are about to cancel Order <strong>#{cancelOrderRef?.orderNumber?.split('-').pop() || 'Unknown'}</strong>. This action cannot be undone.
+    </Typography>
+
+    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+      Reason for Cancellation
+    </Typography>
+    <Stack direction="row" spacing={1} flexWrap="wrap" gap={1} sx={{ mb: 2.5 }}>
+      {["Out of Stock", "Kitchen Error", "Customer Request", "Too Busy", "Other"].map((reason) => (
+        <Chip
+          key={reason}
+          label={reason}
+          clickable
+          color={cancelOrderReason === reason ? "error" : "default"}
+          onClick={() => setCancelOrderReason(reason)}
+          sx={{ borderRadius: 1.5, fontWeight: 500 }}
+        />
+      ))}
+    </Stack>
+
+    <TextField
+      autoFocus
+      margin="dense"
+      label="Custom Reason (Optional)"
+      type="text"
+      fullWidth
+      variant="outlined"
+      value={cancelOrderReason}
+      onChange={(e) => setCancelOrderReason(e.target.value)}
+      size="small"
+    />
+  </DialogContent>
+  <DialogActions sx={{ px: 3, pb: 2 }}>
+    <Button 
+      onClick={() => setCancelOrderDialogOpen(false)}
+      variant="text"
+      color="inherit"
+      sx={{ borderRadius: 2, textTransform: 'none', fontWeight: 600, color: 'text.secondary' }}
+    >
+      Go Back
+    </Button>
+    <Button 
+      onClick={handleCancelOrderProcess} 
+      color="error" 
+      variant="contained" 
+      disabled={isProcessing}
+      disableElevation
+      sx={{ 
+        borderRadius: 2, 
+        textTransform: 'none', 
+        fontWeight: 600,
+        boxShadow: '0 8px 16px -4px rgba(211, 47, 47, 0.3)'
+      }}
+    >
+      Confirm Cancellation
     </Button>
   </DialogActions>
 </Dialog>

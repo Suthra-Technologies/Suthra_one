@@ -325,14 +325,14 @@ const CheckoutPage: React.FC = () => {
 
   // Redirect if cart empty
   useEffect(() => {
-    if (cart.items.length === 0 && activeStep === 0 && !placedOrder) {
+    if ((cart?.items || []).length === 0 && activeStep === 0 && !placedOrder) {
       if (slug) {
         navigate(getRelativePath('/customer/order'));
       } else {
         navigate('/login');
       }
     }
-  }, [cart.items.length, navigate, slug, activeStep, placedOrder]);
+  }, [(cart?.items || []).length, navigate, slug, activeStep, placedOrder]);
 
   // Auto‑skip account step for logged‑in users
   useEffect(() => {
@@ -433,7 +433,7 @@ const CheckoutPage: React.FC = () => {
 
         const response = await ordersAPI.getDeliveryQuote(
           { fullAddress: deliveryInfo.address },
-          cart.items.map(i => ({ menuItem: i.id, name: i.name, quantity: i.quantity, price: i.price })),
+          (cart?.items || []).map(i => ({ menuItem: i.id, name: i.name, quantity: i.quantity, price: i.price })),
           tenantSlug
         );
 
@@ -585,7 +585,7 @@ const CheckoutPage: React.FC = () => {
       const calculatedProcessingFee = (cart.totalAmount * processingFeeRate) / 100;
 
       const orderData = {
-        items: cart.items.map(item => ({
+        items: (cart?.items || []).map(item => ({
           menuItem: item.id,
           name: item.name,
           quantity: item.quantity,
@@ -692,7 +692,7 @@ const CheckoutPage: React.FC = () => {
       <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
         <ShoppingCart color="primary" /> Review Your Order
       </Typography>
-      {cart.items.map((item: any, index: number) => (
+      {(cart?.items || []).map((item: any, index: number) => (
         <Box key={index} sx={{ py: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Box sx={{ flex: 1 }}>
@@ -1524,7 +1524,7 @@ const CheckoutPage: React.FC = () => {
   const isStepValid = (step: number) => {
     switch (step) {
       case 0:
-        return cart.items.length > 0;
+        return (cart?.items || []).length > 0;
       case 1:
         return isAuthenticated || authMethod === 'guest';
       case 2:
@@ -1584,7 +1584,7 @@ const CheckoutPage: React.FC = () => {
     );
   }
 
-  if (cart.items.length === 0) {
+  if ((cart?.items || []).length === 0) {
     return (
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Paper sx={{ p: 4, textAlign: 'center' }}>

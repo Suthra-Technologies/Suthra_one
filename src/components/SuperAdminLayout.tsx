@@ -9,6 +9,7 @@ import {
     Assessment as LogIcon,
     Logout,
     Menu as MenuIcon,
+    Person as PersonIcon,
     CardMembership as PlansIcon,
     Receipt as ReceiptIcon,
     Settings as SettingsIcon,
@@ -315,6 +316,7 @@ const SuperAdminLayout: React.FC = () => {
                     bgcolor: 'background.paper',
                     color: 'text.primary',
                     boxShadow: '0 1px 3px rgba(0,0,0,0.12)',
+                    pt: { xs: 'var(--safe-area-inset-top, env(safe-area-inset-top, 0px))', md: 0 },
                 }}
             >
                 <Toolbar>
@@ -346,6 +348,10 @@ const SuperAdminLayout: React.FC = () => {
                 onClose={handleProfileMenuClose}
                 onClick={handleProfileMenuClose}
             >
+                <MenuItem onClick={() => navigate('/superadmin/profile')}>
+                    <PersonIcon fontSize="small" sx={{ mr: 1 }} />
+                    Profile
+                </MenuItem>
                 <MenuItem onClick={handleLogout}>
                     <Logout fontSize="small" sx={{ mr: 1 }} />
                     Logout
@@ -393,7 +399,7 @@ const SuperAdminLayout: React.FC = () => {
                     pb: { xs: 1.5, sm: 2, md: 3 },
                     pt: { xs: 0.25, sm: 0.75, md: 3 },
                     width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
-                    mt: '64px',
+                    mt: { xs: 'calc(64px + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)))', md: '64px' },
                     minHeight: 'calc(100vh - 64px)',
                     backgroundColor: 'background.default',
                 }}

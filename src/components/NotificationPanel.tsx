@@ -65,6 +65,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ open, onClose, no
       error: <Error color="error" />,
       warning: <Warning color="warning" />,
       info: <NotificationImportant color="info" />,
+      subscription: <Warning color="error" />,
     };
     return iconMap[type] || iconMap.info;
   };
@@ -79,6 +80,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ open, onClose, no
       error: 'error',
       warning: 'warning',
       info: 'info',
+      subscription: 'error',
     };
     return colorMap[type] || 'default';
   };
@@ -185,6 +187,8 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({ open, onClose, no
         return isCustomer ? '/customer/bookings' : '/bookings';
       case 'catering':
         return isCustomer ? '/customer/catering' : '/catering-admin';
+      case 'subscription':
+        return '/subscription';
       default:
         // Fall back to the orders page whenever the payload references an order
         if (rawOrderId || data.orderNumber || order.orderNumber) {

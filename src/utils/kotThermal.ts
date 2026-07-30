@@ -11,6 +11,7 @@
 import { sendToThermalPrinter, sendEposPrint, isThermalPrintAvailable } from '../services/thermalPrint';
 import { sendToUsbPrinter, isUsbPrintAvailable } from '../services/usbPrint';
 import type { TenantPrinterSettings } from '../context/SettingsContext';
+import { stripSpiceFromName } from './spiceLevel';
 
 const CHARS_PER_LINE_LARGE = 21; // Safe for 76mm double-width
 
@@ -118,7 +119,7 @@ function buildKotEscPos(data: KotData): Uint8Array {
     b.push(...BOLD_OFF);
     rule();
 
-    for (const it of data.items.filter(i => i.preparationStatus !== 'cancelled')) {
+    for (const it of (data?.items || []).filter(i => i.preparationStatus !== 'cancelled')) {
         const name = cleanText(it.name) || 'Item';
         const qtyStr = it.quantity > 1 ? ` x${it.quantity}` : '';
         const fullItemStr = name + qtyStr;
@@ -200,7 +201,7 @@ function buildKotEposXml(data: KotData): string {
     parts.push('<text em="false"/>');
     t('-'.repeat(CHARS_PER_LINE_LARGE));
 
-    for (const it of data.items.filter(i => i.preparationStatus !== 'cancelled')) {
+    for (const it of (data?.items || []).filter(i => i.preparationStatus !== 'cancelled')) {
         const name = cleanText(it.name) || 'Item';
         const qtyStr = it.quantity > 1 ? ` x${it.quantity}` : '';
         const fullItemStr = name + qtyStr;
@@ -273,10 +274,10 @@ export async function printKotThermal(
         orderDateStr: order.createdAt ? formatUsDate(new Date(order.createdAt)) : undefined,
         printedDateStr: formatUsDate(new Date()),
         items: (order.items || []).map((it: any) => ({
-            name: it.name || it.menuItem?.name || 'Item',
+            name: stripSpiceFromName(it.name || it.menuItem?.name, it.spiceLevel) || 'Item',
             quantity: it.quantity ?? 1,
             notes: it.notes,
-            spiceLevel: it.spiceLevel,
+            spiceLevel: it.spiceLevel ? String(it.spiceLevel) : undefined,
             preparationStatus: it.preparationStatus,
         })),
     };

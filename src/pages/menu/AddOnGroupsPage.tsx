@@ -51,7 +51,7 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
     const [editingTemplate, setEditingTemplate] = useState<ModifierGroupTemplate | null>(null);
     const [formData, setFormData] = useState<Partial<ModifierGroupTemplate>>({
         name: '',
-        menuItem: '',
+        menuItems: [],
         selectionType: 'single',
         required: false,
         options: [],
@@ -98,7 +98,7 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
             setEditingTemplate(template);
             setFormData({
                 name: template.name,
-                menuItem: (template.menuItem as any) || '',
+                menuItems: (template.menuItems as any) || [],
                 selectionType: template.selectionType,
                 required: template.required,
                 options: template.options ? [...template.options] : [],
@@ -108,7 +108,7 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
             setEditingTemplate(null);
             setFormData({
                 name: '',
-                menuItem: '',
+                menuItems: [],
                 selectionType: 'single',
                 required: false,
                 options: [],
@@ -126,7 +126,7 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
     const handleAddOption = () => {
         setFormData({
             ...formData,
-            options: [...(formData.options || []), { name: '', price: 0, isDefault: false }]
+            options: [...(formData.options || []), { name: '', price: 0, qty: 1, isDefault: false }]
         });
     };
 
@@ -166,9 +166,12 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
         e.preventDefault();
 
         // Validation
-        const selectedMenuItem = menuItems.find((m: any) => m._id === formData.menuItem);
-        if (!formData.menuItem || !selectedMenuItem) {
-            toast.error('Please select a menu item');
+        if (!formData.name || !formData.name.trim()) {
+            toast.error('Add-on group name is required');
+            return;
+        }
+        if (!formData.menuItems || formData.menuItems.length === 0) {
+            toast.error('Link at least one menu item');
             return;
         }
         if (!formData.options || formData.options.length === 0) {
@@ -180,8 +183,16 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
             return;
         }
 
-        // Name is derived from the mapped menu item.
-        const payload = { ...formData, name: selectedMenuItem.name };
+        const payload = {
+            ...formData,
+            name: formData.name.trim(),
+            options: formData.options.map(opt => ({
+                ...opt,
+                price: parseFloat(opt.price as any) || 0,
+                qty: parseFloat(opt.qty as any) || 1,
+                consumptionQty: opt.consumptionQty !== undefined ? (parseFloat(opt.consumptionQty as any) || 1) : opt.consumptionQty,
+            })),
+        };
 
         try {
             setSubmitting(true);
@@ -273,7 +284,7 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
                                         </Box>
                                     </Box>
 
-                                    <Box display="flex" gap={1} mb={2}>
+                                    <Box display="flex" gap={1} mb={2} flexWrap="wrap">
                                         <Chip
                                             label={template.selectionType === 'single' ? 'Single' : 'Multiple'}
                                             size="small"
@@ -282,6 +293,13 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
                                         />
                                         {template.required && (
                                             <Chip label="Required" size="small" color="secondary" variant="outlined" />
+                                        )}
+                                        {(template.menuItems?.length || 0) > 0 && (
+                                            <Chip
+                                                label={`${template.menuItems!.length} menu item${template.menuItems!.length === 1 ? '' : 's'}`}
+                                                size="small"
+                                                variant="outlined"
+                                            />
                                         )}
                                     </Box>
 
@@ -293,8 +311,8 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
                                             <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
                                                 <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                                     • {opt.name}{opt.isDefault ? ' (Default)' : ''}
-                                                    {(opt.linkedMenuItem || opt.linkedInventoryItem) && (
-                                                        <Chip icon={<InventoryIcon />} label={opt.linkedMenuItem ? 'Recipe' : 'Raw'} size="small" sx={{ height: 18, fontSize: 10 }} color={opt.linkedMenuItem ? 'primary' : 'success'} variant="outlined" />
+                                                    {opt.linkedInventoryItem && (
+                                                        <Chip icon={<InventoryIcon />} label="Raw" size="small" sx={{ height: 18, fontSize: 10 }} color="success" variant="outlined" />
                                                     )}
                                                 </Typography>
                                                 <Typography variant="body2" fontWeight={600}>${opt.price.toFixed(2)}</Typography>
@@ -313,19 +331,33 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
                 <form onSubmit={handleSubmit}>
                     <DialogTitle>
                         {editingTemplate ? 'Edit Add-on Group' : 'Create Add-on Group'}
+                        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5, fontWeight: 400 }}>
+                            One group can offer multiple side dish options, linked to one or more menu items
+                        </Typography>
                     </DialogTitle>
                     <DialogContent dividers>
                         <Grid container spacing={3}>
-                            <Grid item xs={12} md={6}>
+                            <Grid item xs={12}>
+                                <TextField
+                                    fullWidth
+                                    required
+                                    label="Add-on Group Name"
+                                    placeholder="e.g. Choose a Side Dish"
+                                    value={formData.name}
+                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                    helperText="A group can offer several side dish options below — customers may pick one or more."
+                                    sx={{ mb: 1 }}
+                                />
                                 <Autocomplete
+                                    multiple
                                     fullWidth
                                     options={menuItems}
                                     getOptionLabel={(item: any) => item.name || ''}
-                                    isOptionEqualToValue={(opt, val) => opt._id === (val?._id || val)}
-                                    value={menuItems.find((m: any) => m._id === formData.menuItem) || null}
-                                    onChange={(_e, val) => setFormData({ ...formData, menuItem: val?._id || '', name: val?.name || '' })}
+                                    isOptionEqualToValue={(opt, val) => opt._id === val?._id}
+                                    value={menuItems.filter((m: any) => (formData.menuItems || []).includes(m._id))}
+                                    onChange={(_e, val: any[]) => setFormData({ ...formData, menuItems: val.map(v => v._id) })}
                                     renderInput={(params) => (
-                                        <TextField {...params} label="Menu Item" required placeholder="Select the menu item for these add-ons" />
+                                        <TextField {...params} label="Linked Menu Items" required placeholder="Search menu items..." />
                                     )}
                                     sx={{ mb: 2 }}
                                 />
@@ -359,7 +391,7 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
 
                             <Grid item xs={12}>
                                 <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                                    <Typography variant="subtitle2" fontWeight="bold">Options</Typography>
+                                    <Typography variant="subtitle2" fontWeight="bold">Side Dish Options</Typography>
                                     <Button size="small" startIcon={<AddIcon />} onClick={handleAddOption}>
                                         Add Option
                                     </Button>
@@ -368,22 +400,34 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
                                 <Box sx={{ maxHeight: 420, overflowY: 'auto', pr: 1 }}>
                                     {(formData.options || []).map((option, index) => (
                                         <Paper key={index} variant="outlined" sx={{ p: 1.5, mb: 1.5, borderRadius: 2 }}>
-                                            {/* Row 1: Name, Price, Default, Delete */}
+                                            {/* Row 1: Name, Qty (serving amount), Price, Default, Delete */}
                                             <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', mb: 1 }}>
                                                 <TextField
                                                     size="small"
-                                                    placeholder="Name"
+                                                    placeholder="Side dish name"
                                                     value={option.name}
                                                     onChange={(e) => handleOptionChange(index, 'name', e.target.value)}
                                                     sx={{ flex: 2 }}
                                                 />
+                                                <Tooltip title="Quantity given to the customer for this option">
+                                                    <TextField
+                                                        size="small"
+                                                        type="number"
+                                                        placeholder="Qty"
+                                                        value={option.qty ?? 1}
+                                                        onChange={(e) => handleOptionChange(index, 'qty', e.target.value)}
+                                                        sx={{ flex: 1 }}
+                                                        InputProps={{ inputProps: { min: 0.01, step: 0.1 } }}
+                                                    />
+                                                </Tooltip>
                                                 <TextField
                                                     size="small"
                                                     type="number"
                                                     placeholder="Price"
                                                     value={option.price}
-                                                    onChange={(e) => handleOptionChange(index, 'price', parseFloat(e.target.value) || 0)}
+                                                    onChange={(e) => handleOptionChange(index, 'price', e.target.value)}
                                                     sx={{ flex: 1 }}
+                                                    InputProps={{ startAdornment: '$' }}
                                                 />
                                                 <Tooltip title="Set as default">
                                                     <Switch
@@ -400,16 +444,15 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
                                             {/* Row 2: Inventory Linking */}
                                             <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
                                                 {/* Link type indicator */}
-                                                {(option.linkedMenuItem || option.linkedInventoryItem) ? (
+                                                {option.linkedInventoryItem ? (
                                                     <Chip
                                                         icon={<LinkIcon />}
-                                                        label={option.linkedMenuItem ? 'Menu Item' : 'Raw Material'}
+                                                        label="Raw Material"
                                                         size="small"
-                                                        color={option.linkedMenuItem ? 'primary' : 'success'}
+                                                        color="success"
                                                         variant="outlined"
                                                         onDelete={() => {
-                                                            handleOptionChangeMulti(index, { 
-                                                                linkedMenuItem: undefined, 
+                                                            handleOptionChangeMulti(index, {
                                                                 linkedInventoryItem: undefined,
                                                                 consumptionQty: 1,
                                                                 consumptionUnit: undefined
@@ -420,24 +463,6 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
                                                 ) : (
                                                     <Chip icon={<LinkOffIcon />} label="No inventory link" size="small" variant="outlined" color="default" />
                                                 )}
-
-                                                {/* Menu Item Autocomplete */}
-                                                <Autocomplete
-                                                    size="small"
-                                                    sx={{ flex: 2, minWidth: 180 }}
-                                                    options={menuItems}
-                                                    getOptionLabel={(item: any) => item.name || ''}
-                                                    isOptionEqualToValue={(opt, val) => opt._id === (val?._id || val)}
-                                                    value={menuItems.find((m: any) => m._id === option.linkedMenuItem) || null}
-                                                    onChange={(_e, val) => {
-                                                        handleOptionChangeMulti(index, {
-                                                            linkedMenuItem: val?._id || undefined,
-                                                            linkedInventoryItem: val ? undefined : option.linkedInventoryItem,
-                                                        });
-                                                    }}
-                                                    renderInput={(params) => <TextField {...params} placeholder="Link Menu Item" />}
-                                                    disabled={!!option.linkedInventoryItem}
-                                                />
 
                                                 {/* Inventory Item Autocomplete */}
                                                 <Autocomplete
@@ -450,25 +475,25 @@ const AddOnGroupsPage: React.FC<AddOnGroupsPageProps> = ({ hideHeader = false })
                                                     onChange={(_e, val) => {
                                                         handleOptionChangeMulti(index, {
                                                             linkedInventoryItem: val?._id || undefined,
-                                                            linkedMenuItem: val ? undefined : option.linkedMenuItem,
                                                             consumptionUnit: val?.unit || option.consumptionUnit,
                                                         });
                                                     }}
                                                     renderInput={(params) => <TextField {...params} placeholder="Link Raw Material" />}
-                                                    disabled={!!option.linkedMenuItem}
                                                 />
 
-                                                {/* Consumption Qty */}
-                                                {(option.linkedMenuItem || option.linkedInventoryItem) && (
+                                                {/* Consumption Qty — inventory deducted per selection, distinct from the serving Qty above */}
+                                                {option.linkedInventoryItem && (
+                                                    <Tooltip title="Inventory quantity deducted per selection">
                                                     <TextField
                                                         size="small"
                                                         type="number"
-                                                        label="Qty"
+                                                        label="Deduct qty"
                                                         value={option.consumptionQty ?? 1}
-                                                        onChange={(e) => handleOptionChange(index, 'consumptionQty', parseFloat(e.target.value) || 1)}
-                                                        sx={{ width: 80 }}
+                                                        onChange={(e) => handleOptionChange(index, 'consumptionQty', e.target.value)}
+                                                        sx={{ width: 100 }}
                                                         InputProps={{ inputProps: { min: 0.01, step: 0.1 } }}
                                                     />
+                                                    </Tooltip>
                                                 )}
                                             </Box>
                                         </Paper>

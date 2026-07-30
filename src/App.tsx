@@ -38,6 +38,7 @@ import InvoicesAdminPage from './pages/superadmin/InvoicesAdminPage';
 import MaterialProvidersPage from './pages/superadmin/MaterialProvidersPage';
 import PlansLogPage from './pages/superadmin/PlansLogPage';
 import PlansPage from './pages/superadmin/PlansPage';
+import SuperAdminProfilePage from './pages/superadmin/SuperAdminProfilePage';
 import SuperAdminSettingsPage from './pages/superadmin/SettingsPage';
 import SmsLogsDetailPage from './pages/superadmin/SmsLogsDetailPage';
 import SmsOverviewPage from './pages/superadmin/SmsOverviewPage';
@@ -230,6 +231,7 @@ const AppRoutes: React.FC = () => {
           <Route path="/superadmin/logs/tickets" element={<TicketsLogPage />} />
           <Route path="/superadmin/admin-logs" element={<AdminLogsPage />} />
           <Route path="/superadmin/activity" element={<ActivityOverviewPage />} />
+          <Route path="/superadmin/profile" element={<SuperAdminProfilePage />} />
           <Route path="/superadmin/settings" element={<SuperAdminSettingsPage />} />
           <Route path="/superadmin/team" element={<SuperAdminTeamPage />} />
           <Route path="/superadmin/material-providers" element={<MaterialProvidersPage />} />

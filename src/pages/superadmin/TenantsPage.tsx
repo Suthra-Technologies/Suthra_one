@@ -67,6 +67,27 @@ const TenantsPage: React.FC = () => {
     { value: 'hold', label: 'On Hold' },
   ];
 
+  // Default, editable note text for each status transition — saves admins from
+  // having to type the same explanation for routine approvals/suspensions.
+  const getDefaultStatusNote = (tenantName: string, fromStatus: string, toStatus: string): string => {
+    const from = fromStatus || 'pending';
+    if (toStatus === 'active') {
+      return from === 'pending'
+        ? `Approved "${tenantName}" after review — account activated.`
+        : `Reactivated "${tenantName}" — account set back to active.`;
+    }
+    if (toStatus === 'suspended') {
+      return `Suspended "${tenantName}" account.`;
+    }
+    if (toStatus === 'hold') {
+      return `Placed "${tenantName}" account on hold pending further review.`;
+    }
+    if (toStatus === 'pending') {
+      return `Reverted "${tenantName}" account to pending approval.`;
+    }
+    return `Changed "${tenantName}" status from ${from} to ${toStatus}.`;
+  };
+
   const fetchTenants = async () => {
     setLoading(true);
     try {
@@ -126,10 +147,11 @@ const TenantsPage: React.FC = () => {
     const tenant = statusMenuTenant;
     handleStatusMenuClose();
     if (!tenant || newStatus === (tenant.status || 'pending')) return;
-    // Require a note for every status change before applying it.
+    // Require a note for every status change before applying it — pre-filled with a
+    // generic, editable reason so routine changes don't need to be typed out each time.
     setNoteTenant(tenant);
     setPendingStatus(newStatus);
-    setStatusNote('');
+    setStatusNote(getDefaultStatusNote(tenant.name, tenant.status, newStatus));
     setNoteDialogOpen(true);
   };
 

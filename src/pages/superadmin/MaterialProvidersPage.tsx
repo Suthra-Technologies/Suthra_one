@@ -35,6 +35,7 @@ const EMPTY_FORM = {
   notes: '',
   logo: '',
   materialImage: '',
+  materials: [] as { name: string; unit: string; defaultUnitPrice: string }[],
 };
 
 const MaterialProvidersPage: React.FC = () => {
@@ -121,9 +122,29 @@ const MaterialProvidersPage: React.FC = () => {
       notes: row.notes || '',
       logo: row.logo || '',
       materialImage: row.materialImage || '',
+      materials: (row.materials || []).map((m: any) => ({
+        name: m.name || '',
+        unit: m.unit || '',
+        defaultUnitPrice: m.defaultUnitPrice != null ? String(m.defaultUnitPrice) : '',
+      })),
     });
     setErrors({});
     setDialogOpen(true);
+  };
+
+  const addMaterial = () => {
+    setForm(prev => ({ ...prev, materials: [...prev.materials, { name: '', unit: '', defaultUnitPrice: '' }] }));
+  };
+
+  const updateMaterial = (index: number, key: 'name' | 'unit' | 'defaultUnitPrice', value: string) => {
+    setForm(prev => ({
+      ...prev,
+      materials: prev.materials.map((m, i) => i === index ? { ...m, [key]: value } : m),
+    }));
+  };
+
+  const removeMaterial = (index: number) => {
+    setForm(prev => ({ ...prev, materials: prev.materials.filter((_, i) => i !== index) }));
   };
 
   const handleUploadImage = async (field: 'logo' | 'materialImage', e: React.ChangeEvent<HTMLInputElement>) => {
@@ -168,6 +189,13 @@ const MaterialProvidersPage: React.FC = () => {
       const payload = {
         ...form,
         address: combinedAddress,
+        materials: form.materials
+          .filter(m => m.name.trim())
+          .map(m => ({
+            name: m.name.trim(),
+            unit: m.unit.trim() || undefined,
+            defaultUnitPrice: m.defaultUnitPrice !== '' ? parseFloat(m.defaultUnitPrice) : undefined,
+          })),
       };
 
       if (editing) {
@@ -464,6 +492,49 @@ const MaterialProvidersPage: React.FC = () => {
               </Select>
             </FormControl>
             <TextField fullWidth label="Notes" multiline rows={2} value={form.notes} onChange={f('notes')} />
+
+            <Divider textAlign="left">
+              <Typography variant="caption" color="text.secondary" fontWeight={700}>MATERIALS SUPPLIED</Typography>
+            </Divider>
+            <Typography variant="caption" color="text.secondary">
+              These items will appear in the "Item" dropdown when a restaurant receives an order from this provider.
+            </Typography>
+            <Stack spacing={1.5}>
+              {form.materials.map((m, i) => (
+                <Stack key={i} direction="row" spacing={1} alignItems="flex-start">
+                  <TextField
+                    size="small"
+                    label="Item name"
+                    value={m.name}
+                    onChange={(e) => updateMaterial(i, 'name', e.target.value)}
+                    sx={{ flex: '2 1 160px' }}
+                  />
+                  <TextField
+                    size="small"
+                    label="Unit"
+                    placeholder="kg"
+                    value={m.unit}
+                    onChange={(e) => updateMaterial(i, 'unit', e.target.value)}
+                    sx={{ flex: '0 1 90px' }}
+                  />
+                  <TextField
+                    size="small"
+                    label="Default price"
+                    type="number"
+                    value={m.defaultUnitPrice}
+                    onChange={(e) => updateMaterial(i, 'defaultUnitPrice', e.target.value)}
+                    inputProps={{ min: 0, step: 'any' }}
+                    sx={{ flex: '0 1 110px' }}
+                  />
+                  <IconButton size="small" color="error" onClick={() => removeMaterial(i)} sx={{ mt: 0.5 }}>
+                    <DeleteIcon fontSize="small" />
+                  </IconButton>
+                </Stack>
+              ))}
+              <Button size="small" startIcon={<AddIcon />} onClick={addMaterial} sx={{ alignSelf: 'flex-start' }}>
+                Add material
+              </Button>
+            </Stack>
 
             <Divider textAlign="left">
               <Typography variant="caption" color="text.secondary" fontWeight={700}>IMAGES</Typography>

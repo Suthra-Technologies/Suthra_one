@@ -193,6 +193,31 @@ const AttendancePage: React.FC = () => {
         }
     };
 
+    const handleExportFinancials = async () => {
+        try {
+            const toastId = toast.loading('Generating export batch...');
+            const response = await attendanceAPI.exportFinancials({
+                startDate: filters.startDate,
+                endDate: filters.endDate,
+                search: filters.search,
+                role: activeRoleFilter === 'all' ? undefined : activeRoleFilter,
+            });
+
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `attendance-financials-${new Date().getTime()}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            link.parentNode?.removeChild(link);
+            toast.success('Export downloaded successfully!', { id: toastId });
+        } catch (error) {
+            console.error('Failed to export financials', error);
+            toast.dismiss();
+            toast.error('Failed to export financials');
+        }
+    };
+
     useEffect(() => {
         fetchAttendance();
         fetchUsers();
@@ -314,6 +339,11 @@ const AttendancePage: React.FC = () => {
     const handleViewDetails = (shift: any) => {
         setSelectedShift(shift);
         setDetailsOpen(true);
+    };
+
+    const isShiftFinished = (row: any) => {
+        const isFutureClockOut = row.clockOutTime && new Date(row.clockOutTime).getTime() > Date.now();
+        return !(row.status?.toLowerCase() === 'active' || isFutureClockOut);
     };
 
     const getStatusChip = (row: any) => {
@@ -481,7 +511,7 @@ const AttendancePage: React.FC = () => {
                             fullWidth
                             variant="outlined"
                             startIcon={<DownloadIcon />}
-                            onClick={() => toast.success('Generation export batch...')}
+                            onClick={handleExportFinancials}
                             sx={{ borderRadius: 3, py: 1.8, fontWeight: 'bold', borderStyle: 'dashed' }}
                         >
                             Export Financials
@@ -569,7 +599,7 @@ const AttendancePage: React.FC = () => {
                                                                 </Typography>
                                                             </Box>
                                                         </Stack>
-                                                        {getStatusChip(row.status)}
+                                                        {getStatusChip(row)}
                                                     </Stack>
 
                                                     <Divider />
@@ -587,7 +617,7 @@ const AttendancePage: React.FC = () => {
                                                         <Grid item xs={6}>
                                                             <Typography variant="caption" color="text.secondary" display="block">FINANCIALS</Typography>
                                                             <Typography variant="subtitle2" fontWeight="800" color="primary">
-                                                                {row.estimatedEarnings ? formatCurrency(row.estimatedEarnings) : '--'}
+                                                                {isShiftFinished(row) && row.estimatedEarnings ? formatCurrency(row.estimatedEarnings) : '--'}
                                                             </Typography>
                                                             <Typography variant="caption" color="text.secondary">Work: {row.totalHours ? `${row.totalHours}h` : '--'}</Typography>
                                                         </Grid>
@@ -704,7 +734,7 @@ const AttendancePage: React.FC = () => {
                                                 </TableCell>
                                                 <TableCell>
                                                     <Typography variant="subtitle1" fontWeight="900" color="primary">
-                                                        {row.estimatedEarnings ? formatCurrency(row.estimatedEarnings) : '--'}
+                                                        {isShiftFinished(row) && row.estimatedEarnings ? formatCurrency(row.estimatedEarnings) : '--'}
                                                     </Typography>
                                                 </TableCell>
                                                 <TableCell align="right">

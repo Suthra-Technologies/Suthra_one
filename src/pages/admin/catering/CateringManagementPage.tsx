@@ -138,6 +138,7 @@ const CateringManagementPage = () => {
     const [menuItems, setMenuItems] = useState<any[]>([]);
     const [taxDetails, setTaxDetails] = useState<any>(null);
     const [isCalculatingTax, setIsCalculatingTax] = useState(false);
+    const [taxError, setTaxError] = useState<string | null>(null);
     const [newOrder, setNewOrder] = useState({
         customerName: '',
         customerPhone: '',
@@ -188,16 +189,21 @@ const CateringManagementPage = () => {
 
     // Debounced Tax Calculation for new/edit catering orders
     useEffect(() => {
-        if (newOrder.items.length === 0) {
+        if ((newOrder?.items || []).length === 0) {
             setTaxDetails(null);
+            setTaxError(null);
             return;
         }
+
+        // Address edits retrigger this on every keystroke (debounced), so a slow
+        // earlier response could otherwise land after a newer one and overwrite it.
+        let cancelled = false;
 
         const timer = setTimeout(async () => {
             try {
                 setIsCalculatingTax(true);
-                
-                let subtotal = newOrder.items.reduce((sum, item) => sum + (item.total || 0), 0);
+
+                let subtotal = (newOrder?.items || []).reduce((sum, item) => sum + (item.total || 0), 0);
                 let discountAmt = 0;
                 if (newOrder.discount.type === 'percentage') {
                     discountAmt = (subtotal * (newOrder.discount.value || 0)) / 100;
@@ -205,13 +211,19 @@ const CateringManagementPage = () => {
                     discountAmt = newOrder.discount.value || 0;
                 }
 
+                // Catering tax is sourced from the RESTAURANT's address, not the customer's
+                // delivery address — so we explicitly send the restaurant address as the
+                // tax destination. Sending it (rather than the delivery address, or nothing)
+                // keeps the request self-describing: the payload shows exactly which address
+                // the returned rate belongs to.
+                const restaurant = settings?.restaurant || {};
                 const payload = {
-                    to_zip: newOrder.zipCode || settings.restaurant?.zipCode || '30040',
-                    to_state: newOrder.state,
-                    to_city: newOrder.city,
-                    to_street: newOrder.address,
+                    to_zip: restaurant.zipCode || '',
+                    to_state: restaurant.state || '',
+                    to_city: restaurant.city || '',
+                    to_street: restaurant.address || '',
                     discount: discountAmt,
-                    line_items: newOrder.items.map(item => ({
+                    line_items: (newOrder?.items || []).map(item => ({
                         itemId: item.menuItem,
                         quantity: item.quantity,
                         price: item.unitPrice,
@@ -220,16 +232,26 @@ const CateringManagementPage = () => {
                 };
 
                 const res = await taxAPI.calculate(payload);
+                if (cancelled) return;
                 setTaxDetails(res.data);
-            } catch (err) {
+                setTaxError(null);
+            } catch (err: any) {
+                if (cancelled) return;
                 console.error("[Catering Tax] Failed:", err);
                 setTaxDetails(null);
+                setTaxError(
+                    err?.response?.data?.message ||
+                    'Tax could not be calculated. Please check the delivery address and retry before creating the order.'
+                );
             } finally {
-                setIsCalculatingTax(false);
+                if (!cancelled) setIsCalculatingTax(false);
             }
         }, 800);
 
-        return () => clearTimeout(timer);
+        return () => {
+            cancelled = true;
+            clearTimeout(timer);
+        };
     }, [newOrder.items, newOrder.discount, newOrder.zipCode, newOrder.address, settings]);
 
     const [expanded, setExpanded] = useState<string | false>('customer');
@@ -564,7 +586,7 @@ const CateringManagementPage = () => {
         }));
     };
 
-    const recalculateEditTotals = (newItems: any[], newServersAmount?: number) => {
+    const recalculateEditTotals = (newItems: any[], newStaffCharge?: number, newTransCharge?: number, newServiceCharge?: number) => {
         const subtotal = newItems.reduce((sum, item) => sum + (item.total || 0), 0);
         let discountAmt = editData.discount?.type === 'percentage'
             ? (subtotal * (editData.discount?.value || 0)) / 100
@@ -572,13 +594,20 @@ const CateringManagementPage = () => {
         const taxRate = editData.tax?.rate || 0;
         const taxAmount = Math.max(0, subtotal - discountAmt) * (taxRate / 100);
         
-        const serversTotal = newServersAmount !== undefined ? newServersAmount : (parseFloat(editData.cateringServers?.amount) || 0);
-        const totalAmount = Math.max(0, subtotal - discountAmt) + taxAmount + serversTotal;
+        const staff = newStaffCharge !== undefined ? newStaffCharge : (parseFloat(editData.staffCharge) || 0);
+        const trans = newTransCharge !== undefined ? newTransCharge : (parseFloat(editData.transportationCharge) || 0);
+        const service = newServiceCharge !== undefined ? newServiceCharge : (parseFloat(editData.serviceCharge) || 0);
+        
+        // Preserve old cateringServers amount if still there, but prefer staffCharge
+        const oldServersTotal = parseFloat(editData.cateringServers?.amount) || 0;
+        const totalAmount = Math.max(0, subtotal - discountAmt) + taxAmount + staff + trans + service + oldServersTotal;
 
         setEditData((prev: any) => ({
             ...prev,
             items: newItems,
-            cateringServers: { ...prev.cateringServers, amount: serversTotal },
+            staffCharge: staff,
+            transportationCharge: trans,
+            serviceCharge: service,
             subtotal,
             totalAmount,
             tax: { ...prev.tax, amount: taxAmount }
@@ -640,13 +669,13 @@ const CateringManagementPage = () => {
         const newPayments = [...(newOrder.payments || [])];
 
         // Re-calculate the current total dynamically
-        const subtotal = newOrder.items.reduce((sum, item) => sum + item.total, 0);
+        const subtotal = (newOrder?.items || []).reduce((sum, item) => sum + item.total, 0);
         let discountAmt = newOrder.discount.type === 'percentage'
             ? (subtotal * (newOrder.discount.value || 0)) / 100
             : (newOrder.discount.value || 0);
         const discountRatio = subtotal > 0 ? Math.max(0, subtotal - discountAmt) / subtotal : 1;
         const defaultTaxRate = settings?.restaurant?.taxRate || 0;
-        const taxAmount = newOrder.items.reduce((sum, item: any) => {
+        const taxAmount = (newOrder?.items || []).reduce((sum, item: any) => {
             const itemTaxRate = (item.taxRate !== undefined && item.taxRate !== null) ? item.taxRate : defaultTaxRate;
             return sum + (item.total * discountRatio * itemTaxRate / 100);
         }, 0);
@@ -673,13 +702,13 @@ const CateringManagementPage = () => {
             const enteredAmount = Math.max(0, parseFloat(value) || 0);
 
             // Re-calculate the current total dynamically
-            const subtotal = newOrder.items.reduce((sum, item) => sum + item.total, 0);
+            const subtotal = (newOrder?.items || []).reduce((sum, item) => sum + item.total, 0);
             let discountAmt = newOrder.discount.type === 'percentage'
                 ? (subtotal * (newOrder.discount.value || 0)) / 100
                 : (newOrder.discount.value || 0);
             const discountRatio = subtotal > 0 ? Math.max(0, subtotal - discountAmt) / subtotal : 1;
             const defaultTaxRate = settings?.restaurant?.taxRate || 0;
-            const taxAmount = newOrder.items.reduce((sum, item: any) => {
+            const taxAmount = (newOrder?.items || []).reduce((sum, item: any) => {
                 const itemTaxRate = (item.taxRate !== undefined && item.taxRate !== null) ? item.taxRate : defaultTaxRate;
                 return sum + (item.total * discountRatio * itemTaxRate / 100);
             }, 0);
@@ -1057,7 +1086,7 @@ const CateringManagementPage = () => {
                                 { name: 'Veg', items: types.veg, color: '#2e7d32', bg: '#e8f5e9', dot: '#4caf50' },
                                 { name: 'Non-Veg', items: types.nonVeg, color: '#c62828', bg: '#ffebee', dot: '#ef5350' },
                                 { name: 'Others', items: types.others, color: '#455a64', bg: '#f5f5f5', dot: '#90a4ae' }
-                            ].map((type) => type.items.length > 0 && (
+                            ].map((type) => (type?.items || []).length > 0 && (
                                 <Box key={type.name} sx={{ mb: 2, ml: 1 }}>
                                     {/* Type Header */}
                                     <Box sx={{
@@ -1074,18 +1103,18 @@ const CateringManagementPage = () => {
                                             {type.name}
                                         </Typography>
                                         <Typography variant="caption" sx={{ color: type.color, opacity: 0.8, fontWeight: 600 }}>
-                                            {type.items.length} items
+                                            {(type?.items || []).length} items
                                         </Typography>
                                     </Box>
 
                                     {/* Items list for this type */}
                                     <Box sx={{ border: `1px solid ${alpha(type.color, 0.12)}`, borderTop: 'none', borderRadius: '0 0 4px 4px', overflow: 'hidden', bgcolor: 'white' }}>
-                                        {type.items.map((item: any, itemIdx: number) => {
+                                        {(type?.items || []).map((item: any, itemIdx: number) => {
                                             const config = itemSelectorConfigs[item._id] || { isSelected: false, trayRows: [], cook: '' };
                                             const hasTrays = item.isCateringAvailable && item.trayOptions?.length > 0;
                                             return (
                                                 <Box key={item._id} sx={{
-                                                    borderBottom: itemIdx < type.items.length - 1 ? `1px solid ${alpha(type.color, 0.06)}` : 'none',
+                                                    borderBottom: itemIdx < (type?.items || []).length - 1 ? `1px solid ${alpha(type.color, 0.06)}` : 'none',
                                                 }}>
                                                     {/* Item Row */}
                                                     <Box
@@ -1372,7 +1401,7 @@ const CateringManagementPage = () => {
     const handleRemoveItem = (index: number) => {
         setNewOrder(prev => ({
             ...prev,
-            items: prev.items.filter((_, i) => i !== index)
+            items: (prev?.items || []).filter((_, i) => i !== index)
         }));
     };
 
@@ -1423,7 +1452,7 @@ const CateringManagementPage = () => {
             return;
         }
 
-        if (newOrder.items.length === 0) {
+        if ((newOrder?.items || []).length === 0) {
             toast.error('Please add at least one item');
             return;
         }
@@ -1437,7 +1466,7 @@ const CateringManagementPage = () => {
 
         setCreating(true);
         try {
-            const currentSubtotal = newOrder.items.reduce((sum, item) => sum + (item.total || 0), 0);
+            const currentSubtotal = (newOrder?.items || []).reduce((sum, item) => sum + (item.total || 0), 0);
             const defaultTaxRate = settings.restaurant?.taxRate || 0;
             let currentDiscountAmt = 0;
             if (newOrder.discount.type === 'percentage') {
@@ -1448,7 +1477,7 @@ const CateringManagementPage = () => {
             const currentTaxable = Math.max(0, currentSubtotal - currentDiscountAmt);
             
             // Use Dynamic Tax if available, otherwise fallback to static
-            const taxAmount = (taxDetails?.taxAmount ?? taxDetails?.amount_to_collect ?? taxDetails?.total_tax ?? (currentTaxable * defaultTaxRate / 100));
+            const taxAmount = (taxDetails?.tax?.amount_to_collect ?? taxDetails?.taxAmount ?? taxDetails?.amount_to_collect ?? taxDetails?.total_tax ?? (currentTaxable * defaultTaxRate / 100));
             const totalAmount = currentTaxable + taxAmount;
 
             const payload = {
@@ -1591,6 +1620,14 @@ const CateringManagementPage = () => {
         return <Chip label={status?.toUpperCase()} color={color} size="small" />;
     };
 
+    const getPaymentStatusChip = (status: string) => {
+        let color: any = 'default';
+        if (status === 'completed') color = 'success';
+        if (status === 'partial') color = 'info';
+        if (status === 'pending' || !status) color = 'warning';
+        return <Chip label={status ? status.toUpperCase() : 'PENDING'} color={color} size="small" variant="outlined" sx={{ ml: 1 }} />;
+    };
+
     return (
         <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
             <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} mb={{ xs: 1.5, sm: 2 }} gap={2}>
@@ -1719,7 +1756,9 @@ const CateringManagementPage = () => {
                                             {formatPhoneNumber(order.customerPhone)}
                                         </Typography>
                                     </Box>
-                                    {getStatusChip(order.status)}
+                                    <Box display="flex" flexDirection="column" alignItems="flex-end" gap={0.5}>
+                                        {getStatusChip(order.status)}
+                                    </Box>
                                 </Box>
 
                                 <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
@@ -1840,7 +1879,11 @@ const CateringManagementPage = () => {
                                     <TableCell>
                                         {formatCurrency(order.totalAmount)}
                                     </TableCell>
-                                    <TableCell>{getStatusChip(order.status)}</TableCell>
+                                    <TableCell>
+                                        <Box display="flex" alignItems="center">
+                                            {getStatusChip(order.status)}
+                                        </Box>
+                                    </TableCell>
                                     <TableCell align="center">
                                         <Box display="flex" justifyContent="center" alignItems="center" gap={1}>
                                             {!isTablet ? (
@@ -1854,6 +1897,27 @@ const CateringManagementPage = () => {
                                                             <Visibility fontSize="small" />
                                                         </IconButton>
                                                     </Tooltip>
+                                                    {order.status !== 'completed' && (
+                                                        <Tooltip title="Edit Order">
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={() => {
+                                                                    setSelectedOrder(order);
+                                                                    setEditData({
+                                                                        ...order,
+                                                                        processingPerson: order?.processingPerson || getUserFullName() || ''
+                                                                    });
+                                                                    setOccasionInputValue(order?.occasion || '');
+                                                                    setDialogTab(0);
+                                                                    setIsEditing(true);
+                                                                    setViewDialogOpen(true);
+                                                                }}
+                                                                sx={{ color: '#f59e0b', bgcolor: alpha('#f59e0b', 0.08), '&:hover': { bgcolor: alpha('#f59e0b', 0.18) }, borderRadius: 1.5, ml: 1 }}
+                                                            >
+                                                                <Edit fontSize="small" />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    )}
                                                     <Tooltip title="Chat Support">
                                                         <IconButton
                                                             size="small"
@@ -1864,7 +1928,7 @@ const CateringManagementPage = () => {
                                                         </IconButton>
                                                     </Tooltip>
                                                     {order.status === 'pending' && (
-                                                        <Tooltip title="Confirm Order">
+                                                        <Tooltip title="Send Final Quote">
                                                             <IconButton
                                                                 size="small"
                                                                 onClick={() => handleUpdateStatus(order._id, 'confirmed')}
@@ -1876,15 +1940,17 @@ const CateringManagementPage = () => {
                                                         </Tooltip>
                                                     )}
                                                     {order.status === 'confirmed' && (
-                                                        <Tooltip title="Mark Complete">
-                                                            <IconButton
-                                                                size="small"
-                                                                onClick={() => handleUpdateStatus(order._id, 'completed')}
-                                                                disabled={updatingOrderId === order._id}
-                                                                sx={{ color: '#3730a3', bgcolor: alpha('#3730a3', 0.08), '&:hover': { bgcolor: alpha('#3730a3', 0.18) }, borderRadius: 1.5 }}
-                                                            >
-                                                                {updatingOrderId === order._id ? <CircularProgress size={20} color="inherit" /> : <CheckCircle fontSize="small" />}
-                                                            </IconButton>
+                                                        <Tooltip title={Math.max(0, (order.totalAmount || 0) - (order.advanceReceived || 0)) > 0.01 ? "Payment not completed" : "Mark Complete"}>
+                                                            <span>
+                                                                <IconButton
+                                                                    size="small"
+                                                                    onClick={() => handleUpdateStatus(order._id, 'completed')}
+                                                                    disabled={updatingOrderId === order._id || Math.max(0, (order.totalAmount || 0) - (order.advanceReceived || 0)) > 0.01}
+                                                                    sx={{ color: '#3730a3', bgcolor: alpha('#3730a3', 0.08), '&:hover': { bgcolor: alpha('#3730a3', 0.18) }, borderRadius: 1.5 }}
+                                                                >
+                                                                    {updatingOrderId === order._id ? <CircularProgress size={20} color="inherit" /> : <CheckCircle fontSize="small" />}
+                                                                </IconButton>
+                                                            </span>
                                                         </Tooltip>
                                                     )}
                                                     <Tooltip title="Inventory Estimation">
@@ -1992,7 +2058,7 @@ const CateringManagementPage = () => {
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
-                                        {requirements.items.map((item: any, i: number) => (
+                                        {(requirements?.items || []).map((item: any, i: number) => (
                                             <TableRow key={i}>
                                                 <TableCell>
                                                     <Typography variant="body2" fontWeight="bold">{item.name}</Typography>
@@ -2154,7 +2220,7 @@ const CateringManagementPage = () => {
 
                                             <Typography variant="h6" gutterBottom>Items</Typography>
                                             <List sx={{ py: 0 }}>
-                                                {selectedOrder.items.map((item: any, i: number) => (
+                                                {(selectedOrder?.items || []).map((item: any, i: number) => (
                                                     <ListItem key={i} divider sx={{ px: { xs: 0, sm: 2 }, py: { xs: 1, sm: 1.5 } }}>
                                                         <ListItemText
                                                             primary={
@@ -2201,19 +2267,6 @@ const CateringManagementPage = () => {
 
                                                     {selectedOrder.serviceType === 'delivery_service' && (
                                                         <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
-                                                            <Typography variant="subtitle2" sx={{ color: 'text.secondary', mb: 1 }}>Service Details</Typography>
-                                                            <Grid container spacing={1}>
-                                                                <Grid item xs={12} sm={6}>
-                                                                    <Typography variant="body2"><strong>Service Style:</strong> {selectedOrder.cateringServiceStyle?.replace(/_/g, ' ') || 'N/A'}</Typography>
-                                                                    <Typography variant="body2"><strong>Start Time:</strong> {selectedOrder.cateringServiceStartTime || 'N/A'}</Typography>
-                                                                    <Typography variant="body2"><strong>End Time:</strong> {selectedOrder.cateringServiceEndTime || 'N/A'}</Typography>
-                                                                </Grid>
-                                                                <Grid item xs={12} sm={6}>
-                                                                    <Typography variant="body2"><strong>Servers:</strong> {selectedOrder.cateringServers?.count || 0}</Typography>
-                                                                    <Typography variant="body2"><strong>Hours:</strong> {selectedOrder.cateringServers?.time || 'N/A'}</Typography>
-                                                                    <Typography variant="body2"><strong>Amount:</strong> {formatCurrency(selectedOrder.cateringServers?.amount || 0)}</Typography>
-                                                                </Grid>
-                                                            </Grid>
                                                             <Typography variant="subtitle2" sx={{ color: 'text.secondary', mt: 1 }}>Special Delivery Instructions</Typography>
                                                             <Typography variant="body2">{selectedOrder.venueLogistics || 'None'}</Typography>
                                                         </Box>
@@ -2236,7 +2289,19 @@ const CateringManagementPage = () => {
                                                             </Typography>
                                                         )}
                                                         <Typography variant="body2">Tax ({selectedOrder.tax?.rate || 0}%): {formatCurrency(selectedOrder.tax?.amount || 0)}</Typography>
-                                                        {selectedOrder.serviceType === 'delivery_service' && (
+                                                        {Number(selectedOrder.transportationCharge) > 0 && (
+                                                            <Typography variant="body2">Transportation Charge: {formatCurrency(selectedOrder.transportationCharge)}</Typography>
+                                                        )}
+                                                        {Number(selectedOrder.serviceCharge) > 0 && (
+                                                            <Typography variant="body2">Service Charge: {formatCurrency(selectedOrder.serviceCharge)}</Typography>
+                                                        )}
+                                                        {selectedOrder.deliveryItemsList && (
+                                                            <Typography variant="body2">Delivery Items: {selectedOrder.deliveryItemsList}</Typography>
+                                                        )}
+                                                        {Number(selectedOrder.staffCharge) > 0 && (
+                                                            <Typography variant="body2">Staffing Fee: {formatCurrency(selectedOrder.staffCharge)}</Typography>
+                                                        )}
+                                                        {selectedOrder.serviceType === 'delivery_service' && Number(selectedOrder.cateringServers?.amount) > 0 && (
                                                             <Typography variant="body2">Service Amount: {formatCurrency(selectedOrder.cateringServers?.amount || 0)}</Typography>
                                                         )}
                                                         <Divider sx={{ width: '100%', my: 1 }} />
@@ -2345,18 +2410,6 @@ const CateringManagementPage = () => {
                                                         />
                                                     </Grid>
                                                 )}
-                                                {/* <Grid item xs={12} sm={6}>
-                                                    <TextField
-                                                        fullWidth
-                                                        label="Required Date & Time"
-                                                        type="datetime-local"
-                                                        value={editData.requiredDate ? new Date(new Date(editData.requiredDate).getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : ''}
-                                                        onChange={(e) => setEditData({ ...editData, requiredDate: e.target.value })}
-                                                        margin="normal"
-                                                        size="small"
-                                                        InputLabelProps={{ shrink: true }}
-                                                    />
-                                                </Grid> */}
                                             </Grid>
 
                                             <Divider sx={{ my: 2 }} />
@@ -2377,7 +2430,7 @@ const CateringManagementPage = () => {
                                                         </TableRow>
                                                     </TableHead>
                                                     <TableBody>
-                                                        {editData.items.map((item: any, i: number) => (
+                                                        {(editData?.items || []).map((item: any, i: number) => (
                                                             <TableRow key={i}>
                                                                 <TableCell>
                                                                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
@@ -2398,6 +2451,12 @@ const CateringManagementPage = () => {
                                                                         size="small"
                                                                         inputProps={{ min: 0, step: "0.01" }}
                                                                         value={item.quantity}
+                                                                        onFocus={(e) => e.target.select()}
+                                                                        onBlur={(e) => {
+                                                                            const val = parseFloat(e.target.value) || 0;
+                                                                            handleUpdateEditItemQty(i, val);
+                                                                            e.target.value = val.toString();
+                                                                        }}
                                                                         onChange={(e) => handleUpdateEditItemQty(i, parseFloat(e.target.value) || 0)}
                                                                         sx={{ width: 80 }}
                                                                     />
@@ -2410,6 +2469,12 @@ const CateringManagementPage = () => {
                                                                             size="small"
                                                                             inputProps={{ min: 0, step: "0.01" }}
                                                                             value={item.unitPrice}
+                                                                            onFocus={(e) => e.target.select()}
+                                                                            onBlur={(e) => {
+                                                                                const val = parseFloat(e.target.value) || 0;
+                                                                                handleUpdateEditItemPrice(i, val);
+                                                                                e.target.value = val.toString();
+                                                                            }}
                                                                             onChange={(e) => handleUpdateEditItemPrice(i, parseFloat(e.target.value) || 0)}
                                                                             sx={{ width: 80 }}
                                                                         />
@@ -2526,80 +2591,17 @@ const CateringManagementPage = () => {
                                                     <Typography variant="h6" mb={2}>Service Details</Typography>
                                                     <Grid container spacing={2}>
                                                         <Grid item xs={12} sm={6}>
-                                                            <FormControl fullWidth size="small">
-                                                                <InputLabel>Service Style</InputLabel>
-                                                                <Select
-                                                                    value={editData.cateringServiceStyle || ''}
-                                                                    label="Service Style"
-                                                                    onChange={(e) => setEditData({...editData, cateringServiceStyle: e.target.value})}
-                                                                >
-                                                                    <MenuItem value=""><em>None</em></MenuItem>
-                                                                    <MenuItem value="buffet_staff">Buffet (Staff Served)</MenuItem>
-                                                                    <MenuItem value="buffet_self">Buffet (Self Serve)</MenuItem>
-                                                                    <MenuItem value="plated">Plated Dinner</MenuItem>
-                                                                    <MenuItem value="family_style">Family Style</MenuItem>
-                                                                    <MenuItem value="passed_apps">Passed Hors d'oeuvres</MenuItem>
-                                                                </Select>
-                                                            </FormControl>
-                                                        </Grid>
-                                                        <Grid item xs={12} sm={6}>
                                                             <TextField
                                                                 fullWidth
-                                                                label="Servers Count"
-                                                                type="number"
-                                                                size="small"
-                                                                inputProps={{ min: 0 }}
-                                                                onKeyDown={preventScientificNotation}
-                                                                value={editData.cateringServers?.count || ''}
-                                                                onChange={(e) => setEditData({...editData, cateringServers: { ...editData.cateringServers, count: Math.max(0, parseInt(e.target.value) || 0) }})}
-                                                            />
-                                                        </Grid>
-                                                        <Grid item xs={12} sm={6}>
-                                                            <TextField
-                                                                fullWidth
-                                                                label="Service Start Time"
-                                                                type="time"
-                                                                size="small"
-                                                                InputLabelProps={{ shrink: true }}
-                                                                value={editData.cateringServiceStartTime || ''}
-                                                                onChange={(e) => handleTimeChange('start', e.target.value)}
-                                                            />
-                                                        </Grid>
-                                                        <Grid item xs={12} sm={6}>
-                                                            <TextField
-                                                                fullWidth
-                                                                label="Service End Time"
-                                                                type="time"
-                                                                size="small"
-                                                                InputLabelProps={{ shrink: true }}
-                                                                value={editData.cateringServiceEndTime || ''}
-                                                                onChange={(e) => handleTimeChange('end', e.target.value)}
-                                                            />
-                                                        </Grid>
-                                                        <Grid item xs={12} sm={6}>
-                                                            <TextField
-                                                                fullWidth
-                                                                label="Hours"
-                                                                type="number"
-                                                                size="small"
-                                                                inputProps={{ min: 0, step: "0.1" }}
-                                                                onKeyDown={preventScientificNotation}
-                                                                value={editData.cateringServers?.time || ''}
-                                                                onChange={(e) => setEditData({...editData, cateringServers: { ...editData.cateringServers, time: e.target.value }})}
-                                                            />
-                                                        </Grid>
-                                                        <Grid item xs={12} sm={6}>
-                                                            <TextField
-                                                                fullWidth
-                                                                label="Service Fee ($)"
+                                                                label="Staffing Fee ($)"
                                                                 type="number"
                                                                 size="small"
                                                                 inputProps={{ min: 0, step: "0.01" }}
                                                                 onKeyDown={preventScientificNotation}
-                                                                value={editData.cateringServers?.amount || ''}
+                                                                value={editData.staffCharge || ''}
                                                                 onChange={(e) => {
                                                                     const newAmount = Math.max(0, parseFloat(e.target.value) || 0);
-                                                                    recalculateEditTotals(editData.items, newAmount);
+                                                                    recalculateEditTotals(editData.items, newAmount, editData.transportationCharge, editData.serviceCharge);
                                                                 }}
                                                             />
                                                         </Grid>
@@ -2612,6 +2614,55 @@ const CateringManagementPage = () => {
                                                                 rows={2}
                                                                 value={editData.venueLogistics || ''}
                                                                 onChange={(e) => setEditData({...editData, venueLogistics: e.target.value})}
+                                                            />
+                                                        </Grid>
+                                                    </Grid>
+                                                </Box>
+                                            )}
+
+                                            {(editData.serviceType === 'delivery' || editData.serviceType === 'delivery_service') && (
+                                                <Box sx={{ mt: 3, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+                                                    <Typography variant="h6" mb={2}>Transportation Details</Typography>
+                                                    <Grid container spacing={2}>
+                                                        <Grid item xs={12} sm={6}>
+                                                            <TextField
+                                                                fullWidth
+                                                                label="Transportation Charge ($)"
+                                                                type="number"
+                                                                size="small"
+                                                                inputProps={{ min: 0, step: "0.01" }}
+                                                                onKeyDown={preventScientificNotation}
+                                                                value={editData.transportationCharge || ''}
+                                                                onChange={(e) => {
+                                                                    const newAmount = Math.max(0, parseFloat(e.target.value) || 0);
+                                                                    recalculateEditTotals(editData.items, editData.staffCharge, newAmount, editData.serviceCharge);
+                                                                }}
+                                                            />
+                                                        </Grid>
+                                                        <Grid item xs={12} sm={6}>
+                                                            <TextField
+                                                                fullWidth
+                                                                label="Service Charge ($)"
+                                                                type="number"
+                                                                size="small"
+                                                                inputProps={{ min: 0, step: "0.01" }}
+                                                                onKeyDown={preventScientificNotation}
+                                                                value={editData.serviceCharge || ''}
+                                                                onChange={(e) => {
+                                                                    const newAmount = Math.max(0, parseFloat(e.target.value) || 0);
+                                                                    recalculateEditTotals(editData.items, editData.staffCharge, editData.transportationCharge, newAmount);
+                                                                }}
+                                                            />
+                                                        </Grid>
+                                                        <Grid item xs={12}>
+                                                            <TextField
+                                                                fullWidth
+                                                                label="Delivery Items List (e.g. Spoons, Plates)"
+                                                                size="small"
+                                                                multiline
+                                                                rows={2}
+                                                                value={editData.deliveryItemsList || ''}
+                                                                onChange={(e) => setEditData({...editData, deliveryItemsList: e.target.value})}
                                                             />
                                                         </Grid>
                                                     </Grid>
@@ -2699,16 +2750,6 @@ const CateringManagementPage = () => {
                                         >
                                             {sendingEmail ? 'Sending...' : 'Email Receipt'}
                                         </Button>
-                                        {selectedOrder.status !== 'completed' && (
-                                            <Button
-                                                size="small"
-                                                variant="contained"
-                                                onClick={handleEditOrder}
-                                                color="primary"
-                                            >
-                                                Edit Order
-                                            </Button>
-                                        )}
                                     </>
                                 ) : (
                                     <>
@@ -2778,7 +2819,16 @@ const CateringManagementPage = () => {
                                             <Typography variant="caption" sx={{ display: 'block', mb: 0.5, opacity: 0.8 }}>
                                                 {msg.sender} ({msg.role}) • {new Date(msg.timestamp).toLocaleString()}
                                             </Typography>
-                                            <Typography variant="body2">{msg.message}</Typography>
+                                            {msg.imageUrl && (
+                                                <Box
+                                                    component="img"
+                                                    src={msg.imageUrl}
+                                                    alt="attachment"
+                                                    sx={{ maxWidth: '100%', borderRadius: 1, mb: 1, maxHeight: 200, objectFit: 'contain', cursor: 'pointer' }}
+                                                    onClick={() => window.open(msg.imageUrl, '_blank')}
+                                                />
+                                            )}
+                                            {msg.message && <Typography variant="body2">{msg.message}</Typography>}
                                         </Box>
                                     ))}
                                 </Box>
@@ -2846,7 +2896,7 @@ const CateringManagementPage = () => {
                 </DialogTitle>
                 <DialogContent dividers sx={{ bgcolor: alpha(theme.palette.primary.main, 0.02), p: 2 }}>
                     {(() => {
-                        const currentSubtotal = newOrder.items.reduce((sum, item) => sum + (item.total || 0), 0);
+                        const currentSubtotal = (newOrder?.items || []).reduce((sum, item) => sum + (item.total || 0), 0);
                         const defaultTaxRate = settings.restaurant?.taxRate || 0;
                         let currentDiscountAmt = 0;
                         if (newOrder.discount.type === 'percentage') {
@@ -2857,7 +2907,7 @@ const CateringManagementPage = () => {
                         const currentTaxable = Math.max(0, currentSubtotal - currentDiscountAmt);
                         
                         // Use Dynamic Tax if available, otherwise fallback to static
-                        const currentTaxAmt = (taxDetails?.taxAmount ?? taxDetails?.amount_to_collect ?? taxDetails?.total_tax ?? (currentTaxable * defaultTaxRate / 100));
+                        const currentTaxAmt = (taxDetails?.tax?.amount_to_collect ?? taxDetails?.taxAmount ?? taxDetails?.amount_to_collect ?? taxDetails?.total_tax ?? (currentTaxable * defaultTaxRate / 100));
                         const currentFinalTotal = currentTaxable + currentTaxAmt;
                         const totalPaid = (newOrder.payments || []).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
                         const currentBalanceDue = Math.max(0, currentFinalTotal - totalPaid);
@@ -3425,6 +3475,12 @@ const CateringManagementPage = () => {
                                                             size="small"
                                                             fullWidth
                                                             value={adminCustomItemPrice}
+                                                            onFocus={(e) => e.target.select()}
+                                                            onBlur={(e) => {
+                                                                const val = Math.max(0, parseFloat(e.target.value) || 0);
+                                                                setAdminCustomItemPrice(val);
+                                                                e.target.value = val.toString();
+                                                            }}
                                                             onChange={e => setAdminCustomItemPrice(Math.max(0, parseFloat(e.target.value) || 0))}
                                                             inputProps={{ min: 0, step: '0.01' }}
                                                         />
@@ -3447,7 +3503,7 @@ const CateringManagementPage = () => {
                                                 <Typography variant="subtitle2" sx={{ mb: 1 }}>Selected Items</Typography>
                                                 <Paper variant="outlined">
                                                     <List disablePadding>
-                                                        {newOrder.items.map((item, index) => (
+                                                        {(newOrder?.items || []).map((item, index) => (
                                                             <ListItem key={index} divider secondaryAction={
                                                                 <IconButton size="small" color="error" onClick={() => handleRemoveItem(index)}>
                                                                     <Cancel fontSize="small" />
@@ -3485,12 +3541,12 @@ const CateringManagementPage = () => {
                                                                 />
                                                             </ListItem>
                                                         ))}
-                                                        {newOrder.items.length === 0 && (
+                                                        {(newOrder?.items || []).length === 0 && (
                                                             <ListItem><Typography variant="body2" color="text.secondary">No items selected yet</Typography></ListItem>
                                                         )}
                                                     </List>
                                                 </Paper>
-                                                {newOrder.items.length === 0 && (
+                                                {(newOrder?.items || []).length === 0 && (
                                                     <Box sx={{ mt: 1.5, px: 1.5, py: 1, bgcolor: '#fff3e0', border: '1px solid #ffb74d', borderRadius: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
                                                         <Typography variant="caption" sx={{ color: '#e65100', fontWeight: 600 }}>
                                                             ⚠ Please select and add at least one food item before proceeding.
@@ -3503,7 +3559,7 @@ const CateringManagementPage = () => {
                                                 <Button
                                                     variant="contained"
                                                     onClick={() => {
-                                                        if (newOrder.items.length === 0) {
+                                                        if ((newOrder?.items || []).length === 0) {
                                                             toast.error('Please add at least one food item to proceed.');
                                                             return;
                                                         }
@@ -3567,12 +3623,18 @@ const CateringManagementPage = () => {
                                                         size="small"
                                                         disabled
                                                         value={isCalculatingTax ? 'Calculating...' : currentFinalTotal.toFixed(2)}
-                                                        InputProps={{ 
+                                                        error={!!taxError && !isCalculatingTax}
+                                                        InputProps={{
                                                             sx: { fontWeight: 'bold', bgcolor: alpha(theme.palette.success.main, 0.05) },
                                                             endAdornment: isCalculatingTax ? <CircularProgress size={20} /> : null
                                                         }}
                                                     />
                                                 </Grid>
+                                                {taxError && !isCalculatingTax && (
+                                                    <Grid item xs={12}>
+                                                        <Alert severity="warning" sx={{ py: 0.5 }}>{taxError}</Alert>
+                                                    </Grid>
+                                                )}
                                                 <Grid item xs={12}>
                                                     <Box display="flex" justifyContent="space-between" alignItems="center" mb={1} mt={2}>
                                                         <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>Payment Details</Typography>
@@ -3898,9 +3960,9 @@ const CateringManagementPage = () => {
                                                     color="success"
                                                     onClick={handleCreateOrder}
                                                     sx={{ px: 3 }}
-                                                    disabled={creating || isCalculatingTax}
+                                                    disabled={creating || isCalculatingTax || !!taxError}
                                                 >
-                                                    {creating ? 'Creating...' : isCalculatingTax ? 'Calculating Tax...' : '✓ Create Order'}
+                                                    {creating ? 'Creating...' : isCalculatingTax ? 'Calculating Tax...' : taxError ? 'Complete address to continue' : '✓ Create Order'}
                                                 </Button>
                                             </Box>
                                         </Box>
@@ -3939,7 +4001,7 @@ const CateringManagementPage = () => {
                 </MenuItem>
                 <MenuItem onClick={() => { handleActionMenuClose(); setSelectedOrder(actionOrder); setChatDialogOpen(true); }}>
                     <ListItemIcon><ChatBubble fontSize="small" sx={{ color: '#0ea5e9' }} /></ListItemIcon>
-                    <Typography variant="body2" fontWeight="600">Chat Support</Typography>
+                    <Typography variant="body2" fontWeight="600">Event Coordination</Typography>
                 </MenuItem>
                 
                 <Divider sx={{ my: 1 }} />
@@ -3952,18 +4014,23 @@ const CateringManagementPage = () => {
                         <ListItemIcon>
                             {updatingOrderId === actionOrder?._id ? <CircularProgress size={20} color="inherit" /> : <CheckCircle fontSize="small" sx={{ color: '#10b981' }} />}
                         </ListItemIcon>
-                        <Typography variant="body2" fontWeight="600" sx={{ color: '#10b981' }}>Confirm Order</Typography>
+                        <Typography variant="body2" fontWeight="600" sx={{ color: '#10b981' }}>Send Final Quote</Typography>
                     </MenuItem>
                 )}
                 {actionOrder?.status === 'confirmed' && (
                     <MenuItem 
                         onClick={() => { handleUpdateStatus(actionOrder._id, 'completed'); handleActionMenuClose(); }}
-                        disabled={updatingOrderId === actionOrder?._id}
+                        disabled={updatingOrderId === actionOrder?._id || Math.max(0, (actionOrder?.totalAmount || 0) - (actionOrder?.advanceReceived || 0)) > 0.01}
                     >
                         <ListItemIcon>
-                            {updatingOrderId === actionOrder?._id ? <CircularProgress size={20} color="inherit" /> : <CheckCircle fontSize="small" sx={{ color: '#3730a3' }} />}
+                            {updatingOrderId === actionOrder?._id ? <CircularProgress size={20} color="inherit" /> : <CheckCircle fontSize="small" sx={{ color: Math.max(0, (actionOrder?.totalAmount || 0) - (actionOrder?.advanceReceived || 0)) > 0.01 ? 'text.disabled' : '#3730a3' }} />}
                         </ListItemIcon>
-                        <Typography variant="body2" fontWeight="600" sx={{ color: '#3730a3' }}>Mark Complete</Typography>
+                        <Box>
+                            <Typography variant="body2" fontWeight="600" sx={{ color: Math.max(0, (actionOrder?.totalAmount || 0) - (actionOrder?.advanceReceived || 0)) > 0.01 ? 'text.disabled' : '#3730a3' }}>Mark Complete</Typography>
+                            {Math.max(0, (actionOrder?.totalAmount || 0) - (actionOrder?.advanceReceived || 0)) > 0.01 && (
+                                <Typography variant="caption" color="error.main" display="block">Awaiting full payment</Typography>
+                            )}
+                        </Box>
                     </MenuItem>
                 )}
                 

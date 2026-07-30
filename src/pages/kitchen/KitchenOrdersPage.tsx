@@ -359,14 +359,14 @@ const KitchenOrdersPage: React.FC = () => {
                                     </Box>
 
                                     {/* Progress Bar */}
-                                    {order.items && order.items.length > 0 && (() => {
-                                        const readyItems = order.items.filter((item: any) => item.preparationStatus === 'ready').length;
-                                        const progress = (readyItems / order.items.length) * 100;
+                                    {order.items && (order?.items || []).length > 0 && (() => {
+                                        const readyItems = (order?.items || []).filter((item: any) => item.preparationStatus === 'ready').length;
+                                        const progress = (readyItems / (order?.items || []).length) * 100;
                                         return (
                                             <Box sx={{ mt: { xs: 1, sm: 2 }, mb: { xs: 0.5, sm: 1 } }}>
                                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.4 }}>
                                                     <Typography variant="caption" color="text.secondary" sx={{ fontWeight: '500', fontSize: bodyFontSize }}>
-                                                        Items Ready ({readyItems}/{order.items.length})
+                                                        Items Ready ({readyItems}/{(order?.items || []).length})
                                                     </Typography>
                                                     <Typography variant="caption" fontWeight="bold" color={getProgressColor(progress) as any} sx={{ fontSize: bodyFontSize }}>
                                                         {Math.round(progress)}%

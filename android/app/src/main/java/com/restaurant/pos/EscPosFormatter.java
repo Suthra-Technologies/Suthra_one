@@ -41,6 +41,21 @@ public final class EscPosFormatter {
         return s.replace("₹", "Rs.").replaceAll("[<>]", "").replaceAll("\\s{2,}", " ").trim();
     }
 
+    /**
+     * POS embeds the spice level in the item display name (e.g. "Idly 🌶️ very_hot").
+     * The emoji is unprintable on thermal (renders as "??") and the spice level prints
+     * on its own line, so strip both from the name.
+     */
+    private static String itemName(JSONObject it, String fallback) {
+        String s = clean(it.optString("name", fallback)).replaceAll("[^\\x20-\\x7E]", " ");
+        String spice = clean(it.optString("spiceLevel", ""));
+        if (!spice.isEmpty()) {
+            s = s.replaceAll("(?i)\\s*" + java.util.regex.Pattern.quote(spice) + "\\s*$", "");
+        }
+        s = s.replaceAll("\\s{2,}", " ").trim();
+        return s.isEmpty() ? "Item" : s;
+    }
+
     // Currency prefix for the current bill, set per build call. Printer-safe (no
     // ₹/€/£ glyphs).
     private static String currencyPrefix = "$";
@@ -488,9 +503,7 @@ public final class EscPosFormatter {
                     continue;
                 if ("cancelled".equals(it.optString("preparationStatus", "")))
                     continue;
-                String name = clean(it.optString("name", it.optString("menuItem", "Item")));
-                if (name.isEmpty())
-                    name = "Item";
+                String name = itemName(it, it.optString("menuItem", "Item"));
                 int qty = it.optInt("quantity", 1);
                 double price = it.optDouble("price", 0);
                 double total = it.has("total") ? it.optDouble("total") : price * qty;
@@ -611,8 +624,7 @@ public final class EscPosFormatter {
                 JSONObject it = items.optJSONObject(i);
                 if (it == null || "cancelled".equals(it.optString("preparationStatus", "")))
                     continue;
-                String name = clean(it.optString("name", "Item"));
-                if (name.isEmpty()) name = "Item";
+                String name = itemName(it, "Item");
                 
                 int quantity = it.optInt("quantity", 1);
                 String qtyStr = quantity > 1 ? " x" + quantity : "";
@@ -716,9 +728,7 @@ public final class EscPosFormatter {
                 JSONObject it = items.optJSONObject(i);
                 if (it == null || "cancelled".equals(it.optString("preparationStatus", "")))
                     continue;
-                String name = clean(it.optString("name", "Item"));
-                if (name.isEmpty())
-                    name = "Item";
+                String name = itemName(it, "Item");
                 int qty = it.optInt("quantity", 1);
                 double price = it.optDouble("price", 0);
                 double total = it.has("total") ? it.optDouble("total") : price * qty;
@@ -836,8 +846,7 @@ public final class EscPosFormatter {
                 JSONObject it = items.optJSONObject(i);
                 if (it == null || "cancelled".equals(it.optString("preparationStatus", "")))
                     continue;
-                String name = clean(it.optString("name", "Item"));
-                if (name.isEmpty()) name = "Item";
+                String name = itemName(it, "Item");
                 
                 int quantity = it.optInt("quantity", 1);
                 String qtyStr = quantity > 1 ? " x" + quantity : "";

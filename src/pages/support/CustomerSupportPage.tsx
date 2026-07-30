@@ -71,6 +71,8 @@ interface Ticket {
 
 // fixImageUrl removed to use centralized utility
 
+const formatAmount = (value: any) => Number(value ?? 0).toFixed(2);
+
 const CustomerSupportPage: React.FC = () => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -410,7 +412,7 @@ const CustomerSupportPage: React.FC = () => {
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                                             <Typography variant="subtitle2" fontWeight="800" color="info.main">ORDER SNAPSHOT</Typography>
                                             <Chip size="small" label={`#${selectedTicket.orderSnapshot.orderNumber}`} sx={{ fontWeight: 'bold', fontSize: '0.65rem' }} />
-                                            <Typography variant="body2" fontWeight="700" color="primary.main">${selectedTicket.orderSnapshot.totalAmount}</Typography>
+                                            <Typography variant="body2" fontWeight="700" color="primary.main">${formatAmount(selectedTicket.orderSnapshot.totalAmount)}</Typography>
                                         </Box>
                                         <IconButton size="small">
                                             {showSnapshotDetails ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
@@ -434,14 +436,14 @@ const CustomerSupportPage: React.FC = () => {
                                                     {selectedTicket.orderSnapshot.items?.map((item: any, i: number) => (
                                                         <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between' }}>
                                                             <Typography variant="caption">• {item.quantity}x {item.name}</Typography>
-                                                            <Typography variant="caption" fontWeight="600">${item.total}</Typography>
+                                                            <Typography variant="caption" fontWeight="600">${formatAmount(item.total)}</Typography>
                                                         </Box>
                                                     ))}
                                                 </Stack>
                                                 {selectedTicket.orderSnapshot.subtotal && (
                                                     <Box sx={{ mt: 2, pt: 1, borderTop: '1px solid', borderColor: 'divider', display: 'flex', justifyContent: 'space-between' }}>
                                                         <Typography variant="caption" color="text.secondary">Subtotal</Typography>
-                                                        <Typography variant="caption">${selectedTicket.orderSnapshot.subtotal}</Typography>
+                                                        <Typography variant="caption">${formatAmount(selectedTicket.orderSnapshot.subtotal)}</Typography>
                                                     </Box>
                                                 )}
                                             </Grid>

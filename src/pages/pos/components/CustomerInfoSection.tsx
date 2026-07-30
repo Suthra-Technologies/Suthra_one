@@ -26,7 +26,9 @@ import {
 import React, { useEffect } from 'react';
 import AddressAutocomplete from '../../../components/AddressAutocomplete';
 import PhoneInput from '../../../components/PhoneInput';
-import { validatePhone } from '../../../utils/validation';
+import { validateEmail, validatePhone } from '../../../utils/validation';
+import { getActivePaymentMethods } from '../../../utils/orderWorkflows';
+import { getMaxGuests, getMergedGroup } from '../utils/tableCapacity';
 
 interface CustomerInfoSectionProps {
     customerName: string;
@@ -44,7 +46,7 @@ interface CustomerInfoSectionProps {
     cardType?: 'credit' | 'debit';
     setCardType?: (val: 'credit' | 'debit') => void;
     guestCount: number;
-    setGuestCount: (val: number) => void;
+    setGuestCount: React.Dispatch<React.SetStateAction<number>>;
     tableNumber: string;
     setTableNumber: (val: string) => void;
     waiterName: string;
@@ -91,6 +93,8 @@ interface CustomerInfoSectionProps {
     customerConflict: boolean;
     maxUsablePoints?: number;
     isApplyingCoupon?: boolean;
+    /** Add-items mode: the order already exists, so only new cart items may change. */
+    readOnly?: boolean;
 }
 
 const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
@@ -156,6 +160,7 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
     customerConflict,
     maxUsablePoints = 0,
     isApplyingCoupon = false,
+    readOnly = false,
 }) => {
     const isIndia = settings?.restaurant?.country?.toLowerCase() === 'india';
 
@@ -204,46 +209,18 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
 
         return slots;
     };
-    const mergedGroup = React.useMemo(() => {
-        if (!selectedTable) {
-            return null;
-        }
+    const mergedGroup = React.useMemo(
+        () => getMergedGroup(selectedTable, tables, pendingMergeSecondaryIds),
+        [selectedTable, tables, pendingMergeSecondaryIds]
+    );
 
-        // 1. If we have pending merges from the POS UI
-        if (pendingMergeSecondaryIds.length > 0) {
-            const secondaries = pendingMergeSecondaryIds.map(id => tables.find(t => t._id === id)).filter(Boolean);
-            const combinedCapacity = (selectedTable.capacity || 0) + secondaries.reduce((sum, t) => sum + (t.capacity || 0), 0);
-            return {
-                primary: selectedTable,
-                secondaries,
-                combinedCapacity,
-                isPending: true
-            };
-        }
+    const maxGuests = getMaxGuests(mergedGroup);
 
-        // 2. If the table is already merged in the DB
-        if (selectedTable.isPrimary || selectedTable.mergedWith) {
-            const primaryId = selectedTable.isPrimary ? selectedTable._id : selectedTable.mergedWith;
-            const primary = tables.find(t => t._id === primaryId);
-            const secondaries = tables.filter(t => t.mergedWith === primaryId);
-            const combinedCapacity = (primary?.capacity || 0) + secondaries.reduce((sum, t) => sum + (t.capacity || 0), 0);
-
-            return {
-                primary,
-                secondaries,
-                combinedCapacity,
-                isPending: false
-            };
-        }
-
-        // 3. Single table
-        return {
-            primary: selectedTable,
-            secondaries: [],
-            combinedCapacity: selectedTable?.capacity || 0,
-            isPending: false
-        };
-    }, [selectedTable, tables, pendingMergeSecondaryIds]);
+    // Clamp when capacity shrinks under the current count — switching to a smaller
+    // table, or a guest count arriving from the URL / an existing order.
+    useEffect(() => {
+        setGuestCount((current: number) => (current > maxGuests ? maxGuests : current));
+    }, [maxGuests, setGuestCount]);
 
     return (
         <Box sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1, mb: 2 }}>
@@ -286,7 +263,7 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                         }}
                         error={customerNameTouched && !!customerNameError}
                         helperText={customerNameTouched && customerNameError}
-                        disabled={user?.role === 'customer'}
+                        disabled={readOnly || user?.role === 'customer'}
                         required
                         inputProps={{ maxLength: 30 }}
                         InputLabelProps={{
@@ -310,15 +287,23 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                             const isUS = customerDialCode === '1' || customerDialCode === '+1';
                             const final = (isUS && cleaned.length > 10) ? cleaned.slice(0, 10) : cleaned;
                             setCustomerPhone(final);
-                            if (customerPhoneTouched && final) {
-                                const validation = validatePhone(final, customerDialCode);
-                                setCustomerPhoneError(validation.isValid ? '' : (validation.message || ''));
+                            if (customerPhoneTouched) {
+                                if (final && final.trim().length > 0) {
+                                    const validation = validatePhone(final, customerDialCode);
+                                    setCustomerPhoneError(validation.isValid ? '' : (validation.message || ''));
+                                } else {
+                                    setCustomerPhoneError('');
+                                }
                             }
                         }}
                         onBlur={() => {
                             setCustomerPhoneTouched(true);
-                            const validation = validatePhone(customerPhone, customerDialCode);
-                            setCustomerPhoneError(validation.isValid ? '' : (validation.message || ''));
+                            if (customerPhone && customerPhone.trim().length > 0) {
+                                const validation = validatePhone(customerPhone, customerDialCode);
+                                setCustomerPhoneError(validation.isValid ? '' : (validation.message || ''));
+                            } else {
+                                setCustomerPhoneError('');
+                            }
                         }}
                         error={customerPhoneTouched && !!customerPhoneError}
                         helperText={suggestedPhone ? (
@@ -337,8 +322,7 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                 </Button>
                             </Box>
                         ) : (customerPhoneTouched && customerPhoneError)}
-                        disabled={user?.role === 'customer'}
-                        required
+                        disabled={readOnly || user?.role === 'customer'}
                         dialCode={customerDialCode}
                         onDialCodeChange={setCustomerDialCode}
                     />
@@ -351,29 +335,23 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                         type="email"
                         value={customerEmail}
                         onChange={(e) => {
-                            const val = e.target.value?.toLowerCase();
+                            const val = e.target.value?.toLowerCase().slice(0, 50);
                             setCustomerEmail(val);
                             if (customerEmailTouched) {
-                                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                                if (val && !emailRegex.test(val)) {
-                                    setCustomerEmailError('Please enter a valid email address');
-                                } else {
-                                    setCustomerEmailError('');
-                                }
+                                // Email is optional on POS orders, so only validate a non-empty value.
+                                const validation = validateEmail(val);
+                                setCustomerEmailError(val && !validation.isValid ? (validation.message || '') : '');
                             }
                         }}
                         onBlur={() => {
                             setCustomerEmailTouched(true);
-                            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                            if (customerEmail && !emailRegex.test(customerEmail)) {
-                                setCustomerEmailError('Please enter a valid email address');
-                            } else {
-                                setCustomerEmailError('');
-                            }
+                            const validation = validateEmail(customerEmail);
+                            setCustomerEmailError(customerEmail && !validation.isValid ? (validation.message || '') : '');
                         }}
                         error={customerEmailTouched && !!customerEmailError}
                         helperText={customerEmailTouched && customerEmailError}
-                        disabled={user?.role === 'customer'}
+                        disabled={readOnly || user?.role === 'customer'}
+                        inputProps={{ maxLength: 50 }}
                         autoComplete="off"
                     />
                 </Grid>
@@ -431,7 +409,7 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                         }}
                                         inputProps={{ min: 0, max: maxUsablePoints }}
                                         fullWidth
-                                        disabled={!rewardPointsInfo.points || rewardPointsInfo.points < (rewardPointsInfo.settings?.minPointsToRedeem || 0) || maxUsablePoints === 0}
+                                        disabled={readOnly || !rewardPointsInfo.points || rewardPointsInfo.points < (rewardPointsInfo.settings?.minPointsToRedeem || 0) || maxUsablePoints === 0}
                                         helperText={
                                             <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <span>{pointsToRedeem > 0 ? `-$${(pointsToRedeem * (rewardPointsInfo.settings?.pointValue || 0)).toFixed(2)} discount` : `Max usable: ${maxUsablePoints} pts`}</span>
@@ -452,7 +430,7 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                         size="small"
                                         disableElevation
                                         onClick={() => setPointsToRedeem(maxUsablePoints)}
-                                        disabled={!rewardPointsInfo.points || rewardPointsInfo.points < (rewardPointsInfo.settings?.minPointsToRedeem || 0) || maxUsablePoints === 0 || pointsToRedeem === maxUsablePoints}
+                                        disabled={readOnly || !rewardPointsInfo.points || rewardPointsInfo.points < (rewardPointsInfo.settings?.minPointsToRedeem || 0) || maxUsablePoints === 0 || pointsToRedeem === maxUsablePoints}
                                         sx={{ mt: 0.5 }}
                                     >
                                         MAX
@@ -471,7 +449,7 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
             <Box sx={{ mb: 2 }}>
                 {/* Order Type & Payment Method */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mb: 2 }}>
-                    <FormControl component="fieldset" sx={{ alignItems: 'center' }}>
+                    <FormControl component="fieldset" disabled={readOnly} sx={{ alignItems: 'center' }}>
                         <Typography variant="body2" gutterBottom fontWeight="bold">
                             Order Type
                         </Typography>
@@ -509,37 +487,14 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                     pointerEvents: finalTotal === 0 ? 'none' : 'auto'
                                 }}
                             >
-                                {(settings.system?.posPaymentMethods?.cash ?? true) && (
-                                    <FormControlLabel value="cash" control={<Radio size="small" />} label="Cash" />
-                                )}
-                                {isIndia ? (
-                                    <>
-                                        {(settings.system?.posPaymentMethods?.zelle ?? true) && (
-                                            <FormControlLabel value="phonepe" control={<Radio size="small" />} label="PhonePe" />
-                                        )}
-                                        {(settings.system?.posPaymentMethods?.zelle ?? true) && (
-                                            <FormControlLabel value="gpay" control={<Radio size="small" />} label="GPay" />
-                                        )}
-                                        {(settings.system?.posPaymentMethods?.venmo ?? true) && (
-                                            <FormControlLabel value="paytm" control={<Radio size="small" />} label="Paytm" />
-                                        )}
-                                    </>
-                                ) : (
-                                    <>
-                                        {(settings.system?.posPaymentMethods?.zelle ?? true) && (
-                                            <FormControlLabel value="zelle" control={<Radio size="small" />} label="Zelle" />
-                                        )}
-                                    </>
-                                )}
-                                {(settings.system?.posPaymentMethods?.card ?? true) && (
-                                    <FormControlLabel value="card" control={<Radio size="small" />} label="Card" />
-                                )}
-                                {!isIndia && (settings.system?.posPaymentMethods?.venmo ?? true) && (
-                                    <FormControlLabel value="venmo" control={<Radio size="small" />} label="Venmo" />
-                                )}
-                                {(settings.system?.posPaymentMethods?.cheque ?? true) && (
-                                    <FormControlLabel value="cheque" control={<Radio size="small" />} label="Cheque" />
-                                )}
+                                {getActivePaymentMethods(settings).map(pm => (
+                                    <FormControlLabel 
+                                        key={pm.val} 
+                                        value={pm.val} 
+                                        control={<Radio size="small" />} 
+                                        label={<span>{pm.label}</span>} 
+                                    />
+                                ))}
                             </RadioGroup>
                         </FormControl>
                     )}
@@ -575,13 +530,19 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                     type="number"
                                     size="small"
                                     value={guestCount}
-                                    onChange={(e) => setGuestCount(parseInt(e.target.value) || 1)}
-                                    sx={{ width: '70px' }}
-                                    inputProps={{ min: 1 }}
+                                    onChange={(e) => {
+                                        const parsed = parseInt(e.target.value) || 1;
+                                        setGuestCount(Math.min(maxGuests, Math.max(1, parsed)));
+                                    }}
+                                    sx={{ width: '90px' }}
+                                    inputProps={{ min: 1, max: maxGuests }}
+                                    error={guestCount > maxGuests}
+                                    helperText={mergedGroup?.combinedCapacity ? `Max: ${maxGuests}` : ''}
+                                    disabled={readOnly}
                                 />
                             </Box>
                             <Box sx={{ display: 'flex', gap: 2, flexGrow: 1, width: { xs: '100%', sm: 'auto' } }}>
-                                <FormControl size="small" fullWidth error={!!tableError}>
+                                <FormControl size="small" fullWidth error={!!tableError} disabled={readOnly}>
                                     <InputLabel>Table</InputLabel>
                                     <Select
                                         value={selectedTable?._id || ''}
@@ -602,7 +563,7 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                     </Select>
                                     {tableError && <Typography variant="caption" color="error">{tableError}</Typography>}
                                 </FormControl>
-                                {(selectedTable?.isMerged || selectedTable?.isPrimary) ? (
+                                {!readOnly && ((selectedTable?.isMerged || selectedTable?.isPrimary) ? (
                                     <Tooltip title="Unmerge Tables">
                                         <IconButton
                                             color="error"
@@ -622,8 +583,8 @@ const CustomerInfoSection: React.FC<CustomerInfoSectionProps> = ({
                                             <LinkIcon />
                                         </IconButton>
                                     </Tooltip>
-                                )}
-                                <FormControl size="small" fullWidth>
+                                ))}
+                                <FormControl size="small" fullWidth disabled={readOnly}>
                                     <InputLabel>Waiter</InputLabel>
                                     <Select
                                         value={waiterName}
