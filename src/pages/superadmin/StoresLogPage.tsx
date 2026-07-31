@@ -3,6 +3,7 @@ import {
     Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
     TableHead, TableRow, CircularProgress, alpha, useTheme, Stack, Chip,
     Card, CardContent, Grid, TablePagination, TextField, InputAdornment, IconButton,
+    Dialog, DialogTitle, DialogContent, DialogActions, Button,
 } from '@mui/material';
 import StoreIcon from '@mui/icons-material/Store';
 import SearchIcon from '@mui/icons-material/Search';
@@ -11,7 +12,17 @@ import { superAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 
-const statusColor = (active: boolean) => active ? 'success' : 'default';
+const statusColor = (status: string) => {
+    switch (status) {
+        case 'active': return 'success';
+        case 'pending': return 'warning';
+        case 'suspended': return 'error';
+        case 'hold': return 'error';
+        default: return 'default';
+    }
+};
+
+const statusLabel = (status: string) => status ? status.charAt(0).toUpperCase() + status.slice(1) : 'Pending';
 
 const StoresLogPage: React.FC = () => {
     const theme = useTheme();
@@ -26,6 +37,7 @@ const StoresLogPage: React.FC = () => {
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(25);
+    const [reasonDialogStore, setReasonDialogStore] = useState<any | null>(null);
 
     const fetchStores = async () => {
         setLoading(true);
@@ -49,8 +61,8 @@ const StoresLogPage: React.FC = () => {
 
     const totals = {
         total: stores.length,
-        active: stores.filter(s => s.isActive !== false).length,
-        inactive: stores.filter(s => s.isActive === false).length,
+        active: stores.filter(s => s.status === 'active').length,
+        inactive: stores.filter(s => s.status !== 'active').length,
     };
 
     return (
@@ -150,7 +162,13 @@ const StoresLogPage: React.FC = () => {
                                             : <Typography variant="body2" color="text.secondary">—</Typography>}
                                     </TableCell>
                                     <TableCell>
-                                        <Chip label={store.isActive !== false ? 'Active' : 'Inactive'} size="small" color={statusColor(store.isActive !== false) as any} sx={{ fontWeight: 'bold' }} />
+                                        <Chip
+                                            label={statusLabel(store.status)}
+                                            size="small"
+                                            color={statusColor(store.status) as any}
+                                            sx={{ fontWeight: 'bold', textTransform: 'capitalize', ...(store.statusNote ? { cursor: 'pointer' } : {}) }}
+                                            onClick={store.statusNote ? () => setReasonDialogStore(store) : undefined}
+                                        />
                                     </TableCell>
                                     <TableCell>
                                         <Typography variant="body2">{store.createdAt ? new Date(store.createdAt).toLocaleDateString() : '—'}</Typography>
@@ -189,7 +207,13 @@ const StoresLogPage: React.FC = () => {
                             <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                                 <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={1}>
                                     <Typography fontWeight="bold">{store.name}</Typography>
-                                    <Chip label={store.isActive !== false ? 'Active' : 'Inactive'} size="small" color={statusColor(store.isActive !== false) as any} sx={{ fontWeight: 'bold' }} />
+                                    <Chip
+                                        label={statusLabel(store.status)}
+                                        size="small"
+                                        color={statusColor(store.status) as any}
+                                        sx={{ fontWeight: 'bold', textTransform: 'capitalize', ...(store.statusNote ? { cursor: 'pointer' } : {}) }}
+                                        onClick={store.statusNote ? () => setReasonDialogStore(store) : undefined}
+                                    />
                                 </Stack>
                                 <Typography variant="caption" color="text.secondary" display="block">{store.slug}</Typography>
                                 <Typography variant="caption" color="text.secondary" display="block">{store.contactEmail}</Typography>
@@ -221,6 +245,32 @@ const StoresLogPage: React.FC = () => {
                     rowsPerPageOptions={[25, 50, 100]}
                 />
             </Paper>
+
+            {/* Status Reason Dialog */}
+            <Dialog open={!!reasonDialogStore} onClose={() => setReasonDialogStore(null)} maxWidth="xs" fullWidth>
+                <DialogTitle>
+                    Status Reason
+                    {reasonDialogStore && (
+                        <Chip
+                            label={statusLabel(reasonDialogStore.status)}
+                            size="small"
+                            color={statusColor(reasonDialogStore.status) as any}
+                            sx={{ fontWeight: 'bold', textTransform: 'capitalize', ml: 1.5 }}
+                        />
+                    )}
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" color="text.secondary" mb={1.5}>
+                        {reasonDialogStore?.name || '—'}
+                    </Typography>
+                    <Typography variant="body2">
+                        {reasonDialogStore?.statusNote || 'No reason was provided.'}
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setReasonDialogStore(null)}>Close</Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };

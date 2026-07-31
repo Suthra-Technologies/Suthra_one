@@ -33,6 +33,41 @@ const actionColor = (action: string) => {
 
 const fmt = (d: string) => d ? new Date(d).toLocaleString() : '—';
 
+// Humanizes a camelCase/snake_case key into "Title Case With Spaces".
+const humanizeKey = (key: string) => key
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/[_-]+/g, ' ')
+    .replace(/^./, c => c.toUpperCase());
+
+// Turns an arbitrary details object (shape varies per module/action) into a
+// readable "Key: value, Key: value" summary instead of raw JSON, skipping
+// empty/null fields. Nested objects are flattened one level (e.g. for the
+// doordash/ubereats settings blob) using "Parent Key: {..}" grouping.
+const formatDetails = (details: any): string => {
+    if (details === null || details === undefined) return '—';
+    if (typeof details === 'string') return details;
+    if (typeof details !== 'object') return String(details);
+
+    const parts: string[] = [];
+    for (const [key, value] of Object.entries(details)) {
+        if (value === null || value === undefined || value === '') continue;
+        const label = humanizeKey(key);
+        if (Array.isArray(value)) {
+            if (value.length === 0) continue;
+            parts.push(`${label}: ${value.join(', ')}`);
+        } else if (typeof value === 'object') {
+            const nested = Object.entries(value)
+                .filter(([, v]) => v !== null && v !== undefined && v !== '')
+                .map(([k, v]) => `${humanizeKey(k)}: ${v}`)
+                .join(', ');
+            if (nested) parts.push(`${label}: (${nested})`);
+        } else {
+            parts.push(`${label}: ${value}`);
+        }
+    }
+    return parts.length > 0 ? parts.join(' · ') : '—';
+};
+
 const MODULES = ['all', 'STORE', 'PLAN', 'TICKET', 'DEMO_REQUEST'];
 
 const AdminLogsPage: React.FC = () => {
@@ -144,7 +179,7 @@ const AdminLogsPage: React.FC = () => {
                                     <TableCell sx={{ fontWeight: 700 }}>Module</TableCell>
                                     <TableCell sx={{ fontWeight: 700 }}>Action</TableCell>
                                     <TableCell sx={{ fontWeight: 700 }}>Performed By</TableCell>
-                                    <TableCell sx={{ fontWeight: 700 }}>Target</TableCell>
+                                    <TableCell sx={{ fontWeight: 700, maxWidth: 200 }}>Target</TableCell>
                                     <TableCell sx={{ fontWeight: 700 }}>Details</TableCell>
                                     <TableCell sx={{ fontWeight: 700 }}>Date & Time</TableCell>
                                 </TableRow>
@@ -173,15 +208,26 @@ const AdminLogsPage: React.FC = () => {
                                                 <Typography variant="body2" fontWeight={600}>{adminName}</Typography>
                                                 {adminEmail && <Typography variant="caption" color="text.secondary">{adminEmail}</Typography>}
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell sx={{ maxWidth: 200 }}>
                                                 {log.targetName ? (
-                                                    <Typography variant="body2">{log.targetName}</Typography>
+                                                    <Typography
+                                                        variant="body2"
+                                                        sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                                        title={log.targetName}
+                                                    >
+                                                        {log.targetName}
+                                                    </Typography>
                                                 ) : '—'}
                                             </TableCell>
-                                            <TableCell sx={{ maxWidth: 220 }}>
+                                            <TableCell sx={{ maxWidth: 260 }}>
                                                 {log.details ? (
-                                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                        {typeof log.details === 'string' ? log.details : JSON.stringify(log.details)}
+                                                    <Typography
+                                                        variant="caption"
+                                                        color="text.secondary"
+                                                        title={formatDetails(log.details)}
+                                                        sx={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                                                    >
+                                                        {formatDetails(log.details)}
                                                     </Typography>
                                                 ) : '—'}
                                             </TableCell>

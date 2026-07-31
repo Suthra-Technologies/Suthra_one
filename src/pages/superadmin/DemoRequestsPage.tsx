@@ -51,20 +51,28 @@ import { publicDemoAPI, superAPI } from '../../services/api';
 
 // Ordered pipeline: once a request has moved to a later step, earlier steps
 // become unavailable — status can only move forward, never backward.
+// "Backout" (status='rejected') is the one exception: a requester can pull out
+// at any stage, so it's always selectable and always requires a reason.
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'Pending', color: 'warning' as const },
   { value: 'demo_scheduled', label: 'Demo Scheduled', color: 'primary' as const },
   { value: 'completed', label: 'Demo Completed', color: 'success' as const },
   { value: 'contacted', label: 'Contacted', color: 'info' as const },
+  { value: 'rejected', label: 'Backout', color: 'error' as const },
 ];
+
+const BACKOUT_STATUS = 'rejected';
 
 const getStatusStep = (status: string): number => {
   const index = STATUS_OPTIONS.findIndex((s) => s.value === status);
   return index === -1 ? 0 : index;
 };
 
-const isStatusOptionDisabled = (optionValue: string, currentStatus: string): boolean =>
-  getStatusStep(optionValue) <= getStatusStep(currentStatus);
+const isStatusOptionDisabled = (optionValue: string, currentStatus: string): boolean => {
+  if (optionValue === BACKOUT_STATUS) return currentStatus === BACKOUT_STATUS;
+  if (currentStatus === BACKOUT_STATUS) return true;
+  return getStatusStep(optionValue) <= getStatusStep(currentStatus);
+};
 
 const getStatusChipColor = (status: string): 'default' | 'warning' | 'info' | 'primary' | 'success' | 'error' => {
   const found = STATUS_OPTIONS.find((s) => s.value === status);
@@ -96,6 +104,11 @@ const DemoRequestsPage: React.FC = () => {
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [fetchingSlots, setFetchingSlots] = useState(false);
   const [rescheduling, setRescheduling] = useState(false);
+
+  const [backoutDialogOpen, setBackoutDialogOpen] = useState(false);
+  const [backoutRequestId, setBackoutRequestId] = useState<string | null>(null);
+  const [backoutReason, setBackoutReason] = useState('');
+  const [submittingBackout, setSubmittingBackout] = useState(false);
 
   const fetchRequests = async () => {
     setLoading(true);
@@ -156,6 +169,15 @@ const DemoRequestsPage: React.FC = () => {
   };
 
   const handleStatusChange = async (requestId: string, newStatus: string) => {
+    // Backing out always needs a reason — collect it in a dialog before saving,
+    // instead of writing the status change immediately like every other option.
+    if (newStatus === BACKOUT_STATUS) {
+      setBackoutRequestId(requestId);
+      setBackoutReason('');
+      setBackoutDialogOpen(true);
+      return;
+    }
+
     try {
       await superAPI.updateDemoRequest(requestId, { status: newStatus });
       toast.success('Status updated successfully');
@@ -167,6 +189,30 @@ const DemoRequestsPage: React.FC = () => {
     } catch (error) {
       console.error('Error updating status:', error);
       toast.error('Failed to update status');
+    }
+  };
+
+  const handleConfirmBackout = async () => {
+    if (!backoutRequestId || !backoutReason.trim()) return;
+    try {
+      setSubmittingBackout(true);
+      await superAPI.updateDemoRequest(backoutRequestId, {
+        status: BACKOUT_STATUS,
+        backoutReason: backoutReason.trim(),
+      });
+      toast.success('Marked as backed out');
+      fetchRequests();
+      if (selectedRequest && selectedRequest._id === backoutRequestId) {
+        setSelectedRequest((prev: any) => ({ ...prev, status: BACKOUT_STATUS, backoutReason: backoutReason.trim() }));
+      }
+      setBackoutDialogOpen(false);
+      setBackoutRequestId(null);
+      setBackoutReason('');
+    } catch (error) {
+      console.error('Error saving backout reason:', error);
+      toast.error('Failed to update status');
+    } finally {
+      setSubmittingBackout(false);
     }
   };
 
@@ -697,6 +743,14 @@ const DemoRequestsPage: React.FC = () => {
                     ))}
                   </Select>
                 </FormControl>
+                {selectedRequest.status === BACKOUT_STATUS && selectedRequest.backoutReason && (
+                  <Box mt={1.5} sx={{ p: 1.5, bgcolor: '#fef2f2', border: '1px solid #fecaca', borderRadius: 1 }}>
+                    <Typography variant="caption" color="error.main" fontWeight="bold" display="block">
+                      Backout Reason
+                    </Typography>
+                    <Typography variant="body2">{selectedRequest.backoutReason}</Typography>
+                  </Box>
+                )}
               </Paper>
 
               {/* Notes */}
@@ -899,6 +953,44 @@ const DemoRequestsPage: React.FC = () => {
             disabled={rescheduling || !rescheduleData.preferredDate || !rescheduleData.preferredTime}
           >
             {rescheduling ? 'Rescheduling...' : 'Confirm'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Backout Reason Dialog */}
+      <Dialog
+        open={backoutDialogOpen}
+        onClose={() => !submittingBackout && setBackoutDialogOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Mark as Backed Out</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" mb={2}>
+            Please provide a reason why this requestant is backing out.
+          </Typography>
+          <TextField
+            autoFocus
+            fullWidth
+            required
+            multiline
+            rows={3}
+            label="Reason"
+            placeholder="e.g. Chose a competitor, budget constraints, no longer interested..."
+            value={backoutReason}
+            onChange={(e) => setBackoutReason(e.target.value)}
+            disabled={submittingBackout}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setBackoutDialogOpen(false)} disabled={submittingBackout}>Cancel</Button>
+          <Button
+            onClick={handleConfirmBackout}
+            variant="contained"
+            color="error"
+            disabled={submittingBackout || !backoutReason.trim()}
+          >
+            {submittingBackout ? 'Saving...' : 'Confirm Backout'}
           </Button>
         </DialogActions>
       </Dialog>

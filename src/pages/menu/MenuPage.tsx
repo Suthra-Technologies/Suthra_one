@@ -1507,7 +1507,7 @@ const MenuPage: React.FC = () => {
                                                         textTransform: 'uppercase', color: theme.palette.primary.main, lineHeight: 1,
                                                         display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden'
                                                     }}>
-                                                        {typeof item.category === 'object' ? item.category.name : 'Menu'}
+                                                        {item.category && typeof item.category === 'object' ? item.category.name : 'Menu'}
                                                     </Typography>
                                                     
                                                     {(item as any).foodType && (
@@ -2205,6 +2205,11 @@ const MenuPage: React.FC = () => {
                                     </Typography>
                                 </Box>
                             </Alert>
+                            <Alert severity="success" icon={'✨'} sx={{ mb: 2, borderRadius: 2 }}>
+                                <Typography variant="body2">
+                                    <b>AI-Powered Upload:</b> TaxJar tax codes will be automatically assigned based on your restaurant's location. Missing descriptions and categories will be generated during upload.
+                                </Typography>
+                            </Alert>
                             <TableContainer component={Paper} sx={{ maxHeight: 600, borderRadius: 2, border: 1, borderColor: 'divider' }}>
                                 <Table stickyHeader size="small">
                                     <TableHead>
@@ -2214,6 +2219,7 @@ const MenuPage: React.FC = () => {
                                             <TableCell sx={{ fontWeight: 'bold' }}>Item Details</TableCell>
                                             <TableCell sx={{ fontWeight: 'bold' }}>Category</TableCell>
                                             <TableCell sx={{ fontWeight: 'bold' }}>Price</TableCell>
+                                            <TableCell sx={{ fontWeight: 'bold' }}>Tax Code</TableCell>
                                             <TableCell sx={{ fontWeight: 'bold' }}>Description</TableCell>
                                         </TableRow>
                                     </TableHead>
@@ -2324,9 +2330,24 @@ const MenuPage: React.FC = () => {
                                                     />
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Typography variant="body2" color="text.primary">{item.category}</Typography>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                        {!item.category?.trim() && (
+                                                            <Chip
+                                                                label="AI ✨"
+                                                                size="small"
+                                                                color="secondary"
+                                                                sx={{ fontSize: '0.6rem', height: 18, fontWeight: 600 }}
+                                                            />
+                                                        )}
+                                                        <Typography variant="body2" sx={{
+                                                            color: !item.category?.trim() ? 'text.disabled' : 'text.primary',
+                                                            fontStyle: !item.category?.trim() ? 'italic' : 'normal',
+                                                        }}>
+                                                            {item.category?.trim() || 'Will be generated'}
+                                                        </Typography>
+                                                    </Box>
                                                     {item.subcategory && (
-                                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontStyle: 'italic' }}>
+                                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontStyle: 'italic', mt: 0.5 }}>
                                                             {item.subcategory}
                                                         </Typography>
                                                     )}
@@ -2335,15 +2356,36 @@ const MenuPage: React.FC = () => {
                                                     {formatCurrency(item.price)}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Typography variant="caption" sx={{ 
-                                                        display: '-webkit-box',
-                                                        WebkitLineClamp: 2,
-                                                        WebkitBoxOrient: 'vertical',
-                                                        overflow: 'hidden',
-                                                        maxWidth: 200
-                                                    }}>
-                                                        {item.description || '-'}
-                                                    </Typography>
+                                                    <Chip
+                                                        label="AI auto-assign ✨"
+                                                        size="small"
+                                                        variant="outlined"
+                                                        color="secondary"
+                                                        sx={{ fontSize: '0.65rem', height: 22, fontWeight: 600 }}
+                                                    />
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                        {!item.description?.trim() && (
+                                                            <Chip
+                                                                label="AI ✨"
+                                                                size="small"
+                                                                color="secondary"
+                                                                sx={{ fontSize: '0.6rem', height: 18, fontWeight: 600 }}
+                                                            />
+                                                        )}
+                                                        <Typography variant="caption" sx={{ 
+                                                            display: '-webkit-box',
+                                                            WebkitLineClamp: 2,
+                                                            WebkitBoxOrient: 'vertical',
+                                                            overflow: 'hidden',
+                                                            maxWidth: 180,
+                                                            fontStyle: !item.description?.trim() ? 'italic' : 'normal',
+                                                            color: !item.description?.trim() ? 'text.disabled' : 'text.primary',
+                                                        }}>
+                                                            {item.description?.trim() || 'Will be generated'}
+                                                        </Typography>
+                                                    </Box>
                                                 </TableCell>
                                             </TableRow>
                                         ))}

@@ -103,6 +103,15 @@ const CustomersPage: React.FC = () => {
     const [adjustReason, setAdjustReason] = useState('');
     const [isAdjusting, setIsAdjusting] = useState(false);
 
+    // Order History States
+    const [ordersDialogOpen, setOrdersDialogOpen] = useState(false);
+    const [orderHistoryCustomer, setOrderHistoryCustomer] = useState<Customer | null>(null);
+    const [orderHistory, setOrderHistory] = useState<any[]>([]);
+    const [orderHistoryPage, setOrderHistoryPage] = useState(0);
+    const [orderHistoryTotal, setOrderHistoryTotal] = useState(0);
+    const [loadingOrderHistory, setLoadingOrderHistory] = useState(false);
+    const ORDER_HISTORY_PAGE_SIZE = 15;
+
 
     useEffect(() => {
         fetchCustomers();
@@ -135,6 +144,33 @@ const CustomersPage: React.FC = () => {
         setRowsPerPage(parseInt(event.target.value, 10));
         setPage(0);
     };
+
+    const handleViewOrders = (customer: Customer) => {
+        if (!customer._id) return;
+        setOrderHistoryCustomer(customer);
+        setOrdersDialogOpen(true);
+        setOrderHistoryPage(0);
+    };
+
+    useEffect(() => {
+        if (!ordersDialogOpen || !orderHistoryCustomer?._id) return;
+        (async () => {
+            try {
+                setLoadingOrderHistory(true);
+                const res = await customersAPI.getOrders(orderHistoryCustomer._id!, {
+                    page: orderHistoryPage + 1,
+                    limit: ORDER_HISTORY_PAGE_SIZE,
+                });
+                setOrderHistory(res.data.orders || []);
+                setOrderHistoryTotal(res.data.total || 0);
+            } catch (error) {
+                console.error('Failed to fetch order history:', error);
+                toast.error('Failed to load order history');
+            } finally {
+                setLoadingOrderHistory(false);
+            }
+        })();
+    }, [ordersDialogOpen, orderHistoryCustomer, orderHistoryPage]);
 
     const handleViewRewards = async (customer: Customer) => {
         if (!customer._id) return;
@@ -271,7 +307,13 @@ const CustomersPage: React.FC = () => {
                         <Card key={customer.phone}>
                             <CardContent>
                                 <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
-                                    <Typography fontWeight="bold">{customer.name || 'Guest'}</Typography>
+                                    <Typography
+                                        fontWeight="bold"
+                                        onClick={() => handleViewOrders(customer)}
+                                        sx={customer._id ? { cursor: 'pointer', color: 'primary.main', textDecoration: 'underline' } : undefined}
+                                    >
+                                        {customer.name || 'Guest'}
+                                    </Typography>
                                     <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                                         {customer.orderTypes?.map((type) => (
                                             <Chip key={type} icon={getOrderTypeIcon(type)} label={getOrderTypeLabel(type)} size="small" variant="outlined" sx={{ textTransform: 'capitalize' }} />
@@ -337,7 +379,13 @@ const CustomersPage: React.FC = () => {
                                 customers.map((customer) => (
                                     <TableRow key={customer.phone} hover>
                                         <TableCell>
-                                            <Typography fontWeight="medium">{customer.name || 'Guest'}</Typography>
+                                            <Typography
+                                                fontWeight="medium"
+                                                onClick={() => handleViewOrders(customer)}
+                                                sx={customer._id ? { cursor: 'pointer', color: 'primary.main', textDecoration: 'underline' } : undefined}
+                                            >
+                                                {customer.name || 'Guest'}
+                                            </Typography>
                                         </TableCell>
                                         <TableCell>
                                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
@@ -573,6 +621,104 @@ const CustomersPage: React.FC = () => {
                     >
                         Apply Adjustment
                     </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Order History Dialog */}
+            <Dialog open={ordersDialogOpen} onClose={() => setOrdersDialogOpen(false)} maxWidth="md" fullWidth>
+                <DialogTitle sx={{ borderBottom: '1px solid', borderColor: 'divider', pb: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
+                            <ReceiptIcon />
+                        </Avatar>
+                        <Box>
+                            <Typography variant="h6">{orderHistoryCustomer?.name || 'Order History'}</Typography>
+                            <Typography variant="caption" color="text.secondary">{orderHistoryCustomer?.phone}</Typography>
+                        </Box>
+                    </Box>
+                    <IconButton onClick={() => setOrdersDialogOpen(false)}>
+                        <CloseIcon />
+                    </IconButton>
+                </DialogTitle>
+                <DialogContent sx={{ p: 0 }}>
+                    {loadingOrderHistory ? (
+                        <Box sx={{ p: 4, textAlign: 'center' }}>
+                            <CircularProgress size={32} />
+                            <Typography variant="body2" sx={{ mt: 1 }}>Loading order history...</Typography>
+                        </Box>
+                    ) : (
+                        <TableContainer>
+                            <Table size="small">
+                                <TableHead>
+                                    <TableRow sx={{ bgcolor: 'action.hover' }}>
+                                        <TableCell sx={{ fontWeight: 'bold' }}>Order</TableCell>
+                                        <TableCell sx={{ fontWeight: 'bold' }}>Items</TableCell>
+                                        <TableCell sx={{ fontWeight: 'bold' }}>Date &amp; Time</TableCell>
+                                        <TableCell sx={{ fontWeight: 'bold' }} align="right">Amount Paid</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {orderHistory.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={4} align="center" sx={{ py: 4 }}>
+                                                <Typography color="text.secondary">No orders found</Typography>
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        orderHistory.map((order) => (
+                                            <TableRow key={order.id}>
+                                                <TableCell>
+                                                    <Typography variant="body2" fontWeight="medium">#{order.orderNumber}</Typography>
+                                                    <Box sx={{ display: 'flex', gap: 0.5, mt: 0.5, flexWrap: 'wrap' }}>
+                                                        <Chip
+                                                            label={order.type === 'catering' ? 'Catering' : getOrderTypeLabel(order.orderType || '')}
+                                                            size="small"
+                                                            variant="outlined"
+                                                            sx={{ fontSize: '0.65rem', height: 18, textTransform: 'capitalize' }}
+                                                        />
+                                                        {order.paymentStatus && (
+                                                            <Chip
+                                                                label={order.paymentStatus}
+                                                                size="small"
+                                                                color={order.paymentStatus === 'paid' || order.paymentStatus === 'completed' ? 'success' : 'default'}
+                                                                sx={{ fontSize: '0.65rem', height: 18, textTransform: 'capitalize' }}
+                                                            />
+                                                        )}
+                                                    </Box>
+                                                </TableCell>
+                                                <TableCell>
+                                                    {(order.items || []).map((item: any, idx: number) => (
+                                                        <Typography key={idx} variant="body2" color="text.secondary">
+                                                            {item.quantity}× {item.name}
+                                                        </Typography>
+                                                    ))}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Typography variant="body2">
+                                                        {order.createdAt ? format(new Date(order.createdAt), 'MMM dd, yyyy hh:mm a') : '-'}
+                                                    </Typography>
+                                                </TableCell>
+                                                <TableCell align="right">
+                                                    <Typography variant="body2" fontWeight="bold">{formatCurrency(order.amount)}</Typography>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
+                            <TablePagination
+                                rowsPerPageOptions={[ORDER_HISTORY_PAGE_SIZE]}
+                                component="div"
+                                count={orderHistoryTotal}
+                                rowsPerPage={ORDER_HISTORY_PAGE_SIZE}
+                                page={orderHistoryPage}
+                                onPageChange={(_, newPage) => setOrderHistoryPage(newPage)}
+                            />
+                        </TableContainer>
+                    )}
+                </DialogContent>
+                <DialogActions sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+                    <Button onClick={() => setOrdersDialogOpen(false)}>Close</Button>
                 </DialogActions>
             </Dialog>
         </Box>
