@@ -6,6 +6,10 @@ class SocketService {
 
     connect(token: string) {
         if (this.socket?.connected) {
+            // Already live. Re-bind any listeners registered while the socket was
+            // being torn down and rebuilt, otherwise the connection stays open
+            // but deaf and no events are ever delivered.
+            this.rebindListeners();
             return;
         }
 
@@ -37,9 +41,18 @@ class SocketService {
             console.error('WebSocket connection error:', error);
         });
 
-        // Set up event listeners
+        this.rebindListeners();
+    }
+
+    /**
+     * Attach every registered callback to the current socket, replacing any
+     * existing binding so a callback is never subscribed twice.
+     */
+    private rebindListeners() {
+        if (!this.socket) return;
         this.listeners.forEach((callbacks, event) => {
             callbacks.forEach(callback => {
+                this.socket?.off(event, callback as any);
                 this.socket?.on(event, callback as any);
             });
         });
@@ -64,9 +77,14 @@ class SocketService {
         if (!this.listeners.has(event)) {
             this.listeners.set(event, []);
         }
-        this.listeners.get(event)?.push(callback);
+        const callbacks = this.listeners.get(event)!;
+        if (!callbacks.includes(callback)) {
+            callbacks.push(callback);
+        }
 
         if (this.socket) {
+            // off-then-on so a repeated registration cannot fire twice.
+            this.socket.off(event, callback as any);
             this.socket.on(event, callback as any);
         }
     }

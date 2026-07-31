@@ -1018,9 +1018,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
             socketService.off('newSupportTicket', handleNewSupportTicket);
             socketService.off('supportTicketUpdate', handleSupportTicketUpdate);
-            // Optional: disconnect on unmount? Better to keep it alive? 
-            // Usually disconnecting is safer to prevent duplicate handlers if remounted.
-            socketService.disconnect();
+            // Deliberately NOT disconnecting here. This effect re-runs whenever a
+            // handler identity changes (settings loading rebuilds them), and
+            // tearing the socket down each time raced the reconnect, leaving a
+            // connected-but-deaf socket. Disconnect happens on logout instead.
         };
     }, [user?.sub, user?.role, handleNewOrder, handleOrderStatusUpdate, handleNewCateringOrder, handleCateringOrderStatusUpdate, handleCateringOrderUpdate, handleNewBooking, handleBookingStatusUpdate, handleBookingCheckedIn, handleNewSupportTicket, handleSupportTicketUpdate]); // Re-connect only if identity changes
 
