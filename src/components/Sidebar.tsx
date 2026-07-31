@@ -32,6 +32,7 @@ import {
   Kitchen,
   Person,
   Settings,
+  NotificationsActive,
   AdminPanelSettings,
   LocalOffer,
   Event as EventIcon,
@@ -222,6 +223,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
         { path: '/support', label: 'Super Admin Support', icon: <HeadsetMic />, roles: ['admin', 'manager'] },
         { path: '/customer-support', label: 'Customer Tickets', icon: <Forum />, roles: ['admin', 'manager'] },
         { path: '/settings', label: 'Settings', icon: <Settings />, roles: ['admin', 'manager'] },
+        { path: '/manage-notifications', label: 'Manage Notifications', icon: <NotificationsActive />, roles: ['admin', 'manager'] },
         { path: '', label: 'Help & Guide', icon: <AutoStories />, roles: ['admin', 'manager', 'waiter', 'cashier', 'kitchen_staff', 'delivery', 'food_runner'], isAction: true, action: () => window.open('https://helpguide.restaurant.nexzenpos.com/#login', '_blank') },
       ]
     },

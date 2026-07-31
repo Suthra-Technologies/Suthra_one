@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { jwtDecode } from 'jwt-decode';
 import api from '../services/api';
+import { socketService } from '../services/socket.service';
 import { getTenantSlugFromHostname, redirectToTenant } from '../utils/tenant.utils';
 import { toast } from 'react-hot-toast';
 
@@ -206,6 +207,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
     if (user?.roles?.includes(role)) {
       setActiveRole(role);
       localStorage.setItem('activeRole', role);
+      // Notification filtering is per-role, so the live socket has to follow the
+      // switch or the user keeps receiving their previous role's alerts.
+      socketService.setActiveRole(role);
       // Optional: Redirect to dashboard of that role?
     }
   };
