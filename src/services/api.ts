@@ -498,6 +498,46 @@ export const settingsAPI = {
   getPublicHours: (slug: string) => api.get(`/settings/public/${slug}/hours`),
 };
 
+// -------------------- Manage Notifications API --------------------
+export const notificationsAPI = {
+  // Catalog metadata
+  getEnums: () => api.get('/notifications/enums'),
+  getAssignableUsers: () => api.get('/notifications/assignable-users'),
+  // Events a user's roles grant — the ceiling their own config can narrow.
+  getAllowedEvents: (userId: string) => api.get(`/notifications/allowed-events/${userId}`),
+
+  // Categories
+  getCategories: (params: { search?: string; page?: number; limit?: number } = {}) =>
+    api.get('/notifications/categories', { params }),
+  getCategory: (id: string) => api.get(`/notifications/categories/${id}`),
+  createCategory: (payload: { category: string; events: Array<{ eventName: string; enabled?: boolean }> }) =>
+    api.post('/notifications/categories', payload),
+  updateCategory: (
+    id: string,
+    payload: { category?: string; events?: Array<{ eventName: string; enabled?: boolean }> },
+  ) => api.put(`/notifications/categories/${id}`, payload),
+  removeCategory: (id: string, comments?: string) =>
+    api.delete(`/notifications/categories/${id}`, { data: { comments } }),
+
+  // Per-user / per-role configurations
+  list: (params: {
+    search?: string;
+    page?: number;
+    limit?: number;
+    isDeleted?: boolean;
+    type?: 'user' | 'role' | 'all';
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  } = {}) => api.get('/notifications', { params }),
+  get: (id: string) => api.get(`/notifications/${id}`),
+  getHistory: (id: string) => api.get(`/notifications/${id}/history`),
+  create: (payload: any) => api.post('/notifications', payload),
+  update: (id: string, payload: any) => api.put(`/notifications/${id}`, payload),
+  restore: (id: string) => api.post(`/notifications/${id}/restore`),
+  remove: (id: string, comments?: string) =>
+    api.delete(`/notifications/${id}`, { data: { comments } }),
+};
+
 // -------------------- Customer Activity API --------------------
 type ActivityRangeParams = { startDate?: string; endDate?: string };
 

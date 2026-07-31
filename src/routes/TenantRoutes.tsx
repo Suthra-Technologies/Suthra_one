@@ -35,6 +35,7 @@ import InvoicesPage from '../pages/invoices/InvoicesPage';
 import RecipesPage from '../pages/recipes/RecipesPage';
 import CreateRecipePage from '../pages/recipes/CreateRecipePage';
 import ReportsPage from '../pages/reports/ReportsPage';
+import ManageNotificationsPage from '../pages/settings/ManageNotificationsPage';
 import SettingsPage from '../pages/settings/SettingsPage';
 import SubscriptionPage from '../pages/subscription/SubscriptionPage';
 import SubscriptionSuccess from '../pages/subscription/SubscriptionSuccess';
@@ -123,6 +124,7 @@ export const TenantRoutes = () => (
         <Route path="users" element={<UsersPage />} />
         <Route path="customers" element={<CustomersPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="manage-notifications" element={<ManageNotificationsPage />} />
         <Route path="support" element={<AdminSupportPage />} />
         <Route path="customer-support" element={<CustomerSupportPage />} />
         <Route path="promocode" element={<PromoCodePage />} />

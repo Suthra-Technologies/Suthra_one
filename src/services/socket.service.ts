@@ -12,8 +12,13 @@ class SocketService {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5006';
         const wsUrl = import.meta.env.VITE_SOCKET_URL || (typeof apiUrl === 'string' ? apiUrl.replace('/api', '') : 'http://localhost:5006');
 
+        // A user with several roles only wants the notifications of the role they
+        // are currently acting as, so the active role travels with the handshake.
+        const activeRole =
+            typeof window !== 'undefined' ? localStorage.getItem('activeRole') : null;
+
         this.socket = io(`${wsUrl}/events`, {
-            auth: { token },
+            auth: { token, activeRole },
             transports: ['websocket', 'polling'],
             reconnection: true,
             reconnectionDelay: 1000,
@@ -38,6 +43,14 @@ class SocketService {
                 this.socket?.on(event, callback as any);
             });
         });
+    }
+
+    /**
+     * Tell the server which role the user is now acting as, so notification
+     * filtering follows a role switch without dropping the connection.
+     */
+    setActiveRole(role: string | null) {
+        this.socket?.emit('setActiveRole', { role });
     }
 
     disconnect() {

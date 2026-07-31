@@ -21,6 +21,7 @@ import {
 } from '@mui/icons-material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import {
     Alert,
     Avatar,
@@ -427,14 +428,14 @@ const createDefaultSettings = (): SettingsState => ({
             roles: {
                 // superadmin has its own separate portal and is never a target for
                 // in-restaurant notifications, so it has no row here.
-                admin: { orders: true, catering: true, inventory: true, bookings: true },
-                manager: { orders: true, catering: true, inventory: true, bookings: true },
-                cashier: { orders: true, catering: false, inventory: false, bookings: true },
-                waiter: { orders: true, catering: false, inventory: false, bookings: true },
-                kitchen_staff: { orders: false, catering: false, inventory: true, bookings: false },
-                food_runner: { orders: false, catering: false, inventory: false, bookings: false },
-                delivery: { orders: false, catering: false, inventory: false, bookings: false },
-                customer: { orders: false, catering: false, inventory: false, bookings: false }
+                admin: { orders: true, catering: true, inventory: true, bookings: true, support: true },
+                manager: { orders: true, catering: true, inventory: true, bookings: true, support: true },
+                cashier: { orders: true, catering: false, inventory: false, bookings: true, support: false },
+                waiter: { orders: true, catering: false, inventory: false, bookings: true, support: false },
+                kitchen_staff: { orders: false, catering: false, inventory: true, bookings: false, support: false },
+                food_runner: { orders: false, catering: false, inventory: false, bookings: false, support: false },
+                delivery: { orders: false, catering: false, inventory: false, bookings: false, support: false },
+                customer: { orders: false, catering: false, inventory: false, bookings: false, support: false }
             },
             users: {}
         },
@@ -664,9 +665,6 @@ const SettingsPage: React.FC = () => {
     const [pairedAgents, setPairedAgents] = useState<any[]>([]);
     const [agentsLoading, setAgentsLoading] = useState(false);
     const [newToken, setNewToken] = useState<string | null>(null);
-    const [userAlertsPage, setUserAlertsPage] = useState(0);
-    const [userAlertsRowsPerPage, setUserAlertsRowsPerPage] = useState(10);
-    const [totalUsers, setTotalUsers] = useState(0);
 
     const [smsLogs, setSmsLogs] = useState<any[]>([]);
     const [smsPage, setSmsPage] = useState(0);
@@ -763,21 +761,6 @@ const SettingsPage: React.FC = () => {
             fetchPriceLogs();
         }
         setPriceLogsOpen(prev => !prev);
-    };
-
-    const fetchUsers = async (page: number, limit: number) => {
-        try {
-            const res = await usersAPI.getUsers({
-                page: page + 1,
-                limit,
-                role: 'all', // staff + management only — excludes customer accounts
-            });
-            const allUsers = res.data?.data || res.data?.users || (Array.isArray(res.data) ? res.data : []);
-            setUsersList(allUsers);
-            setTotalUsers(res.data?.total || 0);
-        } catch (error) {
-            console.error('Error fetching users:', error);
-        }
     };
 
     const fetchAgents = async () => {
@@ -930,12 +913,7 @@ const SettingsPage: React.FC = () => {
 
     useEffect(() => {
         fetchSettings();
-        fetchUsers(0, 10);
     }, []);
-
-    useEffect(() => {
-        fetchUsers(userAlertsPage, userAlertsRowsPerPage);
-    }, [userAlertsPage, userAlertsRowsPerPage]);
 
     useEffect(() => {
         if (tabValue === 5) {
@@ -3457,213 +3435,21 @@ const SettingsPage: React.FC = () => {
 
                         <Grid size={{ xs: 12 }}>
                             <Typography variant="h6" gutterBottom>
-                                User Specific Notification Alerts
+                                Notification Recipients
                             </Typography>
-                            <Typography color="text.secondary" sx={{ mb: 3 }}>
-                                Customize overrides for individual users that override role defaults above.
+                            <Typography color="text.secondary" sx={{ mb: 2 }}>
+                                Which staff and roles receive each in-app notification is now
+                                configured per event in Manage Notifications.
                             </Typography>
-
-                            <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-                                &nbsp;
-                            </Typography>
-
-                            {isMobile ? (
-                                /* MOBILE CARD VIEW */
-                                usersList.length === 0 ? (
-                                    <Box sx={{ textAlign: 'center', py: 6 }}>
-                                        <Typography variant="body2" color="text.secondary">No staff members found</Typography>
-                                    </Box>
-                                ) : (
-                                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                                        {usersList.map((u: any) => {
-                                            const userRole = Array.isArray(u.roles) ? u.roles[0] : 'cashier';
-                                            const config = settings.notification.push?.users?.[u._id] ||
-                                                settings.notification.push?.roles?.[userRole] ||
-                                                { orders: true, catering: true, inventory: true };
-                                            return (
-                                                <Paper key={u._id} variant="outlined" sx={{ borderRadius: 3, p: 2 }}>
-                                                    {/* Name + Role */}
-                                                    <Box sx={{ mb: 1.5 }}>
-                                                        <Typography fontWeight={600} variant="body2">
-                                                            {u.firstName && u.lastName ? `${u.firstName} ${u.lastName}` : u.firstName || u.email || 'Staff Member'}
-                                                        </Typography>
-                                                        <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'capitalize' }}>
-                                                            {Array.isArray(u.roles) ? u.roles.map((r: string) => r.replace('_', ' ')).join(', ') : 'Staff'}
-                                                        </Typography>
-                                                    </Box>
-
-                                                    {/* Toggles */}
-                                                    <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                        {[
-                                                            { label: 'Orders', key: 'orders' },
-                                                            { label: 'Catering', key: 'catering' },
-                                                            { label: 'Inventory', key: 'inventory' },
-                                                        ].map(({ label, key }) => (
-                                                            <Box key={key} sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 }}>
-                                                                <Typography variant="caption" color="text.secondary" fontWeight={700}>{label}</Typography>
-                                                                <Switch
-                                                                    size="small"
-                                                                    checked={Boolean(config[key])}
-                                                                    onChange={(e) => setSettings((prev: any) => ({
-                                                                        ...prev,
-                                                                        notification: {
-                                                                            ...prev.notification,
-                                                                            push: {
-                                                                                ...prev.notification.push,
-                                                                                users: {
-                                                                                    ...prev.notification.push?.users,
-                                                                                    [u._id]: {
-                                                                                        ...prev.notification.push?.users?.[u._id] || config,
-                                                                                        [key]: e.target.checked
-                                                                                    }
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                    }))}
-                                                                />
-                                                            </Box>
-                                                        ))}
-                                                    </Box>
-                                                </Paper>
-                                            );
-                                        })}
-                                    </Box>
-                                )
-                            ) : (
-                                /* TABLET / DESKTOP — original table unchanged */
-                                <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3 }}>
-                                    <Table size="small">
-                                        <TableHead sx={{ bgcolor: alpha('#94a3b8', 0.05) }}>
-                                            <TableRow>
-                                                <TableCell sx={{ fontWeight: 700 }}>Staff Name</TableCell>
-                                                <TableCell sx={{ fontWeight: 700 }}>System Role</TableCell>
-                                                <TableCell align="center" sx={{ fontWeight: 700 }}>Orders</TableCell>
-                                                <TableCell align="center" sx={{ fontWeight: 700 }}>Catering</TableCell>
-                                                <TableCell align="center" sx={{ fontWeight: 700 }}>Inventory</TableCell>
-                                                <TableCell align="center" sx={{ fontWeight: 700 }}>Bookings</TableCell>
-                                            </TableRow>
-                                        </TableHead>
-                                        <TableBody>
-                                            {usersList.map((u: any) => {
-                                                const userRole = Array.isArray(u.roles) ? u.roles[0] : 'cashier';
-                                                const config = settings.notification.push?.users?.[u._id] ||
-                                                    settings.notification.push?.roles?.[userRole] ||
-                                                    { orders: true, catering: true, inventory: true, bookings: true };
-                                                return (
-                                                    <TableRow key={u._id} hover>
-                                                        <TableCell sx={{ fontWeight: 500 }}>
-                                                            {u.firstName && u.lastName ? `${u.firstName} ${u.lastName}` : u.firstName || u.email || 'Staff Member'}
-                                                        </TableCell>
-                                                        <TableCell sx={{ textTransform: 'capitalize', color: 'text.secondary', fontSize: '0.8rem' }}>
-                                                            {Array.isArray(u.roles) ? u.roles.map((r: string) => r.replace('_', ' ')).join(', ') : 'Staff'}
-                                                        </TableCell>
-                                                        <TableCell align="center">
-                                                            <Switch
-                                                                size="small"
-                                                                checked={Boolean(config.orders)}
-                                                                onChange={(e) => setSettings((prev: any) => ({
-                                                                    ...prev,
-                                                                    notification: {
-                                                                        ...prev.notification,
-                                                                        push: {
-                                                                            ...prev.notification.push,
-                                                                            users: {
-                                                                                ...prev.notification.push?.users,
-                                                                                [u._id]: {
-                                                                                    ...prev.notification.push?.users?.[u._id] || config,
-                                                                                    orders: e.target.checked
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }))}
-                                                            />
-                                                        </TableCell>
-                                                        <TableCell align="center">
-                                                            <Switch
-                                                                size="small"
-                                                                checked={Boolean(config.catering)}
-                                                                onChange={(e) => setSettings((prev: any) => ({
-                                                                    ...prev,
-                                                                    notification: {
-                                                                        ...prev.notification,
-                                                                        push: {
-                                                                            ...prev.notification.push,
-                                                                            users: {
-                                                                                ...prev.notification.push?.users,
-                                                                                [u._id]: {
-                                                                                    ...prev.notification.push?.users?.[u._id] || config,
-                                                                                    catering: e.target.checked
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }))}
-                                                            />
-                                                        </TableCell>
-                                                        <TableCell align="center">
-                                                            <Switch
-                                                                size="small"
-                                                                checked={Boolean(config.inventory)}
-                                                                onChange={(e) => setSettings((prev: any) => ({
-                                                                    ...prev,
-                                                                    notification: {
-                                                                        ...prev.notification,
-                                                                        push: {
-                                                                            ...prev.notification.push,
-                                                                            users: {
-                                                                                ...prev.notification.push?.users,
-                                                                                [u._id]: {
-                                                                                    ...prev.notification.push?.users?.[u._id] || config,
-                                                                                    inventory: e.target.checked
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }))}
-                                                            />
-                                                        </TableCell>
-                                                        <TableCell align="center">
-                                                            <Switch
-                                                                size="small"
-                                                                checked={config.bookings !== false}
-                                                                onChange={(e) => setSettings((prev: any) => ({
-                                                                    ...prev,
-                                                                    notification: {
-                                                                        ...prev.notification,
-                                                                        push: {
-                                                                            ...prev.notification.push,
-                                                                            users: {
-                                                                                ...prev.notification.push?.users,
-                                                                                [u._id]: {
-                                                                                    ...prev.notification.push?.users?.[u._id] || config,
-                                                                                    bookings: e.target.checked
-                                                                                }
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }))}
-                                                            />
-                                                        </TableCell>
-                                                    </TableRow>
-                                                );
-                                            })}
-                                        </TableBody>
-                                    </Table>
-                                </TableContainer>
-                            )}
-                            <TablePagination
-                                rowsPerPageOptions={[5, 10, 25, 50]}
-                                component="div"
-                                count={totalUsers}
-                                rowsPerPage={userAlertsRowsPerPage}
-                                page={userAlertsPage}
-                                onPageChange={(_: any, newPage: number) => setUserAlertsPage(newPage)}
-                                onRowsPerPageChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                    setUserAlertsRowsPerPage(parseInt(e.target.value, 10));
-                                    setUserAlertsPage(0);
-                                }}
-                            />
+                            <Button
+                                variant="outlined"
+                                startIcon={<NotificationsActiveIcon />}
+                                // Sibling route of /settings, so swapping the last path
+                                // segment preserves whatever tenant prefix is in play.
+                                href={window.location.pathname.replace(/\/settings\/?$/, '/manage-notifications')}
+                            >
+                                Open Manage Notifications
+                            </Button>
                         </Grid>
                         <Grid size={{ xs: 12 }}>
                             <Divider sx={{ my: 1 }} />
