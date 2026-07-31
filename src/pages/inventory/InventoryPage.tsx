@@ -47,6 +47,7 @@ import {
     Assignment as ItemNotesIcon,
     Notes as NotesIcon,
     RestoreFromTrash as RestoreIcon,
+    Search as SearchIcon,
 } from '@mui/icons-material';
 import { Drawer } from '@mui/material';
 import { toast } from 'react-hot-toast';
@@ -341,6 +342,8 @@ const InventoryPage: React.FC = () => {
     const [page, setPage] = useState(0);
     const [limit, setLimit] = useState(10);
     const [totalMaterials, setTotalMaterials] = useState(0);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
 
     const [usagePage, setUsagePage] = useState(0);
     const [usageLimit, setUsageLimit] = useState(10);
@@ -369,15 +372,26 @@ const InventoryPage: React.FC = () => {
     }, [tabValue, fromDate, toDate, usagePage, usageLimit, reportType]);
 
     useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedSearch(searchTerm);
+        }, 400);
+        return () => clearTimeout(handler);
+    }, [searchTerm]);
+
+    useEffect(() => {
+        setPage(0);
+    }, [debouncedSearch]);
+
+    useEffect(() => {
         if (tabValue === 0) {
             loadRawMaterials();
         }
-    }, [page, limit, tabValue, showDeleted]);
+    }, [page, limit, tabValue, showDeleted, debouncedSearch]);
 
     const loadRawMaterials = async () => {
         try {
             setLoading(true);
-            const response = await inventoryAPI.getRawMaterials({ page: page + 1, limit, isDeleted: showDeleted || undefined });
+            const response = await inventoryAPI.getRawMaterials({ page: page + 1, limit, isDeleted: showDeleted || undefined, search: debouncedSearch || undefined });
             const materials = Array.isArray(response.data?.materials) ? response.data.materials : [];
             setRawMaterials(materials);
             setTotalMaterials(response.data?.total ?? materials.length);
@@ -558,20 +572,32 @@ const InventoryPage: React.FC = () => {
             {tabValue === 0 && (
                 <Box>
                     <Box sx={{ mb: 2, display: 'flex', justifyContent: { xs: 'center', sm: 'space-between' }, alignItems: 'center', flexWrap: 'wrap', gap: 1.5 }}>
-                        <FormControl size="small" sx={{ minWidth: 160 }}>
-                            <InputLabel>Filter</InputLabel>
-                            <Select
-                                value={showDeleted ? 'deleted' : 'active'}
-                                label="Filter"
-                                onChange={(e) => {
-                                    setShowDeleted(e.target.value === 'deleted');
-                                    setPage(0);
+                        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ width: { xs: '100%', sm: 'auto' } }}>
+                            <TextField
+                                size="small"
+                                placeholder="Search by name or SKU"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                InputProps={{
+                                    startAdornment: <SearchIcon fontSize="small" sx={{ color: 'text.secondary', mr: 1 }} />,
                                 }}
-                            >
-                                <MenuItem value="active">Active Items</MenuItem>
-                                <MenuItem value="deleted">Deleted Items</MenuItem>
-                            </Select>
-                        </FormControl>
+                                sx={{ minWidth: { xs: '100%', sm: 220 } }}
+                            />
+                            <FormControl size="small" sx={{ minWidth: 160 }}>
+                                <InputLabel>Filter</InputLabel>
+                                <Select
+                                    value={showDeleted ? 'deleted' : 'active'}
+                                    label="Filter"
+                                    onChange={(e) => {
+                                        setShowDeleted(e.target.value === 'deleted');
+                                        setPage(0);
+                                    }}
+                                >
+                                    <MenuItem value="active">Active Items</MenuItem>
+                                    <MenuItem value="deleted">Deleted Items</MenuItem>
+                                </Select>
+                            </FormControl>
+                        </Stack>
                         {!showDeleted && (
                             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ width: { xs: '100%', sm: 'auto' } }}>
                                 <Button
@@ -609,7 +635,9 @@ const InventoryPage: React.FC = () => {
                     ) : rawMaterials.length === 0 ? (
                         <Box sx={{ p: 4, textAlign: 'center' }}>
                             <Typography color="text.secondary" sx={{ fontSize: bodyFontSize, textAlign: 'center' }}>
-                        No raw materials found. {showDeleted ? 'No deleted items.' : 'Click "Add Material" to get started.'}
+                        {debouncedSearch
+                            ? `No raw materials found matching "${debouncedSearch}".`
+                            : `No raw materials found. ${showDeleted ? 'No deleted items.' : 'Click "Add Material" to get started.'}`}
                             </Typography>
                         </Box>
                     ) : isTabletOrMobile ? (

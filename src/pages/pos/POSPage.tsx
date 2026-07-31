@@ -1976,7 +1976,7 @@ const POSPage: React.FC = () => {
                             size="small"
                             fullWidth
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onChange={(e) => setSearchQuery(e.target.value.replace(/[^a-zA-Z0-9 ]/g, ''))}
                             InputProps={{
                                 startAdornment: (
                                     <InputAdornment position="start">

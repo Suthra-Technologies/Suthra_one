@@ -434,7 +434,7 @@ export const inventoryAPI = {
   restore: (id: string) => api.patch(`/inventory/${id}/restore`),
 
   // Raw Materials specific
-  getRawMaterials: (params?: { page: number; limit: number; isDeleted?: boolean }) => api.get('/inventory/raw-materials/all', { params }),
+  getRawMaterials: (params?: { page: number; limit: number; isDeleted?: boolean; search?: string }) => api.get('/inventory/raw-materials/all', { params }),
   bulkUploadRawMaterials: (items: any[]) => api.post('/inventory/raw-materials/bulk-upload', { items }),
 
   // Usage tracking
@@ -926,6 +926,7 @@ export const customersAPI = {
   getAll: (params?: { page: number; limit: number; search?: string }) => api.get('/customers', { params }),
   getRewardDetails: (id: string) => api.get(`/customers/${id}/rewards`),
   adjustRewards: (id: string, points: number, reason: string) => api.put(`/customers/${id}/rewards/adjust`, { points, reason }),
+  getOrders: (id: string, params?: { page: number; limit: number }) => api.get(`/customers/${id}/orders`, { params }),
 };
 
 // -------------------- Audit Logs API --------------------

@@ -4650,7 +4650,11 @@ const ReportsPage: React.FC = () => {
 
                 const rev = tOrders.reduce((sum: number, o: any) => sum + (o.totalAmount || 0), 0);
 
-                return { tableName: tName, totalBookings: tBookings.length, totalOrders: tOrders.length, totalRevenue: rev };
+                const assignedWaiterName = table.assignedWaiter
+                    ? `${table.assignedWaiter.firstName || ''} ${table.assignedWaiter.lastName || ''}`.trim() || table.assignedWaiter.email
+                    : '';
+
+                return { tableName: tName, totalBookings: tBookings.length, totalOrders: tOrders.length, totalRevenue: rev, assignedWaiterName };
             });
 
             setTableStats(stats);
@@ -4762,6 +4766,9 @@ const ReportsPage: React.FC = () => {
                                 }}>
                                     <Box sx={{ mb: 1 }}>
                                         <Typography variant="caption" fontWeight={800} sx={{ display: 'block' }}>{row.tableName}</Typography>
+                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.6rem' }}>
+                                            {row.assignedWaiterName || 'Unassigned'}
+                                        </Typography>
                                     </Box>
                                     <Box>
                                         <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontSize: '0.6rem' }}>Revenue</Typography>
@@ -4778,6 +4785,7 @@ const ReportsPage: React.FC = () => {
                             <TableHead>
                                 <TableRow>
                                     <TableCell>Table Name</TableCell>
+                                    <TableCell>Assigned Waiter</TableCell>
                                     <TableCell align="right">Bookings</TableCell>
                                     <TableCell align="right">Orders</TableCell>
                                     <TableCell align="right">Revenue</TableCell>
@@ -4789,6 +4797,9 @@ const ReportsPage: React.FC = () => {
                                     .map((row, i) => (
                                         <TableRow key={i}>
                                             <TableCell>{row.tableName}</TableCell>
+                                            <TableCell>
+                                                {row.assignedWaiterName || <Typography variant="body2" color="text.secondary">Unassigned</Typography>}
+                                            </TableCell>
                                             <TableCell align="right">{row.totalBookings}</TableCell>
                                             <TableCell align="right">{row.totalOrders}</TableCell>
                                             <TableCell align="right">{formatCurrency(row.totalRevenue)}</TableCell>

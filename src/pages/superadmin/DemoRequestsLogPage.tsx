@@ -3,11 +3,14 @@ import {
     Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
     TableHead, TableRow, CircularProgress, alpha, useTheme, Stack, Chip,
     Card, CardContent, Grid, TablePagination, TextField, InputAdornment, FormControl, Select, MenuItem, InputLabel,
+    Dialog, DialogTitle, DialogContent, DialogActions, Button,
 } from '@mui/material';
 import ContactPageIcon from '@mui/icons-material/ContactPage';
 import SearchIcon from '@mui/icons-material/Search';
 import { superAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
+
+const BACKOUT_STATUS = 'rejected';
 
 const statusColor = (status: string) => {
     switch (status) {
@@ -15,12 +18,13 @@ const statusColor = (status: string) => {
         case 'contacted': return 'info';
         case 'demo_scheduled': return 'primary';
         case 'completed': return 'success';
-        case 'cancelled': return 'error';
+        case BACKOUT_STATUS: return 'error';
         default: return 'default';
     }
 };
 
-const statusLabel = (status: string) => status.replace(/_/g, ' ').replace(/\b\w/g, c => c?.toUpperCase());
+const statusLabel = (status: string) =>
+    status === BACKOUT_STATUS ? 'Backout' : status.replace(/_/g, ' ').replace(/\b\w/g, c => c?.toUpperCase());
 
 const DemoRequestsLogPage: React.FC = () => {
     const theme = useTheme();
@@ -30,6 +34,7 @@ const DemoRequestsLogPage: React.FC = () => {
     const [statusFilter, setStatusFilter] = useState('all');
     const [page, setPage] = useState(0);
     const [rowsPerPage, setRowsPerPage] = useState(25);
+    const [reasonDialogRequest, setReasonDialogRequest] = useState<any | null>(null);
 
     const fetchRequests = async () => {
         setLoading(true);
@@ -113,7 +118,7 @@ const DemoRequestsLogPage: React.FC = () => {
                             <MenuItem value="contacted">Contacted</MenuItem>
                             <MenuItem value="demo_scheduled">Demo Scheduled</MenuItem>
                             <MenuItem value="completed">Completed</MenuItem>
-                            <MenuItem value="cancelled">Cancelled</MenuItem>
+                            <MenuItem value={BACKOUT_STATUS}>Backout</MenuItem>
                         </Select>
                     </FormControl>
                 </Stack>
@@ -156,7 +161,13 @@ const DemoRequestsLogPage: React.FC = () => {
                                     <TableCell><Typography variant="body2">{req.email}</Typography></TableCell>
                                     <TableCell><Typography variant="body2">{req.phone || '—'}</Typography></TableCell>
                                     <TableCell>
-                                        <Chip label={statusLabel(req.status)} size="small" color={statusColor(req.status) as any} sx={{ fontWeight: 'bold' }} />
+                                        <Chip
+                                            label={statusLabel(req.status)}
+                                            size="small"
+                                            color={statusColor(req.status) as any}
+                                            sx={{ fontWeight: 'bold', ...(req.status === BACKOUT_STATUS ? { cursor: 'pointer' } : {}) }}
+                                            onClick={req.status === BACKOUT_STATUS ? () => setReasonDialogRequest(req) : undefined}
+                                        />
                                     </TableCell>
                                     <TableCell>
                                         <Typography variant="body2">{req.preferredDate ? new Date(req.preferredDate).toLocaleString() : '—'}</Typography>
@@ -195,7 +206,13 @@ const DemoRequestsLogPage: React.FC = () => {
                             <CardContent sx={{ p: 2, '&:last-child': { pb: 2 } }}>
                                 <Stack direction="row" justifyContent="space-between" alignItems="flex-start" mb={1}>
                                     <Typography fontWeight="bold">{req.businessName || '—'}</Typography>
-                                    <Chip label={statusLabel(req.status)} size="small" color={statusColor(req.status) as any} sx={{ fontWeight: 'bold' }} />
+                                    <Chip
+                                        label={statusLabel(req.status)}
+                                        size="small"
+                                        color={statusColor(req.status) as any}
+                                        sx={{ fontWeight: 'bold', ...(req.status === BACKOUT_STATUS ? { cursor: 'pointer' } : {}) }}
+                                        onClick={req.status === BACKOUT_STATUS ? () => setReasonDialogRequest(req) : undefined}
+                                    />
                                 </Stack>
                                 <Typography variant="caption" color="text.secondary" display="block">{req.email}</Typography>
                                 <Typography variant="caption" color="text.secondary" display="block">{req.phone}</Typography>
@@ -224,6 +241,22 @@ const DemoRequestsLogPage: React.FC = () => {
                     rowsPerPageOptions={[25, 50, 100]}
                 />
             </Paper>
+
+            {/* Backout Reason Dialog */}
+            <Dialog open={!!reasonDialogRequest} onClose={() => setReasonDialogRequest(null)} maxWidth="xs" fullWidth>
+                <DialogTitle>Backout Reason</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" color="text.secondary" mb={1.5}>
+                        {reasonDialogRequest?.businessName || '—'}
+                    </Typography>
+                    <Typography variant="body2">
+                        {reasonDialogRequest?.backoutReason || 'No reason was provided.'}
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setReasonDialogRequest(null)}>Close</Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 };
