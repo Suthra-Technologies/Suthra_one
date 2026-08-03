@@ -2034,7 +2034,7 @@ const POSPage: React.FC = () => {
                             </Box>
                         )}
                     </Box>
-                    <Button 
+                    {/* <Button 
                         variant="outlined" 
                         color="secondary" 
                         startIcon={<AddIcon />} 
@@ -2042,7 +2042,7 @@ const POSPage: React.FC = () => {
                         sx={{ whiteSpace: 'nowrap', minWidth: { xs: '100%', sm: 'auto' }, alignSelf: 'stretch' }}
                     >
                         Custom Item
-                    </Button>
+                    </Button> */}
                 </Box>
                 {/* Food Type Toggle — above tabs, right-aligned */}
                 <Box
