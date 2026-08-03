@@ -433,6 +433,11 @@ export const inventoryAPI = {
   delete: (id: string) => api.delete(`/inventory/${id}`),
   restore: (id: string) => api.patch(`/inventory/${id}/restore`),
 
+  // Standing low-stock warning for the dashboard. Admin/manager only — the
+  // backend rejects other roles with a 403.
+  getLowStockAlerts: () => api.get('/inventory/alerts/low-stock'),
+  reconcileStockAlerts: () => api.post('/inventory/alerts/reconcile'),
+
   // Raw Materials specific
   getRawMaterials: (params?: { page: number; limit: number; isDeleted?: boolean; search?: string }) => api.get('/inventory/raw-materials/all', { params }),
   bulkUploadRawMaterials: (items: any[]) => api.post('/inventory/raw-materials/bulk-upload', { items }),
@@ -502,7 +507,12 @@ export const settingsAPI = {
 export const notificationsAPI = {
   // Catalog metadata
   getEnums: () => api.get('/notifications/enums'),
-  getAssignableUsers: () => api.get('/notifications/assignable-users'),
+  // Only staff without a configuration of their own. `excludeUserId` keeps the
+  // target being edited in the list so the picker can still display it.
+  getAssignableUsers: (excludeUserId?: string) =>
+    api.get('/notifications/assignable-users', {
+      params: excludeUserId ? { excludeUserId } : undefined,
+    }),
   // Events a user's roles grant — the ceiling their own config can narrow.
   getAllowedEvents: (userId: string) => api.get(`/notifications/allowed-events/${userId}`),
 

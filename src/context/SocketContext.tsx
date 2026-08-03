@@ -167,6 +167,17 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       window.dispatchEvent(new CustomEvent('paymentStatus', { detail: data }));
     });
 
+    // Stock shortages. The toast, sound and bell entry are owned by
+    // NotificationProvider, which listens for these same events — this only
+    // re-broadcasts them as a window event so the dashboard can refresh its
+    // standing warning immediately instead of waiting for the next poll.
+    const handleStockAlert = (data: any) => {
+      window.dispatchEvent(new CustomEvent('inventoryStockAlert', { detail: data }));
+    };
+
+    socket.on('inventoryLowStock', handleStockAlert);
+    socket.on('inventoryCriticalStock', handleStockAlert);
+
     socket.on('auth_error', () => {
       toast.error('Authentication session expired. Please login again.');
       logout();

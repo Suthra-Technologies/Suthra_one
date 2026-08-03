@@ -72,7 +72,9 @@ const NotificationConfigDialog: React.FC<Props> = ({ open, editing, onClose, onS
             const [enumsRes, categoriesRes, usersRes] = await Promise.all([
                 notificationsAPI.getEnums(),
                 notificationsAPI.getCategories({ limit: 100 }),
-                notificationsAPI.getAssignableUsers(),
+                // Already-configured targets are filtered out server-side; the
+                // one being edited is kept so it still resolves in the picker.
+                notificationsAPI.getAssignableUsers(editing?.user ? String(editing.user) : undefined),
             ]);
 
             const cats: CategoryState[] = (categoriesRes.data?.data || []).map((c: any) => ({
@@ -86,7 +88,15 @@ const NotificationConfigDialog: React.FC<Props> = ({ open, editing, onClose, onS
             }));
 
             setCategories(cats);
-            setRoles(enumsRes.data?.roles || []);
+            // Roles that already have a config are excluded, except the one
+            // currently being edited.
+            const offeredRoles: string[] =
+                enumsRes.data?.availableRoles || enumsRes.data?.roles || [];
+            setRoles(
+                editing?.role && !offeredRoles.includes(editing.role)
+                    ? [editing.role, ...offeredRoles]
+                    : offeredRoles,
+            );
             setUsers(usersRes.data || []);
 
             if (editing) {
@@ -312,6 +322,10 @@ const NotificationConfigDialog: React.FC<Props> = ({ open, editing, onClose, onS
                                     </ToggleButton>
                                 </ToggleButtonGroup>
 
+                                {/* Targets that already have a configuration are
+                                    filtered out, so an empty list is the normal
+                                    state once everyone is set up — say so rather
+                                    than showing a bare "No options". */}
                                 {targetType === 'user' ? (
                                     <Autocomplete
                                         options={users}
@@ -321,6 +335,7 @@ const NotificationConfigDialog: React.FC<Props> = ({ open, editing, onClose, onS
                                         isOptionEqualToValue={(option, value) =>
                                             String(option._id) === String(value?._id)
                                         }
+                                        noOptionsText="Every staff member already has a configuration — edit theirs from the list."
                                         renderInput={(params) => (
                                             <TextField
                                                 {...params}
@@ -336,6 +351,7 @@ const NotificationConfigDialog: React.FC<Props> = ({ open, editing, onClose, onS
                                         value={selectedRole}
                                         onChange={(_, next) => setSelectedRole(next)}
                                         getOptionLabel={(option) => roleLabel(String(option))}
+                                        noOptionsText="Every role already has a configuration — edit it from the list."
                                         renderInput={(params) => (
                                             <TextField
                                                 {...params}
