@@ -473,6 +473,24 @@ export const getUnitsForCountry = (country: string): { value: string; label: str
     return getUnitSystem(country) === 'imperial' ? IMPERIAL_UNITS : METRIC_UNITS;
 };
 
+/**
+ * BCP 47 locale to format dates with, derived from the tenant's country.
+ *
+ * Only the day/month order actually differs for our purposes, so this maps to
+ * one representative locale per convention rather than trying to cover every
+ * country. Codes are matched exactly — "us" as a substring also matches
+ * Australia, Austria, Belarus, Cyprus, Mauritius and Russia, all day-first.
+ */
+const MONTH_FIRST_NAMES = ['united states', 'america', 'philippines', 'micronesia'];
+const MONTH_FIRST_CODES = ['us', 'usa', 'ph', 'phl', 'fm', 'fsm'];
+
+export const getDateLocale = (country: string): string => {
+    const normalized = country?.trim()?.toLowerCase() || '';
+    if (!normalized) return 'en-GB';
+    if (MONTH_FIRST_CODES.includes(normalized)) return 'en-US';
+    return MONTH_FIRST_NAMES.some((name) => normalized.includes(name)) ? 'en-US' : 'en-GB';
+};
+
 // Get all valid unit values (for backend validation)
 export const ALL_VALID_UNITS = [
     // Metric
