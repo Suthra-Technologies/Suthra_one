@@ -16,12 +16,6 @@ import {
     TableRow,
     Paper,
     Stack,
-    MenuItem,
-    Autocomplete,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
     Tab,
     Tabs,
     ToggleButton,
@@ -100,17 +94,6 @@ const ManageNotificationsPage: React.FC = () => {
     // Categories tab
     const [categories, setCategories] = useState<any[]>([]);
     const [categoriesLoading, setCategoriesLoading] = useState(false);
-    const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
-    const [editingCategory, setEditingCategory] = useState<any>(null);
-    const [categoryName, setCategoryName] = useState('');
-    const [categoryEvents, setCategoryEvents] = useState<Array<{ eventName: string; enabled: boolean }>>([]);
-    const [savingCategory, setSavingCategory] = useState(false);
-    // Catalog of selectable names, and the subset not yet used by this tenant.
-    const [enumCategories, setEnumCategories] = useState<string[]>([]);
-    const [enumEvents, setEnumEvents] = useState<string[]>([]);
-    const [availableCategories, setAvailableCategories] = useState<string[]>([]);
-    const [availableEvents, setAvailableEvents] = useState<string[]>([]);
-    const [eventsByCategory, setEventsByCategory] = useState<Record<string, string[]>>({});
     const [savingCategoryId, setSavingCategoryId] = useState<string | null>(null);
 
     useEffect(() => {
@@ -144,18 +127,10 @@ const ManageNotificationsPage: React.FC = () => {
     const fetchCategories = useCallback(async () => {
         setCategoriesLoading(true);
         try {
-            const [res, enumsRes] = await Promise.all([
-                notificationsAPI.getCategories({ limit: 100 }),
-                notificationsAPI.getEnums(),
-            ]);
+            // The catalog is code-owned and small, so the whole list is fetched
+            // in one page — there is nothing to add, page through or filter.
+            const res = await notificationsAPI.getCategories({ limit: 100 });
             setCategories(res.data?.data || []);
-
-            const enums = enumsRes.data || {};
-            setEnumCategories(enums.categories || []);
-            setEnumEvents(enums.events || []);
-            setAvailableCategories(enums.availableCategories || []);
-            setAvailableEvents(enums.availableEvents || []);
-            setEventsByCategory(enums.eventsByCategory || {});
         } catch (err: any) {
             toast.error(err?.response?.data?.message || 'Failed to load categories');
             setCategories([]);
@@ -187,94 +162,6 @@ const ManageNotificationsPage: React.FC = () => {
             fetchConfigs();
         } catch (err: any) {
             toast.error(err?.response?.data?.message || 'Failed to restore configuration');
-        }
-    };
-
-    const openCreateCategory = () => {
-        setEditingCategory(null);
-        setCategoryName('');
-        setCategoryEvents([]);
-        setCategoryDialogOpen(true);
-    };
-
-    const openEditCategory = (category: any) => {
-        setEditingCategory(category);
-        setCategoryName(category.category || '');
-        setCategoryEvents(
-            (category.events || []).map((e: any) => ({
-                eventName: e.eventName,
-                enabled: e.enabled !== false,
-            })),
-        );
-        setCategoryDialogOpen(true);
-    };
-
-    /**
-     * Picking a category pre-fills the events that belong to it, matching how
-     * AFC derives a category's events from the catalog rather than asking the
-     * user to remember them.
-     */
-    const handleCategorySelect = (name: string) => {
-        setCategoryName(name);
-        if (!editingCategory) {
-            const suggested = (eventsByCategory[name] || []).filter((eventName) =>
-                availableEvents.some((a) => a.toLowerCase() === eventName.toLowerCase()),
-            );
-            setCategoryEvents(suggested.map((eventName) => ({ eventName, enabled: true })));
-        }
-    };
-
-    // Events already owned by another category are excluded, except the ones
-    // this category currently holds while editing.
-    const selectableEvents = React.useMemo(() => {
-        const own = new Set(
-            (editingCategory?.events || []).map((e: any) => String(e.eventName).toLowerCase()),
-        );
-        const pool = enumEvents.filter(
-            (name) => availableEvents.some((a) => a.toLowerCase() === name.toLowerCase()) || own.has(name.toLowerCase()),
-        );
-        return pool;
-    }, [enumEvents, availableEvents, editingCategory]);
-
-    const handleSaveCategory = async () => {
-        const name = categoryName.trim();
-        if (!name) {
-            toast.error('Select a category');
-            return;
-        }
-        if (!categoryEvents.length) {
-            toast.error('Add at least one event');
-            return;
-        }
-
-        setSavingCategory(true);
-        try {
-            if (editingCategory) {
-                await notificationsAPI.updateCategory(editingCategory._id, {
-                    events: categoryEvents,
-                });
-                toast.success('Category updated');
-            } else {
-                await notificationsAPI.createCategory({ category: name, events: categoryEvents });
-                toast.success('Category created');
-            }
-            setCategoryDialogOpen(false);
-            fetchCategories();
-        } catch (err: any) {
-            toast.error(err?.response?.data?.message || 'Failed to save category');
-        } finally {
-            setSavingCategory(false);
-        }
-    };
-
-    const handleDeleteCategory = async (category: any) => {
-        if (!window.confirm(`Delete the "${category.category}" category and its events?`)) return;
-        try {
-            await notificationsAPI.removeCategory(category._id, 'Deleted from Manage Notifications');
-            toast.success('Category deleted');
-            fetchCategories();
-        } catch (err: any) {
-            toast.error(err?.response?.data?.message || 'Failed to delete category');
         }
     };
 
@@ -732,26 +619,14 @@ const ManageNotificationsPage: React.FC = () => {
         </Box>
     ) : (
         <Stack spacing={2}>
-            <Stack
-                direction={{ xs: 'column', sm: 'row' }}
-                alignItems={{ xs: 'stretch', sm: 'center' }}
-                justifyContent="space-between"
-                spacing={1.5}
-            >
-                <Typography variant="body2" color="text.secondary">
-                    Turn an event off here to stop it reaching everyone, regardless of the per-user
-                    and per-role configurations.
-                </Typography>
-                <Button
-                    variant="contained"
-                    size="small"
-                    startIcon={<Add />}
-                    onClick={openCreateCategory}
-                    sx={{ borderRadius: 2, fontWeight: 700, whiteSpace: 'nowrap' }}
-                >
-                    Add Category
-                </Button>
-            </Stack>
+            {/* The catalog is owned by the code constants: syncCatalog creates
+                every category and keeps its events in step with what the gateway
+                can actually dispatch. There is nothing to add by hand, so the
+                list is complete and read-only apart from the event toggles. */}
+            <Typography variant="body2" color="text.secondary">
+                These are all the notification categories. Turn an event off here to stop it
+                reaching everyone, regardless of the per-user and per-role configurations.
+            </Typography>
             {categories.map((category) => (
                 <Paper key={category._id} variant="outlined" sx={{ borderRadius: 3, p: 2 }}>
                     <Stack
@@ -762,32 +637,12 @@ const ManageNotificationsPage: React.FC = () => {
                     >
                         <Stack direction="row" alignItems="center" spacing={1}>
                             <Typography fontWeight={700}>{category.category}</Typography>
-                            {category.isCustom && (
-                                <Chip label="Custom" size="small" color="primary" variant="outlined" />
-                            )}
                         </Stack>
+                        {/* Categories cannot be renamed or removed — the sync
+                            recreates them from the code constants — so the only
+                            control here is the per-event toggle below. */}
                         <Stack direction="row" alignItems="center" spacing={0.5}>
                             {savingCategoryId === category._id && <CircularProgress size={16} />}
-                            {/* Built-in categories are recreated from code constants,
-                                so only custom ones can be edited or removed. */}
-                            {category.isCustom && (
-                                <>
-                                    <Tooltip title="Edit category">
-                                        <IconButton size="small" onClick={() => openEditCategory(category)}>
-                                            <Edit fontSize="small" />
-                                        </IconButton>
-                                    </Tooltip>
-                                    <Tooltip title="Delete category">
-                                        <IconButton
-                                            size="small"
-                                            color="error"
-                                            onClick={() => handleDeleteCategory(category)}
-                                        >
-                                            <DeleteOutline fontSize="small" />
-                                        </IconButton>
-                                    </Tooltip>
-                                </>
-                            )}
                         </Stack>
                     </Stack>
                     <Stack spacing={0.5}>
@@ -861,132 +716,6 @@ const ManageNotificationsPage: React.FC = () => {
                 }}
             />
 
-            <Dialog
-                open={categoryDialogOpen}
-                onClose={() => setCategoryDialogOpen(false)}
-                maxWidth="sm"
-                fullWidth
-                fullScreen={isMobile}
-            >
-                <DialogTitle sx={{ fontWeight: 800 }}>
-                    {editingCategory ? 'Edit Category' : 'Add Category'}
-                </DialogTitle>
-                <DialogContent dividers>
-                    <Stack spacing={2.5} sx={{ pt: 1 }}>
-                        <TextField
-                            select
-                            label="Category Name"
-                            value={categoryName}
-                            onChange={(e) => handleCategorySelect(e.target.value)}
-                            fullWidth
-                            size="small"
-                            required
-                            disabled={Boolean(editingCategory)}
-                            helperText={
-                                editingCategory
-                                    ? 'The category name cannot be changed'
-                                    : availableCategories.length
-                                        ? 'Selecting a category fills in its events'
-                                        : 'Every category is already configured'
-                            }
-                        >
-                            {(editingCategory ? enumCategories : availableCategories).map((name) => (
-                                <MenuItem key={name} value={name}>
-                                    {prettify(name)}
-                                </MenuItem>
-                            ))}
-                        </TextField>
-
-                        <Autocomplete
-                            multiple
-                            options={selectableEvents}
-                            value={categoryEvents.map((e) => e.eventName)}
-                            getOptionLabel={(option) => prettify(option)}
-                            onChange={(_, selected) =>
-                                setCategoryEvents(
-                                    selected.map((eventName) => {
-                                        const existing = categoryEvents.find(
-                                            (e) => e.eventName === eventName,
-                                        );
-                                        return existing || { eventName, enabled: true };
-                                    }),
-                                )
-                            }
-                            renderInput={(params) => (
-                                <TextField
-                                    {...params}
-                                    label="Events"
-                                    size="small"
-                                    placeholder="Select events"
-                                    helperText="Only events not already used by another category are listed"
-                                />
-                            )}
-                        />
-
-                        {categoryEvents.length > 0 && (
-                            <Stack spacing={0.5}>
-                                {categoryEvents.map((event) => (
-                                    <Stack
-                                        key={event.eventName}
-                                        direction="row"
-                                        alignItems="center"
-                                        justifyContent="space-between"
-                                        sx={{
-                                            px: 1.5,
-                                            py: 0.75,
-                                            borderRadius: 1.5,
-                                            border: '1px solid',
-                                            borderColor: 'divider',
-                                        }}
-                                    >
-                                        <Typography variant="body2">{prettify(event.eventName)}</Typography>
-                                        <Stack direction="row" alignItems="center" spacing={0.5}>
-                                            <Switch
-                                                size="small"
-                                                checked={event.enabled}
-                                                onChange={(e) =>
-                                                    setCategoryEvents((prev) =>
-                                                        prev.map((item) =>
-                                                            item.eventName === event.eventName
-                                                                ? { ...item, enabled: e.target.checked }
-                                                                : item,
-                                                        ),
-                                                    )
-                                                }
-                                            />
-                                            <IconButton
-                                                size="small"
-                                                color="error"
-                                                onClick={() =>
-                                                    setCategoryEvents((prev) =>
-                                                        prev.filter((item) => item.eventName !== event.eventName),
-                                                    )
-                                                }
-                                            >
-                                                <DeleteOutline fontSize="small" />
-                                            </IconButton>
-                                        </Stack>
-                                    </Stack>
-                                ))}
-                            </Stack>
-                        )}
-                    </Stack>
-                </DialogContent>
-                <DialogActions sx={{ px: 3, py: 2 }}>
-                    <Button onClick={() => setCategoryDialogOpen(false)} disabled={savingCategory}>
-                        Cancel
-                    </Button>
-                    <Button
-                        variant="contained"
-                        onClick={handleSaveCategory}
-                        disabled={savingCategory}
-                        startIcon={savingCategory ? <CircularProgress size={16} color="inherit" /> : undefined}
-                        sx={{ borderRadius: 2, fontWeight: 700 }}
-                    >
-                        {editingCategory ? 'Update Category' : 'Create Category'}
-                    </Button>
-                </DialogActions>
-            </Dialog>
         </Box>
     );
 };

@@ -176,6 +176,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
     localStorage.removeItem('user');
     localStorage.removeItem('activeRole');
     localStorage.removeItem('availableTenants');
+    // The notification effect no longer tears the socket down on every re-run,
+    // so logout is where the connection is actually closed.
+    socketService.disconnect();
   };
 
   // Mirrors TenantPermissionsGuard on the backend so the UI can disable actions the
