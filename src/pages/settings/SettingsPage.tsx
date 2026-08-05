@@ -75,6 +75,7 @@ import {
     getUnitSystem,
     useSettings,
     type BusinessHourDay,
+    type DeliverySettings,
     type NotificationSettings,
     type PaymentSettings,
     type PrinterConfig,
@@ -730,7 +731,7 @@ const SettingsPage: React.FC = () => {
         try {
             setPriceApplyLoading(true);
             const res = await menuAPI.bulkPriceAdjust(pct, priceSelectedCategory !== 'all' ? priceSelectedCategory : undefined);
-            toast.success(`Updated prices for ${res.data.updated} item(s)`);
+            toast.success(`Menu Prices updated successfully (${res.data.updated} item(s))`);
             setPricePreviewItems([]);
             setPricePercentage('');
             // Refresh logs if panel is open
@@ -1092,6 +1093,84 @@ const SettingsPage: React.FC = () => {
                 }
             }
         }));
+    };
+
+    const handleSaveDeliveryProvider = async (provider: 'builtIn' | 'doordash' | 'ubereats') => {
+        if (loading) return;
+        if (provider === 'builtIn') {
+            if ((settings.delivery?.builtIn?.baseMiles ?? 2) > (settings.delivery?.builtIn?.maxDeliveryRange ?? 15)) {
+                toast.error('Base miles covered cannot exceed the maximum delivery range');
+                return;
+            }
+        }
+
+        try {
+            setLoading(true);
+            const defaults = createDefaultSettings();
+            // Fetch fresh latest settings to ensure other providers are not overridden with stale drafts
+            const latestResp = await settingsAPI.getAll();
+            let latestDelivery: DeliverySettings = settings.delivery
+                ? { ...settings.delivery }
+                : { ...defaults.delivery! };
+
+            if (Array.isArray(latestResp.data)) {
+                const found = latestResp.data.find((c: any) => c.category === 'delivery');
+                if (found && found.settings) {
+                    latestDelivery = {
+                        builtIn: { ...defaults.delivery!.builtIn, ...(found.settings.builtIn || {}) },
+                        doordash: { ...defaults.delivery!.doordash, ...(found.settings.doordash || {}) },
+                        ubereats: { ...defaults.delivery!.ubereats, ...(found.settings.ubereats || {}) },
+                    };
+                }
+            } else if (latestResp.data?.delivery) {
+                latestDelivery = {
+                    builtIn: { ...defaults.delivery!.builtIn, ...(latestResp.data.delivery.builtIn || {}) },
+                    doordash: { ...defaults.delivery!.doordash, ...(latestResp.data.delivery.doordash || {}) },
+                    ubereats: { ...defaults.delivery!.ubereats, ...(latestResp.data.delivery.ubereats || {}) },
+                };
+            }
+
+            const currentDelivery = settings.delivery || defaults.delivery!;
+
+            // Only update the specific provider that the user clicked Save on
+            const updatedDelivery: DeliverySettings = {
+                builtIn: {
+                    ...latestDelivery.builtIn,
+                    ...(provider === 'builtIn' ? currentDelivery.builtIn : {})
+                },
+                doordash: {
+                    ...latestDelivery.doordash,
+                    ...(provider === 'doordash' ? currentDelivery.doordash : {})
+                },
+                ubereats: {
+                    ...latestDelivery.ubereats,
+                    ...(provider === 'ubereats' ? currentDelivery.ubereats : {})
+                }
+            };
+
+            await settingsAPI.update('delivery', updatedDelivery);
+            updateGlobalSettings({
+                ...settings,
+                delivery: updatedDelivery,
+            });
+
+            setSettings(prev => ({
+                ...prev,
+                delivery: updatedDelivery,
+            }));
+
+            const providerLabels: Record<string, string> = {
+                builtIn: 'Built-in Delivery',
+                doordash: 'DoorDash Drive',
+                ubereats: 'Uber Direct'
+            };
+            toast.success(`${providerLabels[provider] || 'Delivery'} updated successfully`);
+        } catch (error) {
+            console.error('Error saving delivery settings:', error);
+            toast.error((error as any)?.response?.data?.message || 'Failed to save delivery settings');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handlePrinterChange = (role: 'billing' | 'kitchen', field: keyof PrinterConfig, value: any) => {
@@ -1596,7 +1675,7 @@ const SettingsPage: React.FC = () => {
         }
     };
 
-    const handleSave = async (category: keyof SettingsState) => {
+    const handleSave = async (category: keyof SettingsState, customSuccessMessage?: string) => {
         if (loading) return;
         if (category === 'restaurant') {
             const validation = validateRestaurantForm();
@@ -1614,21 +1693,28 @@ const SettingsPage: React.FC = () => {
             }
         }
 
+        const defaultCategoryMessages: Record<string, string> = {
+            restaurant: 'Restaurant Profile updated successfully',
+            system: 'System Preferences updated successfully',
+            notification: 'Notification Settings updated successfully',
+            printer: 'Printer Settings updated successfully',
+            rewards: 'Loyalty & Rewards updated successfully',
+            delivery: 'Delivery Settings updated successfully',
+        };
+
         try {
             setLoading(true);
-            let successMessage = 'Setting updated successfully';
+            const successMessage = customSuccessMessage || defaultCategoryMessages[category] || 'Settings updated successfully';
 
             if (category === 'restaurant') {
                 const restaurantPayload = buildRestaurantPayload();
                 await settingsAPI.update('restaurant', restaurantPayload);
                 updateGlobalSettings(settings); // Update global context
                 await fetchSettings();
-                successMessage = 'Setting updated successfully';
             } else if (category === 'system') {
                 await settingsAPI.update('system', settings.system);
                 updateGlobalSettings(settings); // Update global context
                 await fetchSettings();
-                successMessage = 'Setting updated successfully';
             } else if (category === 'notification') {
                 await settingsAPI.update('notification', {
                     sms: {
@@ -1647,23 +1733,18 @@ const SettingsPage: React.FC = () => {
                     soundDuration: settings.notification.soundDuration || 6
                 });
                 await fetchSettings();
-                successMessage = 'Setting updated successfully';
             } else if (category === 'printer') {
                 await settingsAPI.update('printer', settings.printer);
                 updateGlobalSettings(settings);
-                successMessage = 'Setting updated successfully';
             } else if (category === 'rewards') {
                 await settingsAPI.update('rewards', settings.rewards);
                 updateGlobalSettings(settings); // Update global context
                 await fetchSettings();
-                successMessage = 'Setting updated successfully';
             } else if (category === 'delivery') {
                 await settingsAPI.update('delivery', settings.delivery);
                 updateGlobalSettings(settings);
                 await fetchSettings();
-                successMessage = 'Setting updated successfully';
             }
-
 
             toast.success(successMessage);
         } catch (error) {
@@ -3084,7 +3165,7 @@ const SettingsPage: React.FC = () => {
                             variant="contained"
                             size="medium"
                             startIcon={<SaveIcon />}
-                            onClick={() => handleSave('restaurant')}
+                            onClick={() => handleSave('restaurant', 'Inventory Settings updated successfully')}
                             disabled={loading}
                             sx={{
                                 borderRadius: 2.5,
@@ -3634,7 +3715,7 @@ const SettingsPage: React.FC = () => {
                                 variant="contained"
                                 size={isMobile ? "medium" : "large"}
                                 startIcon={<SaveIcon />}
-                                onClick={() => handleSave('system')}
+                                onClick={() => handleSave('system', 'POS Payment Methods updated successfully')}
                                 disabled={loading}
                                 sx={{
                                     borderRadius: 2.5,
@@ -3830,7 +3911,7 @@ const SettingsPage: React.FC = () => {
                                         }
 
                                         await tenantAPI.updateStripeSettings(payload);
-                                        toast.success('Stripe settings saved');
+                                        toast.success('Stripe Settings updated successfully');
                                         // Refresh status flags
                                         const statusResp = await tenantAPI.getStripeSettings();
                                         setStripeStatus(statusResp.data || {});
@@ -4839,13 +4920,7 @@ const SettingsPage: React.FC = () => {
                                             variant="contained"
                                             size={isMobile ? "medium" : "large"}
                                             startIcon={<SaveIcon />}
-                                            onClick={() => {
-                                                if ((settings.delivery?.builtIn?.baseMiles ?? 2) > (settings.delivery?.builtIn?.maxDeliveryRange ?? 15)) {
-                                                    toast.error('Base miles covered cannot exceed the maximum delivery range');
-                                                    return;
-                                                }
-                                                handleSave('delivery');
-                                            }}
+                                            onClick={() => handleSaveDeliveryProvider('builtIn')}
                                             disabled={loading || (settings.delivery?.builtIn?.baseMiles ?? 2) > (settings.delivery?.builtIn?.maxDeliveryRange ?? 15)}
                                             sx={{
                                                 borderRadius: 2.5,
@@ -4887,7 +4962,7 @@ const SettingsPage: React.FC = () => {
                                             variant="contained"
                                             size={isMobile ? "medium" : "large"}
                                             startIcon={<SaveIcon />}
-                                            onClick={() => handleSave('delivery')}
+                                            onClick={() => handleSaveDeliveryProvider('doordash')}
                                             disabled={loading}
                                             sx={{
                                                 borderRadius: 2.5,
@@ -4929,7 +5004,7 @@ const SettingsPage: React.FC = () => {
                                             variant="contained"
                                             size={isMobile ? "medium" : "large"}
                                             startIcon={<SaveIcon />}
-                                            onClick={() => handleSave('delivery')}
+                                            onClick={() => handleSaveDeliveryProvider('ubereats')}
                                             disabled={loading}
                                             sx={{
                                                 borderRadius: 2.5,

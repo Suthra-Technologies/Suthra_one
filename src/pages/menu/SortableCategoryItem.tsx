@@ -61,10 +61,14 @@ export function SortableCategoryItem({
     return (
         <Grid item xs={12} sm={6} md={4} ref={setNodeRef} style={style}>
             <Card
+                {...attributes}
+                {...listeners}
                 sx={{
                     height: '100%',
                     display: 'flex',
                     flexDirection: 'column',
+                    cursor: 'grab',
+                    '&:active': { cursor: 'grabbing' },
                     transition: 'transform 0.2s, box-shadow 0.2s',
                     ...(isDragging ? { boxShadow: theme.shadows[12] } : {}),
                     '&:hover': {
@@ -76,15 +80,11 @@ export function SortableCategoryItem({
                 <CardContent sx={{ flexGrow: 1 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                         <Box
-                            {...attributes}
-                            {...listeners}
                             sx={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                cursor: 'grab',
                                 mr: 1,
                                 color: 'text.secondary',
-                                '&:active': { cursor: 'grabbing' },
                             }}
                         >
                             <DragIndicatorIcon />

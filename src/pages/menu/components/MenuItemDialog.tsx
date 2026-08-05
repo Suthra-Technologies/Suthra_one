@@ -446,7 +446,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                         <TextField
                                             label="Item Name"
                                             value={menuItemForm.name}
-                                            onChange={(e) => setMenuItemForm({ ...menuItemForm, name: e.target.value.replace(/[^a-zA-Z0-9\s]/g, '') })}
+                                            onChange={(e) => setMenuItemForm({ ...menuItemForm, name: e.target.value })}
                                             onBlur={() => setMenuItemTouched({ ...menuItemTouched, name: true })}
                                             error={menuItemTouched.name && !menuItemForm.name.trim()}
                                             helperText={menuItemTouched.name && !menuItemForm.name.trim() ? 'Item name is required' : ''}

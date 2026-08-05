@@ -4,6 +4,7 @@ import { Restaurant, Visibility, VisibilityOff, CheckCircle } from '@mui/icons-m
 import { useNavigate } from 'react-router-dom';
 import { validateEmail, validatePhone, validateName, validatePassword, validateCompanyName, validateRequired, validateEin, getHelperText, hasError } from '../utils/validation';
 import type { ValidationResult } from '../utils/validation';
+import { sanitizeName } from '../utils/inputSanitizers';
 import { useAuth } from '../context/AuthContext';
 import PhoneInput from '../components/PhoneInput';
 
@@ -176,6 +177,17 @@ const RestaurantRegisterPage: React.FC = () => {
       const digits = String(value || '').replace(/\D/g, '').slice(0, 9);
       const formatted = digits.length > 2 ? `${digits.slice(0, 2)}-${digits.slice(2)}` : digits;
       setForm(prev => ({ ...prev, [name]: formatted }));
+
+      if (errors[name]) {
+        setErrors(prev => ({ ...prev, [name]: { isValid: true } }));
+      }
+      return;
+    }
+
+    // Name sanitization: allow only letters and spaces, max 50 characters
+    if (name === "firstName" || name === "lastName") {
+      const cleaned = sanitizeName(value).slice(0, 50);
+      setForm(prev => ({ ...prev, [name]: cleaned }));
 
       if (errors[name]) {
         setErrors(prev => ({ ...prev, [name]: { isValid: true } }));
