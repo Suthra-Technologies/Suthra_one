@@ -376,47 +376,55 @@ const DashboardPage: React.FC = () => {
 
       const promises: Promise<any>[] = [
         reportsAPI.getDashboard(params),
-        billingAPI.status(),
-        // New metrics fetching
-        inventoryAPI.getAll(),
-        purchaseOrdersAPI.getAll({ status: 'Pending' }),
-        bookingsAPI.getAll(),
-        reportsAPI.getBestSellingItems(params),
-        reportsAPI.getOrdersByType(params),
-        assetsAPI.getInsights(),
-        // Admin/manager only, and never let a failed alerts call blank the
-        // whole dashboard.
-        canSeeStockAlerts ? inventoryAPI.getLowStockAlerts().catch(() => null) : Promise.resolve(null),
+        billingAPI.status().catch((e) => { console.warn('[Dashboard] Billing check:', e?.message); return null; }),
+        inventoryAPI.getAll().catch((e) => { console.warn('[Dashboard] Inventory fetch:', e?.message); return null; }),
+        canSeeStockAlerts ? purchaseOrdersAPI.getAll({ status: 'Pending' }).catch((e) => { console.warn('[Dashboard] PO fetch:', e?.message); return null; }) : Promise.resolve(null),
+        bookingsAPI.getAll().catch((e) => { console.warn('[Dashboard] Bookings fetch:', e?.message); return null; }),
+        reportsAPI.getBestSellingItems(params).catch((e) => { console.warn('[Dashboard] Best selling fetch:', e?.message); return null; }),
+        reportsAPI.getOrdersByType(params).catch((e) => { console.warn('[Dashboard] Orders by type fetch:', e?.message); return null; }),
+        canSeeStockAlerts ? assetsAPI.getInsights().catch((e) => { console.warn('[Dashboard] Assets fetch:', e?.message); return null; }) : Promise.resolve(null),
+        canSeeStockAlerts ? inventoryAPI.getLowStockAlerts().catch((e) => { console.warn('[Dashboard] Stock alerts fetch:', e?.message); return null; }) : Promise.resolve(null),
       ];
 
-      const results = await Promise.all(promises);
+      const results = await Promise.allSettled(promises);
       if (requestId !== fetchRequestId.current) return; // Ignore stale request
 
       const [dashboardRes, billingRes, inventoryRes, poRes, bookingsRes, bestSellingRes, ordersByTypeRes, assetsRes, stockAlertsRes] = results;
 
-      const dashboardDataActual = dashboardRes?.status === 'fulfilled' ? dashboardRes.value?.data : dashboardRes?.data;
-      const billingData = billingRes?.status === 'fulfilled' ? billingRes.value?.data : billingRes?.data;
-      const bestSellingData = bestSellingRes?.status === 'fulfilled' ? bestSellingRes.value?.data : bestSellingRes?.data;
-      const ordersByTypeData = ordersByTypeRes?.status === 'fulfilled' ? ordersByTypeRes.value?.data : ordersByTypeRes?.data;
+      const unwrapData = (res: any) => {
+        if (!res) return null;
+        if (res.status === 'fulfilled') return res.value?.data ?? res.value;
+        if (res.status === 'rejected') {
+          console.warn('[Dashboard] Partial metric rejected:', res.reason?.message || res.reason);
+          return null;
+        }
+        return res?.data ?? res;
+      };
+
+      const dashboardDataActual = unwrapData(dashboardRes);
+      const billingData = unwrapData(billingRes);
+      const bestSellingData = unwrapData(bestSellingRes);
+      const ordersByTypeData = unwrapData(ordersByTypeRes);
+      const assetsData = unwrapData(assetsRes);
 
       setDashboardData({
         ...(dashboardDataActual || {}),
-        bestSellingItems: Array.isArray(bestSellingData) ? bestSellingData : [],
-        ordersByType: Array.isArray(ordersByTypeData) ? ordersByTypeData : [],
-        subscriptionStatus: billingData?.status || 'unknown',
+        bestSellingItems: Array.isArray(bestSellingData) ? bestSellingData : (Array.isArray(bestSellingData?.items) ? bestSellingData.items : []),
+        ordersByType: Array.isArray(ordersByTypeData) ? ordersByTypeData : (Array.isArray(ordersByTypeData?.items) ? ordersByTypeData.items : []),
+        subscriptionStatus: billingData?.status || 'active',
       });
 
-      setAssetInsights(assetsRes?.data);
+      setAssetInsights(assetsData);
 
       // Process Inventory for low stock
-      const inventoryData = inventoryRes?.status === 'fulfilled' ? inventoryRes.value?.data : inventoryRes?.data;
+      const inventoryData = unwrapData(inventoryRes);
       const inventoryItems = Array.isArray(inventoryData?.items) ? inventoryData.items : (Array.isArray(inventoryData) ? inventoryData : []);
       setInventoryCount(inventoryItems.length);
 
       // Prefer the server's persisted alert state — it applies the same reorder
       // threshold the notifications were raised against. The client-side count
       // is only a fallback for when that call failed.
-      const alertsData = stockAlertsRes?.data;
+      const alertsData = unwrapData(stockAlertsRes);
       const alertItems = Array.isArray(alertsData?.items) ? alertsData.items : null;
 
       if (alertItems) {
@@ -428,14 +436,14 @@ const DashboardPage: React.FC = () => {
       }
 
       // Process Pending POs
-      const poData = poRes?.status === 'fulfilled' ? poRes.value?.data : poRes?.data;
+      const poData = unwrapData(poRes);
       setPendingPOs(poData?.total || (Array.isArray(poData) ? poData.length : 0));
 
       // Process Bookings (Today's active)
       const d = new Date();
       const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-      const rawBookings = bookingsRes?.status === 'fulfilled' ? bookingsRes.value?.data : bookingsRes?.data;
+      const rawBookings = unwrapData(bookingsRes);
       const bookingsData = Array.isArray(rawBookings)
         ? rawBookings
         : (Array.isArray(rawBookings?.items) ? rawBookings.items : []);

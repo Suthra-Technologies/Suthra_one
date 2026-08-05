@@ -397,8 +397,12 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     // Load from localStorage if available
-    const saved = localStorage.getItem('sidebarCollapsed');
-    return saved ? JSON.parse(saved) : false;
+    try {
+      const saved = localStorage.getItem('sidebarCollapsed');
+      return saved ? JSON.parse(saved) : false;
+    } catch {
+      return false;
+    }
   });
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [notificationOpen, setNotificationOpen] = useState(false);

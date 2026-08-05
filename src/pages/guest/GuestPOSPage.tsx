@@ -173,19 +173,25 @@ const GuestPOSPage: React.FC = () => {
         sessionStorage.removeItem('guestPendingOrder');
 
         if (redirectStatus === 'succeeded' && savedStr) {
-            const savedData = JSON.parse(savedStr);
-            setRedirectProcessing(true);
-            ordersAPI.createPublic({ ...savedData, paymentIntentId }, savedData.slug)
-                .then((res: any) => {
-                    setSuccessOrderNumber(res.data.orderNumber || 'Unknown');
-                    setSuccessTokenNumber(res.data.dailyTokenNumber ?? null);
-                })
-                .catch((err: any) => {
-                    console.error('Order error after redirect payment:', err);
-                    setRedirectPaymentId(paymentIntentId);
-                    setRedirectError('Your payment was received but we could not confirm your order automatically. Please show the reference below to a staff member.');
-                })
-                .finally(() => setRedirectProcessing(false));
+            try {
+                const savedData = JSON.parse(savedStr);
+                setRedirectProcessing(true);
+                ordersAPI.createPublic({ ...savedData, paymentIntentId }, savedData.slug)
+                    .then((res: any) => {
+                        setSuccessOrderNumber(res.data.orderNumber || 'Unknown');
+                        setSuccessTokenNumber(res.data.dailyTokenNumber ?? null);
+                    })
+                    .catch((err: any) => {
+                        console.error('Order error after redirect payment:', err);
+                        setRedirectPaymentId(paymentIntentId);
+                        setRedirectError('Your payment was received but we could not confirm your order automatically. Please show the reference below to a staff member.');
+                    })
+                    .finally(() => setRedirectProcessing(false));
+            } catch (parseErr) {
+                console.error('Failed to parse guest pending order:', parseErr);
+                setRedirectPaymentId(paymentIntentId);
+                setRedirectError('Your payment was received. Please show the reference below to a staff member.');
+            }
         } else if (redirectStatus !== 'succeeded') {
             toast.error('Payment was not completed. Please try again.');
         }

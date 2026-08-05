@@ -93,7 +93,7 @@ interface Order {
 const KitchenInterface: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingOrders, setProcessingOrders] = useState<Set<string>>(new Set());
   const [updatingItems, setUpdatingItems] = useState<Set<string>>(new Set());
   const theme = useTheme();
   const { socket } = useSocket();
@@ -295,9 +295,9 @@ const KitchenInterface: React.FC = () => {
   };
 
 
-  const fetchOrders = async () => {
+  const fetchOrders = async (isSilent = false) => {
     try {
-      setLoading(true);
+      if (!isSilent) setLoading(true);
       const response = await ordersAPI.getKitchen();
       const ordersData = Array.isArray(response.data) ? response.data : [];
 
@@ -311,7 +311,7 @@ const KitchenInterface: React.FC = () => {
       console.error('Error fetching orders:', error);
       toast.error('Failed to load kitchen orders');
     } finally {
-      setLoading(false);
+      if (!isSilent) setLoading(false);
     }
   };
 
@@ -390,18 +390,18 @@ const KitchenInterface: React.FC = () => {
   };
 
   const handleCancelItemProcess = async () => {
-    if (isProcessing) return;
     if (!cancelItemRef || !cancelReason.trim()) {
       toast.error('Please provide a reason for cancellation');
       return;
     }
+    const { orderId, itemIndex } = cancelItemRef;
+    if (processingOrders.has(orderId)) return;
     if (cancelQuantity < 1 || cancelQuantity > cancelItemRef.maxQuantity) {
       toast.error('Invalid quantity selected');
       return;
     }
-    const { orderId, itemIndex } = cancelItemRef;
     const key = `${orderId}-${itemIndex}`;
-    setIsProcessing(true);
+    setProcessingOrders(prev => new Set(prev).add(orderId));
     setUpdatingItems(prev => new Set(prev).add(key));
     setCancelDialogOpen(false);
 
@@ -409,8 +409,8 @@ const KitchenInterface: React.FC = () => {
       await ordersAPI.updateItemStatus(orderId, itemIndex, 'cancelled', cancelReason.trim(), cancelQuantity);
 
       toast.success('Item cancelled successfully');
-      // Refetch whole orders to ensure totalAmount/tax recalculation syncs exactly with backend
-      fetchOrders();
+      // Refetch orders silently in background to sync totals
+      fetchOrders(true);
     } catch (error) {
       console.error('Error cancelling item:', error);
       toast.error('Failed to cancel item');
@@ -423,27 +423,37 @@ const KitchenInterface: React.FC = () => {
       setCancelReason('');
       setCancelQuantity(1);
       setCancelItemRef(null);
-      setIsProcessing(false);
+      setProcessingOrders(prev => {
+        const updated = new Set(prev);
+        updated.delete(orderId);
+        return updated;
+      });
     }
   };
 
   const handleCancelOrderProcess = async () => {
-    if (isProcessing || !cancelOrderRef) return;
+    if (!cancelOrderRef) return;
+    const orderId = cancelOrderRef._id;
+    if (processingOrders.has(orderId)) return;
     
-    setIsProcessing(true);
+    setProcessingOrders(prev => new Set(prev).add(orderId));
     setCancelOrderDialogOpen(false);
 
     try {
-      await ordersAPI.updateStatus(cancelOrderRef._id, 'cancelled', cancelOrderReason.trim() || 'Cancelled by Kitchen');
+      await ordersAPI.updateStatus(orderId, 'cancelled', cancelOrderReason.trim() || 'Cancelled by Kitchen');
       toast.success('Order cancelled successfully');
-      fetchOrders();
+      fetchOrders(true);
     } catch (error) {
       console.error('Error cancelling order:', error);
       toast.error('Failed to cancel order');
     } finally {
       setCancelOrderReason('');
       setCancelOrderRef(null);
-      setIsProcessing(false);
+      setProcessingOrders(prev => {
+        const updated = new Set(prev);
+        updated.delete(orderId);
+        return updated;
+      });
     }
   };
 
@@ -458,17 +468,18 @@ const KitchenInterface: React.FC = () => {
   };
 
   const handleRefundItemProcess = async () => {
-    if (isProcessing || !refundItemRef) return;
+    if (!refundItemRef) return;
     const { orderId, itemIndex } = refundItemRef;
+    if (processingOrders.has(orderId)) return;
     setRefundDialogOpen(false);
     const key = `${orderId}-${itemIndex}`;
-    setIsProcessing(true);
+    setProcessingOrders(prev => new Set(prev).add(orderId));
     setUpdatingItems(prev => new Set(prev).add(key));
 
     try {
       await ordersAPI.refundItem(orderId, itemIndex, refundMethod);
       toast.success('Item refunded successfully');
-      fetchOrders();
+      fetchOrders(true);
     } catch (error: any) {
       console.error('Error refunding item:', error);
       toast.error(error.response?.data?.message || 'Failed to refund item');
@@ -479,15 +490,19 @@ const KitchenInterface: React.FC = () => {
         return updated;
       });
       setRefundItemRef(null);
-      setIsProcessing(false);
+      setProcessingOrders(prev => {
+        const updated = new Set(prev);
+        updated.delete(orderId);
+        return updated;
+      });
     }
   };
 
   // Handle marking all items as ready
   const handleMarkAllReady = async (orderId: string) => {
-    if (isProcessing) return;
+    if (processingOrders.has(orderId)) return;
     try {
-      setIsProcessing(true);
+      setProcessingOrders(prev => new Set(prev).add(orderId));
       await ordersAPI.updateAllItemsStatus(orderId, 'ready');
 
       setOrders(prev => prev.map(order => {
@@ -504,12 +519,16 @@ const KitchenInterface: React.FC = () => {
       }));
 
       toast.success('All items marked as ready');
-      fetchOrders(); // Sync complete order status from backend
+      fetchOrders(true); // Sync complete order status from backend in background
     } catch (error) {
       console.error('Error marking all items ready:', error);
       toast.error('Failed to mark all items ready');
     } finally {
-      setIsProcessing(false);
+      setProcessingOrders(prev => {
+        const updated = new Set(prev);
+        updated.delete(orderId);
+        return updated;
+      });
     }
   };
 
@@ -529,15 +548,19 @@ const KitchenInterface: React.FC = () => {
       else newStatus = 'completed';
     }
 
-    if (!newStatus || isProcessing) return;
+    if (!newStatus || processingOrders.has(orderId)) return;
 
     try {
-      setIsProcessing(true);
+      setProcessingOrders(prev => new Set(prev).add(orderId));
       await ordersAPI.updateStatus(orderId, newStatus);
       toast.success(`Order marked as ${newStatus.replace(/_/g, ' ')}`);
-      fetchOrders();
+      fetchOrders(true);
     } finally {
-      setIsProcessing(false);
+      setProcessingOrders(prev => {
+        const updated = new Set(prev);
+        updated.delete(orderId);
+        return updated;
+      });
     }
   };
 
@@ -643,7 +666,7 @@ const KitchenInterface: React.FC = () => {
               />
             </Badge>
             <Tooltip title="Refresh Orders">
-              <IconButton onClick={fetchOrders} color="primary" size="large">
+              <IconButton onClick={() => fetchOrders()} color="primary" size="large">
                 <RefreshIcon />
               </IconButton>
             </Tooltip>
@@ -704,6 +727,7 @@ const KitchenInterface: React.FC = () => {
             const progress = getOrderProgress(order.items);
             const urgency = getUrgencyLevel(order.createdAt);
             const isAllReady = progress === 100;
+            const isOrderProcessing = processingOrders.has(order._id);
 
             return (
               <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={order._id}>
@@ -1010,8 +1034,8 @@ const KitchenInterface: React.FC = () => {
                         color="success"
                         size="small"
                         onClick={() => handleMarkAllReady(order._id)}
-                        disabled={isProcessing}
-                        startIcon={<DoneAllIcon />}
+                        disabled={isOrderProcessing}
+                        startIcon={isOrderProcessing ? <CircularProgress size={14} color="inherit" /> : <DoneAllIcon />}
                         sx={{ flex: { xs: 1, sm: 'initial' }, minWidth: 0, fontSize: { xs: '0.62rem', sm: '0.78rem' }, py: { xs: 0.45, sm: 0.7 }, px: { xs: 0.5, sm: 1 }, minHeight: { xs: 28, sm: 34 }, '& .MuiButton-startIcon': { mr: { xs: 0.3, sm: 0.75 } } }}
                       >
                         Mark All Ready
@@ -1028,7 +1052,7 @@ const KitchenInterface: React.FC = () => {
                         setCancelOrderReason('');
                         setCancelOrderDialogOpen(true);
                       }}
-                      disabled={isProcessing}
+                      disabled={isOrderProcessing}
                       startIcon={<CancelIcon />}
                       sx={{ flex: { xs: 1, sm: 'initial' }, minWidth: 0, fontSize: { xs: '0.62rem', sm: '0.78rem' }, py: { xs: 0.45, sm: 0.7 }, px: { xs: 0.5, sm: 1 }, minHeight: { xs: 28, sm: 34 }, '& .MuiButton-startIcon': { mr: { xs: 0.3, sm: 0.75 } } }}
                     >
@@ -1041,8 +1065,8 @@ const KitchenInterface: React.FC = () => {
                         variant="contained"
                         color={isAllReady ? "success" : (getStatusColor(order.status) as any)}
                         onClick={() => handleOrderStatusUpdate(order._id, order.status, order.orderType, !!((order as any).doordashDeliveryId || (order as any).uberEatsDeliveryId))}
-                        startIcon={isAllReady ? <CheckCircleIcon /> : <PlayArrowIcon />}
-                        disabled={isProcessing || (!isAllReady && order.status === 'preparing')}
+                        startIcon={isOrderProcessing ? <CircularProgress size={14} color="inherit" /> : (isAllReady ? <CheckCircleIcon /> : <PlayArrowIcon />)}
+                        disabled={isOrderProcessing || (!isAllReady && order.status === 'preparing')}
                         sx={{ flex: { xs: 1, sm: 'initial' }, minWidth: 0, fontSize: { xs: '0.62rem', sm: '0.78rem' }, py: { xs: 0.45, sm: 0.7 }, px: { xs: 0.5, sm: 1 }, minHeight: { xs: 28, sm: 34 }, '& .MuiButton-startIcon': { mr: { xs: 0.3, sm: 0.75 } } }}
                       >
                         {order.status === 'pending' ? 'Confirm' :
@@ -1320,7 +1344,7 @@ const KitchenInterface: React.FC = () => {
       onClick={handleCancelOrderProcess} 
       color="error" 
       variant="contained" 
-      disabled={isProcessing}
+      disabled={cancelOrderRef ? processingOrders.has(cancelOrderRef._id) : false}
       disableElevation
       sx={{ 
         borderRadius: 2, 

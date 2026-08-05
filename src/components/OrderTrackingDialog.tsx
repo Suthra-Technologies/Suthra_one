@@ -157,8 +157,11 @@ const OrderTrackingDialog: React.FC<OrderTrackingDialogProps> = ({ open, order: 
             pending: 0,
             confirmed: 1,
             preparing: 2,
+            'in-progress': 2,
+            'in_progress': 2,
             ready: 3,
             ready_to_pickup: 3,
+            ready_to_takeaway: 3,
             on_the_way: 4,
             delivered: 5,
             served: 4,
@@ -202,7 +205,7 @@ const OrderTrackingDialog: React.FC<OrderTrackingDialogProps> = ({ open, order: 
                         <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
                             <LocationIcon color="action" fontSize="small" />
                             <Typography variant="body2">
-                                {order.deliveryAddress.street || order.deliveryAddress.fullAddress}, {order.deliveryAddress.city}
+                                {order.deliveryAddress?.street || order.deliveryAddress?.fullAddress || 'N/A'}{order.deliveryAddress?.city ? `, ${order.deliveryAddress.city}` : ''}
                             </Typography>
                         </Box>
                     )}
@@ -380,11 +383,11 @@ const OrderTrackingDialog: React.FC<OrderTrackingDialogProps> = ({ open, order: 
                             {formatCurrency(order.subtotal || order.totalAmount)}
                         </Typography>
                     </Box>
-                    {order.tax?.amount > 0 && (
+                    {(order.tax?.amount ?? 0) > 0 && (
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-                            <Typography variant="body2" color="text.secondary">Tax ({order.tax.rate}%)</Typography>
+                            <Typography variant="body2" color="text.secondary">Tax ({order.tax?.rate ?? 0}%)</Typography>
                             <Typography variant="body2">
-                                {formatCurrency(order.tax.amount)}
+                                {formatCurrency(order.tax?.amount ?? 0)}
                             </Typography>
                         </Box>
                     )}
