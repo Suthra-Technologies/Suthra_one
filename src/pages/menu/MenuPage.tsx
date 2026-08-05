@@ -15,6 +15,7 @@ import {
     MenuBook as MenuBookIcon,
     Today as TodayIcon,
     Menu as MenuIcon,
+    LocalFireDepartment as LocalFireDepartmentIcon,
     PlaylistAdd as PlaylistAddIcon,
     FileUpload as FileUploadIcon,
     PhotoCamera as PhotoCameraIcon,
@@ -79,6 +80,7 @@ import RecipesPage from '../recipes/RecipesPage';
 import type { Category, Subcategory, IMenuItem } from './types';
 import MenuItemDialog from './components/MenuItemDialog';
 import AddOnGroupsPage from './AddOnGroupsPage';
+import SpiceLevelSetsPage from './SpiceLevelSetsPage';
 import TaxCategorySelector from './components/TaxCategorySelector';
 import { useActiveTenant } from '../../hooks/useActiveTenant';
 import {
@@ -268,7 +270,7 @@ const MenuPage: React.FC = () => {
         if (loading === false) { // Only refresh after initial load is complete
             debouncedFetchData();
         }
-        if (tabValue === 5) {
+        if (tabValue === 6) {
             fetchDeletedData();
         }
     }, [tabValue]);
@@ -1246,6 +1248,7 @@ const MenuPage: React.FC = () => {
                 <Tab label="Trays" icon={<StraightenIcon />} iconPosition="start" sx={{ fontWeight: 'bold', textTransform: 'none' }} />
                 <Tab label="Recipes" icon={<MenuBookIcon />} iconPosition="start" sx={{ fontWeight: 'bold', textTransform: 'none' }} />
                 <Tab label="Add-ons" icon={<PlaylistAddIcon />} iconPosition="start" sx={{ fontWeight: 'bold', textTransform: 'none' }} />
+                <Tab label="Spice Levels" icon={<LocalFireDepartmentIcon />} iconPosition="start" sx={{ fontWeight: 'bold', textTransform: 'none' }} />
                 <Tab label="Deleted" icon={<DeleteIcon />} iconPosition="start" sx={{ fontWeight: 'bold', textTransform: 'none', color: 'error.main' }} />
             </Tabs>
 
@@ -1743,8 +1746,15 @@ const MenuPage: React.FC = () => {
                 </Box>
             )}
 
-            {/* Deleted Items Tab */}
+            {/* Spice Level Sets Tab */}
             {tabValue === 5 && (
+                <Box>
+                    <SpiceLevelSetsPage hideHeader />
+                </Box>
+            )}
+
+            {/* Deleted Items Tab */}
+            {tabValue === 6 && (
                 <Box>
                     <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold', color: 'error.main' }}>
                         Deleted Items

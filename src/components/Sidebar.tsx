@@ -142,10 +142,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
     }));
   };
 
+  // Accountant has no dashboard access, so it lands on Reports instead.
+  const homePathForRole = (role?: string | null) =>
+    role === 'accountant' ? '/reports' : '/dashboard';
+
   const handleRoleSwitch = (role: string) => {
     switchRole(role);
     setRoleAnchorEl(null);
-    handleNavigation('/dashboard');
+    handleNavigation(homePathForRole(role));
   };
 
   const navigationGroups = [
@@ -194,10 +198,10 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
         { path: '/coupons', label: 'Coupons', icon: <ConfirmationNumber />, roles: ['admin', 'manager'] },
         { path: '/users', label: 'Users', icon: <People />, roles: ['admin', 'manager'] },
         { path: '/customers', label: 'Customers', icon: <AccountBox />, roles: ['admin', 'manager'] },
-        { path: '/attendance', label: 'Attendance', icon: <AccessTimeIcon />, roles: ['admin', 'manager'], feature: 'attendance' },
-        { path: '/assets', label: 'Asset & Document Management', icon: <Assignment />, roles: ['admin', 'manager', 'superadmin'] },
-        { path: '/expenses', label: 'Expenses', icon: <MonetizationOn />, roles: ['admin', 'manager'] },
-        { path: '/disputes', label: 'Disputes', icon: <Gavel />, roles: ['admin', 'manager'] },
+        { path: '/attendance', label: 'Attendance', icon: <AccessTimeIcon />, roles: ['admin', 'manager', 'accountant'], feature: 'attendance' },
+        { path: '/assets', label: 'Asset & Document Management', icon: <Assignment />, roles: ['admin', 'manager', 'accountant', 'superadmin'] },
+        { path: '/expenses', label: 'Expenses', icon: <MonetizationOn />, roles: ['admin', 'manager', 'accountant'] },
+        { path: '/disputes', label: 'Disputes', icon: <Gavel />, roles: ['admin', 'manager', 'accountant'] },
       ]
     },
     {
@@ -209,7 +213,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
     {
       title: 'ANALYTICS',
       items: [
-        { path: '/reports', label: 'Reports', icon: <Assessment />, roles: ['admin', 'manager'] },
+        { path: '/reports', label: 'Reports', icon: <Assessment />, roles: ['admin', 'manager', 'accountant'] },
         { path: '/service-usage', label: 'Service Usage', icon: <WebIcon />, roles: ['admin', 'manager'] },
         { path: '/customer-activities', label: 'Customer Activities', icon: <Assessment />, roles: ['admin', 'manager'] },
         { path: '/invoices', label: 'Invoices', icon: <Receipt />, roles: ['admin', 'superadmin'], laptopOnly: true },
@@ -218,13 +222,13 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
     {
       title: 'ACCOUNT',
       items: [
-        { path: '/profile', label: 'Profile', icon: <Person />, roles: ['admin', 'manager', 'waiter', 'cashier', 'delivery', 'customer'] },
+        { path: '/profile', label: 'Profile', icon: <Person />, roles: ['admin', 'manager', 'accountant', 'waiter', 'cashier', 'delivery', 'customer'] },
         { path: '/subscription', label: 'Subscription', icon: <AdminPanelSettings />, roles: ['admin'], hideOnIOS: true, laptopOnly: true },
         { path: '/support', label: 'Super Admin Support', icon: <HeadsetMic />, roles: ['admin', 'manager'] },
         { path: '/customer-support', label: 'Customer Tickets', icon: <Forum />, roles: ['admin', 'manager'] },
         { path: '/settings', label: 'Settings', icon: <Settings />, roles: ['admin', 'manager'] },
         { path: '/manage-notifications', label: 'Manage Notifications', icon: <NotificationsActive />, roles: ['admin', 'manager'] },
-        { path: '', label: 'Help & Guide', icon: <AutoStories />, roles: ['admin', 'manager', 'waiter', 'cashier', 'kitchen_staff', 'delivery', 'food_runner'], isAction: true, action: () => window.open('https://helpguide.restaurant.nexzenpos.com/#login', '_blank') },
+        { path: '', label: 'Help & Guide', icon: <AutoStories />, roles: ['admin', 'manager', 'accountant', 'waiter', 'cashier', 'kitchen_staff', 'delivery', 'food_runner'], isAction: true, action: () => window.open('https://helpguide.restaurant.nexzenpos.com/#login', '_blank') },
       ]
     },
   ];
@@ -293,7 +297,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
           boxSizing: 'border-box',
           cursor: 'pointer',
         }}
-        onClick={() => handleNavigation('/dashboard')}
+        onClick={() => handleNavigation(homePathForRole(activeRole))}
         >
           {(restaurantSettings.logo || (user?.tenant as any)?.logo) ? (
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, width: '100%' }}>

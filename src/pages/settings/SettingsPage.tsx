@@ -430,6 +430,7 @@ const createDefaultSettings = (): SettingsState => ({
                 // in-restaurant notifications, so it has no row here.
                 admin: { orders: true, catering: true, inventory: true, bookings: true, support: true },
                 manager: { orders: true, catering: true, inventory: true, bookings: true, support: true },
+                accountant: { orders: false, catering: false, inventory: false, bookings: false, support: false },
                 cashier: { orders: true, catering: false, inventory: false, bookings: true, support: false },
                 waiter: { orders: true, catering: false, inventory: false, bookings: true, support: false },
                 kitchen_staff: { orders: false, catering: false, inventory: true, bookings: false, support: false },

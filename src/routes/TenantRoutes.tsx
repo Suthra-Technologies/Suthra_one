@@ -22,6 +22,7 @@ import KitchenInterface from '../pages/kitchen/KitchenInterface';
 import KitchenOrdersPage from '../pages/kitchen/KitchenOrdersPage';
 import MenuPage from '../pages/menu/MenuPage';
 import AddOnGroupsPage from '../pages/menu/AddOnGroupsPage';
+import SpiceLevelSetsPage from '../pages/menu/SpiceLevelSetsPage';
 import TraysPage from '../pages/menu/TraysPage';
 import OrdersPage from '../pages/orders/OrdersPage';
 import POSPage from '../pages/pos/POSPage';
@@ -94,21 +95,49 @@ export const TenantRoutes = () => (
 
     {/* ─── Admin/Staff Routes (With Sidebar Layout) ─── */}
     <Route element={<Layout />}>
-      <Route path="dashboard" element={<DashboardPage />} />
-      <Route path="orders" element={<OrdersPage />} />
-      <Route path="pos" element={<POSPage />} />
-      <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
-      <Route path="purchase-orders/create" element={<CreatePOPage />} />
-      <Route path="purchase-orders/edit/:id" element={<CreatePOPage />} />
-      <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
-      
+      {/* Every staff role except accountant, which is back-office only. */}
+      <Route element={<RequireRole allowedRoles={['admin', 'manager', 'waiter', 'cashier', 'delivery', 'food_runner', 'kitchen_staff']} />}>
+        <Route path="dashboard" element={<DashboardPage />} />
+      </Route>
+
+      {/* Operational screens. Gated so back-office roles (accountant) cannot
+          reach them by typing the URL — they match the sidebar's role lists. */}
+      <Route element={<RequireRole allowedRoles={['admin', 'manager', 'waiter', 'cashier', 'delivery', 'food_runner']} />}>
+        <Route path="orders" element={<OrdersPage />} />
+      </Route>
+      <Route element={<RequireRole allowedRoles={['admin', 'manager', 'waiter', 'cashier']} />}>
+        <Route path="pos" element={<POSPage />} />
+      </Route>
       <Route element={<RequireRole allowedRoles={['admin', 'manager']} />}>
+        <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
+        <Route path="purchase-orders/create" element={<CreatePOPage />} />
+        <Route path="purchase-orders/edit/:id" element={<CreatePOPage />} />
+        <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
+      </Route>
+
+      {/* Back-office modules the accountant role shares with admin/manager:
+          assets, expenses, disputes, reports and attendance — nothing else. */}
+      <Route element={<RequireRole allowedRoles={['admin', 'manager', 'accountant']} />}>
         <Route path="expenses" element={<ExpensesPage />} />
         <Route path="expenses/:id" element={<ExpenseDetailPage />} />
         <Route path="expenses/create" element={<CreateExpensePage />} />
         <Route path="expenses/edit/:id" element={<CreateExpensePage />} />
+        <Route path="reports" element={<ReportsPage />} />
+        <Route path="assets" element={<AssetList />} />
+        <Route path="assets/:id" element={<AssetView />} />
+        <Route path="assets/new" element={<AssetForm />} />
+        <Route path="assets/:id/edit" element={<AssetForm />} />
+        <Route path="disputes" element={<DisputeList />} />
+        <Route path="disputes/:id" element={<DisputeDetails />} />
+        <Route element={<RequireFeature feature="attendance" />}>
+          <Route path="attendance" element={<AttendancePage />} />
+        </Route>
+      </Route>
+
+      <Route element={<RequireRole allowedRoles={['admin', 'manager']} />}>
         <Route path="menu" element={<MenuPage />} />
         <Route path="global-add-ons" element={<AddOnGroupsPage />} />
+        <Route path="spice-level-sets" element={<SpiceLevelSetsPage />} />
         <Route element={<RequireFeature feature="inventory" />}>
           <Route path="inventory" element={<InventoryPage />} />
         </Route>
@@ -120,7 +149,6 @@ export const TenantRoutes = () => (
         <Route path="recipes" element={<RecipesPage />} />
         <Route path="recipes/create" element={<CreateRecipePage />} />
         <Route path="recipes/:id/edit" element={<CreateRecipePage />} />
-        <Route path="reports" element={<ReportsPage />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="customers" element={<CustomersPage />} />
         <Route path="settings" element={<SettingsPage />} />
@@ -129,19 +157,10 @@ export const TenantRoutes = () => (
         <Route path="customer-support" element={<CustomerSupportPage />} />
         <Route path="promocode" element={<PromoCodePage />} />
         <Route path="coupons" element={< CouponsAdminPage />} />
-        <Route element={<RequireFeature feature="attendance" />}>
-          <Route path="attendance" element={<AttendancePage />} />
-        </Route>
         <Route path="customise-screens" element={<CustomiseScreensPage />} />
         <Route path="service-usage" element={<ServiceUsagePage />} />
         <Route path="customer-activities" element={<CustomerActivitiesPage />} />
         <Route path="audit-logs" element={<AuditLogsPage />} />
-        <Route path="assets" element={<AssetList />} />
-        <Route path="assets/:id" element={<AssetView />} />
-        <Route path="assets/new" element={<AssetForm />} />
-        <Route path="assets/:id/edit" element={<AssetForm />} />
-        <Route path="disputes" element={<DisputeList />} />
-        <Route path="disputes/:id" element={<DisputeDetails />} />
       </Route>
 
       <Route element={<RequireRole allowedRoles={['admin', 'superadmin']} />}>

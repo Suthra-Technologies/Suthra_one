@@ -390,6 +390,19 @@ export const modifierTemplatesAPI = {
   restore: (id: string) => api.patch(`/menu/templates/${id}/restore`),
 };
 
+// -------------------- Spice Level Sets API --------------------
+export const spiceLevelSetsAPI = {
+  getAll: (params?: { isDeleted?: boolean }) => api.get('/menu/spice-level-sets', { params }),
+  getOne: (id: string) => api.get(`/menu/spice-level-sets/${id}`),
+  create: (data: any) => api.post('/menu/spice-level-sets', data),
+  update: (id: string, data: any) => api.put(`/menu/spice-level-sets/${id}`, data),
+  getMenuItems: (id: string) => api.get(`/menu/spice-level-sets/${id}/menu-items`),
+  assign: (id: string, menuItemIds: string[]) => api.post(`/menu/spice-level-sets/${id}/assign`, { menuItemIds }),
+  unassign: (id: string, menuItemIds: string[]) => api.post(`/menu/spice-level-sets/${id}/unassign`, { menuItemIds }),
+  delete: (id: string) => api.delete(`/menu/spice-level-sets/${id}`),
+  restore: (id: string) => api.patch(`/menu/spice-level-sets/${id}/restore`),
+};
+
 // -------------------- Tax Categories API (External) --------------------
 export const taxCategoriesAPI = {
   getAll: (params?: { search?: string; page?: number; limit?: number }) =>

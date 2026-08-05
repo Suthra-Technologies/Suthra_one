@@ -558,7 +558,8 @@ const Layout: React.FC<LayoutProps> = ({ children }: LayoutProps) => {
                 if (window.history.length > 1) {
                   navigate(-1);
                 } else {
-                  navigate(getRelativePath('/dashboard'), { replace: true });
+                  // Accountant has no dashboard access — fall back to Reports.
+                  navigate(getRelativePath(activeRole === 'accountant' ? '/reports' : '/dashboard'), { replace: true });
                 }
               }}
               sx={{

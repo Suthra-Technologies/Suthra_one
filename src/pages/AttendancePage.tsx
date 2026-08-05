@@ -361,7 +361,7 @@ const AttendancePage: React.FC = () => {
         return <Chip label="COMPLETED" size="small" variant="outlined" sx={{ color: 'text.secondary' }} />;
     };
 
-    const roles = ['all', 'waiter', 'cashier', 'manager', 'kitchen_staff', 'delivery'];
+    const roles = ['all', 'waiter', 'cashier', 'manager', 'accountant', 'kitchen_staff', 'delivery'];
 
     return (
         <Box sx={{ p: { xs: 1.4, md: 4 }, maxWidth: 1600, mx: 'auto' }}>
