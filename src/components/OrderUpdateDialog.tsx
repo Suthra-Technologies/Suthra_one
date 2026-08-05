@@ -159,29 +159,29 @@ const OrderUpdateDialog: React.FC<OrderUpdateDialogProps> = ({ open, order, onCl
                             Delivery Address
                         </Typography>
                         <Stack spacing={0.5}>
-                            {order.deliveryAddress.fullAddress && (
+                            {order.deliveryAddress?.fullAddress && (
                                 <Typography variant="body2">
-                                    {order.deliveryAddress.fullAddress}
+                                    {order.deliveryAddress?.fullAddress}
                                 </Typography>
                             )}
                             <Typography variant="caption" color="text.secondary">
                                 {[
-                                    order.deliveryAddress.landmark,
-                                    order.deliveryAddress.city,
-                                    order.deliveryAddress.pincode
+                                    order.deliveryAddress?.landmark,
+                                    order.deliveryAddress?.city,
+                                    order.deliveryAddress?.pincode
                                 ].filter(Boolean).join(', ')}
                             </Typography>
-                            {order.deliveryAddress.latitude && order.deliveryAddress.longitude && (
+                            {order.deliveryAddress?.latitude && order.deliveryAddress?.longitude && (
                                 <Button
                                     size="small"
                                     startIcon={<LocationOnIcon />}
                                     sx={{ alignSelf: 'flex-start', mt: 0.5, p: 0 }}
                                     onClick={() => {
-                                        const url = `https://www.google.com/maps/dir/?api=1&destination=${order.deliveryAddress.latitude},${order.deliveryAddress.longitude}`;
+                                        const url = `https://www.google.com/maps/dir/?api=1&destination=${order.deliveryAddress?.latitude},${order.deliveryAddress?.longitude}`;
                                         window.open(url, '_blank');
                                     }}
                                 >
-                                    Open in Maps
+                                    View on Map
                                 </Button>
                             )}
                         </Stack>

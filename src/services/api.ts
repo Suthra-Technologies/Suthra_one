@@ -138,6 +138,13 @@ api.interceptors.response.use(
     //   toast.error('Server error. Please try again later.');
     //   return Promise.reject(error);
     // }
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      toast.error('Network offline. Please check your internet connection.', { id: 'network-offline' });
+      return Promise.reject(error);
+    }
+    if (error.code === 'ECONNABORTED' || (typeof error.message === 'string' && error.message.includes('timeout'))) {
+      console.warn('API Timeout encountered:', error.config?.url);
+    }
     if (error.response?.status < 500 && error.response?.status >= 400) {
       console.warn('API Error:', message);
     }
@@ -348,7 +355,7 @@ export const attendanceAPI = {
   getAllAttendance: (filters: any) => api.get('/attendance/admin/all', { params: filters }),
   createManual: (data: any) => api.post('/attendance/admin/manual', data),
   update: (id: string, data: any) => api.patch(`/attendance/admin/${id}`, data),
-  exportFinancials: (filters: any) => api.get('/attendance/admin/export', { params: filters, responseType: 'blob' }),
+  exportFinancials: (filters: any) => api.get('/attendance/admin/export', { params: filters, responseType: 'blob', timeout: 120000 }),
 };
 
 // -------------------- Menu API --------------------
@@ -358,12 +365,12 @@ export const menuAPI = {
   getAllSubcategories: (categoryId?: string, isDeleted?: boolean) => api.get('/menu/subcategories', { params: { ...(categoryId ? { categoryId } : {}), ...(isDeleted ? { isDeleted } : {}) } }),
   getOne: (id: string) => api.get(`/menu/${id}`),
   create: (menuData: any) => api.post('/menu', menuData),
-  bulkCreate: (items: any[]) => api.post('/menu/bulk', items),
+  bulkCreate: (items: any[]) => api.post('/menu/bulk', items, { timeout: 180000 }),
   update: (id: string, menuData: any) => api.put(`/menu/${id}`, menuData),
   delete: (id: string) => api.delete(`/menu/${id}`),
   restore: (id: string) => api.patch(`/menu/${id}/restore`),
   getPublicMenu: (tenantSlug?: string, search?: string, cursor?: string | null, limit?: number) => api.get('/menu/public', { params: { tenantSlug, search, cursor: cursor || undefined, limit } }),
-  exportExcel: () => api.get(`/menu/export/excel?t=${new Date().getTime()}`, { responseType: 'blob' }),
+  exportExcel: () => api.get(`/menu/export/excel?t=${new Date().getTime()}`, { responseType: 'blob', timeout: 120000 }),
 
   // Category management
   createCategory: (categoryData: any) => api.post('/menu/categories', categoryData),
@@ -478,7 +485,7 @@ export const reportsAPI = {
   getPromoRedemptions: (params?: any) => api.get('/reports/promo-redemptions', { params }),
   getPromoCompensation: (params?: any) => api.get('/reports/promo-compensation', { params }),
   getDeliveryReport: (params?: any) => api.get('/reports/delivery-report', { params }),
-  exportExcel: (params?: any) => api.get('/reports/export/excel', { params, responseType: 'blob' }),
+  exportExcel: (params?: any) => api.get('/reports/export/excel', { params, responseType: 'blob', timeout: 120000 }),
 };
 
 // -------------------- Printer API --------------------
