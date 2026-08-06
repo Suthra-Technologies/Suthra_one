@@ -129,6 +129,45 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
     const canCollectPayment = order.orderType === 'dine_in' && order.status === 'served' && !isGlobalDineIn(order);
     const isCancelled = order.status === 'cancelled' || order.status === 'canceled';
 
+    const getPaymentBadgeColor = (method: string | string[]) => {
+        let m = method;
+        if (Array.isArray(method)) {
+            if (method.length > 1) return theme.palette.secondary.main; // purple for split
+            m = method[0];
+        }
+
+        switch (m?.toString()?.toLowerCase()) {
+            case 'card':
+            case 'creditcard':
+            case 'debitcard':
+                return theme.palette.info.main;
+            case 'cash':
+                return theme.palette.success.main;
+            case 'upi':
+                return theme.palette.primary.main;
+            case 'phonepe':
+                return '#5f259f';
+            case 'gpay':
+                return '#4285F4';
+            case 'paytm':
+                return '#00baf2';
+            case 'zelle':
+                return '#7414CA';
+            case 'venmo':
+                return '#008CFF';
+            case 'wallet':
+                return '#ed8936';
+            case 'cheque':
+                return '#718096';
+            case 'cod':
+                return '#e53e3e';
+            case 'online':
+                return '#319795';
+            default:
+                return theme.palette.grey[600];
+        }
+    };
+
     const handleSimulate = async (status: string) => {
         setSimulating(true);
         try {
@@ -663,13 +702,63 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                                     {formatCurrency(order.totalAmount)}
                                 </Typography>
                             </Box>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-                                <Typography variant="body2">Payment Method:</Typography>
-                                <Chip
-                                    label={order.paymentStatus === 'pending' ? 'PENDING' : getPaymentMethodLabel(order.payments && order.payments.length > 0 ? order.payments.map((p: any) => p.method) : order.paymentMethod)}
-                                    size="small"
-                                    color={order.paymentStatus === 'pending' ? 'warning' : 'default'}
-                                />
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1.5 }}>
+                                <Typography variant="body2" color="text.secondary" fontWeight="medium">
+                                    Payment Details:
+                                </Typography>
+                                {order.payments && order.payments.length > 0 ? (
+                                    <Stack spacing={1} sx={{ pl: 1 }}>
+                                        {order.payments.map((p: any, idx: number) => (
+                                            <Box key={p._id || idx} sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <Stack direction="row" spacing={1} alignItems="center">
+                                                    <Chip
+                                                        label={getPaymentMethodLabel(p.method)}
+                                                        size="small"
+                                                        sx={{
+                                                            height: 20,
+                                                            fontSize: '0.7rem',
+                                                            bgcolor: alpha(getPaymentBadgeColor(p.method) as string, 0.12),
+                                                            color: getPaymentBadgeColor(p.method),
+                                                            fontWeight: 'bold',
+                                                        }}
+                                                    />
+                                                    {p.transactionId && (
+                                                        <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'monospace', bgcolor: 'action.hover', px: 0.75, py: 0.25, borderRadius: 0.5, border: '1px solid', borderColor: 'divider' }}>
+                                                            Ref: {p.transactionId}
+                                                        </Typography>
+                                                    )}
+                                                </Stack>
+                                                <Typography variant="body2" fontWeight="bold">
+                                                    {formatCurrency(p.amount)}
+                                                </Typography>
+                                            </Box>
+                                        ))}
+                                    </Stack>
+                                ) : (
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pl: 1 }}>
+                                        <Stack direction="row" spacing={1} alignItems="center">
+                                            <Chip
+                                                label={order.paymentStatus === 'pending' ? 'PENDING' : getPaymentMethodLabel(order.paymentMethod)}
+                                                size="small"
+                                                sx={{
+                                                    height: 20,
+                                                    fontSize: '0.7rem',
+                                                    bgcolor: alpha(order.paymentStatus === 'pending' ? theme.palette.warning.main : getPaymentBadgeColor(order.paymentMethod) as string, 0.12),
+                                                    color: order.paymentStatus === 'pending' ? theme.palette.warning.main : getPaymentBadgeColor(order.paymentMethod),
+                                                    fontWeight: 'bold',
+                                                }}
+                                            />
+                                            {order.paymentIntentId && (
+                                                <Typography variant="caption" sx={{ color: 'text.secondary', fontFamily: 'monospace', bgcolor: 'action.hover', px: 0.75, py: 0.25, borderRadius: 0.5, border: '1px solid', borderColor: 'divider' }}>
+                                                    Ref: {order.paymentIntentId}
+                                                </Typography>
+                                            )}
+                                        </Stack>
+                                        <Typography variant="body2" fontWeight="bold">
+                                            {formatCurrency(order.totalAmount)}
+                                        </Typography>
+                                    </Box>
+                                )}
                             </Box>
                         </Stack>
                     </Box>
