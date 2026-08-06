@@ -297,11 +297,31 @@ const OrderCard: React.FC<OrderCardProps> = ({
 
         switch (m?.toString()?.toLowerCase()) {
             case 'card':
+            case 'creditcard':
+            case 'debitcard':
                 return theme.palette.info.main;
             case 'cash':
                 return theme.palette.success.main;
             case 'upi':
                 return theme.palette.primary.main;
+            case 'phonepe':
+                return '#5f259f';
+            case 'gpay':
+                return '#4285F4';
+            case 'paytm':
+                return '#00baf2';
+            case 'zelle':
+                return '#7414CA';
+            case 'venmo':
+                return '#008CFF';
+            case 'wallet':
+                return '#ed8936';
+            case 'cheque':
+                return '#718096';
+            case 'cod':
+                return '#e53e3e';
+            case 'online':
+                return '#319795';
             default:
                 return theme.palette.grey[600];
         }
@@ -855,17 +875,46 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                 }}
                             />
                         )}
-                        <Chip
-                            label={order.paymentStatus === 'pending' ? 'PENDING' : getPaymentMethodLabel(order.payments && order.payments.length > 0 ? order.payments.map((p: any) => p.method) : order.paymentMethod)}
-                            size="small"
-                            sx={{
-                                height: 20,
-                                fontSize: '0.7rem',
-                                bgcolor: alpha(order.paymentStatus === 'pending' ? theme.palette.warning.main : getPaymentBadgeColor(order.payments && order.payments.length > 0 ? order.payments[0].method : order.paymentMethod), 0.1),
-                                color: order.paymentStatus === 'pending' ? theme.palette.warning.main : getPaymentBadgeColor(order.payments && order.payments.length > 0 ? order.payments[0].method : order.paymentMethod),
-                                fontWeight: 'bold',
-                            }}
-                        />
+                        {order.paymentStatus === 'pending' ? (
+                            <Chip
+                                label="PENDING"
+                                size="small"
+                                sx={{
+                                    height: 20,
+                                    fontSize: '0.7rem',
+                                    bgcolor: alpha(theme.palette.warning.main, 0.1),
+                                    color: theme.palette.warning.main,
+                                    fontWeight: 'bold',
+                                }}
+                            />
+                        ) : order.payments && order.payments.length > 0 ? (
+                            order.payments.map((p: any, idx: number) => (
+                                <Chip
+                                    key={p._id || idx}
+                                    label={getPaymentMethodLabel(p.method)}
+                                    size="small"
+                                    sx={{
+                                        height: 20,
+                                        fontSize: '0.7rem',
+                                        bgcolor: alpha(getPaymentBadgeColor(p.method) as string, 0.1),
+                                        color: getPaymentBadgeColor(p.method),
+                                        fontWeight: 'bold',
+                                    }}
+                                />
+                            ))
+                        ) : (
+                            <Chip
+                                label={getPaymentMethodLabel(order.paymentMethod)}
+                                size="small"
+                                sx={{
+                                    height: 20,
+                                    fontSize: '0.7rem',
+                                    bgcolor: alpha(getPaymentBadgeColor(order.paymentMethod) as string, 0.1),
+                                    color: getPaymentBadgeColor(order.paymentMethod),
+                                    fontWeight: 'bold',
+                                }}
+                            />
+                        )}
                         {order.paymentMethod === 'card' && order.cardType && (
                             <Chip
                                 label={order.cardType === 'debit' ? 'DEBIT' : 'CREDIT'}

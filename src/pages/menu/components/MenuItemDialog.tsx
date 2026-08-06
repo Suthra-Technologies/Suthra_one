@@ -208,6 +208,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                     isWeeklyScheduleEnabled: !!item.isWeeklyScheduleEnabled,
                     availabilityType: item.availabilityType || 'highlight',
                     displayOption: item.displayOption || 'normal',
+                    validFrom: item.validFrom ? new Date(item.validFrom) : null,
                     validTo: item.validTo ? new Date(item.validTo) : null,
                     priority: item.priority || '',
                     linkedGroups: item.linkedGroups ? item.linkedGroups.map((g: any) => typeof g === 'string' ? g : g._id) : [],

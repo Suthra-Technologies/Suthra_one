@@ -104,6 +104,9 @@ export interface SystemSettings {
         debitCard?: boolean;
         [key: string]: boolean | undefined;
     };
+    paymentQrCodes?: {
+        [key: string]: string | undefined;
+    };
 }
 
 export interface PaymentSettings {
@@ -301,7 +304,8 @@ const defaultSettings: SettingsState = {
             cheque: true,
             creditCard: true,
             debitCard: true,
-        }
+        },
+        paymentQrCodes: {}
     },
     payment: {
         stripePublishableKey: '',
@@ -546,7 +550,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
                         cheque: fetched.system?.posPaymentMethods?.cheque ?? defaultSettings.system.posPaymentMethods?.cheque ?? true,
                         creditCard: fetched.system?.posPaymentMethods?.creditCard ?? defaultSettings.system.posPaymentMethods?.creditCard ?? true,
                         debitCard: fetched.system?.posPaymentMethods?.debitCard ?? defaultSettings.system.posPaymentMethods?.debitCard ?? true,
-                    }
+                    },
+                    paymentQrCodes: fetched.system?.paymentQrCodes || {}
                 },
                 payment: {
                     ...defaultSettings.payment,
