@@ -17,7 +17,7 @@ import {
     DialogActions,
     TextField,
     FormControlLabel,
-    Switch,
+    Checkbox,
     CircularProgress,
     Chip,
     Divider,
@@ -28,6 +28,53 @@ import Grid from '@mui/material/Grid2';
 import { Edit as EditIcon, Add as AddIcon, Delete as DeleteIcon, Close as CloseIcon } from '@mui/icons-material';
 import { superAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
+
+const MODULES: { key: string; label: string }[] = [
+    { key: 'dashboard', label: 'Dashboard' },
+    { key: 'orders', label: 'Orders' },
+    { key: 'pos', label: 'Point of Sale' },
+    { key: 'tables', label: 'Tables' },
+    { key: 'bookings', label: 'Bookings' },
+    { key: 'kitchen', label: 'Kitchen (Display & Orders)' },
+    { key: 'menu', label: 'Menu' },
+    { key: 'globaladdons', label: 'Global Add-ons' },
+    { key: 'promocoupons', label: 'Promo Code & Coupons' },
+    { key: 'disputes', label: 'Disputes' },
+    { key: 'catering', label: 'Catering' },
+    { key: 'inventory', label: 'Inventory' },
+    { key: 'wastemanagement', label: 'Waste Management' },
+    { key: 'purchaseorders', label: 'Purchase Orders' },
+    { key: 'vendors', label: 'Vendors' },
+    { key: 'materialproviders', label: 'Material Providers' },
+    { key: 'recipes', label: 'Recipes' },
+    { key: 'users', label: 'Users' },
+    { key: 'customers', label: 'Customers' },
+    { key: 'attendance', label: 'Attendance' },
+    { key: 'assets', label: 'Asset & Document Management' },
+    { key: 'expenses', label: 'Expenses' },
+    { key: 'customisescreens', label: 'Customise Screens' },
+    { key: 'reports', label: 'Reports' },
+    { key: 'serviceusage', label: 'Service Usage' },
+    { key: 'customeractivities', label: 'Customer Activities' },
+    { key: 'invoices', label: 'Invoices' },
+    { key: 'auditlogs', label: 'Audit Logs' },
+    { key: 'subscription', label: 'Subscription' },
+    { key: 'support', label: 'Super Admin Support' },
+    { key: 'customersupport', label: 'Customer Tickets' },
+    { key: 'settings', label: 'Settings' },
+    { key: 'managenotifications', label: 'Manage Notifications' },
+];
+// Legacy plans stored a single bundled "core" feature. Before the module-level split,
+// every one of these pages was ungated (open to any admin/manager), so a legacy "core"
+// plan must keep unlocking all of them to avoid regressing access. Catering, Inventory,
+// Waste Management and Attendance are excluded — they were already independently gated.
+const CORE_FEATURES = [
+    'dashboard', 'orders', 'pos', 'tables', 'bookings', 'kitchen', 'menu', 'globaladdons',
+    'promocoupons', 'disputes', 'purchaseorders', 'vendors', 'materialproviders', 'recipes',
+    'users', 'customers', 'assets', 'expenses', 'customisescreens', 'reports', 'serviceusage',
+    'customeractivities', 'invoices', 'auditlogs', 'subscription', 'support', 'customersupport',
+    'settings', 'managenotifications',
+];
 
 interface SubscriptionPlan {
     _id: string;
@@ -69,10 +116,8 @@ const PlansPage: React.FC = () => {
         maxSms: 0,
         maxEmail: 0,
         isActive: true,
-        cateringEnabled: false,
-        inventoryEnabled: false,
-        wasteManagementEnabled: false,
-        attendanceEnabled: false,
+        modules: [] as string[],
+        isLegacyCore: false,
     });
 
     const fetchPlans = async () => {
@@ -95,11 +140,12 @@ const PlansPage: React.FC = () => {
     const handleOpenDialog = (plan?: SubscriptionPlan, defaultType: 'subscription' | 'topup' = 'subscription') => {
         if (plan) {
             setEditingPlan(plan);
-            const hasCatering = plan.features.includes('catering');
-            const hasInventory = plan.features.includes('inventory');
-            const hasWasteManagement = plan.features.includes('wastemanagement');
-            const hasAttendance = plan.features.includes('attendance');
-            const otherFeatures = plan.features.filter(f => !['catering', 'inventory', 'wastemanagement', 'attendance'].includes(f)).join('\n');
+            const moduleKeys = new Set(MODULES.map(m => m.key));
+            const otherFeatures = plan.features.filter(f => !moduleKeys.has(f) && f !== 'core').join('\n');
+            // Legacy plans stored a single bundled "core" feature - expand it into the split modules.
+            const modules = plan.features.includes('core')
+                ? Array.from(new Set([...plan.features.filter(f => moduleKeys.has(f)), ...CORE_FEATURES]))
+                : plan.features.filter(f => moduleKeys.has(f));
 
             setFormData({
                 name: plan.name,
@@ -115,10 +161,8 @@ const PlansPage: React.FC = () => {
                 maxSms: plan.maxSms || 0,
                 maxEmail: plan.maxEmail || 0,
                 isActive: plan.isActive,
-                cateringEnabled: hasCatering,
-                inventoryEnabled: hasInventory,
-                wasteManagementEnabled: hasWasteManagement,
-                attendanceEnabled: hasAttendance,
+                modules,
+                isLegacyCore: plan.features.includes('core'),
             });
         } else {
             setEditingPlan(null);
@@ -136,13 +180,22 @@ const PlansPage: React.FC = () => {
                 maxSms: 0,
                 maxEmail: 0,
                 isActive: true,
-                cateringEnabled: false,
-                inventoryEnabled: false,
-                wasteManagementEnabled: false,
-                attendanceEnabled: false,
+                modules: [],
+                isLegacyCore: false,
             });
         }
         setDialogOpen(true);
+    };
+
+    const toggleModule = (key: string) => {
+        setFormData(prev => ({
+            ...prev,
+            // Any explicit module edit opts this plan into the granular model going forward.
+            isLegacyCore: false,
+            modules: prev.modules.includes(key)
+                ? prev.modules.filter(m => m !== key)
+                : [...prev.modules, key],
+        }));
     };
 
     const isFormValid = formData.name.trim() !== '' && formData.price >= 0;
@@ -158,30 +211,19 @@ const PlansPage: React.FC = () => {
             return;
         }
         try {
-            const featuresList = formData.features.split('\n').filter(f => f.trim());
-            if (formData.cateringEnabled) {
-                featuresList.push('catering');
-            }
-            if (formData.inventoryEnabled) {
-                featuresList.push('inventory');
-            }
-            if (formData.wasteManagementEnabled) {
-                featuresList.push('wastemanagement');
-            }
-            if (formData.attendanceEnabled) {
-                featuresList.push('attendance');
-            }
+            // Untouched legacy plans keep their bundled "core" feature as-is, so editing
+            // unrelated fields (price, limits, etc.) doesn't silently migrate their module model.
+            const featuresList = formData.isLegacyCore
+                ? [...formData.features.split('\n').filter(f => f.trim()), 'core', ...formData.modules.filter(m => !CORE_FEATURES.includes(m))]
+                : [...formData.features.split('\n').filter(f => f.trim()), ...formData.modules];
 
             const planData = {
                 ...formData,
                 features: featuresList,
             };
-            // Remove auxiliary field before sending to API if needed, or API ignores it. 
-            // Better to clean it up or strictly type the DTO. 
-            delete (planData as any).cateringEnabled;
-            delete (planData as any).inventoryEnabled;
-            delete (planData as any).wasteManagementEnabled;
-            delete (planData as any).attendanceEnabled;
+            // Remove auxiliary fields before sending to API.
+            delete (planData as any).modules;
+            delete (planData as any).isLegacyCore;
 
             if (editingPlan) {
                 await superAPI.updatePlan(editingPlan._id, planData);
@@ -300,10 +342,8 @@ const PlansPage: React.FC = () => {
                     </Typography>
                     {plan.features.map((feature, index) => {
                         const featureLabels: Record<string, string> = {
-                            catering: 'Catering Management',
-                            inventory: 'Inventory Management',
-                            wastemanagement: 'Waste Management',
-                            attendance: 'Staff Attendance',
+                            ...Object.fromEntries(MODULES.map(m => [m.key, m.label])),
+                            core: 'Core Restaurant Operations (legacy: Dashboard, Orders, POS, Tables, Bookings, Kitchen, Promo/Coupons, Disputes)',
                         };
                         return (
                             <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
@@ -575,76 +615,24 @@ const PlansPage: React.FC = () => {
                                 </Grid>
                                 
                                 <Divider sx={{ my: 1 }} />
-                                <Typography variant="subtitle2" color="primary">System Modules</Typography>
-                                <Grid container spacing={2}>
-                                    <Grid size={{ xs: 12, sm: 6 }}>
-                                        <FormControlLabel
-                                            control={
-                                                <Switch
-                                                    checked={formData.cateringEnabled}
-                                                    onChange={(e) => setFormData({ ...formData, cateringEnabled: e.target.checked })}
-                                                    color="secondary"
-                                                />
-                                            }
-                                            label={
-                                                <Box>
-                                                    <Typography variant="body2" fontWeight="bold">Catering Service</Typography>
-                                                    <Typography variant="caption" color="text.secondary">Enable Catering Management Module</Typography>
-                                                </Box>
-                                            }
-                                        />
-                                    </Grid>
-                                    <Grid size={{ xs: 12, sm: 6 }}>
-                                        <FormControlLabel
-                                            control={
-                                                <Switch
-                                                    checked={formData.inventoryEnabled}
-                                                    onChange={(e) => setFormData({ ...formData, inventoryEnabled: e.target.checked })}
-                                                    color="secondary"
-                                                />
-                                            }
-                                            label={
-                                                <Box>
-                                                    <Typography variant="body2" fontWeight="bold">Inventory</Typography>
-                                                    <Typography variant="caption" color="text.secondary">Enable Inventory Management Module</Typography>
-                                                </Box>
-                                            }
-                                        />
-                                    </Grid>
-                                    <Grid size={{ xs: 12, sm: 6 }}>
-                                        <FormControlLabel
-                                            control={
-                                                <Switch
-                                                    checked={formData.wasteManagementEnabled}
-                                                    onChange={(e) => setFormData({ ...formData, wasteManagementEnabled: e.target.checked })}
-                                                    color="secondary"
-                                                />
-                                            }
-                                            label={
-                                                <Box>
-                                                    <Typography variant="body2" fontWeight="bold">Waste Management</Typography>
-                                                    <Typography variant="caption" color="text.secondary">Enable Waste Management Module</Typography>
-                                                </Box>
-                                            }
-                                        />
-                                    </Grid>
-                                    <Grid size={{ xs: 12, sm: 6 }}>
-                                        <FormControlLabel
-                                            control={
-                                                <Switch
-                                                    checked={formData.attendanceEnabled}
-                                                    onChange={(e) => setFormData({ ...formData, attendanceEnabled: e.target.checked })}
-                                                    color="secondary"
-                                                />
-                                            }
-                                            label={
-                                                <Box>
-                                                    <Typography variant="body2" fontWeight="bold">Attendance</Typography>
-                                                    <Typography variant="caption" color="text.secondary">Enable Staff Attendance Module</Typography>
-                                                </Box>
-                                            }
-                                        />
-                                    </Grid>
+                                <Typography variant="subtitle2" color="primary">Modules</Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                    Select exactly which modules this plan grants access to.
+                                </Typography>
+                                <Grid container spacing={1}>
+                                    {MODULES.map((mod) => (
+                                        <Grid size={{ xs: 12, sm: 6 }} key={mod.key}>
+                                            <FormControlLabel
+                                                control={
+                                                    <Checkbox
+                                                        checked={formData.modules.includes(mod.key)}
+                                                        onChange={() => toggleModule(mod.key)}
+                                                    />
+                                                }
+                                                label={mod.label}
+                                            />
+                                        </Grid>
+                                    ))}
                                 </Grid>
                             </>
                         )}

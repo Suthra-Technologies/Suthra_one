@@ -132,16 +132,10 @@ function SmsRow({ log }: { log: any }) {
                         )}
                     </Stack>
                 </TableCell>
-                <TableCell sx={{ py: 1 }}><SidCell sid={log.sid} /></TableCell>
-                <TableCell sx={{ py: 1 }} align="right">
-                    <Typography variant="body2" fontWeight={700} color={log.cost > 0 ? 'primary.main' : 'text.disabled'}>
-                        {log.cost > 0 ? `$${log.cost.toFixed(4)}` : '—'}
-                    </Typography>
-                </TableCell>
             </TableRow>
             {isFailed && log.error && (
                 <TableRow sx={{ bgcolor: alpha(theme.palette.error.main, 0.04) }}>
-                    <TableCell colSpan={7} sx={{ py: 0, borderBottom: open ? undefined : 'none' }}>
+                    <TableCell colSpan={5} sx={{ py: 0, borderBottom: open ? undefined : 'none' }}>
                         <Collapse in={open}>
                             <Box sx={{ py: 1, px: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                                 <ErrorOutlineIcon sx={{ fontSize: 14, color: 'error.main', flexShrink: 0 }} />
@@ -432,7 +426,7 @@ const ServiceUsagePage: React.FC = () => {
                     {
                         label: 'Delivered',
                         value: delivered?.count ?? 0,
-                        sub: `$${(delivered?.totalCost ?? 0).toFixed(4)} charged`,
+                        sub: 'successfully delivered',
                         icon: <CheckCircleOutlineIcon />,
                         color: '#22c55e',
                     },
@@ -443,15 +437,8 @@ const ServiceUsagePage: React.FC = () => {
                         icon: <ErrorOutlineIcon />,
                         color: failed?.count ? '#ef4444' : '#9ca3af',
                     },
-                    {
-                        label: 'Total Cost',
-                        value: `$${totalCost.toFixed(4)}`,
-                        sub: `${successRate}% success rate`,
-                        icon: <AttachMoneyIcon />,
-                        color: '#f59e0b',
-                    },
                 ].map((kpi) => (
-                    <Grid size={{ xs: 6, sm: 3 }} key={kpi.label}>
+                    <Grid size={{ xs: 12, sm: 4 }} key={kpi.label}>
                         <Paper
                             elevation={0}
                             sx={{
@@ -615,24 +602,18 @@ const ServiceUsagePage: React.FC = () => {
                                     <TableCell sx={{ fontWeight: 700 }}>To</TableCell>
                                     <TableCell sx={{ fontWeight: 700 }}>Message</TableCell>
                                     <TableCell sx={{ fontWeight: 700, width: 130 }}>Status</TableCell>
-                                    <TableCell sx={{ fontWeight: 700, width: 140 }}>
-                                        <Tooltip title="Twilio Message SID — use this to verify the charge in your Twilio console">
-                                            <span>Proof (SID) ⓘ</span>
-                                        </Tooltip>
-                                    </TableCell>
-                                    <TableCell sx={{ fontWeight: 700, width: 80 }} align="right">Cost</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
                                 {smsLoading ? (
                                     <TableRow>
-                                        <TableCell colSpan={7} align="center" sx={{ py: 8 }}>
+                                        <TableCell colSpan={5} align="center" sx={{ py: 8 }}>
                                             <CircularProgress size={24} />
                                         </TableCell>
                                     </TableRow>
                                 ) : smsLogs.length === 0 ? (
                                     <TableRow>
-                                        <TableCell colSpan={7} align="center" sx={{ py: 8 }}>
+                                        <TableCell colSpan={5} align="center" sx={{ py: 8 }}>
                                             <Typography color="text.secondary">No messages found for this period</Typography>
                                         </TableCell>
                                     </TableRow>
@@ -668,9 +649,6 @@ const ServiceUsagePage: React.FC = () => {
                                                     variant="outlined"
                                                     sx={{ fontSize: '0.6rem', borderColor: TYPE_COLORS[log.type] ?? '#6b7280', color: TYPE_COLORS[log.type] ?? '#6b7280', fontWeight: 600 }}
                                                 />
-                                                <Typography sx={{ fontSize: '0.8rem', fontWeight: 700, color: log.cost > 0 ? 'primary.main' : 'text.disabled' }}>
-                                                    {log.cost > 0 ? `$${log.cost.toFixed(4)}` : '—'}
-                                                </Typography>
                                             </Stack>
                                             <Typography sx={{ fontSize: '0.78rem', fontFamily: 'monospace', mb: 0.5, wordBreak: 'break-word' }}>{log.to}</Typography>
                                             <Typography sx={{ fontSize: '0.78rem', color: 'text.secondary', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{log.body}</Typography>
@@ -682,14 +660,7 @@ const ServiceUsagePage: React.FC = () => {
                     </Box>
                 )}
                 <Divider />
-                {/* Cost footer */}
-                {smsLogs.length > 0 && (
-                    <Box sx={{ px: 2, py: 1, bgcolor: alpha(theme.palette.action.hover, 0.3), display: 'flex', justifyContent: 'flex-end' }}>
-                        <Typography variant="caption" color="text.secondary">
-                            Page total cost: <strong>${smsLogs.reduce((acc, l) => acc + (l.cost || 0), 0).toFixed(4)}</strong>
-                        </Typography>
-                    </Box>
-                )}
+
                 <TablePagination
                     component="div"
                     count={smsTotal}
@@ -1084,15 +1055,13 @@ const ServiceUsagePage: React.FC = () => {
                                 <TableCell sx={{ fontWeight: 700, width: 160 }}>Type</TableCell>
                                 <TableCell sx={{ fontWeight: 700 }}>To</TableCell>
                                 <TableCell sx={{ fontWeight: 700 }}>Subject</TableCell>
-                                <TableCell sx={{ fontWeight: 700, width: 110 }}>Status</TableCell>
-                                <TableCell sx={{ fontWeight: 700, width: 80 }}>Provider</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             {emailLoading ? (
-                                <TableRow><TableCell colSpan={6} align="center" sx={{ py: 8 }}><CircularProgress size={24} /></TableCell></TableRow>
+                                <TableRow><TableCell colSpan={4} align="center" sx={{ py: 8 }}><CircularProgress size={24} /></TableCell></TableRow>
                             ) : emailLogs.length === 0 ? (
-                                <TableRow><TableCell colSpan={6} align="center" sx={{ py: 8 }}><Typography color="text.secondary">No emails found for this period</Typography></TableCell></TableRow>
+                                <TableRow><TableCell colSpan={4} align="center" sx={{ py: 8 }}><Typography color="text.secondary">No emails found for this period</Typography></TableCell></TableRow>
                             ) : emailLogs.map((log: any) => {
                                 const isFailed = log.status === 'FAILED';
                                 return (
@@ -1114,12 +1083,6 @@ const ServiceUsagePage: React.FC = () => {
                                             {isFailed && log.error && (
                                                 <Typography variant="caption" color="error.main" sx={{ display: 'block', fontFamily: 'monospace', fontSize: '0.65rem', mt: 0.25 }}>↳ {log.error}</Typography>
                                             )}
-                                        </TableCell>
-                                        <TableCell sx={{ py: 1 }}>
-                                            <Chip label={log.status} size="small" color={isFailed ? 'error' : 'success'} sx={{ fontWeight: 700, fontSize: '0.65rem' }} />
-                                        </TableCell>
-                                        <TableCell sx={{ py: 1 }}>
-                                            <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase' }}>{log.provider ?? 'smtp'}</Typography>
                                         </TableCell>
                                     </TableRow>
                                 );

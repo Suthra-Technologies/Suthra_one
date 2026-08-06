@@ -358,7 +358,7 @@ export const menuAPI = {
   getAllSubcategories: (categoryId?: string, isDeleted?: boolean) => api.get('/menu/subcategories', { params: { ...(categoryId ? { categoryId } : {}), ...(isDeleted ? { isDeleted } : {}) } }),
   getOne: (id: string) => api.get(`/menu/${id}`),
   create: (menuData: any) => api.post('/menu', menuData),
-  bulkCreate: (items: any[]) => api.post('/menu/bulk', items),
+  bulkCreate: (items: any[], options?: { aiDescriptions?: boolean }) => api.post(`/menu/bulk${options?.aiDescriptions ? '?aiDescriptions=true' : ''}`, items),
   update: (id: string, menuData: any) => api.put(`/menu/${id}`, menuData),
   delete: (id: string) => api.delete(`/menu/${id}`),
   restore: (id: string) => api.patch(`/menu/${id}/restore`),
@@ -375,8 +375,8 @@ export const menuAPI = {
   updateSubcategory: (id: string, subcategoryData: any) => api.put(`/menu/subcategories/${id}`, subcategoryData),
   deleteSubcategory: (id: string) => api.delete(`/menu/subcategories/${id}`),
   restoreSubcategory: (id: string) => api.patch(`/menu/subcategories/${id}/restore`),
-  bulkPriceAdjust: (percentage: number, categoryId?: string) =>
-    api.patch('/menu/bulk-price-adjust', { percentage, categoryId }),
+  bulkPriceAdjust: (amount: number, adjustmentType: 'percentage' | 'flat' = 'percentage', categoryId?: string, itemId?: string) =>
+    api.patch('/menu/bulk-price-adjust', { amount, adjustmentType, categoryId, itemId }),
   getPriceAdjustmentLogs: () => api.get('/menu/price-adjustment-logs'),
 };
 

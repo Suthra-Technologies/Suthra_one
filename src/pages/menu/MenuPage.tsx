@@ -20,7 +20,8 @@ import {
     PhotoCamera as PhotoCameraIcon,
     OpenInNew as OpenInNewIcon,
     RestoreFromTrash as RestoreIcon,
-    CheckCircle as CheckCircleIcon
+    CheckCircle as CheckCircleIcon,
+    AutoAwesome as AutoAwesomeIcon
 } from '@mui/icons-material';
 import {
     Menu,
@@ -184,6 +185,7 @@ const MenuPage: React.FC = () => {
     const [uploadingBulk, setUploadingBulk] = useState(false);
     const [previewLimit, setPreviewLimit] = useState(50);
     const [dialogTab, setDialogTab] = useState(0);
+    const [aiDescriptions, setAiDescriptions] = useState(true);
     const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
     const previewFileRef = useRef<HTMLInputElement>(null);
     const [previewTargetIdx, setPreviewTargetIdx] = useState<number | null>(null);
@@ -1004,7 +1006,7 @@ const MenuPage: React.FC = () => {
         const progressToast = toast.loading(`Uploading ${bulkPreviewItems.length} items...`);
 
         try {
-            const res = await menuAPI.bulkCreate(bulkPreviewItems);
+            const res = await menuAPI.bulkCreate(bulkPreviewItems, { aiDescriptions });
             console.log('[Frontend] Bulk upload response:', res);
 
             const createdCount = Array.isArray(res.data) ? (res?.data || []).length : (res.data?.count || 0);
@@ -2206,9 +2208,30 @@ const MenuPage: React.FC = () => {
                                 </Box>
                             </Alert>
                             <Alert severity="success" icon={'✨'} sx={{ mb: 2, borderRadius: 2 }}>
-                                <Typography variant="body2">
-                                    <b>AI-Powered Upload:</b> TaxJar tax codes will be automatically assigned based on your restaurant's location. Missing descriptions and categories will be generated during upload.
-                                </Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                                    <Typography variant="body2">
+                                        <b>AI-Powered Upload:</b> TaxJar tax codes will be automatically assigned based on your restaurant's location. Missing categories will be generated during upload.
+                                    </Typography>
+                                    <FormControlLabel
+                                        control={
+                                            <Switch
+                                                checked={aiDescriptions}
+                                                onChange={(e) => setAiDescriptions(e.target.checked)}
+                                                size="small"
+                                                color="secondary"
+                                            />
+                                        }
+                                        label={
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                <AutoAwesomeIcon sx={{ fontSize: 16, color: aiDescriptions ? 'secondary.main' : 'text.disabled' }} />
+                                                <Typography variant="body2" sx={{ fontWeight: 600, whiteSpace: 'nowrap', color: aiDescriptions ? 'secondary.main' : 'text.disabled' }}>
+                                                    AI Descriptions
+                                                </Typography>
+                                            </Box>
+                                        }
+                                        sx={{ ml: 2, mr: 0 }}
+                                    />
+                                </Box>
                             </Alert>
                             <TableContainer component={Paper} sx={{ maxHeight: 600, borderRadius: 2, border: 1, borderColor: 'divider' }}>
                                 <Table stickyHeader size="small">
@@ -2366,7 +2389,7 @@ const MenuPage: React.FC = () => {
                                                 </TableCell>
                                                 <TableCell>
                                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                                        {!item.description?.trim() && (
+                                                        {!item.description?.trim() && aiDescriptions && (
                                                             <Chip
                                                                 label="AI ✨"
                                                                 size="small"
@@ -2383,7 +2406,7 @@ const MenuPage: React.FC = () => {
                                                             fontStyle: !item.description?.trim() ? 'italic' : 'normal',
                                                             color: !item.description?.trim() ? 'text.disabled' : 'text.primary',
                                                         }}>
-                                                            {item.description?.trim() || 'Will be generated'}
+                                                            {item.description?.trim() || (aiDescriptions ? 'Will be generated' : 'No description')}
                                                         </Typography>
                                                     </Box>
                                                 </TableCell>

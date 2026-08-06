@@ -676,7 +676,10 @@ const SettingsPage: React.FC = () => {
 
     // Menu Price Adjustment tab state
     const [priceCategories, setPriceCategories] = useState<any[]>([]);
+    const [priceMenuItems, setPriceMenuItems] = useState<any[]>([]);
     const [priceSelectedCategory, setPriceSelectedCategory] = useState<string>('all');
+    const [priceSelectedItem, setPriceSelectedItem] = useState<string>('all');
+    const [priceAdjustmentType, setPriceAdjustmentType] = useState<'percentage' | 'flat'>('percentage');
     const [pricePercentage, setPricePercentage] = useState<string>('');
     const [pricePreviewItems, setPricePreviewItems] = useState<{ _id: string; name: string; category: any; currentPrice: number; newPrice: number }[]>([]);
     const [pricePreviewLoading, setPricePreviewLoading] = useState(false);
@@ -694,26 +697,45 @@ const SettingsPage: React.FC = () => {
         }
     };
 
+    const fetchPriceMenuItems = async () => {
+        try {
+            const res = await menuAPI.getAll({ limit: 1000 });
+            setPriceMenuItems(res.data?.items || res.data || []);
+        } catch {
+            toast.error('Failed to load menu items');
+        }
+    };
+
+    const computeNewPrice = (price: number, amount: number) =>
+        priceAdjustmentType === 'flat'
+            ? Math.max(0, Math.round((price + amount) * 100) / 100)
+            : Math.max(0, Math.round(price * (1 + amount / 100) * 100) / 100);
+
     const handlePricePreview = async () => {
-        const pct = parseFloat(pricePercentage);
-        if (!pricePercentage || isNaN(pct)) {
-            toast.error('Enter a valid percentage');
+        const amount = parseFloat(pricePercentage);
+        if (!pricePercentage || isNaN(amount)) {
+            toast.error(`Enter a valid ${priceAdjustmentType === 'flat' ? 'amount' : 'percentage'}`);
             return;
         }
         try {
             setPricePreviewLoading(true);
             setPricePreviewItems([]);
-            const params: any = { limit: 1000 };
-            if (priceSelectedCategory !== 'all') params.category = priceSelectedCategory;
-            const res = await menuAPI.getAll(params);
-            const items = res.data?.items || res.data || [];
-            const multiplier = 1 + pct / 100;
+            let items: any[];
+            if (priceSelectedItem !== 'all') {
+                const item = priceMenuItems.find((i: any) => i._id === priceSelectedItem);
+                items = item ? [item] : [];
+            } else {
+                const params: any = { limit: 1000 };
+                if (priceSelectedCategory !== 'all') params.category = priceSelectedCategory;
+                const res = await menuAPI.getAll(params);
+                items = res.data?.items || res.data || [];
+            }
             const preview = items.map((item: any) => ({
                 _id: item._id,
                 name: item.name,
                 category: item.category,
                 currentPrice: item.price,
-                newPrice: Math.round(item.price * multiplier * 100) / 100,
+                newPrice: computeNewPrice(item.price, amount),
             }));
             setPricePreviewItems(preview);
         } catch {
@@ -724,12 +746,18 @@ const SettingsPage: React.FC = () => {
     };
 
     const handlePriceApply = async () => {
-        const pct = parseFloat(pricePercentage);
-        if (!pricePreviewItems.length || isNaN(pct)) return;
-        if (!window.confirm(`Apply ${pct > 0 ? '+' : ''}${pct}% price change to ${pricePreviewItems.length} item(s)? This cannot be undone.`)) return;
+        const amount = parseFloat(pricePercentage);
+        if (!pricePreviewItems.length || isNaN(amount)) return;
+        const unit = priceAdjustmentType === 'flat' ? '$' : '%';
+        if (!window.confirm(`Apply ${amount > 0 ? '+' : ''}${amount}${unit} price change to ${pricePreviewItems.length} item(s)? This cannot be undone.`)) return;
         try {
             setPriceApplyLoading(true);
-            const res = await menuAPI.bulkPriceAdjust(pct, priceSelectedCategory !== 'all' ? priceSelectedCategory : undefined);
+            const res = await menuAPI.bulkPriceAdjust(
+                amount,
+                priceAdjustmentType,
+                priceSelectedItem === 'all' && priceSelectedCategory !== 'all' ? priceSelectedCategory : undefined,
+                priceSelectedItem !== 'all' ? priceSelectedItem : undefined,
+            );
             toast.success(`Updated prices for ${res.data.updated} item(s)`);
             setPricePreviewItems([]);
             setPricePercentage('');
@@ -961,6 +989,7 @@ const SettingsPage: React.FC = () => {
         setTabValue(newValue);
         if (newValue === 8 && priceCategories.length === 0) {
             fetchPriceCategories();
+            fetchPriceMenuItems();
         }
     };
 
@@ -4955,21 +4984,22 @@ const SettingsPage: React.FC = () => {
                 <TabPanel value={tabValue} index={8}>
                     <Box sx={{ mb: 3 }}>
                         <Typography variant="h6" gutterBottom sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif", display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <PriceChangeIcon color="primary" /> Bulk Menu Price Adjustment
+                            <PriceChangeIcon color="primary" /> Menu Price Adjustment
                         </Typography>
                         <Alert severity="info" sx={{ mb: 3 }}>
-                            Adjust prices for all menu items or by category by a percentage. Preview changes before applying.
+                            Adjust prices for all menu items, a category, or a single item — by percentage or a flat amount. Preview changes before applying.
                         </Alert>
 
-                        <Grid container spacing={3} sx={{ mb: 3 }}>
+                        <Grid container spacing={3} sx={{ mb: 2 }}>
                             <Grid size={{ xs: 12, sm: 4 }}>
                                 <TextField
                                     select
                                     fullWidth
                                     label="Category"
                                     value={priceSelectedCategory}
-                                    onChange={e => { setPriceSelectedCategory(e.target.value); setPricePreviewItems([]); }}
+                                    onChange={e => { setPriceSelectedCategory(e.target.value); setPriceSelectedItem('all'); setPricePreviewItems([]); }}
                                     size="small"
+                                    disabled={priceSelectedItem !== 'all'}
                                 >
                                     <MenuItem value="all">All Categories</MenuItem>
                                     {priceCategories.map((cat: any) => (
@@ -4979,14 +5009,52 @@ const SettingsPage: React.FC = () => {
                             </Grid>
                             <Grid size={{ xs: 12, sm: 4 }}>
                                 <TextField
+                                    select
                                     fullWidth
-                                    label="Adjustment %"
-                                    placeholder="e.g. 10 or -5"
+                                    label="Item"
+                                    value={priceSelectedItem}
+                                    onChange={e => { setPriceSelectedItem(e.target.value); setPricePreviewItems([]); }}
+                                    size="small"
+                                    helperText={
+                                        priceSelectedItem !== 'all'
+                                            ? `Current price: $${(priceMenuItems.find((i: any) => i._id === priceSelectedItem)?.price ?? 0).toFixed(2)}`
+                                            : ' '
+                                    }
+                                >
+                                    <MenuItem value="all">All Items (use Category)</MenuItem>
+                                    {priceMenuItems
+                                        .filter((item: any) => priceSelectedCategory === 'all' || (typeof item.category === 'object' ? item.category?._id : item.category) === priceSelectedCategory)
+                                        .map((item: any) => (
+                                            <MenuItem key={item._id} value={item._id}>{item.name}</MenuItem>
+                                        ))}
+                                </TextField>
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 4 }}>
+                                <ToggleButtonGroup
+                                    value={priceAdjustmentType}
+                                    exclusive
+                                    fullWidth
+                                    size="small"
+                                    onChange={(_, val) => { if (val) { setPriceAdjustmentType(val); setPricePreviewItems([]); } }}
+                                    sx={{ height: 40 }}
+                                >
+                                    <ToggleButton value="percentage">Percentage</ToggleButton>
+                                    <ToggleButton value="flat">Flat Amount</ToggleButton>
+                                </ToggleButtonGroup>
+                            </Grid>
+                        </Grid>
+
+                        <Grid container spacing={3} sx={{ mb: 3 }}>
+                            <Grid size={{ xs: 12, sm: 4 }}>
+                                <TextField
+                                    fullWidth
+                                    label={priceAdjustmentType === 'flat' ? 'Adjustment Amount' : 'Adjustment %'}
+                                    placeholder={priceAdjustmentType === 'flat' ? 'e.g. 2 or -1.50' : 'e.g. 10 or -5'}
                                     value={pricePercentage}
                                     onChange={e => { setPricePercentage(e.target.value); setPricePreviewItems([]); }}
                                     size="small"
                                     type="number"
-                                    InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
+                                    InputProps={{ endAdornment: <InputAdornment position="end">{priceAdjustmentType === 'flat' ? '$' : '%'}</InputAdornment> }}
                                 />
                             </Grid>
                             <Grid size={{ xs: 12, sm: 4 }}>
@@ -5016,7 +5084,7 @@ const SettingsPage: React.FC = () => {
                                         disabled={priceApplyLoading}
                                         startIcon={priceApplyLoading ? <CircularProgress size={16} color="inherit" /> : undefined}
                                     >
-                                        {priceApplyLoading ? 'Applying…' : `Apply ${pricePercentage}% to ${pricePreviewItems.length} items`}
+                                        {priceApplyLoading ? 'Applying…' : `Apply ${pricePercentage}${priceAdjustmentType === 'flat' ? '$' : '%'} to ${pricePreviewItems.length} items`}
                                     </Button>
                                 </Box>
                                 <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
@@ -5074,7 +5142,7 @@ const SettingsPage: React.FC = () => {
                                                     <TableRow sx={{ bgcolor: 'grey.50' }}>
                                                         <TableCell><strong>Updated By</strong></TableCell>
                                                         <TableCell><strong>Adjustment</strong></TableCell>
-                                                        <TableCell><strong>Category</strong></TableCell>
+                                                        <TableCell><strong>Scope</strong></TableCell>
                                                         <TableCell align="right"><strong>Items</strong></TableCell>
                                                         <TableCell><strong>Date &amp; Time</strong></TableCell>
                                                     </TableRow>
@@ -5089,9 +5157,9 @@ const SettingsPage: React.FC = () => {
                                                                 )}
                                                             </TableCell>
                                                             <TableCell sx={{ color: log.percentage > 0 ? 'success.main' : 'error.main', fontWeight: 600 }}>
-                                                                {log.percentage > 0 ? '+' : ''}{log.percentage}%
+                                                                {log.percentage > 0 ? '+' : ''}{log.percentage}{log.adjustmentType === 'flat' ? '$' : '%'}
                                                             </TableCell>
-                                                            <TableCell>{log.categoryName || 'All Categories'}</TableCell>
+                                                            <TableCell>{log.itemName || log.categoryName || 'All Categories'}</TableCell>
                                                             <TableCell align="right">{log.itemsUpdated}</TableCell>
                                                             <TableCell>
                                                                 {new Date(log.createdAt).toLocaleString('en-US', {
