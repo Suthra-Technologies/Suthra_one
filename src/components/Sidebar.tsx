@@ -142,10 +142,14 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
     }));
   };
 
+  // Accountant has no dashboard access, so it lands on Reports instead.
+  const homePathForRole = (role?: string | null) =>
+    role === 'accountant' ? '/reports' : '/dashboard';
+
   const handleRoleSwitch = (role: string) => {
     switchRole(role);
     setRoleAnchorEl(null);
-    handleNavigation('/dashboard');
+    handleNavigation(homePathForRole(role));
   };
 
   const navigationGroups = [
@@ -194,10 +198,10 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
         { path: '/coupons', label: 'Coupons', icon: <ConfirmationNumber />, roles: ['admin', 'manager'], feature: 'promocoupons' },
         { path: '/users', label: 'Users', icon: <People />, roles: ['admin', 'manager'], feature: 'users' },
         { path: '/customers', label: 'Customers', icon: <AccountBox />, roles: ['admin', 'manager'], feature: 'customers' },
-        { path: '/attendance', label: 'Attendance', icon: <AccessTimeIcon />, roles: ['admin', 'manager'], feature: 'attendance' },
-        { path: '/assets', label: 'Asset & Document Management', icon: <Assignment />, roles: ['admin', 'manager', 'superadmin'], feature: 'assets' },
-        { path: '/expenses', label: 'Expenses', icon: <MonetizationOn />, roles: ['admin', 'manager'], feature: 'expenses' },
-        { path: '/disputes', label: 'Disputes', icon: <Gavel />, roles: ['admin', 'manager'], feature: 'disputes' },
+        { path: '/attendance', label: 'Attendance', icon: <AccessTimeIcon />, roles: ['admin', 'manager', 'accountant'], feature: 'attendance' },
+        { path: '/assets', label: 'Asset & Document Management', icon: <Assignment />, roles: ['admin', 'manager', 'accountant', 'superadmin'], feature: 'assets' },
+        { path: '/expenses', label: 'Expenses', icon: <MonetizationOn />, roles: ['admin', 'manager', 'accountant'], feature: 'expenses' },
+        { path: '/disputes', label: 'Disputes', icon: <Gavel />, roles: ['admin', 'manager', 'accountant'], feature: 'disputes' },
       ]
     },
     {
@@ -209,7 +213,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
     {
       title: 'ANALYTICS',
       items: [
-        { path: '/reports', label: 'Reports', icon: <Assessment />, roles: ['admin', 'manager'], feature: 'reports' },
+        { path: '/reports', label: 'Reports', icon: <Assessment />, roles: ['admin', 'manager', 'accountant'], feature: 'reports' },
         { path: '/service-usage', label: 'Service Usage', icon: <WebIcon />, roles: ['admin', 'manager'], feature: 'serviceusage' },
         { path: '/customer-activities', label: 'Customer Activities', icon: <Assessment />, roles: ['admin', 'manager'], feature: 'customeractivities' },
         { path: '/invoices', label: 'Invoices', icon: <Receipt />, roles: ['admin', 'superadmin'], laptopOnly: true, feature: 'invoices' },
@@ -218,13 +222,13 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
     {
       title: 'ACCOUNT',
       items: [
-        { path: '/profile', label: 'Profile', icon: <Person />, roles: ['admin', 'manager', 'waiter', 'cashier', 'delivery', 'customer'] },
+        { path: '/profile', label: 'Profile', icon: <Person />, roles: ['admin', 'manager', 'accountant', 'waiter', 'cashier', 'delivery', 'customer'] },
         { path: '/subscription', label: 'Subscription', icon: <AdminPanelSettings />, roles: ['admin'], hideOnIOS: true, laptopOnly: true, feature: 'subscription' },
         { path: '/support', label: 'Super Admin Support', icon: <HeadsetMic />, roles: ['admin', 'manager'], feature: 'support' },
         { path: '/customer-support', label: 'Customer Tickets', icon: <Forum />, roles: ['admin', 'manager'], feature: 'customersupport' },
         { path: '/settings', label: 'Settings', icon: <Settings />, roles: ['admin', 'manager'], feature: 'settings' },
         { path: '/manage-notifications', label: 'Manage Notifications', icon: <NotificationsActive />, roles: ['admin', 'manager'], feature: 'managenotifications' },
-        { path: '', label: 'Help & Guide', icon: <AutoStories />, roles: ['admin', 'manager', 'waiter', 'cashier', 'kitchen_staff', 'delivery', 'food_runner'], isAction: true, action: () => window.open('https://helpguide.restaurant.nexzenpos.com/#login', '_blank') },
+        { path: '', label: 'Help & Guide', icon: <AutoStories />, roles: ['admin', 'manager', 'accountant', 'waiter', 'cashier', 'kitchen_staff', 'delivery', 'food_runner'], isAction: true, action: () => window.open('https://helpguide.restaurant.nexzenpos.com/#login', '_blank') },
       ]
     },
   ];
@@ -305,7 +309,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
           boxSizing: 'border-box',
           cursor: 'pointer',
         }}
-        onClick={() => handleNavigation('/dashboard')}
+          onClick={() => handleNavigation(homePathForRole(activeRole))}
         >
           {(restaurantSettings.logo || (user?.tenant as any)?.logo) ? (
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, width: '100%' }}>
@@ -654,7 +658,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
           }
         }}
         MenuListProps={{
-          onMouseEnter: handleMenuEnter, 
+          onMouseEnter: handleMenuEnter,
           onMouseLeave: handleCollapsedMenuClose,
           sx: { py: 0.5 }
         }}
@@ -695,12 +699,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
               <ListItemIcon sx={{ minWidth: 32, color: 'inherit' }}>
                 {child.icon}
               </ListItemIcon>
-              <ListItemText 
-                primary={child.label} 
-                primaryTypographyProps={{ 
+              <ListItemText
+                primary={child.label}
+                primaryTypographyProps={{
                   variant: 'body2',
                   fontWeight: childActive ? 600 : 500
-                }} 
+                }}
               />
             </MenuItem>
           );

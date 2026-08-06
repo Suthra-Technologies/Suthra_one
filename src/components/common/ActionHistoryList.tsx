@@ -9,6 +9,7 @@ import {
     TimelineOppositeContent,
 } from '@mui/lab';
 import { Typography, Paper, Box, Chip } from '@mui/material';
+import { useSettings, getDateLocale } from '../../context/SettingsContext';
 import {
     PersonAdd as PersonAddIcon,
     Edit as EditIcon,
@@ -33,6 +34,9 @@ interface ActionHistoryListProps {
 }
 
 const ActionHistoryList: React.FC<ActionHistoryListProps> = ({ history, emptyMessage }) => {
+    const { settings } = useSettings();
+    const dateLocale = getDateLocale(settings?.restaurant?.country || '');
+
     if (!history || history.length === 0) {
         return (
             <Box sx={{ p: 3, textAlign: 'center' }}>
@@ -87,9 +91,11 @@ const ActionHistoryList: React.FC<ActionHistoryListProps> = ({ history, emptyMes
         }
     };
 
+    // Day/month order follows the tenant's country rather than being fixed to
+    // en-US, so the timeline reads the same way as the dates inside the entries.
     const formatDate = (date: Date | string) => {
         const d = new Date(date);
-        return d.toLocaleString('en-US', {
+        return d.toLocaleString(dateLocale, {
             month: 'short',
             day: 'numeric',
             year: 'numeric',

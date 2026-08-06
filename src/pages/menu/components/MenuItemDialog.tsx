@@ -48,7 +48,7 @@ import { useNavigate } from 'react-router-dom';
 import ActionHistoryList from '../../../components/common/ActionHistoryList';
 import { useSettings } from '../../../context/SettingsContext';
 import { useActiveTenant } from '../../../hooks/useActiveTenant';
-import { inventoryAPI, menuAPI, modifierTemplatesAPI, uploadAPI, recipesAPI } from '../../../services/api';
+import { inventoryAPI, menuAPI, modifierTemplatesAPI, spiceLevelSetsAPI, uploadAPI, recipesAPI } from '../../../services/api';
 import type {
     Category,
     IMenuItem,
@@ -87,6 +87,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
     const theme = useTheme();
     const [templates, setTemplates] = useState<any[]>([]);
     const [inventoryItems, setInventoryItems] = useState<any[]>([]);
+    const [spiceLevelSets, setSpiceLevelSets] = useState<any[]>([]);
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const navigate = useNavigate();
     const { getRelativePath } = useActiveTenant();
@@ -119,7 +120,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
         baseTray: '',
         servingSize: 1,
         isSpiceLevelAvailable: false,
-        spiceLevels: ['mild', 'medium', 'hot', 'very_hot'] as string[],
+        spiceLevelSet: '' as string,
         spiceLevel: undefined as any,
         availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as string[],
         isWeeklyScheduleEnabled: false,
@@ -150,6 +151,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
         if (open) {
             modifierTemplatesAPI.getAll().then(res => setTemplates(res.data)).catch(err => console.error(err));
             inventoryAPI.getAll().then(res => setInventoryItems(res.data)).catch(err => console.error(err));
+            spiceLevelSetsAPI.getAll().then(res => setSpiceLevelSets(res.data)).catch(err => console.error(err));
         }
     }, [open]);
 
@@ -171,15 +173,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
             if (editingMenuItem) {
                 // Initialize for editing
                 const item = editingMenuItem;
-                const itemSpiceLevels = (item as any).spiceLevels || ['mild', 'medium', 'hot', 'very_hot'];
-                const itemSpiceLevelData = (item as any).spiceLevelData || {};
-
-                // Build spice level fields
-                const spiceLevelFields: any = {};
-                itemSpiceLevels.forEach((level: string, index: number) => {
-                    const fieldKey = `spiceLevel_${index}`;
-                    spiceLevelFields[fieldKey] = itemSpiceLevelData[level] || level || '';
-                });
+                const itemSpiceSet = (item as any).spiceLevelSet;
 
                 setMenuItemForm({
                     name: item.name,
@@ -201,13 +195,13 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                     baseTray: item.baseTray || '',
                     servingSize: item.servingSize || 1,
                     isSpiceLevelAvailable: !!item.isSpiceLevelAvailable,
-                    spiceLevels: itemSpiceLevels,
+                    spiceLevelSet: typeof itemSpiceSet === 'object' ? (itemSpiceSet?._id || '') : (itemSpiceSet || ''),
                     spiceLevel: item.spiceLevel,
-                    ...spiceLevelFields,
                     availableDays: item.availableDays || ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
                     isWeeklyScheduleEnabled: !!item.isWeeklyScheduleEnabled,
                     availabilityType: item.availabilityType || 'highlight',
                     displayOption: item.displayOption || 'normal',
+                    validFrom: item.validFrom ? new Date(item.validFrom) : null,
                     validTo: item.validTo ? new Date(item.validTo) : null,
                     priority: item.priority || '',
                     linkedGroups: item.linkedGroups ? item.linkedGroups.map((g: any) => typeof g === 'string' ? g : g._id) : [],
@@ -237,7 +231,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                     baseTray: '',
                     servingSize: 1,
                     isSpiceLevelAvailable: false,
-                    spiceLevels: ['mild', 'medium', 'hot', 'very_hot'],
+                    spiceLevelSet: '',
                     spiceLevel: undefined,
                     availableDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
                     isWeeklyScheduleEnabled: false,
@@ -309,23 +303,14 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
 
         try {
             setIsSaving(true);
-            const spiceLevelData: any = {};
-            if (menuItemForm.isSpiceLevelAvailable) {
-                menuItemForm.spiceLevels.forEach((_, index) => {
-                    const fieldKey = `spiceLevel_${index}` as keyof typeof menuItemForm;
-                    const levelName = menuItemForm[fieldKey] as string;
-                    if (levelName) {
-                        spiceLevelData[levelName] = levelName;
-                    }
-                });
-            }
-
             const payload = {
                 ...menuItemForm,
                 price: parsedPrice,
                 taxRate: menuItemForm.taxRate ? parseFloat(menuItemForm.taxRate) : null,
                 priority: parseInt(menuItemForm.priority as any) || 0,
-                spiceLevelData
+                // Levels live on the set; sending an empty set lets the server fall
+                // back to the tenant default when spice levels are enabled.
+                spiceLevelSet: menuItemForm.isSpiceLevelAvailable ? (menuItemForm.spiceLevelSet || null) : null,
             };
 
             if (editingMenuItem) {
@@ -446,7 +431,7 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                         <TextField
                                             label="Item Name"
                                             value={menuItemForm.name}
-                                            onChange={(e) => setMenuItemForm({ ...menuItemForm, name: e.target.value.replace(/[^a-zA-Z0-9\s]/g, '') })}
+                                            onChange={(e) => setMenuItemForm({ ...menuItemForm, name: e.target.value })}
                                             onBlur={() => setMenuItemTouched({ ...menuItemTouched, name: true })}
                                             error={menuItemTouched.name && !menuItemForm.name.trim()}
                                             helperText={menuItemTouched.name && !menuItemForm.name.trim() ? 'Item name is required' : ''}
@@ -635,6 +620,46 @@ const MenuItemDialog: React.FC<MenuItemDialogProps> = ({
                                         <FormControlLabel control={<Switch size="small" checked={menuItemForm.isAvailable} onChange={(e) => setMenuItemForm({ ...menuItemForm, isAvailable: e.target.checked })} />} label={<Typography variant="body2">Available for ordering</Typography>} />
                                         <FormControlLabel control={<Switch size="small" checked={menuItemForm.isCateringAvailable} onChange={(e) => setMenuItemForm({ ...menuItemForm, isCateringAvailable: e.target.checked })} />} label={<Typography variant="body2">Available for Catering</Typography>} />
                                         <FormControlLabel control={<Switch size="small" checked={menuItemForm.isSpiceLevelAvailable} onChange={(e) => setMenuItemForm({ ...menuItemForm, isSpiceLevelAvailable: e.target.checked })} />} label={<Typography variant="body2">Enable Spice Level Selection</Typography>} />
+
+                                        {menuItemForm.isSpiceLevelAvailable && (
+                                            <Box sx={{ pl: 1, pt: 1 }}>
+                                                <FormControl size="small" fullWidth>
+                                                    <InputLabel>Spice Level Set</InputLabel>
+                                                    <Select
+                                                        label="Spice Level Set"
+                                                        value={menuItemForm.spiceLevelSet}
+                                                        onChange={(e) => setMenuItemForm({ ...menuItemForm, spiceLevelSet: e.target.value, spiceLevel: undefined })}
+                                                    >
+                                                        <MenuItem value="">
+                                                            <em>Use default set</em>
+                                                        </MenuItem>
+                                                        {spiceLevelSets.map((set) => (
+                                                            <MenuItem key={set._id} value={set._id}>
+                                                                {set.name}{set.isDefault ? ' (default)' : ''}
+                                                            </MenuItem>
+                                                        ))}
+                                                    </Select>
+                                                </FormControl>
+                                                {(() => {
+                                                    const selected = spiceLevelSets.find(s => s._id === menuItemForm.spiceLevelSet)
+                                                        || spiceLevelSets.find(s => s.isDefault);
+                                                    if (!selected) {
+                                                        return (
+                                                            <Typography variant="caption" color="error" sx={{ mt: 1, display: 'block' }}>
+                                                                No spice level sets exist yet. Create one in Menu → Spice Levels.
+                                                            </Typography>
+                                                        );
+                                                    }
+                                                    return (
+                                                        <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+                                                            {(selected.levels || []).map((level: any) => (
+                                                                <Chip key={level.value} size="small" label={level.label} variant="outlined" />
+                                                            ))}
+                                                        </Stack>
+                                                    );
+                                                })()}
+                                            </Box>
+                                        )}
                                     </Stack>
 
                                     <Divider sx={{ mb: 2 }} />

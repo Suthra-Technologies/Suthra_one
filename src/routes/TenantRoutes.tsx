@@ -22,6 +22,7 @@ import KitchenInterface from '../pages/kitchen/KitchenInterface';
 import KitchenOrdersPage from '../pages/kitchen/KitchenOrdersPage';
 import MenuPage from '../pages/menu/MenuPage';
 import AddOnGroupsPage from '../pages/menu/AddOnGroupsPage';
+import SpiceLevelSetsPage from '../pages/menu/SpiceLevelSetsPage';
 import TraysPage from '../pages/menu/TraysPage';
 import OrdersPage from '../pages/orders/OrdersPage';
 import POSPage from '../pages/pos/POSPage';
@@ -207,17 +208,17 @@ export const TenantRoutes = () => (
         </Route>
       </Route>
 
-        <Route element={<RequireRole allowedRoles={['admin', 'manager', 'cashier']} />}>
-          <Route element={<RequireFeature feature="tables" />}>
-            <Route path="tables" element={<TablesPage />} />
-          </Route>
+      <Route element={<RequireRole allowedRoles={['admin', 'manager', 'cashier']} />}>
+        <Route element={<RequireFeature feature="tables" />}>
+          <Route path="tables" element={<TablesPage />} />
         </Route>
+      </Route>
 
-        <Route element={<RequireRole allowedRoles={['admin', 'manager', 'waiter']} />}>
-          <Route element={<RequireFeature feature="bookings" />}>
-            <Route path="bookings" element={<BookingsAdminPage />} />
-          </Route>
+      <Route element={<RequireRole allowedRoles={['admin', 'manager', 'waiter']} />}>
+        <Route element={<RequireFeature feature="bookings" />}>
+          <Route path="bookings" element={<BookingsAdminPage />} />
         </Route>
+      </Route>
 
       <Route path="profile" element={<ProfilePage />} />
 

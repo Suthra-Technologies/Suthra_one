@@ -409,7 +409,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                 <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap', minWidth: 0 }}>
                                     <strong>Customer:</strong>
                                     <Box component="span" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%' }}>
-                                        {/^[0-9a-fA-F]{8,24}$/.test(order.customer.name) ? 'Guest' : order.customer.name}
+                                        {/^[0-9a-fA-F]{8,24}$/.test(order.customer?.name || '') ? 'Guest' : (order.customer?.name || 'Guest')}
                                     </Box>
                                 </Typography>
                                 {order.customer?.phone && (
@@ -751,13 +751,13 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                 {formatCurrency(order.subtotal)}
                             </Typography>
                         </Box>
-                        {order.tax?.amount > 0 && (
+                        {(order.tax?.amount ?? 0) > 0 && (
                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                                 <Typography variant="body2" color="text.secondary">
                                     Tax:
                                 </Typography>
                                 <Typography variant="body2" fontWeight="medium">
-                                    {formatCurrency(order.tax.amount)}
+                                    {formatCurrency(order.tax?.amount ?? 0)}
                                 </Typography>
                             </Box>
                         )}
@@ -1519,7 +1519,7 @@ const OrderCard: React.FC<OrderCardProps> = ({
                                 Item: <strong>{order.items[refundTargetIndex].name || order.items[refundTargetIndex].menuItem?.name}</strong>
                             </Typography>
                             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                                Amount: <strong>{formatCurrency(order.items[refundTargetIndex].total || order.items[refundTargetIndex].price * order.items[refundTargetIndex].quantity)}</strong> (+ proportional tax)
+                                Amount: <strong>{formatCurrency(order.items[refundTargetIndex]?.total || ((order.items[refundTargetIndex]?.price ?? 0) * (order.items[refundTargetIndex]?.quantity ?? 1)))}</strong> (+ proportional tax)
                             </Typography>
                             <FormControl fullWidth size="small">
                                 <InputLabel>Refund Method</InputLabel>

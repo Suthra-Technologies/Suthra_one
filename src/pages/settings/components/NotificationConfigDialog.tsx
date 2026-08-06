@@ -179,7 +179,9 @@ const NotificationConfigDialog: React.FC<Props> = ({ open, editing, onClose, onS
 
     // A target must be chosen before any events can be shown, since the
     // available set is derived from that target's role.
-    const hasTarget = targetType === 'user' ? Boolean(selectedUser) : Boolean(selectedRole);
+    // In edit mode the target is already locked and displayed as a static
+    // label, so it is always considered valid.
+    const hasTarget = isEdit || (targetType === 'user' ? Boolean(selectedUser) : Boolean(selectedRole));
 
     /**
      * An event is selectable unless the user's roles do not grant it. For a user
