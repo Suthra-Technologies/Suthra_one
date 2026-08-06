@@ -756,6 +756,7 @@ const MenuPage: React.FC = () => {
                     setIsProcessing(true);
                     await menuAPI.delete(item._id);
                     toast.success(`Menu item "${item.name}" deleted successfully`);
+                    window.dispatchEvent(new Event('menu_updated'));
                     fetchData();
                 } catch (error: any) {
                     console.error('Error deleting menu item:', error);
@@ -773,6 +774,7 @@ const MenuPage: React.FC = () => {
             setIsProcessing(true);
             await menuAPI.restore(item._id);
             toast.success(`Menu item "${item.name}" restored successfully`);
+            window.dispatchEvent(new Event('menu_updated'));
             fetchData();
             fetchDeletedData();
         } catch (error: any) {
@@ -1019,6 +1021,7 @@ const MenuPage: React.FC = () => {
             toast.dismiss(progressToast);
             if (createdCount > 0) {
                 toast.success(`Uploaded ${createdCount} items.${skippedCount > 0 ? ` Skipped ${skippedCount} duplicates.` : ''}`);
+                window.dispatchEvent(new Event('menu_updated'));
             } else {
                 toast.error(`No new items added. ${skippedCount} items were duplicates.`);
             }

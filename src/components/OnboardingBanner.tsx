@@ -7,12 +7,24 @@ import { useActiveTenant } from '../hooks/useActiveTenant';
 import { menuAPI } from '../services/api';
 
 const OnboardingBanner: React.FC = () => {
-  const { settings, loading } = useSettings();
-  const { activeRole } = useAuth();
-  const { getRelativePath } = useActiveTenant();
+  const { settings, loading, isFetched, fetchError } = useSettings();
+  const { activeRole, user } = useAuth();
+  const { getRelativePath, slug } = useActiveTenant();
   const navigate = useNavigate();
   const location = useLocation();
-  const [hasMenu, setHasMenu] = useState<boolean | null>(null);
+
+  const getCachedMenuStatus = (): boolean | null => {
+    if ((user?.tenant as any)?.hasMenu === true) return true;
+    const tenantKey = slug || (user?.tenant as any)?._id || (user?.tenant as any)?.slug;
+    if (tenantKey) {
+      const cached = localStorage.getItem(`has_menu_${tenantKey}`);
+      if (cached === 'true') return true;
+      if (cached === 'false') return false;
+    }
+    return null;
+  };
+
+  const [hasMenu, setHasMenu] = useState<boolean | null>(getCachedMenuStatus);
 
   useEffect(() => {
     if (activeRole !== 'admin') return;
@@ -21,21 +33,42 @@ const OnboardingBanner: React.FC = () => {
       try {
         const res = await menuAPI.getAll({ limit: 1 });
         const items = res.data.items || res.data;
-        setHasMenu(items && items.length > 0);
+        const exists = Boolean(items && items.length > 0);
+        setHasMenu(exists);
+        const tenantKey = slug || (user?.tenant as any)?._id || (user?.tenant as any)?.slug;
+        if (tenantKey) {
+          localStorage.setItem(`has_menu_${tenantKey}`, exists ? 'true' : 'false');
+        }
       } catch (err) {
         console.error('Failed to check menu:', err);
-        setHasMenu(true); // Default to true on error to avoid blocking the user incorrectly
+        // Retain prior state or default to true on error to avoid blocking the user incorrectly
+        setHasMenu(prev => prev !== null ? prev : true);
       }
     };
-    checkMenu();
-  }, [activeRole]);
 
-  const isSettingsIncomplete = !settings?.restaurant?.address || !settings?.restaurant?.logo;
+    checkMenu();
+
+    const handleMenuUpdated = () => {
+      checkMenu();
+    };
+    window.addEventListener('menu_updated', handleMenuUpdated);
+    return () => {
+      window.removeEventListener('menu_updated', handleMenuUpdated);
+    };
+  }, [activeRole, slug, user?.tenant]);
+
+  // Robust check combining settings, user.tenant, and isProfileComplete flag
+  const isProfileCompleteFlag = (user?.tenant as any)?.isProfileComplete === true;
+  const hasAddress = Boolean(settings?.restaurant?.address?.trim() || (user?.tenant as any)?.address?.trim());
+  const hasLogo = Boolean(settings?.restaurant?.logo?.trim() || (user?.tenant as any)?.logo?.trim());
+
+  const isSettingsIncomplete = !isProfileCompleteFlag && (!hasAddress || !hasLogo);
   const isMenuIncomplete = hasMenu === false;
 
   useEffect(() => {
     if (activeRole !== 'admin') return;
-    if (loading || hasMenu === null) return;
+    // Guard against redirect loops during loading, unverified fetches, or network errors
+    if (loading || !isFetched || fetchError || hasMenu === null) return;
 
     const currentPath = location.pathname;
     const settingsPath = getRelativePath('/settings');
@@ -49,6 +82,8 @@ const OnboardingBanner: React.FC = () => {
   }, [
     activeRole,
     loading,
+    isFetched,
+    fetchError,
     hasMenu,
     isSettingsIncomplete,
     isMenuIncomplete,
@@ -58,7 +93,7 @@ const OnboardingBanner: React.FC = () => {
   ]);
 
   if (activeRole !== 'admin') return null;
-  if (loading || hasMenu === null) return null; // Wait until data is fully loaded
+  if (loading || !isFetched || fetchError || hasMenu === null) return null; // Wait until data is fully loaded
 
   if (!isSettingsIncomplete && !isMenuIncomplete) return null;
 
