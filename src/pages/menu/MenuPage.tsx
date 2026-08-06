@@ -756,6 +756,7 @@ const MenuPage: React.FC = () => {
                     setIsProcessing(true);
                     await menuAPI.delete(item._id);
                     toast.success(`Menu item "${item.name}" deleted successfully`);
+                    window.dispatchEvent(new Event('menu_updated'));
                     fetchData();
                 } catch (error: any) {
                     console.error('Error deleting menu item:', error);
@@ -773,6 +774,7 @@ const MenuPage: React.FC = () => {
             setIsProcessing(true);
             await menuAPI.restore(item._id);
             toast.success(`Menu item "${item.name}" restored successfully`);
+            window.dispatchEvent(new Event('menu_updated'));
             fetchData();
             fetchDeletedData();
         } catch (error: any) {
@@ -940,6 +942,7 @@ const MenuPage: React.FC = () => {
                     const price = findValue(['price', 'rate', 'cost', 'amount']);
                     const category = findValue(['category', 'cat']);
                     const subcategory = findValue(['subcategory', 'subcat', 'sub category']);
+                    const taxCode = findValue(['tax code', 'taxcode', 'tic', 'tax_code', 'tax', 'product tax code', 'product_tax_code']);
                     const description = findValue(['description', 'desc', 'details']);
                     const image = findValue(['image', 'photo', 'img', 'url', 'link']);
                     const foodType = findValue(['food type', 'foodtype', 'veg', 'type']);
@@ -960,6 +963,7 @@ const MenuPage: React.FC = () => {
                         category: String(category || '').trim(),
                         categories: category ? [String(category).trim()] : [],
                         subcategory: String(subcategory || '').trim(),
+                        taxCode: taxCode !== undefined && taxCode !== null ? String(taxCode).trim() : undefined,
                         description: String(description || '').trim(),
                         image: processedImage,
                         isAvailable: isAvailable !== false && isAvailable !== 'false', // default true
@@ -1017,6 +1021,7 @@ const MenuPage: React.FC = () => {
             toast.dismiss(progressToast);
             if (createdCount > 0) {
                 toast.success(`Uploaded ${createdCount} items.${skippedCount > 0 ? ` Skipped ${skippedCount} duplicates.` : ''}`);
+                window.dispatchEvent(new Event('menu_updated'));
             } else {
                 toast.error(`No new items added. ${skippedCount} items were duplicates.`);
             }
@@ -1053,8 +1058,8 @@ const MenuPage: React.FC = () => {
                 if (parts.length < 2 && row.includes('\t')) parts = row.split('\t').map(p => p.trim());
                 if (parts.length < 2 && row.includes('|')) parts = row.split('|').map(p => p.trim());
 
-                // Expected: Name, Price, Category, Subcategory, Description, ImageURL, FoodType, IsAvailable, IsCateringAvailable
-                const [name, priceStr, category, subcategory, description, image, foodType, isAvailableStr, isCateringAvailableStr] = parts;
+                // Expected: Name, Price, Category, Subcategory, Description, ImageURL, FoodType, IsAvailable, IsCateringAvailable, TaxCode
+                const [name, priceStr, category, subcategory, description, image, foodType, isAvailableStr, isCateringAvailableStr, taxCodeStr] = parts;
 
                 if (!name || !priceStr) {
                     return null;
@@ -1078,6 +1083,7 @@ const MenuPage: React.FC = () => {
                     category: category || '',
                     categories: category ? [category] : [],
                     subcategory: subcategory || '',
+                    taxCode: taxCodeStr ? String(taxCodeStr).trim() : undefined,
                     description: description || '',
                     image: processedImage,
                     isAvailable: isAvailable,
@@ -1186,9 +1192,21 @@ const MenuPage: React.FC = () => {
             link.click();
             link.remove();
             toast.success('Menu exported successfully!');
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error exporting menu:', error);
-            toast.error('Failed to export menu.');
+            let errMsg = 'Failed to export menu.';
+            if (error?.response?.data instanceof Blob) {
+                try {
+                    const text = await error.response.data.text();
+                    const parsed = JSON.parse(text);
+                    if (parsed.message) errMsg = Array.isArray(parsed.message) ? parsed.message.join(', ') : parsed.message;
+                } catch (e) {
+                    // Fallback to default message
+                }
+            } else if (error?.response?.data?.message) {
+                errMsg = error.response.data.message;
+            }
+            toast.error(errMsg);
         } finally {
             setIsExporting(false);
         }
@@ -2188,9 +2206,9 @@ const MenuPage: React.FC = () => {
                                     sx={{ borderRadius: 2 }}
                                     onClick={() => {
                                         const template = [
-                                            { Name: 'Classic Burger', Price: 12.99, Category: 'Main Course', Subcategory: 'Burgers', Description: 'Juicy beef patty with lettuce, tomato, and special sauce', Image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500', 'Food Type': 'non-veg', 'Is Available': 'true', 'Is Catering Available': 'true' },
-                                            { Name: 'Margherita Pizza', Price: 14.50, Category: 'Main Course', Subcategory: 'Italian', Description: 'Fresh mozzarella, basil, and tomato sauce', Image: 'https://images.unsplash.com/photo-1604382354936-07c5d9983bd3?w=500', 'Food Type': 'veg', 'Is Available': 'true', 'Is Catering Available': 'true' },
-                                            { Name: 'Greek Salad', Price: 9.99, Category: 'Starters', Subcategory: 'Salads', Description: 'Cucumber, olives, feta cheese, and balsamic dressing', Image: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=500', 'Food Type': 'veg', 'Is Available': 'true', 'Is Catering Available': 'false' }
+                                            { Name: 'Classic Burger', Price: 12.99, Category: 'Main Course', Subcategory: 'Burgers', 'Tax Code': '41000', Description: 'Juicy beef patty with lettuce, tomato, and special sauce', Image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500', 'Food Type': 'non-veg', 'Is Available': 'true', 'Is Catering Available': 'true' },
+                                            { Name: 'Margherita Pizza', Price: 14.50, Category: 'Main Course', Subcategory: 'Italian', 'Tax Code': '41000', Description: 'Fresh mozzarella, basil, and tomato sauce', Image: 'https://images.unsplash.com/photo-1604382354936-07c5d9983bd3?w=500', 'Food Type': 'veg', 'Is Available': 'true', 'Is Catering Available': 'true' },
+                                            { Name: 'Greek Salad', Price: 9.99, Category: 'Starters', Subcategory: 'Salads', 'Tax Code': '41000', Description: 'Cucumber, olives, feta cheese, and balsamic dressing', Image: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=500', 'Food Type': 'veg', 'Is Available': 'true', 'Is Catering Available': 'false' }
                                         ];
                                         const ws = XLSX.utils.json_to_sheet(template);
                                         const wb = XLSX.utils.book_new();
@@ -2389,13 +2407,49 @@ const MenuPage: React.FC = () => {
                                                     {formatCurrency(item.price)}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Chip
-                                                        label="AI auto-assign ✨"
-                                                        size="small"
-                                                        variant="outlined"
-                                                        color="secondary"
-                                                        sx={{ fontSize: '0.65rem', height: 22, fontWeight: 600 }}
-                                                    />
+                                                    {(() => {
+                                                        const itemTaxCode = item.taxCode?.toString().trim();
+                                                        if (itemTaxCode) {
+                                                            return (
+                                                                <Chip
+                                                                    label={itemTaxCode}
+                                                                    size="small"
+                                                                    color="primary"
+                                                                    variant="outlined"
+                                                                    sx={{ fontSize: '0.7rem', height: 22, fontWeight: 600 }}
+                                                                />
+                                                            );
+                                                        }
+                                                        const matchedCategory = categories.find(
+                                                            c => c.name?.toLowerCase().trim() === item.category?.toLowerCase().trim() || c._id === item.category
+                                                        );
+                                                        const categoryTaxCode = matchedCategory?.taxCode?.toString().trim();
+                                                        if (categoryTaxCode) {
+                                                            return (
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                                    <Chip
+                                                                        label={categoryTaxCode}
+                                                                        size="small"
+                                                                        color="default"
+                                                                        variant="outlined"
+                                                                        sx={{ fontSize: '0.7rem', height: 22, fontWeight: 500 }}
+                                                                    />
+                                                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                                                                        (category)
+                                                                    </Typography>
+                                                                </Box>
+                                                            );
+                                                        }
+                                                        return (
+                                                            <Chip
+                                                                label="AI auto-assign ✨"
+                                                                size="small"
+                                                                variant="outlined"
+                                                                color="secondary"
+                                                                sx={{ fontSize: '0.65rem', height: 22, fontWeight: 600 }}
+                                                            />
+                                                        );
+                                                    })()}
                                                 </TableCell>
                                                 <TableCell>
                                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>

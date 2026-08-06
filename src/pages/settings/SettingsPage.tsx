@@ -22,6 +22,7 @@ import {
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
+import SmartphoneIcon from '@mui/icons-material/Smartphone';
 import {
     Alert,
     Avatar,
@@ -50,7 +51,6 @@ import {
     TableCell,
     TableContainer,
     TableHead,
-    TablePagination,
     TableRow,
     Tabs,
     TextField,
@@ -89,15 +89,15 @@ import {
     type UnitConfig
 } from '../../context/SettingsContext';
 
-import { apiBaseUrl, menuAPI, paymentsAPI, printersAPI, settingsAPI, smsAPI, tenantAPI, usersAPI } from '../../services/api';
-import { printBillThermal } from '../../utils/printBillThermal';
-import { printKotThermal } from '../../utils/kotThermal';
+import { apiBaseUrl, menuAPI, paymentsAPI, printersAPI, settingsAPI, smsAPI, tenantAPI, uploadAPI } from '../../services/api';
 import { isThermalPrintAvailable, startPrintStation, stopPrintStation } from '../../services/thermalPrint';
 import { connectUsbPrinter, disconnectUsbPrinter, isUsbPrintAvailable, isUsbPrinterConnected } from '../../services/usbPrint';
+import { printKotThermal } from '../../utils/kotThermal';
+import { printBillThermal } from '../../utils/printBillThermal';
 
 import { NOTIFICATION_SOUNDS, previewSound } from '../../utils/notificationSounds';
 import type { ValidationResult } from '../../utils/validation';
-import { getHelperText, hasError, validateAddress, validateCompanyName, validateEmail, validatePhone, validateRequired } from '../../utils/validation';
+import { getHelperText, hasError, validateAddress, validateCompanyName, validateEmail, validatePhone } from '../../utils/validation';
 
 const countries = [
     {
@@ -407,7 +407,8 @@ const createDefaultSettings = (): SettingsState => ({
             cheque: true,
             creditCard: true,
             debitCard: true,
-        }
+        },
+        paymentQrCodes: {}
     },
     payment: {
         stripePublishableKey: '',
@@ -508,7 +509,8 @@ const mergeSettingsWithDefaults = (defaults: SettingsState, partial: Partial<Set
             cheque: fetchedSystem.posPaymentMethods?.cheque ?? (defaults.system.posPaymentMethods?.cheque ?? true),
             creditCard: fetchedSystem.posPaymentMethods?.creditCard ?? (defaults.system.posPaymentMethods?.creditCard ?? true),
             debitCard: fetchedSystem.posPaymentMethods?.debitCard ?? (defaults.system.posPaymentMethods?.debitCard ?? true),
-        }
+        },
+        paymentQrCodes: fetchedSystem.paymentQrCodes ?? defaults.system.paymentQrCodes ?? {}
     };
 
     // Stripe settings come from tenant API; ensure defaults filled
@@ -3738,6 +3740,119 @@ const SettingsPage: React.FC = () => {
                                             </Grid>
                                         </Box>
                                     )}
+
+                                    {/* QR Code Configuration Section */}
+                                    {(() => {
+                                        const isIndia = settings?.restaurant?.country?.toLowerCase() === 'india';
+                                        const defaultMethods = isIndia ? ['cash', 'card', 'cheque', 'phonepe', 'gpay', 'paytm'] : ['cash', 'card', 'zelle', 'venmo', 'cheque'];
+                                        const standardMethods = ['cash', 'card', 'zelle', 'venmo', 'cheque', 'creditCard', 'debitCard', 'phonepe', 'gpay', 'paytm'];
+                                        const customKeys = Object.keys(settings.system.posPaymentMethods || {}).filter(k => !standardMethods.includes(k));
+                                        const allDisplayMethods = [...new Set([...defaultMethods, ...customKeys])];
+
+                                        const qrMethods = allDisplayMethods.filter(method =>
+                                            (settings.system.posPaymentMethods?.[method] ?? true) &&
+                                            !['cash', 'card', 'cheque', 'creditCard', 'debitCard'].includes(method)
+                                        );
+
+                                        if (qrMethods.length === 0) return null;
+
+                                        return (
+                                            <Box sx={{ mt: 3, pt: 3, borderTop: '1px solid', borderColor: 'divider' }}>
+                                                <Typography variant="subtitle2" color="text.primary" sx={{ mb: 1, fontWeight: 600 }}>
+                                                    POS Payment QR Codes
+                                                </Typography>
+                                                <Grid container spacing={2}>
+                                                    {qrMethods.map((method) => {
+                                                        const currentQr = settings.system.paymentQrCodes?.[method];
+                                                        return (
+                                                            <Grid size={{ xs: 12, sm: 6 }} key={method}>
+                                                                <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, bgcolor: 'background.paper' }}>
+                                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                                                        {currentQr ? (
+                                                                            <Box sx={{ width: 60, height: 60, border: '1px solid', borderColor: 'divider', borderRadius: 1.5, overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', bgcolor: '#fff' }}>
+                                                                                <img src={currentQr} alt={`${method} QR`} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                                                                            </Box>
+                                                                        ) : (
+                                                                            <Box sx={{ width: 60, height: 60, border: '1px dashed', borderColor: 'divider', borderRadius: 1.5, display: 'flex', justifyContent: 'center', alignItems: 'center', bgcolor: 'action.hover' }}>
+                                                                                <SmartphoneIcon sx={{ color: 'text.secondary' }} />
+                                                                            </Box>
+                                                                        )}
+                                                                        <Box>
+                                                                            <Typography variant="subtitle2" sx={{ textTransform: 'capitalize', fontWeight: 'bold' }}>
+                                                                                {method}
+                                                                            </Typography>
+                                                                            <Typography variant="caption" color={currentQr ? "success.main" : "text.secondary"} sx={{ fontWeight: currentQr ? 600 : 400 }}>
+                                                                                {currentQr ? 'QR Code configured' : 'No QR Code configured'}
+                                                                            </Typography>
+                                                                        </Box>
+                                                                    </Box>
+                                                                    <Box sx={{ display: 'flex', gap: 1 }}>
+                                                                        <Button
+                                                                            variant="outlined"
+                                                                            component="label"
+                                                                            size="small"
+                                                                            sx={{ textTransform: 'none' }}
+                                                                        >
+                                                                            {currentQr ? 'Change' : 'Upload'}
+                                                                            <input
+                                                                                type="file"
+                                                                                accept="image/*"
+                                                                                hidden
+                                                                                onChange={async (e) => {
+                                                                                    const file = e.target.files?.[0];
+                                                                                    if (file) {
+                                                                                        try {
+                                                                                            toast.loading('Uploading QR image...', { id: 'qr-upload' });
+                                                                                            const response = await uploadAPI.uploadImage(file);
+                                                                                            const uploadedUrl = response.data.url;
+                                                                                            setSettings(prev => ({
+                                                                                                ...prev,
+                                                                                                system: {
+                                                                                                    ...prev.system,
+                                                                                                    paymentQrCodes: {
+                                                                                                        ...(prev.system.paymentQrCodes || {}),
+                                                                                                        [method]: uploadedUrl
+                                                                                                    }
+                                                                                                }
+                                                                                            }));
+                                                                                            toast.success(`Uploaded QR for ${method}`, { id: 'qr-upload' });
+                                                                                        } catch (err) {
+                                                                                            toast.error('Failed to upload QR image', { id: 'qr-upload' });
+                                                                                        }
+                                                                                    }
+                                                                                }}
+                                                                            />
+                                                                        </Button>
+                                                                        {currentQr && (
+                                                                            <IconButton
+                                                                                size="small"
+                                                                                color="error"
+                                                                                onClick={() => {
+                                                                                    setSettings(prev => {
+                                                                                        const codes = { ...(prev.system.paymentQrCodes || {}) };
+                                                                                        delete codes[method];
+                                                                                        return {
+                                                                                            ...prev,
+                                                                                            system: {
+                                                                                                ...prev.system,
+                                                                                                paymentQrCodes: codes
+                                                                                            }
+                                                                                        };
+                                                                                    });
+                                                                                }}
+                                                                            >
+                                                                                <DeleteIcon fontSize="small" />
+                                                                            </IconButton>
+                                                                        )}
+                                                                    </Box>
+                                                                </Paper>
+                                                            </Grid>
+                                                        );
+                                                    })}
+                                                </Grid>
+                                            </Box>
+                                        );
+                                    })()}
                                 </Paper>
 
                                 <Box sx={{ mt: 4, display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' } }}>

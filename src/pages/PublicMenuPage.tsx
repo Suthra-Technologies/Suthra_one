@@ -50,7 +50,7 @@ interface MenuItem {
   availableDays?: string[];
   isWeeklyScheduleEnabled?: boolean;
   availabilityType?: 'highlight' | 'available_only';
-  displayOption?: 'normal' | 'weekly_special' | 'todays_special';
+  displayOption?: 'normal' | 'weekly_special' | 'weekend_special' | 'todays_special';
   validFrom?: string | null;
   validTo?: string | null;
   priority?: number;
@@ -131,6 +131,7 @@ const PublicMenuPage: React.FC = () => {
     if (!isSpecialToday(item)) return null;
     if (item.displayOption === 'todays_special') return "🔥 Today's Special";
     if (item.displayOption === 'weekly_special') return '⭐ Weekly Special';
+    if (item.displayOption === 'weekend_special') return '🎉 Weekend Special';
     return null;
   };
   const filteredItems = menuItems.filter(item => {
@@ -267,7 +268,11 @@ const PublicMenuPage: React.FC = () => {
                       '&:hover': { transform: 'translateY(-4px)', boxShadow: 3 },
                       cursor: 'pointer',
                       border: '2px solid',
-                      borderColor: item.displayOption === 'todays_special' ? '#FF6B35' : '#6366F1',
+                      borderColor: item.displayOption === 'todays_special'
+                        ? '#FF6B35'
+                        : item.displayOption === 'weekend_special'
+                          ? '#2E7D32'
+                          : '#6366F1',
                     }}
                     onClick={() => handleItemClick(item)}
                   >
@@ -288,7 +293,9 @@ const PublicMenuPage: React.FC = () => {
                           left: 8,
                           background: item.displayOption === 'todays_special'
                             ? 'linear-gradient(135deg, #FF6B35, #F7C948)'
-                            : 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+                            : item.displayOption === 'weekend_special'
+                              ? 'linear-gradient(135deg, #2E7D32, #4CAF50)'
+                              : 'linear-gradient(135deg, #6366F1, #8B5CF6)',
                           color: '#fff',
                           fontWeight: 700,
                           fontSize: '0.75rem',
@@ -375,7 +382,9 @@ const PublicMenuPage: React.FC = () => {
                         left: 8,
                         background: item.displayOption === 'todays_special'
                           ? 'linear-gradient(135deg, #FF6B35, #F7C948)'
-                          : 'linear-gradient(135deg, #6366F1, #8B5CF6)',
+                          : item.displayOption === 'weekend_special'
+                            ? 'linear-gradient(135deg, #2E7D32, #4CAF50)'
+                            : 'linear-gradient(135deg, #6366F1, #8B5CF6)',
                         color: '#fff',
                         fontWeight: 700,
                         fontSize: '0.7rem',
