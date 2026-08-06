@@ -55,8 +55,8 @@ const api: AxiosInstance = axios.create({
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const isSkippedUrl = config.url && (
-      config.url.includes('/auth/login') || 
-      config.url.includes('/auth/forgot-password') || 
+      config.url.includes('/auth/login') ||
+      config.url.includes('/auth/forgot-password') ||
       config.url.includes('/auth/switch-tenant')
     );
     if (!isSkippedUrl) {
@@ -78,8 +78,8 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response: AxiosResponse) => {
     const isSkippedUrl = response.config?.url && (
-      response.config.url.includes('/auth/login') || 
-      response.config.url.includes('/auth/forgot-password') || 
+      response.config.url.includes('/auth/login') ||
+      response.config.url.includes('/auth/forgot-password') ||
       response.config.url.includes('/auth/switch-tenant')
     );
     if (!isSkippedUrl) {
@@ -89,14 +89,14 @@ api.interceptors.response.use(
   },
   (error) => {
     const isSkippedUrl = error.config?.url && (
-      error.config.url.includes('/auth/login') || 
-      error.config.url.includes('/auth/forgot-password') || 
+      error.config.url.includes('/auth/login') ||
+      error.config.url.includes('/auth/forgot-password') ||
       error.config.url.includes('/auth/switch-tenant')
     );
     if (!isSkippedUrl) {
       handleRequestEnd(error.config?.method, true);
     }
-    
+
     const message = error.response?.data?.message || error.message || 'An error occurred';
     if (error.response?.status === 401) {
       // Mobile-only: keep local session until explicit logout.
@@ -365,7 +365,7 @@ export const menuAPI = {
   getAllSubcategories: (categoryId?: string, isDeleted?: boolean) => api.get('/menu/subcategories', { params: { ...(categoryId ? { categoryId } : {}), ...(isDeleted ? { isDeleted } : {}) } }),
   getOne: (id: string) => api.get(`/menu/${id}`),
   create: (menuData: any) => api.post('/menu', menuData),
-  bulkCreate: (items: any[]) => api.post('/menu/bulk', items, { timeout: 180000 }),
+  bulkCreate: (items: any[], options?: { aiDescriptions?: boolean }) => api.post(`/menu/bulk${options?.aiDescriptions ? '?aiDescriptions=true' : ''}`, items),
   update: (id: string, menuData: any) => api.put(`/menu/${id}`, menuData),
   delete: (id: string) => api.delete(`/menu/${id}`),
   restore: (id: string) => api.patch(`/menu/${id}/restore`),
@@ -382,8 +382,8 @@ export const menuAPI = {
   updateSubcategory: (id: string, subcategoryData: any) => api.put(`/menu/subcategories/${id}`, subcategoryData),
   deleteSubcategory: (id: string) => api.delete(`/menu/subcategories/${id}`),
   restoreSubcategory: (id: string) => api.patch(`/menu/subcategories/${id}/restore`),
-  bulkPriceAdjust: (percentage: number, categoryId?: string) =>
-    api.patch('/menu/bulk-price-adjust', { percentage, categoryId }),
+  bulkPriceAdjust: (amount: number, adjustmentType: 'percentage' | 'flat' = 'percentage', categoryId?: string, itemId?: string) =>
+    api.patch('/menu/bulk-price-adjust', { amount, adjustmentType, categoryId, itemId }),
   getPriceAdjustmentLogs: () => api.get('/menu/price-adjustment-logs'),
 };
 

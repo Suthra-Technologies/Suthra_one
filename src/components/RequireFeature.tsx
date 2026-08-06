@@ -44,7 +44,17 @@ export const RequireFeature: React.FC<Props> = ({ feature, guestAllowed = false 
     if (tenant && typeof tenant === 'object') {
         // Access features from populated currentPlan
         const features = tenant.currentPlan?.features || [];
-        if (features.includes(feature)) {
+        // Legacy plans stored a single bundled "core" feature. Before the module-level
+        // split, every one of these pages was ungated (open to any admin/manager), so a
+        // legacy "core" plan must keep unlocking all of them to avoid regressing access.
+        const CORE_FEATURES = [
+            'dashboard', 'orders', 'pos', 'tables', 'bookings', 'kitchen', 'menu', 'globaladdons',
+            'promocoupons', 'disputes', 'purchaseorders', 'vendors', 'materialproviders', 'recipes',
+            'users', 'customers', 'assets', 'expenses', 'customisescreens', 'reports', 'serviceusage',
+            'customeractivities', 'invoices', 'auditlogs', 'subscription', 'support', 'customersupport',
+            'settings', 'managenotifications',
+        ];
+        if (features.includes(feature) || (features.includes('core') && CORE_FEATURES.includes(feature))) {
             return <Outlet />;
         }
     }

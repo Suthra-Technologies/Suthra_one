@@ -156,16 +156,16 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
     {
       title: 'MAIN',
       items: [
-        { path: '/dashboard', label: 'Dashboard', icon: <Dashboard />, roles: ['admin', 'manager', 'waiter', 'cashier', 'food_runner'] },
+        { path: '/dashboard', label: 'Dashboard', icon: <Dashboard />, roles: ['admin', 'manager', 'waiter', 'cashier', 'food_runner'], feature: 'dashboard' },
       ]
     },
     {
       title: 'OPERATIONS',
       items: [
-        { path: '/orders', label: 'Orders', icon: <ShoppingCart />, roles: ['admin', 'manager', 'waiter', 'cashier', 'delivery', 'food_runner'] },
-        { path: '/pos', label: 'Point of Sale', icon: <PointOfSale />, roles: ['admin', 'manager', 'waiter', 'cashier'] },
-        { path: '/tables', label: 'Tables', icon: <TableRestaurant />, roles: ['admin', 'manager', 'cashier'] },
-        { path: '/bookings', label: 'Bookings', icon: <EventIcon />, roles: ['admin', 'manager', 'waiter'] },
+        { path: '/orders', label: 'Orders', icon: <ShoppingCart />, roles: ['admin', 'manager', 'waiter', 'cashier', 'delivery', 'food_runner'], feature: 'orders' },
+        { path: '/pos', label: 'Point of Sale', icon: <PointOfSale />, roles: ['admin', 'manager', 'waiter', 'cashier'], feature: 'pos' },
+        { path: '/tables', label: 'Tables', icon: <TableRestaurant />, roles: ['admin', 'manager', 'cashier'], feature: 'tables' },
+        { path: '/bookings', label: 'Bookings', icon: <EventIcon />, roles: ['admin', 'manager', 'waiter'], feature: 'bookings' },
         {
           label: 'Catering',
           icon: <Celebration />,
@@ -176,8 +176,8 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
             { path: '/catering-commissions', label: 'Commissions', icon: <MonetizationOn /> },
           ]
         },
-        { path: '/kot', label: 'Kitchen Display', icon: <Receipt />, roles: ['admin', 'manager', 'kitchen_staff'] },
-        { path: '/kitchen', label: 'Kitchen Orders', icon: <Kitchen />, roles: ['admin', 'manager', 'kitchen_staff'] },
+        { path: '/kot', label: 'Kitchen Display', icon: <Receipt />, roles: ['admin', 'manager', 'kitchen_staff'], feature: 'kitchen' },
+        { path: '/kitchen', label: 'Kitchen Orders', icon: <Kitchen />, roles: ['admin', 'manager', 'kitchen_staff'], feature: 'kitchen' },
         { path: '/customer/order', label: 'Order Online', icon: <PointOfSale />, roles: ['customer'] },
         { path: '/customer/book-table', label: 'Book Table', icon: <EventIcon />, roles: ['customer'] },
         { path: '/customer/catering', label: 'Catering Service', icon: <Celebration />, roles: ['customer'], feature: 'catering' },
@@ -187,47 +187,47 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
     {
       title: 'MANAGEMENT',
       items: [
-        { path: '/menu', label: 'Menu', icon: <Restaurant />, roles: ['admin', 'manager'] },
+        { path: '/menu', label: 'Menu', icon: <Restaurant />, roles: ['admin', 'manager'], feature: 'menu' },
         { path: '/inventory', label: 'Inventory', icon: <Inventory />, roles: ['admin', 'manager'], feature: 'inventory' },
         { path: '/inventory/waste', label: 'Wastage Management', icon: <DeleteSweep />, roles: ['admin', 'manager'], feature: 'wastemanagement' },
-        { path: '/purchase-orders', label: 'Purchase Orders', icon: <ShoppingBag />, roles: ['admin', 'manager'] },
-        { path: '/vendors', label: 'Vendors', icon: <VendorIcon />, roles: ['admin', 'manager'] },
-        { path: '/material-providers', label: 'Material Providers', icon: <PlaylistAdd />, roles: ['admin', 'manager'] },
-        // { path: '/recipes', label: 'Recipes', icon: <MenuBook />, roles: ['admin', 'manager'] },
-        { path: '/promocode', label: 'Promo Code', icon: <LocalOffer />, roles: ['admin', 'manager'] },
-        { path: '/coupons', label: 'Coupons', icon: <ConfirmationNumber />, roles: ['admin', 'manager'] },
-        { path: '/users', label: 'Users', icon: <People />, roles: ['admin', 'manager'] },
-        { path: '/customers', label: 'Customers', icon: <AccountBox />, roles: ['admin', 'manager'] },
+        { path: '/purchase-orders', label: 'Purchase Orders', icon: <ShoppingBag />, roles: ['admin', 'manager'], feature: 'purchaseorders' },
+        { path: '/vendors', label: 'Vendors', icon: <VendorIcon />, roles: ['admin', 'manager'], feature: 'vendors' },
+        { path: '/material-providers', label: 'Material Providers', icon: <PlaylistAdd />, roles: ['admin', 'manager'], feature: 'materialproviders' },
+        // { path: '/recipes', label: 'Recipes', icon: <MenuBook />, roles: ['admin', 'manager'], feature: 'recipes' },
+        { path: '/promocode', label: 'Promo Code', icon: <LocalOffer />, roles: ['admin', 'manager'], feature: 'promocoupons' },
+        { path: '/coupons', label: 'Coupons', icon: <ConfirmationNumber />, roles: ['admin', 'manager'], feature: 'promocoupons' },
+        { path: '/users', label: 'Users', icon: <People />, roles: ['admin', 'manager'], feature: 'users' },
+        { path: '/customers', label: 'Customers', icon: <AccountBox />, roles: ['admin', 'manager'], feature: 'customers' },
         { path: '/attendance', label: 'Attendance', icon: <AccessTimeIcon />, roles: ['admin', 'manager', 'accountant'], feature: 'attendance' },
-        { path: '/assets', label: 'Asset & Document Management', icon: <Assignment />, roles: ['admin', 'manager', 'accountant', 'superadmin'] },
-        { path: '/expenses', label: 'Expenses', icon: <MonetizationOn />, roles: ['admin', 'manager', 'accountant'] },
-        { path: '/disputes', label: 'Disputes', icon: <Gavel />, roles: ['admin', 'manager', 'accountant'] },
+        { path: '/assets', label: 'Asset & Document Management', icon: <Assignment />, roles: ['admin', 'manager', 'accountant', 'superadmin'], feature: 'assets' },
+        { path: '/expenses', label: 'Expenses', icon: <MonetizationOn />, roles: ['admin', 'manager', 'accountant'], feature: 'expenses' },
+        { path: '/disputes', label: 'Disputes', icon: <Gavel />, roles: ['admin', 'manager', 'accountant'], feature: 'disputes' },
       ]
     },
     {
       title: 'APPLICATION SETTINGS',
       items: [
-        { path: '/customise-screens', label: 'Customise Screens', icon: <DashboardCustomize />, roles: ['admin', 'manager'] },
+        { path: '/customise-screens', label: 'Customise Screens', icon: <DashboardCustomize />, roles: ['admin', 'manager'], feature: 'customisescreens' },
       ]
     },
     {
       title: 'ANALYTICS',
       items: [
-        { path: '/reports', label: 'Reports', icon: <Assessment />, roles: ['admin', 'manager', 'accountant'] },
-        { path: '/service-usage', label: 'Service Usage', icon: <WebIcon />, roles: ['admin', 'manager'] },
-        { path: '/customer-activities', label: 'Customer Activities', icon: <Assessment />, roles: ['admin', 'manager'] },
-        { path: '/invoices', label: 'Invoices', icon: <Receipt />, roles: ['admin', 'superadmin'], laptopOnly: true },
+        { path: '/reports', label: 'Reports', icon: <Assessment />, roles: ['admin', 'manager', 'accountant'], feature: 'reports' },
+        { path: '/service-usage', label: 'Service Usage', icon: <WebIcon />, roles: ['admin', 'manager'], feature: 'serviceusage' },
+        { path: '/customer-activities', label: 'Customer Activities', icon: <Assessment />, roles: ['admin', 'manager'], feature: 'customeractivities' },
+        { path: '/invoices', label: 'Invoices', icon: <Receipt />, roles: ['admin', 'superadmin'], laptopOnly: true, feature: 'invoices' },
       ]
     },
     {
       title: 'ACCOUNT',
       items: [
         { path: '/profile', label: 'Profile', icon: <Person />, roles: ['admin', 'manager', 'accountant', 'waiter', 'cashier', 'delivery', 'customer'] },
-        { path: '/subscription', label: 'Subscription', icon: <AdminPanelSettings />, roles: ['admin'], hideOnIOS: true, laptopOnly: true },
-        { path: '/support', label: 'Super Admin Support', icon: <HeadsetMic />, roles: ['admin', 'manager'] },
-        { path: '/customer-support', label: 'Customer Tickets', icon: <Forum />, roles: ['admin', 'manager'] },
-        { path: '/settings', label: 'Settings', icon: <Settings />, roles: ['admin', 'manager'] },
-        { path: '/manage-notifications', label: 'Manage Notifications', icon: <NotificationsActive />, roles: ['admin', 'manager'] },
+        { path: '/subscription', label: 'Subscription', icon: <AdminPanelSettings />, roles: ['admin'], hideOnIOS: true, laptopOnly: true, feature: 'subscription' },
+        { path: '/support', label: 'Super Admin Support', icon: <HeadsetMic />, roles: ['admin', 'manager'], feature: 'support' },
+        { path: '/customer-support', label: 'Customer Tickets', icon: <Forum />, roles: ['admin', 'manager'], feature: 'customersupport' },
+        { path: '/settings', label: 'Settings', icon: <Settings />, roles: ['admin', 'manager'], feature: 'settings' },
+        { path: '/manage-notifications', label: 'Manage Notifications', icon: <NotificationsActive />, roles: ['admin', 'manager'], feature: 'managenotifications' },
         { path: '', label: 'Help & Guide', icon: <AutoStories />, roles: ['admin', 'manager', 'accountant', 'waiter', 'cashier', 'kitchen_staff', 'delivery', 'food_runner'], isAction: true, action: () => window.open('https://helpguide.restaurant.nexzenpos.com/#login', '_blank') },
       ]
     },
@@ -264,11 +264,23 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
   const currentFeatures = tenantConfig?.currentPlan?.features || [];
   const hasSuperAdmin = activeRole === 'superadmin' || user?.roles?.includes('superadmin');
 
+  // Legacy plans stored a single bundled "core" feature. Before the module-level split,
+  // every one of these pages was ungated (open to any admin/manager), so a legacy "core"
+  // plan must keep unlocking all of them to avoid regressing access.
+  const CORE_FEATURES = [
+    'dashboard', 'orders', 'pos', 'tables', 'bookings', 'kitchen', 'menu', 'globaladdons',
+    'promocoupons', 'disputes', 'purchaseorders', 'vendors', 'materialproviders', 'recipes',
+    'users', 'customers', 'assets', 'expenses', 'customisescreens', 'reports', 'serviceusage',
+    'customeractivities', 'invoices', 'auditlogs', 'subscription', 'support', 'customersupport',
+    'settings', 'managenotifications',
+  ];
+
   const hasFeatureAccess = (feat?: string) => {
     if (!feat) return true;
     if (hasSuperAdmin) return true;
     if (activeRole === 'customer') return true; // Let routing logic or backend handle customer if needed, but since we are modifying UI, maybe hide it. Customer does not have tenant context easily. Wait, user.tenant might be there. If not there, maybe we just hide? Actually customer bypasses RequireFeature. Let's return true for customer.
-    return currentFeatures.includes(feat);
+    if (currentFeatures.includes(feat)) return true;
+    return currentFeatures.includes('core') && CORE_FEATURES.includes(feat);
   };
 
   return (
@@ -297,7 +309,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
           boxSizing: 'border-box',
           cursor: 'pointer',
         }}
-        onClick={() => handleNavigation(homePathForRole(activeRole))}
+          onClick={() => handleNavigation(homePathForRole(activeRole))}
         >
           {(restaurantSettings.logo || (user?.tenant as any)?.logo) ? (
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, width: '100%' }}>
@@ -646,7 +658,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
           }
         }}
         MenuListProps={{
-          onMouseEnter: handleMenuEnter, 
+          onMouseEnter: handleMenuEnter,
           onMouseLeave: handleCollapsedMenuClose,
           sx: { py: 0.5 }
         }}
@@ -687,12 +699,12 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
               <ListItemIcon sx={{ minWidth: 32, color: 'inherit' }}>
                 {child.icon}
               </ListItemIcon>
-              <ListItemText 
-                primary={child.label} 
-                primaryTypographyProps={{ 
+              <ListItemText
+                primary={child.label}
+                primaryTypographyProps={{
                   variant: 'body2',
                   fontWeight: childActive ? 600 : 500
-                }} 
+                }}
               />
             </MenuItem>
           );
