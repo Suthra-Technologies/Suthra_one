@@ -9,6 +9,7 @@ import {
     TimelineOppositeContent,
 } from '@mui/lab';
 import { Typography, Paper, Box, Chip } from '@mui/material';
+import { useSettings, getDateLocale } from '../../context/SettingsContext';
 import {
     PersonAdd as PersonAddIcon,
     Edit as EditIcon,
@@ -33,6 +34,9 @@ interface ActionHistoryListProps {
 }
 
 const ActionHistoryList: React.FC<ActionHistoryListProps> = ({ history, emptyMessage }) => {
+    const { settings } = useSettings();
+    const dateLocale = getDateLocale(settings?.restaurant?.country || '');
+
     if (!history || history.length === 0) {
         return (
             <Box sx={{ p: 3, textAlign: 'center' }}>
@@ -43,19 +47,25 @@ const ActionHistoryList: React.FC<ActionHistoryListProps> = ({ history, emptyMes
         );
     }
 
+    // Modules disagree on tense — users log CREATED/UPDATED, menu and inventory
+    // log CREATE/UPDATE — so the trailing 'D' is dropped before matching and
+    // both spellings get the same icon and colour.
+    const normalizeAction = (action: string) =>
+        (action || '').toUpperCase().replace(/D$/, '');
+
     const getActionIcon = (action: string) => {
-        switch (action?.toUpperCase()) {
-            case 'CREATED':
+        switch (normalizeAction(action)) {
+            case 'CREATE':
                 return <PersonAddIcon />;
-            case 'UPDATED':
+            case 'UPDATE':
                 return <EditIcon />;
-            case 'DELETED':
+            case 'DELETE':
                 return <DeleteIcon />;
             case 'PASSWORD_RESET':
                 return <LockIcon />;
-            case 'ACTIVATED':
+            case 'ACTIVATE':
                 return <CheckCircleIcon />;
-            case 'DEACTIVATED':
+            case 'DEACTIVATE':
                 return <CancelIcon />;
             default:
                 return <EditIcon />;
@@ -63,27 +73,29 @@ const ActionHistoryList: React.FC<ActionHistoryListProps> = ({ history, emptyMes
     };
 
     const getActionColor = (action: string): "primary" | "secondary" | "success" | "error" | "warning" | "info" => {
-        switch (action?.toUpperCase()) {
-            case 'CREATED':
+        switch (normalizeAction(action)) {
+            case 'CREATE':
                 return 'success';
-            case 'UPDATED':
+            case 'UPDATE':
                 return 'info';
-            case 'DELETED':
+            case 'DELETE':
                 return 'error';
             case 'PASSWORD_RESET':
                 return 'warning';
-            case 'ACTIVATED':
+            case 'ACTIVATE':
                 return 'success';
-            case 'DEACTIVATED':
+            case 'DEACTIVATE':
                 return 'error';
             default:
                 return 'primary';
         }
     };
 
+    // Day/month order follows the tenant's country rather than being fixed to
+    // en-US, so the timeline reads the same way as the dates inside the entries.
     const formatDate = (date: Date | string) => {
         const d = new Date(date);
-        return d.toLocaleString('en-US', {
+        return d.toLocaleString(dateLocale, {
             month: 'short',
             day: 'numeric',
             year: 'numeric',
@@ -92,9 +104,17 @@ const ActionHistoryList: React.FC<ActionHistoryListProps> = ({ history, emptyMes
         });
     };
 
+    // Entries are appended as they happen, so the stored order is oldest-first.
+    // A timeline reads best newest-first — the most recent change is what
+    // someone opening the History tab is looking for. Sorted on a copy so the
+    // caller's array is left alone.
+    const ordered = [...history].sort(
+        (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+    );
+
     return (
         <Timeline position="right" sx={{ p: 0 }}>
-            {history.map((item, index) => (
+            {ordered.map((item, index) => (
                 <TimelineItem key={index}>
                     <TimelineOppositeContent sx={{ flex: 0.3 }}>
                         <Typography variant="caption" display="block">
@@ -111,7 +131,7 @@ const ActionHistoryList: React.FC<ActionHistoryListProps> = ({ history, emptyMes
                         <TimelineDot color={getActionColor(item.action)}>
                             {getActionIcon(item.action)}
                         </TimelineDot>
-                        {index < history.length - 1 && <TimelineConnector />}
+                        {index < ordered.length - 1 && <TimelineConnector />}
                     </TimelineSeparator>
                     <TimelineContent>
                         <Paper elevation={1} sx={{ p: 2, mb: 2 }}>
@@ -121,9 +141,39 @@ const ActionHistoryList: React.FC<ActionHistoryListProps> = ({ history, emptyMes
                             <Typography variant="body2" color="text.secondary" gutterBottom>
                                 By: {item.performedByName || item.performedBy}
                             </Typography>
-                            <Typography variant="body2" sx={{ mt: 1 }}>
-                                {item.details}
-                            </Typography>
+                            {/* An update's details is a ';'-joined list of
+                                "Field: old → new" changes. Split it back out so
+                                each change is its own line, rather than one long
+                                run of text that wraps mid-change. */}
+                            {(() => {
+                                const parts = String(item.details || '')
+                                    .split(';')
+                                    .map((part) => part.trim())
+                                    .filter(Boolean);
+
+                                if (parts.length <= 1) {
+                                    return (
+                                        <Typography variant="body2" sx={{ mt: 1 }}>
+                                            {item.details}
+                                        </Typography>
+                                    );
+                                }
+
+                                return (
+                                    <Box component="ul" sx={{ mt: 1, mb: 0, pl: 2.5 }}>
+                                        {parts.map((part, i) => (
+                                            <Typography
+                                                key={i}
+                                                component="li"
+                                                variant="body2"
+                                                sx={{ '&::marker': { color: 'text.disabled' } }}
+                                            >
+                                                {part}
+                                            </Typography>
+                                        ))}
+                                    </Box>
+                                );
+                            })()}
                         </Paper>
                     </TimelineContent>
                 </TimelineItem>

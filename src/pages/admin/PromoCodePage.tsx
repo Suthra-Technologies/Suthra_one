@@ -802,16 +802,17 @@ const PromoCodePage: React.FC = () => {
                                             {tabValue !== 4 && (
                                                 <Stack direction="row" spacing={0.5}>
                                                     <Tooltip title="Send Email">
-                                                        <IconButton size="small" color="info" onClick={() => handleOpenEmailDialog(promo)}>
+                                                        <IconButton size="small" color="info" onClick={() => handleOpenEmailDialog(promo)} disabled={status.label === 'Expired'}>
                                                             <EmailIcon fontSize="small" />
                                                         </IconButton>
                                                     </Tooltip>
                                                     <Tooltip title="Toggle Active">
                                                         <Switch
-                                                            checked={promo.active}
+                                                            checked={promo.active && status.label !== 'Expired'}
                                                             onChange={() => toggleStatus(promo)}
                                                             size="small"
                                                             color="success"
+                                                            disabled={status.label === 'Expired'}
                                                         />
                                                     </Tooltip>
                                                 </Stack>
@@ -1039,15 +1040,16 @@ const PromoCodePage: React.FC = () => {
                                         ) : (
                                             <>
                                                 <Switch
-                                                    checked={promo.active}
+                                                    checked={promo.active && status.label !== 'Expired'}
                                                     onChange={() => toggleStatus(promo)}
                                                     size="small"
                                                     color="success"
                                                     sx={{ mr: 'auto' }}
+                                                    disabled={status.label === 'Expired'}
                                                 />
                                                 <Stack direction="row" spacing={0.5}>
                                                     <Tooltip title="Send Email">
-                                                        <IconButton size="small" color="info" onClick={() => handleOpenEmailDialog(promo)}>
+                                                        <IconButton size="small" color="info" onClick={() => handleOpenEmailDialog(promo)} disabled={status.label === 'Expired'}>
                                                             <EmailIcon fontSize="small" />
                                                         </IconButton>
                                                     </Tooltip>
@@ -1156,10 +1158,11 @@ const PromoCodePage: React.FC = () => {
                                                 />
                                                 {tabValue !== 4 && (
                                                     <Switch
-                                                        checked={promo.active}
+                                                        checked={promo.active && status.label !== 'Expired'}
                                                         onChange={() => toggleStatus(promo)}
                                                         size="small"
                                                         color="success"
+                                                        disabled={status.label === 'Expired'}
                                                     />
                                                 )}
                                             </Stack>
@@ -1179,7 +1182,7 @@ const PromoCodePage: React.FC = () => {
                                             ) : (
                                                 <Stack direction="row" spacing={0.5} justifyContent="flex-end">
                                                     <Tooltip title="Send Email">
-                                                        <IconButton size="small" color="info" onClick={() => handleOpenEmailDialog(promo)}>
+                                                        <IconButton size="small" color="info" onClick={() => handleOpenEmailDialog(promo)} disabled={status.label === 'Expired'}>
                                                             <EmailIcon fontSize="small" />
                                                         </IconButton>
                                                     </Tooltip>

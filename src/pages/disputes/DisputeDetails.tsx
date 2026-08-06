@@ -134,6 +134,38 @@ const DisputeDetails: React.FC = () => {
                   </Paper>
                 </Box>
 
+                {dispute.items?.length > 0 && (
+                  <Box>
+                    <Typography variant="caption" color="text.secondary" fontWeight="700" sx={{ textTransform: 'uppercase' }}>Disputed Items</Typography>
+                    <Paper variant="outlined" sx={{ mt: 1 }}>
+                      {dispute.items.map((item: any, idx: number) => (
+                        <Box
+                          key={idx}
+                          sx={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            px: 2,
+                            py: 1,
+                            borderBottom: idx < dispute.items.length - 1 ? '1px solid' : 'none',
+                            borderColor: 'divider',
+                          }}
+                        >
+                          <Typography variant="body2" fontWeight="600">
+                            {item.quantity}x {item.name}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary">
+                            ${Number(item.amount ?? item.unitPrice * item.quantity).toFixed(2)}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Paper>
+                    <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+                      Disputed amount includes these items plus their proportional tax.
+                    </Typography>
+                  </Box>
+                )}
+
                 <Box>
                   <Typography variant="caption" color="text.secondary" fontWeight="700" sx={{ textTransform: 'uppercase' }}>Evidence</Typography>
                   {dispute.evidence?.length > 0 ? (

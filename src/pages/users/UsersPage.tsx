@@ -43,6 +43,7 @@ import {
   AdminPanelSettings as AdminIcon,
   ManageAccounts as ManagerIcon,
   PointOfSale as CashierIcon,
+  MonetizationOn as MonetizationOnIcon,
   Restaurant as WaiterIcon,
   Kitchen as KitchenIcon,
   Lock as LockIcon,
@@ -141,6 +142,17 @@ const getPermissionsForRoles = (selectedRoles: string[]) => {
           p.startsWith('bookings.') ||
           p === 'pos.access'
         );
+        break;
+      // Back-office only: assets, expenses, disputes, reports and attendance.
+      // Those modules are gated by role rather than by permission strings, so
+      // the reporting entries are all that apply here. No dashboard access.
+      case 'accountant':
+        rolePermissions = [
+          'reports.read',
+          'reports.create',
+          'reports.export',
+          'sales.read'
+        ];
         break;
       case 'kitchen_staff':
         rolePermissions = [
@@ -338,6 +350,7 @@ const UsersPage = () => {
   const roles = [
     { value: 'admin', label: 'Administrator', icon: AdminIcon, color: '#f44336' },
     { value: 'manager', label: 'Manager', icon: ManagerIcon, color: '#ff9800' },
+    { value: 'accountant', label: 'Accountant', icon: MonetizationOnIcon, color: '#009688' },
     { value: 'cashier', label: 'Cashier', icon: CashierIcon, color: '#2196f3' },
     { value: 'waiter', label: 'Waiter', icon: WaiterIcon, color: '#4caf50' },
     { value: 'kitchen_staff', label: 'Kitchen Staff', icon: KitchenIcon, color: '#9c27b0' },

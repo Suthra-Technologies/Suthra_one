@@ -74,11 +74,12 @@ import {
     PlaylistAddCheck as SelectionIcon,
     AccessTime as TimeIcon,
     RestoreFromTrash as RestoreIcon,
+    PersonAdd as AssignWaiterIcon,
 } from '@mui/icons-material';
 import { validatePhone, validateEmail } from '../../utils/validation';
 import { useSettings } from '../../context/SettingsContext';
 import PhoneInput from '../../components/PhoneInput';
-import { tablesAPI, bookingsAPI } from '../../services/api';
+import { tablesAPI, bookingsAPI, usersAPI } from '../../services/api';
 
 // Extracted Dialog Components
 import AddTableDialog from './components/AddTableDialog';
@@ -197,6 +198,13 @@ const TablesPage: React.FC = () => {
     // Quick Actions Menu
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const [menuTable, setMenuTable] = useState<any>(null);
+
+    // Assign Waiter
+    const [waiters, setWaiters] = useState<any[]>([]);
+    const [assignWaiterDialogOpen, setAssignWaiterDialogOpen] = useState(false);
+    const [assignWaiterTable, setAssignWaiterTable] = useState<any>(null);
+    const [selectedWaiterId, setSelectedWaiterId] = useState('');
+    const [assigningWaiter, setAssigningWaiter] = useState(false);
 
     // Table Merging State
     const [selectionMode, setSelectionMode] = useState(false);
@@ -454,7 +462,42 @@ const TablesPage: React.FC = () => {
     useEffect(() => {
         fetchTables();
         fetchBookings();
+        usersAPI.getUsers({ role: 'waiter', isActive: true })
+            .then(res => {
+                const raw = res.data?.data || res.data?.users || res.data;
+                setWaiters(Array.isArray(raw) ? raw : []);
+            })
+            .catch(err => console.error('Failed to load waiters', err));
     }, []);
+
+    const handleOpenAssignWaiter = (table: any) => {
+        setAssignWaiterTable(table);
+        setSelectedWaiterId(table?.assignedWaiter?._id || '');
+        setAssignWaiterDialogOpen(true);
+        handleCloseMenu();
+    };
+
+    const handleCloseAssignWaiter = () => {
+        setAssignWaiterDialogOpen(false);
+        setAssignWaiterTable(null);
+        setSelectedWaiterId('');
+    };
+
+    const handleConfirmAssignWaiter = async () => {
+        if (!assignWaiterTable) return;
+        try {
+            setAssigningWaiter(true);
+            await tablesAPI.update(assignWaiterTable._id, { assignedWaiter: selectedWaiterId || null });
+            toast.success(selectedWaiterId ? 'Waiter assigned' : 'Waiter unassigned');
+            handleCloseAssignWaiter();
+            fetchTables();
+        } catch (error) {
+            console.error('Error assigning waiter:', error);
+            toast.error('Failed to assign waiter');
+        } finally {
+            setAssigningWaiter(false);
+        }
+    };
 
     const getStatusColor = (status: string) => {
         switch (status) {
@@ -1705,16 +1748,28 @@ const TablesPage: React.FC = () => {
                                 primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }} 
                             />
                         </MenuItem>
-                        <MenuItem 
+                        <MenuItem
                             onClick={() => menuTable && handleEditTable(menuTable)}
                             sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
                         >
                             <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
                                 <EditIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
                             </ListItemIcon>
-                            <ListItemText 
-                                primary="Edit Table" 
-                                primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }} 
+                            <ListItemText
+                                primary="Edit Table"
+                                primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }}
+                            />
+                        </MenuItem>
+                        <MenuItem
+                            onClick={() => menuTable && handleOpenAssignWaiter(menuTable)}
+                            sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
+                        >
+                            <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
+                                <AssignWaiterIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
+                            </ListItemIcon>
+                            <ListItemText
+                                primary="Assign Waiter"
+                                primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }}
                             />
                         </MenuItem>
                         <MenuItem 
@@ -1870,6 +1925,43 @@ const TablesPage: React.FC = () => {
                         sx={{ borderRadius: 2 }}
                     >
                         Delete
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Assign Waiter Dialog */}
+            <Dialog
+                open={assignWaiterDialogOpen}
+                onClose={() => !assigningWaiter && handleCloseAssignWaiter()}
+                maxWidth="xs"
+                fullWidth
+            >
+                <DialogTitle>
+                    Assign Waiter — {assignWaiterTable?.tableName || `Table ${assignWaiterTable?.tableNumber}`}
+                </DialogTitle>
+                <DialogContent>
+                    <FormControl fullWidth sx={{ mt: 1 }}>
+                        <InputLabel>Waiter</InputLabel>
+                        <Select
+                            value={selectedWaiterId}
+                            label="Waiter"
+                            onChange={(e) => setSelectedWaiterId(e.target.value)}
+                        >
+                            <MenuItem value="">
+                                <em>Unassigned</em>
+                            </MenuItem>
+                            {waiters.map(w => (
+                                <MenuItem key={w._id} value={w._id}>
+                                    {`${w.firstName || ''} ${w.lastName || ''}`.trim() || w.email}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseAssignWaiter} disabled={assigningWaiter}>Cancel</Button>
+                    <Button onClick={handleConfirmAssignWaiter} variant="contained" disabled={assigningWaiter}>
+                        {assigningWaiter ? 'Saving...' : 'Save'}
                     </Button>
                 </DialogActions>
             </Dialog>

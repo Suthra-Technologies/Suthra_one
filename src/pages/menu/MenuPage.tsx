@@ -15,12 +15,14 @@ import {
     MenuBook as MenuBookIcon,
     Today as TodayIcon,
     Menu as MenuIcon,
+    LocalFireDepartment as LocalFireDepartmentIcon,
     PlaylistAdd as PlaylistAddIcon,
     FileUpload as FileUploadIcon,
     PhotoCamera as PhotoCameraIcon,
     OpenInNew as OpenInNewIcon,
     RestoreFromTrash as RestoreIcon,
-    CheckCircle as CheckCircleIcon
+    CheckCircle as CheckCircleIcon,
+    AutoAwesome as AutoAwesomeIcon
 } from '@mui/icons-material';
 import {
     Menu,
@@ -79,6 +81,7 @@ import RecipesPage from '../recipes/RecipesPage';
 import type { Category, Subcategory, IMenuItem } from './types';
 import MenuItemDialog from './components/MenuItemDialog';
 import AddOnGroupsPage from './AddOnGroupsPage';
+import SpiceLevelSetsPage from './SpiceLevelSetsPage';
 import TaxCategorySelector from './components/TaxCategorySelector';
 import { useActiveTenant } from '../../hooks/useActiveTenant';
 import {
@@ -184,6 +187,7 @@ const MenuPage: React.FC = () => {
     const [uploadingBulk, setUploadingBulk] = useState(false);
     const [previewLimit, setPreviewLimit] = useState(50);
     const [dialogTab, setDialogTab] = useState(0);
+    const [aiDescriptions, setAiDescriptions] = useState(true);
     const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
     const previewFileRef = useRef<HTMLInputElement>(null);
     const [previewTargetIdx, setPreviewTargetIdx] = useState<number | null>(null);
@@ -268,7 +272,7 @@ const MenuPage: React.FC = () => {
         if (loading === false) { // Only refresh after initial load is complete
             debouncedFetchData();
         }
-        if (tabValue === 5) {
+        if (tabValue === 6) {
             fetchDeletedData();
         }
     }, [tabValue]);
@@ -936,6 +940,7 @@ const MenuPage: React.FC = () => {
                     const price = findValue(['price', 'rate', 'cost', 'amount']);
                     const category = findValue(['category', 'cat']);
                     const subcategory = findValue(['subcategory', 'subcat', 'sub category']);
+                    const taxCode = findValue(['tax code', 'taxcode', 'tic', 'tax_code', 'tax', 'product tax code', 'product_tax_code']);
                     const description = findValue(['description', 'desc', 'details']);
                     const image = findValue(['image', 'photo', 'img', 'url', 'link']);
                     const foodType = findValue(['food type', 'foodtype', 'veg', 'type']);
@@ -956,6 +961,7 @@ const MenuPage: React.FC = () => {
                         category: String(category || '').trim(),
                         categories: category ? [String(category).trim()] : [],
                         subcategory: String(subcategory || '').trim(),
+                        taxCode: taxCode !== undefined && taxCode !== null ? String(taxCode).trim() : undefined,
                         description: String(description || '').trim(),
                         image: processedImage,
                         isAvailable: isAvailable !== false && isAvailable !== 'false', // default true
@@ -1004,7 +1010,7 @@ const MenuPage: React.FC = () => {
         const progressToast = toast.loading(`Uploading ${bulkPreviewItems.length} items...`);
 
         try {
-            const res = await menuAPI.bulkCreate(bulkPreviewItems);
+            const res = await menuAPI.bulkCreate(bulkPreviewItems, { aiDescriptions });
             console.log('[Frontend] Bulk upload response:', res);
 
             const createdCount = Array.isArray(res.data) ? (res?.data || []).length : (res.data?.count || 0);
@@ -1049,8 +1055,8 @@ const MenuPage: React.FC = () => {
                 if (parts.length < 2 && row.includes('\t')) parts = row.split('\t').map(p => p.trim());
                 if (parts.length < 2 && row.includes('|')) parts = row.split('|').map(p => p.trim());
 
-                // Expected: Name, Price, Category, Subcategory, Description, ImageURL, FoodType, IsAvailable, IsCateringAvailable
-                const [name, priceStr, category, subcategory, description, image, foodType, isAvailableStr, isCateringAvailableStr] = parts;
+                // Expected: Name, Price, Category, Subcategory, Description, ImageURL, FoodType, IsAvailable, IsCateringAvailable, TaxCode
+                const [name, priceStr, category, subcategory, description, image, foodType, isAvailableStr, isCateringAvailableStr, taxCodeStr] = parts;
 
                 if (!name || !priceStr) {
                     return null;
@@ -1074,6 +1080,7 @@ const MenuPage: React.FC = () => {
                     category: category || '',
                     categories: category ? [category] : [],
                     subcategory: subcategory || '',
+                    taxCode: taxCodeStr ? String(taxCodeStr).trim() : undefined,
                     description: description || '',
                     image: processedImage,
                     isAvailable: isAvailable,
@@ -1182,9 +1189,21 @@ const MenuPage: React.FC = () => {
             link.click();
             link.remove();
             toast.success('Menu exported successfully!');
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error exporting menu:', error);
-            toast.error('Failed to export menu.');
+            let errMsg = 'Failed to export menu.';
+            if (error?.response?.data instanceof Blob) {
+                try {
+                    const text = await error.response.data.text();
+                    const parsed = JSON.parse(text);
+                    if (parsed.message) errMsg = Array.isArray(parsed.message) ? parsed.message.join(', ') : parsed.message;
+                } catch (e) {
+                    // Fallback to default message
+                }
+            } else if (error?.response?.data?.message) {
+                errMsg = error.response.data.message;
+            }
+            toast.error(errMsg);
         } finally {
             setIsExporting(false);
         }
@@ -1246,6 +1265,7 @@ const MenuPage: React.FC = () => {
                 <Tab label="Trays" icon={<StraightenIcon />} iconPosition="start" sx={{ fontWeight: 'bold', textTransform: 'none' }} />
                 <Tab label="Recipes" icon={<MenuBookIcon />} iconPosition="start" sx={{ fontWeight: 'bold', textTransform: 'none' }} />
                 <Tab label="Add-ons" icon={<PlaylistAddIcon />} iconPosition="start" sx={{ fontWeight: 'bold', textTransform: 'none' }} />
+                <Tab label="Spice Levels" icon={<LocalFireDepartmentIcon />} iconPosition="start" sx={{ fontWeight: 'bold', textTransform: 'none' }} />
                 <Tab label="Deleted" icon={<DeleteIcon />} iconPosition="start" sx={{ fontWeight: 'bold', textTransform: 'none', color: 'error.main' }} />
             </Tabs>
 
@@ -1507,7 +1527,7 @@ const MenuPage: React.FC = () => {
                                                         textTransform: 'uppercase', color: theme.palette.primary.main, lineHeight: 1,
                                                         display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical', overflow: 'hidden'
                                                     }}>
-                                                        {typeof item.category === 'object' ? item.category.name : 'Menu'}
+                                                        {item.category && typeof item.category === 'object' ? item.category.name : 'Menu'}
                                                     </Typography>
                                                     
                                                     {(item as any).foodType && (
@@ -1743,8 +1763,15 @@ const MenuPage: React.FC = () => {
                 </Box>
             )}
 
-            {/* Deleted Items Tab */}
+            {/* Spice Level Sets Tab */}
             {tabValue === 5 && (
+                <Box>
+                    <SpiceLevelSetsPage hideHeader />
+                </Box>
+            )}
+
+            {/* Deleted Items Tab */}
+            {tabValue === 6 && (
                 <Box>
                     <Typography variant="h6" sx={{ mb: 2, fontWeight: 'bold', color: 'error.main' }}>
                         Deleted Items
@@ -2176,9 +2203,9 @@ const MenuPage: React.FC = () => {
                                     sx={{ borderRadius: 2 }}
                                     onClick={() => {
                                         const template = [
-                                            { Name: 'Classic Burger', Price: 12.99, Category: 'Main Course', Subcategory: 'Burgers', Description: 'Juicy beef patty with lettuce, tomato, and special sauce', Image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500', 'Food Type': 'non-veg', 'Is Available': 'true', 'Is Catering Available': 'true' },
-                                            { Name: 'Margherita Pizza', Price: 14.50, Category: 'Main Course', Subcategory: 'Italian', Description: 'Fresh mozzarella, basil, and tomato sauce', Image: 'https://images.unsplash.com/photo-1604382354936-07c5d9983bd3?w=500', 'Food Type': 'veg', 'Is Available': 'true', 'Is Catering Available': 'true' },
-                                            { Name: 'Greek Salad', Price: 9.99, Category: 'Starters', Subcategory: 'Salads', Description: 'Cucumber, olives, feta cheese, and balsamic dressing', Image: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=500', 'Food Type': 'veg', 'Is Available': 'true', 'Is Catering Available': 'false' }
+                                            { Name: 'Classic Burger', Price: 12.99, Category: 'Main Course', Subcategory: 'Burgers', 'Tax Code': '41000', Description: 'Juicy beef patty with lettuce, tomato, and special sauce', Image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500', 'Food Type': 'non-veg', 'Is Available': 'true', 'Is Catering Available': 'true' },
+                                            { Name: 'Margherita Pizza', Price: 14.50, Category: 'Main Course', Subcategory: 'Italian', 'Tax Code': '41000', Description: 'Fresh mozzarella, basil, and tomato sauce', Image: 'https://images.unsplash.com/photo-1604382354936-07c5d9983bd3?w=500', 'Food Type': 'veg', 'Is Available': 'true', 'Is Catering Available': 'true' },
+                                            { Name: 'Greek Salad', Price: 9.99, Category: 'Starters', Subcategory: 'Salads', 'Tax Code': '41000', Description: 'Cucumber, olives, feta cheese, and balsamic dressing', Image: 'https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=500', 'Food Type': 'veg', 'Is Available': 'true', 'Is Catering Available': 'false' }
                                         ];
                                         const ws = XLSX.utils.json_to_sheet(template);
                                         const wb = XLSX.utils.book_new();
@@ -2205,6 +2232,32 @@ const MenuPage: React.FC = () => {
                                     </Typography>
                                 </Box>
                             </Alert>
+                            <Alert severity="success" icon={'✨'} sx={{ mb: 2, borderRadius: 2 }}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                                    <Typography variant="body2">
+                                        <b>AI-Powered Upload:</b> TaxJar tax codes will be automatically assigned based on your restaurant's location. Missing categories will be generated during upload.
+                                    </Typography>
+                                    <FormControlLabel
+                                        control={
+                                            <Switch
+                                                checked={aiDescriptions}
+                                                onChange={(e) => setAiDescriptions(e.target.checked)}
+                                                size="small"
+                                                color="secondary"
+                                            />
+                                        }
+                                        label={
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                <AutoAwesomeIcon sx={{ fontSize: 16, color: aiDescriptions ? 'secondary.main' : 'text.disabled' }} />
+                                                <Typography variant="body2" sx={{ fontWeight: 600, whiteSpace: 'nowrap', color: aiDescriptions ? 'secondary.main' : 'text.disabled' }}>
+                                                    AI Descriptions
+                                                </Typography>
+                                            </Box>
+                                        }
+                                        sx={{ ml: 2, mr: 0 }}
+                                    />
+                                </Box>
+                            </Alert>
                             <TableContainer component={Paper} sx={{ maxHeight: 600, borderRadius: 2, border: 1, borderColor: 'divider' }}>
                                 <Table stickyHeader size="small">
                                     <TableHead>
@@ -2214,6 +2267,7 @@ const MenuPage: React.FC = () => {
                                             <TableCell sx={{ fontWeight: 'bold' }}>Item Details</TableCell>
                                             <TableCell sx={{ fontWeight: 'bold' }}>Category</TableCell>
                                             <TableCell sx={{ fontWeight: 'bold' }}>Price</TableCell>
+                                            <TableCell sx={{ fontWeight: 'bold' }}>Tax Code</TableCell>
                                             <TableCell sx={{ fontWeight: 'bold' }}>Description</TableCell>
                                         </TableRow>
                                     </TableHead>
@@ -2324,9 +2378,24 @@ const MenuPage: React.FC = () => {
                                                     />
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Typography variant="body2" color="text.primary">{item.category}</Typography>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                        {!item.category?.trim() && (
+                                                            <Chip
+                                                                label="AI ✨"
+                                                                size="small"
+                                                                color="secondary"
+                                                                sx={{ fontSize: '0.6rem', height: 18, fontWeight: 600 }}
+                                                            />
+                                                        )}
+                                                        <Typography variant="body2" sx={{
+                                                            color: !item.category?.trim() ? 'text.disabled' : 'text.primary',
+                                                            fontStyle: !item.category?.trim() ? 'italic' : 'normal',
+                                                        }}>
+                                                            {item.category?.trim() || 'Will be generated'}
+                                                        </Typography>
+                                                    </Box>
                                                     {item.subcategory && (
-                                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontStyle: 'italic' }}>
+                                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', fontStyle: 'italic', mt: 0.5 }}>
                                                             {item.subcategory}
                                                         </Typography>
                                                     )}
@@ -2335,15 +2404,72 @@ const MenuPage: React.FC = () => {
                                                     {formatCurrency(item.price)}
                                                 </TableCell>
                                                 <TableCell>
-                                                    <Typography variant="caption" sx={{ 
-                                                        display: '-webkit-box',
-                                                        WebkitLineClamp: 2,
-                                                        WebkitBoxOrient: 'vertical',
-                                                        overflow: 'hidden',
-                                                        maxWidth: 200
-                                                    }}>
-                                                        {item.description || '-'}
-                                                    </Typography>
+                                                    {(() => {
+                                                        const itemTaxCode = item.taxCode?.toString().trim();
+                                                        if (itemTaxCode) {
+                                                            return (
+                                                                <Chip
+                                                                    label={itemTaxCode}
+                                                                    size="small"
+                                                                    color="primary"
+                                                                    variant="outlined"
+                                                                    sx={{ fontSize: '0.7rem', height: 22, fontWeight: 600 }}
+                                                                />
+                                                            );
+                                                        }
+                                                        const matchedCategory = categories.find(
+                                                            c => c.name?.toLowerCase().trim() === item.category?.toLowerCase().trim() || c._id === item.category
+                                                        );
+                                                        const categoryTaxCode = matchedCategory?.taxCode?.toString().trim();
+                                                        if (categoryTaxCode) {
+                                                            return (
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                                    <Chip
+                                                                        label={categoryTaxCode}
+                                                                        size="small"
+                                                                        color="default"
+                                                                        variant="outlined"
+                                                                        sx={{ fontSize: '0.7rem', height: 22, fontWeight: 500 }}
+                                                                    />
+                                                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem' }}>
+                                                                        (category)
+                                                                    </Typography>
+                                                                </Box>
+                                                            );
+                                                        }
+                                                        return (
+                                                            <Chip
+                                                                label="AI auto-assign ✨"
+                                                                size="small"
+                                                                variant="outlined"
+                                                                color="secondary"
+                                                                sx={{ fontSize: '0.65rem', height: 22, fontWeight: 600 }}
+                                                            />
+                                                        );
+                                                    })()}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                                        {!item.description?.trim() && aiDescriptions && (
+                                                            <Chip
+                                                                label="AI ✨"
+                                                                size="small"
+                                                                color="secondary"
+                                                                sx={{ fontSize: '0.6rem', height: 18, fontWeight: 600 }}
+                                                            />
+                                                        )}
+                                                        <Typography variant="caption" sx={{ 
+                                                            display: '-webkit-box',
+                                                            WebkitLineClamp: 2,
+                                                            WebkitBoxOrient: 'vertical',
+                                                            overflow: 'hidden',
+                                                            maxWidth: 180,
+                                                            fontStyle: !item.description?.trim() ? 'italic' : 'normal',
+                                                            color: !item.description?.trim() ? 'text.disabled' : 'text.primary',
+                                                        }}>
+                                                            {item.description?.trim() || (aiDescriptions ? 'Will be generated' : 'No description')}
+                                                        </Typography>
+                                                    </Box>
                                                 </TableCell>
                                             </TableRow>
                                         ))}

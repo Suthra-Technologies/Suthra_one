@@ -4,12 +4,15 @@ import {
   Refresh
 } from '@mui/icons-material';
 import {
+  Alert,
+  AlertTitle,
   Box,
   Button,
   Card,
   CardContent,
   Chip,
   CircularProgress,
+  Collapse,
   Dialog,
   DialogActions,
   DialogContent,
@@ -48,7 +51,10 @@ import DevicesIcon from '@mui/icons-material/Devices';
 import DirectionsCarIcon from '@mui/icons-material/DirectionsCar';
 import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined';
 import EventSeatIcon from '@mui/icons-material/EventSeat';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
+import ReportProblemOutlinedIcon from '@mui/icons-material/ReportProblemOutlined';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import RestaurantMenuOutlinedIcon from '@mui/icons-material/RestaurantMenuOutlined';
 import RoomServiceOutlinedIcon from '@mui/icons-material/RoomServiceOutlined';
@@ -332,6 +338,16 @@ const DashboardPage: React.FC = () => {
   const [pendingPOs, setPendingPOs] = useState<number>(0);
   const [activeBookings, setActiveBookings] = useState<number>(0);
   const [lowStockItems, setLowStockItems] = useState<number>(0);
+  // Items standing below their reorder level. Drives the persistent warning
+  // banner, which stays up until the stock is actually refilled.
+  const [stockAlerts, setStockAlerts] = useState<any[]>([]);
+  const [stockAlertsExpanded, setStockAlertsExpanded] = useState(false);
+  // Only the roles that can act on a shortage see the warning. The endpoint
+  // enforces this too, so this check just avoids a pointless 403 on every load.
+  const canSeeStockAlerts = hasRole(['admin', 'manager']);
+  const criticalStockCount = stockAlerts.filter(
+    (item: any) => item?.lowStockAlert?.level === 'critical',
+  ).length;
   const [assetInsights, setAssetInsights] = useState<any>(null);
   const fetchRequestId = React.useRef(0);
   const [assetTabValue, setAssetTabValue] = useState(0);
@@ -360,50 +376,74 @@ const DashboardPage: React.FC = () => {
 
       const promises: Promise<any>[] = [
         reportsAPI.getDashboard(params),
-        billingAPI.status(),
-        // New metrics fetching
-        inventoryAPI.getAll(),
-        purchaseOrdersAPI.getAll({ status: 'Pending' }),
-        bookingsAPI.getAll(),
-        reportsAPI.getBestSellingItems(params),
-        reportsAPI.getOrdersByType(params),
-        assetsAPI.getInsights(),
+        billingAPI.status().catch((e) => { console.warn('[Dashboard] Billing check:', e?.message); return null; }),
+        inventoryAPI.getAll().catch((e) => { console.warn('[Dashboard] Inventory fetch:', e?.message); return null; }),
+        canSeeStockAlerts ? purchaseOrdersAPI.getAll({ status: 'Pending' }).catch((e) => { console.warn('[Dashboard] PO fetch:', e?.message); return null; }) : Promise.resolve(null),
+        bookingsAPI.getAll().catch((e) => { console.warn('[Dashboard] Bookings fetch:', e?.message); return null; }),
+        reportsAPI.getBestSellingItems(params).catch((e) => { console.warn('[Dashboard] Best selling fetch:', e?.message); return null; }),
+        reportsAPI.getOrdersByType(params).catch((e) => { console.warn('[Dashboard] Orders by type fetch:', e?.message); return null; }),
+        canSeeStockAlerts ? assetsAPI.getInsights().catch((e) => { console.warn('[Dashboard] Assets fetch:', e?.message); return null; }) : Promise.resolve(null),
+        canSeeStockAlerts ? inventoryAPI.getLowStockAlerts().catch((e) => { console.warn('[Dashboard] Stock alerts fetch:', e?.message); return null; }) : Promise.resolve(null),
       ];
 
-      const results = await Promise.all(promises);
+      const results = await Promise.allSettled(promises);
       if (requestId !== fetchRequestId.current) return; // Ignore stale request
-      
-      const [dashboardRes, billingRes, inventoryRes, poRes, bookingsRes, bestSellingRes, ordersByTypeRes, assetsRes] = results;
 
-      const dashboardDataActual = dashboardRes?.status === 'fulfilled' ? dashboardRes.value?.data : dashboardRes?.data;
-      const billingData = billingRes?.status === 'fulfilled' ? billingRes.value?.data : billingRes?.data;
-      const bestSellingData = bestSellingRes?.status === 'fulfilled' ? bestSellingRes.value?.data : bestSellingRes?.data;
-      const ordersByTypeData = ordersByTypeRes?.status === 'fulfilled' ? ordersByTypeRes.value?.data : ordersByTypeRes?.data;
+      const [dashboardRes, billingRes, inventoryRes, poRes, bookingsRes, bestSellingRes, ordersByTypeRes, assetsRes, stockAlertsRes] = results;
+
+      const unwrapData = (res: any) => {
+        if (!res) return null;
+        if (res.status === 'fulfilled') return res.value?.data ?? res.value;
+        if (res.status === 'rejected') {
+          console.warn('[Dashboard] Partial metric rejected:', res.reason?.message || res.reason);
+          return null;
+        }
+        return res?.data ?? res;
+      };
+
+      const dashboardDataActual = unwrapData(dashboardRes);
+      const billingData = unwrapData(billingRes);
+      const bestSellingData = unwrapData(bestSellingRes);
+      const ordersByTypeData = unwrapData(ordersByTypeRes);
+      const assetsData = unwrapData(assetsRes);
 
       setDashboardData({
         ...(dashboardDataActual || {}),
-        bestSellingItems: Array.isArray(bestSellingData) ? bestSellingData : [],
-        ordersByType: Array.isArray(ordersByTypeData) ? ordersByTypeData : [],
-        subscriptionStatus: billingData?.status || 'unknown',
+        bestSellingItems: Array.isArray(bestSellingData) ? bestSellingData : (Array.isArray(bestSellingData?.items) ? bestSellingData.items : []),
+        ordersByType: Array.isArray(ordersByTypeData) ? ordersByTypeData : (Array.isArray(ordersByTypeData?.items) ? ordersByTypeData.items : []),
+        subscriptionStatus: billingData?.status || 'active',
       });
 
-      setAssetInsights(assetsRes?.data);
+      setAssetInsights(assetsData);
 
       // Process Inventory for low stock
-      const inventoryData = inventoryRes?.status === 'fulfilled' ? inventoryRes.value?.data : inventoryRes?.data;
+      const inventoryData = unwrapData(inventoryRes);
       const inventoryItems = Array.isArray(inventoryData?.items) ? inventoryData.items : (Array.isArray(inventoryData) ? inventoryData : []);
       setInventoryCount(inventoryItems.length);
-      setLowStockItems(inventoryItems.filter((i: any) => i && i.currentStock <= (i.minimumStockLevel || i.minimumStock || 0)).length);
+
+      // Prefer the server's persisted alert state — it applies the same reorder
+      // threshold the notifications were raised against. The client-side count
+      // is only a fallback for when that call failed.
+      const alertsData = unwrapData(stockAlertsRes);
+      const alertItems = Array.isArray(alertsData?.items) ? alertsData.items : null;
+
+      if (alertItems) {
+        setStockAlerts(alertItems);
+        setLowStockItems(alertsData?.counts?.total ?? alertItems.length);
+      } else {
+        setStockAlerts([]);
+        setLowStockItems(inventoryItems.filter((i: any) => i && i.currentStock <= (i.minimumStockLevel || i.minimumStock || 0)).length);
+      }
 
       // Process Pending POs
-      const poData = poRes?.status === 'fulfilled' ? poRes.value?.data : poRes?.data;
+      const poData = unwrapData(poRes);
       setPendingPOs(poData?.total || (Array.isArray(poData) ? poData.length : 0));
 
       // Process Bookings (Today's active)
       const d = new Date();
       const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-      const rawBookings = bookingsRes?.status === 'fulfilled' ? bookingsRes.value?.data : bookingsRes?.data;
+      const rawBookings = unwrapData(bookingsRes);
       const bookingsData = Array.isArray(rawBookings)
         ? rawBookings
         : (Array.isArray(rawBookings?.items) ? rawBookings.items : []);
@@ -475,8 +515,9 @@ const DashboardPage: React.FC = () => {
     window.addEventListener('orderStatusUpdate', handleRealtimeUpdate);
     window.addEventListener('bookingUpdate', handleRealtimeUpdate);
     window.addEventListener('dashboardRefetch', handleRealtimeUpdate);
-
-
+    // Raise the banner as soon as a shortage is announced, rather than waiting
+    // for the next poll.
+    window.addEventListener('inventoryStockAlert', handleRealtimeUpdate);
 
     return () => {
       clearInterval(interval);
@@ -484,6 +525,7 @@ const DashboardPage: React.FC = () => {
       window.removeEventListener('orderStatusUpdate', handleRealtimeUpdate);
       window.removeEventListener('bookingUpdate', handleRealtimeUpdate);
       window.removeEventListener('dashboardRefetch', handleRealtimeUpdate);
+      window.removeEventListener('inventoryStockAlert', handleRealtimeUpdate);
     };
   }, [timeRange, startDate, endDate]);
 
@@ -895,6 +937,112 @@ const DashboardPage: React.FC = () => {
           ));
         })()}
       </Box>
+
+      {/* Standing low-stock warning.
+          Rendered from the alert state the backend persists on each item, so it
+          stays visible on every dashboard load until the stock is refilled —
+          unlike the one-time toast/push that announced the shortage. */}
+      {canSeeStockAlerts && stockAlerts.length > 0 && (
+        <Alert
+          severity={criticalStockCount > 0 ? 'error' : 'warning'}
+          icon={<ReportProblemOutlinedIcon />}
+          sx={{
+            mb: { xs: 2, sm: 3 },
+            borderRadius: 2,
+            alignItems: 'flex-start',
+            // Let the message column fill the row so the clickable header
+            // spans the full width rather than only the text it wraps.
+            '& .MuiAlert-message': { flex: 1, minWidth: 0 },
+          }}
+          action={
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Button
+                size="small"
+                color="inherit"
+                onClick={() => navigate('/inventory')}
+                sx={{ fontWeight: 600, whiteSpace: 'nowrap' }}
+              >
+                Restock
+              </Button>
+              <IconButton
+                size="small"
+                color="inherit"
+                onClick={() => setStockAlertsExpanded((prev) => !prev)}
+                aria-label={stockAlertsExpanded ? 'Hide affected items' : 'Show affected items'}
+              >
+                {stockAlertsExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+              </IconButton>
+            </Stack>
+          }
+        >
+          {/* The whole header is the toggle, so tapping anywhere on the title or
+              summary opens the list — not just the chevron. It stays out of the
+              Alert root because the Restock button sits in the `action` slot,
+              which would otherwise toggle the list as well as navigate. */}
+          <Box
+            role="button"
+            tabIndex={0}
+            aria-expanded={stockAlertsExpanded}
+            onClick={() => setStockAlertsExpanded((prev) => !prev)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setStockAlertsExpanded((prev) => !prev);
+              }
+            }}
+            sx={{ cursor: 'pointer', userSelect: 'none' }}
+          >
+            <AlertTitle sx={{ fontWeight: 700, mb: 0.5 }}>
+              {criticalStockCount > 0
+                ? `${criticalStockCount} item${criticalStockCount === 1 ? '' : 's'} at critical stock`
+                : `${stockAlerts.length} item${stockAlerts.length === 1 ? '' : 's'} running low`}
+            </AlertTitle>
+
+            <Typography variant="body2" sx={{ mb: stockAlertsExpanded ? 1 : 0 }}>
+              {criticalStockCount > 0 && stockAlerts.length > criticalStockCount
+                ? `Also ${stockAlerts.length - criticalStockCount} more running low. `
+                : ''}
+              This warning stays until the stock is refilled.
+            </Typography>
+          </Box>
+
+          <Collapse in={stockAlertsExpanded}>
+            <Stack spacing={0.75} sx={{ mt: 1 }}>
+              {stockAlerts.map((item: any) => {
+                const isCritical = item?.lowStockAlert?.level === 'critical';
+                return (
+                  <Box
+                    key={item._id}
+                    sx={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 1.5,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {item.name}
+                      {item.sku ? (
+                        <Typography component="span" variant="caption" sx={{ ml: 1, opacity: 0.75 }}>
+                          {item.sku}
+                        </Typography>
+                      ) : null}
+                    </Typography>
+                    <Chip
+                      size="small"
+                      color={isCritical ? 'error' : 'warning'}
+                      variant={isCritical ? 'filled' : 'outlined'}
+                      label={`${isCritical ? 'Critical' : 'Low'} · ${item.currentStock} ${item.unit || ''} left · reorder at ${item.reorderLevel || item.minimumStock || 0}`}
+                      sx={{ fontWeight: 600 }}
+                    />
+                  </Box>
+                );
+              })}
+            </Stack>
+          </Collapse>
+        </Alert>
+      )}
 
       {/* Main Stats Grid */}
       <Grid container spacing={{ xs: 1.2, sm: 3 }} sx={{ mb: { xs: 2.2, sm: 4 } }}>

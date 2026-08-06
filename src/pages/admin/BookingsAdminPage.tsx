@@ -10,7 +10,9 @@ import {
     Timeline as TimelineIcon,
     AccessTime as TimeIcon,
     Today as TodayIcon,
-    History as HistoryIcon
+    History as HistoryIcon,
+    Search as SearchIcon,
+    Clear as ClearIcon
 } from '@mui/icons-material';
 import { alpha } from '@mui/material/styles';
 import {
@@ -29,6 +31,7 @@ import {
     FormControl,
     Grid,
     IconButton,
+    InputAdornment,
     InputLabel,
     MenuItem,
     Paper,
@@ -59,7 +62,7 @@ import HistoryDialog from '../../components/common/HistoryDialog';
 import PhoneInput from 'src/components/PhoneInput';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
-import { bookingsAPI, tablesAPI } from '../../services/api';
+import { bookingsAPI, tablesAPI, usersAPI } from '../../services/api';
 import { validateEmail } from '../../utils/validation';
 
 const formatUSPhone = (phone: string) => {
@@ -134,6 +137,7 @@ const BookingsAdminPage: React.FC = () => {
     };
     const [bookings, setBookings] = useState<any[]>([]);
     const [tables, setTables] = useState<any[]>([]);
+    const [staffList, setStaffList] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedBooking, setSelectedBooking] = useState<any | null>(null);
     const [detailsOpen, setDetailsOpen] = useState(false);
@@ -171,7 +175,8 @@ const BookingsAdminPage: React.FC = () => {
         phone: '',
         email: '',
         dialCode: settings?.restaurant?.dialCode || '1',
-        specialRequests: ''
+        specialRequests: '',
+        assignedStaff: ''
     });
 
     // Sync dial code with settings
@@ -186,6 +191,17 @@ const BookingsAdminPage: React.FC = () => {
     const [rowsPerPage, setRowsPerPage] = useState(10);
     const [totalCount, setTotalCount] = useState(0);
 
+    // List View Filters
+    const [searchQuery, setSearchQuery] = useState('');
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [filterDateFrom, setFilterDateFrom] = useState<Date | null>(null);
+    const [filterDateTo, setFilterDateTo] = useState<Date | null>(null);
+
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 400);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
+
     const fetchData = async () => {
         setLoading(true);
         try {
@@ -193,6 +209,9 @@ const BookingsAdminPage: React.FC = () => {
             if (tabValue === 0) {
                 params.page = page + 1;
                 params.limit = rowsPerPage;
+                if (debouncedSearch) params.search = debouncedSearch;
+                if (filterDateFrom) params.dateFrom = filterDateFrom.toISOString();
+                if (filterDateTo) params.dateTo = filterDateTo.toISOString();
             } else {
                 params.date = selectedDate.toISOString();
                 params.limit = 1000; // Get all for timeline
@@ -223,7 +242,21 @@ const BookingsAdminPage: React.FC = () => {
 
     useEffect(() => {
         fetchData();
-    }, [page, rowsPerPage, tabValue, selectedDate]);
+    }, [page, rowsPerPage, tabValue, selectedDate, debouncedSearch, filterDateFrom, filterDateTo]);
+
+    // Reset to first page whenever filters change
+    useEffect(() => {
+        setPage(0);
+    }, [debouncedSearch, filterDateFrom, filterDateTo]);
+
+    useEffect(() => {
+        usersAPI.getUsers({ role: 'waiter', isActive: true })
+            .then(res => {
+                const raw = res.data?.data || res.data?.users || res.data;
+                setStaffList(Array.isArray(raw) ? raw : []);
+            })
+            .catch(err => console.error('Failed to load staff list', err));
+    }, []);
 
     const handleChangePage = (event: unknown, newPage: number) => {
         setPage(newPage);
@@ -323,7 +356,8 @@ const BookingsAdminPage: React.FC = () => {
                     email: trimmedEmail
                 },
                 status: 'confirmed', // Auto-confirm admin bookings
-                source: 'admin'
+                source: 'admin',
+                assignedStaff: newBooking.assignedStaff || undefined
             };
             await bookingsAPI.create(bookingData);
             toast.success('Booking created successfully');
@@ -340,7 +374,8 @@ const BookingsAdminPage: React.FC = () => {
                 phone: '',
                 email: '',
                 dialCode: settings?.restaurant?.dialCode || '1',
-                specialRequests: ''
+                specialRequests: '',
+                assignedStaff: ''
             });
             setBookingStep(1);
         } catch (error: any) {
@@ -565,6 +600,71 @@ const BookingsAdminPage: React.FC = () => {
                 {/* List View */}
                 {tabValue === 0 && (
                     <Box>
+                        <Grid container spacing={1.5} sx={{ mb: 2 }}>
+                            <Grid item xs={12} sm={5}>
+                                <TextField
+                                    fullWidth
+                                    size="small"
+                                    placeholder="Search by name, phone or booking ID"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    InputProps={{
+                                        startAdornment: (
+                                            <InputAdornment position="start">
+                                                <SearchIcon fontSize="small" />
+                                            </InputAdornment>
+                                        ),
+                                        endAdornment: searchQuery ? (
+                                            <InputAdornment position="end">
+                                                <IconButton size="small" onClick={() => setSearchQuery('')}>
+                                                    <ClearIcon fontSize="small" />
+                                                </IconButton>
+                                            </InputAdornment>
+                                        ) : undefined,
+                                    }}
+                                    sx={{ bgcolor: 'background.paper', borderRadius: 1 }}
+                                />
+                            </Grid>
+                            <Grid item xs={6} sm={3}>
+                                <DatePicker
+                                    label="From date"
+                                    value={filterDateFrom}
+                                    onChange={(d) => setFilterDateFrom(d)}
+                                    slotProps={{
+                                        textField: { size: 'small', fullWidth: true, sx: { bgcolor: 'background.paper' } },
+                                        field: { clearable: true } as any,
+                                    }}
+                                />
+                            </Grid>
+                            <Grid item xs={6} sm={3}>
+                                <DatePicker
+                                    label="To date"
+                                    value={filterDateTo}
+                                    minDate={filterDateFrom || undefined}
+                                    onChange={(d) => setFilterDateTo(d)}
+                                    slotProps={{
+                                        textField: { size: 'small', fullWidth: true, sx: { bgcolor: 'background.paper' } },
+                                        field: { clearable: true } as any,
+                                    }}
+                                />
+                            </Grid>
+                            {(searchQuery || filterDateFrom || filterDateTo) && (
+                                <Grid item xs={12} sm={1}>
+                                    <Button
+                                        fullWidth
+                                        size="small"
+                                        onClick={() => {
+                                            setSearchQuery('');
+                                            setFilterDateFrom(null);
+                                            setFilterDateTo(null);
+                                        }}
+                                        sx={{ height: '40px', textTransform: 'none' }}
+                                    >
+                                        Clear
+                                    </Button>
+                                </Grid>
+                            )}
+                        </Grid>
                         {loading ? (
                             <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>
                         ) : bookings.length === 0 ? (
@@ -725,6 +825,7 @@ const BookingsAdminPage: React.FC = () => {
                                             <TableCell>Customer</TableCell>
                                             <TableCell>Date & Time</TableCell>
                                             <TableCell>Table</TableCell>
+                                            <TableCell>Staff</TableCell>
                                             <TableCell>Guests</TableCell>
                                             <TableCell>Status</TableCell>
                                             <TableCell align="right">Actions</TableCell>
@@ -759,6 +860,11 @@ const BookingsAdminPage: React.FC = () => {
                                                 </TableCell>
                                                 <TableCell>
                                                     {booking.table?.tableName || booking.table?.tableNumber || 'N/A'}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {booking.assignedStaff
+                                                        ? `${booking.assignedStaff.firstName || ''} ${booking.assignedStaff.lastName || ''}`.trim() || booking.assignedStaff.email
+                                                        : <Typography variant="body2" color="text.secondary">Unassigned</Typography>}
                                                 </TableCell>
                                                 <TableCell>{booking.guests}</TableCell>
                                                 <TableCell>
@@ -1132,6 +1238,25 @@ const BookingsAdminPage: React.FC = () => {
                                     </FormControl>
                                 </Grid>
                                 <Grid item xs={12}>
+                                    <FormControl fullWidth>
+                                        <InputLabel>Assign Staff (optional)</InputLabel>
+                                        <Select
+                                            value={newBooking.assignedStaff}
+                                            label="Assign Staff (optional)"
+                                            onChange={(e) => setNewBooking({ ...newBooking, assignedStaff: e.target.value })}
+                                        >
+                                            <MenuItem value="">
+                                                <em>Unassigned</em>
+                                            </MenuItem>
+                                            {staffList.map(s => (
+                                                <MenuItem key={s._id} value={s._id}>
+                                                    {`${s.firstName || ''} ${s.lastName || ''}`.trim() || s.email}
+                                                </MenuItem>
+                                            ))}
+                                        </Select>
+                                    </FormControl>
+                                </Grid>
+                                <Grid item xs={12}>
                                     <TextField
                                         label="Guest Name"
                                         fullWidth
@@ -1248,6 +1373,11 @@ const BookingsAdminPage: React.FC = () => {
                                     <strong>Table:</strong> {selectedBooking.table?.tableName || selectedBooking.table?.tableNumber}
                                 </Typography>
                                 <Typography variant="subtitle1" gutterBottom>
+                                    <strong>Staff:</strong> {selectedBooking.assignedStaff
+                                        ? `${selectedBooking.assignedStaff.firstName || ''} ${selectedBooking.assignedStaff.lastName || ''}`.trim() || selectedBooking.assignedStaff.email
+                                        : 'Unassigned'}
+                                </Typography>
+                                <Typography variant="subtitle1" gutterBottom>
                                     <strong>Guests:</strong> {selectedBooking.guests}
                                 </Typography>
                                 <Typography variant="subtitle1" gutterBottom>
@@ -1325,7 +1455,7 @@ const BookingsAdminPage: React.FC = () => {
                             </>
                         )}
                         <Button onClick={() => setDetailsOpen(false)}>Close</Button>
-                        {selectedBooking && (
+                        {selectedBooking && !['completed', 'cancelled', 'rejected', 'no-show'].includes(selectedBooking.status) && !selectedBooking.checkedIn && (
                             <Button 
                                 variant="outlined" 
                                 color="secondary"

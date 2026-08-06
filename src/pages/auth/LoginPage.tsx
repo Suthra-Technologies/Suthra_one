@@ -236,9 +236,17 @@ const LoginPage: React.FC = () => {
             } else {
               await redirectToTenant(targetSlug, '/customer/order', result.token);
             }
+          } else if (userRole === 'accountant') {
+            // Accountant has no dashboard access — land on Reports instead.
+            console.log('LoginPage: Accountant detected. Navigating to /reports');
+            if (isSubdomain) {
+              setTimeout(() => navigate('/reports', { replace: true }), 100);
+            } else {
+              await redirectToTenant(targetSlug, '/reports', result.token);
+            }
           } else {
             console.log('LoginPage: Staff/Admin detected. isSubdomain:', isSubdomain);
-            
+
             if (isSubdomain) {
               console.log(`LoginPage: Navigating to /dashboard`);
               setTimeout(() => navigate('/dashboard', { replace: true }), 100);

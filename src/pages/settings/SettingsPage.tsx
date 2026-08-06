@@ -51,7 +51,6 @@ import {
     TableCell,
     TableContainer,
     TableHead,
-    TablePagination,
     TableRow,
     Tabs,
     TextField,
@@ -76,6 +75,7 @@ import {
     getUnitSystem,
     useSettings,
     type BusinessHourDay,
+    type DeliverySettings,
     type NotificationSettings,
     type PaymentSettings,
     type PrinterConfig,
@@ -89,15 +89,15 @@ import {
     type UnitConfig
 } from '../../context/SettingsContext';
 
-import { apiBaseUrl, menuAPI, paymentsAPI, printersAPI, settingsAPI, smsAPI, tenantAPI, usersAPI, uploadAPI } from '../../services/api';
-import { printBillThermal } from '../../utils/printBillThermal';
-import { printKotThermal } from '../../utils/kotThermal';
+import { apiBaseUrl, menuAPI, paymentsAPI, printersAPI, settingsAPI, smsAPI, tenantAPI, uploadAPI } from '../../services/api';
 import { isThermalPrintAvailable, startPrintStation, stopPrintStation } from '../../services/thermalPrint';
 import { connectUsbPrinter, disconnectUsbPrinter, isUsbPrintAvailable, isUsbPrinterConnected } from '../../services/usbPrint';
+import { printKotThermal } from '../../utils/kotThermal';
+import { printBillThermal } from '../../utils/printBillThermal';
 
 import { NOTIFICATION_SOUNDS, previewSound } from '../../utils/notificationSounds';
 import type { ValidationResult } from '../../utils/validation';
-import { getHelperText, hasError, validateAddress, validateCompanyName, validateEmail, validatePhone, validateRequired } from '../../utils/validation';
+import { getHelperText, hasError, validateAddress, validateCompanyName, validateEmail, validatePhone } from '../../utils/validation';
 
 const countries = [
     {
@@ -432,6 +432,7 @@ const createDefaultSettings = (): SettingsState => ({
                 // in-restaurant notifications, so it has no row here.
                 admin: { orders: true, catering: true, inventory: true, bookings: true, support: true },
                 manager: { orders: true, catering: true, inventory: true, bookings: true, support: true },
+                accountant: { orders: false, catering: false, inventory: false, bookings: false, support: false },
                 cashier: { orders: true, catering: false, inventory: false, bookings: true, support: false },
                 waiter: { orders: true, catering: false, inventory: false, bookings: true, support: false },
                 kitchen_staff: { orders: false, catering: false, inventory: true, bookings: false, support: false },
@@ -679,7 +680,10 @@ const SettingsPage: React.FC = () => {
 
     // Menu Price Adjustment tab state
     const [priceCategories, setPriceCategories] = useState<any[]>([]);
+    const [priceMenuItems, setPriceMenuItems] = useState<any[]>([]);
     const [priceSelectedCategory, setPriceSelectedCategory] = useState<string>('all');
+    const [priceSelectedItem, setPriceSelectedItem] = useState<string>('all');
+    const [priceAdjustmentType, setPriceAdjustmentType] = useState<'percentage' | 'flat'>('percentage');
     const [pricePercentage, setPricePercentage] = useState<string>('');
     const [pricePreviewItems, setPricePreviewItems] = useState<{ _id: string; name: string; category: any; currentPrice: number; newPrice: number }[]>([]);
     const [pricePreviewLoading, setPricePreviewLoading] = useState(false);
@@ -697,26 +701,45 @@ const SettingsPage: React.FC = () => {
         }
     };
 
+    const fetchPriceMenuItems = async () => {
+        try {
+            const res = await menuAPI.getAll({ limit: 1000 });
+            setPriceMenuItems(res.data?.items || res.data || []);
+        } catch {
+            toast.error('Failed to load menu items');
+        }
+    };
+
+    const computeNewPrice = (price: number, amount: number) =>
+        priceAdjustmentType === 'flat'
+            ? Math.max(0, Math.round((price + amount) * 100) / 100)
+            : Math.max(0, Math.round(price * (1 + amount / 100) * 100) / 100);
+
     const handlePricePreview = async () => {
-        const pct = parseFloat(pricePercentage);
-        if (!pricePercentage || isNaN(pct)) {
-            toast.error('Enter a valid percentage');
+        const amount = parseFloat(pricePercentage);
+        if (!pricePercentage || isNaN(amount)) {
+            toast.error(`Enter a valid ${priceAdjustmentType === 'flat' ? 'amount' : 'percentage'}`);
             return;
         }
         try {
             setPricePreviewLoading(true);
             setPricePreviewItems([]);
-            const params: any = { limit: 1000 };
-            if (priceSelectedCategory !== 'all') params.category = priceSelectedCategory;
-            const res = await menuAPI.getAll(params);
-            const items = res.data?.items || res.data || [];
-            const multiplier = 1 + pct / 100;
+            let items: any[];
+            if (priceSelectedItem !== 'all') {
+                const item = priceMenuItems.find((i: any) => i._id === priceSelectedItem);
+                items = item ? [item] : [];
+            } else {
+                const params: any = { limit: 1000 };
+                if (priceSelectedCategory !== 'all') params.category = priceSelectedCategory;
+                const res = await menuAPI.getAll(params);
+                items = res.data?.items || res.data || [];
+            }
             const preview = items.map((item: any) => ({
                 _id: item._id,
                 name: item.name,
                 category: item.category,
                 currentPrice: item.price,
-                newPrice: Math.round(item.price * multiplier * 100) / 100,
+                newPrice: computeNewPrice(item.price, amount),
             }));
             setPricePreviewItems(preview);
         } catch {
@@ -727,12 +750,18 @@ const SettingsPage: React.FC = () => {
     };
 
     const handlePriceApply = async () => {
-        const pct = parseFloat(pricePercentage);
-        if (!pricePreviewItems.length || isNaN(pct)) return;
-        if (!window.confirm(`Apply ${pct > 0 ? '+' : ''}${pct}% price change to ${pricePreviewItems.length} item(s)? This cannot be undone.`)) return;
+        const amount = parseFloat(pricePercentage);
+        if (!pricePreviewItems.length || isNaN(amount)) return;
+        const unit = priceAdjustmentType === 'flat' ? '$' : '%';
+        if (!window.confirm(`Apply ${amount > 0 ? '+' : ''}${amount}${unit} price change to ${pricePreviewItems.length} item(s)? This cannot be undone.`)) return;
         try {
             setPriceApplyLoading(true);
-            const res = await menuAPI.bulkPriceAdjust(pct, priceSelectedCategory !== 'all' ? priceSelectedCategory : undefined);
+            const res = await menuAPI.bulkPriceAdjust(
+                amount,
+                priceAdjustmentType,
+                priceSelectedItem === 'all' && priceSelectedCategory !== 'all' ? priceSelectedCategory : undefined,
+                priceSelectedItem !== 'all' ? priceSelectedItem : undefined,
+            );
             toast.success(`Updated prices for ${res.data.updated} item(s)`);
             setPricePreviewItems([]);
             setPricePercentage('');
@@ -964,6 +993,7 @@ const SettingsPage: React.FC = () => {
         setTabValue(newValue);
         if (newValue === 8 && priceCategories.length === 0) {
             fetchPriceCategories();
+            fetchPriceMenuItems();
         }
     };
 
@@ -1095,6 +1125,84 @@ const SettingsPage: React.FC = () => {
                 }
             }
         }));
+    };
+
+    const handleSaveDeliveryProvider = async (provider: 'builtIn' | 'doordash' | 'ubereats') => {
+        if (loading) return;
+        if (provider === 'builtIn') {
+            if ((settings.delivery?.builtIn?.baseMiles ?? 2) > (settings.delivery?.builtIn?.maxDeliveryRange ?? 15)) {
+                toast.error('Base miles covered cannot exceed the maximum delivery range');
+                return;
+            }
+        }
+
+        try {
+            setLoading(true);
+            const defaults = createDefaultSettings();
+            // Fetch fresh latest settings to ensure other providers are not overridden with stale drafts
+            const latestResp = await settingsAPI.getAll();
+            let latestDelivery: DeliverySettings = settings.delivery
+                ? { ...settings.delivery }
+                : { ...defaults.delivery! };
+
+            if (Array.isArray(latestResp.data)) {
+                const found = latestResp.data.find((c: any) => c.category === 'delivery');
+                if (found && found.settings) {
+                    latestDelivery = {
+                        builtIn: { ...defaults.delivery!.builtIn, ...(found.settings.builtIn || {}) },
+                        doordash: { ...defaults.delivery!.doordash, ...(found.settings.doordash || {}) },
+                        ubereats: { ...defaults.delivery!.ubereats, ...(found.settings.ubereats || {}) },
+                    };
+                }
+            } else if (latestResp.data?.delivery) {
+                latestDelivery = {
+                    builtIn: { ...defaults.delivery!.builtIn, ...(latestResp.data.delivery.builtIn || {}) },
+                    doordash: { ...defaults.delivery!.doordash, ...(latestResp.data.delivery.doordash || {}) },
+                    ubereats: { ...defaults.delivery!.ubereats, ...(latestResp.data.delivery.ubereats || {}) },
+                };
+            }
+
+            const currentDelivery = settings.delivery || defaults.delivery!;
+
+            // Only update the specific provider that the user clicked Save on
+            const updatedDelivery: DeliverySettings = {
+                builtIn: {
+                    ...latestDelivery.builtIn,
+                    ...(provider === 'builtIn' ? currentDelivery.builtIn : {})
+                },
+                doordash: {
+                    ...latestDelivery.doordash,
+                    ...(provider === 'doordash' ? currentDelivery.doordash : {})
+                },
+                ubereats: {
+                    ...latestDelivery.ubereats,
+                    ...(provider === 'ubereats' ? currentDelivery.ubereats : {})
+                }
+            };
+
+            await settingsAPI.update('delivery', updatedDelivery);
+            updateGlobalSettings({
+                ...settings,
+                delivery: updatedDelivery,
+            });
+
+            setSettings(prev => ({
+                ...prev,
+                delivery: updatedDelivery,
+            }));
+
+            const providerLabels: Record<string, string> = {
+                builtIn: 'Built-in Delivery',
+                doordash: 'DoorDash Drive',
+                ubereats: 'Uber Direct'
+            };
+            toast.success(`${providerLabels[provider] || 'Delivery'} updated successfully`);
+        } catch (error) {
+            console.error('Error saving delivery settings:', error);
+            toast.error((error as any)?.response?.data?.message || 'Failed to save delivery settings');
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handlePrinterChange = (role: 'billing' | 'kitchen', field: keyof PrinterConfig, value: any) => {
@@ -1599,7 +1707,7 @@ const SettingsPage: React.FC = () => {
         }
     };
 
-    const handleSave = async (category: keyof SettingsState) => {
+    const handleSave = async (category: keyof SettingsState, customSuccessMessage?: string) => {
         if (loading) return;
         if (category === 'restaurant') {
             const validation = validateRestaurantForm();
@@ -1617,21 +1725,28 @@ const SettingsPage: React.FC = () => {
             }
         }
 
+        const defaultCategoryMessages: Record<string, string> = {
+            restaurant: 'Restaurant Profile updated successfully',
+            system: 'System Preferences updated successfully',
+            notification: 'Notification Settings updated successfully',
+            printer: 'Printer Settings updated successfully',
+            rewards: 'Loyalty & Rewards updated successfully',
+            delivery: 'Delivery Settings updated successfully',
+        };
+
         try {
             setLoading(true);
-            let successMessage = 'Setting updated successfully';
+            const successMessage = customSuccessMessage || defaultCategoryMessages[category] || 'Settings updated successfully';
 
             if (category === 'restaurant') {
                 const restaurantPayload = buildRestaurantPayload();
                 await settingsAPI.update('restaurant', restaurantPayload);
                 updateGlobalSettings(settings); // Update global context
                 await fetchSettings();
-                successMessage = 'Setting updated successfully';
             } else if (category === 'system') {
                 await settingsAPI.update('system', settings.system);
                 updateGlobalSettings(settings); // Update global context
                 await fetchSettings();
-                successMessage = 'Setting updated successfully';
             } else if (category === 'notification') {
                 await settingsAPI.update('notification', {
                     sms: {
@@ -1650,23 +1765,18 @@ const SettingsPage: React.FC = () => {
                     soundDuration: settings.notification.soundDuration || 6
                 });
                 await fetchSettings();
-                successMessage = 'Setting updated successfully';
             } else if (category === 'printer') {
                 await settingsAPI.update('printer', settings.printer);
                 updateGlobalSettings(settings);
-                successMessage = 'Setting updated successfully';
             } else if (category === 'rewards') {
                 await settingsAPI.update('rewards', settings.rewards);
                 updateGlobalSettings(settings); // Update global context
                 await fetchSettings();
-                successMessage = 'Setting updated successfully';
             } else if (category === 'delivery') {
                 await settingsAPI.update('delivery', settings.delivery);
                 updateGlobalSettings(settings);
                 await fetchSettings();
-                successMessage = 'Setting updated successfully';
             }
-
 
             toast.success(successMessage);
         } catch (error) {
@@ -3087,7 +3197,7 @@ const SettingsPage: React.FC = () => {
                             variant="contained"
                             size="medium"
                             startIcon={<SaveIcon />}
-                            onClick={() => handleSave('restaurant')}
+                            onClick={() => handleSave('restaurant', 'Inventory Settings updated successfully')}
                             disabled={loading}
                             sx={{
                                 borderRadius: 2.5,
@@ -3486,505 +3596,505 @@ const SettingsPage: React.FC = () => {
                             Payment settings are only accessible to Admin users.
                         </Alert>
                     ) : (
-                    <>
-                    <Box sx={{ mb: 4 }}>
-                        <Typography variant="h6" sx={{ mb: 1, fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
-                            Point of Sale Payment Methods
-                        </Typography>
-                        <Typography color="text.secondary" sx={{ mb: 3, fontWeight: 500, fontFamily: "'Outfit', sans-serif" }}>
-                            Enable or disable payment methods that will be available at the Point of Sale interface.
-                        </Typography>
+                        <>
+                            <Box sx={{ mb: 4 }}>
+                                <Typography variant="h6" sx={{ mb: 1, fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
+                                    Point of Sale Payment Methods
+                                </Typography>
+                                <Typography color="text.secondary" sx={{ mb: 3, fontWeight: 500, fontFamily: "'Outfit', sans-serif" }}>
+                                    Enable or disable payment methods that will be available at the Point of Sale interface.
+                                </Typography>
 
-                        <Paper variant="outlined" sx={{ p: 3, borderRadius: 3, mb: 2 }}>
-                            <Grid container spacing={2}>
-                                {(() => {
-                                    const isIndia = settings?.restaurant?.country?.toLowerCase() === 'india';
-                                    const defaultMethods = isIndia ? ['cash', 'card', 'cheque', 'phonepe', 'gpay', 'paytm'] : ['cash', 'card', 'zelle', 'venmo', 'cheque'];
-                                    const standardMethods = ['cash', 'card', 'zelle', 'venmo', 'cheque', 'creditCard', 'debitCard', 'phonepe', 'gpay', 'paytm'];
-                                    const customKeys = Object.keys(settings.system.posPaymentMethods || {}).filter(k => !standardMethods.includes(k));
-                                    const allDisplayMethods = [...new Set([...defaultMethods, ...customKeys])];
-                                    
-                                    return allDisplayMethods.map((method) => (
-                                        <Grid size={{ xs: 6, sm: 3 }} key={method}>
-                                            <FormControlLabel
-                                                control={
-                                                    <Checkbox
-                                                        checked={settings.system.posPaymentMethods?.[method] ?? true}
-                                                        onChange={(e) => {
-                                                            const isChecked = e.target.checked;
-                                                            setSettings(prev => {
-                                                                const currentMethods = prev.system.posPaymentMethods || { cash: true, card: true, zelle: true, venmo: true, cheque: true };
-                                                                return {
-                                                                    ...prev,
-                                                                    system: {
-                                                                        ...prev.system,
-                                                                        posPaymentMethods: {
-                                                                            ...currentMethods,
-                                                                            [method]: isChecked
-                                                                        }
-                                                                    }
-                                                                };
-                                                            });
-                                                        }}
-                                                    />
-                                                }
-                                                label={
-                                                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                                        <Typography sx={{ textTransform: 'capitalize' }}>{method}</Typography>
-                                                        {customKeys.includes(method) && (
-                                                            <IconButton
-                                                                size="small"
-                                                                color="error"
-                                                                onClick={(e) => {
-                                                                    e.preventDefault(); // Prevent toggling the checkbox
+                                <Paper variant="outlined" sx={{ p: 3, borderRadius: 3, mb: 2 }}>
+                                    <Grid container spacing={2}>
+                                        {(() => {
+                                            const isIndia = settings?.restaurant?.country?.toLowerCase() === 'india';
+                                            const defaultMethods = isIndia ? ['cash', 'card', 'cheque', 'phonepe', 'gpay', 'paytm'] : ['cash', 'card', 'zelle', 'venmo', 'cheque'];
+                                            const standardMethods = ['cash', 'card', 'zelle', 'venmo', 'cheque', 'creditCard', 'debitCard', 'phonepe', 'gpay', 'paytm'];
+                                            const customKeys = Object.keys(settings.system.posPaymentMethods || {}).filter(k => !standardMethods.includes(k));
+                                            const allDisplayMethods = [...new Set([...defaultMethods, ...customKeys])];
+
+                                            return allDisplayMethods.map((method) => (
+                                                <Grid size={{ xs: 6, sm: 3 }} key={method}>
+                                                    <FormControlLabel
+                                                        control={
+                                                            <Checkbox
+                                                                checked={settings.system.posPaymentMethods?.[method] ?? true}
+                                                                onChange={(e) => {
+                                                                    const isChecked = e.target.checked;
                                                                     setSettings(prev => {
-                                                                        const currentMethods = { ...(prev.system.posPaymentMethods || {}) };
-                                                                        delete currentMethods[method];
+                                                                        const currentMethods = prev.system.posPaymentMethods || { cash: true, card: true, zelle: true, venmo: true, cheque: true };
                                                                         return {
                                                                             ...prev,
                                                                             system: {
                                                                                 ...prev.system,
-                                                                                posPaymentMethods: currentMethods
+                                                                                posPaymentMethods: {
+                                                                                    ...currentMethods,
+                                                                                    [method]: isChecked
+                                                                                }
                                                                             }
                                                                         };
                                                                     });
                                                                 }}
-                                                                sx={{ ml: 0.5, p: 0.5 }}
-                                                            >
-                                                                <DeleteIcon fontSize="small" />
-                                                            </IconButton>
-                                                        )}
-                                                    </Box>
-                                                }
-                                            />
-                                        </Grid>
-                                    ));
-                                })()}
-                            </Grid>
-
-                            <Box sx={{ mt: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
-                                <TextField
-                                    size="small"
-                                    placeholder="Add Custom Method (e.g. CashApp)"
-                                    value={newPaymentMethod}
-                                    onChange={(e) => setNewPaymentMethod(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ''))}
-                                    sx={{ maxWidth: 300 }}
-                                />
-                                <Button
-                                    variant="outlined"
-                                    onClick={() => {
-                                        if (newPaymentMethod.trim()) {
-                                            setSettings(prev => ({
-                                                ...prev,
-                                                system: {
-                                                    ...prev.system,
-                                                    posPaymentMethods: {
-                                                        ...(prev.system.posPaymentMethods || {}),
-                                                        [newPaymentMethod.trim()]: true
-                                                    }
-                                                }
-                                            }));
-                                            setNewPaymentMethod('');
-                                        }
-                                    }}
-                                >
-                                    Add Method
-                                </Button>
-                            </Box>
-
-                            {/* Card sub-types — shown only when Card is enabled */}
-                            {(settings.system.posPaymentMethods?.card ?? true) && (
-                                <Box sx={{ mt: 1, pl: { xs: 1, sm: 4 }, pt: 2, borderTop: '1px dashed', borderColor: 'divider' }}>
-                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontWeight: 600 }}>
-                                        Accepted Card Types
-                                    </Typography>
-                                    <Grid container spacing={2}>
-                                        {[{ key: 'creditCard', label: 'Credit Card' }, { key: 'debitCard', label: 'Debit Card' }].map((ct) => (
-                                            <Grid size={{ xs: 6, sm: 3 }} key={ct.key}>
-                                                <FormControlLabel
-                                                    control={
-                                                        <Checkbox
-                                                            checked={settings.system.posPaymentMethods?.[ct.key as keyof typeof settings.system.posPaymentMethods] ?? true}
-                                                            onChange={(e) => {
-                                                                const isChecked = e.target.checked;
-                                                                setSettings(prev => {
-                                                                    const currentMethods = prev.system.posPaymentMethods || { cash: true, card: true, zelle: true, venmo: true, cheque: true, creditCard: true, debitCard: true };
-                                                                    return {
-                                                                        ...prev,
-                                                                        system: {
-                                                                            ...prev.system,
-                                                                            posPaymentMethods: {
-                                                                                ...currentMethods,
-                                                                                [ct.key]: isChecked
-                                                                            }
-                                                                        }
-                                                                    };
-                                                                });
-                                                            }}
-                                                        />
-                                                    }
-                                                    label={<Typography>{ct.label}</Typography>}
-                                                />
-                                            </Grid>
-                                        ))}
-                                    </Grid>
-                                </Box>
-                            )}
-
-                            {/* QR Code Configuration Section */}
-                            {(() => {
-                                const isIndia = settings?.restaurant?.country?.toLowerCase() === 'india';
-                                const defaultMethods = isIndia ? ['cash', 'card', 'cheque', 'phonepe', 'gpay', 'paytm'] : ['cash', 'card', 'zelle', 'venmo', 'cheque'];
-                                const standardMethods = ['cash', 'card', 'zelle', 'venmo', 'cheque', 'creditCard', 'debitCard', 'phonepe', 'gpay', 'paytm'];
-                                const customKeys = Object.keys(settings.system.posPaymentMethods || {}).filter(k => !standardMethods.includes(k));
-                                const allDisplayMethods = [...new Set([...defaultMethods, ...customKeys])];
-                                
-                                const qrMethods = allDisplayMethods.filter(method => 
-                                    (settings.system.posPaymentMethods?.[method] ?? true) &&
-                                    !['cash', 'card', 'cheque', 'creditCard', 'debitCard'].includes(method)
-                                );
-                                
-                                if (qrMethods.length === 0) return null;
-                                
-                                return (
-                                    <Box sx={{ mt: 3, pt: 3, borderTop: '1px solid', borderColor: 'divider' }}>
-                                        <Typography variant="subtitle2" color="text.primary" sx={{ mb: 1, fontWeight: 600 }}>
-                                            POS Payment QR Codes
-                                        </Typography>
-                                        <Grid container spacing={2}>
-                                            {qrMethods.map((method) => {
-                                                const currentQr = settings.system.paymentQrCodes?.[method];
-                                                return (
-                                                    <Grid size={{ xs: 12, sm: 6 }} key={method}>
-                                                        <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, bgcolor: 'background.paper' }}>
-                                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                                                {currentQr ? (
-                                                                    <Box sx={{ width: 60, height: 60, border: '1px solid', borderColor: 'divider', borderRadius: 1.5, overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', bgcolor: '#fff' }}>
-                                                                        <img src={currentQr} alt={`${method} QR`} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
-                                                                    </Box>
-                                                                ) : (
-                                                                    <Box sx={{ width: 60, height: 60, border: '1px dashed', borderColor: 'divider', borderRadius: 1.5, display: 'flex', justifyContent: 'center', alignItems: 'center', bgcolor: 'action.hover' }}>
-                                                                        <SmartphoneIcon sx={{ color: 'text.secondary' }} />
-                                                                    </Box>
-                                                                )}
-                                                                <Box>
-                                                                    <Typography variant="subtitle2" sx={{ textTransform: 'capitalize', fontWeight: 'bold' }}>
-                                                                        {method}
-                                                                    </Typography>
-                                                                    <Typography variant="caption" color={currentQr ? "success.main" : "text.secondary"} sx={{ fontWeight: currentQr ? 600 : 400 }}>
-                                                                        {currentQr ? 'QR Code configured' : 'No QR Code configured'}
-                                                                    </Typography>
-                                                                </Box>
-                                                            </Box>
-                                                            <Box sx={{ display: 'flex', gap: 1 }}>
-                                                                <Button
-                                                                    variant="outlined"
-                                                                    component="label"
-                                                                    size="small"
-                                                                    sx={{ textTransform: 'none' }}
-                                                                >
-                                                                    {currentQr ? 'Change' : 'Upload'}
-                                                                    <input
-                                                                        type="file"
-                                                                        accept="image/*"
-                                                                        hidden
-                                                                        onChange={async (e) => {
-                                                                            const file = e.target.files?.[0];
-                                                                            if (file) {
-                                                                                try {
-                                                                                    toast.loading('Uploading QR image...', { id: 'qr-upload' });
-                                                                                    const response = await uploadAPI.uploadImage(file);
-                                                                                    const uploadedUrl = response.data.url;
-                                                                                    setSettings(prev => ({
-                                                                                        ...prev,
-                                                                                        system: {
-                                                                                            ...prev.system,
-                                                                                            paymentQrCodes: {
-                                                                                                ...(prev.system.paymentQrCodes || {}),
-                                                                                                [method]: uploadedUrl
-                                                                                            }
-                                                                                        }
-                                                                                    }));
-                                                                                    toast.success(`Uploaded QR for ${method}`, { id: 'qr-upload' });
-                                                                                } catch (err) {
-                                                                                    toast.error('Failed to upload QR image', { id: 'qr-upload' });
-                                                                                }
-                                                                            }
-                                                                        }}
-                                                                    />
-                                                                </Button>
-                                                                {currentQr && (
+                                                            />
+                                                        }
+                                                        label={
+                                                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                                <Typography sx={{ textTransform: 'capitalize' }}>{method}</Typography>
+                                                                {customKeys.includes(method) && (
                                                                     <IconButton
                                                                         size="small"
                                                                         color="error"
-                                                                        onClick={() => {
+                                                                        onClick={(e) => {
+                                                                            e.preventDefault(); // Prevent toggling the checkbox
                                                                             setSettings(prev => {
-                                                                                const codes = { ...(prev.system.paymentQrCodes || {}) };
-                                                                                delete codes[method];
+                                                                                const currentMethods = { ...(prev.system.posPaymentMethods || {}) };
+                                                                                delete currentMethods[method];
                                                                                 return {
                                                                                     ...prev,
                                                                                     system: {
                                                                                         ...prev.system,
-                                                                                        paymentQrCodes: codes
+                                                                                        posPaymentMethods: currentMethods
                                                                                     }
                                                                                 };
                                                                             });
                                                                         }}
+                                                                        sx={{ ml: 0.5, p: 0.5 }}
                                                                     >
                                                                         <DeleteIcon fontSize="small" />
                                                                     </IconButton>
                                                                 )}
                                                             </Box>
-                                                        </Paper>
-                                                    </Grid>
-                                                );
-                                            })}
-                                        </Grid>
+                                                        }
+                                                    />
+                                                </Grid>
+                                            ));
+                                        })()}
+                                    </Grid>
+
+                                    <Box sx={{ mt: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
+                                        <TextField
+                                            size="small"
+                                            placeholder="Add Custom Method (e.g. CashApp)"
+                                            value={newPaymentMethod}
+                                            onChange={(e) => setNewPaymentMethod(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ''))}
+                                            sx={{ maxWidth: 300 }}
+                                        />
+                                        <Button
+                                            variant="outlined"
+                                            onClick={() => {
+                                                if (newPaymentMethod.trim()) {
+                                                    setSettings(prev => ({
+                                                        ...prev,
+                                                        system: {
+                                                            ...prev.system,
+                                                            posPaymentMethods: {
+                                                                ...(prev.system.posPaymentMethods || {}),
+                                                                [newPaymentMethod.trim()]: true
+                                                            }
+                                                        }
+                                                    }));
+                                                    setNewPaymentMethod('');
+                                                }
+                                            }}
+                                        >
+                                            Add Method
+                                        </Button>
                                     </Box>
-                                );
-                            })()}
-                        </Paper>
 
-                        <Box sx={{ mt: 4, display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' } }}>
-                            <Button
-                                variant="contained"
-                                size={isMobile ? "medium" : "large"}
-                                startIcon={<SaveIcon />}
-                                onClick={() => handleSave('system')}
-                                disabled={loading}
-                                sx={{
-                                    borderRadius: 2.5,
-                                    px: 4,
-                                    fontWeight: 800,
-                                    fontFamily: "'Outfit', sans-serif",
-                                    width: { xs: '100%', sm: 'auto' },
-                                    maxWidth: { xs: '320px', sm: 'none' },
-                                    boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.25)}`
-                                }}
-                            >
-                                Save POS Methods
-                            </Button>
-                        </Box>
-                    </Box>
+                                    {/* Card sub-types — shown only when Card is enabled */}
+                                    {(settings.system.posPaymentMethods?.card ?? true) && (
+                                        <Box sx={{ mt: 1, pl: { xs: 1, sm: 4 }, pt: 2, borderTop: '1px dashed', borderColor: 'divider' }}>
+                                            <Typography variant="body2" color="text.secondary" sx={{ mb: 1, fontWeight: 600 }}>
+                                                Accepted Card Types
+                                            </Typography>
+                                            <Grid container spacing={2}>
+                                                {[{ key: 'creditCard', label: 'Credit Card' }, { key: 'debitCard', label: 'Debit Card' }].map((ct) => (
+                                                    <Grid size={{ xs: 6, sm: 3 }} key={ct.key}>
+                                                        <FormControlLabel
+                                                            control={
+                                                                <Checkbox
+                                                                    checked={settings.system.posPaymentMethods?.[ct.key as keyof typeof settings.system.posPaymentMethods] ?? true}
+                                                                    onChange={(e) => {
+                                                                        const isChecked = e.target.checked;
+                                                                        setSettings(prev => {
+                                                                            const currentMethods = prev.system.posPaymentMethods || { cash: true, card: true, zelle: true, venmo: true, cheque: true, creditCard: true, debitCard: true };
+                                                                            return {
+                                                                                ...prev,
+                                                                                system: {
+                                                                                    ...prev.system,
+                                                                                    posPaymentMethods: {
+                                                                                        ...currentMethods,
+                                                                                        [ct.key]: isChecked
+                                                                                    }
+                                                                                }
+                                                                            };
+                                                                        });
+                                                                    }}
+                                                                />
+                                                            }
+                                                            label={<Typography>{ct.label}</Typography>}
+                                                        />
+                                                    </Grid>
+                                                ))}
+                                            </Grid>
+                                        </Box>
+                                    )}
 
-                    <Divider sx={{ my: 4 }} />
+                                    {/* QR Code Configuration Section */}
+                                    {(() => {
+                                        const isIndia = settings?.restaurant?.country?.toLowerCase() === 'india';
+                                        const defaultMethods = isIndia ? ['cash', 'card', 'cheque', 'phonepe', 'gpay', 'paytm'] : ['cash', 'card', 'zelle', 'venmo', 'cheque'];
+                                        const standardMethods = ['cash', 'card', 'zelle', 'venmo', 'cheque', 'creditCard', 'debitCard', 'phonepe', 'gpay', 'paytm'];
+                                        const customKeys = Object.keys(settings.system.posPaymentMethods || {}).filter(k => !standardMethods.includes(k));
+                                        const allDisplayMethods = [...new Set([...defaultMethods, ...customKeys])];
 
-                    <Paper
-                        variant="outlined"
-                        sx={{
-                            p: 2.5,
-                            mb: 3,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            borderRadius: 3,
-                            bgcolor: (stripeStatus?.hasPublishableKey && stripeStatus?.hasSecretKey) ? alpha('#22c55e', 0.08) : alpha('#f59e0b', 0.08),
-                            borderColor: (stripeStatus?.hasPublishableKey && stripeStatus?.hasSecretKey) ? alpha('#22c55e', 0.3) : alpha('#f59e0b', 0.3),
-                        }}
-                    >
-                        <Stack direction="row" spacing={2} alignItems="center">
-                            <Avatar sx={{ bgcolor: '#635bff', color: '#fff' }}>
-                                <CreditCardIcon />
-                            </Avatar>
-                            <Box>
-                                <Typography variant="subtitle1" fontWeight={700}>
-                                    Stripe Payments
-                                </Typography>
-                                <Typography variant="body2" color="text.secondary">
-                                    {(stripeStatus?.hasPublishableKey && stripeStatus?.hasSecretKey) ? 'Configured and connected' : 'Not connected'}
-                                </Typography>
+                                        const qrMethods = allDisplayMethods.filter(method =>
+                                            (settings.system.posPaymentMethods?.[method] ?? true) &&
+                                            !['cash', 'card', 'cheque', 'creditCard', 'debitCard'].includes(method)
+                                        );
+
+                                        if (qrMethods.length === 0) return null;
+
+                                        return (
+                                            <Box sx={{ mt: 3, pt: 3, borderTop: '1px solid', borderColor: 'divider' }}>
+                                                <Typography variant="subtitle2" color="text.primary" sx={{ mb: 1, fontWeight: 600 }}>
+                                                    POS Payment QR Codes
+                                                </Typography>
+                                                <Grid container spacing={2}>
+                                                    {qrMethods.map((method) => {
+                                                        const currentQr = settings.system.paymentQrCodes?.[method];
+                                                        return (
+                                                            <Grid size={{ xs: 12, sm: 6 }} key={method}>
+                                                                <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, bgcolor: 'background.paper' }}>
+                                                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                                                        {currentQr ? (
+                                                                            <Box sx={{ width: 60, height: 60, border: '1px solid', borderColor: 'divider', borderRadius: 1.5, overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', bgcolor: '#fff' }}>
+                                                                                <img src={currentQr} alt={`${method} QR`} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                                                                            </Box>
+                                                                        ) : (
+                                                                            <Box sx={{ width: 60, height: 60, border: '1px dashed', borderColor: 'divider', borderRadius: 1.5, display: 'flex', justifyContent: 'center', alignItems: 'center', bgcolor: 'action.hover' }}>
+                                                                                <SmartphoneIcon sx={{ color: 'text.secondary' }} />
+                                                                            </Box>
+                                                                        )}
+                                                                        <Box>
+                                                                            <Typography variant="subtitle2" sx={{ textTransform: 'capitalize', fontWeight: 'bold' }}>
+                                                                                {method}
+                                                                            </Typography>
+                                                                            <Typography variant="caption" color={currentQr ? "success.main" : "text.secondary"} sx={{ fontWeight: currentQr ? 600 : 400 }}>
+                                                                                {currentQr ? 'QR Code configured' : 'No QR Code configured'}
+                                                                            </Typography>
+                                                                        </Box>
+                                                                    </Box>
+                                                                    <Box sx={{ display: 'flex', gap: 1 }}>
+                                                                        <Button
+                                                                            variant="outlined"
+                                                                            component="label"
+                                                                            size="small"
+                                                                            sx={{ textTransform: 'none' }}
+                                                                        >
+                                                                            {currentQr ? 'Change' : 'Upload'}
+                                                                            <input
+                                                                                type="file"
+                                                                                accept="image/*"
+                                                                                hidden
+                                                                                onChange={async (e) => {
+                                                                                    const file = e.target.files?.[0];
+                                                                                    if (file) {
+                                                                                        try {
+                                                                                            toast.loading('Uploading QR image...', { id: 'qr-upload' });
+                                                                                            const response = await uploadAPI.uploadImage(file);
+                                                                                            const uploadedUrl = response.data.url;
+                                                                                            setSettings(prev => ({
+                                                                                                ...prev,
+                                                                                                system: {
+                                                                                                    ...prev.system,
+                                                                                                    paymentQrCodes: {
+                                                                                                        ...(prev.system.paymentQrCodes || {}),
+                                                                                                        [method]: uploadedUrl
+                                                                                                    }
+                                                                                                }
+                                                                                            }));
+                                                                                            toast.success(`Uploaded QR for ${method}`, { id: 'qr-upload' });
+                                                                                        } catch (err) {
+                                                                                            toast.error('Failed to upload QR image', { id: 'qr-upload' });
+                                                                                        }
+                                                                                    }
+                                                                                }}
+                                                                            />
+                                                                        </Button>
+                                                                        {currentQr && (
+                                                                            <IconButton
+                                                                                size="small"
+                                                                                color="error"
+                                                                                onClick={() => {
+                                                                                    setSettings(prev => {
+                                                                                        const codes = { ...(prev.system.paymentQrCodes || {}) };
+                                                                                        delete codes[method];
+                                                                                        return {
+                                                                                            ...prev,
+                                                                                            system: {
+                                                                                                ...prev.system,
+                                                                                                paymentQrCodes: codes
+                                                                                            }
+                                                                                        };
+                                                                                    });
+                                                                                }}
+                                                                            >
+                                                                                <DeleteIcon fontSize="small" />
+                                                                            </IconButton>
+                                                                        )}
+                                                                    </Box>
+                                                                </Paper>
+                                                            </Grid>
+                                                        );
+                                                    })}
+                                                </Grid>
+                                            </Box>
+                                        );
+                                    })()}
+                                </Paper>
+
+                                <Box sx={{ mt: 4, display: 'flex', justifyContent: { xs: 'center', md: 'flex-start' } }}>
+                                    <Button
+                                        variant="contained"
+                                        size={isMobile ? "medium" : "large"}
+                                        startIcon={<SaveIcon />}
+                                        onClick={() => handleSave('system', 'POS Payment Methods updated successfully')}
+                                        disabled={loading}
+                                        sx={{
+                                            borderRadius: 2.5,
+                                            px: 4,
+                                            fontWeight: 800,
+                                            fontFamily: "'Outfit', sans-serif",
+                                            width: { xs: '100%', sm: 'auto' },
+                                            maxWidth: { xs: '320px', sm: 'none' },
+                                            boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.25)}`
+                                        }}
+                                    >
+                                        Save POS Methods
+                                    </Button>
+                                </Box>
                             </Box>
-                        </Stack>
-                        {(stripeStatus?.hasPublishableKey && stripeStatus?.hasSecretKey) ? <CheckCircleIcon sx={{ color: '#16a34a' }} /> : null}
-                    </Paper>
-                    <Typography variant="h6" sx={{ mb: 1, fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
-                        Stripe Payments
-                    </Typography>
-                    <Typography color="text.secondary" sx={{ mb: 3, fontWeight: 500, fontFamily: "'Outfit', sans-serif" }}>
-                        Configure your restaurant’s Stripe keys. These are tenant-specific and used for in-restaurant transactions.
-                    </Typography>
-                    <Grid container spacing={3}>
-                        {(stripeStatus?.hasPublishableKey || stripeStatus?.hasSecretKey || stripeStatus?.hasWebhookSecret) && (
-                            <Grid size={{ xs: 12 }}>
-                                <Alert severity="info" sx={{ mb: 2 }}>
-                                    Stripe credentials are stored securely. Existing values are never shown back in the client. Enter new values only when you want to replace them.
-                                </Alert>
-                            </Grid>
-                        )}
-                        <Grid size={{ xs: 12 }}>
-                            <TextField
-                                fullWidth
-                                label="Webhook URL (paste into Stripe)"
-                                value={webhookUrl || 'Loading...'}
-                                InputProps={{
-                                    readOnly: true,
-                                    endAdornment: (
-                                        <InputAdornment position="end">
-                                            <IconButton
-                                                aria-label="Copy webhook URL"
-                                                onClick={() => {
-                                                    if (webhookUrl) {
-                                                        navigator.clipboard.writeText(webhookUrl);
-                                                        toast.success('Webhook URL copied to clipboard');
-                                                    }
-                                                }}
-                                                edge="end"
-                                                disabled={!webhookUrl}
-                                            >
-                                                <ContentCopyIcon fontSize="small" />
-                                            </IconButton>
-                                        </InputAdornment>
-                                    ),
-                                }}
-                                helperText="Stripe Dashboard → Developers → Webhooks → Add endpoint"
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 6 }}>
-                            <TextField
-                                fullWidth
-                                label="Publishable Key"
-                                value={settings.payment.stripePublishableKey || ''}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({
-                                    ...prev,
-                                    payment: { ...prev.payment, stripePublishableKey: e.target.value.trim() }
-                                }))}
-                                placeholder="pk_test_..."
-                                autoComplete="off"
-                                helperText={stripeStatus.hasPublishableKey ? 'Already set. Leave blank to keep current key.' : ''}
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 6 }}>
-                            <TextField
-                                fullWidth
-                                label="Secret Key"
-                                type={showStripeSecretKey ? "text" : "password"}
-                                value={settings.payment.stripeSecretKey || ''}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({
-                                    ...prev,
-                                    payment: { ...prev.payment, stripeSecretKey: e.target.value.trim() }
-                                }))}
-                                placeholder="sk_test_..."
-                                autoComplete="new-password"
-                                helperText={stripeStatus.hasSecretKey ? 'Already set. Leave blank to keep current key.' : ''}
-                                InputProps={{
-                                    endAdornment: (
-                                        <InputAdornment position="end">
-                                            <IconButton onClick={() => setShowStripeSecretKey(!showStripeSecretKey)} edge="end">
-                                                {showStripeSecretKey ? <Visibility /> : <VisibilityOff />}
-                                            </IconButton>
-                                        </InputAdornment>
-                                    )
-                                }}
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 6 }}>
-                            <TextField
-                                fullWidth
-                                label="Webhook Signing Secret"
-                                type={showStripeWebhookSecret ? "text" : "password"}
-                                value={settings.payment.stripeWebhookSecret || ''}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({
-                                    ...prev,
-                                    payment: { ...prev.payment, stripeWebhookSecret: e.target.value.trim() }
-                                }))}
-                                placeholder="whsec_..."
-                                autoComplete="new-password"
-                                helperText={stripeStatus.hasWebhookSecret
-                                    ? 'Already set. Leave blank to keep current key.'
-                                    : 'Found in Stripe Dashboard → Developers → Webhooks'}
-                                InputProps={{
-                                    endAdornment: (
-                                        <InputAdornment position="end">
-                                            <IconButton onClick={() => setShowStripeWebhookSecret(!showStripeWebhookSecret)} edge="end">
-                                                {showStripeWebhookSecret ? <Visibility /> : <VisibilityOff />}
-                                            </IconButton>
-                                        </InputAdornment>
-                                    )
-                                }}
-                            />
-                        </Grid>
-                        <Grid size={{ xs: 12, md: 6 }}>
-                            <TextField
-                                select
-                                fullWidth
-                                label="Mode"
-                                value={settings.payment.stripeMode || 'test'}
-                                onChange={(e) => setSettings(prev => ({
-                                    ...prev,
-                                    payment: { ...prev.payment, stripeMode: e.target.value as 'test' | 'live' }
-                                }))}
-                            >
-                                <MenuItem value="test">Test</MenuItem>
-                                <MenuItem value="live">Live</MenuItem>
-                            </TextField>
-                        </Grid>
-                        <Grid size={{ xs: 12 }}>
-                            <Alert severity="warning" sx={{ mb: 2 }}>
-                                Keep your Secret and Webhook keys safe. Only admins should update these.
-                            </Alert>
-                            <Button
-                                variant="contained"
-                                startIcon={<SaveIcon />}
-                                onClick={async () => {
-                                    if (loading) return;
-                                    try {
-                                        setLoading(true);
-                                        const payload: any = {};
-                                        const pk = settings.payment.stripePublishableKey?.trim();
-                                        const sk = settings.payment.stripeSecretKey?.trim();
-                                        const wh = settings.payment.stripeWebhookSecret?.trim();
-                                        if (pk) payload.stripePublishableKey = pk;
-                                        if (sk) payload.stripeSecretKey = sk;
-                                        if (wh) payload.stripeWebhookSecret = wh;
-                                        if (settings.payment.stripeMode && settings.payment.stripeMode !== stripeStatus.stripeMode) {
-                                            payload.stripeMode = settings.payment.stripeMode;
-                                        }
 
-                                        if (Object.keys(payload).length === 0) {
-                                            toast.error('No changes to save');
-                                            return;
-                                        }
+                            <Divider sx={{ my: 4 }} />
 
-                                        await tenantAPI.updateStripeSettings(payload);
-                                        toast.success('Stripe settings saved');
-                                        // Refresh status flags
-                                        const statusResp = await tenantAPI.getStripeSettings();
-                                        setStripeStatus(statusResp.data || {});
-                                        // Clear sensitive fields after save so they are never re-displayed
-                                        setSettings(prev => ({
-                                            ...prev,
-                                            payment: {
-                                                ...prev.payment,
-                                                stripePublishableKey: '',
-                                                stripeSecretKey: '',
-                                                stripeWebhookSecret: '',
-                                            },
-                                        }));
-                                    } catch (error) {
-                                        console.error('Failed to save Stripe settings', error);
-                                        toast.error((error as any)?.response?.data?.message || 'Failed to save Stripe settings');
-                                    } finally {
-                                        setLoading(false);
-                                    }
-                                }}
-                                size="medium"
-                                disabled={loading}
+                            <Paper
+                                variant="outlined"
                                 sx={{
-                                    borderRadius: 2.5,
-                                    px: { xs: 3, sm: 4 },
-                                    fontWeight: 800,
-                                    fontFamily: "'Outfit', sans-serif",
-                                    width: { xs: 'auto', sm: 'auto' },
-                                    minWidth: { xs: '140px', sm: 'auto' },
-                                    boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.2)}`,
-                                    mt: { xs: 2, md: 0 }
+                                    p: 2.5,
+                                    mb: 3,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    borderRadius: 3,
+                                    bgcolor: (stripeStatus?.hasPublishableKey && stripeStatus?.hasSecretKey) ? alpha('#22c55e', 0.08) : alpha('#f59e0b', 0.08),
+                                    borderColor: (stripeStatus?.hasPublishableKey && stripeStatus?.hasSecretKey) ? alpha('#22c55e', 0.3) : alpha('#f59e0b', 0.3),
                                 }}
                             >
-                                Save Stripe Settings
-                            </Button>
-                        </Grid>
-                    </Grid>
-                    </>
+                                <Stack direction="row" spacing={2} alignItems="center">
+                                    <Avatar sx={{ bgcolor: '#635bff', color: '#fff' }}>
+                                        <CreditCardIcon />
+                                    </Avatar>
+                                    <Box>
+                                        <Typography variant="subtitle1" fontWeight={700}>
+                                            Stripe Payments
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary">
+                                            {(stripeStatus?.hasPublishableKey && stripeStatus?.hasSecretKey) ? 'Configured and connected' : 'Not connected'}
+                                        </Typography>
+                                    </Box>
+                                </Stack>
+                                {(stripeStatus?.hasPublishableKey && stripeStatus?.hasSecretKey) ? <CheckCircleIcon sx={{ color: '#16a34a' }} /> : null}
+                            </Paper>
+                            <Typography variant="h6" sx={{ mb: 1, fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
+                                Stripe Payments
+                            </Typography>
+                            <Typography color="text.secondary" sx={{ mb: 3, fontWeight: 500, fontFamily: "'Outfit', sans-serif" }}>
+                                Configure your restaurant’s Stripe keys. These are tenant-specific and used for in-restaurant transactions.
+                            </Typography>
+                            <Grid container spacing={3}>
+                                {(stripeStatus?.hasPublishableKey || stripeStatus?.hasSecretKey || stripeStatus?.hasWebhookSecret) && (
+                                    <Grid size={{ xs: 12 }}>
+                                        <Alert severity="info" sx={{ mb: 2 }}>
+                                            Stripe credentials are stored securely. Existing values are never shown back in the client. Enter new values only when you want to replace them.
+                                        </Alert>
+                                    </Grid>
+                                )}
+                                <Grid size={{ xs: 12 }}>
+                                    <TextField
+                                        fullWidth
+                                        label="Webhook URL (paste into Stripe)"
+                                        value={webhookUrl || 'Loading...'}
+                                        InputProps={{
+                                            readOnly: true,
+                                            endAdornment: (
+                                                <InputAdornment position="end">
+                                                    <IconButton
+                                                        aria-label="Copy webhook URL"
+                                                        onClick={() => {
+                                                            if (webhookUrl) {
+                                                                navigator.clipboard.writeText(webhookUrl);
+                                                                toast.success('Webhook URL copied to clipboard');
+                                                            }
+                                                        }}
+                                                        edge="end"
+                                                        disabled={!webhookUrl}
+                                                    >
+                                                        <ContentCopyIcon fontSize="small" />
+                                                    </IconButton>
+                                                </InputAdornment>
+                                            ),
+                                        }}
+                                        helperText="Stripe Dashboard → Developers → Webhooks → Add endpoint"
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        label="Publishable Key"
+                                        value={settings.payment.stripePublishableKey || ''}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({
+                                            ...prev,
+                                            payment: { ...prev.payment, stripePublishableKey: e.target.value.trim() }
+                                        }))}
+                                        placeholder="pk_test_..."
+                                        autoComplete="off"
+                                        helperText={stripeStatus.hasPublishableKey ? 'Already set. Leave blank to keep current key.' : ''}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        label="Secret Key"
+                                        type={showStripeSecretKey ? "text" : "password"}
+                                        value={settings.payment.stripeSecretKey || ''}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({
+                                            ...prev,
+                                            payment: { ...prev.payment, stripeSecretKey: e.target.value.trim() }
+                                        }))}
+                                        placeholder="sk_test_..."
+                                        autoComplete="new-password"
+                                        helperText={stripeStatus.hasSecretKey ? 'Already set. Leave blank to keep current key.' : ''}
+                                        InputProps={{
+                                            endAdornment: (
+                                                <InputAdornment position="end">
+                                                    <IconButton onClick={() => setShowStripeSecretKey(!showStripeSecretKey)} edge="end">
+                                                        {showStripeSecretKey ? <Visibility /> : <VisibilityOff />}
+                                                    </IconButton>
+                                                </InputAdornment>
+                                            )
+                                        }}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        fullWidth
+                                        label="Webhook Signing Secret"
+                                        type={showStripeWebhookSecret ? "text" : "password"}
+                                        value={settings.payment.stripeWebhookSecret || ''}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings(prev => ({
+                                            ...prev,
+                                            payment: { ...prev.payment, stripeWebhookSecret: e.target.value.trim() }
+                                        }))}
+                                        placeholder="whsec_..."
+                                        autoComplete="new-password"
+                                        helperText={stripeStatus.hasWebhookSecret
+                                            ? 'Already set. Leave blank to keep current key.'
+                                            : 'Found in Stripe Dashboard → Developers → Webhooks'}
+                                        InputProps={{
+                                            endAdornment: (
+                                                <InputAdornment position="end">
+                                                    <IconButton onClick={() => setShowStripeWebhookSecret(!showStripeWebhookSecret)} edge="end">
+                                                        {showStripeWebhookSecret ? <Visibility /> : <VisibilityOff />}
+                                                    </IconButton>
+                                                </InputAdornment>
+                                            )
+                                        }}
+                                    />
+                                </Grid>
+                                <Grid size={{ xs: 12, md: 6 }}>
+                                    <TextField
+                                        select
+                                        fullWidth
+                                        label="Mode"
+                                        value={settings.payment.stripeMode || 'test'}
+                                        onChange={(e) => setSettings(prev => ({
+                                            ...prev,
+                                            payment: { ...prev.payment, stripeMode: e.target.value as 'test' | 'live' }
+                                        }))}
+                                    >
+                                        <MenuItem value="test">Test</MenuItem>
+                                        <MenuItem value="live">Live</MenuItem>
+                                    </TextField>
+                                </Grid>
+                                <Grid size={{ xs: 12 }}>
+                                    <Alert severity="warning" sx={{ mb: 2 }}>
+                                        Keep your Secret and Webhook keys safe. Only admins should update these.
+                                    </Alert>
+                                    <Button
+                                        variant="contained"
+                                        startIcon={<SaveIcon />}
+                                        onClick={async () => {
+                                            if (loading) return;
+                                            try {
+                                                setLoading(true);
+                                                const payload: any = {};
+                                                const pk = settings.payment.stripePublishableKey?.trim();
+                                                const sk = settings.payment.stripeSecretKey?.trim();
+                                                const wh = settings.payment.stripeWebhookSecret?.trim();
+                                                if (pk) payload.stripePublishableKey = pk;
+                                                if (sk) payload.stripeSecretKey = sk;
+                                                if (wh) payload.stripeWebhookSecret = wh;
+                                                if (settings.payment.stripeMode && settings.payment.stripeMode !== stripeStatus.stripeMode) {
+                                                    payload.stripeMode = settings.payment.stripeMode;
+                                                }
+
+                                                if (Object.keys(payload).length === 0) {
+                                                    toast.error('No changes to save');
+                                                    return;
+                                                }
+
+                                                await tenantAPI.updateStripeSettings(payload);
+                                                toast.success('Stripe Settings updated successfully');
+                                                // Refresh status flags
+                                                const statusResp = await tenantAPI.getStripeSettings();
+                                                setStripeStatus(statusResp.data || {});
+                                                // Clear sensitive fields after save so they are never re-displayed
+                                                setSettings(prev => ({
+                                                    ...prev,
+                                                    payment: {
+                                                        ...prev.payment,
+                                                        stripePublishableKey: '',
+                                                        stripeSecretKey: '',
+                                                        stripeWebhookSecret: '',
+                                                    },
+                                                }));
+                                            } catch (error) {
+                                                console.error('Failed to save Stripe settings', error);
+                                                toast.error((error as any)?.response?.data?.message || 'Failed to save Stripe settings');
+                                            } finally {
+                                                setLoading(false);
+                                            }
+                                        }}
+                                        size="medium"
+                                        disabled={loading}
+                                        sx={{
+                                            borderRadius: 2.5,
+                                            px: { xs: 3, sm: 4 },
+                                            fontWeight: 800,
+                                            fontFamily: "'Outfit', sans-serif",
+                                            width: { xs: 'auto', sm: 'auto' },
+                                            minWidth: { xs: '140px', sm: 'auto' },
+                                            boxShadow: `0 8px 16px ${alpha(theme.palette.primary.main, 0.2)}`,
+                                            mt: { xs: 2, md: 0 }
+                                        }}
+                                    >
+                                        Save Stripe Settings
+                                    </Button>
+                                </Grid>
+                            </Grid>
+                        </>
                     )}
                 </TabPanel>
 
@@ -4955,13 +5065,7 @@ const SettingsPage: React.FC = () => {
                                             variant="contained"
                                             size={isMobile ? "medium" : "large"}
                                             startIcon={<SaveIcon />}
-                                            onClick={() => {
-                                                if ((settings.delivery?.builtIn?.baseMiles ?? 2) > (settings.delivery?.builtIn?.maxDeliveryRange ?? 15)) {
-                                                    toast.error('Base miles covered cannot exceed the maximum delivery range');
-                                                    return;
-                                                }
-                                                handleSave('delivery');
-                                            }}
+                                            onClick={() => handleSaveDeliveryProvider('builtIn')}
                                             disabled={loading || (settings.delivery?.builtIn?.baseMiles ?? 2) > (settings.delivery?.builtIn?.maxDeliveryRange ?? 15)}
                                             sx={{
                                                 borderRadius: 2.5,
@@ -5003,7 +5107,7 @@ const SettingsPage: React.FC = () => {
                                             variant="contained"
                                             size={isMobile ? "medium" : "large"}
                                             startIcon={<SaveIcon />}
-                                            onClick={() => handleSave('delivery')}
+                                            onClick={() => handleSaveDeliveryProvider('doordash')}
                                             disabled={loading}
                                             sx={{
                                                 borderRadius: 2.5,
@@ -5045,7 +5149,7 @@ const SettingsPage: React.FC = () => {
                                             variant="contained"
                                             size={isMobile ? "medium" : "large"}
                                             startIcon={<SaveIcon />}
-                                            onClick={() => handleSave('delivery')}
+                                            onClick={() => handleSaveDeliveryProvider('ubereats')}
                                             disabled={loading}
                                             sx={{
                                                 borderRadius: 2.5,
@@ -5071,21 +5175,22 @@ const SettingsPage: React.FC = () => {
                 <TabPanel value={tabValue} index={8}>
                     <Box sx={{ mb: 3 }}>
                         <Typography variant="h6" gutterBottom sx={{ fontWeight: 800, fontFamily: "'Outfit', sans-serif", display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <PriceChangeIcon color="primary" /> Bulk Menu Price Adjustment
+                            <PriceChangeIcon color="primary" /> Menu Price Adjustment
                         </Typography>
                         <Alert severity="info" sx={{ mb: 3 }}>
-                            Adjust prices for all menu items or by category by a percentage. Preview changes before applying.
+                            Adjust prices for all menu items, a category, or a single item — by percentage or a flat amount. Preview changes before applying.
                         </Alert>
 
-                        <Grid container spacing={3} sx={{ mb: 3 }}>
+                        <Grid container spacing={3} sx={{ mb: 2 }}>
                             <Grid size={{ xs: 12, sm: 4 }}>
                                 <TextField
                                     select
                                     fullWidth
                                     label="Category"
                                     value={priceSelectedCategory}
-                                    onChange={e => { setPriceSelectedCategory(e.target.value); setPricePreviewItems([]); }}
+                                    onChange={e => { setPriceSelectedCategory(e.target.value); setPriceSelectedItem('all'); setPricePreviewItems([]); }}
                                     size="small"
+                                    disabled={priceSelectedItem !== 'all'}
                                 >
                                     <MenuItem value="all">All Categories</MenuItem>
                                     {priceCategories.map((cat: any) => (
@@ -5095,14 +5200,52 @@ const SettingsPage: React.FC = () => {
                             </Grid>
                             <Grid size={{ xs: 12, sm: 4 }}>
                                 <TextField
+                                    select
                                     fullWidth
-                                    label="Adjustment %"
-                                    placeholder="e.g. 10 or -5"
+                                    label="Item"
+                                    value={priceSelectedItem}
+                                    onChange={e => { setPriceSelectedItem(e.target.value); setPricePreviewItems([]); }}
+                                    size="small"
+                                    helperText={
+                                        priceSelectedItem !== 'all'
+                                            ? `Current price: $${(priceMenuItems.find((i: any) => i._id === priceSelectedItem)?.price ?? 0).toFixed(2)}`
+                                            : ' '
+                                    }
+                                >
+                                    <MenuItem value="all">All Items (use Category)</MenuItem>
+                                    {priceMenuItems
+                                        .filter((item: any) => priceSelectedCategory === 'all' || (typeof item.category === 'object' ? item.category?._id : item.category) === priceSelectedCategory)
+                                        .map((item: any) => (
+                                            <MenuItem key={item._id} value={item._id}>{item.name}</MenuItem>
+                                        ))}
+                                </TextField>
+                            </Grid>
+                            <Grid size={{ xs: 12, sm: 4 }}>
+                                <ToggleButtonGroup
+                                    value={priceAdjustmentType}
+                                    exclusive
+                                    fullWidth
+                                    size="small"
+                                    onChange={(_, val) => { if (val) { setPriceAdjustmentType(val); setPricePreviewItems([]); } }}
+                                    sx={{ height: 40 }}
+                                >
+                                    <ToggleButton value="percentage">Percentage</ToggleButton>
+                                    <ToggleButton value="flat">Flat Amount</ToggleButton>
+                                </ToggleButtonGroup>
+                            </Grid>
+                        </Grid>
+
+                        <Grid container spacing={3} sx={{ mb: 3 }}>
+                            <Grid size={{ xs: 12, sm: 4 }}>
+                                <TextField
+                                    fullWidth
+                                    label={priceAdjustmentType === 'flat' ? 'Adjustment Amount' : 'Adjustment %'}
+                                    placeholder={priceAdjustmentType === 'flat' ? 'e.g. 2 or -1.50' : 'e.g. 10 or -5'}
                                     value={pricePercentage}
                                     onChange={e => { setPricePercentage(e.target.value); setPricePreviewItems([]); }}
                                     size="small"
                                     type="number"
-                                    InputProps={{ endAdornment: <InputAdornment position="end">%</InputAdornment> }}
+                                    InputProps={{ endAdornment: <InputAdornment position="end">{priceAdjustmentType === 'flat' ? '$' : '%'}</InputAdornment> }}
                                 />
                             </Grid>
                             <Grid size={{ xs: 12, sm: 4 }}>
@@ -5132,7 +5275,7 @@ const SettingsPage: React.FC = () => {
                                         disabled={priceApplyLoading}
                                         startIcon={priceApplyLoading ? <CircularProgress size={16} color="inherit" /> : undefined}
                                     >
-                                        {priceApplyLoading ? 'Applying…' : `Apply ${pricePercentage}% to ${pricePreviewItems.length} items`}
+                                        {priceApplyLoading ? 'Applying…' : `Apply ${pricePercentage}${priceAdjustmentType === 'flat' ? '$' : '%'} to ${pricePreviewItems.length} items`}
                                     </Button>
                                 </Box>
                                 <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
@@ -5190,7 +5333,7 @@ const SettingsPage: React.FC = () => {
                                                     <TableRow sx={{ bgcolor: 'grey.50' }}>
                                                         <TableCell><strong>Updated By</strong></TableCell>
                                                         <TableCell><strong>Adjustment</strong></TableCell>
-                                                        <TableCell><strong>Category</strong></TableCell>
+                                                        <TableCell><strong>Scope</strong></TableCell>
                                                         <TableCell align="right"><strong>Items</strong></TableCell>
                                                         <TableCell><strong>Date &amp; Time</strong></TableCell>
                                                     </TableRow>
@@ -5205,9 +5348,9 @@ const SettingsPage: React.FC = () => {
                                                                 )}
                                                             </TableCell>
                                                             <TableCell sx={{ color: log.percentage > 0 ? 'success.main' : 'error.main', fontWeight: 600 }}>
-                                                                {log.percentage > 0 ? '+' : ''}{log.percentage}%
+                                                                {log.percentage > 0 ? '+' : ''}{log.percentage}{log.adjustmentType === 'flat' ? '$' : '%'}
                                                             </TableCell>
-                                                            <TableCell>{log.categoryName || 'All Categories'}</TableCell>
+                                                            <TableCell>{log.itemName || log.categoryName || 'All Categories'}</TableCell>
                                                             <TableCell align="right">{log.itemsUpdated}</TableCell>
                                                             <TableCell>
                                                                 {new Date(log.createdAt).toLocaleString('en-US', {

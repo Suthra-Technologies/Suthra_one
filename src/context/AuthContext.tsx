@@ -176,6 +176,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
     localStorage.removeItem('user');
     localStorage.removeItem('activeRole');
     localStorage.removeItem('availableTenants');
+    // The notification effect no longer tears the socket down on every re-run,
+    // so logout is where the connection is actually closed.
+    socketService.disconnect();
   };
 
   // Mirrors TenantPermissionsGuard on the backend so the UI can disable actions the
@@ -275,8 +278,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode; initialUser?: a
         }
 
         // Reload into the new subdomain, transferring the session via a one-time
-        // code (no token in the URL).
-        await redirectToTenant(slug, '/dashboard', newToken);
+        // code (no token in the URL). Accountant has no dashboard access, so it
+        // lands on Reports instead.
+        const landingPath = userObj.roles?.[0] === 'accountant' ? '/reports' : '/dashboard';
+        await redirectToTenant(slug, landingPath, newToken);
       }
     } catch (error: any) {
       console.error('Failed to switch tenant', error);

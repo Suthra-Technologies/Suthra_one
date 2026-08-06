@@ -1976,7 +1976,7 @@ const POSPage: React.FC = () => {
                             size="small"
                             fullWidth
                             value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onChange={(e) => setSearchQuery(e.target.value.replace(/[^a-zA-Z0-9 ]/g, ''))}
                             InputProps={{
                                 startAdornment: (
                                     <InputAdornment position="start">
@@ -2034,7 +2034,7 @@ const POSPage: React.FC = () => {
                             </Box>
                         )}
                     </Box>
-                    <Button 
+                    {/* <Button 
                         variant="outlined" 
                         color="secondary" 
                         startIcon={<AddIcon />} 
@@ -2042,7 +2042,7 @@ const POSPage: React.FC = () => {
                         sx={{ whiteSpace: 'nowrap', minWidth: { xs: '100%', sm: 'auto' }, alignSelf: 'stretch' }}
                     >
                         Custom Item
-                    </Button>
+                    </Button> */}
                 </Box>
                 {/* Food Type Toggle — above tabs, right-aligned */}
                 <Box

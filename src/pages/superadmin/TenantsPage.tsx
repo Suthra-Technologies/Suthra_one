@@ -37,7 +37,7 @@ const TenantsPage: React.FC = () => {
   const [plans, setPlans] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [rowsPerPage, setRowsPerPage] = useState(12);
   const [totalTenants, setTotalTenants] = useState(0);
   const [search, setSearch] = useState('');
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -258,6 +258,27 @@ const TenantsPage: React.FC = () => {
                         <Typography variant="caption" color="primary" sx={{ fontWeight: 600 }} noWrap>
                           {tenant.slug}
                         </Typography>
+                        <Tooltip title="Click to copy tenant ID">
+                          <Typography
+                            variant="caption"
+                            color="textSecondary"
+                            noWrap
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigator.clipboard.writeText(tenant._id);
+                              toast.success('Tenant ID copied');
+                            }}
+                            sx={{
+                              display: 'block',
+                              fontFamily: 'monospace',
+                              fontSize: '0.65rem',
+                              cursor: 'pointer',
+                              '&:hover': { color: 'primary.main', textDecoration: 'underline' },
+                            }}
+                          >
+                            ID: {tenant._id}
+                          </Typography>
+                        </Tooltip>
                       </Box>
                       <Tooltip title="Click to change account status">
                         <Chip

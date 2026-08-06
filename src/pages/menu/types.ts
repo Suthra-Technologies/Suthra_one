@@ -47,6 +47,25 @@ export interface ModifierGroupTemplate extends ModifierGroup {
     menuItems?: string[];
 }
 
+export interface SpiceLevel {
+    value: string;
+    label: string;
+    description?: string;
+}
+
+/** A reusable, named scale of spice levels shared across many menu items. */
+export interface SpiceLevelSet {
+    _id: string;
+    name: string;
+    description?: string;
+    levels: SpiceLevel[];
+    isDefault?: boolean;
+    isActive?: boolean;
+    isDeleted?: boolean;
+    /** How many menu items currently use this set (returned by the list endpoint). */
+    menuItemCount?: number;
+}
+
 export interface TrayOption {
     tray: string;
     price: number;
@@ -69,6 +88,7 @@ export interface IMenuItem {
     linkedGroups?: (string | ModifierGroupTemplate)[];
     addOns?: string[];
     actionHistory?: any[];
+    taxCode?: string;
     taxRate?: number | null;
     isCateringAvailable: boolean;
     isAutoDebit?: boolean;
@@ -77,10 +97,13 @@ export interface IMenuItem {
     quantityType?: 'number' | 'tray';
     baseTray?: string;
     servingSize?: number;
-    spiceLevel?: 'mild' | 'medium' | 'hot' | 'very_hot';
+    // Levels come from the linked SpiceLevelSet; spiceLevels/spiceLevelData are
+    // resolved server-side from that set and are read-only on the client.
+    spiceLevel?: string;
     isSpiceLevelAvailable?: boolean;
+    spiceLevelSet?: string | SpiceLevelSet | null;
     spiceLevels?: string[];
-    spiceLevelData?: any;
+    spiceLevelData?: Record<string, string>;
     availableDays?: string[];
     isWeeklyScheduleEnabled?: boolean;
     availabilityType?: 'highlight' | 'available_only';

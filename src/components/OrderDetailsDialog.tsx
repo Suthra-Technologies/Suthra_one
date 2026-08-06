@@ -127,6 +127,7 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
     const canAddMoreItems = canAddItems(order.status, order.orderType, order);
     // Global Dine In orders have already paid - don't show collect payment
     const canCollectPayment = order.orderType === 'dine_in' && order.status === 'served' && !isGlobalDineIn(order);
+    const isCancelled = order.status === 'cancelled' || order.status === 'canceled';
 
     const getPaymentBadgeColor = (method: string | string[]) => {
         let m = method;
@@ -310,17 +311,17 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                         <Stack spacing={1}>
                             {order.customer?.name && (
                                 <Typography variant="body2">
-                                    <strong>Name:</strong> {order.customer.name}
+                                    <strong>Name:</strong> {order.customer?.name || 'Walk-in'}
                                 </Typography>
                             )}
                             {order.customer?.phone && (
                                 <Typography variant="body2">
-                                    <strong>Phone:</strong> {order.customer.phone}
+                                    <strong>Phone:</strong> {order.customer?.phone}
                                 </Typography>
                             )}
                             {order.customer?.email && (
                                 <Typography variant="body2">
-                                    <strong>Email:</strong> {order.customer.email}
+                                    <strong>Email:</strong> {order.customer?.email}
                                 </Typography>
                             )}
                             {(order.tableNumber || order.table) && (
@@ -644,22 +645,22 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                                 <Typography variant="body2">Subtotal:</Typography>
                                 <Typography variant="body2">{formatCurrency(order.subtotal)}</Typography>
                             </Box>
-                            {order.tax?.amount > 0 && (
+                            {(order.tax?.amount ?? 0) > 0 && (
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                                     <Typography variant="body2">Tax </Typography>
-                                    <Typography variant="body2">{formatCurrency(order.tax.amount)}</Typography>
+                                    <Typography variant="body2">{formatCurrency(order.tax?.amount ?? 0)}</Typography>
                                 </Box>
                             )}
-                            {order.processingFee > 0 && (
+                            {(order.processingFee ?? 0) > 0 && (
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                                     <Typography variant="body2">Processing Fee:</Typography>
-                                    <Typography variant="body2">{formatCurrency(order.processingFee)}</Typography>
+                                    <Typography variant="body2">{formatCurrency(order.processingFee ?? 0)}</Typography>
                                 </Box>
                             )}
-                            {order.serviceCharge?.amount > 0 && (
+                            {(order.serviceCharge?.amount ?? 0) > 0 && (
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                    <Typography variant="body2">Service Charge ({order.serviceCharge.rate}%):</Typography>
-                                    <Typography variant="body2">{formatCurrency(order.serviceCharge.amount)}</Typography>
+                                    <Typography variant="body2">Service Charge ({order.serviceCharge?.rate ?? 0}%):</Typography>
+                                    <Typography variant="body2">{formatCurrency(order.serviceCharge?.amount ?? 0)}</Typography>
                                 </Box>
                             )}
                             {(order.discount?.amount > 0 || order.couponDiscount > 0) && (

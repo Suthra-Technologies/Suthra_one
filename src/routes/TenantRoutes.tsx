@@ -22,6 +22,7 @@ import KitchenInterface from '../pages/kitchen/KitchenInterface';
 import KitchenOrdersPage from '../pages/kitchen/KitchenOrdersPage';
 import MenuPage from '../pages/menu/MenuPage';
 import AddOnGroupsPage from '../pages/menu/AddOnGroupsPage';
+import SpiceLevelSetsPage from '../pages/menu/SpiceLevelSetsPage';
 import TraysPage from '../pages/menu/TraysPage';
 import OrdersPage from '../pages/orders/OrdersPage';
 import POSPage from '../pages/pos/POSPage';
@@ -94,81 +95,139 @@ export const TenantRoutes = () => (
 
     {/* ─── Admin/Staff Routes (With Sidebar Layout) ─── */}
     <Route element={<Layout />}>
-      <Route path="dashboard" element={<DashboardPage />} />
-      <Route path="orders" element={<OrdersPage />} />
-      <Route path="pos" element={<POSPage />} />
-      <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
-      <Route path="purchase-orders/create" element={<CreatePOPage />} />
-      <Route path="purchase-orders/edit/:id" element={<CreatePOPage />} />
-      <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
-      
+      <Route element={<RequireFeature feature="dashboard" />}>
+        <Route path="dashboard" element={<DashboardPage />} />
+      </Route>
+      <Route element={<RequireFeature feature="orders" />}>
+        <Route path="orders" element={<OrdersPage />} />
+      </Route>
+      <Route element={<RequireFeature feature="pos" />}>
+        <Route path="pos" element={<POSPage />} />
+      </Route>
+      <Route element={<RequireFeature feature="purchaseorders" />}>
+        <Route path="purchase-orders" element={<PurchaseOrdersPage />} />
+        <Route path="purchase-orders/create" element={<CreatePOPage />} />
+        <Route path="purchase-orders/edit/:id" element={<CreatePOPage />} />
+        <Route path="purchase-orders/:id" element={<PurchaseOrderDetailPage />} />
+      </Route>
+
       <Route element={<RequireRole allowedRoles={['admin', 'manager']} />}>
-        <Route path="expenses" element={<ExpensesPage />} />
-        <Route path="expenses/:id" element={<ExpenseDetailPage />} />
-        <Route path="expenses/create" element={<CreateExpensePage />} />
-        <Route path="expenses/edit/:id" element={<CreateExpensePage />} />
-        <Route path="menu" element={<MenuPage />} />
-        <Route path="global-add-ons" element={<AddOnGroupsPage />} />
+        <Route element={<RequireFeature feature="expenses" />}>
+          <Route path="expenses" element={<ExpensesPage />} />
+          <Route path="expenses/:id" element={<ExpenseDetailPage />} />
+          <Route path="expenses/create" element={<CreateExpensePage />} />
+          <Route path="expenses/edit/:id" element={<CreateExpensePage />} />
+        </Route>
+        <Route element={<RequireFeature feature="menu" />}>
+          <Route path="menu" element={<MenuPage />} />
+        </Route>
+        <Route element={<RequireFeature feature="globaladdons" />}>
+          <Route path="global-add-ons" element={<AddOnGroupsPage />} />
+        </Route>
         <Route element={<RequireFeature feature="inventory" />}>
           <Route path="inventory" element={<InventoryPage />} />
         </Route>
         <Route element={<RequireFeature feature="wastemanagement" />}>
           <Route path="inventory/waste" element={<WasteManagementPage />} />
         </Route>
-        <Route path="vendors" element={<VendorsPage />} />
-        <Route path="material-providers" element={<MaterialProvidersPage />} />
-        <Route path="recipes" element={<RecipesPage />} />
-        <Route path="recipes/create" element={<CreateRecipePage />} />
-        <Route path="recipes/:id/edit" element={<CreateRecipePage />} />
-        <Route path="reports" element={<ReportsPage />} />
-        <Route path="users" element={<UsersPage />} />
-        <Route path="customers" element={<CustomersPage />} />
-        <Route path="settings" element={<SettingsPage />} />
-        <Route path="manage-notifications" element={<ManageNotificationsPage />} />
-        <Route path="support" element={<AdminSupportPage />} />
-        <Route path="customer-support" element={<CustomerSupportPage />} />
-        <Route path="promocode" element={<PromoCodePage />} />
-        <Route path="coupons" element={< CouponsAdminPage />} />
+        <Route element={<RequireFeature feature="vendors" />}>
+          <Route path="vendors" element={<VendorsPage />} />
+        </Route>
+        <Route element={<RequireFeature feature="materialproviders" />}>
+          <Route path="material-providers" element={<MaterialProvidersPage />} />
+        </Route>
+        <Route element={<RequireFeature feature="recipes" />}>
+          <Route path="recipes" element={<RecipesPage />} />
+          <Route path="recipes/create" element={<CreateRecipePage />} />
+          <Route path="recipes/:id/edit" element={<CreateRecipePage />} />
+        </Route>
+        <Route element={<RequireFeature feature="reports" />}>
+          <Route path="reports" element={<ReportsPage />} />
+        </Route>
+        <Route element={<RequireFeature feature="users" />}>
+          <Route path="users" element={<UsersPage />} />
+        </Route>
+        <Route element={<RequireFeature feature="customers" />}>
+          <Route path="customers" element={<CustomersPage />} />
+        </Route>
+        <Route element={<RequireFeature feature="settings" />}>
+          <Route path="settings" element={<SettingsPage />} />
+        </Route>
+        <Route element={<RequireFeature feature="managenotifications" />}>
+          <Route path="manage-notifications" element={<ManageNotificationsPage />} />
+        </Route>
+        <Route element={<RequireFeature feature="support" />}>
+          <Route path="support" element={<AdminSupportPage />} />
+        </Route>
+        <Route element={<RequireFeature feature="customersupport" />}>
+          <Route path="customer-support" element={<CustomerSupportPage />} />
+        </Route>
+        <Route element={<RequireFeature feature="promocoupons" />}>
+          <Route path="promocode" element={<PromoCodePage />} />
+          <Route path="coupons" element={< CouponsAdminPage />} />
+        </Route>
         <Route element={<RequireFeature feature="attendance" />}>
           <Route path="attendance" element={<AttendancePage />} />
         </Route>
-        <Route path="customise-screens" element={<CustomiseScreensPage />} />
-        <Route path="service-usage" element={<ServiceUsagePage />} />
-        <Route path="customer-activities" element={<CustomerActivitiesPage />} />
-        <Route path="audit-logs" element={<AuditLogsPage />} />
-        <Route path="assets" element={<AssetList />} />
-        <Route path="assets/:id" element={<AssetView />} />
-        <Route path="assets/new" element={<AssetForm />} />
-        <Route path="assets/:id/edit" element={<AssetForm />} />
-        <Route path="disputes" element={<DisputeList />} />
-        <Route path="disputes/:id" element={<DisputeDetails />} />
+        <Route element={<RequireFeature feature="customisescreens" />}>
+          <Route path="customise-screens" element={<CustomiseScreensPage />} />
+        </Route>
+        <Route element={<RequireFeature feature="serviceusage" />}>
+          <Route path="service-usage" element={<ServiceUsagePage />} />
+        </Route>
+        <Route element={<RequireFeature feature="customeractivities" />}>
+          <Route path="customer-activities" element={<CustomerActivitiesPage />} />
+        </Route>
+        <Route element={<RequireFeature feature="auditlogs" />}>
+          <Route path="audit-logs" element={<AuditLogsPage />} />
+        </Route>
+        <Route element={<RequireFeature feature="assets" />}>
+          <Route path="assets" element={<AssetList />} />
+          <Route path="assets/:id" element={<AssetView />} />
+          <Route path="assets/new" element={<AssetForm />} />
+          <Route path="assets/:id/edit" element={<AssetForm />} />
+        </Route>
+        <Route element={<RequireFeature feature="disputes" />}>
+          <Route path="disputes" element={<DisputeList />} />
+          <Route path="disputes/:id" element={<DisputeDetails />} />
+        </Route>
       </Route>
 
       <Route element={<RequireRole allowedRoles={['admin', 'superadmin']} />}>
-        <Route path="invoices" element={<InvoicesPage />} />
-        <Route path="invoices/:id" element={<InvoiceDetailPage />} />
+        <Route element={<RequireFeature feature="invoices" />}>
+          <Route path="invoices" element={<InvoicesPage />} />
+          <Route path="invoices/:id" element={<InvoiceDetailPage />} />
+        </Route>
       </Route>
 
       <Route element={<RequireRole allowedRoles={['admin']} />}>
-        <Route path="subscription" element={<SubscriptionPage />} />
-        <Route path="subscription/success" element={<SubscriptionSuccess />} />
-        <Route path="subscription/cancel" element={<SubscriptionCancel />} />
+        <Route element={<RequireFeature feature="subscription" />}>
+          <Route path="subscription" element={<SubscriptionPage />} />
+          <Route path="subscription/success" element={<SubscriptionSuccess />} />
+          <Route path="subscription/cancel" element={<SubscriptionCancel />} />
+        </Route>
       </Route>
 
-        <Route element={<RequireRole allowedRoles={['admin', 'manager', 'cashier']} />}>
+      <Route element={<RequireRole allowedRoles={['admin', 'manager', 'cashier']} />}>
+        <Route element={<RequireFeature feature="tables" />}>
           <Route path="tables" element={<TablesPage />} />
         </Route>
+      </Route>
 
-        <Route element={<RequireRole allowedRoles={['admin', 'manager', 'waiter']} />}>
+      <Route element={<RequireRole allowedRoles={['admin', 'manager', 'waiter']} />}>
+        <Route element={<RequireFeature feature="bookings" />}>
           <Route path="bookings" element={<BookingsAdminPage />} />
         </Route>
+      </Route>
 
       <Route path="profile" element={<ProfilePage />} />
 
       {/* Kitchen Routes */}
       <Route element={<RequireRole allowedRoles={['admin', 'manager', 'kitchen_staff']} />}>
-        <Route path="kitchen" element={<KitchenInterface />} />
-        <Route path="kot" element={<KitchenOrdersPage />} />
+        <Route element={<RequireFeature feature="kitchen" />}>
+          <Route path="kitchen" element={<KitchenInterface />} />
+          <Route path="kot" element={<KitchenOrdersPage />} />
+        </Route>
       </Route>
 
       {/* Protected admin catering routes */}

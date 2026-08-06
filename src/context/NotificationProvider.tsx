@@ -3,7 +3,7 @@ import { socketService } from '../services/socket.service';
 import { useAuth } from './AuthContext';
 import { toast as realToast } from 'react-hot-toast';
 import { Box, Typography, IconButton } from '@mui/material';
-import { Close as CloseIcon, Restaurant as RestaurantIcon, EventSeat as BookIcon, SupportAgent as SupportIcon } from '@mui/icons-material';
+import { Close as CloseIcon, Restaurant as RestaurantIcon, EventSeat as BookIcon, SupportAgent as SupportIcon, Inventory2Outlined as InventoryIcon } from '@mui/icons-material';
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { PushNotifications } from '@capacitor/push-notifications';
@@ -376,11 +376,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const { displayTokenNo, displayOrderType } = getOrderNotificationDetails(data);
 
         let title = `New ${typeLabel} Order!`;
-        let body = `Token No #${displayTokenNo}\nType: ${displayOrderType}\nStatus: Placed`;
+        let body = `#${displayTokenNo} · ${displayOrderType}`;
 
         if (isOwnOrder) {
             title = 'Order Placed!';
-            body = `Token No #${displayTokenNo}\nType: ${displayOrderType}\nStatus: Placed`;
+            body = `#${displayTokenNo} · ${displayOrderType}`;
         }
 
         if (true) {
@@ -530,10 +530,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
         const { displayTokenNo, displayOrderType, displayStatus } = getOrderNotificationDetails(data);
         const title = 'Order Update';
-        let message = `Token No #${displayTokenNo}\nType: ${displayOrderType}\nStatus: ${displayStatus}`;
+        let message = `#${displayTokenNo} · ${displayOrderType} · ${displayStatus}`;
 
         if (isOwnOrder) {
-            message = `Token No #${displayTokenNo}\nType: ${displayOrderType}\nStatus: ${displayStatus}`;
+            message = `#${displayTokenNo} · ${displayOrderType} · ${displayStatus}`;
         }
 
         showNotification(title, message);
@@ -659,7 +659,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const orderNum = data.order?.orderNumber || 'Catering Order';
         const customerName = data.order?.customerName || 'Customer';
         const title = `New Catering Order!`;
-        const body = `Order No: ${orderNum}\nCustomer: ${customerName}\nStatus: Pending`;
+        const body = `${orderNum} · ${customerName}`;
         showNotification(title, body);
 
         toast.custom((t) => (
@@ -695,7 +695,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         const rawStatus = data.status || data.order?.status || 'Update';
         const displayStatus = String(rawStatus).replace(/_/g, ' ').replace(/\b\w/g, (char) => char?.toUpperCase());
         const title = `Catering Order Update`;
-        const body = `Order No: ${orderNum}\nStatus: ${displayStatus}`;
+        const body = `${orderNum} · ${displayStatus}`;
         showNotification(title, body);
 
         toast.custom((t) => (
@@ -775,12 +775,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             const status = data.status ? String(data.status).replace(/_/g, ' ') : '';
 
             const body = [
-                `Customer: ${customerName}`,
-                guests ? `Guests: ${guests}` : null,
-                tableName ? `Table: ${tableName}` : null,
-                [day, slot].filter(Boolean).length ? `Time: ${[day, slot].filter(Boolean).join(' ')}` : null,
-                status ? `Status: ${status}` : null,
-            ].filter(Boolean).join('\n');
+                customerName,
+                guests ? `${guests} guests` : null,
+                tableName,
+                [day, slot].filter(Boolean).join(' ') || null,
+                status,
+            ].filter(Boolean).join(' · ');
 
             showNotification(title, body);
 
@@ -828,12 +828,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             const status = data.status ? String(data.status).replace(/_/g, ' ') : '';
 
             const body = [
-                ref ? `Ticket: ${ref}` : null,
-                `Customer: ${customerName}`,
-                ticket.subject ? `Subject: ${ticket.subject}` : null,
-                status ? `Status: ${status}` : null,
-                data.message ? `Message: ${String(data.message).slice(0, 120)}` : null,
-            ].filter(Boolean).join('\n');
+                ref,
+                customerName,
+                ticket.subject,
+                status,
+                data.message ? String(data.message).slice(0, 60) : null,
+            ].filter(Boolean).join(' · ');
 
             showNotification(title, body);
 
@@ -859,6 +859,63 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         handleSupportTicketEvent('New Support Ticket!', 'high', 'support-ticket'), [handleSupportTicketEvent]);
     const handleSupportTicketUpdate = useCallback(
         handleSupportTicketEvent('Support Ticket Update', 'medium', 'support-ticket-update'), [handleSupportTicketEvent]);
+
+    /**
+     * Inventory stock shortages.
+     *
+     * The backend only emits this when an item crosses *into* a worse level than
+     * was last announced, so this fires once per shortage rather than on every
+     * deduction. The lasting warning lives on the dashboard, driven by the alert
+     * state persisted on the item — this handler is purely the one-time alert.
+     */
+    const handleInventoryStockAlert = useCallback((data: any) => {
+        console.log('🔔 [NotificationProvider] RAW inventory stock alert:', data);
+        if (!user) return;
+
+        const item = data?.item || {};
+        const isCritical = data?.level === 'critical';
+
+        playNotificationSound();
+
+        const title = isCritical ? 'Critical Stock!' : 'Low Stock Alert';
+        const threshold = item.reorderLevel || item.minimumStock || 0;
+        const unit = item.unit || '';
+        // Single line, matching the push copy: the item name plus the two
+        // numbers that matter. Labels and the SKU only made the toast tall.
+        const remaining = `${item.currentStock ?? 0} ${unit}`.trim();
+        const body = `${item.name || 'Unknown'} · ${remaining} left · reorder at ${threshold}`;
+
+        showNotification(title, body);
+
+        toast.custom((t) => (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, bgcolor: isCritical ? 'error.main' : 'warning.main', color: 'white', p: 2, borderRadius: 2, boxShadow: 3, minWidth: 300, cursor: 'pointer' }} onClick={() => toast.dismiss(t.id)}>
+                <InventoryIcon />
+                <Box sx={{ flexGrow: 1 }}>
+                    <Typography variant="subtitle1" fontWeight="bold">{title}</Typography>
+                    <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>{body}</Typography>
+                </Box>
+                <IconButton size="small" sx={{ color: 'white' }}><CloseIcon /></IconButton>
+            </Box>
+        ), { duration: 8000, position: 'top-right' });
+
+        const newNotif: Notification = {
+            // Keyed by item and level so re-delivery of the same shortage
+            // replaces the entry rather than stacking duplicates.
+            id: `stock-${item._id || 'unknown'}-${data?.level}`,
+            timestamp: new Date(),
+            read: false,
+            type: isCritical ? 'inventory-critical-stock' : 'inventory-low-stock',
+            title,
+            message: body,
+            priority: 'high',
+            data,
+        };
+        setNotifications(prev => [newNotif, ...prev.filter(n => n.id !== newNotif.id)].slice(0, 50));
+
+        // Refresh the dashboard so its standing warning picks up the new item
+        // without waiting for the next manual reload.
+        window.dispatchEvent(new CustomEvent('dashboardRefetch'));
+    }, [user, playNotificationSound, showNotification]);
 
     const [deliveryLocations, setDeliveryLocations] = useState<Record<string, { lat: number, lng: number, timestamp: Date }>>({});
 
@@ -998,6 +1055,10 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         socketService.on('newSupportTicket', handleNewSupportTicket);
         socketService.on('supportTicketUpdate', handleSupportTicketUpdate);
 
+        // Inventory stock shortages
+        socketService.on('inventoryLowStock', handleInventoryStockAlert);
+        socketService.on('inventoryCriticalStock', handleInventoryStockAlert);
+
         return () => {
             console.log('🔌 [NotificationProvider] Cleanup: removing listeners');
             socketService.off('newOrder', handleNewOrder);
@@ -1018,11 +1079,15 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
             socketService.off('newSupportTicket', handleNewSupportTicket);
             socketService.off('supportTicketUpdate', handleSupportTicketUpdate);
-            // Optional: disconnect on unmount? Better to keep it alive? 
-            // Usually disconnecting is safer to prevent duplicate handlers if remounted.
-            socketService.disconnect();
+
+            socketService.off('inventoryLowStock', handleInventoryStockAlert);
+            socketService.off('inventoryCriticalStock', handleInventoryStockAlert);
+            // Deliberately NOT disconnecting here. This effect re-runs whenever a
+            // handler identity changes (settings loading rebuilds them), and
+            // tearing the socket down each time raced the reconnect, leaving a
+            // connected-but-deaf socket. Disconnect happens on logout instead.
         };
-    }, [user?.sub, user?.role, handleNewOrder, handleOrderStatusUpdate, handleNewCateringOrder, handleCateringOrderStatusUpdate, handleCateringOrderUpdate, handleNewBooking, handleBookingStatusUpdate, handleBookingCheckedIn, handleNewSupportTicket, handleSupportTicketUpdate]); // Re-connect only if identity changes
+    }, [user?.sub, user?.role, handleNewOrder, handleOrderStatusUpdate, handleNewCateringOrder, handleCateringOrderStatusUpdate, handleCateringOrderUpdate, handleNewBooking, handleBookingStatusUpdate, handleBookingCheckedIn, handleNewSupportTicket, handleSupportTicketUpdate, handleInventoryStockAlert]); // Re-connect only if identity changes
 
     // ── Subscription expiry / expired warning ─────────────────────────────
     // Derives a synthetic notification from the tenant's subscription state

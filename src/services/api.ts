@@ -55,8 +55,8 @@ const api: AxiosInstance = axios.create({
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const isSkippedUrl = config.url && (
-      config.url.includes('/auth/login') || 
-      config.url.includes('/auth/forgot-password') || 
+      config.url.includes('/auth/login') ||
+      config.url.includes('/auth/forgot-password') ||
       config.url.includes('/auth/switch-tenant')
     );
     if (!isSkippedUrl) {
@@ -78,8 +78,8 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response: AxiosResponse) => {
     const isSkippedUrl = response.config?.url && (
-      response.config.url.includes('/auth/login') || 
-      response.config.url.includes('/auth/forgot-password') || 
+      response.config.url.includes('/auth/login') ||
+      response.config.url.includes('/auth/forgot-password') ||
       response.config.url.includes('/auth/switch-tenant')
     );
     if (!isSkippedUrl) {
@@ -89,14 +89,14 @@ api.interceptors.response.use(
   },
   (error) => {
     const isSkippedUrl = error.config?.url && (
-      error.config.url.includes('/auth/login') || 
-      error.config.url.includes('/auth/forgot-password') || 
+      error.config.url.includes('/auth/login') ||
+      error.config.url.includes('/auth/forgot-password') ||
       error.config.url.includes('/auth/switch-tenant')
     );
     if (!isSkippedUrl) {
       handleRequestEnd(error.config?.method, true);
     }
-    
+
     const message = error.response?.data?.message || error.message || 'An error occurred';
     if (error.response?.status === 401) {
       // Mobile-only: keep local session until explicit logout.
@@ -138,6 +138,13 @@ api.interceptors.response.use(
     //   toast.error('Server error. Please try again later.');
     //   return Promise.reject(error);
     // }
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      toast.error('Network offline. Please check your internet connection.', { id: 'network-offline' });
+      return Promise.reject(error);
+    }
+    if (error.code === 'ECONNABORTED' || (typeof error.message === 'string' && error.message.includes('timeout'))) {
+      console.warn('API Timeout encountered:', error.config?.url);
+    }
     if (error.response?.status < 500 && error.response?.status >= 400) {
       console.warn('API Error:', message);
     }
@@ -348,7 +355,7 @@ export const attendanceAPI = {
   getAllAttendance: (filters: any) => api.get('/attendance/admin/all', { params: filters }),
   createManual: (data: any) => api.post('/attendance/admin/manual', data),
   update: (id: string, data: any) => api.patch(`/attendance/admin/${id}`, data),
-  exportFinancials: (filters: any) => api.get('/attendance/admin/export', { params: filters, responseType: 'blob' }),
+  exportFinancials: (filters: any) => api.get('/attendance/admin/export', { params: filters, responseType: 'blob', timeout: 120000 }),
 };
 
 // -------------------- Menu API --------------------
@@ -358,12 +365,12 @@ export const menuAPI = {
   getAllSubcategories: (categoryId?: string, isDeleted?: boolean) => api.get('/menu/subcategories', { params: { ...(categoryId ? { categoryId } : {}), ...(isDeleted ? { isDeleted } : {}) } }),
   getOne: (id: string) => api.get(`/menu/${id}`),
   create: (menuData: any) => api.post('/menu', menuData),
-  bulkCreate: (items: any[]) => api.post('/menu/bulk', items),
+  bulkCreate: (items: any[], options?: { aiDescriptions?: boolean }) => api.post(`/menu/bulk${options?.aiDescriptions ? '?aiDescriptions=true' : ''}`, items),
   update: (id: string, menuData: any) => api.put(`/menu/${id}`, menuData),
   delete: (id: string) => api.delete(`/menu/${id}`),
   restore: (id: string) => api.patch(`/menu/${id}/restore`),
   getPublicMenu: (tenantSlug?: string, search?: string, cursor?: string | null, limit?: number) => api.get('/menu/public', { params: { tenantSlug, search, cursor: cursor || undefined, limit } }),
-  exportExcel: () => api.get(`/menu/export/excel?t=${new Date().getTime()}`, { responseType: 'blob' }),
+  exportExcel: () => api.get(`/menu/export/excel?t=${new Date().getTime()}`, { responseType: 'blob', timeout: 120000 }),
 
   // Category management
   createCategory: (categoryData: any) => api.post('/menu/categories', categoryData),
@@ -375,8 +382,8 @@ export const menuAPI = {
   updateSubcategory: (id: string, subcategoryData: any) => api.put(`/menu/subcategories/${id}`, subcategoryData),
   deleteSubcategory: (id: string) => api.delete(`/menu/subcategories/${id}`),
   restoreSubcategory: (id: string) => api.patch(`/menu/subcategories/${id}/restore`),
-  bulkPriceAdjust: (percentage: number, categoryId?: string) =>
-    api.patch('/menu/bulk-price-adjust', { percentage, categoryId }),
+  bulkPriceAdjust: (amount: number, adjustmentType: 'percentage' | 'flat' = 'percentage', categoryId?: string, itemId?: string) =>
+    api.patch('/menu/bulk-price-adjust', { amount, adjustmentType, categoryId, itemId }),
   getPriceAdjustmentLogs: () => api.get('/menu/price-adjustment-logs'),
 };
 
@@ -388,6 +395,19 @@ export const modifierTemplatesAPI = {
   update: (id: string, data: any) => api.put(`/menu/templates/${id}`, data),
   delete: (id: string) => api.delete(`/menu/templates/${id}`),
   restore: (id: string) => api.patch(`/menu/templates/${id}/restore`),
+};
+
+// -------------------- Spice Level Sets API --------------------
+export const spiceLevelSetsAPI = {
+  getAll: (params?: { isDeleted?: boolean }) => api.get('/menu/spice-level-sets', { params }),
+  getOne: (id: string) => api.get(`/menu/spice-level-sets/${id}`),
+  create: (data: any) => api.post('/menu/spice-level-sets', data),
+  update: (id: string, data: any) => api.put(`/menu/spice-level-sets/${id}`, data),
+  getMenuItems: (id: string) => api.get(`/menu/spice-level-sets/${id}/menu-items`),
+  assign: (id: string, menuItemIds: string[]) => api.post(`/menu/spice-level-sets/${id}/assign`, { menuItemIds }),
+  unassign: (id: string, menuItemIds: string[]) => api.post(`/menu/spice-level-sets/${id}/unassign`, { menuItemIds }),
+  delete: (id: string) => api.delete(`/menu/spice-level-sets/${id}`),
+  restore: (id: string) => api.patch(`/menu/spice-level-sets/${id}/restore`),
 };
 
 // -------------------- Tax Categories API (External) --------------------
@@ -433,8 +453,13 @@ export const inventoryAPI = {
   delete: (id: string) => api.delete(`/inventory/${id}`),
   restore: (id: string) => api.patch(`/inventory/${id}/restore`),
 
+  // Standing low-stock warning for the dashboard. Admin/manager only — the
+  // backend rejects other roles with a 403.
+  getLowStockAlerts: () => api.get('/inventory/alerts/low-stock'),
+  reconcileStockAlerts: () => api.post('/inventory/alerts/reconcile'),
+
   // Raw Materials specific
-  getRawMaterials: (params?: { page: number; limit: number; isDeleted?: boolean }) => api.get('/inventory/raw-materials/all', { params }),
+  getRawMaterials: (params?: { page: number; limit: number; isDeleted?: boolean; search?: string }) => api.get('/inventory/raw-materials/all', { params }),
   bulkUploadRawMaterials: (items: any[]) => api.post('/inventory/raw-materials/bulk-upload', { items }),
 
   // Usage tracking
@@ -473,7 +498,7 @@ export const reportsAPI = {
   getPromoRedemptions: (params?: any) => api.get('/reports/promo-redemptions', { params }),
   getPromoCompensation: (params?: any) => api.get('/reports/promo-compensation', { params }),
   getDeliveryReport: (params?: any) => api.get('/reports/delivery-report', { params }),
-  exportExcel: (params?: any) => api.get('/reports/export/excel', { params, responseType: 'blob' }),
+  exportExcel: (params?: any) => api.get('/reports/export/excel', { params, responseType: 'blob', timeout: 120000 }),
 };
 
 // -------------------- Printer API --------------------
@@ -502,7 +527,12 @@ export const settingsAPI = {
 export const notificationsAPI = {
   // Catalog metadata
   getEnums: () => api.get('/notifications/enums'),
-  getAssignableUsers: () => api.get('/notifications/assignable-users'),
+  // Only staff without a configuration of their own. `excludeUserId` keeps the
+  // target being edited in the list so the picker can still display it.
+  getAssignableUsers: (excludeUserId?: string) =>
+    api.get('/notifications/assignable-users', {
+      params: excludeUserId ? { excludeUserId } : undefined,
+    }),
   // Events a user's roles grant — the ceiling their own config can narrow.
   getAllowedEvents: (userId: string) => api.get(`/notifications/allowed-events/${userId}`),
 
@@ -926,6 +956,7 @@ export const customersAPI = {
   getAll: (params?: { page: number; limit: number; search?: string }) => api.get('/customers', { params }),
   getRewardDetails: (id: string) => api.get(`/customers/${id}/rewards`),
   adjustRewards: (id: string, points: number, reason: string) => api.put(`/customers/${id}/rewards/adjust`, { points, reason }),
+  getOrders: (id: string, params?: { page: number; limit: number }) => api.get(`/customers/${id}/orders`, { params }),
 };
 
 // -------------------- Audit Logs API --------------------

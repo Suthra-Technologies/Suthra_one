@@ -102,6 +102,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [roleNames, setRoleNames] = useState<Record<string, string>>({
     admin: 'Administrator',
     manager: 'Manager',
+    accountant: 'Accountant',
     cashier: 'Cashier',
     waiter: 'Waiter',
     kitchen_staff: 'Kitchen Staff',
