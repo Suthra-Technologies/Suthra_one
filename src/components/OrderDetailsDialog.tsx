@@ -128,6 +128,10 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
     // Global Dine In orders have already paid - don't show collect payment
     const canCollectPayment = order.orderType === 'dine_in' && order.status === 'served' && !isGlobalDineIn(order);
     const isCancelled = order.status === 'cancelled' || order.status === 'canceled';
+    // Nothing left to dispute once every item's quantity is already under an active dispute
+    const allItemsDisputed = (order.items || []).length > 0 && (order.items || []).every(
+        (item: any) => Number(item?.quantity || 0) - Number(item?.disputedQuantity || 0) <= 0
+    );
 
     const handleSimulate = async (status: string) => {
         setSimulating(true);
@@ -833,13 +837,18 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                     )}
                     <Box sx={{ flex: 1 }} />
                     {(user?.role === 'admin' || user?.role === 'manager') && (
-                        <Button
-                            startIcon={<DisputeIcon />}
-                            onClick={() => setDisputeDialogOpen(true)}
-                            color="error"
-                        >
-                            Dispute Order
-                        </Button>
+                        <Tooltip title={allItemsDisputed ? 'All items on this order already have an active dispute' : ''}>
+                            <span>
+                                <Button
+                                    startIcon={<DisputeIcon />}
+                                    onClick={() => setDisputeDialogOpen(true)}
+                                    color="error"
+                                    disabled={allItemsDisputed}
+                                >
+                                    Dispute Order
+                                </Button>
+                            </span>
+                        </Tooltip>
                     )}
                     <Button onClick={onClose}>Close</Button>
                 </DialogActions>
