@@ -145,18 +145,20 @@ export const ORDER_TYPE_LABELS: Record<string, string> = {
 };
 
 export const PAYMENT_METHOD_LABELS: Record<string, string> = {
-    cash: 'CASH',
-    card: 'CARD',
+    cash: 'Cash',
+    card: 'Card',
     upi: 'UPI',
-    wallet: 'WALLET',
-    online: 'ONLINE',
-    zelle: 'ZELLE',
-    venmo: 'VENMO',
-    cheque: 'CHEQUE',
+    wallet: 'Wallet',
+    online: 'Online',
+    zelle: 'Zelle',
+    venmo: 'Venmo',
+    cheque: 'Cheque',
     cod: 'COD',
     phonepe: 'PhonePe',
-    gpay: 'GPay',
-    paytm: 'Paytm'
+    gpay: 'Google Pay',
+    paytm: 'Paytm',
+    cashapp: 'Cash App',
+    applepay: 'Apple Pay'
 };
 
 /**
@@ -227,9 +229,9 @@ export function getPaymentMethodLabel(paymentMethod: string | string[]): string 
         if (paymentMethod.length === 0) return 'UNKNOWN';
         // Unique map to ensure we don't say "CASH, CASH". Unlikely given design, but safe.
         const uniqueMethods = Array.from(new Set(paymentMethod));
-        return uniqueMethods.map(pm => PAYMENT_METHOD_LABELS[pm] || (pm ? pm?.toUpperCase() : 'UNKNOWN')).join(' & ');
+        return uniqueMethods.map(pm => PAYMENT_METHOD_LABELS[pm] || (pm ? pm.charAt(0).toUpperCase() + pm.slice(1) : 'UNKNOWN')).join(' & ');
     }
-    return PAYMENT_METHOD_LABELS[paymentMethod] || paymentMethod?.toUpperCase() || 'UNKNOWN';
+    return PAYMENT_METHOD_LABELS[paymentMethod] || (paymentMethod ? paymentMethod.charAt(0).toUpperCase() + paymentMethod.slice(1) : 'UNKNOWN');
 }
 
 /**
@@ -237,27 +239,32 @@ export function getPaymentMethodLabel(paymentMethod: string | string[]): string 
  */
 export function getActivePaymentMethods(settings: any): { val: string; label: string }[] {
     const isIndia = settings?.restaurant?.country?.toLowerCase() === 'india';
-    const defaultMethods = isIndia ? ['cash', 'card', 'cheque', 'phonepe', 'gpay', 'paytm'] : ['cash', 'card', 'zelle', 'venmo', 'cheque'];
-    const standardMethods = ['cash', 'card', 'zelle', 'venmo', 'cheque', 'creditCard', 'debitCard', 'phonepe', 'gpay', 'paytm'];
-    const customKeys = Object.keys(settings?.system?.posPaymentMethods || {}).filter(k => !standardMethods.includes(k));
-    const allMethods = [...new Set([...defaultMethods, ...customKeys])];
+    const baseDefault = isIndia 
+        ? ['cash', 'card', 'phonepe', 'gpay', 'paytm', 'cheque'] 
+        : ['cash', 'card', 'zelle', 'venmo', 'cheque'];
+    
+    const configuredKeys = Object.keys(settings?.system?.posPaymentMethods || {}).filter(
+        k => !['creditCard', 'debitCard'].includes(k)
+    );
+    const allCandidateKeys = Array.from(new Set([...baseDefault, ...configuredKeys]));
 
     const activeMethods: { val: string; label: string }[] = [];
 
-    allMethods.forEach(m => {
-        let isVisible = true;
-        if (m === 'phonepe' || m === 'gpay' || m === 'paytm') {
-            isVisible = settings?.system?.posPaymentMethods?.zelle !== false || settings?.system?.posPaymentMethods?.venmo !== false;
-        } else {
-            isVisible = settings?.system?.posPaymentMethods?.[m] !== false;
-        }
+    allCandidateKeys.forEach(m => {
+        const isExplicitlySet = settings?.system?.posPaymentMethods?.[m] !== undefined;
+        const isEnabled = isExplicitlySet 
+            ? settings.system.posPaymentMethods[m] === true 
+            : baseDefault.includes(m);
 
-        if (isVisible) {
-            let label = m.charAt(0).toUpperCase() + m.slice(1);
-            if (m === 'gpay') label = 'GPay';
-            if (m === 'phonepe') label = 'PhonePe';
-            if (m === 'paytm') label = 'Paytm';
-            
+        if (isEnabled) {
+            let label = PAYMENT_METHOD_LABELS[m];
+            if (!label) {
+                label = m
+                    .replace(/([A-Z])/g, ' $1')
+                    .replace(/[-_]/g, ' ')
+                    .trim()
+                    .replace(/\b\w/g, l => l.toUpperCase());
+            }
             activeMethods.push({ val: m, label });
         }
     });
