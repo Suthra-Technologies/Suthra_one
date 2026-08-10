@@ -25,6 +25,7 @@ import AddOnGroupsPage from '../pages/menu/AddOnGroupsPage';
 import SpiceLevelSetsPage from '../pages/menu/SpiceLevelSetsPage';
 import TraysPage from '../pages/menu/TraysPage';
 import OrdersPage from '../pages/orders/OrdersPage';
+import DeliveryHistoryPage from '../pages/orders/DeliveryHistoryPage';
 import POSPage from '../pages/pos/POSPage';
 import ProfilePage from '../pages/profile/ProfilePage';
 import DashboardPage from '../pages/DashboardPage';
@@ -100,6 +101,9 @@ export const TenantRoutes = () => (
       </Route>
       <Route element={<RequireFeature feature="orders" />}>
         <Route path="orders" element={<OrdersPage />} />
+      </Route>
+      <Route element={<RequireRole allowedRoles={['admin', 'manager', 'delivery']} />}>
+        <Route path="delivery-history" element={<DeliveryHistoryPage />} />
       </Route>
       <Route element={<RequireFeature feature="pos" />}>
         <Route path="pos" element={<POSPage />} />

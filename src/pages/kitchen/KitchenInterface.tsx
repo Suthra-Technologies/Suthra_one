@@ -301,8 +301,19 @@ const KitchenInterface: React.FC = () => {
       const response = await ordersAPI.getKitchen();
       const ordersData = Array.isArray(response.data) ? response.data : [];
 
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
+
+      const filteredByDate = ordersData.filter((order: any) => {
+        const orderDate = new Date(order.createdAt);
+        return orderDate >= todayStart && orderDate <= todayEnd;
+      });
+
       // Sort by most recent first
-      const sortedOrders = ordersData.sort((a: any, b: any) =>
+      const sortedOrders = filteredByDate.sort((a: any, b: any) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
 

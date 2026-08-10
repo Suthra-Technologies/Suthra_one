@@ -382,16 +382,16 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                                                     onClick={() => {
                                                         let url;
                                                         if (lat && lng) {
-                                                            url = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+                                                            url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
                                                         } else {
-                                                            url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`;
+                                                            url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}`;
                                                         }
                                                         window.open(url, '_blank');
                                                     }}
                                                     sx={{ ml: 1, padding: '0 8px', minWidth: 'auto', verticalAlign: 'middle' }}
                                                     variant="outlined"
                                                 >
-                                                    Map
+                                                    Directions
                                                 </Button>
                                             </Box>
 
