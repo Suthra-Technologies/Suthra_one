@@ -37,7 +37,8 @@ import {
     RadioGroup,
     FormControlLabel,
     Checkbox,
-    FormControl
+    FormControl,
+    Select
 } from '@mui/material';
 import type { AxiosError } from 'axios';
 import { format } from 'date-fns';
@@ -57,6 +58,7 @@ import OrderDetailsSection from './components/OrderDetailsSection';
 import CustomItemDialog from './components/CustomItemDialog';
 import { validateEmail, validatePhone } from '../../utils/validation';
 import { getMaxGuests, getMergedGroup } from './utils/tableCapacity';
+import { getActivePaymentMethods, getPaymentMethodLabel } from '../../utils/orderWorkflows';
 
 
 type Variant = {
@@ -222,6 +224,7 @@ const POSPage: React.FC = () => {
     const [cardType, setCardType] = useState<'credit' | 'debit'>('credit');
     const [paymentModalOpen, setPaymentModalOpen] = useState(false);
     const [manualPaymentDialogOpen, setManualPaymentDialogOpen] = useState(false);
+    const [manualPaymentRefId, setManualPaymentRefId] = useState('');
     const [selectedTable, setSelectedTable] = useState<any>(null);
     const [cardPrintReceipt, setCardPrintReceipt] = useState(false);
     const [cardSignInForApiCall, setCardSignInForApiCall] = useState(false);
@@ -1349,6 +1352,7 @@ const POSPage: React.FC = () => {
             }
 
             if (paymentMethod !== 'cash' && paymentMethod !== 'online' && paymentMethod !== 'card') {
+                setManualPaymentRefId('');
                 setManualPaymentDialogOpen(true);
                 return;
             }
@@ -1362,9 +1366,16 @@ const POSPage: React.FC = () => {
         await submitOrder();
     };
 
-    const handleManualPaymentConfirm = async () => {
+    const handleManualPaymentConfirm = async (overrideMethod?: string, overrideRefId?: string) => {
+        const methodToUse = overrideMethod || paymentMethod;
+        const refToUse = (overrideRefId !== undefined ? overrideRefId : manualPaymentRefId).trim();
         setManualPaymentDialogOpen(false);
-        await submitOrder(`MANUAL_${paymentMethod?.toUpperCase()}`);
+        if (methodToUse === 'cash') {
+            await submitOrder('CASH');
+        } else {
+            const ref = refToUse ? `REF_${refToUse}` : `MANUAL_${methodToUse?.toUpperCase()}`;
+            await submitOrder(ref);
+        }
     };
     const fetchTables = async () => {
         try {
@@ -1435,7 +1446,8 @@ const POSPage: React.FC = () => {
             const tipValue = typeof tipOverride === 'number' ? tipOverride : tip;
             const isManualCollectedPayment =
                 paymentIntentId === 'CASH' ||
-                Boolean(paymentIntentId?.startsWith('MANUAL_'));
+                Boolean(paymentIntentId?.startsWith('MANUAL_')) ||
+                Boolean(paymentIntentId?.startsWith('REF_'));
             const isVerifiedStripePayment =
                 (paymentMethod === 'card' || paymentMethod === 'online') &&
                 Boolean(paymentIntentId?.startsWith('pi_'));
@@ -1443,7 +1455,9 @@ const POSPage: React.FC = () => {
             // For dine-in orders, dynamically replace card/online with alternative payment methods
             let finalPaymentMethod = paymentMethod;
             let finalPaymentStatus = isManualCollectedPayment || isVerifiedStripePayment ? "paid" : "pending";
-            let finalPaymentIntentId = paymentIntentId;
+            let finalPaymentIntentId = paymentIntentId?.startsWith('REF_')
+                ? paymentIntentId.replace(/^REF_/, '')
+                : paymentIntentId;
 
             // Handle fully paid by rewards
             if (finalTotal === 0 && cart.length > 0) {
@@ -3293,42 +3307,152 @@ const POSPage: React.FC = () => {
                 showTips={false}
             />
 
-            {/* Manual Payment Confirmation Dialog */}
-            <Dialog open={manualPaymentDialogOpen} onClose={() => setManualPaymentDialogOpen(false)}>
-                <Box sx={{ p: 4, minWidth: 300, textAlign: 'center', position: 'relative' }}>
-                    <IconButton
-                        onClick={() => setManualPaymentDialogOpen(false)}
-                        size="small"
-                        sx={{
-                            position: 'absolute',
-                            right: 8,
-                            top: 8,
-                            bgcolor: 'error.main',
-                            color: 'white',
-                            '&:hover': {
-                                bgcolor: 'error.dark',
-                            },
-                            width: 24,
-                            height: 24,
-                        }}
-                    >
-                        <CloseIcon sx={{ fontSize: 16 }} />
-                    </IconButton>
-                    <Typography variant="h6" gutterBottom>
-                        Payment via {paymentMethod === 'zelle' ? 'Zelle' : paymentMethod === 'venmo' ? 'Venmo' : paymentMethod === 'phonepe' ? 'PhonePe' : paymentMethod === 'gpay' ? 'GPay' : paymentMethod === 'paytm' ? 'Paytm' : paymentMethod?.toUpperCase()}
-                    </Typography>
-                    <Typography variant="body1" sx={{ mb: 3 }}>
-                        Please collect <strong>{formatSmartPrice(finalTotal)}</strong> from the customer.
-                    </Typography>
-                    <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
-                        <Button variant="outlined" onClick={() => setManualPaymentDialogOpen(false)}>
-                            Back
-                        </Button>
-                        <Button variant="contained" color="primary" onClick={handleManualPaymentConfirm}>
-                            Confirm
-                        </Button>
-                    </Box>
-                </Box>
+            {/* Manual Payment & QR Confirmation Dialog */}
+            <Dialog 
+                open={manualPaymentDialogOpen} 
+                onClose={() => setManualPaymentDialogOpen(false)}
+                maxWidth="xs"
+                fullWidth
+                PaperProps={{
+                    sx: { borderRadius: 3, p: 1 }
+                }}
+            >
+                {(() => {
+                    const qrCodeUrl = settings?.system?.paymentQrCodes?.[paymentMethod];
+                    const activeMethods = getActivePaymentMethods(settings);
+                    const currentDisplayName = getPaymentMethodLabel(paymentMethod);
+
+                    return (
+                        <Box sx={{ p: { xs: 2, sm: 3 }, textAlign: 'center', position: 'relative' }}>
+                            <IconButton
+                                onClick={() => setManualPaymentDialogOpen(false)}
+                                size="small"
+                                sx={{
+                                    position: 'absolute',
+                                    right: 8,
+                                    top: 8,
+                                    bgcolor: 'error.main',
+                                    color: 'white',
+                                    '&:hover': {
+                                        bgcolor: 'error.dark',
+                                    },
+                                    width: 24,
+                                    height: 24,
+                                }}
+                            >
+                                <CloseIcon sx={{ fontSize: 16 }} />
+                            </IconButton>
+
+                            <Typography variant="h6" fontWeight="bold" sx={{ color: 'text.primary', mb: 0.5 }}>
+                                Payment via {currentDisplayName}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                                Total Amount to Collect: <strong style={{ color: '#10b981', fontSize: '1.15rem' }}>{formatSmartPrice(finalTotal)}</strong>
+                            </Typography>
+
+                            {/* QR Code Card */}
+                            <Paper
+                                variant="outlined"
+                                sx={{
+                                    p: 2,
+                                    mb: 2.5,
+                                    borderRadius: 2,
+                                    bgcolor: qrCodeUrl ? '#ffffff' : 'action.hover',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    gap: 1.5,
+                                    borderColor: qrCodeUrl ? 'divider' : 'warning.light'
+                                }}
+                            >
+                                {qrCodeUrl ? (
+                                    <>
+                                        <Box
+                                            sx={{
+                                                width: 170,
+                                                height: 170,
+                                                display: 'flex',
+                                                justifyContent: 'center',
+                                                alignItems: 'center',
+                                                bgcolor: '#ffffff',
+                                                border: '1px solid',
+                                                borderColor: 'divider',
+                                                borderRadius: 2,
+                                                p: 1,
+                                                boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
+                                            }}
+                                        >
+                                            <img
+                                                src={qrCodeUrl}
+                                                alt={`${currentDisplayName} QR`}
+                                                style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                                            />
+                                        </Box>
+                                        <Typography variant="caption" color="text.secondary" fontWeight={500}>
+                                            Scan QR code to pay <strong>{formatSmartPrice(finalTotal)}</strong> via {currentDisplayName}
+                                        </Typography>
+                                    </>
+                                ) : (
+                                    <Box sx={{ py: 1.5, px: 2 }}>
+                                        <Typography variant="body2" color="text.secondary" fontWeight={500}>
+                                            No QR code configured in POS Settings.
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.5 }}>
+                                            Please collect <strong>{formatSmartPrice(finalTotal)}</strong> via counter standee or UPI app.
+                                        </Typography>
+                                    </Box>
+                                )}
+                            </Paper>
+
+                            {/* Manual Override & Transaction Reference */}
+                            <Box sx={{ textAlign: 'left', mb: 2 }}>
+                                <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, display: 'block', mb: 0.5 }}>
+                                    Paid via different method / scanned another QR?
+                                </Typography>
+                                <FormControl size="small" fullWidth sx={{ mb: 1.5 }}>
+                                    <Select
+                                        value={paymentMethod}
+                                        onChange={(e) => setPaymentMethod(e.target.value)}
+                                    >
+                                        {activeMethods.map((m) => (
+                                            <MenuItem key={m.val} value={m.val}>
+                                                {m.label}
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+
+                                <TextField
+                                    label="Transaction / UTR Reference ID (Optional)"
+                                    placeholder="e.g. 423871928371"
+                                    size="small"
+                                    fullWidth
+                                    value={manualPaymentRefId}
+                                    onChange={(e) => setManualPaymentRefId(e.target.value)}
+                                />
+                            </Box>
+
+                            {/* Action Buttons */}
+                            <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1.5, mt: 3 }}>
+                                <Button 
+                                    variant="outlined" 
+                                    onClick={() => setManualPaymentDialogOpen(false)}
+                                    sx={{ borderRadius: 2 }}
+                                >
+                                    Back
+                                </Button>
+                                <Button 
+                                    variant="contained" 
+                                    color="primary" 
+                                    onClick={() => handleManualPaymentConfirm()}
+                                    sx={{ borderRadius: 2, px: 3, fontWeight: 'bold' }}
+                                >
+                                    Confirm & Complete
+                                </Button>
+                            </Box>
+                        </Box>
+                    );
+                })()}
             </Dialog>
 
             {/* Mobile Sticky Cart Footer */}

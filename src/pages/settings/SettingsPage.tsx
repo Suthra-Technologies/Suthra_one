@@ -3609,93 +3609,161 @@ const SettingsPage: React.FC = () => {
                                     <Grid container spacing={2}>
                                         {(() => {
                                             const isIndia = settings?.restaurant?.country?.toLowerCase() === 'india';
-                                            const defaultMethods = isIndia ? ['cash', 'card', 'cheque', 'phonepe', 'gpay', 'paytm'] : ['cash', 'card', 'zelle', 'venmo', 'cheque'];
-                                            const standardMethods = ['cash', 'card', 'zelle', 'venmo', 'cheque', 'creditCard', 'debitCard', 'phonepe', 'gpay', 'paytm'];
-                                            const customKeys = Object.keys(settings.system.posPaymentMethods || {}).filter(k => !standardMethods.includes(k));
-                                            const allDisplayMethods = [...new Set([...defaultMethods, ...customKeys])];
+                                            const defaultMethods = isIndia ? ['cash', 'card', 'phonepe', 'gpay', 'paytm', 'cheque'] : ['cash', 'card', 'zelle', 'venmo', 'cheque'];
+                                            const standardKeys = ['cash', 'card', 'zelle', 'venmo', 'cheque', 'creditCard', 'debitCard', 'phonepe', 'gpay', 'paytm'];
+                                            
+                                            // Extract all configured keys
+                                            const configuredKeys = Object.keys(settings.system.posPaymentMethods || {}).filter(k => !['creditCard', 'debitCard'].includes(k));
+                                            const allDisplayMethods = Array.from(new Set([...defaultMethods, ...configuredKeys]));
 
-                                            return allDisplayMethods.map((method) => (
-                                                <Grid size={{ xs: 6, sm: 3 }} key={method}>
-                                                    <FormControlLabel
-                                                        control={
-                                                            <Checkbox
-                                                                checked={settings.system.posPaymentMethods?.[method] ?? true}
-                                                                onChange={(e) => {
-                                                                    const isChecked = e.target.checked;
-                                                                    setSettings(prev => {
-                                                                        const currentMethods = prev.system.posPaymentMethods || { cash: true, card: true, zelle: true, venmo: true, cheque: true };
-                                                                        return {
-                                                                            ...prev,
-                                                                            system: {
-                                                                                ...prev.system,
-                                                                                posPaymentMethods: {
-                                                                                    ...currentMethods,
-                                                                                    [method]: isChecked
-                                                                                }
-                                                                            }
-                                                                        };
-                                                                    });
-                                                                }}
-                                                            />
-                                                        }
-                                                        label={
-                                                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                                                <Typography sx={{ textTransform: 'capitalize' }}>{method}</Typography>
-                                                                {customKeys.includes(method) && (
-                                                                    <IconButton
-                                                                        size="small"
-                                                                        color="error"
-                                                                        onClick={(e) => {
-                                                                            e.preventDefault(); // Prevent toggling the checkbox
-                                                                            setSettings(prev => {
-                                                                                const currentMethods = { ...(prev.system.posPaymentMethods || {}) };
-                                                                                delete currentMethods[method];
-                                                                                return {
-                                                                                    ...prev,
-                                                                                    system: {
-                                                                                        ...prev.system,
-                                                                                        posPaymentMethods: currentMethods
+                                            const getMethodDisplayName = (m: string) => {
+                                                const knownLabels: Record<string, string> = {
+                                                    cash: 'Cash',
+                                                    card: 'Card',
+                                                    cheque: 'Cheque',
+                                                    phonepe: 'PhonePe',
+                                                    gpay: 'Google Pay (GPay)',
+                                                    paytm: 'Paytm',
+                                                    zelle: 'Zelle',
+                                                    venmo: 'Venmo',
+                                                    cashapp: 'Cash App',
+                                                    applepay: 'Apple Pay'
+                                                };
+                                                if (knownLabels[m.toLowerCase()]) return knownLabels[m.toLowerCase()];
+                                                return m
+                                                    .replace(/([A-Z])/g, ' $1')
+                                                    .replace(/[-_]/g, ' ')
+                                                    .trim()
+                                                    .replace(/\b\w/g, l => l.toUpperCase());
+                                            };
+
+                                            return allDisplayMethods.map((method) => {
+                                                const isCustom = !['cash', 'card', 'cheque'].includes(method);
+                                                const isChecked = settings.system.posPaymentMethods?.[method] ?? defaultMethods.includes(method);
+
+                                                return (
+                                                    <Grid size={{ xs: 6, sm: 3 }} key={method}>
+                                                        <FormControlLabel
+                                                            control={
+                                                                <Checkbox
+                                                                    checked={isChecked}
+                                                                    onChange={(e) => {
+                                                                        const checked = e.target.checked;
+                                                                        setSettings(prev => {
+                                                                            const currentMethods = prev.system.posPaymentMethods || { cash: true, card: true, zelle: true, venmo: true, cheque: true };
+                                                                            return {
+                                                                                ...prev,
+                                                                                system: {
+                                                                                    ...prev.system,
+                                                                                    posPaymentMethods: {
+                                                                                        ...currentMethods,
+                                                                                        [method]: checked
                                                                                     }
-                                                                                };
-                                                                            });
-                                                                        }}
-                                                                        sx={{ ml: 0.5, p: 0.5 }}
-                                                                    >
-                                                                        <DeleteIcon fontSize="small" />
-                                                                    </IconButton>
-                                                                )}
-                                                            </Box>
-                                                        }
-                                                    />
-                                                </Grid>
-                                            ));
+                                                                                }
+                                                                            };
+                                                                        });
+                                                                    }}
+                                                                />
+                                                            }
+                                                            label={
+                                                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                                    <Typography sx={{ fontWeight: 500 }}>{getMethodDisplayName(method)}</Typography>
+                                                                    {isCustom && (
+                                                                        <IconButton
+                                                                            size="small"
+                                                                            color="error"
+                                                                            title={`Remove ${getMethodDisplayName(method)}`}
+                                                                            onClick={(e) => {
+                                                                                e.preventDefault(); // Prevent toggling the checkbox
+                                                                                setSettings(prev => {
+                                                                                    const currentMethods = { ...(prev.system.posPaymentMethods || {}) };
+                                                                                    delete currentMethods[method];
+                                                                                    const currentQr = { ...(prev.system.paymentQrCodes || {}) };
+                                                                                    delete currentQr[method];
+                                                                                    return {
+                                                                                        ...prev,
+                                                                                        system: {
+                                                                                            ...prev.system,
+                                                                                            posPaymentMethods: currentMethods,
+                                                                                            paymentQrCodes: currentQr
+                                                                                        }
+                                                                                    };
+                                                                                });
+                                                                            }}
+                                                                            sx={{ ml: 0.5, p: 0.5 }}
+                                                                        >
+                                                                            <DeleteIcon fontSize="small" />
+                                                                        </IconButton>
+                                                                    )}
+                                                                </Box>
+                                                            }
+                                                        />
+                                                    </Grid>
+                                                );
+                                            });
                                         })()}
                                     </Grid>
 
-                                    <Box sx={{ mt: 3, display: 'flex', gap: 2, alignItems: 'center' }}>
+                                    <Box sx={{ mt: 3, display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
                                         <TextField
                                             size="small"
-                                            placeholder="Add Custom Method (e.g. CashApp)"
+                                            placeholder="Add Custom Method (e.g. Cash App, Sodexo)"
                                             value={newPaymentMethod}
-                                            onChange={(e) => setNewPaymentMethod(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ''))}
-                                            sx={{ maxWidth: 300 }}
-                                        />
-                                        <Button
-                                            variant="outlined"
-                                            onClick={() => {
-                                                if (newPaymentMethod.trim()) {
+                                            onChange={(e) => setNewPaymentMethod(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    const trimmed = newPaymentMethod.trim();
+                                                    if (!trimmed) {
+                                                        toast.error('Please enter a payment method name');
+                                                        return;
+                                                    }
+                                                    const methodKey = trimmed.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+                                                    if (!methodKey) {
+                                                        toast.error('Invalid payment method name');
+                                                        return;
+                                                    }
                                                     setSettings(prev => ({
                                                         ...prev,
                                                         system: {
                                                             ...prev.system,
                                                             posPaymentMethods: {
                                                                 ...(prev.system.posPaymentMethods || {}),
-                                                                [newPaymentMethod.trim()]: true
+                                                                [methodKey]: true
                                                             }
                                                         }
                                                     }));
                                                     setNewPaymentMethod('');
+                                                    toast.success(`Added ${trimmed}`);
                                                 }
+                                            }}
+                                            sx={{ minWidth: 280, maxWidth: 350 }}
+                                        />
+                                        <Button
+                                            variant="outlined"
+                                            onClick={() => {
+                                                const trimmed = newPaymentMethod.trim();
+                                                if (!trimmed) {
+                                                    toast.error('Please enter a payment method name');
+                                                    return;
+                                                }
+                                                const methodKey = trimmed.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+                                                if (!methodKey) {
+                                                    toast.error('Invalid payment method name');
+                                                    return;
+                                                }
+                                                setSettings(prev => ({
+                                                    ...prev,
+                                                    system: {
+                                                        ...prev.system,
+                                                        posPaymentMethods: {
+                                                            ...(prev.system.posPaymentMethods || {}),
+                                                            [methodKey]: true
+                                                        }
+                                                    }
+                                                }));
+                                                setNewPaymentMethod('');
+                                                toast.success(`Added ${trimmed}`);
                                             }}
                                         >
                                             Add Method
@@ -3744,17 +3812,34 @@ const SettingsPage: React.FC = () => {
                                     {/* QR Code Configuration Section */}
                                     {(() => {
                                         const isIndia = settings?.restaurant?.country?.toLowerCase() === 'india';
-                                        const defaultMethods = isIndia ? ['cash', 'card', 'cheque', 'phonepe', 'gpay', 'paytm'] : ['cash', 'card', 'zelle', 'venmo', 'cheque'];
-                                        const standardMethods = ['cash', 'card', 'zelle', 'venmo', 'cheque', 'creditCard', 'debitCard', 'phonepe', 'gpay', 'paytm'];
-                                        const customKeys = Object.keys(settings.system.posPaymentMethods || {}).filter(k => !standardMethods.includes(k));
-                                        const allDisplayMethods = [...new Set([...defaultMethods, ...customKeys])];
+                                        const defaultMethods = isIndia ? ['cash', 'card', 'phonepe', 'gpay', 'paytm', 'cheque'] : ['cash', 'card', 'zelle', 'venmo', 'cheque'];
+                                        const configuredKeys = Object.keys(settings.system.posPaymentMethods || {}).filter(k => !['creditCard', 'debitCard'].includes(k));
+                                        const allDisplayMethods = Array.from(new Set([...defaultMethods, ...configuredKeys]));
 
                                         const qrMethods = allDisplayMethods.filter(method =>
-                                            (settings.system.posPaymentMethods?.[method] ?? true) &&
+                                            (settings.system.posPaymentMethods?.[method] ?? defaultMethods.includes(method)) &&
                                             !['cash', 'card', 'cheque', 'creditCard', 'debitCard'].includes(method)
                                         );
 
                                         if (qrMethods.length === 0) return null;
+
+                                        const getMethodDisplayName = (m: string) => {
+                                            const knownLabels: Record<string, string> = {
+                                                phonepe: 'PhonePe',
+                                                gpay: 'Google Pay (GPay)',
+                                                paytm: 'Paytm',
+                                                zelle: 'Zelle',
+                                                venmo: 'Venmo',
+                                                cashapp: 'Cash App',
+                                                applepay: 'Apple Pay'
+                                            };
+                                            if (knownLabels[m.toLowerCase()]) return knownLabels[m.toLowerCase()];
+                                            return m
+                                                .replace(/([A-Z])/g, ' $1')
+                                                .replace(/[-_]/g, ' ')
+                                                .trim()
+                                                .replace(/\b\w/g, l => l.toUpperCase());
+                                        };
 
                                         return (
                                             <Box sx={{ mt: 3, pt: 3, borderTop: '1px solid', borderColor: 'divider' }}>
@@ -3764,13 +3849,14 @@ const SettingsPage: React.FC = () => {
                                                 <Grid container spacing={2}>
                                                     {qrMethods.map((method) => {
                                                         const currentQr = settings.system.paymentQrCodes?.[method];
+                                                        const displayName = getMethodDisplayName(method);
                                                         return (
                                                             <Grid size={{ xs: 12, sm: 6 }} key={method}>
                                                                 <Paper variant="outlined" sx={{ p: 2, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, bgcolor: 'background.paper' }}>
                                                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                                                                         {currentQr ? (
                                                                             <Box sx={{ width: 60, height: 60, border: '1px solid', borderColor: 'divider', borderRadius: 1.5, overflow: 'hidden', display: 'flex', justifyContent: 'center', alignItems: 'center', bgcolor: '#fff' }}>
-                                                                                <img src={currentQr} alt={`${method} QR`} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                                                                                <img src={currentQr} alt={`${displayName} QR`} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
                                                                             </Box>
                                                                         ) : (
                                                                             <Box sx={{ width: 60, height: 60, border: '1px dashed', borderColor: 'divider', borderRadius: 1.5, display: 'flex', justifyContent: 'center', alignItems: 'center', bgcolor: 'action.hover' }}>
@@ -3778,8 +3864,8 @@ const SettingsPage: React.FC = () => {
                                                                             </Box>
                                                                         )}
                                                                         <Box>
-                                                                            <Typography variant="subtitle2" sx={{ textTransform: 'capitalize', fontWeight: 'bold' }}>
-                                                                                {method}
+                                                                            <Typography variant="subtitle2" sx={{ fontWeight: 'bold' }}>
+                                                                                {displayName}
                                                                             </Typography>
                                                                             <Typography variant="caption" color={currentQr ? "success.main" : "text.secondary"} sx={{ fontWeight: currentQr ? 600 : 400 }}>
                                                                                 {currentQr ? 'QR Code configured' : 'No QR Code configured'}
@@ -3815,7 +3901,7 @@ const SettingsPage: React.FC = () => {
                                                                                                     }
                                                                                                 }
                                                                                             }));
-                                                                                            toast.success(`Uploaded QR for ${method}`, { id: 'qr-upload' });
+                                                                                            toast.success(`Uploaded QR for ${displayName}`, { id: 'qr-upload' });
                                                                                         } catch (err) {
                                                                                             toast.error('Failed to upload QR image', { id: 'qr-upload' });
                                                                                         }
@@ -3827,6 +3913,7 @@ const SettingsPage: React.FC = () => {
                                                                             <IconButton
                                                                                 size="small"
                                                                                 color="error"
+                                                                                title={`Delete QR Code for ${displayName}`}
                                                                                 onClick={() => {
                                                                                     setSettings(prev => {
                                                                                         const codes = { ...(prev.system.paymentQrCodes || {}) };

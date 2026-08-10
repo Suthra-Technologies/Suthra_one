@@ -1578,7 +1578,7 @@ const MenuPage: React.FC = () => {
                                                 mt: 'auto',
                                                 gap: 0.5
                                             }}>
-                                                <IconButton size="small" onClick={() => navigate(getRelativePath(`/recipes/create?menuItem=${item._id}`))}
+                                                <IconButton size="small" onClick={() => navigate(getRelativePath(`/recipes/create?menuItem=${item._id}&returnTo=/menu`))}
                                                     sx={{ color: theme.palette.secondary.main, p: 0.5 }}>
                                                     <MenuBookIcon sx={{ fontSize: { xs: 16, sm: 18 } }} />
                                                 </IconButton>
