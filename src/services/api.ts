@@ -444,6 +444,16 @@ export const tablesAPI = {
   unmerge: (primaryId: string) => api.post('/tables/unmerge', { primaryId }),
 };
 
+// -------------------- Floor Elements API (Architectural: doors, bar, windows, etc.) --------------------
+export const floorElementsAPI = {
+  getAll: (params?: { section?: string }) => api.get('/floor-elements', { params }),
+  create: (data: any) => api.post('/floor-elements', data),
+  update: (id: string, data: any) => api.put(`/floor-elements/${id}`, data),
+  batchUpdateCoordinates: (updates: { _id: string; coordinates: { x: number; y: number } }[]) =>
+    api.patch('/floor-elements/batch-coordinates', { updates }),
+  remove: (id: string) => api.delete(`/floor-elements/${id}`),
+};
+
 // -------------------- Inventory API --------------------
 export const inventoryAPI = {
   getAll: (params?: any) => api.get('/inventory', { params }),

@@ -954,7 +954,7 @@ const POSPage: React.FC = () => {
 
     // Ensure payment method is valid based on settings
     useEffect(() => {
-        if (!settings.system?.posPaymentMethods || orderType === 'dine_in') return;
+        if (!settings.system?.posPaymentMethods) return;
 
         const methods = settings.system.posPaymentMethods;
         const currentValid = (methods as any)[paymentMethod];
@@ -966,7 +966,7 @@ const POSPage: React.FC = () => {
                 setPaymentMethod(available[0] as any);
             }
         }
-    }, [settings.system?.posPaymentMethods, paymentMethod, orderType]);
+    }, [settings.system?.posPaymentMethods, paymentMethod]);
 
     // Keep the selected card type valid based on which card types are enabled.
     useEffect(() => {
@@ -3407,14 +3407,31 @@ const POSPage: React.FC = () => {
                                     </Select>
                                 </FormControl>
 
-                                <TextField
-                                    label="Transaction / UTR Reference ID (Optional)"
-                                    placeholder="e.g. 423871928371"
-                                    size="small"
-                                    fullWidth
-                                    value={manualPaymentRefId}
-                                    onChange={(e) => setManualPaymentRefId(e.target.value)}
-                                />
+                                {(() => {
+                                    const m = (paymentMethod || '').toLowerCase();
+                                    let refLabel = "Transaction / Reference ID (Optional)";
+                                    let refPlaceholder = "e.g. TXN-9847291";
+                                    if (['phonepe', 'gpay', 'paytm', 'upi'].includes(m)) {
+                                        refLabel = "12-Digit UTR / Bank Ref No. (Optional)";
+                                        refPlaceholder = "e.g. 423871928371";
+                                    } else if (['cheque', 'check'].includes(m)) {
+                                        refLabel = "Cheque No. (Optional)";
+                                        refPlaceholder = "e.g. CHQ-10492";
+                                    } else if (['zelle', 'venmo', 'cashapp'].includes(m)) {
+                                        refLabel = "Confirmation / Ref # (Optional)";
+                                        refPlaceholder = "e.g. ZEL-849201";
+                                    }
+                                    return (
+                                        <TextField
+                                            label={refLabel}
+                                            placeholder={refPlaceholder}
+                                            size="small"
+                                            fullWidth
+                                            value={manualPaymentRefId}
+                                            onChange={(e) => setManualPaymentRefId(e.target.value)}
+                                        />
+                                    );
+                                })()}
                             </Box>
 
                             {/* Action Buttons */}

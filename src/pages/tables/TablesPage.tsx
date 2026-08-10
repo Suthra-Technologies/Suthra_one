@@ -75,11 +75,14 @@ import {
     AccessTime as TimeIcon,
     RestoreFromTrash as RestoreIcon,
     PersonAdd as AssignWaiterIcon,
+    Map as FloorPlanIcon,
+    GridView as GridIcon,
+    QrCode2 as QrCodeIcon,
 } from '@mui/icons-material';
 import { validatePhone, validateEmail } from '../../utils/validation';
 import { useSettings } from '../../context/SettingsContext';
 import PhoneInput from '../../components/PhoneInput';
-import { tablesAPI, bookingsAPI, usersAPI } from '../../services/api';
+import { tablesAPI, bookingsAPI, usersAPI, floorElementsAPI } from '../../services/api';
 
 // Extracted Dialog Components
 import AddTableDialog from './components/AddTableDialog';
@@ -87,6 +90,8 @@ import EditTableDialog from './components/EditTableDialog';
 import BookingDialog from './components/BookingDialog';
 import ViewBookingDialog from './components/ViewBookingDialog';
 import HistoryDialog from '../../components/common/HistoryDialog';
+import FloorPlanView from './components/FloorPlanView';
+import ContactlessDiningModal from './components/ContactlessDiningModal';
 
 // Import Table Images
 import Table2Img from '../../assets/images/table-2.jpeg';
@@ -154,6 +159,7 @@ const TablesPage: React.FC = () => {
     const [bookingsLoading, setBookingsLoading] = useState(false);
     const [tabValue, setTabValue] = useState(0);
     const [bookingViewMode, setBookingViewMode] = useState(0);
+    const [tableViewMode, setTableViewMode] = useState<'floor' | 'grid'>('floor');
 
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -212,13 +218,19 @@ const TablesPage: React.FC = () => {
     const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
     const [primaryTableId, setPrimaryTableId] = useState<string>('');
     const [isProcessing, setIsProcessing] = useState(false);
+    const [floorElements, setFloorElements] = useState<any[]>([]);
+    const [contactlessModalOpen, setContactlessModalOpen] = useState(false);
 
     const fetchTables = async () => {
         try {
             setLoading(true);
-            const response = await tablesAPI.getAll({ includeDeleted: true });
+            const [response, elementsRes] = await Promise.all([
+                tablesAPI.getAll({ includeDeleted: true }),
+                floorElementsAPI.getAll().catch(() => ({ data: [] }))
+            ]);
             const tablesData = Array.isArray(response.data) ? response.data : [];
             setTables(tablesData);
+            setFloorElements(Array.isArray(elementsRes.data) ? elementsRes.data : []);
 
             const defaultLocations = ['indoor', 'outdoor', 'private_room', 'bar', 'patio', 'main_dining', 'vip_section', 'party_hall', 'terrace'];
             const locations = tablesData.filter((t: any) => t.isActive !== false).map((t: any) => t.location).filter(Boolean);
@@ -242,6 +254,21 @@ const TablesPage: React.FC = () => {
             toast.error('Failed to load bookings');
         } finally {
             setBookingsLoading(false);
+        }
+    };
+
+    const handleSaveTableCoordinates = async (updatedTables: { _id: string; coordinates: { x: number; y: number } }[]) => {
+        try {
+            await Promise.all(
+                updatedTables.map(item =>
+                    tablesAPI.update(item._id, { coordinates: item.coordinates })
+                )
+            );
+            toast.success('Floor layout saved successfully');
+            fetchTables();
+        } catch (error) {
+            console.error('Error saving floor layout:', error);
+            toast.error('Failed to save floor layout');
         }
     };
 
@@ -320,6 +347,13 @@ const TablesPage: React.FC = () => {
         } finally {
             setIsProcessing(false);
         }
+        handleCloseMenu();
+    };
+
+    const handleOpenHistory = (tableId: string, title: string) => {
+        setHistoryTargetId(tableId);
+        setHistoryTitle(title);
+        setHistoryDialogOpen(true);
         handleCloseMenu();
     };
 
@@ -770,6 +804,61 @@ const TablesPage: React.FC = () => {
                             Merge ({selectedTableIds.length})
                         </Button>
                     )}
+                    {/* View Mode Switcher (Floor Plan vs Grid Cards) */}
+                    <Stack direction="row" spacing={0.5} sx={{ bgcolor: alpha(theme.palette.primary.main, 0.08), p: 0.5, borderRadius: 2 }}>
+                        <Button
+                            size={isMobile ? "small" : "medium"}
+                            variant={tableViewMode === 'floor' ? "contained" : "text"}
+                            color={tableViewMode === 'floor' ? "primary" : "inherit"}
+                            startIcon={<FloorPlanIcon sx={{ fontSize: { xs: '1rem !important', sm: 'inherit' } }} />}
+                            onClick={() => setTableViewMode('floor')}
+                            sx={{
+                                fontSize: { xs: '0.65rem', sm: '0.8rem' },
+                                px: { xs: 1, sm: 1.5 },
+                                borderRadius: 1.5,
+                                textTransform: 'none',
+                                fontWeight: 800,
+                                boxShadow: tableViewMode === 'floor' ? '0 2px 8px rgba(0,0,0,0.15)' : 'none',
+                            }}
+                        >
+                            Floor Plan
+                        </Button>
+                        <Button
+                            size={isMobile ? "small" : "medium"}
+                            variant={tableViewMode === 'grid' ? "contained" : "text"}
+                            color={tableViewMode === 'grid' ? "primary" : "inherit"}
+                            startIcon={<GridIcon sx={{ fontSize: { xs: '1rem !important', sm: 'inherit' } }} />}
+                            onClick={() => setTableViewMode('grid')}
+                            sx={{
+                                fontSize: { xs: '0.65rem', sm: '0.8rem' },
+                                px: { xs: 1, sm: 1.5 },
+                                borderRadius: 1.5,
+                                textTransform: 'none',
+                                fontWeight: 800,
+                                boxShadow: tableViewMode === 'grid' ? '0 2px 8px rgba(0,0,0,0.15)' : 'none',
+                            }}
+                        >
+                            Grid
+                        </Button>
+                    </Stack>
+                    <Button
+                        variant="outlined"
+                        startIcon={<QrCodeIcon sx={{ fontSize: { xs: '1rem !important', sm: 'inherit' } }} />}
+                        onClick={() => setContactlessModalOpen(true)}
+                        size={isMobile ? "small" : "medium"}
+                        sx={{
+                            fontSize: { xs: '0.65rem', sm: '0.875rem' },
+                            px: { xs: 1, sm: 2 },
+                            borderRadius: 2,
+                            textTransform: 'none',
+                            fontWeight: 'bold',
+                            borderColor: 'primary.main',
+                            color: 'primary.main',
+                            '&:hover': { bgcolor: 'rgba(25, 118, 210, 0.08)' }
+                        }}
+                    >
+                        Contactless QR Dining
+                    </Button>
                     <Button 
                         variant="contained" 
                         startIcon={<AddIcon sx={{ fontSize: { xs: '1rem !important', sm: 'inherit' } }} />} 
@@ -808,65 +897,86 @@ const TablesPage: React.FC = () => {
 
             {/* Tab Panel: Tables */}
             <TabPanel value={tabValue} index={0}>
-                {/* Status Filter Chips */}
-                <Box sx={{ 
-                    display: 'flex', 
-                    overflowX: 'auto', 
-                    flexWrap: { xs: 'nowrap', sm: 'wrap' }, 
-                    gap: 1, 
-                    mb: { xs: 1.5, sm: 3 },
-                    pb: { xs: 1, sm: 0 },
-                    '&::-webkit-scrollbar': { display: 'none' }
-                }}>
-                    <Chip
-                        label={`All (${statusCounts.all})`}
-                        color={statusFilter === 'all' ? 'primary' : 'default'}
-                        variant={statusFilter === 'all' ? 'filled' : 'outlined'}
-                        onClick={() => setStatusFilter('all')}
-                        size={isMobile ? "small" : "medium"}
-                    />
-                    <Chip
-                        label={`Available (${statusCounts.available})`}
-                        color={statusFilter === 'available' ? 'primary' : 'default'}
-                        variant={statusFilter === 'available' ? 'filled' : 'outlined'}
-                        onClick={() => setStatusFilter('available')}
-                        size={isMobile ? "small" : "medium"}
-                    />
-                    <Chip
-                        label={`Occupied (${statusCounts.occupied})`}
-                        color={statusFilter === 'occupied' ? 'primary' : 'default'}
-                        variant={statusFilter === 'occupied' ? 'filled' : 'outlined'}
-                        onClick={() => setStatusFilter('occupied')}
-                        size={isMobile ? "small" : "medium"}
-                    />
-                    <Chip
-                        label={`Reserved (${statusCounts.reserved})`}
-                        color={statusFilter === 'reserved' ? 'primary' : 'default'}
-                        variant={statusFilter === 'reserved' ? 'filled' : 'outlined'}
-                        onClick={() => setStatusFilter('reserved')}
-                        size={isMobile ? "small" : "medium"}
-                    />
-                    <Chip
-                        icon={<RestoreIcon />}
-                        label={`Deleted (${statusCounts.deleted})`}
-                        color={statusFilter === 'deleted' ? 'warning' : 'default'}
-                        variant={statusFilter === 'deleted' ? 'filled' : 'outlined'}
-                        onClick={() => setStatusFilter('deleted')}
-                        size={isMobile ? "small" : "medium"}
-                    />
-                </Box>
-
                 {loading ? (
                     <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
                         <CircularProgress />
                     </Box>
-                ) : filteredTables.length === 0 ? (
-                    <Paper sx={{ p: 3, textAlign: 'center' }}>
-                        <Typography variant="body1" color="text.secondary">
-                            No tables found.
-                        </Typography>
-                    </Paper>
+                ) : tableViewMode === 'floor' ? (
+                    /* Interactive 2D Floor Plan Canvas */
+                    <FloorPlanView
+                        tables={tables}
+                        floorElements={floorElements}
+                        tenantSlug={tenantSlug || ''}
+                        customLocations={customLocations}
+                        canDeleteTables={canDeleteTables}
+                        isMobile={isMobile}
+                        onOpenBooking={handleOpenBooking}
+                        onOpenAddTable={() => setAddDialogOpen(true)}
+                        onOpenAddLocation={() => setAddLocationDialogOpen(true)}
+                        onOpenEditTable={handleEditTable}
+                        onOpenDeleteTable={handleDeleteTable}
+                        onRestoreTable={handleRestoreTable}
+                        onQuickStatusChange={handleQuickStatusChange}
+                        onOpenHistory={handleOpenHistory}
+                        onSaveTableCoordinates={handleSaveTableCoordinates}
+                    />
                 ) : (
+                    <>
+                        {/* Status Filter Chips for Grid View */}
+                        <Box sx={{ 
+                            display: 'flex', 
+                            overflowX: 'auto', 
+                            flexWrap: { xs: 'nowrap', sm: 'wrap' }, 
+                            gap: 1, 
+                            mb: { xs: 1.5, sm: 3 },
+                            pb: { xs: 1, sm: 0 },
+                            '&::-webkit-scrollbar': { display: 'none' }
+                        }}>
+                            <Chip
+                                label={`All (${statusCounts.all})`}
+                                color={statusFilter === 'all' ? 'primary' : 'default'}
+                                variant={statusFilter === 'all' ? 'filled' : 'outlined'}
+                                onClick={() => setStatusFilter('all')}
+                                size={isMobile ? "small" : "medium"}
+                            />
+                            <Chip
+                                label={`Available (${statusCounts.available})`}
+                                color={statusFilter === 'available' ? 'primary' : 'default'}
+                                variant={statusFilter === 'available' ? 'filled' : 'outlined'}
+                                onClick={() => setStatusFilter('available')}
+                                size={isMobile ? "small" : "medium"}
+                            />
+                            <Chip
+                                label={`Occupied (${statusCounts.occupied})`}
+                                color={statusFilter === 'occupied' ? 'primary' : 'default'}
+                                variant={statusFilter === 'occupied' ? 'filled' : 'outlined'}
+                                onClick={() => setStatusFilter('occupied')}
+                                size={isMobile ? "small" : "medium"}
+                            />
+                            <Chip
+                                label={`Reserved (${statusCounts.reserved})`}
+                                color={statusFilter === 'reserved' ? 'primary' : 'default'}
+                                variant={statusFilter === 'reserved' ? 'filled' : 'outlined'}
+                                onClick={() => setStatusFilter('reserved')}
+                                size={isMobile ? "small" : "medium"}
+                            />
+                            <Chip
+                                icon={<RestoreIcon />}
+                                label={`Deleted (${statusCounts.deleted})`}
+                                color={statusFilter === 'deleted' ? 'warning' : 'default'}
+                                variant={statusFilter === 'deleted' ? 'filled' : 'outlined'}
+                                onClick={() => setStatusFilter('deleted')}
+                                size={isMobile ? "small" : "medium"}
+                            />
+                        </Box>
+
+                        {filteredTables.length === 0 ? (
+                            <Paper sx={{ p: 3, textAlign: 'center' }}>
+                                <Typography variant="body1" color="text.secondary">
+                                    No tables found.
+                                </Typography>
+                            </Paper>
+                        ) : (
                     <Grid container spacing={{ xs: 1, sm: 3 }}>
                         {filteredTables.map((table) => (
                             <Grid size={{ xs: 6, sm: 6, md: 4, lg: 3 }} key={table._id}>
@@ -1034,6 +1144,8 @@ const TablesPage: React.FC = () => {
                             </Grid>
                         ))}
                     </Grid>
+                        )}
+                    </>
                 )}
             </TabPanel>
 
@@ -1734,98 +1846,101 @@ const TablesPage: React.FC = () => {
                             </MenuItem>
                         </span>
                     </Tooltip>
-                ) : (
-                    <>
+                ) : [
+                    <MenuItem 
+                        key="book"
+                        onClick={() => menuTable && handleOpenBooking(menuTable)}
+                        sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
+                    >
+                        <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
+                            <BookIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
+                        </ListItemIcon>
+                        <ListItemText 
+                            primary="Book Table" 
+                            primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }} 
+                        />
+                    </MenuItem>,
+                    <MenuItem
+                        key="edit"
+                        onClick={() => menuTable && handleEditTable(menuTable)}
+                        sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
+                    >
+                        <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
+                            <EditIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
+                        </ListItemIcon>
+                        <ListItemText
+                            primary="Edit Table"
+                            primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }}
+                        />
+                    </MenuItem>,
+                    <MenuItem
+                        key="assign-waiter"
+                        onClick={() => menuTable && handleOpenAssignWaiter(menuTable)}
+                        sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
+                    >
+                        <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
+                            <AssignWaiterIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
+                        </ListItemIcon>
+                        <ListItemText
+                            primary="Assign Waiter"
+                            primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }}
+                        />
+                    </MenuItem>,
+                    <MenuItem 
+                        key="history"
+                        onClick={() => {
+                            if (menuTable) {
+                                setHistoryTargetId(menuTable._id);
+                                setHistoryTitle(`Table ${menuTable.tableNumber || menuTable.tableName} History`);
+                                setHistoryDialogOpen(true);
+                            }
+                            handleCloseMenu();
+                        }}
+                        sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
+                    >
+                        <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
+                            <TimelineIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
+                        </ListItemIcon>
+                        <ListItemText 
+                            primary="View History" 
+                            primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }} 
+                        />
+                    </MenuItem>,
+                    (menuTable?.isMerged || menuTable?.isPrimary) && (
                         <MenuItem 
-                            onClick={() => menuTable && handleOpenBooking(menuTable)}
+                            key="unmerge"
+                            onClick={() => menuTable && handleUnmerge(menuTable)}
                             sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
                         >
                             <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
-                                <BookIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
+                                <LinkOffIcon sx={{ fontSize: { xs: 16, sm: 20 } }} color="error" />
                             </ListItemIcon>
                             <ListItemText 
-                                primary="Book Table" 
-                                primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }} 
+                                primary="Unmerge Table(s)" 
+                                primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, color: 'error.main', my: 0 } }} 
                             />
                         </MenuItem>
-                        <MenuItem
-                            onClick={() => menuTable && handleEditTable(menuTable)}
-                            sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
-                        >
-                            <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
-                                <EditIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
-                            </ListItemIcon>
-                            <ListItemText
-                                primary="Edit Table"
-                                primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }}
-                            />
-                        </MenuItem>
-                        <MenuItem
-                            onClick={() => menuTable && handleOpenAssignWaiter(menuTable)}
-                            sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
-                        >
-                            <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
-                                <AssignWaiterIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
-                            </ListItemIcon>
-                            <ListItemText
-                                primary="Assign Waiter"
-                                primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }}
-                            />
-                        </MenuItem>
-                        <MenuItem 
-                            onClick={() => {
-                                if (menuTable) {
-                                    setHistoryTargetId(menuTable._id);
-                                    setHistoryTitle(`Table ${menuTable.tableNumber || menuTable.tableName} History`);
-                                    setHistoryDialogOpen(true);
-                                }
-                                handleCloseMenu();
-                            }}
-                            sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
-                        >
-                            <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
-                                <TimelineIcon sx={{ fontSize: { xs: 16, sm: 20 } }} />
-                            </ListItemIcon>
-                            <ListItemText 
-                                primary="View History" 
-                                primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, my: 0 } }} 
-                            />
-                        </MenuItem>
-                        {(menuTable?.isMerged || menuTable?.isPrimary) && (
-                            <MenuItem 
-                                onClick={() => menuTable && handleUnmerge(menuTable)}
-                                sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 } }}
+                    ),
+                    <Divider key="div" sx={{ my: { xs: 0.25, sm: 1 } }} />,
+                    <Tooltip key="delete" title={canDeleteTables ? '' : "You don't have permission to delete tables"}>
+                        {/* span keeps the tooltip working while the item is disabled */}
+                        <span>
+                            <MenuItem
+                                onClick={() => menuTable && handleDeleteTable(menuTable)}
+                                disabled={!canDeleteTables}
+                                sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 }, color: 'error.main' }}
                             >
                                 <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
-                                    <LinkOffIcon sx={{ fontSize: { xs: 16, sm: 20 } }} color="error" />
+                                    <DeleteIcon sx={{ fontSize: { xs: 16, sm: 20 } }} color="error" />
                                 </ListItemIcon>
-                                <ListItemText 
-                                    primary="Unmerge Table(s)" 
-                                    primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, color: 'error.main', my: 0 } }} 
+                                <ListItemText
+                                    primary="Delete Table"
+                                    primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, color: 'error.main', my: 0 } }}
                                 />
                             </MenuItem>
-                        )}
-                        <Divider sx={{ my: { xs: 0.25, sm: 1 } }} />
-                        <Tooltip title={canDeleteTables ? '' : "You don't have permission to delete tables"}>
-                            {/* span keeps the tooltip working while the item is disabled */}
-                            <span>
-                                <MenuItem
-                                    onClick={() => menuTable && handleDeleteTable(menuTable)}
-                                    disabled={!canDeleteTables}
-                                    sx={{ py: { xs: 0, sm: 1 }, minHeight: { xs: 32, sm: 48 }, color: 'error.main' }}
-                                >
-                                    <ListItemIcon sx={{ minWidth: { xs: 30, sm: 40 } }}>
-                                        <DeleteIcon sx={{ fontSize: { xs: 16, sm: 20 } }} color="error" />
-                                    </ListItemIcon>
-                                    <ListItemText
-                                        primary="Delete Table"
-                                        primaryTypographyProps={{ sx: { fontSize: { xs: '0.75rem', sm: '0.950rem' }, fontWeight: 500, color: 'error.main', my: 0 } }}
-                                    />
-                                </MenuItem>
-                            </span>
-                        </Tooltip>
-                    </>
-                )}
+                        </span>
+                    </Tooltip>
+                ].filter(Boolean)}
             </Menu>
 
             {/* Add Table Dialog */}
@@ -2101,6 +2216,14 @@ const TablesPage: React.FC = () => {
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            {/* ── CONTACTLESS DINING & TABLE QR MODAL ── */}
+            <ContactlessDiningModal
+                open={contactlessModalOpen}
+                onClose={() => setContactlessModalOpen(false)}
+                tables={tables}
+                tenantSlug={tenantSlug}
+            />
         </Box >
     );
 };
