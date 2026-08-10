@@ -56,6 +56,7 @@ import {
   DashboardCustomize,
   Gavel,
   PlaylistAdd,
+  DeliveryDining,
 } from '@mui/icons-material';
 import { Collapse } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
@@ -163,6 +164,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onItemClick, collapsed = false, onTog
       title: 'OPERATIONS',
       items: [
         { path: '/orders', label: 'Orders', icon: <ShoppingCart />, roles: ['admin', 'manager', 'waiter', 'cashier', 'delivery', 'food_runner'], feature: 'orders' },
+        { path: '/delivery-history', label: 'Pickup History', icon: <DeliveryDining />, roles: ['delivery'] },
         { path: '/pos', label: 'Point of Sale', icon: <PointOfSale />, roles: ['admin', 'manager', 'waiter', 'cashier'], feature: 'pos' },
         { path: '/tables', label: 'Tables', icon: <TableRestaurant />, roles: ['admin', 'manager', 'cashier'], feature: 'tables' },
         { path: '/bookings', label: 'Bookings', icon: <EventIcon />, roles: ['admin', 'manager', 'waiter'], feature: 'bookings' },

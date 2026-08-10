@@ -243,6 +243,8 @@ export const ordersAPI = {
     api.get('/orders/filter', { params }),
   getActive: () => api.get('/orders/active'),
   getKitchen: () => api.get('/orders/kitchen'),
+  getDeliveryHistory: (from?: string, to?: string) =>
+    api.get('/orders/delivery-history', { params: { from, to } }),
   getCompleted: () => api.get('/orders/completed'),
   getCancelled: () => api.get('/orders/cancelled'),
 
@@ -681,6 +683,8 @@ export const bookingsAPI = {
   getAvailableSlots: (date: string, guests: number) => api.get('/bookings/available-slots', { params: { date, guests } }),
   checkIn: (id: string) => api.post(`/bookings/${id}/check-in`),
   addPreOrderedItem: (id: string, item: { name: string, cost: number, price: number }) => api.post(`/bookings/${id}/pre-order`, item),
+  createWalkIn: (data: { tableId: string; guests: number; orderId: string; customerName?: string; customerPhone?: string }) =>
+    api.post('/bookings/walk-in', data),
 
   // Public (no auth) — for guest users
   publicGetUnavailableSlots: (tenantSlug: string, date: string, guests: number) =>

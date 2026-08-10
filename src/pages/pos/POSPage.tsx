@@ -50,7 +50,7 @@ import PaymentModal from '../../components/PaymentModal';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { autoPrintOrder } from '../../utils/autoPrintOrder';
-import { couponsAPI, menuAPI, ordersAPI, rewardsAPI, settingsAPI, tablesAPI, taxAPI, traysAPI, usersAPI } from '../../services/api';
+import { bookingsAPI, couponsAPI, menuAPI, ordersAPI, rewardsAPI, settingsAPI, tablesAPI, taxAPI, traysAPI, usersAPI } from '../../services/api';
 import { isWithinDeliveryRadius, METERS_PER_MILE } from '../../services/googleMapsService';
 import CustomerInfoSection from './components/CustomerInfoSection';
 import MergeTablesDialog from './components/MergeTablesDialog';
@@ -1583,6 +1583,21 @@ const POSPage: React.FC = () => {
                 } catch (err) {
                     console.error("Table status update failed:", err);
                     toast.error("Failed to update table status");
+                }
+
+                // Record the walk-in on the Bookings page so staff see current table
+                // occupancy alongside reservations. Best-effort — a failure here
+                // shouldn't block or roll back an order that's already been placed.
+                if (!isEditMode && savedOrderId) {
+                    bookingsAPI.createWalkIn({
+                        tableId: selectedTable._id,
+                        guests: guestCount,
+                        orderId: savedOrderId,
+                        customerName: customerName || undefined,
+                        customerPhone: customerPhone ? `+${customerDialCode}${customerPhone}` : undefined,
+                    }).catch((err) => {
+                        console.error("Failed to record walk-in booking:", err);
+                    });
                 }
             }
 

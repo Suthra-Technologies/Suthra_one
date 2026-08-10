@@ -49,10 +49,20 @@ const KitchenOrdersPage: React.FC = () => {
             setLoading(true);
             const response = await ordersAPI.getActive();
             const ordersData = Array.isArray(response.data) ? response.data : [];
+            const todayStart = new Date();
+            todayStart.setHours(0, 0, 0, 0);
+            
+            const todayEnd = new Date();
+            todayEnd.setHours(23, 59, 59, 999);
+
             // Filter orders that should not be in kitchen (e.g. ready for pickup/takeaway are usually at counter)
-            const kitchenOrders = ordersData.filter((order: any) =>
-                !['ready_to_takeaway', 'ready_to_pickup', 'on_the_way', 'served', 'delivered', 'completed', 'cancelled'].includes(order.status)
-            );
+            const kitchenOrders = ordersData.filter((order: any) => {
+                const orderDate = new Date(order.createdAt);
+                const isToday = orderDate >= todayStart && orderDate <= todayEnd;
+                const isValidStatus = !['ready_to_takeaway', 'ready_to_pickup', 'on_the_way', 'served', 'delivered', 'completed', 'cancelled'].includes(order.status);
+                
+                return isToday && isValidStatus;
+            });
             setOrders(kitchenOrders);
         } catch (error) {
             console.error('Error fetching orders:', error);

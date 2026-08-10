@@ -171,17 +171,22 @@ const OrderUpdateDialog: React.FC<OrderUpdateDialogProps> = ({ open, order, onCl
                                     order.deliveryAddress?.pincode
                                 ].filter(Boolean).join(', ')}
                             </Typography>
-                            {order.deliveryAddress?.latitude && order.deliveryAddress?.longitude && (
+                            {((order.deliveryAddress?.latitude && order.deliveryAddress?.longitude) || order.deliveryAddress?.fullAddress) && (
                                 <Button
                                     size="small"
                                     startIcon={<LocationOnIcon />}
                                     sx={{ alignSelf: 'flex-start', mt: 0.5, p: 0 }}
                                     onClick={() => {
-                                        const url = `https://www.google.com/maps/dir/?api=1&destination=${order.deliveryAddress?.latitude},${order.deliveryAddress?.longitude}`;
+                                        let url;
+                                        if (order.deliveryAddress?.latitude && order.deliveryAddress?.longitude) {
+                                            url = `https://www.google.com/maps/dir/?api=1&destination=${order.deliveryAddress.latitude},${order.deliveryAddress.longitude}`;
+                                        } else {
+                                            url = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(order.deliveryAddress?.fullAddress || '')}`;
+                                        }
                                         window.open(url, '_blank');
                                     }}
                                 >
-                                    View on Map
+                                    Get Directions
                                 </Button>
                             )}
                         </Stack>
