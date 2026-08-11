@@ -59,6 +59,7 @@ import CustomItemDialog from './components/CustomItemDialog';
 import { validateEmail, validatePhone } from '../../utils/validation';
 import { getMaxGuests, getMergedGroup } from './utils/tableCapacity';
 import { getActivePaymentMethods, getPaymentMethodLabel } from '../../utils/orderWorkflows';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 
 
 type Variant = {
@@ -2228,9 +2229,7 @@ const POSPage: React.FC = () => {
 
                 {/* Items grid */}
                 {loading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-                        <CircularProgress />
-                    </Box>
+                    <CardGridSkeleton count={12} cardHeight={200} />
                 ) : (
                     <Box sx={{ pb: 2 }}>
                         <Grid container spacing={2}>

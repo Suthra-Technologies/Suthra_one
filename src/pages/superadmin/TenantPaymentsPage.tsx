@@ -9,6 +9,7 @@ import PaymentIcon from '@mui/icons-material/Payment';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { superAdminPaymentsAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 const TenantPaymentsPage: React.FC = () => {
   const { tenantId } = useParams<{ tenantId: string }>();
@@ -60,6 +61,10 @@ const TenantPaymentsPage: React.FC = () => {
     { label: 'Platform Earnings', value: fmt(netRevenue), sub: 'delivery + tip + proc fee − stripe fee', color: '#2e7d32', border: '#2e7d32' },
     { label: 'Total Orders', value: String(total), sub: 'platform delivery orders', color: '#7c3aed', border: '#7c3aed' },
   ];
+
+  if (loading && rows.length === 0) {
+    return <TableSkeleton rows={8} columns={14} />;
+  }
 
   return (
     <Box sx={{ px: { xs: 1.5, sm: 3 }, pb: 4, pt: { xs: 0.5, sm: 3 } }}>

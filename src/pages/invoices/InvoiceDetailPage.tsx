@@ -27,6 +27,7 @@ import { invoicesAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { downloadFromUrl } from '../../utils/fileDownload';
 import { apiBaseUrl } from '../../services/api';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 const InvoiceDetailPage = () => {
     const { id } = useParams<{ id: string }>();
@@ -85,11 +86,7 @@ const InvoiceDetailPage = () => {
     };
 
     if (loading) {
-        return (
-            <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">
-                <CircularProgress />
-            </Box>
-        );
+        return <TableSkeleton rows={5} columns={4} />;
     }
 
     if (!invoice) return null;

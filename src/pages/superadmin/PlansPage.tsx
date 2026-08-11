@@ -18,7 +18,6 @@ import {
     TextField,
     FormControlLabel,
     Checkbox,
-    CircularProgress,
     Chip,
     Divider,
     Stack,
@@ -28,6 +27,7 @@ import Grid from '@mui/material/Grid2';
 import { Edit as EditIcon, Add as AddIcon, Delete as DeleteIcon, Close as CloseIcon } from '@mui/icons-material';
 import { superAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 
 const MODULES: { key: string; label: string }[] = [
     { key: 'dashboard', label: 'Dashboard' },
@@ -399,9 +399,7 @@ const PlansPage: React.FC = () => {
             </Box>
 
             {loading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-                    <CircularProgress />
-                </Box>
+                <CardGridSkeleton count={6} cardHeight={280} />
             ) : (
                 <>
                     <Typography variant="h5" sx={{ mb: 2, fontWeight: 'bold' }}>Subscription Plans</Typography>

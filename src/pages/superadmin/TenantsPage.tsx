@@ -30,6 +30,7 @@ import Grid from '@mui/material/Grid2';
 import { Edit as EditIcon, Search as SearchIcon, Close as CloseIcon, Visibility as VisibilityIcon } from '@mui/icons-material';
 import { superAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 
 const TenantsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -227,9 +228,7 @@ const TenantsPage: React.FC = () => {
       </Box>
 
       {loading ? (
-        <Box display="flex" justifyContent="center" p={4}>
-          <CircularProgress />
-        </Box>
+        <CardGridSkeleton count={8} cardHeight={280} />
       ) : (
         <>
           <Grid container spacing={3}>

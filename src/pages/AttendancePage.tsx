@@ -58,6 +58,7 @@ import { attendanceAPI, usersAPI } from '../services/api';
 import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { enUS } from 'date-fns/locale';
+import { TableSkeleton } from '../components/common/PageSkeleton';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -574,9 +575,8 @@ const AttendancePage: React.FC = () => {
             {/* Monitoring Table */}
             <Box sx={{ mb: 4 }}>
                 {loading ? (
-                    <Paper sx={{ p: 10, textAlign: 'center', borderRadius: 0 }}>
-                        <CircularProgress size={60} thickness={2} />
-                        <Typography sx={{ mt: 3, color: 'text.secondary', fontWeight: '500' }}>Synchronizing staff history...</Typography>
+                    <Paper sx={{ p: 3, borderRadius: 0 }}>
+                        <TableSkeleton rows={8} columns={7} />
                     </Paper>
                 ) : (
                     <>

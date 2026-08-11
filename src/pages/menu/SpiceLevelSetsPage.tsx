@@ -37,6 +37,7 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { menuAPI, spiceLevelSetsAPI } from '../../services/api';
 import type { SpiceLevel, SpiceLevelSet } from './types';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 
 interface SpiceLevelSetsPageProps {
     hideHeader?: boolean;
@@ -342,7 +343,7 @@ const SpiceLevelSetsPage: React.FC<SpiceLevelSetsPageProps> = ({ hideHeader = fa
             </Box>
 
             {loading ? (
-                <Box display="flex" justifyContent="center" p={5}><CircularProgress /></Box>
+                <CardGridSkeleton count={6} cardHeight={260} />
             ) : sets.length === 0 ? (
                 <Paper sx={{ p: 5, textAlign: 'center', borderRadius: 3, bgcolor: 'grey.50', border: '1px dashed', borderColor: 'divider' }}>
                     <FireIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />

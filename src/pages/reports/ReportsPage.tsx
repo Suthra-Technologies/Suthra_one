@@ -21,7 +21,6 @@ import {
     MenuItem,
     FormControl,
     InputLabel,
-    CircularProgress,
     Chip,
     Stack,
     TextField,
@@ -39,6 +38,7 @@ import {
     ListItemText,
 } from '@mui/material';
 import { ordersAPI, tablesAPI, bookingsAPI, feedbackAPI, reportsAPI, cateringAPI } from '../../services/api';
+import { DashboardSkeleton } from '../../components/common/PageSkeleton';
 import {
     BarChart,
     Bar,
@@ -5915,9 +5915,7 @@ const ReportsPage: React.FC = () => {
             {/* Content — minHeight prevents layout shift when switching tabs */}
             <Box sx={{ minHeight: 600 }}>
                 {loading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-                        <CircularProgress />
-                    </Box>
+                    <DashboardSkeleton />
                 ) : (
                     <>
                         {activeTab === 0 && renderDashboard()}

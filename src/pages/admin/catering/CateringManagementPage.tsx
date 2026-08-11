@@ -91,6 +91,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { downloadFromUrl } from '../../../utils/fileDownload';
 import { apiBaseUrl } from '../../../services/api';
 import { getTenantSlugFromHostname } from '../../../utils/tenant.utils';
+import { TableSkeleton } from '../../../components/common/PageSkeleton';
 
 const formatPhoneNumber = (phone?: string) => {
     if (!phone) return '';
@@ -1719,9 +1720,7 @@ const CateringManagementPage = () => {
             </Box>
 
             {loading ? (
-                <Box display="flex" justifyContent="center" p={4}>
-                    <CircularProgress />
-                </Box>
+                <TableSkeleton rows={8} columns={7} />
             ) : orders.length === 0 ? (
                 <Box textAlign="center" p={4}>
                     <Typography color="textSecondary">No catering orders found</Typography>

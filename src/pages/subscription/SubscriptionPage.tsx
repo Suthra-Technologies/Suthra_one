@@ -30,6 +30,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { subscriptionAPI, tenantAPI } from '../../services/api';
 import { getTenantSlugFromHostname, isSubdomainAccess } from '../../utils/tenant.utils';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 
 interface Plan {
     _id: string;
@@ -189,11 +190,7 @@ const SubscriptionPage: React.FC = () => {
     // formatPrice function replaced by formatCurrency from context
 
     if (loading) {
-        return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-                <CircularProgress />
-            </Box>
-        );
+        return <CardGridSkeleton count={3} cardHeight={420} />;
     }
 
 

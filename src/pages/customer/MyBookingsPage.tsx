@@ -26,7 +26,6 @@ import {
     Tabs,
     Pagination,
     Avatar,
-    CircularProgress,
     Stack,
     useMediaQuery,
     useTheme
@@ -55,6 +54,7 @@ import { useNavigate } from 'react-router-dom';
 import { bookingsAPI, ordersAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import OrderTrackingDialog from '../../components/OrderTrackingDialog';
+import { ListSkeleton } from '../../components/common/PageSkeleton';
 
 interface Booking {
     id: string;
@@ -534,10 +534,7 @@ const MyBookingsPage: React.FC = () => {
 
             <Container maxWidth="md" sx={{ position: 'relative', zIndex: 2, px: { xs: 1.25, sm: 3 } }}>
                 {loading ? (
-                    <Paper sx={{ p: 6, textAlign: 'center', borderRadius: 4, boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
-                        <CircularProgress size={40} thickness={4} />
-                        <Typography sx={{ mt: 1.25, fontWeight: 500, color: 'text.secondary', fontSize: bodyFontSize }}>Loading your history...</Typography>
-                    </Paper>
+                    <ListSkeleton count={5} />
                 ) : (
                     <>
                         <Box sx={{ mb: 2.5, bgcolor: 'white', p: { xs: 0.6, sm: 0.9 }, borderRadius: { xs: '14px', sm: '18px' }, boxShadow: '0 4px 16px rgba(0,0,0,0.05)' }}>

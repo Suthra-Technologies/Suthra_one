@@ -80,6 +80,10 @@ export interface RestaurantSettings {
         sharedBaseRate: number;
         privateBaseRate: number;
     };
+    utensilsFee?: {
+        enabled: boolean;
+        amount: number;
+    };
     units?: UnitConfig[];
     occasions?: string[];
     expenseCategories?: string[];

@@ -33,6 +33,7 @@ import { useNavigate } from 'react-router-dom';
 import { invoicesAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { downloadFromUrl } from '../../utils/fileDownload';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 import { apiBaseUrl } from '../../services/api';
 
 const InvoicesAdminPage = () => {
@@ -138,6 +139,9 @@ const InvoicesAdminPage = () => {
 
             {/* Desktop View */}
             <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                {loading ? (
+                    <TableSkeleton rows={8} columns={7} />
+                ) : (
                 <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #e0e0e0' }}>
                     <Table>
                         <TableHead sx={{ bgcolor: '#f5f5f5' }}>
@@ -152,13 +156,7 @@ const InvoicesAdminPage = () => {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={7} align="center" sx={{ py: 5 }}>
-                                        <CircularProgress />
-                                    </TableCell>
-                                </TableRow>
-                            ) : invoices.length === 0 ? (
+                            {invoices.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={7} align="center" sx={{ py: 5 }}>
                                         <Typography color="textSecondary">No invoices found</Typography>
@@ -213,14 +211,13 @@ const InvoicesAdminPage = () => {
                         </TableBody>
                     </Table>
                 </TableContainer>
+                )}
             </Box>
 
             {/* Mobile View */}
             <Box sx={{ display: { xs: 'block', md: 'none' } }}>
                 {loading ? (
-                    <Box display="flex" justifyContent="center" p={4}>
-                        <CircularProgress />
-                    </Box>
+                    <TableSkeleton rows={5} columns={1} />
                 ) : invoices.length === 0 ? (
                     <Box textAlign="center" p={4}>
                         <Typography color="textSecondary">No invoices found</Typography>

@@ -10,7 +10,6 @@ import {
   Stack,
   useTheme,
   alpha,
-  CircularProgress,
   Avatar,
   Paper,
   TextField,
@@ -34,6 +33,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { disputesAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { useActiveTenant } from '../../hooks/useActiveTenant';
+import { DashboardSkeleton } from '../../components/common/PageSkeleton';
 
 const DisputeDetails: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -93,11 +93,7 @@ const DisputeDetails: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', p: 10 }}>
-        <CircularProgress />
-      </Box>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (!dispute) return null;

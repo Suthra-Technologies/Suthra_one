@@ -41,6 +41,7 @@ import {
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import React, { useEffect, useState } from 'react';
+import { DashboardSkeleton } from '../components/common/PageSkeleton';
 
 
 import AssignmentLateOutlinedIcon from '@mui/icons-material/AssignmentLateOutlined';
@@ -667,11 +668,7 @@ const DashboardPage: React.FC = () => {
       : null;
 
   if (loading) {
-    return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-        <Typography>Loading dashboard...</Typography>
-      </Box>
-    );
+    return <DashboardSkeleton />;
   }
 
 

@@ -57,6 +57,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '../context/SettingsContext';
 import { payrollAPI, usersAPI } from '../services/api';
+import { TableSkeleton } from '../components/common/PageSkeleton';
 
 const ITEMS_PER_PAGE = 10;
 
@@ -655,7 +656,7 @@ const PayrollPage: React.FC = () => {
                     </Stack>
 
                     {loading ? (
-                        <Box sx={{ textAlign: 'center', py: 6 }}><CircularProgress /></Box>
+                        <TableSkeleton rows={8} columns={9} />
                     ) : isMobile ? (
                         <Stack spacing={1.5}>
                             {profiles.map((p) => (
@@ -843,7 +844,7 @@ const PayrollPage: React.FC = () => {
                     </Grid>
 
                     {loading ? (
-                        <Box sx={{ textAlign: 'center', py: 6 }}><CircularProgress /></Box>
+                        <TableSkeleton rows={8} columns={10} />
                     ) : isMobile ? (
                         /* Card layout on small screens so nothing scrolls sideways. */
                         <Stack spacing={1.5}>
@@ -1002,7 +1003,7 @@ const PayrollPage: React.FC = () => {
                     </Stack>
 
                     {loading ? (
-                        <Box sx={{ textAlign: 'center', py: 6 }}><CircularProgress /></Box>
+                        <TableSkeleton rows={8} columns={8} />
                     ) : isMobile ? (
                         /* 31 columns cannot fit a phone, so each employee becomes
                            a card whose days wrap instead of scrolling sideways. */

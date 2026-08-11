@@ -5,7 +5,6 @@ import {
 import {
   Box,
   Chip,
-  CircularProgress,
   Paper,
   Table,
   TableBody,
@@ -25,6 +24,7 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '../../context/SettingsContext';
 import { ordersAPI } from '../../services/api';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 const statusColor = (status: string): 'default' | 'success' | 'warning' | 'info' => {
   if (['delivered', 'completed'].includes(status)) return 'success';
@@ -88,9 +88,7 @@ const DeliveryHistoryPage: React.FC = () => {
       </Box>
 
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
-          <CircularProgress />
-        </Box>
+        <TableSkeleton rows={8} columns={6} />
       ) : orders.length === 0 ? (
         <Paper sx={{ p: 4, textAlign: 'center' }}>
           <Typography color="text.secondary">

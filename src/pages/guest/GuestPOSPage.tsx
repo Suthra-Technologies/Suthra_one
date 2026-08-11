@@ -49,6 +49,7 @@ import { format } from 'date-fns';
 import { useSettings } from '../../context/SettingsContext';
 import { useActiveTenant } from '../../hooks/useActiveTenant';
 import { menuAPI, ordersAPI } from '../../services/api';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 
 interface MenuItem {
     _id: string;
@@ -980,7 +981,7 @@ const GuestPOSPage: React.FC = () => {
                 </Box>
 
                 {loading ? (
-                    <Typography align="center" sx={{ mt: 4 }}>Loading menu...</Typography>
+                    <CardGridSkeleton count={8} cardHeight={220} />
                 ) : filteredItems.length === 0 ? (
                     <Box sx={{ textAlign: 'center', mt: 6, mb: 4 }}>
                         <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>

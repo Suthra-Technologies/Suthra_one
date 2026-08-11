@@ -17,6 +17,7 @@ import {
   Remove as RemoveIcon,
   Event as EventIcon
 } from '@mui/icons-material';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 import {
   alpha,
   Badge,
@@ -721,9 +722,7 @@ const KitchenInterface: React.FC = () => {
 
       {/* Orders Grid */}
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-          <CircularProgress size={60} />
-        </Box>
+        <CardGridSkeleton count={6} cardHeight={280} />
       ) : filteredOrders.length === 0 ? (
         <Paper sx={{ textAlign: 'center', p: 4, bgcolor: alpha(theme.palette.success.main, 0.1), borderRadius: 3 }}>
           <Typography variant="h5" color="success.main" gutterBottom sx={{ fontSize: headingFontSize }}>

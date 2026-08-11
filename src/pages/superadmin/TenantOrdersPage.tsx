@@ -13,6 +13,7 @@ import { superAdminPaymentsAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { getStatusLabel, getStatusColor, getOrderTypeLabel } from '../../utils/orderWorkflows';
 import OrderDetailsDialog from '../../components/OrderDetailsDialog';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 const TenantOrdersPage: React.FC = () => {
   const { tenantId } = useParams<{ tenantId: string }>();
@@ -60,6 +61,10 @@ const TenantOrdersPage: React.FC = () => {
 
   const fmt = (n: any) => `$${(Number(n) || 0).toFixed(2)}`;
   const fmtDate = (d: string) => d ? new Date(d).toLocaleString() : '-';
+
+  if (loading && rows.length === 0) {
+    return <TableSkeleton rows={8} columns={9} />;
+  }
 
   return (
     <Box sx={{ px: { xs: 1.5, sm: 3 }, pb: 4, pt: { xs: 0.5, sm: 3 } }}>

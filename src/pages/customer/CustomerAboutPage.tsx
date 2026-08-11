@@ -7,7 +7,6 @@ import {
     Card,
     CardMedia,
     CardContent,
-    CircularProgress,
     Paper,
     Chip,
     useTheme,
@@ -19,6 +18,7 @@ import {
 import { homepageAPI } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
+import { ListSkeleton } from '../../components/common/PageSkeleton';
 
 // ─── Fade-in animation styles ────────────────────────────────────────────────
 const fadeInUpStyle = (delay: number = 0): React.CSSProperties => ({
@@ -494,18 +494,7 @@ const CustomerAboutPage: React.FC = () => {
     }, [tenantSlug]);
 
     if (loading) {
-        return (
-            <Box
-                sx={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    minHeight: '60vh',
-                }}
-            >
-                <CircularProgress sx={{ color: 'primary.main' }} />
-            </Box>
-        );
+        return <ListSkeleton count={4} />;
     }
 
     const restaurantName = settings?.restaurant?.name || 'Our Restaurant';

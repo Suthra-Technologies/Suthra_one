@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
     Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
-    TableHead, TableRow, CircularProgress, alpha, useTheme, Stack, Chip,
+    TableHead, TableRow, alpha, useTheme, Stack, Chip,
     Card, CardContent, Grid, TablePagination, TextField, InputAdornment, FormControl, Select, MenuItem, InputLabel,
     Dialog, DialogTitle, DialogContent, DialogActions, Button,
 } from '@mui/material';
@@ -9,6 +9,7 @@ import ContactPageIcon from '@mui/icons-material/ContactPage';
 import SearchIcon from '@mui/icons-material/Search';
 import { superAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 const BACKOUT_STATUS = 'rejected';
 
@@ -124,6 +125,11 @@ const DemoRequestsLogPage: React.FC = () => {
                 </Stack>
 
                 {/* Desktop table */}
+                {loading ? (
+                    <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                        <TableSkeleton rows={8} columns={8} />
+                    </Box>
+                ) : (
                 <TableContainer sx={{ display: { xs: 'none', md: 'block' } }}>
                     <Table>
                         <TableHead sx={{ bgcolor: alpha(theme.palette.action.hover, 0.5) }}>
@@ -139,9 +145,7 @@ const DemoRequestsLogPage: React.FC = () => {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {loading ? (
-                                <TableRow><TableCell colSpan={8} align="center" sx={{ py: 8 }}><CircularProgress /></TableCell></TableRow>
-                            ) : paginated.length === 0 ? (
+                            {paginated.length === 0 ? (
                                 <TableRow><TableCell colSpan={8} align="center" sx={{ py: 8 }}><Typography color="text.secondary">No demo requests found</Typography></TableCell></TableRow>
                             ) : paginated.map((req) => {
                                 const updater = req.updatedBy;
@@ -189,11 +193,12 @@ const DemoRequestsLogPage: React.FC = () => {
                         </TableBody>
                     </Table>
                 </TableContainer>
+                )}
 
                 {/* Mobile cards */}
                 <Box sx={{ display: { xs: 'block', md: 'none' }, p: 1 }}>
                     {loading ? (
-                        <Box sx={{ py: 6, textAlign: 'center' }}><CircularProgress /></Box>
+                        <TableSkeleton rows={5} columns={1} />
                     ) : paginated.length === 0 ? (
                         <Box sx={{ py: 6, textAlign: 'center' }}><Typography color="text.secondary">No demo requests found</Typography></Box>
                     ) : paginated.map((req) => {

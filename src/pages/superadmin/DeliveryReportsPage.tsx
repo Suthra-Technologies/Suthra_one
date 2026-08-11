@@ -3,7 +3,7 @@ import {
     Box, Typography, Paper, Grid, Card, CardContent, Table, TableBody,
     TableCell, TableContainer, TableHead, TableRow, TablePagination,
     Chip, Stack, Select, MenuItem, FormControl, InputLabel, TextField,
-    Button, CircularProgress, alpha,
+    Button, alpha,
 } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
@@ -18,6 +18,7 @@ import StoreIcon from '@mui/icons-material/Store';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 import * as XLSX from 'xlsx';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5006';
 
@@ -204,9 +205,7 @@ const DeliveryReportsPage: React.FC = () => {
             {/* Orders Table */}
             <Paper sx={{ overflowX: 'hidden' }}>
                 {loading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-                        <CircularProgress />
-                    </Box>
+                    <TableSkeleton rows={8} columns={15} />
                 ) : (
                     <>
                         <TableContainer sx={{ display: { xs: 'none', md: 'block' } }}>

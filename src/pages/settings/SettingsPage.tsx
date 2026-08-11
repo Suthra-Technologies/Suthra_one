@@ -67,6 +67,7 @@ import React, { useEffect, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import AddressAutocomplete from '../../components/AddressAutocomplete';
 import PhoneInput from '../../components/PhoneInput';
+import { DashboardSkeleton } from '../../components/common/PageSkeleton';
 import { useAuth } from '../../context/AuthContext';
 import {
     IMPERIAL_UNITS,
@@ -657,6 +658,17 @@ const SettingsPage: React.FC = () => {
     const [errors, setErrors] = useState<Record<string, ValidationResult>>({});
     const [fetchingTax, setFetchingTax] = useState(false);
     const [webhookUrl, setWebhookUrl] = useState<string>('');
+    // Tracked as a raw string (not derived from settings on every render) so the field
+    // can go empty while the user is clearing "0" to type a new amount, instead of
+    // snapping back to "0" on every keystroke. Resynced from settings only when the
+    // field isn't focused (e.g. after initial load or a save), never mid-edit.
+    const [utensilsFeeInput, setUtensilsFeeInput] = useState<string>('0');
+    const utensilsFeeInputFocused = React.useRef(false);
+    useEffect(() => {
+        if (!utensilsFeeInputFocused.current) {
+            setUtensilsFeeInput(String(settings.restaurant.utensilsFee?.amount ?? 0));
+        }
+    }, [settings.restaurant.utensilsFee?.amount]);
 
     const [showTwilioAuthToken, setShowTwilioAuthToken] = useState(false);
     const [showStripeSecretKey, setShowStripeSecretKey] = useState(false);
@@ -1829,11 +1841,7 @@ const SettingsPage: React.FC = () => {
     const restaurantMailing = settings.restaurant.mailing || createDefaultMailingSettings();
 
     if (loading && !settings.restaurant.name) {
-        return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-                <CircularProgress />
-            </Box>
-        );
+        return <DashboardSkeleton />;
     }
 
     return (
@@ -2361,6 +2369,73 @@ const SettingsPage: React.FC = () => {
                                 helperText="Set by the platform administrator. Contact support to change it."
                             />
                         </Grid>
+
+                        <Grid size={{ xs: 12 }}>
+                            <Divider sx={{ my: 2 }} />
+                            <Typography variant="h6" gutterBottom>
+                                Utensils Fee
+                            </Typography>
+                            <FormControlLabel
+                                control={
+                                    <Switch
+                                        checked={settings.restaurant.utensilsFee?.enabled ?? false}
+                                        onChange={(e) => setSettings(prev => {
+                                            const current = prev.restaurant.utensilsFee || { enabled: false, amount: 0 };
+                                            return {
+                                                ...prev,
+                                                restaurant: {
+                                                    ...prev.restaurant,
+                                                    utensilsFee: {
+                                                        ...current,
+                                                        enabled: e.target.checked,
+                                                    },
+                                                },
+                                            };
+                                        })}
+                                    />
+                                }
+                                label="Charge a utensils fee on Takeaway & Delivery orders"
+                            />
+                        </Grid>
+                        {settings.restaurant.utensilsFee?.enabled && (
+                            <Grid size={{ xs: 12, md: 6 }}>
+                                <TextField
+                                    fullWidth
+                                    type="number"
+                                    label="Utensils Fee Amount"
+                                    value={utensilsFeeInput}
+                                    onFocus={() => { utensilsFeeInputFocused.current = true; }}
+                                    onChange={(e) => {
+                                        // Keep the raw string as typed (may be "", "0", "1.", etc.) so the
+                                        // field can go empty instead of snapping back to "0" every keystroke.
+                                        setUtensilsFeeInput(e.target.value);
+                                        const parsed = e.target.value === '' ? 0 : Math.min(5, Math.max(0, Number(e.target.value)));
+                                        if (!Number.isNaN(parsed)) {
+                                            setSettings(prev => {
+                                                const current = prev.restaurant.utensilsFee || { enabled: true, amount: 0 };
+                                                return {
+                                                    ...prev,
+                                                    restaurant: {
+                                                        ...prev.restaurant,
+                                                        utensilsFee: { ...current, amount: parsed },
+                                                    },
+                                                };
+                                            });
+                                        }
+                                    }}
+                                    onBlur={() => {
+                                        utensilsFeeInputFocused.current = false;
+                                        // Normalize an empty/invalid field back to a real number on blur.
+                                        setUtensilsFeeInput(String(settings.restaurant.utensilsFee?.amount ?? 0));
+                                    }}
+                                    slotProps={{ htmlInput: { min: 0, max: 5, step: '0.01' } }}
+                                    InputProps={{
+                                        startAdornment: <Typography sx={{ mr: 1 }}>{settings.restaurant.currencySymbol}</Typography>
+                                    }}
+                                    helperText="Flat fee charged once per Takeaway or Delivery order. Maximum $5."
+                                />
+                            </Grid>
+                        )}
 
                         {/* MANUAL TAX REMOVED — Tax Breakdown Configuration is replaced by the TaxJar engine.
                         <Grid size={{ xs: 12 }}>

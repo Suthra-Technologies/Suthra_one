@@ -705,6 +705,12 @@ const OrderDetailsDialog: React.FC<OrderDetailsDialogProps> = ({ open, order, on
                                     <Typography variant="body2">{formatCurrency(order.serviceCharge?.amount ?? 0)}</Typography>
                                 </Box>
                             )}
+                            {(order.utensilsFee ?? 0) > 0 && (
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <Typography variant="body2">Utensils Fee:</Typography>
+                                    <Typography variant="body2">{formatCurrency(order.utensilsFee ?? 0)}</Typography>
+                                </Box>
+                            )}
                             {(order.discount?.amount > 0 || order.couponDiscount > 0) && (
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', color: 'success.main' }}>
                                     <Typography variant="body2">

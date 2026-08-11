@@ -116,6 +116,7 @@ import StaffIconImg from "/src/assets/images/icons/staff.png";
 // import RecipeIconActiveImg from '/src/assets/images/icons/recipe-active.png';
 
 import { Box, Container, Grid, IconButton, Typography } from "@mui/material";
+import { CardGridSkeleton } from "../../components/common/PageSkeleton";
 
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
@@ -2003,9 +2004,7 @@ const HomePage: React.FC = () => {
           </Box>
 
           {plansLoading ? (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
-              <CircularProgress />
-            </Box>
+            <CardGridSkeleton count={3} cardHeight={420} />
           ) : plans.length === 0 ? (
             <Box textAlign="center" py={8}>
               <Typography variant="body1" color="text.secondary">

@@ -45,6 +45,7 @@ import {
 import { format } from 'date-fns';
 import { wasteAPI, inventoryAPI, menuAPI } from '../../services/api';
 import { useSnackbar } from 'notistack';
+import { DashboardSkeleton } from '../../components/common/PageSkeleton';
 
 const REASONS = [
     { value: 'expired', label: 'Expired' },
@@ -209,11 +210,7 @@ const WasteManagementPage: React.FC = () => {
     };
 
     if (loading && logs.length === 0) {
-        return (
-            <Box display="flex" justifyContent="center" alignItems="center" height="80vh">
-                <CircularProgress />
-            </Box>
-        );
+        return <DashboardSkeleton />;
     }
 
     return (

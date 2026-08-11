@@ -39,6 +39,7 @@ import { menuAPI, ordersAPI } from '../../services/api';
 import { useSettings } from '../../context/SettingsContext';
 import { useGuestCart } from '../../context/GuestCartContext';
 import { useActiveTenant } from '../../hooks/useActiveTenant';
+import { CardGridSkeleton } from '../../components/common/PageSkeleton';
 
 interface MenuItem {
     _id: string;
@@ -238,12 +239,7 @@ const CustomerOrderPage: React.FC = () => {
     };
 
     if (loading) {
-        return (
-            <Box sx={{ minHeight: '80vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 2 }}>
-                <CircularProgress size={40} thickness={4} />
-                <Typography variant="h6" color="text.secondary" fontWeight="500" sx={{ fontSize: headingFontSize }}>Preparing Menu...</Typography>
-            </Box>
-        );
+        return <CardGridSkeleton count={9} cardHeight={220} />;
     }
 
     return (

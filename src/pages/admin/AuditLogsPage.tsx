@@ -36,6 +36,7 @@ import {
 } from '@mui/icons-material';
 import { auditLogsAPI } from '../../services/api';
 import { toast } from 'react-hot-toast';
+import { TableSkeleton } from '../../components/common/PageSkeleton';
 
 const AuditLogsPage: React.FC = () => {
     const theme = useTheme();
@@ -324,8 +325,8 @@ const AuditLogsPage: React.FC = () => {
                         <TableBody>
                             {loading ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} align="center" sx={{ py: 4 }}>
-                                        <CircularProgress />
+                                    <TableCell colSpan={7} sx={{ py: 2 }}>
+                                        <TableSkeleton rows={8} columns={7} />
                                     </TableCell>
                                 </TableRow>
                             ) : logs.length === 0 ? (
